@@ -10,6 +10,7 @@ namespace QuestBoard.Service.Services;
 /// </summary>
 public class HangfireQuestEmailDispatcher(IBackgroundJobClient jobClient) : IQuestEmailDispatcher
 {
+    /// <inheritdoc/>
     public void EnqueueFinalizedEmail(
         int questId,
         int groupId,
@@ -27,6 +28,7 @@ public class HangfireQuestEmailDispatcher(IBackgroundJobClient jobClient) : IQue
             CancellationToken.None));
     }
 
+    /// <inheritdoc/>
     public void EnqueueDateChangedEmail(
         int questId,
         string[] recipientEmails,

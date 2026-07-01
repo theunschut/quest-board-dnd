@@ -10,11 +10,13 @@ namespace QuestBoard.Repository;
 internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActiveGroupContext activeGroupContext)
     : BaseRepository<User, UserEntity>(dbContext, mapper), IUserRepository
 {
+    /// <inheritdoc/>
     public virtual async Task<bool> ExistsAsync(string name)
     {
         return await DbSet.AnyAsync(u => u.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase));
     }
 
+    /// <inheritdoc/>
     public async Task<IList<User>> GetAllDungeonMasters(CancellationToken token = default)
     {
         var groupId = activeGroupContext.ActiveGroupId;
@@ -30,6 +32,7 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
         return Mapper.Map<IList<User>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<User>> GetAllPlayers(CancellationToken token = default)
     {
         var groupId = activeGroupContext.ActiveGroupId;
@@ -44,6 +47,7 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
         return Mapper.Map<IList<User>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<GroupRole?> GetGroupRoleAsync(int userId, int groupId)
     {
         var ug = await DbContext.UserGroups
@@ -52,6 +56,7 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
         return (GroupRole)ug.GroupRole;
     }
 
+    /// <inheritdoc/>
     public async Task<int?> SetGroupRoleAsync(int userId, int groupId, GroupRole role)
     {
         var ug = await DbContext.UserGroups

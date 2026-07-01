@@ -8,6 +8,7 @@ namespace QuestBoard.Repository;
 
 internal class TradeItemRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<TradeItem, TradeItemEntity>(dbContext, mapper), ITradeItemRepository
 {
+    /// <inheritdoc/>
     public override async Task<IList<TradeItem>> GetAllAsync(CancellationToken token = default)
     {
         var entities = await DbContext.TradeItems
@@ -17,6 +18,7 @@ internal class TradeItemRepository(QuestBoardContext dbContext, IMapper mapper) 
         return Mapper.Map<IList<TradeItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<TradeItem>> GetAvailableTradeItemsAsync(CancellationToken token = default)
     {
         var entities = await DbContext.TradeItems
@@ -27,6 +29,7 @@ internal class TradeItemRepository(QuestBoardContext dbContext, IMapper mapper) 
         return Mapper.Map<IList<TradeItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<TradeItem>> GetTradeItemsByPlayerAsync(int playerId, CancellationToken token = default)
     {
         var entities = await DbContext.TradeItems
@@ -37,6 +40,7 @@ internal class TradeItemRepository(QuestBoardContext dbContext, IMapper mapper) 
         return Mapper.Map<IList<TradeItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<TradeItem>> GetTradeItemsByStatusAsync(int status, CancellationToken token = default)
     {
         var entities = await DbContext.TradeItems
@@ -47,6 +51,7 @@ internal class TradeItemRepository(QuestBoardContext dbContext, IMapper mapper) 
         return Mapper.Map<IList<TradeItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<TradeItem?> GetTradeItemWithDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await DbContext.TradeItems

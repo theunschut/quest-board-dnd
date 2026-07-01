@@ -8,6 +8,7 @@ namespace QuestBoard.Service.Services;
 /// </summary>
 public class NullQuestEmailDispatcher : IQuestEmailDispatcher
 {
+    /// <inheritdoc/>
     public void EnqueueFinalizedEmail(
         int questId,
         int groupId,
@@ -22,6 +23,7 @@ public class NullQuestEmailDispatcher : IQuestEmailDispatcher
         // No-op — Hangfire not available in Testing environment
     }
 
+    /// <inheritdoc/>
     public void EnqueueDateChangedEmail(
         int questId,
         string[] recipientEmails,

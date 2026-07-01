@@ -6,12 +6,14 @@ namespace QuestBoard.Repository;
 
 internal class ReminderLogRepository(QuestBoardContext dbContext) : IReminderLogRepository
 {
+    /// <inheritdoc/>
     public async Task<bool> ExistsAsync(int questId, int playerId, CancellationToken token = default)
     {
         return await dbContext.ReminderLogs
             .AnyAsync(r => r.QuestId == questId && r.PlayerId == playerId, token);
     }
 
+    /// <inheritdoc/>
     public async Task AddAsync(int questId, int playerId, CancellationToken token = default)
     {
         try

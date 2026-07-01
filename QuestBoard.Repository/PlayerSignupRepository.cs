@@ -8,6 +8,7 @@ namespace QuestBoard.Repository;
 
 internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<PlayerSignup, PlayerSignupEntity>(dbContext, mapper), IPlayerSignupRepository
 {
+    /// <inheritdoc/>
     public async Task<PlayerSignup?> GetByIdWithDateVotesAsync(int id, CancellationToken cancellationToken = default)
     {
         var entity = await DbSet
@@ -16,6 +17,7 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
         return entity == null ? null : Mapper.Map<PlayerSignup>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task ChangeVoteToYesAndSelectAsync(int playerSignupId, int proposedDateId, CancellationToken cancellationToken = default)
     {
         var entity = await DbSet
@@ -47,6 +49,7 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
         await DbContext.SaveChangesAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public override async Task UpdateAsync(PlayerSignup model, CancellationToken token = default)
     {
         var entity = await DbSet

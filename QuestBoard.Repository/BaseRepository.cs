@@ -17,6 +17,7 @@ internal abstract class BaseRepository<TModel, TEntity>(QuestBoardContext dbCont
 
     protected IMapper Mapper { get; } = mapper;
 
+    /// <inheritdoc/>
     public virtual async Task AddAsync(TModel model, CancellationToken token = default)
     {
         var entity = Mapper.Map<TEntity>(model);
@@ -26,23 +27,27 @@ internal abstract class BaseRepository<TModel, TEntity>(QuestBoardContext dbCont
         model.Id = entity.Id;
     }
 
+    /// <inheritdoc/>
     public virtual async Task<bool> ExistsAsync(int id, CancellationToken token = default)
     {
         return await DbSet.AnyAsync(e => e.Id == id, cancellationToken: token);
     }
 
+    /// <inheritdoc/>
     public virtual async Task<IList<TModel>> GetAllAsync(CancellationToken token = default)
     {
         var entities = await DbSet.ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<TModel>>(entities);
     }
 
+    /// <inheritdoc/>
     public virtual async Task<TModel?> GetByIdAsync(int id, CancellationToken token = default)
     {
         var entity = await DbSet.FindAsync([id], cancellationToken: token);
         return entity == null ? null : Mapper.Map<TModel>(entity);
     }
 
+    /// <inheritdoc/>
     public virtual async Task RemoveAsync(TModel model, CancellationToken token = default)
     {
         var entity = await DbSet.FindAsync([model.Id]);
@@ -51,8 +56,10 @@ internal abstract class BaseRepository<TModel, TEntity>(QuestBoardContext dbCont
         await DbContext.SaveChangesAsync(token);
     }
 
+    /// <inheritdoc/>
     public Task SaveChangesAsync(CancellationToken token = default) => DbContext.SaveChangesAsync(token);
 
+    /// <inheritdoc/>
     public virtual async Task UpdateAsync(TModel model, CancellationToken token = default)
     {
         var entity = await DbSet.FindAsync([model.Id]);

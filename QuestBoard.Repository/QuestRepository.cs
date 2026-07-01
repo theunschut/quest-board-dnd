@@ -15,6 +15,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     private const int DateMatchWindowMinutes = 30;
 
 
+    /// <inheritdoc/>
     public override async Task AddAsync(Quest model, CancellationToken token = default)
     {
         try
@@ -27,6 +28,8 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
             throw new InvalidOperationException("A follow-up quest already exists for this quest.", ex);
         }
     }
+
+    /// <inheritdoc/>
     public override async Task<IList<Quest>> GetAllAsync(CancellationToken token = default)
     {
         var entities = await DbContext.Quests
@@ -35,6 +38,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsWithDetailsAsync(CancellationToken token = default)
     {
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
@@ -42,6 +46,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsForCalendarAsync(CancellationToken token = default)
     {
         var entities = await ProjectForCalendar(DbContext.Quests)
@@ -49,6 +54,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsWithSignupsAsync(CancellationToken token = default)
     {
         var oneDayAgo = DateTime.UtcNow.AddDays(-1);
@@ -59,6 +65,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsWithSignupsForRoleAsync(bool isAdminOrDm, CancellationToken token = default)
     {
         var oneDayAgo = DateTime.UtcNow.AddDays(-1);
@@ -70,6 +77,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<Quest?> GetQuestWithDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await ProjectWithoutCharacterImages(DbContext.Quests)
@@ -77,6 +85,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return entity == null ? null : Mapper.Map<Quest>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task<Quest?> GetQuestWithManageDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await DbContext.Quests
@@ -93,6 +102,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return entity == null ? null : Mapper.Map<Quest>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task<Quest?> GetQuestWithManageViewDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await ProjectWithoutCharacterImages(DbContext.Quests)
@@ -100,6 +110,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return entity == null ? null : Mapper.Map<Quest>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task FinalizeQuestAsync(int questId, DateTime finalizedDate, IList<int> selectedPlayerSignupIds, CancellationToken token = default)
     {
         var entity = await DbContext.Quests
@@ -126,6 +137,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         await DbContext.SaveChangesAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task OpenQuestAsync(int questId, CancellationToken token = default)
     {
         var entity = await DbContext.Quests
@@ -144,6 +156,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         await DbContext.SaveChangesAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default)
     {
         var entity = await DbContext.Quests
@@ -173,6 +186,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return affectedPlayers.GroupBy(p => p.Id).Select(g => g.First()).ToList();
     }
 
+    /// <inheritdoc/>
     public async Task UpdateQuestRecapAsync(int questId, string recap, CancellationToken token = default)
     {
         var entity = await DbContext.Quests.FindAsync([questId], cancellationToken: token);
@@ -182,6 +196,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         await DbContext.SaveChangesAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task SetFinalizedEmailSentForDateAsync(int questId, DateTime date, CancellationToken token = default)
     {
         var entity = await DbContext.Quests.FindAsync([questId], cancellationToken: token);
@@ -191,11 +206,13 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         await DbContext.SaveChangesAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> HasFollowUpQuestAsync(int questId, CancellationToken token = default)
     {
         return await DbContext.Quests.AnyAsync(q => q.OriginalQuestId == questId, token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsByDungeonMasterAsync(int dmUserId, CancellationToken token = default)
     {
         var entities = await DbContext.Quests
@@ -206,6 +223,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetFinalizedQuestsForDateAsync(DateTime date, CancellationToken token = default)
     {
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
@@ -214,6 +232,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsForTomorrowAllGroupsAsync(DateTime date, CancellationToken token = default)
     {
         // Explicit cross-group intent — IgnoreQueryFilters bypasses HasQueryFilter on QuestEntity

@@ -10,6 +10,7 @@ namespace QuestBoard.Repository;
 internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
     : BaseRepository<Group, GroupEntity>(dbContext, mapper), IGroupRepository
 {
+    /// <inheritdoc/>
     public async Task<IList<GroupWithMemberCount>> GetAllWithMemberCountAsync(CancellationToken token = default)
     {
         return await DbContext.Groups
@@ -23,6 +24,7 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
             .ToListAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<GroupWithMemberCount>> GetGroupsForUserAsync(int userId, CancellationToken token = default)
     {
         return await DbContext.Groups
@@ -37,9 +39,11 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
             .ToListAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> HasMembersAsync(int groupId, CancellationToken token = default)
         => await DbContext.UserGroups.AnyAsync(ug => ug.GroupId == groupId, token);
 
+    /// <inheritdoc/>
     public async Task AddMemberAsync(int groupId, int userId, GroupRole groupRole, CancellationToken token = default)
     {
         // Check existence first — UserGroups has unique composite index on (UserId, GroupId)
@@ -57,6 +61,7 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
         await DbContext.SaveChangesAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task RemoveMemberAsync(int groupId, int userId, CancellationToken token = default)
     {
         var ug = await DbContext.UserGroups
@@ -66,6 +71,7 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
         await DbContext.SaveChangesAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<UserGroup>> GetMembersAsync(int groupId, CancellationToken token = default)
     {
         var entities = await DbContext.UserGroups

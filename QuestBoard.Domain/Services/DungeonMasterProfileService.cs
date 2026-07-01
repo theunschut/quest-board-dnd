@@ -7,11 +7,13 @@ namespace QuestBoard.Domain.Services;
 internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repository, IMapper mapper)
     : BaseService<DungeonMasterProfile>(repository, mapper), IDungeonMasterProfileService
 {
+    /// <inheritdoc/>
     public async Task<DungeonMasterProfile?> GetProfileByUserIdAsync(int userId, CancellationToken token = default)
     {
         return await repository.GetProfileByUserIdAsync(userId, token);
     }
 
+    /// <inheritdoc/>
     public async Task UpsertProfileAsync(int userId, string? bio, byte[]? imageBytes, bool removeImage = false, CancellationToken token = default)
     {
         // imageBytes != null  → replace stored image with new bytes
@@ -35,6 +37,7 @@ internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repos
         }
     }
 
+    /// <inheritdoc/>
     public async Task<byte[]?> GetProfilePictureAsync(int userId, CancellationToken token = default)
     {
         return await repository.GetProfilePictureAsync(userId, token);

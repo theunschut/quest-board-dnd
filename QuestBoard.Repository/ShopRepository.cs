@@ -8,6 +8,7 @@ namespace QuestBoard.Repository;
 
 internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<ShopItem, ShopItemEntity>(dbContext, mapper), IShopRepository
 {
+    /// <inheritdoc/>
     public override async Task<IList<ShopItem>> GetAllAsync(CancellationToken token = default)
     {
         var entities = await DbContext.ShopItems
@@ -18,6 +19,7 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
         return Mapper.Map<IList<ShopItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetPublishedItemsAsync(CancellationToken token = default)
     {
         var entities = await DbContext.ShopItems
@@ -30,6 +32,7 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
         return Mapper.Map<IList<ShopItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByStatusAsync(int status, CancellationToken token = default)
     {
         var entities = await DbContext.ShopItems
@@ -41,6 +44,7 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
         return Mapper.Map<IList<ShopItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByTypeAsync(int type, CancellationToken token = default)
     {
         var entities = await DbContext.ShopItems
@@ -53,6 +57,7 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
         return Mapper.Map<IList<ShopItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<ShopItem?> GetItemWithDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await DbContext.ShopItems
@@ -63,6 +68,7 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
         return entity == null ? null : Mapper.Map<ShopItem>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByDmAsync(int dmId, CancellationToken token = default)
     {
         var entities = await DbContext.ShopItems
@@ -73,6 +79,7 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
         return Mapper.Map<IList<ShopItem>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<(IList<ShopItem> Items, int TotalCount)> GetPagedPublishedItemsAsync(
         int? type,
         IList<int>? rarityInts,

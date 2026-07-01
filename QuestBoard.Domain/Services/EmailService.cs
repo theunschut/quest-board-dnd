@@ -30,6 +30,7 @@ public class EmailService(IOptions<EmailSettings> options, ILogger<EmailService>
         return client;
     }
 
+    /// <inheritdoc/>
     public async Task SendAsync(string toEmail, string subject, string htmlBody)
     {
         try

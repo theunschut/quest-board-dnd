@@ -10,6 +10,7 @@ namespace QuestBoard.Service.Services;
 /// </summary>
 public class HangfireReminderJobDispatcher(IBackgroundJobClient jobClient) : IReminderJobDispatcher
 {
+    /// <inheritdoc/>
     public void EnqueueSessionReminder(int questId, int groupId, bool forceResend = false, bool useYesMaybeVoters = false)
     {
         jobClient.Enqueue<SessionReminderJob>(j => j.ExecuteAsync(questId, groupId, forceResend, useYesMaybeVoters, CancellationToken.None));

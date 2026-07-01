@@ -9,6 +9,7 @@ public class RazorEmailRenderService(
     IServiceProvider serviceProvider,
     ILoggerFactory loggerFactory) : IEmailRenderService
 {
+    /// <inheritdoc/>
     public async Task<string> RenderAsync<TComponent>(
         Dictionary<string, object?> parameters)
         where TComponent : IComponent

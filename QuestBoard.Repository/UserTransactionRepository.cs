@@ -8,6 +8,7 @@ namespace QuestBoard.Repository;
 
 internal class UserTransactionRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<UserTransaction, UserTransactionEntity>(dbContext, mapper), IUserTransactionRepository
 {
+    /// <inheritdoc/>
     public override async Task<IList<UserTransaction>> GetAllAsync(CancellationToken token = default)
     {
         var entities = await DbContext.UserTransactions
@@ -18,6 +19,7 @@ internal class UserTransactionRepository(QuestBoardContext dbContext, IMapper ma
         return Mapper.Map<IList<UserTransaction>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<UserTransaction>> GetTransactionsByUserAsync(int userId, CancellationToken token = default)
     {
         var entities = await DbContext.UserTransactions
@@ -29,6 +31,7 @@ internal class UserTransactionRepository(QuestBoardContext dbContext, IMapper ma
         return Mapper.Map<IList<UserTransaction>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<UserTransaction>> GetTransactionsByItemAsync(int itemId, CancellationToken token = default)
     {
         var entities = await DbContext.UserTransactions
@@ -40,6 +43,7 @@ internal class UserTransactionRepository(QuestBoardContext dbContext, IMapper ma
         return Mapper.Map<IList<UserTransaction>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<UserTransaction>> GetTransactionsByTypeAsync(int type, CancellationToken token = default)
     {
         var entities = await DbContext.UserTransactions
@@ -51,6 +55,7 @@ internal class UserTransactionRepository(QuestBoardContext dbContext, IMapper ma
         return Mapper.Map<IList<UserTransaction>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<UserTransaction?> GetTransactionWithDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await DbContext.UserTransactions

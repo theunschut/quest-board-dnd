@@ -8,31 +8,37 @@ namespace QuestBoard.Domain.Services;
 
 internal class ShopService(IShopRepository repository, IUserTransactionRepository transactionRepository, IMapper mapper) : BaseService<ShopItem>(repository, mapper), IShopService
 {
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetAllItemsAsync(CancellationToken token = default)
     {
         return await repository.GetAllAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetPublishedItemsAsync(CancellationToken token = default)
     {
         return await repository.GetPublishedItemsAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByStatusAsync(ItemStatus status, CancellationToken token = default)
     {
         return await repository.GetItemsByStatusAsync((int)status, token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByTypeAsync(ItemType type, CancellationToken token = default)
     {
         return await repository.GetItemsByTypeAsync((int)type, token);
     }
 
+    /// <inheritdoc/>
     public async Task<ShopItem?> GetItemWithDetailsAsync(int id, CancellationToken token = default)
     {
         return await repository.GetItemWithDetailsAsync(id, token);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByDmAsync(int dmId, CancellationToken token = default)
     {
         return await repository.GetItemsByDmAsync(dmId, token);
@@ -40,6 +46,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
 
     // Business logic methods
 
+    /// <inheritdoc/>
     public Task<decimal> CalculateItemPriceAsync(ItemRarity rarity, CancellationToken token = default)
     {
         // Implement Tasha's Cauldron pricing guidelines
@@ -54,6 +61,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         });
     }
 
+    /// <inheritdoc/>
     public async Task PublishItemAsync(int itemId, CancellationToken token = default)
     {
         var item = await repository.GetByIdAsync(itemId, token);
@@ -64,6 +72,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         }
     }
 
+    /// <inheritdoc/>
     public async Task<UserTransaction> PurchaseItemAsync(int itemId, int quantity, User user, CancellationToken token = default)
     {
         var item = await repository.GetByIdAsync(itemId, token);
@@ -107,6 +116,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         return transaction;
     }
 
+    /// <inheritdoc/>
     public async Task<UserTransaction> ReturnOrSellItemAsync(int transactionId, int quantity, User user, CancellationToken token = default)
     {
         var originalTransaction = await transactionRepository.GetByIdAsync(transactionId, token);
@@ -164,6 +174,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         return refundTransaction;
     }
 
+    /// <inheritdoc/>
     public async Task<UserTransaction> SellItemToShopAsync(int itemId, int quantity, User user, CancellationToken token = default)
     {
         var item = await repository.GetByIdAsync(itemId, token);
@@ -199,6 +210,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         return sellTransaction;
     }
 
+    /// <inheritdoc/>
     public async Task ArchiveItemAsync(int itemId, CancellationToken token = default)
     {
         var item = await repository.GetByIdAsync(itemId, token);
@@ -209,6 +221,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         }
     }
 
+    /// <inheritdoc/>
     public async Task DenyItemAsync(int itemId, string denialReason, CancellationToken token = default)
     {
         var item = await repository.GetByIdAsync(itemId, token);
@@ -221,11 +234,13 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         }
     }
 
+    /// <inheritdoc/>
     public async Task<IList<UserTransaction>> GetUserTransactionsAsync(int userId, CancellationToken token = default)
     {
         return await transactionRepository.GetTransactionsByUserAsync(userId, token);
     }
 
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<TransactionWithRemaining>> GetUserTransactionsWithRemainingAsync(int userId, CancellationToken token = default)
     {
         var all = await transactionRepository.GetTransactionsByUserAsync(userId, token);
@@ -235,11 +250,13 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
             .ToList();
     }
 
+    /// <inheritdoc/>
     public async Task<IList<UserTransaction>> GetAllTransactionsAsync(CancellationToken token = default)
     {
         return await transactionRepository.GetAllAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<(IList<ShopItem> Items, int TotalCount)> GetPagedPublishedItemsAsync(
         ItemType? type,
         IList<ItemRarity>? rarities,

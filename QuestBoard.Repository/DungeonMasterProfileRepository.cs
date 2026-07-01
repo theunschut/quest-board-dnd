@@ -13,6 +13,7 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
     // Two concurrent first-saves for the same user would both attempt an INSERT
     // for the same PK, causing a DbUpdateException.  Catch and retry with Update
     // to make the upsert safe under concurrent requests — mirrors QuestRepository.AddAsync.
+    /// <inheritdoc/>
     public override async Task AddAsync(DungeonMasterProfile model, CancellationToken token = default)
     {
         try
@@ -26,6 +27,7 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
         }
     }
 
+    /// <inheritdoc/>
     public async Task<DungeonMasterProfile?> GetProfileByUserIdAsync(int userId, CancellationToken token = default)
     {
         var entity = await DbContext.DungeonMasterProfiles
@@ -34,6 +36,7 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
         return entity == null ? null : Mapper.Map<DungeonMasterProfile>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task<byte[]?> GetProfilePictureAsync(int userId, CancellationToken token = default)
     {
         return await DbContext.DungeonMasterProfileImages
@@ -42,6 +45,7 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
             .FirstOrDefaultAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task UpsertProfileImageAsync(int userId, byte[]? imageData, CancellationToken token = default)
     {
         var entity = await DbContext.DungeonMasterProfiles

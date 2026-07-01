@@ -6,6 +6,7 @@ namespace QuestBoard.Domain.Services;
 
 internal class PlayerSignupService(IPlayerSignupRepository repository, IMapper mapper) : BaseService<PlayerSignup>(repository, mapper), IPlayerSignupService
 {
+    /// <inheritdoc/>
     public async Task UpdatePlayerDateVotesAsync(int playerSignupId, List<PlayerDateVote> dateVotes, CancellationToken cancellationToken = default)
     {
         // Get the existing player signup with its date votes
@@ -31,6 +32,7 @@ internal class PlayerSignupService(IPlayerSignupRepository repository, IMapper m
         await repository.UpdateAsync(playerSignup, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task UpdateSignupCharacterAsync(int playerSignupId, int? characterId, CancellationToken cancellationToken = default)
     {
         var playerSignup = await repository.GetByIdAsync(playerSignupId, cancellationToken);
@@ -43,6 +45,7 @@ internal class PlayerSignupService(IPlayerSignupRepository repository, IMapper m
         await repository.UpdateAsync(playerSignup, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task ChangeVoteToYesAndSelectAsync(int playerSignupId, int proposedDateId, CancellationToken cancellationToken = default)
     {
         await repository.ChangeVoteToYesAndSelectAsync(playerSignupId, proposedDateId, cancellationToken);

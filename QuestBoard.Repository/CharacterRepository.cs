@@ -8,6 +8,7 @@ namespace QuestBoard.Repository;
 
 internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<Character, CharacterEntity>(dbContext, mapper), ICharacterRepository
 {
+    /// <inheritdoc/>
     public async Task<IList<Character>> GetAllCharactersWithDetailsAsync(CancellationToken token = default)
     {
         var entities = await DbContext.Characters
@@ -21,6 +22,7 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
         return Mapper.Map<IList<Character>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<IList<Character>> GetCharactersByOwnerIdAsync(int ownerId, CancellationToken token = default)
     {
         var entities = await DbContext.Characters
@@ -35,6 +37,7 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
         return Mapper.Map<IList<Character>>(entities);
     }
 
+    /// <inheritdoc/>
     public async Task<Character?> GetCharacterWithDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await DbContext.Characters
@@ -45,6 +48,7 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
         return entity == null ? null : Mapper.Map<Character>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task<Character?> GetMainCharacterForUserAsync(int userId, CancellationToken token = default)
     {
         var entity = await DbContext.Characters
@@ -54,6 +58,7 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
         return entity == null ? null : Mapper.Map<Character>(entity);
     }
 
+    /// <inheritdoc/>
     public async Task<byte[]?> GetCharacterProfilePictureAsync(int id, CancellationToken token = default)
     {
         return await DbContext.CharacterImages
@@ -62,6 +67,7 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
             .FirstOrDefaultAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task UpdateProfileImageAsync(int characterId, byte[]? imageData, CancellationToken token = default)
     {
         var entity = await DbContext.Characters

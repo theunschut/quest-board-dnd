@@ -6,6 +6,7 @@ namespace QuestBoard.Domain.Services;
 
 public class ShopSeedService(IShopService shopService) : IShopSeedService
 {
+    /// <inheritdoc/>
     public async Task SeedBasicEquipmentAsync(int createdByUserId)
     {
         var existingItems = await shopService.GetPublishedItemsAsync();
