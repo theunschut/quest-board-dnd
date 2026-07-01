@@ -24,17 +24,11 @@ public interface IUserRepository : IBaseRepository<User>
 
     /// <summary>
     /// Returns the given user's group role in the specified group, or null if they are not a member.
-    /// Declared on this Domain-layer interface only — the Repository-layer
-    /// <c>QuestBoard.Repository.Interfaces.IUserRepository</c> does not declare this member, even
-    /// though the concrete <c>UserRepository</c> implements both interfaces.
     /// </summary>
     Task<GroupRole?> GetGroupRoleAsync(int userId, int groupId);
 
     /// <summary>
     /// Creates or updates the user's group-membership row with the specified role. Returns the UserGroup row Id.
-    /// Declared on this Domain-layer interface only — the Repository-layer
-    /// <c>QuestBoard.Repository.Interfaces.IUserRepository</c> does not declare this member, even
-    /// though the concrete <c>UserRepository</c> implements both interfaces.
     /// </summary>
     Task<int?> SetGroupRoleAsync(int userId, int groupId, GroupRole role);
 }
