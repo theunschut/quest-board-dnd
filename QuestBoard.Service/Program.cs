@@ -185,13 +185,14 @@ builder.Services
     .AddDomainServices(builder.Configuration);
 
 // Named HttpClient for Resend API stats
-// Authorization header is NOT set here — added per-request in AdminController.GetResendStatsAsync (Pitfall 4)
+// Authorization header is NOT set here — added per-request in ResendStatsClient.FetchAllRecordsAsync
 builder.Services.AddHttpClient("Resend", client =>
 {
     client.BaseAddress = new Uri("https://api.resend.com/");
     client.Timeout = TimeSpan.FromSeconds(15);
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
+builder.Services.AddScoped<ResendStatsClient>();
 
 // Email render service and job dispatcher (Service-layer registrations)
 builder.Services.AddScoped<IEmailRenderService, RazorEmailRenderService>();
@@ -335,6 +336,26 @@ if (!app.Environment.IsEnvironment("Testing"))
         "daily-session-reminders",
         job => job.ExecuteAsync(CancellationToken.None),
         "0 9 * * *");
+}
+
+// Fail fast in Production if email delivery is unconfigured — without this, SmtpClient creation
+// silently no-ops (see EmailService.CreateSmtpClient) and quest/reminder/password-reset emails
+// are dropped with nothing but a log warning. Development and Testing are intentionally exempt
+// so local dev and the integration-test factory can boot without email config.
+if (app.Environment.IsProduction())
+{
+    var missingEmailKeys = new List<string>();
+    if (string.IsNullOrWhiteSpace(app.Configuration["Email:FromEmail"]))
+        missingEmailKeys.Add("Email:FromEmail");
+    if (string.IsNullOrWhiteSpace(app.Configuration["Email:SmtpServer"]))
+        missingEmailKeys.Add("Email:SmtpServer");
+
+    if (missingEmailKeys.Count > 0)
+    {
+        throw new InvalidOperationException(
+            $"Email delivery cannot function without the following configuration key(s): {string.Join(", ", missingEmailKeys)}. " +
+            "Set them via appsettings.json or environment variable overrides before starting in Production.");
+    }
 }
 
 app.Run();
