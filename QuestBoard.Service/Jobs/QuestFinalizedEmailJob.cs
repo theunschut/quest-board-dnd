@@ -1,7 +1,6 @@
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.Components.Emails;
-using QuestBoard.Service.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,50 +23,46 @@ public class QuestFinalizedEmailJob(
         int challengeRating,
         CancellationToken cancellationToken = default)
     {
-        await using var scope = scopeFactory.CreateAsyncScope();
-
-        // Inject concrete type (not interface) to call SetGroupId — interface has no SetGroupId
-        // SetGroupId MUST be called before any repository resolution to ensure the filter is active
-        var groupContext = scope.ServiceProvider.GetRequiredService<ActiveGroupContextService>();
-        groupContext.SetGroupId(groupId);
-
-        var questRepository = scope.ServiceProvider.GetRequiredService<IQuestRepository>();
-        var renderService   = scope.ServiceProvider.GetRequiredService<IEmailRenderService>();
-        var emailService    = scope.ServiceProvider.GetRequiredService<IEmailService>();
-        var emailSettings   = scope.ServiceProvider.GetRequiredService<IOptions<EmailSettings>>().Value;
-
-        // Dedup guard: use .Date comparison — "same session date" intent, not same millisecond
-        var quest = await questRepository.GetQuestWithDetailsAsync(questId, cancellationToken);
-        if (quest?.FinalizedEmailSentForDate?.Date == finalizedDate.Date)
+        await HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, async sp =>
         {
-            logger.LogInformation(
-                "Finalized email already sent for quest {QuestId} on {Date}. Skipping.",
-                questId, finalizedDate);
-            return;
-        }
+            var questRepository = sp.GetRequiredService<IQuestRepository>();
+            var renderService   = sp.GetRequiredService<IEmailRenderService>();
+            var emailService    = sp.GetRequiredService<IEmailService>();
+            var emailSettings   = sp.GetRequiredService<IOptions<EmailSettings>>().Value;
 
-        var questUrl = $"{emailSettings.AppUrl}/Quest/Details/{questId}";
-
-        for (var i = 0; i < recipientEmails.Length; i++)
-        {
-            var html = await renderService.RenderAsync<QuestFinalized>(new Dictionary<string, object?>
+            // Dedup guard: use .Date comparison — "same session date" intent, not same millisecond
+            var quest = await questRepository.GetQuestWithDetailsAsync(questId, cancellationToken);
+            if (quest?.FinalizedEmailSentForDate?.Date == finalizedDate.Date)
             {
-                { nameof(QuestFinalized.QuestTitle),           questTitle },
-                { nameof(QuestFinalized.DmName),               dmName },
-                { nameof(QuestFinalized.QuestDate),            finalizedDate },
-                { nameof(QuestFinalized.QuestDescription),     questDescription },
-                { nameof(QuestFinalized.ConfirmedPlayerNames), playerNames.ToList() },
-                { nameof(QuestFinalized.QuestUrl),             questUrl },
-                { nameof(QuestFinalized.ChallengeRating),      challengeRating },
-                { nameof(QuestFinalized.AppUrl),               emailSettings.AppUrl }
-            });
+                logger.LogInformation(
+                    "Finalized email already sent for quest {QuestId} on {Date}. Skipping.",
+                    questId, finalizedDate);
+                return;
+            }
 
-            await emailService.SendAsync(
-                recipientEmails[i],
-                $"Your quest has been confirmed: {questTitle}",
-                html);
-        }
+            var questUrl = $"{emailSettings.AppUrl}/Quest/Details/{questId}";
 
-        await questRepository.SetFinalizedEmailSentForDateAsync(questId, finalizedDate, cancellationToken);
+            for (var i = 0; i < recipientEmails.Length; i++)
+            {
+                var html = await renderService.RenderAsync<QuestFinalized>(new Dictionary<string, object?>
+                {
+                    { nameof(QuestFinalized.QuestTitle),           questTitle },
+                    { nameof(QuestFinalized.DmName),               dmName },
+                    { nameof(QuestFinalized.QuestDate),            finalizedDate },
+                    { nameof(QuestFinalized.QuestDescription),     questDescription },
+                    { nameof(QuestFinalized.ConfirmedPlayerNames), playerNames.ToList() },
+                    { nameof(QuestFinalized.QuestUrl),             questUrl },
+                    { nameof(QuestFinalized.ChallengeRating),      challengeRating },
+                    { nameof(QuestFinalized.AppUrl),               emailSettings.AppUrl }
+                });
+
+                await emailService.SendAsync(
+                    recipientEmails[i],
+                    $"Your quest has been confirmed: {questTitle}",
+                    html);
+            }
+
+            await questRepository.SetFinalizedEmailSentForDateAsync(questId, finalizedDate, cancellationToken);
+        });
     }
 }

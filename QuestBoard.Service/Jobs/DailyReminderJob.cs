@@ -17,27 +17,29 @@ public class DailyReminderJob(
         // Comparison is correct — no timezone conversion needed.
         var tomorrow = DateTime.Today.AddDays(1);
 
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var questRepository = scope.ServiceProvider.GetRequiredService<IQuestRepository>();
-
-        var quests = await questRepository.GetQuestsForTomorrowAllGroupsAsync(tomorrow, cancellationToken);
-
-        if (quests.Count == 0)
+        await HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId: null, async sp =>
         {
-            logger.LogInformation(
-                "DailyReminderJob: no finalized quests found for {Date}.",
-                tomorrow.ToShortDateString());
-            return;
-        }
+            var questRepository = sp.GetRequiredService<IQuestRepository>();
 
-        foreach (var quest in quests)
-        {
-            backgroundJobClient.Enqueue<SessionReminderJob>(
-                job => job.ExecuteAsync(quest.Id, quest.GroupId, false, false, CancellationToken.None));
+            var quests = await questRepository.GetQuestsForTomorrowAllGroupsAsync(tomorrow, cancellationToken);
 
-            logger.LogInformation(
-                "DailyReminderJob: queued SessionReminderJob for quest {QuestId} on {Date}.",
-                quest.Id, tomorrow.ToShortDateString());
-        }
+            if (quests.Count == 0)
+            {
+                logger.LogInformation(
+                    "DailyReminderJob: no finalized quests found for {Date}.",
+                    tomorrow.ToShortDateString());
+                return;
+            }
+
+            foreach (var quest in quests)
+            {
+                backgroundJobClient.Enqueue<SessionReminderJob>(
+                    job => job.ExecuteAsync(quest.Id, quest.GroupId, false, false, CancellationToken.None));
+
+                logger.LogInformation(
+                    "DailyReminderJob: queued SessionReminderJob for quest {QuestId} on {Date}.",
+                    quest.Id, tomorrow.ToShortDateString());
+            }
+        });
     }
 }
