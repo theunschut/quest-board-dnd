@@ -128,7 +128,7 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
@@ -181,7 +181,7 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(existingQuest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
@@ -240,7 +240,7 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM or an Admin
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
@@ -285,8 +285,8 @@ public class QuestController(
         ViewBag.UserCharacters = userCharacters ?? new List<Character>();
 
         // Check if current user can manage this quest (DM or admin)
-        var isQuestDm = currentUser?.Name == quest.DungeonMaster?.Name;
-        var isAdmin = currentUser != null && await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
+        var isQuestDm = currentUser != null && currentUser.Id == quest.DungeonMaster?.Id;
+        var isAdmin = currentUser != null && await GetEffectiveRoleAsync() == GroupRole.Admin;
         ViewBag.CanManage = isQuestDm || isAdmin;
 
         // Get all quests for calendar context
@@ -615,7 +615,7 @@ public class QuestController(
         if (quest == null || quest.IsFinalized) return NotFound();
         var currentUser = await userService.GetUserAsync(User);
         if (currentUser == null) return Challenge();
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin) return Forbid();
         if (!int.TryParse(Request.Form["SelectedDateId"], out var selectedDateId))
         { TempData["Error"] = "Please select a date."; return RedirectToAction("Manage", new { id }); }
@@ -653,7 +653,7 @@ public class QuestController(
         }
 
         // Verify DM authorization
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
@@ -688,7 +688,7 @@ public class QuestController(
             return Challenge();
         }
 
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
@@ -721,7 +721,10 @@ public class QuestController(
         // Enqueue a fire-and-forget Hangfire job.
         // The job itself checks the ReminderLog per-player before sending (idempotency).
         // The forceResend flag (from the confirm button) bypasses the log check in the job.
-        reminderJobDispatcher.EnqueueSessionReminder(id, activeGroupContext.RequireActiveGroupId(), forceResend, useYesMaybeVoters: true);
+        // Use the quest's own group id rather than the caller's ambient active group, since a
+        // SuperAdmin sending a reminder has no active group selected but the quest still belongs
+        // to a concrete group.
+        reminderJobDispatcher.EnqueueSessionReminder(id, quest.GroupId, forceResend, useYesMaybeVoters: true);
 
         TempData["Success"] = $"Reminder queued for {eligibleSignups.Count} eligible players.";
         return RedirectToAction("Manage", new { id });
@@ -745,8 +748,8 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM or an admin
-        var isQuestDm = currentUser.Name.Equals(quest.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
+        var isQuestDm = currentUser.Id == quest.DungeonMaster?.Id;
+        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         ViewBag.IsAuthorized = isQuestDm || isAdmin;
         ViewBag.IsAdmin = isAdmin;
 
@@ -766,8 +769,8 @@ public class QuestController(
             return Challenge();
 
         // Guard: only the quest's DM or an admin may create a follow-up
-        var isQuestDm = currentUser.Name.Equals(original.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
+        var isQuestDm = currentUser.Id == original.DungeonMaster?.Id;
+        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         if (!isQuestDm && !isAdmin)
             return Forbid();
 
@@ -821,8 +824,8 @@ public class QuestController(
             return Challenge();
 
         // Guard: only the quest's DM or an admin may create a follow-up
-        var isQuestDm = currentUser.Name.Equals(original.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
+        var isQuestDm = currentUser.Id == original.DungeonMaster?.Id;
+        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         if (!isQuestDm && !isAdmin)
             return Forbid();
 
@@ -886,4 +889,11 @@ public class QuestController(
         }
     }
 
+    // SuperAdmin legitimately has no active group selected (see ActiveGroupContextExtensions'
+    // documented contract), so short-circuit to Admin here rather than calling
+    // RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+    private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+        User.IsInRole("SuperAdmin")
+            ? GroupRole.Admin
+            : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 }

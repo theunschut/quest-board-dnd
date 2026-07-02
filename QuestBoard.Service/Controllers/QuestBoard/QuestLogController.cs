@@ -55,8 +55,8 @@ public class QuestLogController(
         }
 
         // Check if current user can edit recap (DM or admin)
-        var isQuestDm = currentUser?.Name == quest.DungeonMaster?.Name;
-        var isAdmin = currentUser != null && await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
+        var isQuestDm = currentUser != null && currentUser.Id == quest.DungeonMaster?.Id;
+        var isAdmin = currentUser != null && await GetEffectiveRoleAsync() == GroupRole.Admin;
         ViewBag.CanEditRecap = isQuestDm || isAdmin;
 
         var viewModel = new QuestLogDetailsViewModel
@@ -92,8 +92,8 @@ public class QuestLogController(
         }
 
         // Check if current user is the quest's DM or an admin
-        var isQuestDm = currentUser.Name.Equals(quest.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
+        var isQuestDm = currentUser.Id == quest.DungeonMaster?.Id;
+        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
 
         if (!isQuestDm && !isAdmin)
         {
@@ -104,4 +104,12 @@ public class QuestLogController(
 
         return RedirectToAction("Details", new { id });
     }
+
+    // SuperAdmin legitimately has no active group selected (see ActiveGroupContextExtensions'
+    // documented contract), so short-circuit to Admin here rather than calling
+    // RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+    private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+        User.IsInRole("SuperAdmin")
+            ? GroupRole.Admin
+            : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 }

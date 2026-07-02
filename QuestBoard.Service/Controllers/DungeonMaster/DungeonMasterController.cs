@@ -29,7 +29,7 @@ public class DungeonMasterController(
         GroupRole? role = null;
         if (currentUser != null)
         {
-            role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            role = await GetEffectiveRoleAsync();
         }
 
         var viewModel = new DMProfileViewModel
@@ -58,7 +58,7 @@ public class DungeonMasterController(
         var targetUser = id.HasValue ? await userService.GetByIdAsync(id.Value, token) : currentUser;
         if (targetUser == null) return NotFound();
 
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(targetUser) && role != GroupRole.Admin)
         {
             return Forbid();
@@ -89,7 +89,7 @@ public class DungeonMasterController(
         var targetUser = id.HasValue ? await userService.GetByIdAsync(id.Value, token) : currentUser;
         if (targetUser == null) return NotFound();
 
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         if (!currentUser.Equals(targetUser) && role != GroupRole.Admin)
         {
             return Forbid();
@@ -132,4 +132,12 @@ public class DungeonMasterController(
 
         return File(bytes, contentType);
     }
+
+    // SuperAdmin legitimately has no active group selected (see ActiveGroupContextExtensions'
+    // documented contract), so short-circuit to Admin here rather than calling
+    // RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+    private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+        User.IsInRole("SuperAdmin")
+            ? GroupRole.Admin
+            : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 }
