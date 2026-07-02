@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Service.Controllers.QuestBoard;
 using QuestBoard.Service.Jobs;
@@ -12,7 +13,7 @@ using System.Text;
 
 namespace QuestBoard.Service.Controllers.Admin;
 
-public class AccountController(IUserService userService, IIdentityService identityService, IBackgroundJobClient jobClient, ILogger<AccountController> logger) : Controller
+public class AccountController(IUserService userService, IIdentityService identityService, IBackgroundJobClient jobClient, ILogger<AccountController> logger, IActiveGroupContext activeGroupContext) : Controller
 {
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
@@ -149,16 +150,20 @@ public class AccountController(IUserService userService, IIdentityService identi
     public async Task<IActionResult> Profile()
     {
         var user = await userService.GetUserAsync(User);
-        var isDungeonMaster = await userService.IsInRoleAsync(user, "DungeonMaster");
-        var isAdmin = await userService.IsInRoleAsync(user, "Admin");
+
+        GroupRole? role = null;
+        if (activeGroupContext.ActiveGroupId is { } groupId)
+        {
+            role = await userService.GetEffectiveGroupRoleAsync(User, groupId);
+        }
 
         var model = new ProfileViewModel
         {
             User = user
         };
 
-        ViewData["IsDungeonMaster"] = isDungeonMaster;
-        ViewData["IsAdmin"] = isAdmin;
+        ViewData["IsDungeonMaster"] = role == GroupRole.DungeonMaster || role == GroupRole.Admin;
+        ViewData["IsAdmin"] = role == GroupRole.Admin;
 
         return View(model);
     }
@@ -168,15 +173,19 @@ public class AccountController(IUserService userService, IIdentityService identi
     public async Task<IActionResult> Edit()
     {
         var user = await userService.GetUserAsync(User);
-        var isDungeonMaster = await userService.IsInRoleAsync(user, "DungeonMaster");
-        var isAdmin = await userService.IsInRoleAsync(user, "Admin");
+
+        GroupRole? role = null;
+        if (activeGroupContext.ActiveGroupId is { } groupId)
+        {
+            role = await userService.GetEffectiveGroupRoleAsync(User, groupId);
+        }
 
         var model = new EditProfileViewModel
         {
             Id = user.Id,
             Name = user.Name,
             Email = user.Email,
-            IsDungeonMaster = isDungeonMaster || isAdmin,
+            IsDungeonMaster = role == GroupRole.DungeonMaster || role == GroupRole.Admin,
             HasKey = user.HasKey
         };
 
