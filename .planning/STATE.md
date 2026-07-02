@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Multi-Tenancy
 status: executing
-stopped_at: Completed 34.3-02-PLAN.md
-last_updated: "2026-07-02T12:13:30.662Z"
+stopped_at: Completed 34.3-04-PLAN.md
+last_updated: "2026-07-02T12:18:39.256Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 13
   completed_phases: 11
   total_plans: 48
-  completed_plans: 46
+  completed_plans: 47
   percent: 85
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-29 — v5.0 Multi-Tenancy started)
 ## Current Position
 
 Phase: 34.3 (group-role-authorization-regression-fix-inline-ownership-che) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-02
 
@@ -122,8 +122,8 @@ Items acknowledged and deferred at milestone close on 2026-06-28:
 
 **Resume file:** None
 
-Last session: 2026-07-02T12:13:30.648Z
-Stopped at: Completed 34.3-02-PLAN.md
+Last session: 2026-07-02T12:18:39.232Z
+Stopped at: Completed 34.3-04-PLAN.md
 Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execute-phase 34.2 — strict order required per 34.2-CONTEXT.md D-05)
 
 ## Performance Metrics
@@ -163,6 +163,7 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 | Phase 34.3 P05 | 2min | 2 tasks | 3 files |
 | Phase 34.3 P02 | 8min | 2 tasks | 1 files |
 | Phase 34.3 P03 | 6min | - tasks | - files |
+| Phase 34.3 P04 | 3min | 1 tasks | 1 files |
 
 ## Decisions
 
@@ -201,3 +202,4 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 - [Phase 34.3-02]: RequireActiveGroupId() kept strictly inside existing null-guards (if (userEntity != null) for Index; currentUser != null && short-circuit for Details) so anonymous visitors never trigger the fail-hard group-context lookup
 - [Phase ?]: 34.3-03: DungeonMasterController.Profile computes GroupRole? role in a currentUser != null guard before the object initializer, since await cannot run inline inside an object initializer
 - [Phase ?]: 34.3-03: Both EditProfile GET/POST guards hoist role resolution above the Forbid() check since they run behind DungeonMasterOnly policy, making RequireActiveGroupId() fail-hard safe
+- [Phase 34.3-04]: Used the fail-soft ActiveGroupId is { } groupId guard (not RequireActiveGroupId()) in AccountController because /Account is exempt from GroupSessionMiddleware and a null ActiveGroupId is a genuine, expected state on a user's own profile page
