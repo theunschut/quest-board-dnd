@@ -123,7 +123,8 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM
-        if (!currentUser.Equals(quest.DungeonMaster) && !User.IsInRole("Admin"))
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -175,7 +176,8 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM
-        if (!currentUser.Equals(existingQuest.DungeonMaster) && !User.IsInRole("Admin"))
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(existingQuest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -233,7 +235,8 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM or an Admin
-        if (!currentUser.Equals(quest.DungeonMaster) && !User.IsInRole("Admin"))
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -607,7 +610,8 @@ public class QuestController(
         if (quest == null || quest.IsFinalized) return NotFound();
         var currentUser = await userService.GetUserAsync(User);
         if (currentUser == null) return Challenge();
-        if (!currentUser.Equals(quest.DungeonMaster) && !User.IsInRole("Admin")) return Forbid();
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin) return Forbid();
         if (!int.TryParse(Request.Form["SelectedDateId"], out var selectedDateId))
         { TempData["Error"] = "Please select a date."; return RedirectToAction("Manage", new { id }); }
         var selectedDate = quest.ProposedDates.FirstOrDefault(pd => pd.Id == selectedDateId);
@@ -644,7 +648,8 @@ public class QuestController(
         }
 
         // Verify DM authorization
-        if (!currentUser.Equals(quest.DungeonMaster) && !User.IsInRole("Admin"))
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -678,7 +683,8 @@ public class QuestController(
             return Challenge();
         }
 
-        if (!currentUser.Equals(quest.DungeonMaster) && !User.IsInRole("Admin"))
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -756,7 +762,7 @@ public class QuestController(
 
         // Guard: only the quest's DM or an admin may create a follow-up
         var isQuestDm = currentUser.Name.Equals(original.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.IsInRoleAsync(User, "Admin");
+        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
         if (!isQuestDm && !isAdmin)
             return Forbid();
 
@@ -811,7 +817,7 @@ public class QuestController(
 
         // Guard: only the quest's DM or an admin may create a follow-up
         var isQuestDm = currentUser.Name.Equals(original.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.IsInRoleAsync(User, "Admin");
+        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
         if (!isQuestDm && !isAdmin)
             return Forbid();
 
