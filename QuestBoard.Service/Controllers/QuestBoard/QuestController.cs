@@ -129,7 +129,7 @@ public class QuestController(
 
         // Check if current user is the quest's DM
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -182,7 +182,7 @@ public class QuestController(
 
         // Check if current user is the quest's DM
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(existingQuest.DungeonMaster) && role != GroupRole.Admin)
+        if (!IsQuestOwner(currentUser, existingQuest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -241,7 +241,7 @@ public class QuestController(
 
         // Check if current user is the quest's DM or an Admin
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -285,7 +285,7 @@ public class QuestController(
         ViewBag.UserCharacters = userCharacters ?? new List<Character>();
 
         // Check if current user can manage this quest (DM or admin)
-        var isQuestDm = currentUser != null && currentUser.Id == quest.DungeonMaster?.Id;
+        var isQuestDm = currentUser != null && IsQuestOwner(currentUser, quest.DungeonMaster);
         var isAdmin = currentUser != null && await GetEffectiveRoleAsync() == GroupRole.Admin;
         ViewBag.CanManage = isQuestDm || isAdmin;
 
@@ -616,7 +616,7 @@ public class QuestController(
         var currentUser = await userService.GetUserAsync(User);
         if (currentUser == null) return Challenge();
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin) return Forbid();
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin) return Forbid();
         if (!int.TryParse(Request.Form["SelectedDateId"], out var selectedDateId))
         { TempData["Error"] = "Please select a date."; return RedirectToAction("Manage", new { id }); }
         var selectedDate = quest.ProposedDates.FirstOrDefault(pd => pd.Id == selectedDateId);
@@ -654,7 +654,7 @@ public class QuestController(
 
         // Verify DM authorization
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -689,7 +689,7 @@ public class QuestController(
         }
 
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(quest.DungeonMaster) && role != GroupRole.Admin)
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -748,7 +748,7 @@ public class QuestController(
         }
 
         // Check if current user is the quest's DM or an admin
-        var isQuestDm = currentUser.Id == quest.DungeonMaster?.Id;
+        var isQuestDm = IsQuestOwner(currentUser, quest.DungeonMaster);
         var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         ViewBag.IsAuthorized = isQuestDm || isAdmin;
         ViewBag.IsAdmin = isAdmin;
@@ -769,7 +769,7 @@ public class QuestController(
             return Challenge();
 
         // Guard: only the quest's DM or an admin may create a follow-up
-        var isQuestDm = currentUser.Id == original.DungeonMaster?.Id;
+        var isQuestDm = IsQuestOwner(currentUser, original.DungeonMaster);
         var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         if (!isQuestDm && !isAdmin)
             return Forbid();
@@ -824,7 +824,7 @@ public class QuestController(
             return Challenge();
 
         // Guard: only the quest's DM or an admin may create a follow-up
-        var isQuestDm = currentUser.Id == original.DungeonMaster?.Id;
+        var isQuestDm = IsQuestOwner(currentUser, original.DungeonMaster);
         var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         if (!isQuestDm && !isAdmin)
             return Forbid();
@@ -896,4 +896,11 @@ public class QuestController(
         User.IsInRole("SuperAdmin")
             ? GroupRole.Admin
             : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+    // Id-based identity comparison for "is this the quest's DM" — deliberately avoids
+    // currentUser.Equals(dungeonMaster), which is full value equality (Id, Name, Email, HasKey,
+    // EmailConfirmed) and can silently return false if either operand comes from a lighter
+    // projection missing one of those fields.
+    private static bool IsQuestOwner(User currentUser, User? dungeonMaster) =>
+        dungeonMaster != null && currentUser.Id == dungeonMaster.Id;
 }
