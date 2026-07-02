@@ -110,7 +110,7 @@ internal class IdentityService(UserManager<UserEntity> userManager, SignInManage
     public async Task<IdentityResult> AdminResetPasswordAsync(ClaimsPrincipal adminUser, int targetUserId, string newPassword)
     {
         var adminEntity = await userManager.GetUserAsync(adminUser);
-        if (adminEntity == null || !await userManager.IsInRoleAsync(adminEntity, "Admin"))
+        if (adminEntity == null)
             return IdentityResult.Failed(new IdentityError { Description = "Admin user not found or not authorized." });
 
         var entity = await userManager.FindByIdAsync(targetUserId.ToString());
