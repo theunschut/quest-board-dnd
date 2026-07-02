@@ -1,0 +1,37 @@
+@model GroupCreateViewModel
+@{
+    ViewData["Title"] = "Create Group";
+}
+
+@section Styles {
+    <link href="~/css/platform-group.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="platform-group-card-mobile mb-3">
+    <div class="mb-3">
+        <h5 class="mb-0">
+            <i class="fas fa-plus-circle text-danger me-2"></i>Create Group
+        </h5>
+    </div>
+
+    <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label">Group Name</label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-between">
+            <a asp-action="Index" asp-area="Platform" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Groups
+            </a>
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save me-2"></i>Create Group
+            </button>
+        </div>
+    </form>
+</div>

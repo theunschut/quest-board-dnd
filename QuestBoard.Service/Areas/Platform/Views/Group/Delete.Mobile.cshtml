@@ -1,0 +1,31 @@
+@model Group
+@{
+    ViewData["Title"] = "Delete Group";
+}
+
+@section Styles {
+    <link href="~/css/platform-group.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="platform-group-card-mobile mb-3">
+    <div class="mb-3">
+        <h5 class="mb-0">
+            <i class="fas fa-trash text-danger me-2"></i>Delete Group
+        </h5>
+    </div>
+
+    <p>Are you sure you want to delete the group <strong>"@Model.Name"</strong>? This action cannot be undone.</p>
+
+    <form asp-action="Delete" method="post" asp-route-id="@Model.Id">
+        <hr>
+
+        <div class="d-flex justify-content-between">
+            <a asp-action="Index" asp-area="Platform" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Groups
+            </a>
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash me-2"></i>Delete Group
+            </button>
+        </div>
+    </form>
+</div>
