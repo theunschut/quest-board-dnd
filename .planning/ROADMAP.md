@@ -83,7 +83,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 - [x] **Phase 32: First-Login Password Flow** - Admin-created users set their own password via a welcome email link; removes admin-set password from CreateUser form; adds a self-service Forgot Password flow (completed 2026-07-01)
 - [x] **Phase 33: Session Persistence & Admin Email Rate Limiting** - ActiveGroupId survives app restarts via AddDistributedSqlServerCache; admin email resend buttons rate-limited 3/hour per target user (completed 2026-07-01)
 - [x] **Phase 34: Codebase Cleanup & Security Hardening (34a — Mechanical Cleanup)** - Remove dead code, strip GSD-ID/phase comment tags codebase-wide, backfill XML docs on all 35 interfaces, capture clean dependency scan — 5 plans (Wave 1, parallel). Remaining CONCERNS.md fixes split into recommended 34b (Security & Bugs) + 34c (Performance & Architecture) per D-03. (completed 2026-07-01)
-- [ ] **Phase 34.1: Security & Bugs -- fix Known Bugs and Security Considerations items from CONCERNS.md plus related Test Coverage Gaps (verify-and-close the stale SessionReminderJob null-dereference claim; Resend 429 retry-backoff; CSRF regression test; secret-logging verification) -- deferred from the Phase 34 split per D-03**
+- [x] **Phase 34.1: Security & Bugs -- fix Known Bugs and Security Considerations items from CONCERNS.md plus related Test Coverage Gaps (verify-and-close the stale SessionReminderJob null-dereference claim; Resend 429 retry-backoff; CSRF regression test; secret-logging verification) -- deferred from the Phase 34 split per D-03** (completed 2026-07-02)
 - [ ] **Phase 34.2: Performance & Architecture** - `QuestController`/`AdminController` cleanup via selective service-layer extraction + net-new MVC-boilerplate helpers (no physical split, D-01/D-02), composite index + shop-query projection + Hangfire `AutomaticRetryAttribute`, `HangfireJobHelper` scope helper, `ActiveGroupId` null-guard, and documentation-only notes for `Forbid()` defense-in-depth (D-06) and Hangfire job-queue batching (D-09) — 5 plans (2 waves), depends on Phase 34 and 34.1
 
 </details>
@@ -351,7 +351,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 **Goal:** Fix the Known Bugs and Security Considerations items catalogued in `.planning/codebase/CONCERNS.md`, plus their related Test Coverage Gaps: verify-and-close the stale `SessionReminderJob` null-dereference claim (already null-safe per Phase 34 RESEARCH.md — confirm and document, don't re-fix); implement Resend API 429 rate-limit retry-with-backoff; add a CSRF `[ValidateAntiForgeryToken]` regression test across all state-changing controller actions; verify email-configuration secrets never appear in logs or exception traces. Deferred from the Phase 34 split per CONTEXT.md D-03 — part of closing the v5.0 Multi-Tenancy milestone alongside Phase 34 and Phase 34.2.
 **Requirements**: None mapped — cleanup/hardening phase; tracked by CONCERNS.md item names.
 **Depends on:** Phase 34
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -360,7 +360,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 34.1-02-PLAN.md — Regression tests: 429 retry unit tests, CSRF [ValidateAntiForgeryToken] reflection sweep, SessionReminderJob null-dereference verify-and-close
+- [x] 34.1-02-PLAN.md — Regression tests: 429 retry unit tests, CSRF [ValidateAntiForgeryToken] reflection sweep, SessionReminderJob null-dereference verify-and-close
 
 ### Phase 34.2: Performance & Architecture
 
