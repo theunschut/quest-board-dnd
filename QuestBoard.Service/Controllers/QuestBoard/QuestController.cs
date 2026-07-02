@@ -1,5 +1,6 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
@@ -710,7 +711,7 @@ public class QuestController(
         // Enqueue a fire-and-forget Hangfire job.
         // The job itself checks the ReminderLog per-player before sending (idempotency).
         // The forceResend flag (from the confirm button) bypasses the log check in the job.
-        reminderJobDispatcher.EnqueueSessionReminder(id, activeGroupContext.ActiveGroupId ?? 1, forceResend, useYesMaybeVoters: true);
+        reminderJobDispatcher.EnqueueSessionReminder(id, activeGroupContext.RequireActiveGroupId(), forceResend, useYesMaybeVoters: true);
 
         TempData["Success"] = $"Reminder queued for {eligibleSignups.Count} eligible players.";
         return RedirectToAction("Manage", new { id });
