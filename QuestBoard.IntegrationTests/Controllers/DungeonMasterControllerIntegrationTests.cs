@@ -115,4 +115,58 @@ public class DungeonMasterControllerIntegrationTests(WebApplicationFactoryBase f
         // This is the standard project behavior — mirrors QuestControllerIntegrationTests pattern
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
     }
+
+    // Regression: a real Admin who is not the profile owner must see the Edit Profile
+    // link (Model.CanEdit driven by GetEffectiveGroupRoleAsync, not the empty AspNetUserRoles).
+    [Fact]
+    public async Task Profile_NonOwnerAdmin_SeesEditProfileMarker()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var targetDm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "canedittargetdm", "canedittargetdm@example.com");
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "caneditadmin", "caneditadmin@example.com", roles: ["Admin"]);
+
+        var response = await adminClient.GetAsync($"/DungeonMaster/Profile/{targetDm.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Edit Profile");
+    }
+
+    // Regression: EditProfile GET must not Forbid() a non-owner Admin (already covered
+    // by EditProfile_AdminEditingOtherDm_ReturnsOk above — this test names the regression
+    // explicitly and asserts the not-Forbidden contract directly).
+    [Fact]
+    public async Task EditProfile_NonOwnerAdmin_IsNotForbidden()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var targetDm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "editprofiletargetdm", "editprofiletargetdm@example.com");
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "editprofileadmin", "editprofileadmin@example.com", roles: ["Admin"]);
+
+        var response = await adminClient.GetAsync($"/DungeonMaster/EditProfile/{targetDm.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+    }
+
+    // A Player who is neither the profile owner nor an Admin stays denied
+    // (proves the fix did not over-grant).
+    [Fact]
+    public async Task EditProfile_Player_IsForbiddenOrRedirected()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var targetDm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "editprofileplayertarget", "editprofileplayertarget@example.com");
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "editprofileplayer", "editprofileplayer@example.com", roles: ["Player"]);
+
+        var response = await playerClient.GetAsync($"/DungeonMaster/EditProfile/{targetDm.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+    }
 }

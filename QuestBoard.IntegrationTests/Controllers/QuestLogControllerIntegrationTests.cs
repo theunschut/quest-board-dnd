@@ -221,4 +221,114 @@ public class QuestLogControllerIntegrationTests(WebApplicationFactoryBase factor
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    // Regression: a real Admin who is not the quest's DM must see the recap-edit form
+    // (ViewBag.CanEditRecap driven by GetEffectiveGroupRoleAsync, not the empty AspNetUserRoles).
+    [Fact]
+    public async Task Details_NonOwnerAdmin_SeesRecapEditMarker()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "recapregressiondm", "recapregressiondm@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, "Recap Regression Quest", "Desc", 5, isFinalized: true);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var questToUpdate = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            if (questToUpdate != null)
+            {
+                questToUpdate.FinalizedDate = DateTime.UtcNow.AddDays(-2);
+                await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "recapregressionadmin", "recapregressionadmin@example.com", roles: ["Admin"]);
+
+        // Act
+        var response = await adminClient.GetAsync($"/QuestLog/Details/{quest.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Save Recap");
+    }
+
+    // Regression: UpdateRecap must not Forbid() a non-owner Admin.
+    [Fact]
+    public async Task UpdateRecap_NonOwnerAdmin_IsNotForbidden()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "recapupdatedm", "recapupdatedm@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, "Recap Update Quest", "Desc", 5, isFinalized: true);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var questToUpdate = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            if (questToUpdate != null)
+            {
+                questToUpdate.FinalizedDate = DateTime.UtcNow.AddDays(-2);
+                await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "recapupdateadmin", "recapupdateadmin@example.com", roles: ["Admin"]);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["recap"] = "Updated by a non-owner admin."
+        });
+
+        // Act
+        var response = await adminClient.PostAsync($"/QuestLog/UpdateRecap/{quest.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+    }
+
+    // A Player who is neither the quest's DM nor an Admin stays denied on UpdateRecap
+    // (proves the fix did not over-grant).
+    [Fact]
+    public async Task UpdateRecap_Player_IsForbiddenOrRedirected()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "recapplayerdm", "recapplayerdm@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, "Recap Player Quest", "Desc", 5, isFinalized: true);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var questToUpdate = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            if (questToUpdate != null)
+            {
+                questToUpdate.FinalizedDate = DateTime.UtcNow.AddDays(-2);
+                await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "recapplayeruser", "recapplayeruser@example.com", roles: ["Player"]);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["recap"] = "Should not be allowed."
+        });
+
+        // Act
+        var response = await playerClient.PostAsync($"/QuestLog/UpdateRecap/{quest.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+    }
 }
