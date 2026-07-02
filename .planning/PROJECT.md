@@ -64,6 +64,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - ✓ Admin email-resend rate limiting — "Resend Welcome/Confirmation Email" and `EditUser`'s email-change confirmation are limited to 3/hour per target user, protecting the Resend relay's quota from accidental button-mashing; one-shot automated sends (e.g. `CreateUser`'s welcome email) remain exempt — v5.0 (Phase 33)
 - ✓ Codebase cleanup and security hardening — dead code removed (`RegisterViewModel`), GSD requirement-ID/phase-number comment tags stripped across the entire codebase (C#, Razor views, CSS, dotfiles) while preserving substantive comments, XML `<summary>` doc backfill on all 37 public Domain/Repository interfaces, clean dependency vulnerability scan captured as evidence — v5.0 (Phase 34)
 - ✓ Known Bugs and Security Considerations closure — Production-only fail-fast startup guard when email config is missing, `ResendStatsClient` extracted with bounded 429 retry-with-backoff, Resend Bearer-token and secret-safe logging patterns documented, regression tests for all three plus a reflection-based CSRF `[ValidateAntiForgeryToken]` coverage sweep and a verify-and-close test for the stale `SessionReminderJob` null-dereference claim — v5.0 (Phase 34.1)
+- ✓ Performance & Architecture closure — follow-up quest create+rollback consolidated into `QuestService.CreateFollowUpQuestWithDetailsAsync`, net-new `ControllerExtensions` MVC-boilerplate helpers applied to `AdminController`, composite index on `Quests(IsFinalized, FinalizedDate)`, lean shop list-view projection, global Hangfire `AutomaticRetryAttribute` retry policy, `HangfireJobHelper` scope/group-context helper across all 3 jobs, EF Core Global Query Filter documentation, AutoMapper enum-cast round-trip test, and the `RequireActiveGroupId()` ASVS V4 null-guard wired into `QuestController.SendReminder`'s job dispatch — v5.0 (Phase 34.2), closes the v5.0 Multi-Tenancy milestone's 9 phases
 
 ### Active
 
@@ -133,6 +134,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 | Admin email rate limit partitioned by target userId, not admin identity | Protects any one recipient's inbox from repeated sends regardless of which admin triggers it | ✓ Good — Phase 33 |
 | Comment-tag cleanup (D-06) took 4 gap-closure rounds before verification passed | Each verifier ran a fresh, independently-derived grep pattern that only covered previously-known comment syntax (C#, then Razor/HTML, then CSS, then dotfiles) — genuinely different syntax per file type kept surfacing new occurrences, not sloppy execution | ✓ Good — Phase 34; codified as a CLAUDE.md "Code Comments" rule banning GSD tracking IDs from source going forward, so a dedicated cleanup phase is never needed again |
 | Production email-config startup guard checked `Email:FromEmail`/`Email:SmtpServer` instead of the actual `EmailSettings:FromEmail`/`EmailSettings:SmtpServer` binding | Planning-stage typo carried faithfully through execution; the wrong keys never exist so the guard would have thrown on every Production boot regardless of real config | ✓ Fixed — Phase 34.1; caught by code review (CR-01) same phase, before shipping |
+| `RequireActiveGroupId()` guard built as an opt-in seam (Phase 34.2 plan scope), not force-wired into controllers | Avoids widening one plan's blast radius across every `ActiveGroupId` call site in one pass | ✓ Wired into `QuestController.SendReminder` same phase — code review (WR-01) and verification both flagged the guard's own target bug (`?? 1` fallback) as still live; user chose "fix now" over deferring |
 
 ## Evolution
 
@@ -153,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-02 — Phase 34.1 complete (Known Bugs and Security Considerations fixes + regression tests) — v5.0 Multi-Tenancy milestone's original 8 phases complete; closing phase 34.2 remains*
+*Last updated: 2026-07-02 — Phase 34.2 complete (Performance & Architecture closure) — v5.0 Multi-Tenancy milestone's 9 phases complete*
