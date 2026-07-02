@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 
 namespace QuestBoard.IntegrationTests.Mobile;
@@ -493,6 +494,54 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("account-card-mobile");
+    }
+
+    /// <summary>
+    /// Mobile UA on /GroupPicker/Index renders the group-selection cards and links
+    /// account.mobile.css. Guards against the unrendered-Styles-section white-page regression:
+    /// Index.Mobile.cshtml defines a Styles section that _Layout.GroupPicker.cshtml must render.
+    /// The test user is seeded into two groups so the controller returns the card-picker view
+    /// instead of auto-redirecting (which happens when a user belongs to exactly one group).
+    /// </summary>
+    [Fact]
+    public async Task MobileGroupPicker_MobileUserAgent_RendersGroupCardsAndStylesSection()
+    {
+        var (authClient, gpUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "gp_mobile01", "gp_mobile01@test.com");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+            // AuthenticationHelper seeds a UserGroups row referencing GroupId=1, but does not
+            // guarantee a matching GroupEntity row exists (this test class does not call
+            // TestDataHelper.SeedDefaultGroupAsync). Ensure it exists so GroupId=1 is a real,
+            // queryable group rather than a dangling FK reference the InMemory provider silently allows.
+            if (!await context.Groups.AnyAsync(g => g.Id == 1, TestContext.Current.CancellationToken))
+            {
+                context.Groups.Add(new GroupEntity { Id = 1, Name = "EuphoriaInn", CreatedAt = DateTime.UtcNow });
+            }
+
+            // Use a random large Id for the second group so it cannot collide with Id=1 or with
+            // groups created by other tests sharing this class fixture's database.
+            var secondGroupId = Random.Shared.Next(100_000, 999_999);
+            var secondGroup = new GroupEntity { Id = secondGroupId, Name = $"GroupPickerTest_{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow };
+            context.Groups.Add(secondGroup);
+
+            context.UserGroups.Add(new UserGroupEntity { UserId = gpUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = gpUser.Id, GroupId = secondGroupId, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/GroupPicker/Index");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("account-card-mobile");
+        html.Should().Contain("account.mobile.css");
     }
 
     /// <summary>
