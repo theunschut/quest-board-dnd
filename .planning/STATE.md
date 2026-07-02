@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Multi-Tenancy
-status: milestone_complete
-stopped_at: Milestone complete (Phase 34.2 was final phase)
-last_updated: 2026-07-02T08:55:00.833Z
-last_activity: 2026-07-02
+status: executing
+stopped_at: Completed 34.2-05-PLAN.md
+last_updated: "2026-07-02T09:44:54.607Z"
+last_activity: 2026-07-02 -- Phase 34.3 execution started
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 11
   total_plans: 42
   completed_plans: 42
-  percent: 92
+  percent: 85
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-29 — v5.0 Multi-Tenancy started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Milestone complete
+**Current focus:** Phase 34.3 — Group Role Authorization Regression Fix
 
 ## Current Position
 
-Phase: 34.2
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-02
+Phase: 34.3 (Group Role Authorization Regression Fix) — EXECUTING
+Plan: 1 of ?
+Status: Executing Phase 34.3
+Last activity: 2026-07-02 -- Phase 34.3 execution started
 
 ```
 v5.0 Progress [███████░░░] 62% (8/13 phases complete)
@@ -110,6 +110,7 @@ Items acknowledged and deferred at milestone close on 2026-06-28:
 - Phase 34 added (2026-07-01): Codebase cleanup and security hardening, requested as the closing phase of v5.0 — full-codebase review (not scoped to GSD-tracked work only): remove unused/dead code, strip low-value inline comments (especially ones referencing GSD requirement IDs or phase numbers — user finds these unhelpful and unread later) in favor of XML doc comments (`///<summary>`) on interfaces, and audit for security vulnerabilities and other known issues. User considers the v5.0 milestone done once this phase completes.
 - Phase 34.1 inserted after Phase 34: Security & Bugs slice split off Phase 34 per D-03 (Known Bugs, Security Considerations, related Test Coverage Gaps) (URGENT)
 - Phase 34.2 inserted after Phase 34: Performance & Architecture slice split off Phase 34 per D-03 (Tech Debt, Performance Bottlenecks, Fragile Areas, Scaling Limits, Dependencies at Risk, remaining Test Coverage Gaps) (URGENT)
+- Phase 34.3 inserted after Phase 34.2: Group Role Authorization Regression Fix — inline IsInRole/IsInRoleAsync checks across QuestController, QuestLogController, DungeonMasterController, and Admin/AccountController never migrated to GroupRole after Phase 27 deleted Player/DungeonMaster/Admin from AspNetUserRoles; only the policy-based AdminHandler/DungeonMasterHandler were fixed in Phase 29 (URGENT)
 
 ### Pending for Next Milestone
 
