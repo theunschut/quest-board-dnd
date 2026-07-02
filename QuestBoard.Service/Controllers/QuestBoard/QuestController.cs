@@ -38,8 +38,13 @@ public class QuestController(
             currentUserName = user?.Name;
             currentUserId = user?.Id;
 
-            // Determine user role for quest filtering
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            // Determine user role for quest filtering. SuperAdmin has no active group by design
+            // (ActiveGroupContextExtensions.RequireActiveGroupId's documented contract), so only
+            // require a concrete group id for the non-SuperAdmin path — GetEffectiveGroupRoleAsync
+            // short-circuits SuperAdmin to GroupRole.Admin without ever using the group id.
+            var role = User.IsInRole("SuperAdmin")
+                ? GroupRole.Admin
+                : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 
             if (role == GroupRole.Admin)
                 userRole = Role.Admin;

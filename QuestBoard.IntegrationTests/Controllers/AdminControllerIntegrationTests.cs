@@ -66,6 +66,45 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.Unauthorized, HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
     }
 
+    // Regression: a real Admin completing AdminResetPassword end-to-end must succeed —
+    // IdentityService.AdminResetPasswordAsync's redundant inner IsInRoleAsync(admin, "Admin")
+    // check (always false post-Phase-27) previously blocked every reset unconditionally.
+    [Fact]
+    public async Task ResetPassword_Post_WhenAdmin_SucceedsForTargetUser()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var targetUserId = await CreateUnconfirmedTargetUserAsync(
+            $"resetpwtarget_{uniqueSuffix}@example.com", "Reset Password Target");
+
+        var formData = new Dictionary<string, string>
+        {
+            ["UserId"] = targetUserId.ToString(),
+            ["UserName"] = "Reset Password Target",
+            ["NewPassword"] = "BrandNewAdminSet123!",
+            ["ConfirmPassword"] = "BrandNewAdminSet123!"
+        };
+
+        // Act
+        var response = await adminClient.PostAsync("/Admin/ResetPassword",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        // Assert — a successful reset redirects to Users with a success message,
+        // NOT the "Admin user not found or not authorized" ModelState failure that
+        // would re-render the ResetPassword form (200) instead of redirecting.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location!.OriginalString.Should().Contain("Users");
+
+        using var scope = _factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var updatedUser = await userManager.FindByIdAsync(targetUserId.ToString());
+        updatedUser.Should().NotBeNull();
+        var passwordCheck = await userManager.CheckPasswordAsync(updatedUser!, "BrandNewAdminSet123!");
+        passwordCheck.Should().BeTrue();
+    }
+
     [Fact]
     public async Task EmailStats_WhenNotAuthenticated_ShouldRedirectToLogin()
     {

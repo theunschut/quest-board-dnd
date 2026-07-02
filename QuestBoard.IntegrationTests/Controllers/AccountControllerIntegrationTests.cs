@@ -84,6 +84,142 @@ public class AccountControllerIntegrationTests(WebApplicationFactoryBase factory
         content.Should().Contain(user.Email);
     }
 
+    // Regression: Profile badges must reflect GroupRole (via GetEffectiveGroupRoleAsync),
+    // not the empty AspNetUserRoles. Default active group is 1 (MutableGroupContext default).
+    [Fact]
+    public async Task Profile_WhenAdmin_ShowsAdminBadge()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "badgeadmin", "badgeadmin@example.com", roles: ["Admin"]);
+
+        // Act
+        var response = await client.GetAsync("/Account/Profile", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Administrator");
+    }
+
+    [Fact]
+    public async Task Profile_WhenDungeonMaster_ShowsDungeonMasterBadge()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "badgedm", "badgedm@example.com", roles: ["DungeonMaster"]);
+
+        // Act
+        var response = await client.GetAsync("/Account/Profile", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Dungeon Master & Player");
+    }
+
+    [Fact]
+    public async Task Profile_WhenPlayer_ShowsNeitherAdminNorDungeonMasterBadge()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "badgeplayer", "badgeplayer@example.com", roles: ["Player"]);
+
+        // Act
+        var response = await client.GetAsync("/Account/Profile", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain("Administrator");
+        content.Should().NotContain("Dungeon Master & Player");
+    }
+
+    // Regression: Edit's combined DM-enabled flag (EditProfileViewModel.IsDungeonMaster) must be
+    // computed from GroupRole via GetEffectiveGroupRoleAsync without throwing, for both a
+    // DungeonMaster and an Admin, and for a plain Player. The flag has no distinct visible
+    // marker in Edit.cshtml today, so this proves the underlying resolution path (the fix here)
+    // completes successfully end-to-end for every role — a regression in the role lookup itself
+    // (e.g. re-introducing an empty-AspNetUserRoles read) would surface as a 500, not a silent
+    // wrong-value bug the response body could show.
+    [Fact]
+    public async Task Edit_WhenDungeonMaster_ReturnsOk()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "editdmuser", "editdmuser@example.com", roles: ["DungeonMaster"]);
+
+        // Act
+        var response = await dmClient.GetAsync("/Account/Edit", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Edit_WhenAdmin_ReturnsOk()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "editadminuser", "editadminuser@example.com", roles: ["Admin"]);
+
+        // Act
+        var response = await adminClient.GetAsync("/Account/Edit", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Edit_WhenPlayer_ReturnsOk()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "editplayeruser", "editplayeruser@example.com", roles: ["Player"]);
+
+        // Act
+        var response = await playerClient.GetAsync("/Account/Edit", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // Regression (D-04 fail-soft): a null ActiveGroupId must render the profile page
+    // with no role badges and must NOT throw (no 500). Restores the shared fixture's
+    // ActiveGroupId back to 1 afterward so sibling tests are unaffected.
+    [Fact]
+    public async Task Profile_WhenActiveGroupIdIsNull_ReturnsOkWithNoBadgesAndNoException()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "nullgroupadmin", "nullgroupadmin@example.com", roles: ["Admin"]);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            // Act
+            var response = await client.GetAsync("/Account/Profile", TestContext.Current.CancellationToken);
+
+            // Assert — fail-soft: 200, not 500, and no role badge markers.
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().NotContain("Administrator");
+            content.Should().NotContain("Dungeon Master & Player");
+        }
+        finally
+        {
+            // Restore shared fixture state so sibling tests using the default GroupId=1 are unaffected.
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
     [Fact]
     public async Task Logout_Post_ShouldRedirectToHome()
     {
