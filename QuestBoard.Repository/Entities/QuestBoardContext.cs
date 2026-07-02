@@ -234,7 +234,9 @@ public class QuestBoardContext(
             .HasForeignKey(ug => ug.GroupId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Global query filters for group isolation
+        // Global query filters for group isolation.
+        // QuestEntity and ShopItemEntity carry a GroupId and are the two entities directly scoped
+        // to a tenant, so every read is automatically restricted to the caller's active group.
         // Null = see all (SuperAdmin/seeding contexts intentionally bypass group scoping)
         // Lambda closes over activeGroupContext instance — re-evaluated per query, not at startup
         // CRITICAL: Do NOT capture activeGroupContext.ActiveGroupId into a local var here.
@@ -251,5 +253,9 @@ public class QuestBoardContext(
 
         // UserEntity intentionally excluded — HasQueryFilter on UserEntity breaks ASP.NET Core Identity
         // (login, password reset, and email confirmation all fail silently)
+        //
+        // CharacterEntity and PlayerSignupEntity are also intentionally unfiltered: they carry no
+        // GroupId of their own and are only ever reached through an already-filtered QuestEntity or
+        // ShopItemEntity navigation, so the parent's filter scopes them transitively.
     }
 }
