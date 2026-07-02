@@ -52,6 +52,15 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     }
 
     /// <inheritdoc/>
+    public async Task<GroupRole?> GetEffectiveGroupRoleAsync(ClaimsPrincipal user, int groupId)
+    {
+        if (user.IsInRole("SuperAdmin"))
+            return GroupRole.Admin;
+
+        return await GetGroupRoleAsync(user, groupId);
+    }
+
+    /// <inheritdoc/>
     public async Task<GroupRole?> GetGroupRoleAsync(ClaimsPrincipal user, int groupId)
     {
         var userId = await identityService.GetUserIdAsync(user);
