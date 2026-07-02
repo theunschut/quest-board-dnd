@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Extensions;
 using QuestBoard.IntegrationTests.Helpers;
 
 namespace QuestBoard.IntegrationTests.Tests;
@@ -150,5 +151,72 @@ public class TenantIsolationTests(WebApplicationFactoryBase factory)
             because: "null ActiveGroupId should return Group 1 quests");
         allQuests.Should().Contain(q => q.Title == "GroupTwoVisible",
             because: "null ActiveGroupId should return Group 2 quests");
+    }
+
+    /// <summary>
+    /// A quest seeded with GroupId=1 must NOT appear when the active group is set to a
+    /// non-existent group (999). Proves the query filter returns empty rather than
+    /// leaking another group's data when ActiveGroupId points at nothing.
+    /// </summary>
+    [Fact]
+    public async Task GroupFilter_NonExistentGroup_ReturnsEmpty()
+    {
+        // Arrange — clean slate with roles and default Group 1 seeded
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "isolationdm4", "isolationdm4@example.com");
+
+        await using var ctx = factory.Database.CreateContext(); // ActiveGroupId = null (sees all for seeding)
+        ctx.Quests.Add(new QuestEntity
+        {
+            Title = "OnlyGroupOneQuest",
+            Description = "This quest belongs to Group 1 and must be hidden when scoped to a non-existent group.",
+            GroupId = 1,
+            DungeonMasterId = dm.Id,
+            ChallengeRating = 3,
+            TotalPlayerCount = 4,
+            CreatedAt = DateTime.UtcNow
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act — request the quest board (authenticated) with the singleton stub scoped to a
+        // group that does not exist in the database
+        factory.TestGroupContext.ActiveGroupId = 999;
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "isolationviewer4", "isolationviewer4@example.com");
+        var response = await client.GetAsync("/quests", TestContext.Current.CancellationToken);
+
+        // Assert — the Group-1 quest must not appear for a non-existent active group
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain("OnlyGroupOneQuest");
+    }
+
+    /// <summary>
+    /// Companion to the ActiveGroupContextExtensionsTests unit test: proves RequireActiveGroupId()
+    /// throws for a null context and returns the value for a set context, without touching the
+    /// existing null-see-all query filter behavior proven above.
+    /// </summary>
+    [Fact]
+    public void RequireActiveGroupId_NullContext_Throws()
+    {
+        // Arrange — null ActiveGroupId (the SuperAdmin/seeding "see all" scope)
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        // Act
+        var act = () => factory.TestGroupContext.RequireActiveGroupId();
+
+        // Assert — the guard fails fast rather than silently proceeding with no group scope
+        act.Should().Throw<InvalidOperationException>();
+
+        // Arrange — a concrete group is set
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        // Act
+        var result = factory.TestGroupContext.RequireActiveGroupId();
+
+        // Assert
+        result.Should().Be(1);
     }
 }
