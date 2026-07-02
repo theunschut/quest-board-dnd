@@ -243,13 +243,21 @@ public class AccountController(IUserService userService, IIdentityService identi
     [HttpGet]
     public async Task<IActionResult> ConfirmEmailChange(int userId, string newEmail, string token)
     {
-        var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
-        var result = await identityService.ChangeEmailAsync(userId, newEmail, decodedToken);
+        try
+        {
+            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var result = await identityService.ChangeEmailAsync(userId, newEmail, decodedToken);
 
-        if (result.Succeeded)
-            TempData["SuccessMessage"] = "Email address updated. Please sign in with your new address.";
-        else
+            if (result.Succeeded)
+                TempData["SuccessMessage"] = "Email address updated. Please sign in with your new address.";
+            else
+                TempData["ErrorMessage"] = "Email confirmation failed. The link may have expired.";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ConfirmEmailChange failed for userId {UserId}", userId);
             TempData["ErrorMessage"] = "Email confirmation failed. The link may have expired.";
+        }
 
         return RedirectToAction(nameof(Login));
     }
