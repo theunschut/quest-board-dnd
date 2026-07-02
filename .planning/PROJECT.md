@@ -1,24 +1,24 @@
 # D&D Quest Board
 
-## Current State: v5.0 In Progress
+## Current State: v5.0 Shipped
 
+**Current milestone shipped:** v5.0 Multi-Tenancy — 2026-07-02
 **Previous milestone shipped:** v4.0.0 — 2026-06-28
 **Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
 **Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
 
 ---
 
-## Current Milestone: v5.0 Multi-Tenancy
+## Next Milestone Goals
 
-**Goal:** Transform the Quest Board from a single-tenant EuphoriaInn app into a generic, rebrandable multi-group platform.
+No milestone started yet. Candidates carried forward from v5.0 (see Active requirements below):
 
-**Target features:**
-- Full rename: EuphoriaInn → QuestBoard (namespaces, project files, config, CI — existing "EuphoriaInn" group name in data is unchanged)
-- Group entity with EF Core Global Query Filters — all content (quests, shop, characters) scoped per group
-- Many-to-many user↔group membership via junction table; all existing users seeded into "EuphoriaInn" group
-- Active-group context and group-picker (persistence mechanism TBD by planner; not /superadmin route)
-- SuperAdmin role — system-wide access, dedicated group-management area (route TBD, e.g. /groups)
-- Admin-only user creation — self-registration removed; group admins create accounts within their group
+- `GroupSessionMiddleware` POST-body data-loss risk on session expiry mid-submission (code review flagged, not yet fixed)
+- Digest batching for session reminders (EMAIL-04/REMIND-02)
+- Profile picture crop/avatar selection (issue #78)
+- v2.0 Omphalos Integration (Phases 10–11) remains in progress on a separate branch, independent of v5.0
+
+Run `/gsd:new-milestone` to scope the next milestone.
 
 ---
 
@@ -71,6 +71,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 - [ ] Digest batching for session reminders — single combined email when player has multiple same-day quests (EMAIL-04/REMIND-02 — deferred; same-day quests have never occurred in one year)
 - [ ] Profile picture crop/avatar selection for guild member page (issue #78) — paused from v2.x; SkiaSharp native lib availability needs verification on deployment host
+- [ ] `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed
 
 ### Out of Scope
 
@@ -85,7 +86,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 ## Context
 
-**Codebase:** ~31 000 lines added in v4.0 (211 files touched). Full codebase estimated 15 000–20 000 LOC C#/Razor.
+**Codebase:** ~56 450 lines added / ~6 374 removed in v5.0 (754 files touched, incl. the full EuphoriaInn→QuestBoard rename). Full codebase estimated 40 000–50 000 LOC C#/Razor.
 
 **Tech stack:**
 - ASP.NET Core 10 MVC with Razor views (`.cshtml`) and Razor components (`.razor`) for email templates
@@ -158,4 +159,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-02 — Phase 34.3 complete (Group Role Authorization Regression Fix) — urgent pre-ship fix, inserted after the v5.0 Multi-Tenancy milestone's original 9 phases*
+*Last updated: 2026-07-02 — v5.0 Multi-Tenancy milestone shipped (Phases 26–34.3, 12 phases, 48 plans)*
