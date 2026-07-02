@@ -38,7 +38,7 @@ public class DungeonMasterController(
             Name = user.Name ?? string.Empty,
             Bio = profile?.Bio,
             HasProfilePicture = profile?.ProfilePicture?.Length > 0,
-            CanEdit = currentUser != null && (currentUser.Equals(user) || role == GroupRole.Admin),
+            CanEdit = currentUser != null && (currentUser.Id == user.Id || role == GroupRole.Admin),
             Quests = mapper.Map<List<QuestSummaryViewModel>>(quests)
         };
 
@@ -59,7 +59,7 @@ public class DungeonMasterController(
         if (targetUser == null) return NotFound();
 
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(targetUser) && role != GroupRole.Admin)
+        if (currentUser.Id != targetUser.Id && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -90,7 +90,7 @@ public class DungeonMasterController(
         if (targetUser == null) return NotFound();
 
         var role = await GetEffectiveRoleAsync();
-        if (!currentUser.Equals(targetUser) && role != GroupRole.Admin)
+        if (currentUser.Id != targetUser.Id && role != GroupRole.Admin)
         {
             return Forbid();
         }
