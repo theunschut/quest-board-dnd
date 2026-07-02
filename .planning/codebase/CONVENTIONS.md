@@ -1,164 +1,214 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-07-01
+**Analysis Date:** 2026-07-02
 
 ## Naming Patterns
 
 **Files:**
-- Class files use PascalCase matching their class name: `UserService.cs`, `EmailSettings.cs`
-- Test files follow the pattern `[TargetClass]Tests.cs`: `EmailServiceTests.cs`, `QuestServiceTests.cs`
-- Integration test files use `[Controller]IntegrationTests.cs`: `QuestControllerIntegrationTests_Comprehensive.cs`
-- Partial classes append descriptor: `QuestControllerIntegrationTests_Comprehensive.cs` for large test suites
-- View files use PascalCase: `Create.cshtml`, `Details.cshtml` with mobile variants as `Create.Mobile.cshtml`
-- Partial views prefixed with underscore: `_QuestCard.cshtml`, `_ShopItemDetailsContent.cshtml`
+- PascalCase for all classes: `HomeController.cs`, `QuestService.cs`, `EmailSettings.cs`
+- Namespace hierarchy aligns with file structure: `QuestBoard.Service.Controllers.QuestBoard`, `QuestBoard.Domain.Models`
+- Enums in dedicated `Enums/` directory: `GroupRole.cs`, `ItemType.cs`
+- ViewModels in `ViewModels/` with category subdirectories: `ViewModels/QuestViewModels/`, `ViewModels/CharacterViewModels/`
+- Tests use suffix matching the class tested: `QuestServiceTests.cs`, `EmailServiceTests.cs`, `AdminDashboardAuthFilterTests.cs`
 
-**Classes and Interfaces:**
-- Public classes and interfaces: PascalCase
-- Services use pattern `[Entity]Service`: `QuestService`, `UserService`, `ShopService`
-- Service implementations marked as `internal` when they implement an interface
-- Repository classes use pattern `[Entity]Repository` in Repository layer (not seen directly in Domain)
-- Interfaces prefixed with `I`: `IQuestService`, `IBaseRepository<T>`, `IEmailService`
-- View Models suffixed with `ViewModel`: `QuestViewModel`, `CreateShopItemViewModel`, `EditDMProfileViewModel`
-- Enum classes suffixed with type: `CharacterRole`, `ItemRarity`, `VoteType`, `TransactionType`
-- Requirements tracking constants use pattern `[PREFIX]-[NUMBER]`: `D-06`, `EMAIL-04`, `CTRL-01` — embedded in comments as requirement references
-
-**Functions/Methods:**
-- PascalCase: `GetQuestWithDetailsAsync()`, `FinalizeQuestAsync()`, `CreateSmtpClient()`
-- Async methods suffixed with `Async`: `GetByIdAsync()`, `AddAsync()`, `SaveChangesAsync()`
-- Private helper methods PascalCase: `MakeQuest()`, `MakeSignup()`
-- Setters follow pattern `SetAsMainCharacterAsync()`, `SetPasswordAsync()`
-- Removal methods: `RemoveAsync()`
-- Query/fetch methods: `GetXxxAsync()`, `GetXxxWithDetailsAsync()` for loaded navigation properties
+**Functions and Methods:**
+- PascalCase for public methods: `GetByIdAsync()`, `SendAsync()`, `CreateAsync()`
+- Async methods suffixed with `Async`: `GetQuestsByDmNameAsync()`, `FinalizeQuestAsync()`
+- Abbreviations avoided except for well-understood acronyms (DM, GM, etc.)
+- Constructor-injected dependencies use parameter list names (lowercase): `IQuestService questService`
 
 **Variables:**
-- Local variables and parameters: camelCase: `viewModel`, `selectedPlayers`, `currentUser`, `token`
-- Private fields prefixed with underscore: `_repository`, `_mapper`, `_dispatcher`, `_settings`
-- Test setup variables (test context): `_sut` for "system under test" (the class being tested)
-- Test fixture/helper variables: `_repository`, `_factory`
+- camelCase for local variables and parameters: `currentUserId`, `questViewModel`, `groupId`
+- Private fields use `_camelCase`: `_settings`, `_dbContext`
+- Collection types are plural: `quests`, `proposedDates`, `playerSignups`
 
-**Enums and Constants:**
-- Enum values: PascalCase: `SignupRole.Player`, `ItemRarity.Rare`, `Role.Admin`
-- Static helper classes: `TestDataHelper`, `AuthenticationHelper`
-- Namespace constants classes: `SessionKeys`
+**Types:**
+- PascalCase for classes, interfaces, enums, records: `Quest`, `IQuestService`, `EmailSettings`, `GroupRole`
+- Interfaces prefixed with `I`: `IModel`, `IBaseService<T>`, `IQuestRepository`
+- Enum values are PascalCase: `Player`, `DungeonMaster`, `Admin` in `GroupRole` enum
+- Database records use `Entity` suffix: `QuestEntity`, `UserEntity`, `PlayerSignupEntity`
+- View models use `ViewModel` suffix: `QuestViewModel`, `CharacterViewModel`, `LoginViewModel`
 
 ## Code Style
 
 **Formatting:**
-- No explicit `.editorconfig` or `.ruleset` file detected — uses C# 10+ implicit usings and nullable reference types
-- `ImplicitUsings` enabled: `global using FluentAssertions;` in test projects
-- `Nullable` enabled: `#nullable enable` in csproj targets
-- Target framework: .NET 10.0
+- Target framework: .NET 10 (net10.0)
+- Implicit usings enabled in all `.csproj` files (`<ImplicitUsings>enable</ImplicitUsings>`)
+- Nullable reference types enabled (`<Nullable>enable</Nullable>`)
+- Line endings: CRLF (Windows)
+- No line length limit enforced (varies 60-120 characters observed)
 
 **Linting:**
-- No `.eslintrc*` or Roslyn analyzer configuration detected
-- Assumes Visual Studio/Rider defaults for C#
+- No .editorconfig or centralized linting configuration detected
+- StyleCop, Roslyn analyzers not explicitly configured
+- Code follows .NET style guide conventions implicitly
+
+**Access Modifiers:**
+- Public methods explicitly declared: `public async Task<IActionResult> Index()`
+- Private fields not explicitly declared (C# defaults to private)
+- Internal repositories/services use `internal` keyword to hide from external consumers: `internal abstract class BaseRepository<TModel, TEntity>`
+- Protected members used in base classes for inheritance: `protected IMapper Mapper => mapper`
 
 ## Import Organization
 
-**Order (from observed codebase):**
-1. System namespaces: `using System;`, `using System.Collections.Generic;`, `using System.Linq;`, `using System.Net;`, `using System.Net.Mail;`
-2. Microsoft namespaces: `using Microsoft.AspNetCore.*;`, `using Microsoft.Extensions.*;`, `using Microsoft.EntityFrameworkCore;`
-3. Third-party packages: `using AutoMapper;`, `using NSubstitute;`, `using Hangfire;`
-4. Domain/Project namespaces: `using QuestBoard.Domain.*;`, `using QuestBoard.Repository.*;`, `using QuestBoard.Service.*;`
+**Order:**
+1. Using statements for System and Microsoft namespaces first
+2. Using statements for project namespaces (QuestBoard.*)
+3. Namespace declaration
+4. Class definition
+
+Example from `QuestController.cs`:
+```csharp
+using AutoMapper;
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
+using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Models.QuestBoard;
+using QuestBoard.Service.ViewModels.CalendarViewModels;
+using QuestBoard.Service.ViewModels.QuestViewModels;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace QuestBoard.Service.Controllers.QuestBoard;
+```
 
 **Path Aliases:**
-- Not detected in configuration — full namespaces used throughout
-
-**File-level namespace declaration:**
-- Consistently uses file-scoped namespaces: `namespace QuestBoard.Domain.Services;` (no braces)
+- No custom path aliases configured (`.csproj` or configuration files)
+- Explicit long-form namespaces used throughout
 
 ## Error Handling
 
 **Patterns:**
-- **Exceptions for validation failures**: `InvalidOperationException`, `ArgumentException` thrown directly when invariants are violated
-  - Example: `throw new InvalidOperationException("Item is not available for purchase.");` in `ShopService.cs:72`
-  - Example: `throw new ArgumentException("Player signup not found", nameof(playerSignupId));` in `PlayerSignupService.cs:15`
-- **ServiceResult<T> for operations with recoverable failures**: Used when operation success must be checked without exception throwing
-  - `ServiceResult<T>.Ok(data)` returns success with data
-  - `ServiceResult<T>.Fail(error)` returns failure with error message
-  - Used in `QuestService.UpdateQuestPropertiesWithNotificationsAsync()` which returns `Task<ServiceResult<int>>`
-- **Silent failures in optional operations**: Email sending catches exceptions and logs — see `EmailService.SendAsync()` at line 50-54
-- **Null-coalescing and guards**: Extensive use of `?` and `??` for null handling
-  - Example: `quest?.Id ?? 0`, `src.CreatedByDm?.Name ?? "Unknown"`
+- Exceptions logged with structured logging before rethrowing: `logger.LogError(ex, "Failed to send email with subject {Subject}", subject); throw;`
+- Never log credentials or sensitive connection details inline — use structured log parameters: `logger.LogWarning("Email settings not configured. Skipping email notification.");`
+- Try-catch blocks used to wrap SMTP operations (`EmailService.SendAsync`)
+- Authorization failures return `Challenge()` or redirect implicitly via ASP.NET Core
+- Guard clauses prevent null reference errors: `if (entity == null) return;` in repository methods
+- Model validation errors handled by ASP.NET Core model binding: `if (!ModelState.IsValid) return View(viewModel);`
+
+**Specific patterns:**
+- Controllers check user authentication: `User.Identity?.IsAuthenticated == true`
+- Service dependencies are never null-coalesced in constructors (dependency injection guarantees non-null)
+- Optional navigation properties use `!` null-forgiving operator when certain: `src.Owner != null ? src.Owner.Name : "Unknown"`
 
 ## Logging
 
-**Framework:** `Microsoft.Extensions.Logging.ILogger<T>` injected via constructor
+**Framework:** `Microsoft.Extensions.Logging.ILogger<T>`
 
 **Patterns:**
-- Only `ILogger<EmailService>` observed in Domain layer
-- Log levels: `LogWarning()` for configuration issues, `LogError()` for exceptions
-- Message format: `"Email settings not configured. Skipping email notification."`
-- Exception logging includes template parameters: `logger.LogError(ex, "Failed to send email with subject {Subject}", subject);`
+- Injected via constructor: `ILogger<EmailService> logger`
+- Structured logging used for all messages: `logger.LogWarning("Email settings not configured. Skipping email notification.");`
+- Log levels used appropriately:
+  - `LogWarning()` for configuration gaps or skipped operations
+  - `LogError(Exception, string)` for actual failures with exception context
+- No console.WriteLine or Debug.WriteLine used (all go through ILogger)
 
 ## Comments
 
 **When to Comment:**
-- Requirement references embedded inline: `// EMAIL-04: re-fetch post-save to avoid stale IsSelected state`
-- Complex business logic explanations: Visible in `QuestService.FinalizeQuestAsync()` explaining email inclusion logic
-- Manual cleanup instructions: "Manual cleanup required since Quest->PlayerSignup is NoAction" in `QuestService.RemoveAsync()`
-- Test setup descriptions: "Arrange — even with quests seeded, the public landing page must not surface them"
+- Block comments explain non-obvious business logic: `// SuperAdmin bypass — reads claims directly, no DB call`
+- Single-line comments for clarification at code sections, not on individual statements
+- High-level intent documented in XML doc comments for public methods and types
 
 **JSDoc/TSDoc:**
-- Not used in C# codebase — uses XML doc comments `/// <summary>` instead (observed in interface definitions)
-- Example from `IQuestRepository`: `/// Bypasses the group query filter — use only for system-wide sweep operations (DailyReminderJob). (D-08)`
+- Not used (C# codebase uses XML documentation instead)
+- XML doc comments (`/// <summary>`) used on public interfaces and abstract methods
+- Example from `BaseService<TModel>`:
+  ```csharp
+  /// <inheritdoc/>
+  public virtual async Task AddAsync(TModel model, CancellationToken token = default)
+  {
+      await repository.AddAsync(model, token);
+  }
+  ```
 
 ## Function Design
 
-**Size:** Functions are focused and delegate to helpers
-- `FinalizeQuestAsync()` delegates to repository then dispatcher
-- Helper methods used for test data creation: `MakeQuest()`, `MakeSignup()`
+**Size:**
+- Controllers are slim (delegate to services)
+- Service methods are focused and single-purpose
+- Repository methods handle data access only
+- Complex business logic encapsulated in service methods
 
-**Parameters:** 
-- Injection via constructor preferred (primary-constructor pattern used throughout)
-- Async operations always include `CancellationToken token = default` as final parameter
-- ViewModels passed to actions for complex input binding
+**Parameters:**
+- Dependency injection preferred over parameter passing
+- CancellationToken as optional final parameter: `async Task SomeMethodAsync(CancellationToken token = default)`
+- ViewModel parameters used for POST actions to batch form data
 
-**Return Values:** 
-- Async methods return `Task<T>` or `Task`
-- Nullable return types common: `Task<Quest?>`, `Task<User?>`
-- Collections returned as `IList<T>` interface type (not concrete List)
+**Return Values:**
+- Async methods return `Task`, `Task<T>`, `ValueTask`, or `ValueTask<T>`
+- Service methods return domain models (`Quest`, `User`, `Character`)
+- Repository methods return domain models (mapped from entities via AutoMapper)
+- Controllers return `IActionResult` (including `View()`, `RedirectToAction()`, `Ok()`, `NotFound()`)
+- Nullable return types explicit: `async Task<User?>` or `async Task<IList<TModel>>`
 
 ## Module Design
 
 **Exports:**
-- Service classes are `internal` in Domain layer — only their `IServiceInterface` is public
-- Controllers are `public` in Service layer
-- Repositories `internal` in Repository layer with public repository interface in Domain
-- ViewModels and Entities are public
+- Services exported via interfaces (`IQuestService`, `IUserService`)
+- Repository pattern: interface in Domain, implementation in Repository
+- Base classes marked `internal abstract` to prevent external subclassing
+- No public static fields or constants in shared modules (enums preferred for fixed sets)
 
 **Barrel Files:**
-- Not used — direct namespace imports from specific files
+- Not used (no `index.ts`-style re-exports)
+- Namespace organization provides logical grouping
+- Full namespace paths required in imports
 
-**Primary Constructor Pattern:**
-- Extensively used: `public class QuestService(IQuestRepository repository, IMapper mapper) : BaseService<Quest>(...)`
-- Fields initialized inline: `private readonly EmailSettings _settings = options.Value;`
+## Immutability
 
-**AutoMapper Profile Pattern:**
-- `ViewModelProfile` in `QuestBoard.Service/Automapper/` handles ViewModel ↔ DomainModel mappings
-- `EntityProfile` in `QuestBoard.Repository/Automapper/` handles Entity ↔ DomainModel mappings
-- Uses fluent API: `CreateMap<Quest, QuestViewModel>()` with `.ForMember()` overrides
-- Ignores or maps to calculated values for non-stored fields
+**Record Types:**
+- `EmailSettings` is a record type for configuration: `public record EmailSettings { ... }`
+- Record properties use `init` accessor: `public string SmtpServer { get; init; } = "localhost";`
+- Domain models (classes) are mutable: `Quest`, `User`, `Character` all use `{ get; set; }`
 
-## Enum Handling
+**Collections:**
+- Initialize empty collections as empty list literals: `public IList<Quest> Quests { get; set; } = [];`
+- No null collection properties — default to empty list/array
+- Collection properties are IList<T> (allows both interface consumers and concrete mutations)
 
-Enums that are stored as `int` in the database and cast at the AutoMapper `EntityProfile` boundary (e.g. `(int)src.Type`, `(SignupRole)src.SignupRole`) must be **append-only and never reordered**. New values must always get the next unused int; reordering existing values corrupts data already persisted with the old numeric mapping, since the database only stores the int and has no knowledge of the enum's symbolic names.
+## Authorization Patterns
 
-A round-trip validation test guards this convention going forward — it verifies that every enum value present in the database deserializes back to the same symbolic name it was written with.
+**Policy-Based:**
+- Authorization policies defined in `Program.cs`: `"DungeonMasterOnly"`, `"AdminOnly"`, `"SuperAdminOnly"`
+- Policies enforced via `[Authorize(Policy = "...")]` attributes on action methods
+- Authorization handlers (`AdminHandler`, `DungeonMasterHandler`) implement custom role logic
+- Role claims checked via `User.IsInRole("SuperAdmin")` for global roles
+- Group roles checked via `IActiveGroupContext` for tenant-scoped authorization
 
-## Three-Layer Dependency Direction
+**Implementation Files:**
+- Authorization handler logic: `QuestBoard.Service/Authorization/AdminHandler.cs`
+- Authorization requirement classes: `QuestBoard.Service/Authorization/AdminRequirement.cs`
+- Dashboard auth filter: `QuestBoard.Service/Authorization/AdminDashboardAuthFilter.cs`
 
-**Architecture constraint (CLAUDE.md):**
-- Service → Domain → Repository (one-way strict dependency)
-- Service layer contains controllers, ViewModels, job handlers, middleware
-- Domain layer contains business logic, domain models, service interfaces
-- Repository layer contains EF Core entities, repositories, database context
+## Data Validation
 
-**No cross-layer violations detected:**
-- Service never directly uses Repository
-- Domain never references Service or Repository (except for abstract interfaces)
-- Repository never references Domain or Service business logic
+**Approach:**
+- Data annotations on model properties: `[Required]`, `[StringLength(100)]`, `[EmailAddress]`, `[Range(1, 20)]`
+- ASP.NET Core model binding validates automatically before controller action executes
+- Service methods receive pre-validated domain models (validation happens at boundary)
+- Database constraints enforced at Entity Framework level via entity mappings
+
+**Example from `Character.cs`:**
+```csharp
+[Required]
+[StringLength(100)]
+public string Name { get; set; } = string.Empty;
+
+[Range(1, 20)]
+public int Level { get; set; } = 1;
+```
+
+## Async/Await
+
+**Conventions:**
+- All I/O operations (database, HTTP, email) are async: `async Task`, `await`
+- Database operations use `DbSet.ToListAsync()`, `DbSet.FindAsync()`, `DbContext.SaveChangesAsync()`
+- HTTP requests in integration tests use `await client.GetAsync()` / `await client.PostAsync()`
+- Async methods always suffix with `Async`: never `GetQuests()`, always `GetQuestsAsync()`
+- CancellationToken piped through: `await repository.GetAllAsync(token)`
 
 ---
 
-*Convention analysis: 2026-07-01*
+*Convention analysis: 2026-07-02*

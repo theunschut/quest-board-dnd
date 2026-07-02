@@ -1,412 +1,362 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-07-01
+**Analysis Date:** 2026-07-02
 
 ## Test Framework
 
 **Runner:**
-- xunit.v3 Version 3.2.2
-- Config: `QuestBoard.IntegrationTests/xunit.runner.json`
-- Key settings:
-  - `"parallelizeAssembly": false` — tests run sequentially across assemblies
-  - `"parallelizeTestCollections": false` — test methods within a collection run sequentially
+- xUnit v3.2.2
+- Config: `QuestBoard.IntegrationTests/xunit.runner.json` (serial execution: `parallelizeAssembly: false`, `parallelizeTestCollections: false`)
 
 **Assertion Library:**
-- FluentAssertions Version 8.10.0
-- Syntax: `.Should().Be(expected)`, `.Should().BeTrue()`, `.Should().Contain()`, etc.
-- Global using: `global using FluentAssertions;` in both test project root files
+- FluentAssertions v8.10.0 — all assertions use `.Should()` syntax
 
-**Mocking:**
-- NSubstitute Version 5.3.0
-- Pattern: `Substitute.For<IInterface>()` creates mock, `.Returns()` sets return values, `.Received()` verifies calls
+**Mocking Framework:**
+- NSubstitute v5.3.0 — used for unit test mocks
+
+**Test Infrastructure:**
+- Microsoft.AspNetCore.Mvc.Testing v10.0.9 — WebApplicationFactory for integration tests
+- Microsoft.EntityFrameworkCore.InMemory v10.0.9 — in-memory database for integration tests
+- Microsoft.NET.Test.Sdk v18.7.0
 
 **Run Commands:**
 ```bash
 # Run all tests
 dotnet test
 
-# Run specific test project
-dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj
-dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj
+# Run all unit tests only
+dotnet test QuestBoard.UnitTests
 
-# Watch mode (requires additional tooling)
-# Standard dotnet test does not include watch — use IDE or:
-dotnet watch test
+# Run all integration tests only
+dotnet test QuestBoard.IntegrationTests
 
-# Coverage
-# Not configured in project files
+# Run specific test class
+dotnet test --filter "FullyQualifiedName~QuestServiceTests"
+
+# Run with detailed output
+dotnet test --verbosity detailed
+
+# Run tests from solution root
+dotnet test --filter "FullyQualifiedName~UnitTests"
 ```
 
 ## Test File Organization
 
-**Location — Unit Tests:**
-- `QuestBoard.UnitTests/` at same level as main projects
-- Organized by type: `Services/`, `Models/`, `Helpers/`, `ViewModels/`
-- Example structure:
-  - `QuestBoard.UnitTests/Services/EmailServiceTests.cs`
-  - `QuestBoard.UnitTests/Services/QuestServiceTests.cs`
-  - `QuestBoard.UnitTests/Helpers/DateHelperTests.cs`
-
-**Location — Integration Tests:**
-- `QuestBoard.IntegrationTests/` at same level as main projects
-- Organized by target layer: `Controllers/`, `Tests/`, `Mobile/`, `Helpers/`
-- Example structure:
-  - `QuestBoard.IntegrationTests/Controllers/QuestControllerIntegrationTests_Comprehensive.cs`
-  - `QuestBoard.IntegrationTests/Controllers/HomeControllerIntegrationTests.cs`
-  - `QuestBoard.IntegrationTests/Mobile/MobileDetectionMiddlewareTests.cs`
+**Location:**
+- Unit tests: `QuestBoard.UnitTests/` — mirrors Domain and Service structure
+- Integration tests: `QuestBoard.IntegrationTests/` — organized by controller type and feature
+- Test data helpers: `QuestBoard.IntegrationTests/Helpers/` — shared test utilities
 
 **Naming:**
-- Unit tests: `[TargetClass]Tests.cs`
-- Integration tests: `[ControllerOrTarget]IntegrationTests.cs` or with suffix for large suites: `[Target]IntegrationTests_[Descriptor].cs`
-- Test methods: `[Method]_[Condition]_[Expected]`
-  - Example: `FinalizeQuestAsync_WhenQuestReFetchReturnsNull_SendsNoEmails()`
-  - Example: `SendAsync_WhenEmailNotConfigured_ReturnsWithoutException()`
+- Unit tests: `{ClassName}Tests.cs` (e.g., `EmailServiceTests.cs`)
+- Integration tests: `{ControllerName}IntegrationTests.cs` (e.g., `QuestControllerIntegrationTests_Comprehensive.cs`)
+- Comprehensive test suites use `_Comprehensive` suffix when multiple test classes for one controller
 
 **Structure:**
 ```
 QuestBoard.UnitTests/
-├── GlobalUsings.cs          (shared imports)
-├── Services/
-│   ├── EmailServiceTests.cs
-│   ├── QuestServiceTests.cs
-│   └── ShopServiceTests.cs
-├── Models/
-│   └── QuestModelTests.cs
-├── Helpers/
-│   └── DateHelperTests.cs
-└── ViewModels/
-    └── CreateQuestViewModelTests.cs
+├── Authorization/        # Auth filter and handler tests
+├── Extensions/           # Extension method tests
+├── Helpers/              # Test helper tests
+├── Models/               # Domain model tests
+├── Services/             # Service unit tests
+└── ViewModels/           # ViewModel tests
 
 QuestBoard.IntegrationTests/
-├── GlobalUsings.cs          (shared imports)
-├── WebApplicationFactoryBase.cs     (xUnit test host setup)
-├── Controllers/
-│   ├── HomeControllerIntegrationTests.cs
-│   ├── QuestControllerIntegrationTests_Comprehensive.cs
-│   └── ShopControllerIntegrationTests.cs
-├── Helpers/
-│   ├── TestDatabase.cs              (in-memory EF Core setup)
-│   ├── TestDataHelper.cs            (seed data factories)
-│   ├── AuthenticationHelper.cs      (test auth setup)
-│   └── TestAuthSelectorMiddleware.cs
-└── Mobile/
-    └── MobileDetectionMiddlewareTests.cs
+├── Controllers/          # HTTP endpoint tests
+├── Helpers/              # Test data and authentication helpers
+├── Mobile/               # Mobile-specific endpoint tests
+├── Security/             # Security/authorization tests
+└── Tests/                # Other integration tests
 ```
 
 ## Test Structure
 
 **Suite Organization:**
+- Test classes use `IClassFixture<WebApplicationFactoryBase>` for integration tests
+- Constructor parameter receives fixture: `public class TestClass(WebApplicationFactoryBase factory)`
+- Local field for HttpClient: `private readonly HttpClient _client = factory.CreateNonRedirectingClient();`
+- Unit tests create mocks inline or in setup methods
+
+**Example from `EmailServiceTests.cs`:**
 ```csharp
-// Unit test example (QuestBoard.UnitTests/Services/QuestServiceTests.cs)
-public class QuestServiceTests
+public class EmailServiceTests
 {
-    // Fields: dependencies as mocks
-    private readonly IQuestRepository _repository;
-    private readonly IMapper _mapper;
-    private readonly QuestService _sut;  // System Under Test
-
-    // Constructor: setup all mocks
-    public QuestServiceTests()
+    private static EmailService Create(EmailSettings settings)
     {
-        _repository = Substitute.For<IQuestRepository>();
-        _mapper = Substitute.For<IMapper>();
-        _sut = new QuestService(_repository, _mapper);
-    }
-
-    // Helper: create test data
-    private static Quest MakeQuest(int id, IList<PlayerSignup>? signups = null) =>
-        new() { Id = id, Title = "Test Quest" };
-
-    // Test methods with [Fact] attribute
-    [Fact]
-    public async Task FinalizeQuestAsync_WhenQuestReFetchReturnsNull_SendsNoEmails()
-    {
-        // Arrange
-        _repository.GetQuestWithDetailsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((Quest?)null);
-
-        // Act
-        await _sut.FinalizeQuestAsync(1, DateTime.UtcNow, [42], TestContext.Current.CancellationToken);
-
-        // Assert
-        _dispatcher.DidNotReceive().EnqueueFinalizedEmail(...);
-    }
-}
-```
-
-**Integration Test Example:**
-```csharp
-// Integration test example (QuestBoard.IntegrationTests/Controllers/HomeControllerIntegrationTests.cs)
-public class HomeControllerIntegrationTests : IClassFixture<WebApplicationFactoryBase>
-{
-    private readonly HttpClient _client;
-    private readonly WebApplicationFactoryBase _factory;
-
-    public HomeControllerIntegrationTests(WebApplicationFactoryBase factory)
-    {
-        _factory = factory;
-        _client = factory.CreateClient();
+        var logger = Substitute.For<ILogger<EmailService>>();
+        return new EmailService(Options.Create(settings), logger);
     }
 
     [Fact]
-    public async Task Index_ShouldReturnSuccessStatusCode()
+    public void Constructor_WithValidOptions_DoesNotThrow()
     {
-        // Act
-        var response = await _client.GetAsync("/", TestContext.Current.CancellationToken);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var act = () => Create(new EmailSettings());
+        act.Should().NotThrow();
     }
 }
 ```
 
 **Patterns:**
+- Arrange-Act-Assert (AAA) structure: explicit comments delineate sections
+- One logical assertion per test (multiple related FluentAssertions chained with `.And` are acceptable)
+- Test names describe condition and expected outcome: `SendAsync_WhenFromEmailIsEmpty_DoesNotAttemptSmtpConnection()`
+- `[Fact]` for single test case, `[Theory]` with `[InlineData]` for parameterized tests
 
-1. **Arrange-Act-Assert (AAA):**
-   - Separate sections with comments: `// Arrange`, `// Act`, `// Assert`
-   - Setup phase prepares mocks and test data
-   - Action invokes the target method
-   - Assertion verifies results using FluentAssertions
-
-2. **Test Data Factories:**
-   - Private helper methods: `MakeQuest()`, `MakeSignup()`
-   - Static methods return new test instances with sensible defaults
-   - Accept parameters to customize for specific test case
-
-3. **Mock Verification:**
-   - `.Received(1).Method(...)` asserts a method was called exactly once
-   - `.DidNotReceive().Method(...)` asserts a method was not called
-   - `Arg.Any<T>()` matches any argument of type T
-   - `Arg.Is<T>(predicate)` matches with custom predicate
-
-4. **Async Pattern:**
-   - All async methods use `async Task` test signature
-   - Final parameter always: `TestContext.Current.CancellationToken`
-   - Async assertions: `.Should().NotThrowAsync()`
-
-## Mocking
-
-**Framework:** NSubstitute
-
-**Patterns:**
-```csharp
-// Create mock
-var repository = Substitute.For<IQuestRepository>();
-
-// Setup return values
-repository.GetByIdAsync(1, Arg.Any<CancellationToken>())
-    .Returns(new Quest { Id = 1 });
-
-// Setup to return tuple
-shopService.GetPagedPublishedItemsAsync(
-    Arg.Any<ItemType?>(),
-    Arg.Any<IList<ItemRarity>?>(),
-    Arg.Any<string?>(),
-    Arg.Any<string?>(),
-    Arg.Any<int>(),
-    Arg.Any<int>(),
-    Arg.Any<CancellationToken>())
-    .Returns((expectedItems, 42));
-
-// Verify calls
-await repository.Received(1).GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>());
-
-// Verify with argument matching
-await shopService.Received(1).GetPagedPublishedItemsAsync(
-    ItemType.Equipment,
-    Arg.Is<IList<ItemRarity>>(r => r.Contains(ItemRarity.Rare)),
-    "price_asc",
-    "sword",
-    2,
-    12,
-    Arg.Any<CancellationToken>());
-```
-
-**What to Mock:**
-- Repository interfaces: `IQuestRepository`, `IPlayerSignupRepository`, `IMapper`
-- External services: `IQuestEmailDispatcher`, `IEmailService`
-- Logging: `ILogger<T>` via `Substitute.For<ILogger<T>>()`
-
-**What NOT to Mock:**
-- Domain models (create real instances)
-- View models (create real instances)
-- Database context in integration tests (use `WebApplicationFactoryBase`)
-
-## Fixtures and Factories
-
-**Test Data Factories:**
-- **Unit tests**: Private static helper methods in test class
-  ```csharp
-  private static Quest MakeQuest(int id, IList<PlayerSignup>? signups = null) =>
-      new() { Id = id, Title = "Test Quest", PlayerSignups = signups ?? [] };
-  ```
-- **Integration tests**: Static helper class `TestDataHelper`
-  ```csharp
-  public static async Task<QuestEntity> CreateTestQuestAsync(
-      IServiceProvider services,
-      int dungeonMasterId,
-      string title = "Test Quest",
-      string description = "Test Description",
-      int challengeRating = 5) { ... }
-  ```
-
-**Test Infrastructure:**
-
-1. **WebApplicationFactoryBase** (`QuestBoard.IntegrationTests/WebApplicationFactoryBase.cs`):
-   - Inherits from `WebApplicationFactory<Program>`
-   - Configures in-memory EF Core database for testing
-   - Replaces Hangfire with no-op stub (`NoOpBackgroundJobClient`)
-   - Replaces anti-forgery with test decorator that skips validation
-   - Adds test authentication scheme ("Test")
-   - Usage: `public class TestClass : IClassFixture<WebApplicationFactoryBase>`
-
-2. **TestDatabase** (`QuestBoard.IntegrationTests/Helpers/TestDatabase.cs`):
-   - Creates in-memory DbContext with unique name per test run
-   - `Reset()` method clears and recreates the database between tests
-   - Accessed via `factory.Services` in test helpers
-
-3. **TestDataHelper** (`QuestBoard.IntegrationTests/Helpers/TestDataHelper.cs`):
-   - Static methods to create test entities:
-     - `CreateTestQuestAsync()` — create a Quest with defaults
-     - `CreatePlayerSignupAsync()` — create a PlayerSignup
-     - `CreateShopItemAsync()` — create a ShopItem
-     - `CreateProposedDateAsync()` — create a ProposedDate
-   - `ClearDatabaseAsync()` — wipes all data between tests
-
-4. **AuthenticationHelper** (`QuestBoard.IntegrationTests/Helpers/AuthenticationHelper.cs`):
-   - `CreateTestUserAsync()` — creates a user in the identity system
-   - `CreateAuthenticatedClientWithUserAsync()` — returns HttpClient with auth cookies
-   - `CreateAuthenticatedDMClientAsync()` — creates a DM user and authenticated client
-
-**Location:**
-- All test helpers in `QuestBoard.IntegrationTests/Helpers/`
-- Shared between all integration test classes via static methods
-
-## Coverage
-
-**Requirements:** Not detected in build configuration
-
-**View Coverage:**
-- No coverage report generation configured
-- Integration tests include HTML content assertions (`content.Should().Contain("text")`) to verify UI rendering
-
-## Test Types
-
-**Unit Tests:**
-- **Scope:** Individual service methods in isolation
-- **Location:** `QuestBoard.UnitTests/Services/`, `QuestBoard.UnitTests/Models/`
-- **Dependencies:** All mocked via NSubstitute
-- **Speed:** Fast (no I/O)
-- **Example:** `EmailServiceTests.SendAsync_WhenFromEmailIsEmpty_DoesNotAttemptSmtpConnection()` — verifies SMTP is not called with empty config
-
-**Integration Tests:**
-- **Scope:** Controller actions with real EF Core database
-- **Location:** `QuestBoard.IntegrationTests/Controllers/`
-- **Dependencies:** Real database (in-memory), real middleware
-- **Speed:** Slower than unit tests
-- **Example:** `QuestControllerIntegrationTests_Comprehensive.Index_Quests_Authenticated_ReturnsOk()` — verifies full MVC pipeline
-- **Database:** Fresh in-memory instance per test class (via `IClassFixture<WebApplicationFactoryBase>`)
-
-**Mobile/Rendering Tests:**
-- **Scope:** CSS/layout detection and view selection
-- **Location:** `QuestBoard.IntegrationTests/Mobile/`
-- **Examples:**
-  - `MobileDetectionMiddlewareTests.cs` — user-agent detection
-  - `MobileLayoutTests.cs` — layout selection
-  - `MobileViewsTests.cs` — mobile-specific cshtml rendering
-
-**E2E Tests:**
-- **Status:** Not used — integration tests serve as functional tests
-
-## Common Patterns
-
-**Async Testing:**
+**Async Test Pattern:**
 ```csharp
 [Fact]
 public async Task SendAsync_WhenEmailNotConfigured_ReturnsWithoutException()
 {
     // Arrange
-    var service = Create(new EmailSettings { FromEmail = "" });
+    var service = Create(new EmailSettings { SmtpUsername = "", FromEmail = "" });
 
     // Act
-    var act = async () => await service.SendAsync("to@example.com", "Subject", "<h1>Body</h1>");
+    var act = async () => await service.SendAsync("to@example.com", "Test Subject", "<h1>Hello</h1>");
 
     // Assert
     await act.Should().NotThrowAsync();
 }
 ```
 
+## Mocking
+
+**Framework:** NSubstitute for unit tests
+
+**Patterns:**
+```csharp
+// Create mock
+var logger = Substitute.For<ILogger<EmailService>>();
+
+// Configure behavior
+_dependency.SomeMethod(input).Returns("mocked result");
+
+// Verify calls
+_dependency.Received(1).SomeMethod(input);
+```
+
+**What to Mock:**
+- External I/O: ILogger, IEmailService, IHttpClientFactory
+- Database access: IRepository interfaces
+- Configuration: IOptions<T>
+- Identity/Auth: IUserService, IIdentityService
+
+**What NOT to Mock:**
+- Domain models (use real instances)
+- Enums (use real values)
+- Value objects
+- Core application services used by the system under test — use real implementations for integration
+
+## Fixtures and Factories
+
+**Test Data:**
+- Helper class: `QuestBoard.IntegrationTests/Helpers/TestDataHelper.cs`
+- Creates test users, quests, and other entities for test setup
+- Methods: `CreateTestQuestAsync()`, `CreateTestUserAsync()`, `ClearDatabaseAsync()`
+
+**Example from `TestDataHelper.cs`:**
+```csharp
+public static async Task<Quest> CreateTestQuestAsync(
+    IServiceProvider services,
+    int dungeonMasterId,
+    string title = "Test Quest",
+    string description = "Test Description")
+{
+    // Setup scope, get service, create and save entity
+}
+```
+
+**Authentication Helpers:**
+- `AuthenticationHelper.CreateTestUserAsync()` — creates user with unique email/username
+- `AuthenticationHelper.CreateAuthenticatedClientAsync()` — creates HttpClient with auth header
+- `AuthenticationHelper.CreateAuthenticatedClientWithUserAsync()` — returns both client and user entity
+- `AuthenticationHelper.CreateAuthenticatedDMClientAsync()` — creates DungeonMaster-role client
+- `AuthenticationHelper.CreateAuthenticatedAdminClientAsync()` — creates Admin-role client
+- `AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync()` — creates SuperAdmin-role client
+
+**Location:**
+- Helpers: `QuestBoard.IntegrationTests/Helpers/`
+- Used by integration tests to set up test database state
+
+## Coverage
+
+**Requirements:** No enforced coverage target detected
+
+**View Coverage:**
+```bash
+dotnet test /p:CollectCoverage=true /p:CoverageFormat=opencover
+```
+
+## Test Types
+
+**Unit Tests (~20 tests across 4 suites):**
+- Scope: Individual services, repositories, models, authorization handlers
+- Approach: Mocks all external dependencies
+- Location: `QuestBoard.UnitTests/Services/`, `QuestBoard.UnitTests/Authorization/`, `QuestBoard.UnitTests/Models/`
+- Examples:
+  - `EmailServiceTests.cs` — constructor validation, email sending guards, SMTP deduplication
+  - `AdminDashboardAuthFilterTests.cs` — Hangfire dashboard authorization (SuperAdmin-only)
+  - `QuestModelTests.cs` — domain model initialization and property assignment
+
+**Integration Tests (~35 tests across 7+ suites):**
+- Scope: Full HTTP request/response cycle through to in-memory database
+- Approach: Real dependencies; WebApplicationFactory; in-memory EF Core database
+- Location: `QuestBoard.IntegrationTests/Controllers/`
+- Isolation: Each test gets unique in-memory database instance
+- Cleanup: `TestDataHelper.ClearDatabaseAsync()` or `factory.ResetDatabase()` between tests
+- Examples:
+  - Account/auth flows: login, registration (404), profile access
+  - Quest CRUD: create, read, finalize, voter access
+  - Group management: multi-tenancy routing, group picker
+  - Platform area: SuperAdmin-only endpoints
+  - Authorization regressions: quest visibility by role
+  - Mobile endpoints: separate test class for mobile-specific views
+
+**E2E Tests:**
+- Not implemented — integration tests serve as functional verification
+- Docker deployment tested manually via `docker-compose up`
+
+## Common Patterns
+
+**HTTP Status Code Assertions:**
+```csharp
+response.StatusCode.Should().Be(HttpStatusCode.OK);
+response.StatusCode.Should().BeOneOf(
+    HttpStatusCode.Redirect,
+    HttpStatusCode.Found,
+    HttpStatusCode.Unauthorized);
+```
+
+**Content Presence:**
+```csharp
+var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+content.Should().Contain("Expected Text");
+```
+
+**Async Testing:**
+```csharp
+[Fact]
+public async Task MethodAsync_ShouldBehavior()
+{
+    // Arrange
+    var input = "test";
+
+    // Act
+    var result = await sut.MethodAsync(input);
+
+    // Assert
+    result.Should().Be("expected");
+}
+
+// Or with exception testing:
+var act = async () => await service.SendAsync("to@example.com", "Subject", "<h1>Body</h1>");
+await act.Should().NotThrowAsync();
+```
+
 **Error Testing:**
 ```csharp
 [Fact]
-public void Constructor_WithValidOptions_DoesNotThrow()
+public async Task SendAsync_WhenFromEmailIsEmpty_DoesNotAttemptSmtpConnection()
 {
-    var act = () => Create(new EmailSettings());
-    act.Should().NotThrow();
-}
+    // Guard against real SMTP connection via non-routable address (RFC 5737)
+    var service = Create(new EmailSettings
+    {
+        SmtpServer   = "192.0.2.1",  // TEST-NET-1
+        SmtpPort     = 587,
+        FromEmail    = "",            // Empty guard
+    });
 
-// For async
-public async Task Method_WithInvalidState_ThrowsException()
-{
-    // Setup invalid condition
-    var act = async () => await _sut.MethodAsync(...);
-    await act.Should().ThrowAsync<InvalidOperationException>();
+    var act = async () => await service.SendAsync("to@example.com", "Subject", "<h1>Body</h1>");
+    await act.Should().NotThrowAsync(
+        "because an empty FromEmail must prevent any SMTP connection attempt");
 }
 ```
 
-**Requirement-Linked Tests:**
-- Comments reference requirements: `// D-05: /quests is the migrated quest board route`
-- Assertions include requirement context: `"EMAIL-02 requires EmailService to inject IOptions<EmailSettings>"`
-- Example from `EmailServiceTests.cs`:
-  ```csharp
-  [Fact]
-  public void EmailService_ConstructorUsesIOptionsEmailSettings()
-  {
-      var constructor = typeof(EmailService).GetConstructors().Single();
-      var firstParam = constructor.GetParameters()[0];
-      firstParam.ParameterType.Should().Be(typeof(IOptions<EmailSettings>),
-          "EMAIL-02 requires EmailService to inject IOptions<EmailSettings>");
-  }
-  ```
-
-**Database State Reset:**
-- Between test classes: `WebApplicationFactoryBase` creates new in-memory database
-- Within a test: `await TestDataHelper.ClearDatabaseAsync(factory.Services)` manually clears tables
-- Example: 
-  ```csharp
-  [Fact]
-  public async Task Index_WithQuests_ShouldNotDisplayQuestList()
-  {
-      // Arrange — clear first
-      await TestDataHelper.ClearDatabaseAsync(_factory.Services);
-      var dm = await AuthenticationHelper.CreateTestUserAsync(...);
-  }
-  ```
-
-**HTTP Testing:**
+**Theory/Parameterized Tests:**
 ```csharp
-// Create non-redirecting client for status code verification
-var client = _factory.CreateNonRedirectingClient();
-var response = await client.GetAsync("/path", TestContext.Current.CancellationToken);
-response.StatusCode.Should().Be(HttpStatusCode.OK);
+[Theory]
+[InlineData(1)]
+[InlineData(7)]
+[InlineData(30)]
+public void DateTime_AddDays_ShouldCalculateFutureDates(int daysToAdd)
+{
+    // Arrange
+    var startDate = DateTime.Now.Date;
 
-// Read response content
-var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-content.Should().Contain("Expected Text");
+    // Act
+    var futureDate = startDate.AddDays(daysToAdd);
 
-// Authenticated requests
-var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory, "email");
-var response = await client.GetAsync("/protected", TestContext.Current.CancellationToken);
+    // Assert
+    futureDate.Should().BeAfter(startDate);
+    (futureDate - startDate).Days.Should().Be(daysToAdd);
+}
 ```
 
-## Test Parallelization
+## Test Infrastructure
 
-**Configuration:** `xunit.runner.json` disables parallel execution
-- `"parallelizeAssembly": false` — assemblies run sequentially
-- `"parallelizeTestCollections": false` — test collections run sequentially
+**WebApplicationFactoryBase:**
+- Location: `QuestBoard.IntegrationTests/WebApplicationFactoryBase.cs`
+- Inherits from `WebApplicationFactory<Program>`
+- Provides:
+  - Isolated in-memory database per test instance
+  - Test authentication scheme (`"Test"` scheme in TestAuthHandler)
+  - Antiforgery decorator (validates requests; always succeeds for tests)
+  - Hangfire stub (no-op IBackgroundJobClient for Testing environment)
+  - NoOp background job client that returns fake job IDs
 
-**Reason:** Shared database state and Hangfire/middleware mocking require sequential execution
+**Test Database:**
+- In-memory EF Core database with unique name per factory: `QuestBoardTest_{Guid}`
+- Shared across all DbContext instances within a test run
+- Reset via `factory.ResetDatabase()` using `TestDatabase.Reset()`
+
+**Test Authentication:**
+- Custom authentication scheme: `TestAuthHandler`
+- Test clients encode auth header: `"Test {userId}:{userName}:{email}:{role1,role2,...}"`
+- Supports role claims for authorization policy testing
+- Falls back to Identity.Application scheme if no Test header (allows cookie-based auth)
+
+**Parallelization:**
+- xUnit runner configured for serial execution: `parallelizeAssembly: false`, `parallelizeTestCollections: false`
+- Necessary because all tests share in-memory database via ServiceProvider instance
+- Concurrent tests would corrupt shared database state
+
+## Test Isolation
+
+**Strategy:**
+- Each `WebApplicationFactoryBase` instance creates a new in-memory database
+- Tests within a class share the same factory instance (and database)
+- Clean state between tests using `TestDataHelper.ClearDatabaseAsync()` or factory-level reset
+- Unique user credentials generated per test (GUID suffix) to avoid conflicts
+
+**Cleanup Pattern:**
+```csharp
+[Fact]
+public async Task SomeTest()
+{
+    // Arrange — clear database before test
+    await TestDataHelper.ClearDatabaseAsync(factory.Services);
+    var user = await AuthenticationHelper.CreateTestUserAsync(factory.Services, "user", "user@example.com");
+
+    // Act & Assert
+}
+```
+
+## Global Usings
+
+**Unit Tests** (`GlobalUsings.cs`):
+```csharp
+global using FluentAssertions;
+```
+
+**Integration Tests** (`GlobalUsings.cs`):
+```csharp
+global using QuestBoard.Repository.Entities;
+global using FluentAssertions;
+global using Microsoft.AspNetCore.Mvc.Testing;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.DependencyInjection;
+```
 
 ---
 
-*Testing analysis: 2026-07-01*
+*Testing analysis: 2026-07-02*
