@@ -7,12 +7,15 @@ namespace QuestBoard.Domain.Services;
 public class ShopSeedService(IShopService shopService) : IShopSeedService
 {
     /// <inheritdoc/>
-    public async Task SeedBasicEquipmentAsync(int createdByUserId)
+    public async Task SeedBasicEquipmentAsync(int createdByUserId, int groupId)
     {
+        // Seeding runs outside a request scope, so the ActiveGroupContext-based query filter is
+        // bypassed and this returns published items across every group — filter to this group
+        // explicitly rather than relying on the (absent) ambient group scoping.
         var existingItems = await shopService.GetPublishedItemsAsync();
-        if (existingItems.Any())
+        if (existingItems.Any(i => i.GroupId == groupId))
         {
-            // Already seeded
+            // Already seeded for this group
             return;
         }
 
@@ -21,6 +24,7 @@ public class ShopSeedService(IShopService shopService) : IShopSeedService
         foreach (var item in basicItems)
         {
             item.CreatedByDmId = createdByUserId;
+            item.GroupId = groupId;
             item.Status = item.Rarity <= ItemRarity.Uncommon ? ItemStatus.Published : ItemStatus.Draft;
             await shopService.AddAsync(item);
         }

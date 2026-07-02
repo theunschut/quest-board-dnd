@@ -370,13 +370,18 @@ static async Task SeedShopDataAsync(WebApplication app)
     try
     {
         var shopSeedService = scope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IShopSeedService>();
+        var groupService = scope.ServiceProvider.GetRequiredService<IGroupService>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
 
         // Find first admin/DM user to attribute seed data to
         var adminUser = await userManager.Users.FirstOrDefaultAsync();
         if (adminUser != null)
         {
-            await shopSeedService.SeedBasicEquipmentAsync(adminUser.Id);
+            var groups = await groupService.GetAllAsync();
+            foreach (var group in groups)
+            {
+                await shopSeedService.SeedBasicEquipmentAsync(adminUser.Id, group.Id);
+            }
         }
     }
     catch (Exception ex)
