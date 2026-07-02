@@ -190,6 +190,10 @@ public class QuestBoardContext(
             .HasIndex(r => new { r.QuestId, r.PlayerId })
             .IsUnique();
 
+        // Speeds up session-reminder / finalized-quest sweep queries that filter on both columns together
+        modelBuilder.Entity<QuestEntity>()
+            .HasIndex(q => new { q.IsFinalized, q.FinalizedDate });
+
         // Group entity relationships
 
         // Groups.Name must be unique across the tenant
