@@ -1,4 +1,6 @@
 using AutoMapper;
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Service.ViewModels.DungeonMasterViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -11,7 +13,8 @@ public class DungeonMasterController(
     IDungeonMasterProfileService dmProfileService,
     IUserService userService,
     IQuestService questService,
-    IMapper mapper) : Controller
+    IMapper mapper,
+    IActiveGroupContext activeGroupContext) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Profile(int id, CancellationToken token = default)
@@ -23,13 +26,19 @@ public class DungeonMasterController(
         var quests = await questService.GetQuestsByDungeonMasterAsync(id, token);
         var currentUser = await userService.GetUserAsync(User);
 
+        GroupRole? role = null;
+        if (currentUser != null)
+        {
+            role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        }
+
         var viewModel = new DMProfileViewModel
         {
             UserId = id,
             Name = user.Name ?? string.Empty,
             Bio = profile?.Bio,
             HasProfilePicture = profile?.ProfilePicture?.Length > 0,
-            CanEdit = currentUser != null && (currentUser.Equals(user) || User.IsInRole("Admin")),
+            CanEdit = currentUser != null && (currentUser.Equals(user) || role == GroupRole.Admin),
             Quests = mapper.Map<List<QuestSummaryViewModel>>(quests)
         };
 
@@ -49,7 +58,8 @@ public class DungeonMasterController(
         var targetUser = id.HasValue ? await userService.GetByIdAsync(id.Value, token) : currentUser;
         if (targetUser == null) return NotFound();
 
-        if (!currentUser.Equals(targetUser) && !User.IsInRole("Admin"))
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(targetUser) && role != GroupRole.Admin)
         {
             return Forbid();
         }
@@ -79,7 +89,8 @@ public class DungeonMasterController(
         var targetUser = id.HasValue ? await userService.GetByIdAsync(id.Value, token) : currentUser;
         if (targetUser == null) return NotFound();
 
-        if (!currentUser.Equals(targetUser) && !User.IsInRole("Admin"))
+        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        if (!currentUser.Equals(targetUser) && role != GroupRole.Admin)
         {
             return Forbid();
         }
