@@ -3,10 +3,11 @@
 ## Milestones
 
 - ✅ **v1.0 Architecture & Features** — Phases 1–7, 9 (shipped prior to 2026-06)
-- 🚧 **v2.0 Omphalos Integration** — Phases 10–11 (in progress — branch: `milestone/3-omphalos-integration`)
+- ✗ **v2.0 Omphalos Integration (abandoned attempt)** — Phases 10–11 (superseded — see redo below; branch `milestone/3-omphalos-integration` diverged too far from `main` to merge)
 - ✅ **v3.0 Mobile Version** — Phases 12–19 (shipped 2026-06-25)
 - ✅ **v4.0 Email Notifications** — Phases 20–25 (shipped 2026-06-28)
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
+- 🚧 **v2.0 Omphalos Integration (redo)** — Phases 35+ (in progress — branch: `milestone/v2-omphalos-integration`)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it is not assigned to any active milestone._
 
@@ -30,12 +31,12 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 </details>
 
 <details>
-<summary>🚧 v2.0 Omphalos Integration (Phases 10–11) — IN PROGRESS (branch: milestone/3-omphalos-integration)</summary>
+<summary>✗ v2.0 Omphalos Integration (Phases 10–11) — SUPERSEDED, abandoned attempt</summary>
 
-**Overview:** Integrates the Omphalos SSO system for guest navigation token generation. Work is on a separate branch and will be merged after v4.0 lands on main.
+**Overview:** First attempt at Omphalos SSO integration, on branch `milestone/3-omphalos-integration`. Forked before v3.0/v4.0/v5.0 landed on `main`; by the time work resumed, the branch's code had diverged too far to merge. The milestone is being redone from scratch — see "v2.0 Omphalos Integration (redo)" below, Phases 35+. The old branch's planning docs (research, requirements, HMAC token-format design) were reviewed as historical reference during the redo's research phase but the phases below were never completed against `main`.
 
-- [ ] Phase 10: Omphalos Integration (details on branch `milestone/3-omphalos-integration`)
-- [ ] Phase 11: Navigation Token Generation (details on branch `milestone/3-omphalos-integration`)
+- [ ] ~~Phase 10: Admin Settings~~ (abandoned — details on branch `milestone/3-omphalos-integration`)
+- [ ] ~~Phase 11: Navigation Token Generation~~ (abandoned — details on branch `milestone/3-omphalos-integration`)
 
 </details>
 
@@ -102,8 +103,8 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 | 7. DM Profile Page | v1.0 | 2/2 | Complete | 2026-06-17 |
 | 8. Profile Picture Avatar Crop | v1.0 | 0/? | Deferred | — |
 | 9. Shop Pagination | v1.0 | 2/2 | Complete | — |
-| 10. Omphalos Integration | v2.0 | — | In progress (other branch) | — |
-| 11. Navigation Token Generation | v2.0 | — | In progress (other branch) | — |
+| 10. Admin Settings | v2.0 (abandoned attempt) | — | Superseded — see Phase 35+ | — |
+| 11. Navigation Token Generation | v2.0 (abandoned attempt) | — | Superseded — see Phase 35+ | — |
 | 12. Mobile Infrastructure | v3.0 | 3/3 | Complete | 2026-06-24 |
 | 13. Core Player Views | v3.0 | 4/4 | Complete | 2026-06-24 |
 | 14. Calendar | v3.0 | 3/3 | Complete | 2026-06-24 |

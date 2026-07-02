@@ -9,16 +9,23 @@
 
 ---
 
-## Next Milestone Goals
+## Current Milestone: v2.0 Omphalos Integration
 
-No milestone started yet. Candidates carried forward from v5.0 (see Active requirements below):
+**Goal:** DMs can open Omphalos session notes for any quest with one click — navigated automatically into the correct session, authenticated via a short-lived signed token.
+
+**Target features:**
+- Admin Settings page (Platform/SuperAdmin area, key-value store) for Omphalos URL and shared secret — instance-wide, not per-group
+- "Open DM Tool" link in the DM navbar dropdown, and an "Open Session Notes" button on quest pages
+- Omphalos: new SSO endpoint that validates Quest Board tokens, auto-provisions users, and finds/creates the matching quest session
+- Foundation laid for bidirectional API calls (Omphalos → Quest Board) in a future milestone — not built now, just not architecturally blocked
+
+This redoes the abandoned `milestone/3-omphalos-integration` branch (Phases 10–11 in ROADMAP.md), whose code diverged too far from `main` to merge after v3.0–v5.0 landed. Its planning docs (research, 30 scoped requirements, HMAC token-format design) are being re-verified from scratch rather than reused directly, since a lot has changed (multi-tenancy did not exist when that research was written).
+
+Other candidates carried forward from v5.0, deferred until after this milestone:
 
 - `GroupSessionMiddleware` POST-body data-loss risk on session expiry mid-submission (code review flagged, not yet fixed)
 - Digest batching for session reminders (EMAIL-04/REMIND-02)
 - Profile picture crop/avatar selection (issue #78)
-- v2.0 Omphalos Integration (Phases 10–11) remains in progress on a separate branch, independent of v5.0
-
-Run `/gsd:new-milestone` to scope the next milestone.
 
 ---
 
@@ -69,6 +76,10 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 ### Active
 
+- [ ] Admin (SuperAdmin) can configure Omphalos URL and shared secret from a Platform Settings page, instance-wide
+- [ ] DM/Admin can open Omphalos from a navbar link and from a quest page, landing in the correct session with no manual login
+- [ ] Omphalos validates incoming Quest Board tokens, auto-provisions the user, and finds/creates the linked quest session
+- [ ] Foundation laid for a future bidirectional (Omphalos → Quest Board) API, without building it this milestone
 - [ ] Digest batching for session reminders — single combined email when player has multiple same-day quests (EMAIL-04/REMIND-02 — deferred; same-day quests have never occurred in one year)
 - [ ] Profile picture crop/avatar selection for guild member page (issue #78) — paused from v2.x; SkiaSharp native lib availability needs verification on deployment host
 - [ ] `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed
@@ -102,6 +113,14 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - `FinalizedDate` stored as server local time (CET/CEST) — reminder job uses `DateTime.Today.AddDays(1)` which is correct for LXC host timezone but should be reviewed if deployment timezone changes
 - Resend API stats only paginate backwards from now; historical data beyond 30 days not surfaced
 
+**Omphalos (companion app, v2.0 milestone):**
+- Separate repo at `C:\Repos\omphalos`, GitHub-hosted, owned/maintained by someone else — the Quest Board author is a collaborator with write access, not the primary maintainer
+- Stack: .NET 10 Minimal API (route-group-per-feature pattern, no MVC controllers) + PostgreSQL + EF Core; React SPA frontend
+- Single-tenant, flat data model — no org/tenant/workspace concept of its own; every entity scopes only to `UserId`. This is why Omphalos integration settings are instance-wide on the Quest Board side rather than per-group
+- Auth: bcrypt password hashing, JWT issued via a private `AuthService.GenerateToken(User)` method (not yet on `IAuthService`), delivered as an `omphalos_token` httpOnly cookie (`SameSite=Lax`; a `Secure=true` TODO is still uncommented in `AuthEndpoints.cs`)
+- `GameSession` entity: client-generated string `Id`, `Title`, `SessionLog` (jsonb), plus `UserId` FK, timestamps, and nav collections to `Character`/`Location`/`Encounter` — no existing link back to a Quest Board quest
+- CORS plumbing already exists (`AllowedOrigins` config array in `appsettings.json`), just empty/inert by default — adding Quest Board's origin is a config change, not new code
+
 ## Constraints
 
 - **Compatibility:** No user-facing functionality may be removed or broken
@@ -109,6 +128,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - **Deployment:** Must remain deployable via `dotnet run` on LXC Linux host; no additional setup steps
 - **Database:** All schema changes require EF Core migrations; auto-applied on startup
 - **Email:** 100 emails/day, 3 000/month Resend relay limit; 17 members — batch-first design
+- **Cross-repo coordination:** Omphalos-side phases modify a separate repo (`C:\Repos\omphalos`) owned by another maintainer — changes there go through normal PR review on that repo, not this one's branch protection
 
 ## Key Decisions
 
@@ -139,6 +159,9 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 | `RequireActiveGroupId()` guard built as an opt-in seam (Phase 34.2 plan scope), not force-wired into controllers | Avoids widening one plan's blast radius across every `ActiveGroupId` call site in one pass | ✓ Wired into `QuestController.SendReminder` same phase — code review (WR-01) and verification both flagged the guard's own target bug (`?? 1` fallback) as still live; user chose "fix now" over deferring |
 | Ownership checks standardized on `User.Id` comparison, not `User.Name` | `User.Name` has no uniqueness constraint (`AccountController.Edit` lets any user rename freely); a name-based DM-ownership check let one user impersonate another by colliding display names | ✓ Fixed — Phase 34.3; code review (CR-01) caught it same phase, before shipping |
 | SuperAdmin short-circuit for `GetEffectiveGroupRoleAsync`/`RequireActiveGroupId()` must be applied per call site, not just once | 34.3-06's own self-caught fix only special-cased `QuestController.Index`; code review (CR-02) found ~13 sibling call sites across 3 controllers still crashed for a SuperAdmin with no active group | ✓ Fixed — Phase 34.3; user chose "fix now" over shipping with known SuperAdmin 500s |
+| v2.0 Omphalos Integration redone from scratch rather than merging the old `milestone/3-omphalos-integration` branch | That branch forked before v3.0/v4.0/v5.0 landed; its code diverged too far from `main` to merge cleanly | — Pending: research is being redone independently; the old branch's planning docs are historical reference only |
+| Omphalos integration settings (URL + shared secret) are instance-wide, configured under `/platform` by SuperAdmin — not per-group | Omphalos has no tenant/org concept of its own (flat, `UserId`-scoped data model); a per-group setting would have nothing on the Omphalos side to map to | — Pending: confirm during Phase 35 implementation |
+| v2.0 phases start at Phase 35, continuing from v5.0's Phase 34.3 | The old Phase 10/11 slots (reserved between v1.0 and v3.0) belonged to the abandoned branch's attempt; reusing them would misrepresent when this work actually happened | — Pending: old Phase 10/11 ROADMAP.md entries marked superseded |
 
 ## Evolution
 
@@ -159,4 +182,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-02 — v5.0 Multi-Tenancy milestone shipped (Phases 26–34.3, 12 phases, 48 plans)*
+*Last updated: 2026-07-02 — v2.0 Omphalos Integration milestone started (Phase 35+)*

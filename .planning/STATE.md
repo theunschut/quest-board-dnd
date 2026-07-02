@@ -1,35 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Multi-Tenancy
-status: milestone_complete
-stopped_at: Milestone archived — ready for /gsd:new-milestone
-last_updated: 2026-07-02T13:00:01.218Z
+milestone: v2.0
+milestone_name: Omphalos Integration
+status: planning
+last_updated: "2026-07-02T15:05:36.302Z"
 last_activity: 2026-07-02
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 48
-  completed_plans: 48
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-02 — v5.0 Multi-Tenancy shipped)
+See: .planning/PROJECT.md (updated 2026-07-02 — v2.0 Omphalos Integration milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
 **Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 34.3 (final phase of v5.0)
-Status: Milestone shipped and archived
-Last activity: 2026-07-02
-
-v5.0 Multi-Tenancy: 12/12 phases complete, 48/48 plans complete. Full phase-by-phase detail archived to `.planning/milestones/v5.0-ROADMAP.md`.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-02 — Milestone v2.0 started
 
 ## Deferred Items
 
@@ -49,8 +47,7 @@ Items acknowledged and deferred at milestone close on 2026-07-02:
 - `GroupSessionMiddleware` POST-body data-loss risk — see Deferred Items above
 - Profile picture crop/avatar selection (issue #78) — verify SkiaSharp native lib on aspnet:10 Debian Bookworm
 - Digest batching (EMAIL-04/REMIND-02) — revisit when same-day quest scheduling becomes common
-- v2.0 Omphalos Integration (Phases 10–11) — still in progress on a separate branch, independent of v5.0
-- Any backlog items in ROADMAP.md
+- Any other backlog items in ROADMAP.md
 
 Full per-phase architectural decisions, deviations, and performance metrics for v5.0 (Phases 26–34.3) are preserved in each phase's SUMMARY.md under `.planning/phases/`, and the durable decision log lives in `.planning/PROJECT.md`'s Key Decisions table.
 
