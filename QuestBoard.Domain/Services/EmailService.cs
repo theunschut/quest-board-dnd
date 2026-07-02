@@ -50,6 +50,8 @@ public class EmailService(IOptions<EmailSettings> options, ILogger<EmailService>
         }
         catch (Exception ex)
         {
+            // Log the exception object structurally; never interpolate SMTP credentials
+            // or connection details into the message template.
             logger.LogError(ex, "Failed to send email with subject {Subject}", subject);
             throw;
         }
