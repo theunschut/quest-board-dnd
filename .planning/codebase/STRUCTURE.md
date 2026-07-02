@@ -1,354 +1,454 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-07-01
+**Analysis Date:** 2026-07-02
 
 ## Directory Layout
 
 ```
-quest-board/
-├── QuestBoard.Service/              # MVC Service layer — HTTP entry point
-│   ├── Areas/Platform/              # Group/tenant management area
-│   │   ├── Controllers/             # GroupController
-│   │   └── Views/                   # Group views (picker, listing, etc.)
-│   ├── Authorization/               # Policy handlers & requirements
-│   ├── Automapper/                  # ViewModelProfile (ViewModel ↔ DomainModel)
-│   ├── Components/                  # Razor components (email templates)
-│   │   └── Emails/                  # Email component files (QuestFinalized, etc.)
-│   ├── Constants/                   # SessionKeys enum
-│   ├── Controllers/                 # MVC controllers by feature
-│   │   ├── Admin/                   # AccountController, AdminController, EmailPreviewController
-│   │   ├── Characters/              # GuildMembersController
-│   │   ├── DungeonMaster/           # DungeonMasterController
-│   │   ├── QuestBoard/              # QuestController, CalendarController, PlayersController, HomeController, QuestLogController
-│   │   └── Shop/                    # ShopController, ShopManagementController
-│   ├── Extensions/                  # ConfigurationDebugExtensions
-│   ├── Jobs/                        # Hangfire background jobs
-│   ├── Middleware/                  # GroupSessionMiddleware, MobileDetectionMiddleware
-│   ├── Services/                    # Service-layer only (email dispatch, rendering, group context)
-│   ├── ViewExpanders/               # MobileViewLocationExpander
-│   ├── ViewModels/                  # ViewModel classes by feature
-│   │   ├── AccountViewModels/       # Login, Register, ChangePassword, etc.
-│   │   ├── AdminViewModels/         # UserManagement, EmailStats, CreateUser, etc.
-│   │   ├── CalendarViewModels/      # CalendarViewModel, QuestOnDay, CalendarDay
-│   │   ├── CharacterViewModels/     # CharacterViewModel, CharacterIndexViewModel
-│   │   ├── DungeonMasterViewModels/ # DMProfileViewModel, EditDMProfileViewModel
-│   │   ├── GuildMembersViewModels/  # GuildMembersViewModel
-│   │   ├── GroupPickerViewModels/   # GroupPickerViewModel
-│   │   ├── PlatformViewModels/      # GroupViewModel, GroupListViewModel
-│   │   ├── QuestLogViewModels/      # QuestLogViewModel
-│   │   ├── QuestViewModels/         # QuestViewModel
-│   │   └── ShopViewModels/          # ShopItemViewModel, ShopViewModel, UserTransactionViewModel
-│   ├── Views/                       # Razor view (.cshtml) files by feature
-│   │   ├── Account/                 # Login, Register, ForgotPassword, SetPassword, Profile views
-│   │   ├── Admin/                   # User management, email preview, stats views
-│   │   ├── Calendar/                # Calendar view
-│   │   ├── DungeonMaster/           # DM profile views
-│   │   ├── GroupPicker/             # Group selection view
-│   │   ├── GuildMembers/            # Guild members views
-│   │   ├── Home/                    # Home/Index view
-│   │   ├── Players/                 # Player views (quest listing, availability)
-│   │   ├── Quest/                   # Quest detail, create, edit, finalize views
-│   │   ├── QuestLog/                # Quest log view
-│   │   ├── Shared/                  # Layout, navigation, error partials
-│   │   ├── Shop/                    # Shop browsing, transaction history
-│   │   └── ShopManagement/          # Item creation, editing, management
-│   ├── wwwroot/                     # Static assets
-│   │   ├── css/                     # Stylesheets
-│   │   ├── images/                  # D&D theme images, wax seals, character blanks
-│   │   └── js/                      # Client-side JavaScript
-│   ├── Program.cs                   # ASP.NET Core app startup, service registration, middleware config
-│   ├── appsettings.json             # Configuration, logging, database connection
-│   └── QuestBoard.Service.csproj    # Project file
+quest-board/ (project root)
+├── QuestBoard.Service/                    # ASP.NET Core MVC service layer
+│   ├── Controllers/
+│   │   ├── QuestBoard/                    # Feature: quest management
+│   │   │   ├── HomeController.cs
+│   │   │   ├── QuestController.cs
+│   │   │   ├── QuestLogController.cs
+│   │   │   ├── CalendarController.cs
+│   │   │   └── PlayersController.cs
+│   │   ├── Admin/                         # Feature: admin panel (user/account management)
+│   │   │   ├── AccountController.cs       # Login, password reset, email confirmation
+│   │   │   ├── AdminController.cs         # User CRUD, email preview
+│   │   │   └── EmailPreviewController.cs
+│   │   ├── Characters/                    # Feature: character/guild member management
+│   │   │   └── GuildMembersController.cs
+│   │   ├── DungeonMaster/                 # Feature: DM profile management
+│   │   │   └── DungeonMasterController.cs
+│   │   ├── Shop/                          # Feature: shop/trade items
+│   │   │   ├── ShopController.cs
+│   │   │   └── ShopManagementController.cs
+│   │   └── GroupPickerController.cs       # Group selection UI
+│   ├── Areas/
+│   │   └── Platform/                      # SuperAdmin area: /platform/*
+│   │       ├── Controllers/
+│   │       │   └── GroupController.cs     # Group CRUD + membership management
+│   │       └── Views/
+│   │           ├── Group/
+│   │           │   ├── Index.cshtml
+│   │           │   ├── Create.cshtml
+│   │           │   ├── Edit.cshtml
+│   │           │   ├── Delete.cshtml
+│   │           │   └── Members.cshtml
+│   │           └── Shared/
+│   ├── Views/                             # Razor views (organized by controller)
+│   │   ├── Shared/                        # Layout, partial views, error pages
+│   │   ├── Account/                       # Login, password reset, profile
+│   │   ├── Admin/                         # Admin dashboard, user list/edit
+│   │   ├── Quest/                         # Quest index, create, edit, details
+│   │   ├── QuestLog/                      # Quest history/recap
+│   │   ├── Calendar/                      # Quest calendar view
+│   │   ├── Shop/                          # Shop browsing, item details
+│   │   ├── ShopManagement/                # Shop admin (create/edit items)
+│   │   ├── Characters/                    # Character listing
+│   │   ├── GuildMembers/                  # Guild member management
+│   │   ├── DungeonMaster/                 # DM profile view/edit
+│   │   ├── GroupPicker/                   # Group selection UI
+│   │   ├── Home/                          # Landing page
+│   │   ├── Players/                       # Player directory
+│   │   ├── _ViewStart.cshtml              # Layout initialization
+│   │   └── _ViewImports.cshtml            # Global using statements
+│   ├── ViewModels/                        # ViewModel (input/output, controller ↔ view)
+│   │   ├── AccountViewModels/
+│   │   ├── AdminViewModels/
+│   │   ├── CalendarViewModels/
+│   │   ├── CharacterViewModels/
+│   │   ├── DungeonMasterViewModels/
+│   │   ├── GroupPickerViewModels/
+│   │   ├── GuildMembersViewModels/
+│   │   ├── PlatformViewModels/
+│   │   ├── QuestLogViewModels/
+│   │   ├── QuestViewModels/
+│   │   └── ShopViewModels/
+│   ├── Authorization/                     # Policy handlers, requirements
+│   │   ├── DungeonMasterHandler.cs        # Checks if user is DM in active group
+│   │   ├── DungeonMasterRequirement.cs
+│   │   ├── AdminHandler.cs                # Checks if user is admin in active group
+│   │   ├── AdminRequirement.cs
+│   │   └── AdminDashboardAuthFilter.cs    # Hangfire dashboard auth
+│   ├── Middleware/                        # ASP.NET Core middleware
+│   │   ├── GroupSessionMiddleware.cs      # Enforces group session; redirects to picker
+│   │   └── MobileDetectionMiddleware.cs   # Mobile/desktop view selection
+│   ├── Services/                          # Service-layer services (Service project only)
+│   │   ├── ActiveGroupContextService.cs   # Reads/writes active group from session
+│   │   ├── HangfireQuestEmailDispatcher.cs
+│   │   ├── HangfireReminderJobDispatcher.cs
+│   │   ├── NullQuestEmailDispatcher.cs    # No-op for testing
+│   │   ├── NullReminderJobDispatcher.cs
+│   │   ├── RazorEmailRenderService.cs
+│   │   ├── ResendStatsClient.cs           # Resend API stats client
+│   │   └── ResendStatsAggregator.cs
+│   ├── Jobs/                              # Hangfire background job implementations
+│   │   ├── QuestFinalizedEmailJob.cs      # Quest finalization emails
+│   │   ├── DailyReminderJob.cs            # Daily session reminders (09:00 CET)
+│   │   ├── SessionReminderJob.cs          # Session reminder logic
+│   │   ├── ForgotPasswordEmailJob.cs      # Password reset emails
+│   │   ├── QuestDateChangedEmailJob.cs
+│   │   ├── ChangeEmailConfirmationJob.cs
+│   │   ├── WelcomeEmailJob.cs
+│   │   └── HangfireJobHelper.cs           # DI scope + group context setup
+│   ├── Components/
+│   │   └── Emails/                        # Email template components (Razor)
+│   │       ├── QuestFinalized.razor
+│   │       ├── SessionReminder.razor
+│   │       └── [others]
+│   ├── Automapper/
+│   │   └── ViewModelProfile.cs            # DomainModel ↔ ViewModel mappings
+│   ├── Constants/
+│   │   └── SessionKeys.cs                 # Session key string constants
+│   ├── Extensions/
+│   │   ├── ControllerExtensions.cs
+│   │   └── ConfigurationDebugExtensions.cs
+│   ├── ViewExpanders/
+│   │   └── MobileViewLocationExpander.cs  # View location for mobile/desktop
+│   ├── Program.cs                         # Startup; DI, middleware, routing config
+│   ├── appsettings.json                   # Default configuration
+│   ├── appsettings.Development.json
+│   └── appsettings.Production.json
 │
-├── QuestBoard.Domain/               # Business logic layer
-│   ├── Enums/                       # Role, DndClass, CharacterStatus, ItemRarity, ItemStatus, ItemType, CharacterRole, GroupRole, SignupRole, TransactionType, VoteType
-│   ├── Interfaces/                  # Service & Repository contracts
-│   │   ├── IBaseService.cs          # Generic CRUD interface
-│   │   ├── IBaseRepository.cs       # Generic data access interface
-│   │   ├── IQuestService.cs         # Quest business operations
-│   │   ├── IQuestRepository.cs      # Quest data access
-│   │   ├── IPlayerSignupService.cs  # Signup business operations
-│   │   ├── IQuestEmailDispatcher.cs # Email job dispatch (Domain → Service layer bridge)
-│   │   ├── IActiveGroupContext.cs   # Multi-tenancy context (session/job group ID)
-│   │   ├── IEmailService.cs         # Email sending contract
-│   │   ├── IEmailRenderService.cs   # Email template rendering
-│   │   ├── IUserService.cs          # User queries, role checks
-│   │   ├── IShopService.cs          # Shop business logic
-│   │   ├── ICharacterService.cs     # Character CRUD
+├── QuestBoard.Domain/                     # Business logic layer
+│   ├── Services/                          # Business logic implementations
+│   │   ├── QuestService.cs                # Quest creation, finalization, email dispatch
+│   │   ├── PlayerSignupService.cs
+│   │   ├── GroupService.cs                # Group CRUD, membership queries
+│   │   ├── UserService.cs                 # User queries, role resolution
+│   │   ├── CharacterService.cs
+│   │   ├── DungeonMasterProfileService.cs
+│   │   ├── ShopService.cs
+│   │   ├── ShopSeedService.cs             # Seeds basic equipment for groups
+│   │   ├── EmailService.cs                # Email sending (SMTP/Resend)
+│   │   └── BaseService.cs                 # Base class for CRUD services
+│   ├── Interfaces/                        # Service & repository contracts
+│   │   ├── IQuestService.cs
+│   │   ├── IPlayerSignupService.cs
+│   │   ├── IGroupService.cs
+│   │   ├── IUserService.cs
+│   │   ├── ICharacterService.cs
 │   │   ├── IDungeonMasterProfileService.cs
-│   │   ├── IGroupService.cs         # Group/tenant management
-│   │   ├── IIdentityService.cs      # Password hashing, token generation
-│   │   └── [other repositories...]  # ICharacterRepository, IUserRepository, IShopRepository, ITradeItemRepository, IUserTransactionRepository, etc.
-│   ├── Models/                      # Domain entity models (untracked DTOs)
-│   │   ├── QuestBoard/              # Quest, PlayerSignup, ProposedDate, PlayerDateVote, ReminderLog
-│   │   ├── Shop/                    # ShopItem, UserTransaction, TradeItem
-│   │   ├── User.cs                  # User domain model
-│   │   ├── Character.cs             # Character domain model
-│   │   ├── DungeonMasterProfile.cs  # DM profile
-│   │   ├── Group.cs                 # Group (tenant) model
-│   │   ├── UserGroup.cs             # User group membership
-│   │   ├── IModel.cs                # Marker interface
-│   │   └── [other models...]        # EmailSettings, ServiceResult, GroupWithMemberCount
-│   ├── Services/                    # Service implementations (business logic)
-│   │   ├── BaseService.cs           # Generic CRUD operations base class
-│   │   ├── QuestService.cs          # Quest creation, finalization, email dispatch coordination
-│   │   ├── PlayerSignupService.cs   # Signup registration, voting, removal
-│   │   ├── ShopService.cs           # Shop item listing, purchase logic, gold accounting
-│   │   ├── UserService.cs           # User queries, authentication helpers
-│   │   ├── CharacterService.cs      # Character CRUD
-│   │   ├── GroupService.cs          # Group creation, member management
-│   │   └── [other services...]
-│   ├── Extensions/                  # ServiceExtensions (DI registration), UserExtensions (IsInRole helpers)
-│   └── QuestBoard.Domain.csproj
+│   │   ├── IShopService.cs
+│   │   ├── IShopSeedService.cs
+│   │   ├── IEmailService.cs
+│   │   ├── IEmailRenderService.cs
+│   │   ├── IQuestRepository.cs
+│   │   ├── IPlayerSignupRepository.cs
+│   │   ├── IGroupRepository.cs
+│   │   ├── IUserRepository.cs
+│   │   ├── ICharacterRepository.cs
+│   │   ├── IDungeonMasterProfileRepository.cs
+│   │   ├── IShopRepository.cs
+│   │   ├── IUserTransactionRepository.cs
+│   │   ├── ITradeItemRepository.cs
+│   │   ├── IReminderLogRepository.cs
+│   │   ├── IBaseRepository.cs
+│   │   ├── IBaseService.cs
+│   │   ├── IActiveGroupContext.cs         # Group scoping interface
+│   │   ├── IIdentityService.cs            # Wraps UserManager/SignInManager
+│   │   ├── IQuestEmailDispatcher.cs       # Enqueue finalized emails
+│   │   └── IReminderJobDispatcher.cs      # Enqueue reminder emails
+│   ├── Models/                            # Domain models (POCO, no EF annotations)
+│   │   ├── IModel.cs                      # Base interface (Id property)
+│   │   ├── User.cs
+│   │   ├── Group.cs
+│   │   ├── UserGroup.cs                   # User membership in group
+│   │   ├── Character.cs
+│   │   ├── DungeonMasterProfile.cs
+│   │   ├── IModel.cs
+│   │   ├── EmailSettings.cs               # Email configuration POCO
+│   │   ├── ServiceResult.cs
+│   │   ├── GroupWithMemberCount.cs        # DTO for group listing
+│   │   ├── QuestBoard/                    # Quest-related models
+│   │   │   ├── Quest.cs
+│   │   │   ├── PlayerSignup.cs
+│   │   │   ├── ProposedDate.cs
+│   │   │   ├── PlayerDateVote.cs
+│   │   │   └── ReminderLog.cs
+│   │   └── Shop/                          # Shop-related models
+│   │       ├── ShopItem.cs
+│   │       ├── UserTransaction.cs
+│   │       ├── TradeItem.cs
+│   │       └── TransactionWithRemaining.cs
+│   ├── Enums/                             # Enumeration types
+│   │   ├── GroupRole.cs                   # Player=0, DungeonMaster=1, Admin=2
+│   │   ├── Role.cs                        # Player, DungeonMaster, Admin (mirrors GroupRole)
+│   │   ├── CharacterRole.cs
+│   │   ├── CharacterStatus.cs
+│   │   ├── DndClass.cs
+│   │   ├── ItemRarity.cs
+│   │   ├── ItemStatus.cs
+│   │   ├── ItemType.cs
+│   │   ├── SignupRole.cs
+│   │   ├── TransactionType.cs
+│   │   └── VoteType.cs
+│   ├── Extensions/                        # Extension methods
+│   │   ├── ServiceExtensions.cs           # AddDomainServices() DI method
+│   │   ├── ActiveGroupContextExtensions.cs # RequireActiveGroupId() guard
+│   │   └── UserExtensions.cs
 │
-├── QuestBoard.Repository/           # Data access layer (EF Core)
-│   ├── Entities/                    # EF Core entity models (tracked by DbContext)
-│   │   ├── QuestEntity.cs           # Maps to [Quests] table
-│   │   ├── UserEntity.cs            # Maps to [AspNetUsers] table (Identity)
-│   │   ├── PlayerSignupEntity.cs    # Maps to [PlayerSignups] table
-│   │   ├── ProposedDateEntity.cs    # Maps to [ProposedDates] table
-│   │   ├── PlayerDateVoteEntity.cs  # Maps to [PlayerDateVotes] table
-│   │   ├── ShopItemEntity.cs        # Maps to [ShopItems] table
-│   │   ├── UserTransactionEntity.cs # Maps to [UserTransactions] table
-│   │   ├── TradeItemEntity.cs       # Maps to [TradeItems] table
-│   │   ├── CharacterEntity.cs       # Maps to [Characters] table
-│   │   ├── CharacterImageEntity.cs  # Maps to [CharacterImages] table
-│   │   ├── CharacterClassEntity.cs  # Maps to [CharacterClasses] table (many-to-many join)
+├── QuestBoard.Repository/                 # Data access layer
+│   ├── Entities/                          # EF Core entity classes (DB-mapped)
+│   │   ├── IEntity.cs                     # Base interface (Id property)
+│   │   ├── QuestBoardContext.cs           # DbContext; global query filters defined here
+│   │   ├── UserEntity.cs                  # ASP.NET Identity user (unfiltered)
+│   │   ├── GroupEntity.cs                 # Group tenant; no query filter
+│   │   ├── UserGroupEntity.cs             # User-to-group membership (multi-tenancy)
+│   │   ├── QuestEntity.cs                 # Quest (HAS query filter)
+│   │   ├── PlayerSignupEntity.cs
+│   │   ├── ProposedDateEntity.cs
+│   │   ├── PlayerDateVoteEntity.cs
+│   │   ├── ShopItemEntity.cs              # Shop item (HAS query filter)
+│   │   ├── UserTransactionEntity.cs
+│   │   ├── TradeItemEntity.cs
+│   │   ├── CharacterEntity.cs
+│   │   ├── CharacterImageEntity.cs
+│   │   ├── CharacterClassEntity.cs
 │   │   ├── DungeonMasterProfileEntity.cs
 │   │   ├── DungeonMasterProfileImageEntity.cs
-│   │   ├── GroupEntity.cs           # Maps to [Groups] table (tenant)
-│   │   ├── UserGroupEntity.cs       # Maps to [UserGroups] table (user group membership)
-│   │   ├── ReminderLogEntity.cs     # Maps to [ReminderLogs] table
-│   │   ├── IEntity.cs               # Marker interface
-│   │   └── QuestBoardContext.cs     # EF DbContext, schema config, group filter integration
-│   ├── Automapper/                  # EntityProfile (Entity ↔ DomainModel mapping)
-│   ├── BaseRepository.cs            # Generic CRUD base class (Add, Get, Update, Remove, AutoMapper)
-│   ├── [Repository Classes]         # Specializations for complex queries
-│   │   ├── QuestRepository.cs       # GetQuestsWithDetails, GetQuestsForCalendar, FinalizeQuest
+│   │   └── ReminderLogEntity.cs
+│   ├── [Repositories]/                    # Concrete repository implementations
+│   │   ├── BaseRepository.cs              # Base CRUD (AddAsync, GetByIdAsync, etc.)
+│   │   ├── QuestRepository.cs             # Quest queries + finalization logic
 │   │   ├── PlayerSignupRepository.cs
-│   │   ├── ShopRepository.cs        # Paginated item listing
+│   │   ├── GroupRepository.cs             # Group queries + membership
 │   │   ├── UserRepository.cs
 │   │   ├── CharacterRepository.cs
-│   │   ├── GroupRepository.cs
-│   │   ├── IdentityService.cs       # Password hashing, token generation (IIdentityService impl)
-│   │   └── [other repositories...]
-│   ├── Migrations/                  # EF Core migration files (auto-applied on startup)
-│   │   ├── Migration files          # One .cs per schema change
-│   │   └── QuestBoardContextModelSnapshot.cs
-│   ├── Extensions/                  # ServiceExtensions (DI registration for Repository services)
-│   ├── Interfaces/                  # Repository interface definitions (e.g., IBaseRepository — mirrors Domain/Interfaces)
-│   └── QuestBoard.Repository.csproj
+│   │   ├── DungeonMasterProfileRepository.cs
+│   │   ├── ShopRepository.cs
+│   │   ├── UserTransactionRepository.cs
+│   │   ├── TradeItemRepository.cs
+│   │   ├── ReminderLogRepository.cs
+│   │   └── IdentityService.cs             # Wraps UserManager/SignInManager
+│   ├── Automapper/
+│   │   └── EntityProfile.cs               # Entity ↔ DomainModel mappings
+│   ├── Migrations/                        # EF Core migration files (auto-generated)
+│   │   ├── [timestamp]_InitialSqlServerNoAction.cs
+│   │   ├── [timestamp]_InitialSqlServerNoAction.Designer.cs
+│   │   ├── [timestamp]_EnableCascadeDeleteForPlayerDateVotes.cs
+│   │   └── [...]
+│   ├── Extensions/
+│   │   └── ServiceExtensions.cs           # AddRepositoryServices() DI method
 │
-├── QuestBoard.IntegrationTests/     # Integration test suite
-│   ├── Controllers/                 # Controller tests
-│   ├── Services/                    # Service tests
-│   ├── Repositories/                # Repository tests
-│   ├── Fixtures/                    # Test data factories, WebApplicationFactory
-│   ├── appsettings.Testing.json     # Test-specific config (in-memory DB or test SQL Server)
-│   └── QuestBoard.IntegrationTests.csproj
+├── QuestBoard.UnitTests/                  # Unit test project
+│   ├── Authorization/                     # Authorization handler tests
+│   └── [feature]Tests.cs
 │
-├── QuestBoard.UnitTests/            # Unit test suite (if present — not heavily used; integration tests preferred)
-│   └── QuestBoard.UnitTests.csproj
+├── QuestBoard.IntegrationTests/           # Integration test project
+│   ├── WebApplicationFactory subclass
+│   ├── [feature]IntegrationTests.cs
+│   └── Fixtures/
 │
-├── .planning/                       # GSD planning documents
-│   ├── codebase/                    # Codebase analysis documents
-│   │   ├── ARCHITECTURE.md          # This file
-│   │   ├── STRUCTURE.md             # Directory layout, file locations
-│   │   ├── CONVENTIONS.md           # Code style, naming patterns
-│   │   ├── STACK.md                 # Technology versions, dependencies
-│   │   ├── INTEGRATIONS.md          # External APIs, databases
-│   │   ├── TESTING.md               # Testing framework, patterns
-│   │   └── CONCERNS.md              # Technical debt, known issues
-│   ├── milestones/                  # Historical phase documentation
-│   ├── phases/                      # Current phase work
-│   ├── quick/                       # Quick fix notes
-│   ├── STATE.md                     # Project state: completed phases, current milestone
-│   └── ROADMAP.md                   # Future roadmap
+├── .planning/
+│   ├── codebase/                          # Architecture reference docs (this directory)
+│   │   ├── ARCHITECTURE.md
+│   │   ├── STRUCTURE.md
+│   │   ├── CONVENTIONS.md
+│   │   ├── TESTING.md
+│   │   ├── STACK.md
+│   │   ├── INTEGRATIONS.md
+│   │   └── CONCERNS.md
+│   └── ROADMAP.md                         # Milestone and phase planning
 │
-├── docs/                            # Documentation
-│   └── [deployment, setup, architecture guides]
+├── docs/                                  # Operational documentation
+│   └── server-setup.md
 │
-├── Dockerfile                       # Single-container deployment
-├── docker-compose.yml               # Local dev: Quest Board + SQL Server
+├── Dockerfile                             # Container image for deployment
+├── docker-compose.yml                     # Local dev environment (SQL Server)
 ├── .dockerignore
-├── appsettings.json                 # Production config defaults
-├── CLAUDE.md                        # Claude Code guidance (this project)
-└── QuestBoard.slnx                  # Solution file
-
+├── .env                                   # Environment variables (secrets)
+├── .env.example                           # Committed template (no values)
+├── QuestBoard.slnx                        # Solution file
+├── CLAUDE.md                              # This project's Claude instructions
+├── README.md
+└── LICENSE
 ```
 
 ## Directory Purposes
 
-**QuestBoard.Service/ (MVC Service Layer):**
-- Purpose: HTTP request handling, authorization, view rendering, background job dispatch
-- Contains: Controllers, Views, ViewModels, Middleware, Authorization, Jobs
-- Key files: `Program.cs` (app startup), `Middleware/GroupSessionMiddleware.cs` (multi-tenancy gate), `Controllers/QuestBoard/QuestController.cs` (primary quest operations), `Jobs/` (Hangfire background jobs)
+**QuestBoard.Service/**
+- Purpose: ASP.NET Core MVC web application; HTTP request handlers, views, DI orchestration.
+- Contains: Controllers (request handlers), Views (Razor templates), ViewModels (presentation DTOs), Middleware, Authorization handlers, Hangfire job classes.
+- Key files: `Program.cs` (startup config), `appsettings.json` (configuration).
 
-**QuestBoard.Domain/ (Business Logic Layer):**
-- Purpose: Domain models, service contracts, business rule implementation
-- Contains: Services (business logic), Models (untracked DTOs), Interfaces (contracts), Enums (shared constants)
-- Key files: `Services/QuestService.cs` (quest finalization, email dispatch), `Services/PlayerSignupService.cs` (signup voting), `Interfaces/IQuestService.cs` (domain contract)
+**QuestBoard.Domain/**
+- Purpose: Business logic and domain models; shared by Service and Repository layers.
+- Contains: Service implementations, domain models (User, Quest, Group, etc.), service/repository interfaces, enums, validation rules.
+- Key files: `Services/` (business logic), `Models/` (domain entities), `Interfaces/` (contracts).
 
-**QuestBoard.Repository/ (Data Access Layer):**
-- Purpose: EF Core entity definitions, DbContext, repository implementations, schema migrations
-- Contains: Entities (EF models), BaseRepository (generic CRUD), Repository specializations, Migrations, AutoMapper EntityProfile
-- Key files: `Entities/QuestBoardContext.cs` (DbContext, schema config), `BaseRepository.cs` (generic CRUD template), `QuestRepository.cs` (complex queries), `Migrations/` (auto-applied on startup)
+**QuestBoard.Repository/**
+- Purpose: Data access via EF Core; entity mappings, DbContext, migrations.
+- Contains: EF Core entity classes, repositories (IRepository implementations), QuestBoardContext (DbContext with global query filters), AutoMapper Entity profile.
+- Key files: `Entities/QuestBoardContext.cs` (query filters defined here), `Migrations/` (schema versions).
 
-**QuestBoard.IntegrationTests/ & QuestBoard.UnitTests/:**
-- Purpose: Automated test coverage
-- Contains: Test fixtures (WebApplicationFactory, test data), test suites for controllers/services/repos
-- Key files: `Fixtures/` (test setup, mocked dependencies), `appsettings.Testing.json` (test environment config)
+**Views/ (Service project)**
+- Purpose: Razor templates rendered by controllers.
+- Organization: Subdirectories mirror controller names (e.g., `Views/Quest/Index.cshtml` served by `QuestController.Index`).
+- Layout: `Shared/_Layout.cshtml` wraps all views (defined in `_ViewStart.cshtml`).
 
-**.planning/codebase/ (Analysis Documents):**
-- Purpose: Guidance for future phases and feature development
-- Contains: ARCHITECTURE.md (layers, data flow), STRUCTURE.md (file locations, where to add code), CONVENTIONS.md (code style), TESTING.md (test patterns), STACK.md (tech versions), INTEGRATIONS.md (external APIs), CONCERNS.md (tech debt)
+**Areas/Platform/ (Service project)**
+- Purpose: SuperAdmin-only area for group management and system administration.
+- Route prefix: `/platform/` (mapped in `Program.cs` line 318–321).
+- Contains: `GroupController` (group CRUD), views for group index/create/edit/delete/members.
+
+**Authorization/ (Service project)**
+- Purpose: Policy handlers and requirements for role-based access control.
+- Patterns: `DungeonMasterRequirement` + `DungeonMasterHandler` (checks if user is DM in active group), `AdminRequirement` + `AdminHandler` (checks if user is admin in active group).
+- Usage: Controllers decorated with `[Authorize(Policy = "DungeonMasterOnly")]` etc.
+
+**Middleware/ (Service project)**
+- Purpose: ASP.NET Core middleware for cross-cutting concerns.
+- Key: `GroupSessionMiddleware` enforces that authenticated, non-SuperAdmin users have an active group; redirects to group picker if missing.
+
+**Jobs/ (Service project)**
+- Purpose: Hangfire background job implementations; executed by the Hangfire scheduler.
+- Pattern: Each job class has an `ExecuteAsync()` method; uses `HangfireJobHelper.RunInScopeAsync()` to set group context.
+
+**Entities/ (Repository project)**
+- Purpose: EF Core entity classes; mapped directly to SQL Server tables.
+- Global query filters: `QuestEntity` and `ShopItemEntity` have `HasQueryFilter()` applied in `QuestBoardContext.OnModelCreating()`.
+- Special: `UserEntity` is intentionally unfiltered (ASP.NET Identity requires unrestricted user queries).
+
+**Migrations/ (Repository project)**
+- Purpose: EF Core migration files (one per schema change).
+- Auto-applied: `context.Database.Migrate()` runs on startup (Program.cs line 332).
+- Do NOT edit by hand; use `dotnet ef migrations add MigrationName`.
 
 ## Key File Locations
 
 **Entry Points:**
-- `QuestBoard.Service/Program.cs` — App startup, service registration, middleware pipeline, database initialization
-- `QuestBoard.Service/Controllers/QuestBoard/HomeController.cs` — Default landing page route
-- `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` — Quest management (list, create, edit, finalize)
-- `QuestBoard.Service/Controllers/Admin/AccountController.cs` — User login, registration, password reset, email confirmation
+- `QuestBoard.Service/Program.cs` — Startup; DI container, middleware pipeline, route configuration.
+- `QuestBoard.Service/Controllers/QuestBoard/HomeController.cs` — First controller hit by browser; redirects to quest board or login.
+- `QuestBoard.Service/Controllers/GroupPickerController.cs` — Group selection UI; stores `ActiveGroupId` in session.
 
 **Configuration:**
-- `QuestBoard.Service/appsettings.json` — Connection string, logging, email settings defaults
-- `QuestBoard.Service/appsettings.Development.json` (optional, `.gitignored`) — Local dev overrides
-- `QuestBoard.Domain/Extensions/ServiceExtensions.cs` — Domain-layer DI registration
-- `QuestBoard.Repository/Extensions/ServiceExtensions.cs` — Repository-layer DI registration
+- `QuestBoard.Service/appsettings.json` — Default settings (connection string, email, Hangfire, logging).
+- `QuestBoard.Service/appsettings.Development.json` — Local development overrides.
+- `QuestBoard.Service/appsettings.Production.json` — Production overrides.
+- `.env` — Environment variables (secrets; NOT committed).
 
-**Core Business Logic:**
-- `QuestBoard.Domain/Services/QuestService.cs` — Quest creation, finalization, email dispatch orchestration
-- `QuestBoard.Domain/Services/PlayerSignupService.cs` — Player signup registration, date voting, removal
-- `QuestBoard.Domain/Services/ShopService.cs` — Shop item listing, purchase, gold transactions
-- `QuestBoard.Domain/Services/UserService.cs` — User queries, authentication helpers, role checks
-
-**Data Access & Models:**
-- `QuestBoard.Repository/Entities/QuestBoardContext.cs` — EF DbContext, schema modeling, group context filtering
-- `QuestBoard.Repository/Entities/QuestEntity.cs` — EF entity for Quests table
-- `QuestBoard.Repository/Entities/UserEntity.cs` — EF entity for AspNetUsers table (Identity)
-- `QuestBoard.Repository/QuestRepository.cs` — Complex quest queries (GetQuestsWithDetails, GetQuestsForCalendar, FinalizeQuest)
-- `QuestBoard.Repository/Automapper/EntityProfile.cs` — EF Entity ↔ Domain Model mappings
-- `QuestBoard.Repository/Migrations/` — Database schema migration files (auto-applied)
-
-**ViewModels & Views:**
-- `QuestBoard.Service/ViewModels/QuestViewModels/QuestViewModel.cs` — Web form model for quest creation/editing
-- `QuestBoard.Service/Views/Quest/Index.cshtml` — Quest list view
-- `QuestBoard.Service/Views/Quest/Create.cshtml` — Quest creation form
-- `QuestBoard.Service/Views/Shared/_Layout.cshtml` — Master layout (navbar, footer)
-
-**Background Jobs & Email:**
-- `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs` — Hangfire job: render finalized email, send via Resend
-- `QuestBoard.Service/Jobs/SessionReminderJob.cs` — Hangfire job: nightly sweep for upcoming sessions
-- `QuestBoard.Service/Components/Emails/QuestFinalized.cshtml` — Email template (Razor component)
-- `QuestBoard.Service/Services/HangfireQuestEmailDispatcher.cs` — Enqueue email jobs to Hangfire
-
-**Middleware & Authorization:**
-- `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs` — Multi-tenancy gate; redirects to group picker if session group missing
-- `QuestBoard.Service/Authorization/DungeonMasterHandler.cs` — Authorization policy handler for [Authorize(Policy = "DungeonMasterOnly")]
+**Core Logic:**
+- `QuestBoard.Domain/Services/` — Business logic (QuestService, GroupService, UserService, etc.).
+- `QuestBoard.Repository/Entities/QuestBoardContext.cs` — Global query filters for group isolation.
+- `QuestBoard.Service/Services/ActiveGroupContextService.cs` — Group context management (session + job override).
+- `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs` — Session validation and group picker redirect.
 
 **Testing:**
-- `QuestBoard.IntegrationTests/Fixtures/` — Test WebApplicationFactory, test data builders
-- `QuestBoard.IntegrationTests/Controllers/` — Integration tests for controller action flows
-- `QuestBoard.IntegrationTests/appsettings.Testing.json` — Test DB config
+- `QuestBoard.UnitTests/` — Unit tests (services, handlers, business logic).
+- `QuestBoard.IntegrationTests/` — Integration tests (full HTTP stack, database).
+- Test fixtures and factories in `IntegrationTests/Fixtures/`.
+
+**Automapper:**
+- `QuestBoard.Repository/Automapper/EntityProfile.cs` — Entity ↔ DomainModel mappings.
+- `QuestBoard.Service/Automapper/ViewModelProfile.cs` — DomainModel ↔ ViewModel mappings.
 
 ## Naming Conventions
 
 **Files:**
-- Controllers: `{Feature}Controller.cs` (e.g., `QuestController.cs`, `AccountController.cs`)
-- Services: `{Entity}Service.cs` (e.g., `QuestService.cs`, `PlayerSignupService.cs`)
-- Repositories: `{Entity}Repository.cs` or specialized names (e.g., `QuestRepository.cs`, `IdentityService.cs`)
-- ViewModels: `{Entity}{Action}ViewModel.cs` or just `{Entity}ViewModel.cs` (e.g., `QuestViewModel.cs`, `CreateUserViewModel.cs`)
-- Views: `{Action}.cshtml` (e.g., `Index.cshtml`, `Create.cshtml`, `Details.cshtml`)
-- Entities: `{Entity}Entity.cs` (e.g., `QuestEntity.cs`, `UserEntity.cs`)
-- Domain Models: `{Entity}.cs` (e.g., `Quest.cs`, `User.cs`)
-- Interfaces: `I{Entity}{Contract}.cs` (e.g., `IQuestService.cs`, `IQuestRepository.cs`)
-- Enums: `{Type}.cs` (e.g., `Role.cs`, `SignupRole.cs`)
-- Jobs: `{TriggerOrAction}Job.cs` (e.g., `QuestFinalizedEmailJob.cs`, `SessionReminderJob.cs`)
+- **Controllers:** `[Feature]Controller.cs` — e.g., `QuestController.cs`, `GroupPickerController.cs`.
+- **Services (Domain):** `[Feature]Service.cs` — e.g., `QuestService.cs`, `GroupService.cs`.
+- **Repositories:** `[Feature]Repository.cs` — e.g., `QuestRepository.cs`, `GroupRepository.cs`.
+- **ViewModels:** `[Purpose]ViewModel.cs` — e.g., `QuestViewModel.cs`, `EditUserViewModel.cs`.
+- **Entities:** `[Feature]Entity.cs` — e.g., `QuestEntity.cs`, `UserGroupEntity.cs`.
+- **Migrations:** `[Timestamp]_[Description].cs` — auto-generated by EF tooling.
+- **Razor templates:** `[Action].cshtml` — e.g., `Index.cshtml`, `Create.cshtml`, `Edit.cshtml`.
+- **Jobs:** `[Purpose]EmailJob.cs` or `[Purpose]Job.cs` — e.g., `QuestFinalizedEmailJob.cs`, `DailyReminderJob.cs`.
 
 **Directories:**
-- Features: `{FeatureName}/` (e.g., `Controllers/QuestBoard/`, `ViewModels/QuestViewModels/`, `Views/Quest/`)
-- Layers: Project name = layer (QuestBoard.Service = Service layer)
-- Domain: `Domain/`, `Interfaces/`, `Models/`, `Services/`, `Enums/`
-- Data: `Entities/`, `Repositories/`, `Migrations/`
+- **Controllers:** `Controllers/[Feature]/` — e.g., `Controllers/QuestBoard/`, `Controllers/Admin/`.
+- **Views:** `Views/[Feature]/` — e.g., `Views/Quest/`, `Views/Admin/`.
+- **ViewModels:** `ViewModels/[Feature]ViewModels/` — e.g., `ViewModels/QuestViewModels/`, `ViewModels/AdminViewModels/`.
+- **Services (Domain):** `Services/` (no subdirs; prefix class names with feature).
+- **Repositories:** Root of `Repository` project (no subdirs; prefix class names with feature).
+- **Entities:** `Entities/` (all in one directory; prefix class names with feature).
+
+**Namespaces:**
+- Service layer: `QuestBoard.Service`, `QuestBoard.Service.Controllers`, `QuestBoard.Service.ViewModels.QuestViewModels`, etc.
+- Domain layer: `QuestBoard.Domain`, `QuestBoard.Domain.Services`, `QuestBoard.Domain.Interfaces`, etc.
+- Repository layer: `QuestBoard.Repository`, `QuestBoard.Repository.Entities`, etc.
 
 ## Where to Add New Code
 
-**New Feature (e.g., "Bounty System"):**
+**New Feature (e.g., Quest Scheduling):**
+1. **Controller:** `QuestBoard.Service/Controllers/QuestBoard/[Feature]Controller.cs`
+2. **Views:** `QuestBoard.Service/Views/[Feature]/Index.cshtml`, `Create.cshtml`, etc.
+3. **ViewModels:** `QuestBoard.Service/ViewModels/[Feature]ViewModels/[Purpose]ViewModel.cs`
+4. **Domain Model:** `QuestBoard.Domain/Models/QuestBoard/[Feature].cs` (or `Models/[Feature].cs` if not quest-related)
+5. **Domain Service:** `QuestBoard.Domain/Services/[Feature]Service.cs` implementing `I[Feature]Service` interface in `QuestBoard.Domain/Interfaces/I[Feature]Service.cs`
+6. **Repository:** `QuestBoard.Repository/[Feature]Repository.cs` implementing `I[Feature]Repository` interface in `QuestBoard.Domain/Interfaces/I[Feature]Repository.cs`
+7. **Entity:** `QuestBoard.Repository/Entities/[Feature]Entity.cs`
+8. **Automapper profiles:** Add mappings to `EntityProfile.cs` (Entity ↔ Model) and `ViewModelProfile.cs` (Model ↔ ViewModel)
+9. **DI registration:** If service/repo, add to `QuestBoard.Domain/Extensions/ServiceExtensions.cs` and `QuestBoard.Repository/Extensions/ServiceExtensions.cs` respectively
+10. **Tests:** `QuestBoard.UnitTests/[Feature]Tests.cs` and/or `QuestBoard.IntegrationTests/[Feature]IntegrationTests.cs`
 
-1. **Database/Model Layer** (QuestBoard.Repository)
-   - Create entity: `QuestBoard.Repository/Entities/BountyEntity.cs` (EF model)
-   - Create migration: Run `dotnet ef migrations add AddBountySystem --project ../QuestBoard.Repository` from QuestBoard.Service/
-   - Register in QuestBoardContext.OnModelCreating()
+**New Component (e.g., Modal, Card, Partial):**
+1. Create `QuestBoard.Service/Views/Shared/_[ComponentName].cshtml`
+2. Reference in parent view with `@Html.PartialAsync("_[ComponentName]", model)`
 
-2. **Domain Layer** (QuestBoard.Domain)
-   - Create domain model: `QuestBoard.Domain/Models/Bounty.cs` (untracked DTO)
-   - Create interface: `QuestBoard.Domain/Interfaces/IBountyService.cs` (service contract)
-   - Create service: `QuestBoard.Domain/Services/BountyService.cs` (business logic)
-   - Register in `QuestBoard.Domain/Extensions/ServiceExtensions.cs`
+**Utility/Extension:**
+1. If domain-level: `QuestBoard.Domain/Extensions/[Purpose]Extensions.cs`
+2. If controller-level: `QuestBoard.Service/Extensions/ControllerExtensions.cs`
+3. If repository-level: Add to existing repository or create domain-level interface + Repository extension
 
-3. **Repository Layer** (QuestBoard.Repository)
-   - Create repository interface: `QuestBoard.Repository/Interfaces/IBountyRepository.cs` (if custom queries)
-   - Create repository: `QuestBoard.Repository/BountyRepository.cs` (EF queries)
-   - Add AutoMapper in `QuestBoard.Repository/Automapper/EntityProfile.cs`
-   - Register in `QuestBoard.Repository/Extensions/ServiceExtensions.cs`
+**Authorization Policy:**
+1. Create `QuestBoard.Service/Authorization/[Policy]Requirement.cs` (the requirement class)
+2. Create `QuestBoard.Service/Authorization/[Policy]Handler.cs` (the handler that checks the requirement)
+3. Register in `Program.cs` under `AddAuthorizationBuilder().AddPolicy(...)`
 
-4. **Service Layer** (QuestBoard.Service)
-   - Create controller: `QuestBoard.Service/Controllers/{Feature}/BountyController.cs` (HTTP endpoints)
-   - Create ViewModel: `QuestBoard.Service/ViewModels/BountyViewModels/BountyViewModel.cs`
-   - Create Views: `QuestBoard.Service/Views/Bounty/Index.cshtml`, Create.cshtml, Details.cshtml, etc.
-   - Add AutoMapper in `QuestBoard.Service/Automapper/ViewModelProfile.cs`
-
-5. **Tests** (QuestBoard.IntegrationTests)
-   - Add tests: `QuestBoard.IntegrationTests/Controllers/BountyControllerTests.cs`
-   - Add service tests: `QuestBoard.IntegrationTests/Services/BountyServiceTests.cs`
-
-**New Component/Modal (e.g., UI dialog):**
-- Implementation: `QuestBoard.Service/Components/{Feature}/{ComponentName}.cshtml`
-- Usage: `@await Component.InvokeAsync("ComponentName", new { ... })` in views
-
-**Shared Utilities/Helpers:**
-- String/collection helpers: `QuestBoard.Domain/Extensions/` (accessible to both Service and Repository)
-- Controller helpers: `QuestBoard.Service/Extensions/`
-- Data query helpers: `QuestBoard.Repository/` (custom query methods in repository classes)
-
-**New Background Job:**
-- Job class: `QuestBoard.Service/Jobs/{Trigger}Job.cs`
-- Dispatcher interface: Define in `QuestBoard.Domain/Interfaces/I{Feature}JobDispatcher.cs` (so Domain can call it)
-- Dispatcher implementation: `QuestBoard.Service/Services/Hangfire{Feature}JobDispatcher.cs`
-- Registration: In `Program.cs`, add `builder.Services.AddScoped<I{Feature}JobDispatcher, Hangfire{Feature}JobDispatcher>()`
-- Scheduling: Use `RecurringJob.AddOrUpdate<{Job}>()` in Program.cs or trigger via domain service call
+**Background Job:**
+1. Create `QuestBoard.Service/Jobs/[Purpose]Job.cs` with `ExecuteAsync()` method
+2. Use `HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, async sp => {...})` to set group context
+3. Register in `Program.cs` or trigger via `IBackgroundJobClient.Enqueue<[Job]>(j => j.ExecuteAsync(...))`
 
 **Email Template:**
-- New email: `QuestBoard.Service/Components/Emails/{Purpose}.cshtml` (Razor component)
-- Usage: Render in job via `renderService.RenderAsync<{ComponentName}>(new Dictionary<string, object?> { ... })`
-- Styling: Use inline CSS or reference from `wwwroot/css/` (email clients don't support external stylesheets)
+1. Create `QuestBoard.Service/Components/Emails/[Purpose].razor` (Razor component)
+2. Reference in job via `RenderAsync<[Purpose]>(Dictionary<string, object?> data)`
+
+**Database Schema Change:**
+1. Add/modify entity class in `QuestBoard.Repository/Entities/[Feature]Entity.cs`
+2. Update entity relationships in `QuestBoardContext.OnModelCreating()` if needed
+3. Run `dotnet ef migrations add [Description]` from `QuestBoard.Service/` directory (generates migration file)
+4. Migration auto-applies on app startup
+
+**Middleware:**
+1. Create `QuestBoard.Service/Middleware/[Purpose]Middleware.cs`
+2. Register in `Program.cs` with `app.UseMiddleware<[Purpose]Middleware>()`
+3. Middleware runs in registration order; place before dependent middleware
+
+**Session Data:**
+1. Add key constant to `QuestBoard.Service/Constants/SessionKeys.cs`
+2. Use `HttpContext.Session.SetInt32(SessionKeys.[Key], value)` in controllers
+3. Read via `HttpContext.Session.GetInt32(SessionKeys.[Key])`
 
 ## Special Directories
 
-**QuestBoard.Service/wwwroot/:**
-- Purpose: Static assets (CSS, JS, images)
-- Generated: No (committed to git)
-- Committed: Yes
-- Structure: `css/` (stylesheets), `images/` (D&D theme art, character blanks, wax seals), `js/` (client-side scripts)
+**Migrations/:**
+- Purpose: EF Core schema version history (auto-generated, one per `dotnet ef migrations add`).
+- Generated: Yes (by `dotnet ef migrations add` CLI command).
+- Committed: Yes (part of schema version control).
+- **Do NOT edit by hand** — regenerate via CLI if a mistake is made.
 
-**QuestBoard.Repository/Migrations/:**
-- Purpose: EF Core migration files (database schema versioning)
-- Generated: Yes (via `dotnet ef migrations add`)
-- Committed: Yes (required for reproducible schema)
-- Usage: Auto-applied on app startup via `context.Database.Migrate()` in Program.cs
+**bin/ and obj/:**
+- Purpose: Build artifacts and compiled output.
+- Generated: Yes (by `dotnet build`).
+- Committed: No (in `.gitignore`).
 
-**QuestBoard.Service/bin/ & obj/:**
-- Purpose: Build output (compiled DLLs, intermediate objects)
-- Generated: Yes (during build)
-- Committed: No (`.gitignore`)
+**Properties/:**
+- Purpose: Project metadata and build settings.
+- Generated: Partly (project GUID auto-generated on project creation).
+- Committed: Yes (contains .csproj metadata).
 
-**.planning/codebase/ (Analysis Docs):**
-- Purpose: Reference for implementation planning and phase execution
-- Generated: Yes (via GSD commands)
-- Committed: Yes
-- Used by: `/gsd:plan-phase` and `/gsd:execute-phase` to follow conventions and architecture patterns
+**.env and appsettings files:**
+- `.env` — Secrets (connection string, API keys); NOT committed.
+- `.env.example` — Template showing required keys; committed (no values).
+- `appsettings.json` — Default settings; committed.
+- `appsettings.Development.json` — Dev overrides (can be NOT committed if it contains secrets).
+- `appsettings.Production.json` — Production overrides; NOT committed (secrets).
 
 ---
 
-*Structure analysis: 2026-07-01*
+*Structure analysis: 2026-07-02*

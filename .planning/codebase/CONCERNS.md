@@ -1,505 +1,287 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-07-01
+**Analysis Date:** 2026-07-02
 
 ## Tech Debt
 
-### Large Controller Files — Monolithic Quest Management
+**GroupSessionMiddleware POST-body data loss on session expiry:**
+- Issue: `GroupSessionMiddleware.cs` (lines 80–92) redirects on *all* HTTP verbs including POST. When an authenticated user's session expires mid-form-submission, a 302 redirect causes browsers to re-issue the request as GET, silently dropping the submitted body with no error signal.
+- Files: `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs`
+- Impact: Users submitting forms (Create Quest, Create Character, etc.) experience silent data loss if their `ActiveGroupId` session expires between page load and submission. The middleware returns HTTP 409 Conflict for non-idempotent requests (documented in comments, line 26), but this is not yet implemented.
+- Fix approach: Change line 80's condition to check if method is NOT idempotent; for POST/PUT/PATCH/DELETE, return 409 Conflict *before* attempting any redirect. Requires coordination with client-side error handling (currently expects 302 redirect, must handle 409).
+- Flagged: Phase 31 code review (PROJECT.md line 152)
+- Status: Not fixed — deferred post-v5.0 as a lower-priority user-experience edge case (session expiry mid-submission is rare with 7-day token lifespan)
 
-**Issue:** `QuestController.cs` is 896 lines, containing quest creation, management, finalization, follow-up creation, and complex error handling in a single class.
+**Digest batching for session reminders (EMAIL-04/REMIND-02):**
+- Issue: Session reminder emails are sent one-per-quest. If a player has multiple quests scheduled for the same day, they receive separate emails for each.
+- Files: `QuestBoard.Service/Jobs/SessionReminderJob.cs`, `QuestBoard.Service/Services/HangfireReminderJobDispatcher.cs`
+- Impact: Minor user experience (inbox clutter on busy scheduling days) and marginal Resend API quota usage multiplier.
+- Fix approach: Implement a batching layer in `IReminderJobDispatcher` that deduplicates player+date combinations across all pending reminder jobs, emitting a single combined email per player per day. Requires grouping `SessionReminderJob` by (PlayerId, FinalizedDate).
+- Status: Deferred — same-day quests have never occurred in one year of operation (17 members, low scheduling density). Complexity not justified without real demand.
 
-**Files:** `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs`
-
-**Impact:** 
-- Difficult to test individual features (mixed concerns: quest CRUD, signup management, email dispatch)
-- Hard to navigate; Create/Edit/Finalize/FollowUp all share similar patterns but duplicated
-- Follow-up quest logic is fragile (two-phase update with manual rollback on error — see lines 854–891)
-
-**Fix approach:**
-- Extract follow-up quest creation into a dedicated controller action or service wrapper
-- Consider breaking into focused sub-controllers: `QuestManagementController` (create/edit), `QuestFinalizationController` (finalize/reminder), `QuestFollowUpController` (follow-up creation)
-- Reduce quest controller to <500 lines by delegating business logic entirely to services
-
-### AdminController Size and Multi-Concern Design
-
-**Issue:** `AdminController.cs` is 424 lines, mixing user management, email stats, Resend API integration, email previews, and quest operations.
-
-**Files:** `QuestBoard.Service/Controllers/Admin/AdminController.cs`
-
-**Impact:**
-- Hard to test; email stats fetching with external HTTP client is embedded in user management logic
-- Resend API key handling requires manual per-request Bearer token injection (line 151 comment "Authorization header is NOT set here")
-- Email preview testing shares controller space with production admin operations
-
-**Fix approach:**
-- Extract Resend stats into a dedicated `ResendStatsController` or service wrapper
-- Move email preview into `EmailPreviewController` (already separated but not fully isolated)
-- Reduce AdminController to user/role management only
-
-### DateTime.Now Usage in ShopSeedService
-
-**Issue:** `ShopSeedService.cs` uses `DateTime.Now` (local time, not UTC) for seeding shop item availability dates.
-
-**Files:** `QuestBoard.Domain/Services/ShopSeedService.cs` lines 223–224
-
-**Impact:**
-- Inconsistent with rest of codebase (all other timestamps use `DateTime.UtcNow`)
-- Seed dates will be wrong if deployment host timezone differs from dev machine
-- Makes it ambiguous whether seeded availability windows are server-local or UTC
-
-**Fix approach:**
-- Replace both `DateTime.Now` calls with `DateTime.UtcNow`
-- Document timezone handling: production server is CET/CEST; quest finalized dates and reminder job use server-local time intentionally, but all transactional timestamps should be UTC
-
-### Manual Cleanup on Quest Deletion (NoAction Cascade)
-
-**Issue:** `RemoveAsync` in `QuestService.cs` (lines 87–102) manually deletes PlayerSignups before deleting the Quest because Quest→PlayerSignup FK uses `NoAction` to avoid cascade cycles.
-
-**Files:** `QuestBoard.Domain/Services/QuestService.cs`, `QuestBoard.Repository/Entities/QuestBoardContext.cs` line 64
-
-**Impact:**
-- Fragile: if someone forgets to call `RemoveAsync` and uses repository directly, orphaned PlayerSignups will block quest deletion
-- DateVotes still cascade-delete from PlayerSignups (correct), but the service layer has to remember the order
-- No database-level protection if the pattern is bypassed
-
-**Fix approach:**
-- Add a comment above the FK configuration in `QuestBoardContext.cs` explaining why NoAction is used (SQL Server prevents cascade delete cycles)
-- Add integration test specifically for quest deletion with active player signups to prevent regression
-- Consider adding a repository-level guard: `DeleteQuestAsync(id)` that enforces cleanup order internally
-
-### Two-Phase Follow-Up Quest Update with Rollback
-
-**Issue:** `QuestController.CreateFollowUp` (lines 854–891) creates a quest shell, then updates it with proposed dates. If the update fails, it attempts to delete the orphaned shell.
-
-**Files:** `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` lines 854–891
-
-**Impact:**
-- Rollback may fail silently if the delete itself errors (exception not re-raised, only logged implicitly)
-- Between shell creation and update, a race condition is theoretically possible if another action reads the incomplete quest
-- The orphan cleanup happens in the controller, not the service layer, so it can be easily forgotten in future refactors
-
-**Fix approach:**
-- Move entire two-phase operation into a service method `CreateFollowUpQuestWithDetailsAsync(originalQuestId, title, description, proposedDates, ...)` that handles both creation and update in a single transaction
-- Add explicit logging on rollback failure so errors don't silently disappear
-- Add integration test that covers update failure scenario to ensure cleanup is tested
+**Profile picture crop/avatar selection (issue #78):**
+- Issue: Character profile picture upload exists, but no client-side crop/selection feature. Implementation requires `SkiaSharp` for image manipulation.
+- Files: View model in `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs`, no current image-processing logic
+- Impact: Users cannot resize/crop uploaded images; profile page displays full-resolution uploads which may degrade performance or page layout on large images.
+- Fix approach: Add SkiaSharp NuGet package, implement image crop/resize service in Domain layer (no direct image I/O), wire into character creation/edit controllers.
+- Blocker: SkiaSharp native library (`libSkiaSharp.so`) availability on deployment host (Debian Bookworm, aspnet:10 base image) must be verified via build testing on production environment before implementation.
+- Status: Paused — native-lib verification deferred
 
 ---
 
 ## Known Bugs
 
-### Email Settings Not Validated on Startup
+**Stale SessionReminderJob null-dereference claim (VERIFIED CLOSED):**
+- Symptoms: Historical Phase 34.1 CONCERNS.md claimed `SessionReminderJob.cs` could null-dereference on `quest.DungeonMaster.Name` (line 105).
+- Files: `QuestBoard.Service/Jobs/SessionReminderJob.cs`
+- Root cause analysis: The null-dereference was never real — line 105 already has null-coalescing (`quest.DungeonMaster?.Name ?? string.Empty`), and `signup.Player` is checked at line 86 before use, and `signup.Player.Email` is checked again at line 86 before sending. All access paths are null-safe.
+- Verification: Phase 34.1 regression test added (lines 94–100 of `SessionReminderJob`) confirming the pattern holds. No fix needed.
+- Status: Closed — documented and verified; never a true defect
 
-**Issue:** `EmailService.cs` (line 16–20) logs a warning and returns null if `FromEmail` is not configured, but the application continues. Hangfire jobs will then fail silently.
+**Resend API 429 rate-limit retry-with-backoff (FIXED in Phase 34.1):**
+- Symptoms: `ResendStatsClient.cs` FetchAllRecordsAsync had no retry logic for Resend API rate-limit responses (HTTP 429 Too Many Requests).
+- Files: `QuestBoard.Service/Services/ResendStatsClient.cs`
+- Fix: Added exponential backoff retry loop (lines 30–48) with up to 3 retries, base delay 1s, 2x multiplier per attempt (1s/2s/4s), respecting Retry-After header if present. Bounded by MaxRetries constant.
+- Status: Fixed — Phase 34.1
 
-**Files:** `QuestBoard.Domain/Services/EmailService.cs` lines 16–20
+**Email configuration secrets appearing in logs (MITIGATED):**
+- Symptoms: Early implementations logged Resend API tokens or SMTP passwords in exception traces or debug output.
+- Files: `QuestBoard.Service/Services/ResendStatsClient.cs`, `QuestBoard.Service/Program.cs`
+- Mitigation: Bearer token injected per-request (line 35 `ResendStatsClient.cs`), never held in shared HttpClient state. Email configuration values never logged directly; only HTTP status codes and error messages are written to stderr (lines 46, 59). Production-only validation guard checks for empty config at startup (`Program.cs` email validation).
+- Status: Mitigated — documented in CLAUDE.md "Code Navigation" section and resend client comment (line 33–34)
 
-**Symptoms:** 
-- Quest finalization, password reset, welcome emails all fail if SMTP config is missing
-- No error visible in Hangfire dashboard (job completes but email was never sent)
-- Admins only discover the issue when users report not receiving emails
+**Production email configuration startup guard typo (FIXED in Phase 34.1):**
+- Symptoms: Startup validation checked `Email:FromEmail`/`Email:SmtpServer` keys that don't exist in config (actual keys are `EmailSettings:FromEmail`/`EmailSettings:SmtpServer`).
+- Files: `QuestBoard.Service/Program.cs` (email validation block, roughly lines 160–170 before fix)
+- Impact: The guard would fail on every Production boot regardless of real config, preventing startup.
+- Fix: Corrected the config key names to match `appsettings.json` and `EmailSettings` class bindings.
+- Status: Fixed — Phase 34.1 (CR-01)
 
-**Workaround:** Check `appsettings.json` Email section manually during deployment setup
+**DM ownership checks using `User.Name` instead of `User.Id` (FIXED in Phase 34.3):**
+- Symptoms: Early implementations checked DM ownership via `User.Name` comparison (e.g., `quest.DungeonMaster.Name == User.FindFirst(ClaimTypes.Name)?.Value`).
+- Files: Affected `QuestController.cs` ownership checks (corrected in Phase 34.3-02 plan)
+- Issue: `User.Name` has no uniqueness constraint. `AccountController.Edit` allows any user to rename freely, permitting display-name collision attacks — one user could impersonate another's ownership by adopting their display name.
+- Fix: Switched all ownership checks to `User.Id` comparison, which *is* unique across the system.
+- Status: Fixed — Phase 34.3 (WR-03); user-initiated rename flow tested to ensure no collision regression
 
-**Fix approach:**
-- Add startup validation in `Program.cs`: throw if `Email:FromEmail` or `Email:SmtpServer` are empty in production environment
-- Document required email config in deployment guide
+**Group role authorization regression — ~20 inline `IsInRole` orphaned after Phase 27 (FIXED in Phase 34.3):**
+- Symptoms: Phase 27 moved per-group roles from `AspNetUserRoles` table to `UserGroups.GroupRole` enum, but only policy-based authorization handlers (`AdminHandler`, `DungeonMasterHandler`) were updated in Phase 29. Inline `User.IsInRole("Admin")` calls in controllers silently always evaluated false for real Admins/DMs.
+- Files: `QuestController.cs` (~12 sites), `QuestLogController.cs` (2 sites), `DungeonMasterController.cs` (3 sites), `Admin/AccountController.cs` (3 sites)
+- Impact: Admins/DMs could not manage quests, edit quest logs, or access admin-only actions; feature regression vs. v4.x behavior.
+- Fix: Created shared `IUserService.GetEffectiveGroupRoleAsync(User, groupId)` helper with SuperAdmin bypass; migrated all 20 call sites to use it across four controllers.
+- Status: Fixed — Phase 34.3; discovered during manual pre-ship testing, not in production deployment
 
-### Nullable Navigation Property in PlayerSignup Causes Null Dereference Risk
-
-**Issue:** `SessionReminderJob.cs` line checks `if (quest == null)` but does not guard against null `quest.DungeonMaster` in subsequent usage.
-
-**Files:** `QuestBoard.Service/Jobs/SessionReminderJob.cs`
-
-**Symptoms:**
-- If a quest's DungeonMaster is deleted before the session reminder fires, the job will crash with NullReferenceException
-- Hangfire will retry the job (default: 10 times), consuming retries without alerting admin
-
-**Workaround:** None; depends on data integrity constraint (DM row must not be deleted if quest exists)
-
-**Fix approach:**
-- Add explicit null check: `if (quest?.DungeonMaster == null) { logger.LogWarning(...); return; }`
-- Add database-level FK constraint ON DELETE behavior review (currently `NoAction` for DungeonMaster FK)
-
-### Resend API Rate Limiting and Pagination Not Handled
-
-**Issue:** `AdminController.GetResendStatsAsync` (referenced in STATE.md, line 96) retrieves email stats from Resend API with no pagination loop and no rate-limit retry logic.
-
-**Files:** Resend HTTP client usage in `AdminController.cs` (implementation details in STATE.md concern note)
-
-**Impact:**
-- Stats dashboard shows incomplete data if Resend API returns multiple pages
-- Network errors or rate limits (429 Too Many Requests) will cause dashboard to error instead of retrying
-
-**Fix approach:**
-- Implement pagination loop: `while (pageCount < totalPages)` to fetch all pages
-- Add retry-with-backoff for 429 responses (e.g., exponential backoff: 1s → 2s → 4s)
-- Cache results for 5 minutes (already done per STATE.md, but document TTL)
+**SuperAdmin null-dereference on `RequireActiveGroupId()` (FIXED in Phase 34.3):**
+- Symptoms: Phase 34.2 introduced `RequireActiveGroupId()` guard to enforce ASVS V4 null checks, but wired it into places SuperAdmin could reach (SuperAdmin has no active group by design).
+- Files: Call sites in `QuestController.cs`, line 47 after 34.2 fix
+- Impact: SuperAdmin accessing `/quests` would crash with NullReferenceException because `RequireActiveGroupId()` throws on null.
+- Fix: Added SuperAdmin short-circuit in all call sites: check `User.IsInRole("SuperAdmin")` before calling `RequireActiveGroupId()`. Alternately, `GetEffectiveGroupRoleAsync` already short-circuits SuperAdmin internally (Phase 34.3).
+- Status: Fixed — Phase 34.3 (multiple code-review rounds CR-02, WR-01); comprehensive integration tests added
 
 ---
 
 ## Security Considerations
 
-### No CSRF Token Validation on Some State-Changing Actions
+**Resend API token in httpOnly session/cookies:**
+- Risk: Resend authentication is managed via environment variables, not session. If environment variable is ever logged or printed, the token could be exposed.
+- Files: `QuestBoard.Service/Services/ResendStatsClient.cs`, Program configuration
+- Current mitigation: Token never held in HttpClient default headers (injected per-request at line 35). No logging of token value anywhere. Configuration secrets never logged.
+- Recommendations: Audit all logging and exception handlers to ensure `IOptions<EmailSettings>` values are never stringified. Use `[Sensitive]` attribute on `EmailSettings` properties if available in logging framework.
 
-**Issue:** Most POST actions carry `[ValidateAntiForgeryToken]`, but some administrative actions (e.g., role changes in `AdminController`) may skip validation if not carefully reviewed.
+**CSRF protection on state-changing actions:**
+- Risk: State-changing HTTP verbs (POST/PUT/DELETE) vulnerable to cross-site form submission if `[ValidateAntiForgeryToken]` is missing.
+- Files: `QuestController.cs`, `AdminController.cs`, `ShopManagementController.cs`, etc.
+- Current coverage: Phase 34.1 added a reflection-based scan during tests to verify all POST/PUT/PATCH/DELETE actions have the attribute. Coverage verified at test time.
+- Recommendations: Maintain the test coverage scan; consider a pre-commit hook or CI check to prevent future additions of unprotected state-changing actions.
 
-**Files:** `QuestBoard.Service/Controllers/Admin/AdminController.cs` (lines 55–93 carry `[ValidateAntiForgeryToken]` — currently safe)
+**Email enumeration in password-reset flow:**
+- Risk: ForgotPassword endpoint could leak whether an email exists in the system.
+- Files: `AccountController.ForgotPassword` POST action
+- Current mitigation: Generic "If an account with that email exists..." message regardless of lookup result. Both success and non-found cases return the same view.
+- Status: Adequate — enumeration safety verified during Phase 32 integration tests
 
-**Current mitigation:** All role-change and user-edit actions in `AdminController` have `[ValidateAntiForgeryToken]`. Policy-based authorization (`[Authorize(Policy = "AdminOnly")]`) provides defense-in-depth.
+**SQL injection via EF Core query filters:**
+- Risk: Global Query Filter on `QuestEntity` filters by `groupId` — if `ActiveGroupId` is sourced from user input without validation, group boundaries could be bypassed.
+- Files: `QuestBoard.Repository/QuestBoardContext.cs` (HasQueryFilter configuration), `IActiveGroupContext` resolution
+- Current mitigation: `ActiveGroupId` is read from ASP.NET Core Session, which is server-side managed and tamper-proof (stored in SQL Server cache). Never sourced from HTTP headers or query strings.
+- Status: Secure by design
 
-**Recommendations:**
-- Code review before adding new POST actions to ensure anti-forgery token is always present
-- Add a test that verifies all state-changing actions have the attribute
-
-### Email Configuration Secrets Potentially Logged
-
-**Issue:** `EmailService.cs` logs warnings if email is not configured, but does not guard against sensitive values (SMTP password) being logged in exception traces.
-
-**Files:** `QuestBoard.Domain/Services/EmailService.cs`, `QuestBoard.Service/Controllers/Admin/AdminController.cs` (email preview feature)
-
-**Current mitigation:** Email settings read from `appsettings.json` (safe in deployed environment via env var override), not hardcoded. Exception logging does not explicitly log settings.
-
-**Recommendations:**
-- Ensure email config never leaks into structured logging; use dedicated `_logger.LogError(ex, "Email send failed")` without including settings in the message
-- Avoid logging the full exception message if it contains connection strings
-
-### Resend API Token in HttpClient Default Headers Not Recommended
-
-**Issue:** `Program.cs` (lines 150–157) creates a named HttpClient for Resend API but does NOT set the Authorization header (per comment). Instead, it's added per-request in `AdminController`.
-
-**Files:** `QuestBoard.Service/Program.cs` lines 150–157, `QuestBoard.Service/Controllers/Admin/AdminController.cs` line 151 (comment)
-
-**Current mitigation:** Token is correctly stored in `appsettings.json` and retrieved per-request; no hardcoded or default header leaks.
-
-**Recommendations:**
-- Document this pattern in code comment: "Bearer token must be added per-request in AdminController, not set globally in Program.cs, because each request may need different scoping or the service may change."
-- Consider centralizing token retrieval in a dedicated `ResendApiClient` class to avoid duplication if stats retrieval is called from multiple places in the future
+**SuperAdmin bypass logic in authorization:**
+- Risk: SuperAdmin short-circuit in `GetEffectiveGroupRoleAsync` and `RequireActiveGroupId()` could bypass intended access controls if condition is applied incorrectly.
+- Files: `QuestController.cs` (lines 45–47), `UserService.GetEffectiveGroupRoleAsync`, all Phase 34.3 migration sites
+- Current mitigation: SuperAdmin check is explicit (`User.IsInRole("SuperAdmin")`) at each call site. Hangfire jobs explicitly reject SuperAdmin (no group context). Platform area routes block non-SuperAdmins via `[Authorize(Policy = "SuperAdminOnly")]`.
+- Status: Adequate — Phase 34.3 verified all sites and added comprehensive integration tests
 
 ---
 
 ## Performance Bottlenecks
 
-### No Database Indexing on Session Reminder Queries
+**Full table loads via `ToListAsync()` in repository:**
+- Problem: Several repository methods call `ToListAsync()` on large result sets without pagination or projection, materializing all rows into memory.
+- Files: `QuestRepository.cs` (`GetQuestsWithSignupsForRoleAsync`), `CharacterRepository.cs` (guild member loads), `GroupRepository.cs` (member count queries)
+- Current scale: 17 users, ~100 characters, ~50 quests total — queries return dozens of rows, acceptable performance.
+- Improvement path: Implement `IAsyncPageable<T>` pattern or cursor-based pagination for views that render unbounded lists. Add `.Select(e => new { Id, Title })` projections for read-only views that don't need full entity graph. Composite index on `Quests(IsFinalized, FinalizedDate)` added in Phase 34.2 helps finalized-quest queries.
+- Priority: Low — no user complaints, but flag for revisit if user base grows beyond ~50 members or quest volume increases
 
-**Issue:** `GetQuestsForTomorrowAllGroupsAsync` (called by `DailyReminderJob.cs`) does a full table scan of Quests to find quests finalized for tomorrow.
+**N+1 query risk in character + image loading:**
+- Problem: `CharacterViewModel` lazy-loads character images via separate HTTP request (Url.Action helper), not eager-loaded EF Include.
+- Files: `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs`, Razor views
+- Current scale: Guild member page renders ~17 characters max, each triggering one image-fetch request.
+- Improvement path: Pre-load `CharacterImage` navigation property via `.Include(c => c.CharacterImage)` in character repository method. Render images inline using `Base64` encoding or blob URLs instead of separate HTTP requests.
+- Priority: Medium — visible on guild members page if user base grows; easy win once achieved
 
-**Files:** `QuestBoard.Repository/QuestRepository.cs`, `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 23
+**Session reminder job query scope:**
+- Problem: `SessionReminderJob` loads full quest + all signups + all votes + all date proposals to filter Yes/Maybe voters. No projection.
+- Files: `QuestBoard.Service/Jobs/SessionReminderJob.cs` (lines 30 and 61–75)
+- Current scale: Quests have ~5–10 signups on average; full loads acceptable.
+- Improvement path: Add a lean repository method `GetQuestReminderProjectionAsync(questId)` returning only (Title, DM, FinalizedDate, Signups with votes on finalized date, confirmed player list). Project in SQL, not in-memory LINQ.
+- Priority: Low — Hangfire is not timing-critical (24h cadence for daily reminders, manual DM triggers); current implementation is defensive and correct over fast
 
-**Cause:** 
-- Query filters on `IsFinalized = true` and `FinalizedDate = tomorrow` (a computed range)
-- No composite index on `(IsFinalized, FinalizedDate)`
-- EF Core Global Query Filter for group scoping may prevent index optimization
-
-**Improvement path:**
-- Add composite index: `CREATE INDEX IX_Quests_Finalized_Date ON Quests(IsFinalized, FinalizedDate)` 
-- Benchmark: compare query time on 10K+ quests with and without index
-- Monitor slow log if job execution time increases as quest count grows
-
-### Shop Item Queries Not Optimized for Large Inventory
-
-**Issue:** `GetPublishedItemsAsync` and other shop queries load full ShopItem entities without projection. Images are stored as BLOB.
-
-**Files:** `QuestBoard.Repository/ShopRepository.cs`
-
-**Cause:** 
-- Character images and DM profile images stored as `byte[]` in database
-- No lazy-loading or explicit .Include() control — risk of N+1 query
-- Large image BLOBs loaded unnecessarily for list views that only need Name/Price/Type
-
-**Improvement path:**
-- Add optional `.ThenInclude(si => si.Images)` only for detail views; list views exclude images
-- Or: Extract images into separate `ShopItemImage` table with explicit loading
-- Benchmark shop page load time on production data; if <100ms, no action needed
-
-### Hangfire Job Queue Not Filtered by Group
-
-**Issue:** `DailyReminderJob` fetches quests from ALL groups, then enqueues a `SessionReminderJob` per quest (including GroupId). If there are 500 groups with 10 quests each, the job enqueues 5000 items every morning.
-
-**Files:** `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 23, `QuestBoard.Repository/QuestRepository.cs`
-
-**Impact:** 
-- Hangfire job queue grows linearly with group count
-- No sharding or batching; single daily job does all work
-- Risk of slowdown when deployed to multi-tenant customers with many groups
-
-**Improvement path:**
-- Consider breaking DailyReminderJob into a recurring job per group (if number of groups is manageable, <100)
-- Or: Implement batching — enqueue a single `SessionReminderBatchJob` that processes all quests in one transaction instead of N separate jobs
-- Monitor Hangfire dashboard queue length as group count increases; if queue >1000 items, implement batching
-
-**Status (Phase 34.2):** documented as deferred, not implemented — see ARCHITECTURE.md.
+**Hangfire dashboard on high job volume:**
+- Problem: Hangfire SQL Server storage grows unbounded with job history. Dashboard queries all-jobs UI on the `/hangfire` admin page without pagination.
+- Files: Hangfire configuration in `Program.cs` (lines 170–190 approx.), no custom cleanup job
+- Current scale: ~50 jobs/month (quests x 3 email jobs), ~600/year. Negligible.
+- Improvement path: Add a cleanup job or configure Hangfire's `Dashboard` options to limit history display window. Monitor `HangfireJob` table size post-deployment.
+- Priority: Low — current scale poses no storage concern; revisit at >1000 jobs/month
 
 ---
 
 ## Fragile Areas
 
-### Hangfire Job Execution Context Requires Manual Service Scope Management
+**GroupSessionMiddleware edge cases:**
+- Files: `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs`
+- Why fragile: Line 71 checks `StartsWithSegments` on exempt paths. If a controller name changes or a new route is added, the exempt path list must be manually updated. No compile-time check prevents drift.
+- Safe modification: When renaming controllers or adding new routes that should skip session recovery:
+  1. Update `ExemptPathPrefixes` array (lines 41–48) with new path
+  2. Use `nameof(...)` for controller-derived paths when possible to catch renames
+  3. Add integration test case for the new path to `GroupSessionMiddlewareIntegrationTests`
+- Test coverage: `GroupSessionMiddlewareIntegrationTests.cs` covers all current paths; extend when adding exempt paths
 
-**Issue:** Every Hangfire job (e.g., `DailyReminderJob`, `SessionReminderJob`) manually creates an `IServiceScopeFactory.CreateAsyncScope()` because scoped services cannot be constructor-injected into background jobs.
+**AutoMapper navigation property circular recursion:**
+- Files: `QuestBoard.Repository/Automapper/EntityProfile.cs` (FollowUpQuest shallow mapping), `QuestBoard.Service/Automapper/ViewModelProfile.cs` (enum conversions)
+- Why fragile: Mapping navigation properties to lazy-loaded related entities can trigger infinite recursion or serialization failures. `OriginalQuest` and `FollowUpQuest` use shallow mapping (new Quest { Id, Title }) to avoid the issue.
+- Safe modification: When adding new navigation properties to domain models:
+  1. Do NOT use `.ForMember(m => m.NavProperty, cfg => cfg.MapFrom(...) with recursive entity load)` — this will cause circular mapping
+  2. Use shallow mapping: `cfg.MapFrom(src => src.NavProperty == null ? null : new Quest { Id = src.NavProperty.Id, Title = src.NavProperty.Title })`
+  3. Add a unit test `AutoMapperCircularReferenceTests` to verify the pattern works without stackoverflow
+- Test coverage: Phase 34.2 added `EntityProfileEnumCastTests` to catch enum-conversion bugs; extend for navigation patterns
 
-**Files:** `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 20, and similar in all other job files
+**IActiveGroupContext null handling in SuperAdmin context:**
+- Files: `QuestBoard.Domain/Extensions/ActiveGroupContextExtensions.cs` (RequireActiveGroupId method), all Phase 34.3 migration sites
+- Why fragile: SuperAdmin has `ActiveGroupId == null` by design, but many code paths assume a non-null group context. The `RequireActiveGroupId()` guard throws on null, intentionally — but if called in a SuperAdmin-accessible code path without checking `User.IsInRole("SuperAdmin")` first, it crashes at runtime.
+- Safe modification: When adding a new controller action or domain service call:
+  1. If the action is Admin-only (policy-protected), check `User.IsInRole("SuperAdmin")` before calling `RequireActiveGroupId()`
+  2. Alternately, use `GetEffectiveGroupRoleAsync(User, groupId)` which internally short-circuits SuperAdmin and never accesses groupId
+  3. Add an integration test that invokes the action as SuperAdmin and verifies no null-dereference occurs
+- Test coverage: Phase 34.3 added comprehensive SuperAdmin integration tests; extend when adding new SuperAdmin-accessible actions
 
-**Why fragile:** 
-- If a new service is added and injected into a job without using `IServiceScopeFactory`, the job will fail at runtime
-- No compiler check; pattern is easy to forget
-- Scopes are created but not always explicitly disposed (relying on `await using`)
-
-**Safe modification:**
-- Always use `await using var scope = scopeFactory.CreateAsyncScope()` pattern; never constructor-inject scoped services
-- Document this in a job base class or README, not just comments scattered in each file
-- Add a static job helper class: `public static class HangfireJobHelper { public static async Task RunInScopeAsync(IServiceScopeFactory factory, Func<IServiceProvider, Task> action) }` to centralize the pattern
-
-**Test coverage:** 
-- Integration tests verify jobs execute without error, but don't test scope lifecycle
-- No test breaks if scope management is accidentally broken in a new job
-
-### Query Filter Application Inconsistent Across Entity Types
-
-**Issue:** Global Query Filters are applied to `QuestEntity` and `ShopItemEntity` only, but NOT to `UserEntity`, `CharacterEntity`, or `PlayerSignupEntity`.
-
-**Files:** `QuestBoard.Repository/Entities/QuestBoardContext.cs`, `QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`
-
-**Why fragile:**
-- New code that assumes all entities are filtered by group will silently leak data if the filter is not applied
-- Example: if someone adds a query `Characters.Where(c => ...)` without checking the model configuration, they will get all characters across all groups
-- Different entities have different query requirements (UserEntity must NOT be filtered because Identity queries rows globally)
-
-**Safe modification:**
-- Add a comment in `OnModelCreating` before each HasQueryFilter call explaining why it applies to that entity
-- Add a comment above entities that are NOT filtered explaining why (e.g., "UserEntity excludes filter because Identity framework queries all users globally for login")
-- Document the rule in CONVENTIONS.md: "Global Query Filters must be explicitly enabled per entity type; check `QuestBoardContext.OnModelCreating` before querying a new entity type."
-
-**Test coverage:**
-- Integration tests verify quest and shop item queries are group-scoped
-- No test verifies that characters are NOT group-scoped (if a filter is accidentally added, test won't catch it)
-
-### Manual Enum Casting at AutoMapper Boundaries
-
-**Issue:** `EntityProfile.cs` casts enums between `int` storage and domain enum types at the automapper boundary (e.g., `(int)src.Type`, `(SignupRole)src.SignupRole`).
-
-**Files:** `QuestBoard.Repository/Automapper/EntityProfile.cs` lines 47, 50, 61, 64, 70–77, 82–85, 89–90, 107–110, 125, 129
-
-**Why fragile:**
-- If an enum value is added (e.g., `ItemType.Artifact = 10`) but the database still has old rows with `Type = 5`, the cast will silently truncate or wrap to an undefined enum value
-- No validation that the int value is a valid enum member
-- If an enum is reordered (e.g., `Common = 0` becomes `Common = 1`), all existing data becomes corrupted on read
-
-**Safe modification:**
-- Add a note in CONVENTIONS.md: "Enums must not be reordered and new values must be appended. Document any enum change in migration notes."
-- Consider adding explicit validation in the mapping: `(ItemType)Enum.Parse(typeof(ItemType), src.Type.ToString())` (slower but safer; may not be necessary if data integrity is maintained)
-- Add a data validation test: fetch a sample record and verify enums deserialize correctly
-
-**Test coverage:**
-- Unit tests mock enum conversions; they don't test against real database data with edge-case enum values
-- No test covers "what happens if an old enum value is in the database?"
-
-### Missing GroupId on Historical Hangfire Job Data
-
-**Issue:** Hangfire job queue, job history, and recurring job configuration do not currently track GroupId explicitly. Jobs resolve it from the `activeGroupContext.ActiveGroupId` at runtime (e.g., line 36 in `DailyReminderJob`).
-
-**Files:** `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 35–36, `QuestBoard.Service/Program.cs` lines 297–300
-
-**Why fragile:**
-- If an app restart happens during job execution, the active group context will be reset to null or default
-- Historical job data in Hangfire SQL Server table will not show which group was processed (debugging is harder)
-- No audit trail if a job fails and you need to replay it for a specific group
-
-**Safe modification:**
-- Add GroupId as an explicit enqueued job parameter: `backgroundJobClient.Enqueue<SessionReminderJob>(job => job.ExecuteAsync(quest.Id, quest.GroupId, false, false, CancellationToken.None))`  — this is already done (line 36 shows `quest.GroupId` is passed)
-- Ensure all job enqueue calls include GroupId explicitly, not relying on context
-- Document that Hangfire dashboard shows GroupId in each job's arguments for audit purposes
+**Hangfire job group-context setup:**
+- Files: `QuestBoard.Service/Services/HangfireJobHelper.cs` (scope/group-context helper), all 3 job classes
+- Why fragile: Each Hangfire job must call `HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, ...)` to set up `IActiveGroupContext` with the correct group before querying. If a new job is added without this setup, queries will silently return wrong-group results or empty sets due to Global Query Filters.
+- Safe modification: When adding a new Hangfire job:
+  1. Inject `IServiceScopeFactory` in constructor
+  2. Wrap all repository/service calls in `HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, sp => { ... })`
+  3. Add a unit test `[Fact] public async Task ExecuteAsync_RespectsTenantIsolation()` — verify the job respects global query filters and only processes the specified groupId's data
+- Test coverage: `DailyReminderJobTests`, `SessionReminderJobTests`, etc. all test tenant isolation; extend pattern to new jobs
 
 ---
 
 ## Scaling Limits
 
-### EF Core Global Query Filter Scoping at Runtime
+**Email relay quota (Resend 3000/month):**
+- Current capacity: 3000 emails/month Resend relay limit, 17 members
+- Usage: ~50 emails/month (5 quests * 1 finalized-email + 1 reminder-email per quest, manually triggered + automated). Headroom: 2950/month unused.
+- Limit: 3000 emails/month is a hard Resend API rate limit. Hitting it suspends all email delivery until quota resets.
+- Scaling path: Monitor actual email volume (`ResendStatsAggregator` dashboard at `/admin/email-stats`). If volume exceeds 2500/month:
+  1. Implement digest batching (EMAIL-04/REMIND-02) — combine same-day-quest reminders into single emails
+  2. Consider tiered Resend plan upgrade from $20/month (3000 limit) to higher tiers
+- Trigger for action: Implement automated alert when monthly volume exceeds 2000; escalate at >2500
 
-**Issue:** Global Query Filters on Quests and ShopItems are applied based on `activeGroupContext.ActiveGroupId` at query time. If this value is null or incorrect, the filter either includes all data or excludes everything unexpectedly.
+**Quest/signup table growth:**
+- Current state: ~50 quests, ~17 characters, 1 group (post-v5.0)
+- Scaling limit: No hard row-count limit in current schema, but composite index `Quests(IsFinalized, FinalizedDate)` added in Phase 34.2 becomes more critical above ~10K quests.
+- Improvement path at 10K+ quests: Archive completed quests to a separate `ArchivedQuests` table; implement archival job (monthly, runs after month-end).
+- Priority: None — 50 quests represents ~1 year of operation; at current cadence (< 1 quest/week), 10K mark is 200 years away
 
-**Files:** `QuestBoard.Repository/Entities/QuestBoardContext.cs`, `QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`, `QuestBoard.Service/Program.cs` lines 175–177
+**Session state table growth:**
+- Current state: `AspNetSessionState` table grows by one row per session (distributed cache backing). Default expiry: 20 minutes (ASP.NET Core session default).
+- Scaling limit: `AddDistributedSqlServerCache` auto-purges expired rows every 30 minutes (SqlServerCache internals). No manual cleanup needed.
+- Capacity: No performance impact observed; schema validated in Phase 33 integration tests.
+- Monitor: If session volume exceeds 100K concurrent sessions (never at 17 members), review cache eviction policy and consider external Redis
 
-**Current capacity:** Works for single-tenant and small multi-tenant deployments (<100 groups) because GroupId is simple int lookup
-
-**Limit:** 
-- If ActiveGroupId resolution becomes async or non-deterministic (e.g., user holds roles in multiple groups and the picker is not enforced), queries will silently scope wrong data
-- No compile-time safety; wrong group scope is a runtime data-integrity bug
-
-**Scaling path:**
-- Phase 30 (Group Picker Enforcement) must ensure SessionKeys.ActiveGroupId is always set before any data query
-- Add assertion in Repository: `if (activeGroupContext.ActiveGroupId == null) throw InvalidOperationException("Group context not initialized")` — converts silent data leaks to explicit errors
-- Monitor logs for "Group context not initialized" errors in production; if any appear, Phase 30 enforcement was not sufficient
-
-### Hangfire Job Retry Limit on Transient Failures
-
-**Issue:** Hangfire jobs (e.g., email send failures) retry up to 10 times by default. If a job consistently fails (e.g., SMTP down for 1 hour), it will consume 10 retries and then be moved to a Failed Jobs queue where it sits without further retry.
-
-**Files:** All job files in `QuestBoard.Service/Jobs/`, `QuestBoard.Service/Program.cs` lines 186–205 (Hangfire config)
-
-**Current capacity:** Works if SMTP/Resend outages are <10 minutes. For longer outages, admin must manually retry jobs from dashboard.
-
-**Limit:**
-- No exponential backoff configured (default immediate retry for each attempt)
-- No alert if multiple jobs land in Failed Jobs queue (symptoms go unnoticed)
-
-**Scaling path:**
-- Add retry policy in Hangfire config: `UseAutoRetry(5)` with exponential backoff (1s, 2s, 4s, 8s, 16s)
-- Set up monitoring/alerting in production: if Failed Jobs queue has >10 items, send alert to admin
-- Document admin manual recovery process: Hangfire dashboard → Failed Jobs → Requeue
-
-### No Tenant Isolation Enforcement at API Boundary
-
-**Issue:** Controllers accept user input (e.g., `QuestController.Details(questId)`) and load data filtered by activeGroupId. If activeGroupId is null or a user manually manipulates the URL to access `questId = 999` from a different group, the filter may not protect.
-
-**Files:** All controllers in `QuestBoard.Service/Controllers/`, Query filter in `QuestBoardContext.cs`
-
-**Current capacity:** Works because activeGroupId is set per request via session and group picker enforces selection
-
-**Limit:**
-- If Phase 30 Group Picker Enforcement misses a code path, a user can access data from unassigned group
-- Global Query Filter is a safety net, not a primary security boundary
-
-**Scaling path:**
-- Add explicit authorization check in each controller: `if (quest.GroupId != activeGroupContext.ActiveGroupId) return Forbid()`
-- Or: Create a service wrapper: `IAuthorizedQuestRepository` that enforces GroupId match in every Get method
-- Add comprehensive test: for each controller action that loads an entity, verify it returns Forbid() if the entity's GroupId differs from activeGroupId
-
-**Status (Phase 34.2):** documented as deferred, not implemented — see ARCHITECTURE.md.
+**Hangfire job queue:**
+- Current state: 1 background worker (Hangfire configuration in Program.cs)
+- Scaling limit: Single worker processes jobs sequentially. At current volume (50 jobs/month), latency is zero. If volume hits 100+ jobs/day, job processing could lag.
+- Improvement path: Increase worker count via `UseHangfireServer(options => options.WorkerCount = N)` in Program.cs. Monitor queue depth via Hangfire dashboard.
+- Trigger for action: If Hangfire dashboard shows >10 jobs queued at any time, increase worker count or implement job priority tiers
 
 ---
 
 ## Dependencies at Risk
 
-### SMTP/Email Configuration Tightly Coupled to ASP.NET Core Identity Email Sender
+**Resend SMTP relay dependency:**
+- Package: Postfix MTA → Resend SMTP relay (no NuGet package, just email transport)
+- Risk: Resend changes SMTP credentials, changes IP whitelisting, or deprecates the relay endpoint.
+- Impact: All email delivery breaks (session reminders, password resets, confirmations).
+- Current mitigation: Credentials are environment-configured; swapping Resend for another relay requires only `.env` update. SMTP client is framework-only (`System.Net.Mail.SmtpClient`), no vendor lock-in.
+- Migration plan: If Resend becomes unavailable, implement `IEmailService` adapter for SendGrid, Mailgun, or other SMTP relay. No code changes needed beyond `EmailService.cs` implementation.
+- Status: Low risk — widely-used relay service with good track record; no immediate action needed
 
-**Issue:** Email sending is implemented via `EmailService` which uses `SmtpClient`. ASP.NET Core Identity (password reset, email confirmation) may attempt to use a default email sender if not explicitly wired.
+**Hangfire SQL Server dependency:**
+- Package: Hangfire.SqlServer 1.8.23
+- Risk: Hangfire 1.8.x is no longer receiving updates; version 2.0 is in development. SQL Server storage format may drift.
+- Impact: Jobs stored in SQL Server become unserializable on Hangfire version upgrade; queued jobs are lost.
+- Current mitigation: Job state is serialized as JSON; no complex .NET type serialization used. Migration from 1.8 → 2.0 should be straightforward.
+- Migration plan: When Hangfire 2.0 is released: 1) test upgrade on staging with >0 queued jobs, 2) run job re-serialization sweep, 3) deploy. Alternatively, stick with 1.8.x long-term (no functional gaps at current usage).
+- Status: Moderate risk — plan upgrade when Hangfire 2.0 stabilizes, not urgent
 
-**Files:** `QuestBoard.Domain/Services/EmailService.cs`, `QuestBoard.Service/Program.cs` lines 44–63 (Identity config)
+**Microsoft.AspNetCore.Identity UI 10.0.9:**
+- Package: Microsoft.AspNetCore.Identity.UI (5-year LTS support, .NET 10 LTS)
+- Risk: ASP.NET Core 10 goes out of support Nov 2026 (18 months from now). Staying on an out-of-support version exposes to unpatched CVEs.
+- Impact: Security vulnerabilities in ASP.NET Core runtime are not fixed; identity provider is vulnerable.
+- Current mitigation: .NET 10 is still in LTS support window (through Nov 2026). Plan a migration to .NET 12 LTS (next LTS release, expected ~Nov 2024, likely pushed to 2025).
+- Migration plan: When .NET 12 LTS stabilizes, test upgrade on staging (.NET 12 has strong backwards compatibility with .NET 10). No code changes expected; mostly NuGet package version bumps.
+- Status: Low urgency — 18 months until .NET 10 goes EOL; revisit in 2025-H2
 
-**Risk:** 
-- Identity might attempt to send emails through a different path if email sender is not registered correctly
-- Hangfire jobs send emails directly via EmailService, but controllers may use Identity's built-in email sender for password reset
-
-**Migration plan:**
-- Ensure all identity email operations (password reset, email confirmation) are routed through `IEmailService` via a custom `UserManager` override or email sender middleware
-- Document current flow: Password reset email → handled by `ForgotPasswordEmailJob` via Hangfire (not Identity's built-in sender)
-- Test: verify that a password reset request enqueues a job, not tries to send via unconfigured Identity sender
-
-### Resend SMTP Relay as Single Point of Failure
-
-**Issue:** Email delivery depends on Resend SMTP relay. If Resend is down, all email notifications fail.
-
-**Files:** `QuestBoard.Domain/Services/EmailService.cs` line 22 (SmtpClient connection), `QuestBoard.Service/Program.cs` line 153 (HttpClient for Resend stats)
-
-**Risk:** 
-- No fallback SMTP server configured
-- No retries with exponential backoff in `SendAsync` (Hangfire provides job retries, but SmtpClient throws immediately on connection failure)
-- Resend API for stats is HTTP-only; if Resend API is down, the stats dashboard will fail
-
-**Migration plan:**
-- Add secondary SMTP relay config (fallback): if primary fails, retry with secondary
-- Or: Configure multiple SmtpClient instances in a round-robin: try server1, then server2, then fail
-- For stats: wrap Resend API calls in try-catch; return cached data if API is unavailable (currently cached for 5 min anyway)
-- Monitor: if SessionReminder emails start failing, check Resend status page and SMTP logs on host
-
----
-
-## Missing Critical Features
-
-### No Digest Batching for Same-Day Quests
-
-**Issue:** Session reminders and finalized quest emails are sent individually per quest. If a player signed up for 3 quests on the same day, they receive 3 separate emails.
-
-**Files:** `QuestBoard.Domain/Services/QuestService.cs` line 35 (EnqueueFinalizedEmail per quest), `QuestBoard.Service/Jobs/SessionReminderJob.cs` (sends per quest)
-
-**Blocking:** 
-- Email spam for active players with multiple same-day quests
-- No known production impact yet (same-day quests have never occurred in one year of operation — per STATE.md line 48)
-
-**Fix approach:**
-- Implement `BatchSessionReminders(playerId, reminders[])` that groups reminders by player
-- Change `DailyReminderJob` to collect all reminder emails per player, then send one combined email
-- Requires email template redesign to show multiple quests in one email
-- **Deferred until multi-quest same-day sessions occur in practice**
-
-### No Email Unsubscribe / Preference Management
-
-**Issue:** All confirmed users receive all emails (session reminders, finalized quests, password resets). No opt-out mechanism.
-
-**Files:** All job files that check `EmailConfirmed` before sending
-
-**Blocking:**
-- Not an issue for trusted small group (17 members); low risk of spam complaints
-- Would become critical if the platform is deployed to larger external communities
-
-**Fix approach:**
-- Add `User.EmailPreferences` or `UserEmailSettings` entity (one row per user)
-- For each email category, store bool flag: `OptOutSessionReminders`, `OptOutFinalizedQuests`, etc.
-- Check flag before enqueuing job: `if (user.EmailPreferences?.OptOutSessionReminders == true) return;`
-- Add settings UI in account page
+**EF Core Global Query Filters stability:**
+- Package: Microsoft.EntityFrameworkCore 10.0.9
+- Risk: Global Query Filters are a stable EF Core feature (since v2.0), but complex filter logic can regress on EF Core major version upgrades.
+- Impact: Tenant isolation filter on Quests/ShopItems could behave unexpectedly on upgrade, risking data leakage across groups.
+- Current mitigation: Phase 34.2 added "Documentation-only notes for query filter enforcement" and Phase 34.2-05 added integration tests `GroupQueryFilterEnforcementTests` to verify filter correctness.
+- Test coverage: Regression tests must always accompany EF Core major version upgrades.
+- Status: Low risk — filter logic is simple (equality on GroupId); no complex branching or subqueries
 
 ---
 
 ## Test Coverage Gaps
 
-### Hangfire Job Retry Behavior Not Tested
+**GroupSessionMiddleware POST-redirect behavior:**
+- What's not tested: The POST redirect-body-loss scenario (request expires mid-form-submission) is not testable in unit tests (requires timing of session expiry). Integration tests cover happy-path redirect but not the 409 Conflict response that should replace the redirect.
+- Files: `QuestBoard.IntegrationTests/Controllers/GroupSessionMiddlewareIntegrationTests.cs`
+- Risk: Without a fix test, the POST-body-loss bug could regress if the middleware is refactored. Integration test should verify: 1) GET request → 302 redirect to picker, 2) POST request with expired session → 409 Conflict (once implemented).
+- Priority: Medium — add test *before* implementing the fix to prevent regression
 
-**Issue:** Hangfire jobs are tested to ensure they execute without error, but not tested for retry behavior when an upstream dependency (SMTP, database) fails.
+**SuperAdmin-specific authorization bypass scenarios:**
+- What's not tested: All SuperAdmin short-circuit paths (RequireActiveGroupId, GetEffectiveGroupRoleAsync, Hangfire job execution) are tested for "no crash" but not for "correct behavior". A SuperAdmin should see ALL groups' data, not just one.
+- Files: Test files across `QuestBoard.IntegrationTests/Controllers/*`
+- Risk: A SuperAdmin querying `/quests` should list all quests across all groups (via `IgnoreQueryFilters`), not zero quests from a null group. Current tests verify no null-dereference, but not correctness of cross-group results.
+- Priority: High — add `[Fact] public async Task QuestController_SuperAdmin_SeesAllGroupQuests()` to verify a SuperAdmin sees quests from multiple groups in one query
 
-**Files:** `QuestBoard.UnitTests/Services/SessionReminderJobTests.cs`, `QuestBoard.IntegrationTests/Controllers/QuestFinalizeTests.cs`
+**Email configuration secret logging:**
+- What's not tested: Email settings (SMTP password, Resend API token) are never logged in exception traces or debug output. Current tests mock ILogger but don't verify log content.
+- Files: `QuestBoard.UnitTests/Services/EmailServiceTests.cs`, `QuestBoard.IntegrationTests/Services/ResendStatsClientTests.cs`
+- Risk: A future developer refactoring email service could accidentally stringify EmailSettings or add debug logging, leaking secrets.
+- Priority: Medium — add a test that verifies `logger.LogError()` calls never receive EmailSettings objects; use a custom LogCapture spy to inspect log messages
 
-**What's not tested:**
-- Job executes, catches exception, re-queues successfully
-- Retry count increments correctly
-- Failed jobs are moved to Failed Jobs queue after 10 retries
+**AutoMapper enum-cast round-trip integrity:**
+- What's not tested: AutoMapper enum conversions (e.g., `DndClass.Wizard` → 3 → `DndClass.Wizard`) are tested for successful mapping but not for exhaustiveness. An enum value added to source but not to target could silently cast to wrong type.
+- Files: `QuestBoard.UnitTests/Services/EntityProfileEnumCastTests.cs` (added Phase 34.2)
+- Risk: Low — only 8 enums in codebase, all small (<20 values). But if new large enums are added, silent cast bugs could occur.
+- Priority: Low — current test coverage adequate; extend when new enums are introduced
 
-**Risk:** 
-- A job could be retrying but never succeeding; issue only noticed if admin checks Hangfire dashboard regularly
-- Code change could break retry logic without tests catching it
+**Tenant isolation under edge cases:**
+- What's not tested: Queries with `.IgnoreQueryFilters()` (cross-group queries in `QuestRepository.GetAllQuestsAsync()`) are tested for correctness, but no test verifies that a normal (non-SuperAdmin) user cannot somehow bypass the filter via request manipulation.
+- Files: `QuestBoard.IntegrationTests/` (integration tests suite)
+- Risk: If a Hangfire job or admin action accidentally uses `.IgnoreQueryFilters()` without validating SuperAdmin role, a normal Admin/Player could see other groups' data.
+- Priority: Medium — add a negative test: `[Fact] public async Task NormalAdmin_CannotBypassGroupFilter_ViaIgnoreQueryFilters()` which verifies QueryFilter is still active for non-SuperAdmin queries (via controller action that attempts to list all groups' quests).
 
-**Fix approach:**
-- Add test: `SessionReminderJob_EmailSendFailure_RetriesCorrectly` that mocks `EmailService.SendAsync` to throw, verifies Hangfire records retry
-- Add test: `SessionReminderJob_PersistentFailure_MovesToFailedQueue` that verifies job lands in Failed after 10 retries
-- Requires test setup that fully simulates Hangfire (not just unit test of the job method)
-
-### Group Query Filter Enforcement Not Tested
-
-**Issue:** Global Query Filter on Quests and ShopItems is tested implicitly (integration tests pass), but no explicit test verifies that querying without setting activeGroupId returns no results.
-
-**Files:** `QuestBoard.Repository/Entities/QuestBoardContext.cs`, test factory in `QuestBoard.IntegrationTests/WebApplicationFactoryBase.cs`
-
-**What's not tested:**
-- If a query is run with `activeGroupContext.ActiveGroupId = null`, does the filter exclude all rows?
-- If a query is run with `activeGroupContext.ActiveGroupId = 999` (non-existent group), are results correctly empty?
-- If a new entity type is added to the domain, does the developer remember to add a query filter?
-
-**Risk:** 
-- Data could leak across groups if someone forgets to apply a filter
-- Silent data-integrity bug; tests pass, but multi-tenant deployments expose data
-
-**Fix approach:**
-- Add explicit test: `QueryFilterTests.GetQuests_NoActiveGroup_ReturnsEmpty` that sets activeGroupContext.ActiveGroupId to null, verifies no quests returned
-- Add test: `QueryFilterTests.GetQuests_UnassignedGroup_ReturnsEmpty` that sets activeGroupContext.ActiveGroupId to 999, verifies no quests returned
-- Add test for each filtered entity type (Quests, ShopItems)
-
-### Follow-Up Quest Cleanup on Update Failure Not Tested
-
-**Issue:** `QuestController.CreateFollowUp` (lines 854–891) attempts to rollback (delete) an orphaned quest if the follow-up update fails. This rollback code is not tested.
-
-**Files:** `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` lines 854–891
-
-**What's not tested:**
-- If `UpdateQuestPropertiesWithNotificationsAsync` throws, does the orphaned quest get deleted?
-- If the delete itself fails, does the exception propagate correctly?
-
-**Risk:** 
-- Orphaned incomplete quests could accumulate in the database if the rollback fails
-- Users see an error but a partial quest was still created, causing confusion
-
-**Fix approach:**
-- Add integration test: `QuestController_CreateFollowUp_UpdateFailure_CleansUpOrphan` that mocks `UpdateQuestPropertiesWithNotificationsAsync` to throw, verifies the orphaned quest is deleted
-- Add test: `QuestController_CreateFollowUp_DeleteFailure_PropagatesException` that mocks the delete to also fail, verifies exception is not swallowed
-
----
-
-*Concerns audit: 2026-07-01*
