@@ -4,13 +4,13 @@ milestone: v5.0
 milestone_name: Multi-Tenancy
 status: executing
 stopped_at: Completed 34.3-02-PLAN.md
-last_updated: "2026-07-02T12:09:04.117Z"
+last_updated: "2026-07-02T12:13:30.662Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 13
   completed_phases: 11
   total_plans: 48
-  completed_plans: 45
+  completed_plans: 46
   percent: 85
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-29 — v5.0 Multi-Tenancy started)
 ## Current Position
 
 Phase: 34.3 (group-role-authorization-regression-fix-inline-ownership-che) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-02
 
@@ -122,7 +122,7 @@ Items acknowledged and deferred at milestone close on 2026-06-28:
 
 **Resume file:** None
 
-Last session: 2026-07-02T12:09:04.098Z
+Last session: 2026-07-02T12:13:30.648Z
 Stopped at: Completed 34.3-02-PLAN.md
 Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execute-phase 34.2 — strict order required per 34.2-CONTEXT.md D-05)
 
@@ -162,6 +162,7 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 | Phase 34.3 P01 | 5min | 2 tasks | 3 files |
 | Phase 34.3 P05 | 2min | 2 tasks | 3 files |
 | Phase 34.3 P02 | 8min | 2 tasks | 1 files |
+| Phase 34.3 P03 | 6min | - tasks | - files |
 
 ## Decisions
 
@@ -198,3 +199,5 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 - [Phase 34.3-05]: IdentityService.AdminResetPasswordAsync redundant inner Admin check deleted outright — Repository layer cannot reach Service-layer IActiveGroupContext; outer AdminOnly policy is the real gate
 - [Phase 34.3-02]: Index consolidated its two IsInRoleAsync(Admin)/IsInRoleAsync(DungeonMaster) calls into a single GetEffectiveGroupRoleAsync call, mapping GroupRole to Role.Admin/Role.DungeonMaster
 - [Phase 34.3-02]: RequireActiveGroupId() kept strictly inside existing null-guards (if (userEntity != null) for Index; currentUser != null && short-circuit for Details) so anonymous visitors never trigger the fail-hard group-context lookup
+- [Phase ?]: 34.3-03: DungeonMasterController.Profile computes GroupRole? role in a currentUser != null guard before the object initializer, since await cannot run inline inside an object initializer
+- [Phase ?]: 34.3-03: Both EditProfile GET/POST guards hoist role resolution above the Forbid() check since they run behind DungeonMasterOnly policy, making RequireActiveGroupId() fail-hard safe

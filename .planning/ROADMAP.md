@@ -397,7 +397,7 @@ Plans: 6 plans in 3 waves
 **Wave 2** *(blocked on 34.3-01 — controllers call the helper; disjoint controller files run in parallel)*
 
 - [x] 34.3-02-PLAN.md — `QuestController` 12 sites migrated (Index/Details `CanManage`/Manage `IsAdmin` + 8 `Forbid()` ownership-override guards; D-03 fail-hard)
-- [ ] 34.3-03-PLAN.md — `QuestLogController` (2 sites) + `DungeonMasterController` (3 sites) migrated + `IActiveGroupContext` injected (D-03 fail-hard)
+- [x] 34.3-03-PLAN.md — `QuestLogController` (2 sites) + `DungeonMasterController` (3 sites) migrated + `IActiveGroupContext` injected (D-03 fail-hard)
 - [ ] 34.3-04-PLAN.md — `Admin/AccountController` Profile/Edit badges migrated + `IActiveGroupContext` injected (D-04 fail-soft null-group)
 
 **Wave 3** *(blocked on 34.3-02, 34.3-03, 34.3-04, 34.3-05)*
