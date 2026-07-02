@@ -26,6 +26,6 @@ public class ChangeEmailConfirmationJob(
         });
 
         await emailService.SendAsync(toEmail, "Confirm your new D&D Quest Board email address", html);
-        logger.LogInformation("ChangeEmailConfirmationJob: sent email-change confirmation to {ToEmail}.", toEmail);
+        logger.LogInformation("ChangeEmailConfirmationJob: sent email-change confirmation.");
     }
 }

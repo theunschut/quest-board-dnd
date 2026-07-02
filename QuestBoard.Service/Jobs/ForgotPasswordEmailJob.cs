@@ -25,6 +25,6 @@ public class ForgotPasswordEmailJob(
         });
 
         await emailService.SendAsync(toEmail, "Reset your D&D Quest Board password", html);
-        logger.LogInformation("ForgotPasswordEmailJob: sent password-reset email to {ToEmail}.", toEmail);
+        logger.LogInformation("ForgotPasswordEmailJob: sent password-reset email.");
     }
 }

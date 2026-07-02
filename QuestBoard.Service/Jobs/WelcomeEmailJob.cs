@@ -27,6 +27,6 @@ public class WelcomeEmailJob(
         });
 
         await emailService.SendAsync(toEmail, "Welcome to the D&D Quest Board — set your password", html);
-        logger.LogInformation("WelcomeEmailJob: sent welcome email to {ToEmail}.", toEmail);
+        logger.LogInformation("WelcomeEmailJob: sent welcome email.");
     }
 }

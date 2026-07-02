@@ -125,7 +125,9 @@ public class AdminController(IUserService userService, IQuestService questServic
                     var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
                     var callbackUrl = Url.Action("SetPassword", "Account", new { userId = userId.Value, token = encodedToken }, Request.Scheme);
                     if (callbackUrl == null)
-                        logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", userId.Value);
+                        // userId is a database-internal integer identifier, not personal data — despite
+                        // flowing from GetIdByEmailAsync(model.Email), it carries no PII of its own.
+                        logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", userId.Value); // lgtm[cs/exposure-of-sensitive-information]
                     else
                         jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(model.Email, model.Name, callbackUrl, true, CancellationToken.None));
                 }
