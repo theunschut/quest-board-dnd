@@ -1,6 +1,7 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Jobs;
 using QuestBoard.Service.Services;
 using QuestBoard.Service.ViewModels.AdminViewModels;
@@ -101,9 +102,9 @@ public class AdminController(IUserService userService, IQuestService questServic
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateUser(CreateUserViewModel model)
     {
-        if (!ModelState.IsValid)
+        if (this.TryReturnInvalidModel(model, out var invalidModelResult))
         {
-            return View(model);
+            return invalidModelResult!;
         }
 
         var groupId = activeGroupContext.ActiveGroupId;
@@ -130,8 +131,7 @@ public class AdminController(IUserService userService, IQuestService questServic
                 }
             }
 
-            TempData["Success"] = $"Account created for {model.Name}. A welcome email with a set-password link has been sent.";
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithSuccess(nameof(Users), $"Account created for {model.Name}. A welcome email with a set-password link has been sent.");
         }
 
         foreach (var error in result.Errors)
@@ -203,8 +203,7 @@ public class AdminController(IUserService userService, IQuestService questServic
                     var callbackUrl = Url.Action("ConfirmEmailChange", "Account",
                         new { userId = user.Id, newEmail = model.Email, token = encodedToken }, Request.Scheme);
                     jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(model.Email, user.Name, callbackUrl!, CancellationToken.None));
-                    TempData["Success"] = $"A confirmation email has been sent to {model.Email} for {user.Name}. The address will update once confirmed.";
-                    return RedirectToAction(nameof(Users));
+                    return this.RedirectWithSuccess(nameof(Users), $"A confirmation email has been sent to {model.Email} for {user.Name}. The address will update once confirmed.");
                 }
             }
 
@@ -248,8 +247,7 @@ public class AdminController(IUserService userService, IQuestService questServic
 
             if (result.Succeeded)
             {
-                TempData["SuccessMessage"] = $"Password reset successfully for {user.Name}!";
-                return RedirectToAction(nameof(Users));
+                return this.RedirectWithMessage(nameof(Users), "SuccessMessage", $"Password reset successfully for {user.Name}!");
             }
 
             foreach (var error in result.Errors)
@@ -296,15 +294,13 @@ public class AdminController(IUserService userService, IQuestService questServic
 
         if (user.EmailConfirmed)
         {
-            TempData["Error"] = $"{user.Name} has already confirmed their account.";
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), $"{user.Name} has already confirmed their account.");
         }
 
         var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(userId);
         if (rawToken == null || string.IsNullOrEmpty(user.Email))
         {
-            TempData["Error"] = $"Failed to send confirmation email to {user.Name}. Please try again.";
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), $"Failed to send confirmation email to {user.Name}. Please try again.");
         }
 
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
@@ -312,8 +308,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         if (callbackUrl == null)
         {
             logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", userId);
-            TempData["Error"] = $"Failed to send confirmation email to {user.Name}. Please try again.";
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), $"Failed to send confirmation email to {user.Name}. Please try again.");
         }
 
         // Legacy accounts created before the admin-set-password flow was retired may already have a
@@ -321,8 +316,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         // would be inaccurate for them, so Welcome.razor picks a different variant via IsNewAccount.
         var hasExistingPassword = await userService.HasPasswordAsync(userId);
         jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(user.Email!, user.Name, callbackUrl, !hasExistingPassword, CancellationToken.None));
-        TempData["Success"] = $"Welcome email queued for {user.Name}.";
-        return RedirectToAction(nameof(Users));
+        return this.RedirectWithSuccess(nameof(Users), $"Welcome email queued for {user.Name}.");
     }
 
     [HttpGet]
