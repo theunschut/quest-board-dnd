@@ -11,15 +11,13 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
 using System.Threading.RateLimiting;
 
 namespace QuestBoard.Service.Controllers.Admin;
 
 [Authorize(Policy = "AdminOnly")]
-public class AdminController(IUserService userService, IQuestService questService, IIdentityService identityService, IBackgroundJobClient jobClient, IHttpClientFactory httpClientFactory, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter) : Controller
+public class AdminController(IUserService userService, IQuestService questService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Users()
@@ -383,61 +381,21 @@ public class AdminController(IUserService userService, IQuestService questServic
     private async Task<(EmailStatsViewModel stats, bool error)> GetResendStatsAsync(
         string apiKey, CancellationToken token)
     {
-        try
-        {
-            var client = httpClientFactory.CreateClient("Resend");
-            var cutoff = DateTime.UtcNow.AddDays(-30);
-            var collected = new List<ResendEmailRecord>();
-            string? afterId = null;
-            bool hasMore = true;
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var (records, error) = await resendStatsClient.FetchAllRecordsAsync(apiKey, cutoff, token);
 
-            while (hasMore)
-            {
-                var url = afterId == null ? "emails?limit=100" : $"emails?limit=100&after={afterId}";
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-                var response = await client.SendAsync(request, token);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var body = await response.Content.ReadAsStringAsync(token);
-                    Console.Error.WriteLine($"[Resend] {(int)response.StatusCode} {response.StatusCode} — {body}");
-                    return (new EmailStatsViewModel(), true);
-                }
-
-                var json = await response.Content.ReadAsStringAsync(token);
-                Console.Error.WriteLine($"[Resend] raw: {json[..Math.Min(500, json.Length)]}");
-                var result = JsonSerializer.Deserialize<ResendEmailListResponse>(json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (result?.Data == null || result.Data.Count == 0) break;
-
-                bool reachedCutoff = false;
-                foreach (var email in result.Data)
-                {
-                    if (email.CreatedAt.UtcDateTime < cutoff) { reachedCutoff = true; break; }
-                    collected.Add(email);
-                }
-
-                if (reachedCutoff || result.Data.Count < 100) hasMore = false;
-                else afterId = result.Data[^1].Id;
-            }
-
-            var counts = ResendStatsAggregator.Aggregate(collected, cutoff);
-
-            return (new EmailStatsViewModel
-            {
-                Sent = counts.Sent,
-                Delivered = counts.Delivered,
-                Bounced = counts.Bounced,
-                Failed = counts.Failed,
-                AsOf = DateTime.UtcNow
-            }, false);
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"[Resend] Exception: {ex.GetType().Name}: {ex.Message}");
+        if (error)
             return (new EmailStatsViewModel(), true);
-        }
+
+        var counts = ResendStatsAggregator.Aggregate(records, cutoff);
+
+        return (new EmailStatsViewModel
+        {
+            Sent = counts.Sent,
+            Delivered = counts.Delivered,
+            Bounced = counts.Bounced,
+            Failed = counts.Failed,
+            AsOf = DateTime.UtcNow
+        }, false);
     }
 }
