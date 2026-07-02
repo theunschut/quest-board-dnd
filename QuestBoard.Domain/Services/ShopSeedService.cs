@@ -221,8 +221,8 @@ public class ShopSeedService(IShopService shopService) : IShopSeedService
                 Rarity = ItemRarity.Legendary,
                 Price = 75000,
                 Quantity = 1,
-                AvailableFrom = DateTime.Now.AddDays(7), // Available in a week
-                AvailableUntil = DateTime.Now.AddDays(30) // Available for limited time
+                AvailableFrom = DateTime.UtcNow.AddDays(7), // Available in a week
+                AvailableUntil = DateTime.UtcNow.AddDays(30) // Available for limited time
             }
         ];
     }
