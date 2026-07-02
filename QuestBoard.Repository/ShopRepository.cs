@@ -9,11 +9,12 @@ namespace QuestBoard.Repository;
 internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<ShopItem, ShopItemEntity>(dbContext, mapper), IShopRepository
 {
     /// <inheritdoc/>
+    // List views render Name/Price/Type/Status only, so the full transaction collection is
+    // intentionally omitted here — only GetItemWithDetailsAsync loads it, for the detail view.
     public override async Task<IList<ShopItem>> GetAllAsync(CancellationToken token = default)
     {
         var entities = await DbContext.ShopItems
             .Include(si => si.CreatedByDm)
-            .Include(si => si.Transactions)
             .OrderBy(si => si.Name)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<ShopItem>>(entities);
