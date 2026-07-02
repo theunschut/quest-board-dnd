@@ -1,201 +1,143 @@
-﻿# Project Research Summary
+# Project Research Summary
 
-**Project:** D&D Quest Board v5.0 Multi-Tenancy
-**Domain:** Adding multi-group tenancy to an existing ASP.NET Core 10 MVC + EF Core + SQL Server application
-**Researched:** 2026-06-29
-**Confidence:** MEDIUM
+**Project:** D&D Quest Board — v2.0 Omphalos Integration
+**Domain:** Cross-app SSO bridge (signed-token redirect handoff between two independently-deployed .NET apps)
+**Researched:** 2026-07-02
+**Confidence:** HIGH
 
 ## Executive Summary
 
-The v5.0 milestone transforms the Quest Board from a single-tenant EuphoriaInn app into a generic multi-group platform. The recommended approach is a shared-database, shared-schema multi-tenancy model using EF Core 10 Global Query Filters. Every required capability is achievable with packages already in the project (EF Core 10.0.9, ASP.NET Core Identity, ASP.NET Core Areas); the only new wiring is a single AddHttpContextAccessor() call and an optional dev-time rename tool. The milestone naturally splits into two workstreams: a pure namespace rename (EuphoriaInn to QuestBoard) that touches ~200 files but changes zero behavior, followed by the multi-tenancy schema and logic work.
+This milestone connects two independent, already-shipping apps — Quest Board (ASP.NET Core 10 MVC, SQL Server, multi-tenant since v5.0) and Omphalos (.NET 10 Minimal API, PostgreSQL, single-tenant, owned by another maintainer) — via a browser-redirect SSO flow using a short-lived HMAC-signed token. Neither app calls the other's API in this milestone; Quest Board generates a signed URL and issues a browser redirect, Omphalos validates it, auto-provisions the user, finds/creates the linked session, and issues its own JWT cookie. This is a redo of an abandoned attempt (`milestone/3-omphalos-integration`) whose code diverged too far from `main` to merge — all four research passes were run independently against the *current* state of both repos rather than trusting the old branch's conclusions, and in several places reached different (better-grounded) answers.
 
-The key architectural decision is that IActiveGroupContext must be defined in the Domain layer, not the Service layer, because the Repository-layer QuestBoardContext must consume it and Repository already depends on Domain. The implementation (ActiveGroupContextService) lives in the Service layer and reads from ASP.NET Core Session (already configured with a 24-hour idle timeout). This dependency inversion is the central seam of the entire feature and must be established before any other multi-tenancy work begins.
+The work splits cleanly into Quest Board-side work (new Platform Settings entity/page, token-generation service, nav/button entry points — no external dependency, lowest risk) and Omphalos-side work (a new SSO endpoint, promoting a private `GenerateToken` method to the interface, a schema change to link sessions back to quests). The Quest Board side is technically simpler but the Omphalos side is the actual critical path, because it requires PR review on a repo this project doesn't own — the same failure mode ("branch diverged before merge") that killed the previous attempt. The token-format contract between the two repos must be locked in writing before either side's implementation starts, since nothing but a live end-to-end test would catch a mismatch afterward.
 
-The highest risks are operational rather than architectural: the global query filter silently returns empty result sets if the active group ID is null (blank pages, not crashes); the integration test suite (191 tests) will break wholesale the moment HasQueryFilter is added without a matching stub IActiveGroupContext registered in the test factory; and removing self-registration without verifying admin role integrity in production could lock out all administrators. All three risks are preventable with disciplined phase ordering and a pre-deploy DB snapshot check.
+The highest-risk finding to come out of this research pass, not present in the old branch's research: **the identity-matching key must not be Quest Board's display name or a raw username string.** Quest Board's own `PROJECT.md` decision log records a real security bug (Phase 34.3) caused by exactly this class of mistake — `User.Name` has no uniqueness constraint. Two independent research passes (Architecture, Pitfalls) converged on the same fix: match on Quest Board's stable, immutable `UserEntity.Id`, not on `Name`/`Username`/email. See "Identity Matching — Resolved" below.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new NuGet packages are required. Every multi-tenancy capability uses technology already present: EF Core 10.0.9 (named HasQueryFilter, migrations, junction table modeling), ASP.NET Core Identity (new SuperAdmin role, policy handler), ASP.NET Core Session (active-group persistence), and ASP.NET Core Areas (SuperAdmin management route). Named filters in EF Core 10 (HasQueryFilter(GroupFilter, ...)) allow selective bypass (IgnoreQueryFilters([GroupFilter])) without disabling any future soft-delete or other named filters.
-
-The only tooling addition is ModernRonin.ProjectRenamer as an optional global CLI tool for the namespace rename. Its .slnx support is unverified, so a manual find-and-replace fallback must be planned. Third-party multi-tenancy frameworks (Finbuckle.MultiTenant, SaasKit, Abp.io) are explicitly ruled out as they target connection-string-per-tenant or database-per-tenant scenarios and cannot be added to an existing app without significant rework.
+Zero new NuGet packages needed in either repo. Everything required is BCL or already present: `HMACSHA256.HashData`, `CryptographicOperations.FixedTimeEquals`, and `Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode/Decode` (Quest Board already uses the latter for password-reset tokens in `AccountController.cs` — reuse that exact encoding convention rather than inventing a second one). Omphalos already has a JWT stack (`Microsoft.IdentityModel.Tokens`) for its *own* session cookie, but that's a separate trust boundary — the incoming SSO token needs its own `Sso:Secret` config value, distinct from Omphalos's `Jwt:Secret`.
 
 **Core technologies:**
-- EF Core 10.0.9 HasQueryFilter: per-group data isolation, already present, named filters available
-- IHttpContextAccessor / ASP.NET Core Session: active-group context resolution, already configured with 24h idle timeout
-- ASP.NET Core Identity RoleManager: SuperAdmin role seeding, same pattern as existing Admin/DungeonMaster roles
-- ASP.NET Core Areas: SuperAdmin management route isolation, zero packages, built-in MVC feature
-- ModernRonin.ProjectRenamer (global tool only): namespace rename automation, LOW confidence on .slnx support
+- `System.Security.Cryptography.HMACSHA256` (BCL): sign/verify the token — both repos, no package needed
+- `Microsoft.AspNetCore.WebUtilities.WebEncoders`: Base64URL encode/decode the token — already used in Quest Board, add to Omphalos
+- New EF Core entity (`IntegrationSettingEntity` or similar) + migration on Quest Board: `IOptions<T>` cannot satisfy a runtime-editable SuperAdmin setting — that pattern (used by `EmailSettings`) is startup-bound only
 
 ### Expected Features
 
-**Must have (table stakes, all required for v5.0):**
-- Group entity (GroupEntity: Id, Name, Slug, IsActive, CreatedAt): foundation for all other features
-- GroupId FK on all content entities (Quest, ShopItem, Character, UserTransaction, TradeItem) + EF Core Global Query Filters: the isolation guarantee
-- UserGroupEntity junction table (UserId, GroupId, IsAdmin) + seed all existing users into EuphoriaInn group: membership model
-- IActiveGroupContext scoped service reading from Session: the per-request group resolver
-- Group picker page (redirect after login if user is in 2+ groups) + group switcher in navbar: active-group UX
-- SuperAdmin role + SuperAdminOnly policy + MVC Area at /groups for platform management: system administration
-- Admin-only user creation in AdminController + self-registration removed from AccountController: closed-group security
-- Data migration seeding GroupId = 1 for all existing rows: backward compatibility
+**Must have (table stakes):**
+- Every Omphalos entry point (navbar link, quest-page button) must route through the same signed-token generator — the old branch's Phase 11 code review caught a real bug (WR-01) where the navbar link pointed at Omphalos's raw base URL with no token, dropping DMs on a login wall
+- Graceful degradation when integration is disabled/unconfigured — no dead buttons, no exceptions
+- Role mapping into Omphalos on auto-provision (DM/Admin → Omphalos Admin, Player → Omphalos Player) — defaulting everyone to Player silently strips DM permissions
 
-**Should have (differentiators, defer to v5.x):**
-- Per-group role scoping (role stored in UserGroupEntity, not global Identity roles): only needed when a user is DM in one group and Player in another
-- Group invite link (time-limited signup URL): only needed when admin-creates-password is reported as inconvenient
-- Group branding (description, avatar on GroupEntity): only meaningful once a second group exists
+**Should have (differentiators):**
+- Session find-or-create keyed by quest ID so re-opening the same quest lands in the same Omphalos session
+- Foundation for a future bidirectional (Omphalos → Quest Board) API — no code this milestone, just don't architect anything that blocks it later
 
-**Defer (confirmed anti-features for this scale):**
-- Separate database per group: over-engineering for 1-3 groups at 17 users
-- JWT-based active tenant claims: unnecessary for a cookie-auth MVC app
-- Schema-per-group isolation: EF Core migrations do not support this pattern cleanly
-- Real-time group presence: requires SignalR not in the stack
-- Self-service group creation by non-SuperAdmin: SuperAdmin must be the gatekeeper
+**Defer / anti-features (verified as wrong-fit for ~17 trusted self-hosted users, not generic SaaS advice):**
+- OAuth2/OIDC — overkill for a shared-secret redirect between two apps you both control
+- Nonce/replay-protection store — a 5-minute token window is an acceptable residual risk at this trust level; adds stateful complexity for no real benefit here
+- Per-group Omphalos settings — Omphalos has no tenant concept to map a per-group setting onto (see Architecture Approach below)
+- Self-service account-linking UI — auto-provisioning by stable ID is sufficient
 
 ### Architecture Approach
 
-The existing three-layer clean architecture (Service to Domain to Repository, strict one-way dependency) is extended with new components at each layer. IActiveGroupContext must be defined in Domain because QuestBoardContext in Repository must consume it and Repository already depends on Domain. The implementation lives in Service and reads from IHttpContextAccessor / Session. QuestBoardContext captures the resolved group ID into a readonly field at construction time (not a lazy property call in the HasQueryFilter lambda), which is the officially documented EF Core multitenancy pattern and avoids stale-scope issues. The SuperAdmin bypass is handled by a conditional in OnModelCreating (if (!_isSuperAdmin)) rather than scattered IgnoreQueryFilters() calls throughout repositories.
+Quest Board-side work follows the existing `GroupEntity`-style shape exactly: `Entity → Repository → Domain Service → Controller`, landing under the `/platform` Area (`SuperAdminOnly`) alongside `GroupController` — confirmed correct because Omphalos has no org/tenant concept of its own (flat, `UserId`-scoped data model), so a per-group Quest Board setting would have nothing on the Omphalos side to attach to. Quest Board's repository files are flat at the project root (`QuestBoard.Repository/GroupRepository.cs`), not nested in a `Repositories/` folder — a real convention trap for anyone assuming otherwise.
 
-**Major components:**
-1. IActiveGroupContext (Domain/Interfaces): exposes int? ActiveGroupId and bool IsSuperAdmin; null = cross-group / SuperAdmin view
-2. ActiveGroupContextService (Service): reads Session ActiveGroupId key; returns null when HttpContext is absent (Hangfire job context)
-3. QuestBoardContext (Repository, modified): accepts IActiveGroupContext in constructor; applies HasQueryFilter(GroupFilter, ...) on 5 entity types; skips filters entirely for SuperAdmin
-4. GroupEntity + UserGroupEntity (Repository/Entities, new): group table and junction table
-5. GroupsManagementController (Service/Areas/Groups, new): [Authorize(SuperAdminOnly)] MVC Area controller at /groups
-6. GroupService / IGroupService (Domain, new): group CRUD and member management
+Omphalos-side work follows its route-group-per-feature Minimal API pattern: a new `SsoEndpoints.cs` exposing `MapSsoEndpoints()`, registered in `Program.cs` alongside the existing `AuthEndpoints`/`SessionEndpoints`/`AdminEndpoints`/`SettingsEndpoints`. `AuthService.GenerateToken(User)` is currently `private` on the concrete class, not on `IAuthService` at all — it must be promoted to be reusable by a new `SsoService` without duplicating JWT-building logic. `GameSession.Id` is currently always client-generated (`session-${Date.now()}`) — the SSO flow is the first place a session gets created server-side, so it needs a deterministic ID scheme for idempotent find-or-create (e.g. derived from the Quest Board quest ID). Omphalos's React SPA has no client-side router — landing in the correct session on load needs only a small `AppContext.jsx` change reading a `?session=` query param, not a new routing dependency.
+
+**Major components (new):**
+1. Quest Board: `IntegrationSettingEntity` + repository + domain service + Platform Settings controller/view — instance-wide config, SuperAdmin-only
+2. Quest Board: `IIntegrationTokenService` (Domain layer) — generates the signed redirect URL; a `LaunchOmphalos` controller action; a nav ViewComponent for the DM dropdown link
+3. Omphalos: `SsoEndpoints.cs` + `SsoService` — validates the token, auto-provisions by Quest Board `UserId`, finds/creates the linked `GameSession`, issues the existing JWT cookie
+
+### Identity Matching — Resolved
+
+Three research passes proposed three different cross-app matching keys (username, email, numeric ID) before converging. The resolution, informed by all four:
+
+- **Do not use Quest Board's `Name`/display string** — no uniqueness constraint; this exact mistake already caused a real authorization bug in this codebase (Phase 34.3)
+- **Do not require an `Email` column on Omphalos's `User`** — it doesn't exist today, and adding it is unnecessary schema churn when a better key is available
+- **Use Quest Board's stable, immutable `UserEntity.Id`** (the ASP.NET Identity primary key) as the token's identity claim, and add a new normalized `QuestBoardUserId` column with a unique index on Omphalos's `User` entity as the match key. Auto-provisioning still derives a human-readable `Username` for the new Omphalos account (from Quest Board's display name or email, cosmetic only), but the *authoritative* lookup on repeat logins is always by `QuestBoardUserId`, never by name or email string comparison — sidestepping Postgres case-sensitivity mismatches with SQL Server's case-insensitive Identity matching entirely.
 
 ### Critical Pitfalls
 
-1. **Global filter returns empty rows when GroupId is null**: if ActiveGroupId is null for a user-facing request, WHERE GroupId = NULL matches nothing and pages appear blank rather than crashing. Prevention: throw InvalidOperationException for unresolved group context on user-facing requests; use null-means-SuperAdmin only in explicitly SuperAdmin-scoped operations with named filter bypass.
+1. **HMAC canonical-message format** — the single highest-risk item. Both repos must agree on an identical, unambiguous field order/encoding/expiry-inclusion *before* either side writes code; a hand-rolled string concatenation is vulnerable to field-shifting collisions. Write the contract down and copy it verbatim into both repos' planning docs.
+2. **Identity matching** — see above; resolved via `QuestBoardUserId`, not name/email string matching.
+3. **Secret handling in the new Platform Settings page** — Quest Board's `AdminController.EditUser` already has an established blank-field-preserves-existing-value guard pattern for email-change confirmation; the new secret field must follow it exactly, or the first no-op save silently wipes the shared secret and breaks all subsequent SSO redirects with no obvious error.
+4. **Omphalos's `Secure=true` cookie TODO is still uncommented** (`AuthEndpoints.cs:15`) — this milestone is what will actually exercise that cookie in a cross-app flow behind separate Traefik/reverse-proxy TLS termination, so it should be fixed as part of this work, not left as pre-existing tech debt.
+5. **Cross-repo PR friction is concrete, not generic** — Omphalos is owned by a different GitHub identity, has had 3 migrations in one week (active concurrent development → real migration-snapshot conflict risk), and has zero CI test coverage (maintainer review is the only safety net). This exact dynamic already killed the previous integration attempt.
 
-2. **Integration tests break wholesale after adding HasQueryFilter**: the InMemory provider applies query filters; TestDataHelper creates entities without GroupId; all 191 tests fail with empty result sets. Prevention: register a stub IActiveGroupContext (GroupId=1, IsSuperAdmin=false) in WebApplicationFactoryBase.ConfigureTestServices in the same PR that introduces the filter; update TestDataHelper to set GroupId = 1 on all created entities.
-
-3. **Namespace rename breaks migration build**: .Designer.cs migration files embed CLR type attributes and string literals referencing old namespaces. After rename the project fails to compile and dotnet ef cannot run. Prevention: isolate the rename as its own phase; global find-replace all Migrations files; run dotnet ef migrations add NamespaceRename to regenerate the model snapshot; verify clean build before merging.
-
-4. **Hangfire jobs lose group context and send wrong-group reminders**: DailyReminderJob runs without HttpContext; SessionReminderJob must receive groupId as an explicit parameter, not rely on session. Prevention: update all four email jobs to accept explicit groupId parameters; update DailyReminderJob to pass quest.GroupId when enqueuing.
-
-5. **Admin lockout after removing self-registration**: removing the Register endpoint without verifying admin role integrity in the production DB can lock out all administrators. Prevention: verify Admin role exists in AspNetUserRoles before deploying; test admin login against a DB snapshot; add a startup guard that logs CRITICAL and refuses to start if no Admin user exists and self-registration is disabled.
-
-6. **Applying HasQueryFilter to UserEntity breaks ASP.NET Identity**: UserManager.FindByEmailAsync and related methods query the Users DbSet without calling IgnoreQueryFilters; a group filter on UserEntity silently breaks login, password reset, and email confirmation. Prevention: apply HasQueryFilter only on content entities; never on UserEntity.
 ## Implications for Roadmap
 
-Based on combined research, the dependency graph and pitfall-to-phase mapping strongly suggest a 5-phase structure.
+Starting at **Phase 35** (continuing from v5.0's Phase 34.3; the old Phase 10/11 slots are marked superseded in ROADMAP.md).
 
-### Phase 1: Namespace Rename (EuphoriaInn to QuestBoard)
+### Phase 35: Platform Settings + Token Contract (Quest Board)
+**Rationale:** No external dependency, lowest risk — build first. The token-format contract must be written down as part of this phase, even though the code that consumes it lands in Phase 36/37, because Omphalos-side work can start in parallel once the contract is agreed.
+**Delivers:** `IntegrationSettingEntity` + migration, Platform Settings page (SuperAdmin, URL + shared secret + enabled toggle, blank-preserves-existing-value guard), the written HMAC token-format contract (field order, encoding, expiry, identity claim = Quest Board `UserId`)
+**Addresses:** Admin Settings feature (table stakes)
+**Avoids:** Pitfall 1 (HMAC format), Pitfall 3 (secret blank-overwrite)
 
-**Rationale:** Every subsequent PR writes code in the new namespace. Mixing rename with schema changes produces an unreadable diff and makes partial rollback impossible. Architecture research identifies this as anti-pattern 5. The rename has zero behavior change and all 191 tests must pass before merge.
+### Phase 36: Navigation + Token Generation (Quest Board)
+**Rationale:** Depends on Phase 35's settings service existing at compile time.
+**Delivers:** `IIntegrationTokenService`, DM navbar link (ViewComponent), quest-page "Open Session Notes" button, `LaunchOmphalos` redirect action — every entry point routes through the same token generator (avoids the old branch's WR-01 bug)
+**Uses:** BCL `HMACSHA256`, `WebEncoders.Base64UrlEncode`
+**Implements:** Token-generation component from Architecture Approach
 
-**Delivers:** Clean codebase with consistent QuestBoard.* namespaces; updated .slnx, .csproj files, migration Designer files, Dockerfile labels, CI references.
-
-**Avoids:** Pitfall 3 (migration build broken by namespace mismatch in .Designer.cs files).
-
-**Research flag:** Standard pattern, no deeper research needed. Verify ModernRonin.ProjectRenamer .slnx support before committing; have a manual grep fallback ready.
-
-### Phase 2: Group Entity + Schema Foundation
-
-**Rationale:** Every other multi-tenancy feature depends on GroupEntity existing. GroupId FK columns must exist before HasQueryFilter can reference them. The data migration must land here so production data integrity is established before filters are applied.
-
-**Delivers:** GroupEntity and UserGroupEntity tables; GroupId FK on 5 content entities; EuphoriaInn group seeded; all existing users seeded into that group; IGroupRepository and IUserGroupRepository; composite indexes on GroupId columns.
-
-**Addresses:** Group entity and migration, UserGroupEntity junction table, data migration seeding GroupId=1, existing data migrated into default group.
-
-**Avoids:** Pitfall 8 (SeedShopDataAsync creates orphaned shop items without GroupId); Pitfall 6 (never add HasQueryFilter to UserEntity, document as architecture constraint here).
-
-**Research flag:** Standard EF Core migration pattern, no deeper research needed.
-
-### Phase 3: IActiveGroupContext + Global Query Filters + Hangfire Adaptation
-
-**Rationale:** Filters can only be added after GroupId FK columns exist (Phase 2). Test infrastructure must be updated in the same PR as the filter addition. Hangfire job adaptation (all four email jobs gaining explicit groupId parameters) must also land in this phase to prevent cross-group reminder emails.
-
-**Delivers:** IActiveGroupContext interface (Domain); ActiveGroupContextService (Service, reads Session); modified QuestBoardContext constructor with HasQueryFilter on 5 entity types; stub IActiveGroupContext in test factory; updated TestDataHelper with GroupId = 1; IGroupService / GroupService; updated Hangfire jobs with explicit groupId parameters.
-
-**Addresses:** EF Core Global Query Filters, ITenantService scoped reads session, per-group data isolation.
-
-**Avoids:** Pitfall 1 (null GroupId returns empty rows, use IsSuperAdmin conditional); Pitfall 4 (test factory has no GroupId context, fix in same PR); Pitfall 2 (Hangfire cross-group sweep).
-
-**Research flag:** Highest-complexity phase. Consider --research-phase during planning for the Hangfire job adaptation, specifically how to handle already-queued jobs when ExecuteAsync gains a new groupId parameter (deserialization failure for in-flight jobs).
-
-### Phase 4: SuperAdmin Role + Groups MVC Area
-
-**Rationale:** The SuperAdmin role seed must exist before the area controller can be authorized. The area route must be registered before the default route (anti-pattern 4 from architecture research). This phase is self-contained and does not break any existing functionality.
-
-**Delivers:** SuperAdmin Identity role seeded; SuperAdminOnly authorization policy; GroupsManagementController with Area and Authorize attributes; area route in Program.cs before default route; area _ViewImports.cshtml; group management views (list, create, members).
-
-**Addresses:** SuperAdmin role and policy, dedicated management area for SuperAdmin, group-scoped admin panel.
-
-**Avoids:** Area route registered after default route (404 for all area controllers); missing _ViewImports.cshtml in area (broken tag helpers).
-
-**Research flag:** Standard ASP.NET Core Areas pattern, no deeper research needed.
-
-### Phase 5: Active Group Picker + Group Switcher + Admin User Creation
-
-**Rationale:** This phase depends on all previous phases: filters must work (Phase 3), groups must exist (Phase 2), SuperAdmin must be able to create groups (Phase 4). Removing self-registration belongs here because it requires admin user creation to be fully functional first.
-
-**Delivers:** Group picker page (GET /Groups/Pick, redirected to after login if user is in 2+ groups); group switcher navbar dropdown (only rendered if membership count > 1); POST /Groups/Switch/{id} with server-side membership validation; self-registration removed from AccountController; admin user creation form in AdminController.
-
-**Addresses:** Group picker at login, group switcher in navigation, admin-only user creation, remove self-registration.
-
-**Avoids:** Pitfall 5 (admin lockout after registration removal); Pitfall 7 (TestAuthHandler missing GroupId claim, update in same PR as any new GroupId-bearing authorization handler).
-
-**Research flag:** Group picker session persistence across LXC process restart needs validation during planning and should be an explicit UAT criterion.
+### Phase 37: Omphalos SSO Endpoint (Omphalos repo)
+**Rationale:** Can start in parallel with Phase 36 once Phase 35's contract is written — no compile-time dependency on Quest Board's code, only on the agreed contract. This is the actual critical path due to external PR review latency; open the PR early.
+**Delivers:** `IAuthService.GenerateToken` promoted from private to interface, `QuestBoardUserId` column + migration on `User`, `SsoEndpoints.cs` + `SsoService` (validate token → auto-provision by `QuestBoardUserId` → find/create `GameSession` → issue existing JWT cookie), `Secure=true` cookie fix, `AllowedOrigins` config entry for Quest Board's origin
+**Addresses:** SSO Endpoint feature, Identity Matching resolution
+**Avoids:** Pitfall 2 (identity), Pitfall 4 (cookie security), Pitfall 5 (cross-repo friction — budget review-latency slack)
 
 ### Phase Ordering Rationale
 
-- Rename first: zero behavior change, fully verifiable, eliminates namespace ambiguity from all subsequent diffs.
-- Schema before filters: HasQueryFilter references FK columns that must exist in entities at compile time.
-- Filters before UI: group picker writing to Session has no effect if the DbContext does not read it; all data would appear unscoped.
-- SuperAdmin area before group picker: SuperAdmin must be able to create groups before the picker has real groups to switch between.
-- Group picker last: depends on all previous infrastructure; admin lockout risk isolated to the final phase with full pre-deploy checklist.
+- Quest Board phases (35, 36) are sequential — 36 needs 35's settings service at compile time
+- Phase 37 (Omphalos) has no compile-time coupling to 35/36, only to the written contract from Phase 35 — it can run concurrently with Phase 36 once that contract exists, which shortens the critical path given Omphalos's external review latency
+- End-to-end verification requires all three phases complete
 
 ### Research Flags
 
-Needs deeper research during planning:
-- **Phase 3 (Hangfire job adaptation):** How to handle already-queued Hangfire jobs when SessionReminderJob.ExecuteAsync gains a new groupId parameter. Deserialization will fail for in-flight jobs. Plan a queue drain window or backward-compatible default parameter before planning this phase.
+Phases likely needing deeper research during planning:
+- **Phase 37:** Omphalos's actual Postgres collation and whether `Users.Username` already has a unique index weren't directly verifiable without a live DB connection — confirm before finalizing the auto-provisioning migration
+- **Phase 37:** Exact SSO route path is Omphalos's call (working assumption: `/api/sso/login`, consistent with its `/api/auth/*` convention) — confirm with the Omphalos maintainer, not just assumed
 
-Standard patterns (skip --research-phase):
-- **Phase 1 (Namespace Rename):** Mechanical find-and-replace; EF Core migration namespace behavior is well-documented.
-- **Phase 2 (Group Entity Schema):** Standard EF Core migration + seed pattern.
-- **Phase 4 (SuperAdmin Area):** Standard ASP.NET Core Areas; well-documented.
-- **Phase 5 (Group Picker):** Standard session read/write pattern; existing session infrastructure reused.
+Phases with standard patterns (skip research-phase):
+- **Phase 35, 36:** Both follow established Quest Board conventions (`GroupEntity` shape, `WebEncoders` precedent, ViewComponent pattern) closely enough that no additional phase-level research is needed
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | EF Core and ASP.NET Core from official Microsoft docs; rename tooling (.slnx support) is LOW, manual fallback required |
-| Features | MEDIUM | EF Core multi-tenancy from official docs; UX patterns from industry observation; some implementation details from LOW-confidence single sources |
-| Architecture | MEDIUM | Layer placement grounded in actual codebase analysis; EF Core DbContext injection pattern from official multitenancy docs |
-| Pitfalls | MEDIUM | Cross-validated against actual codebase files (QuestBoardContext.cs, WebApplicationFactoryBase.cs, DailyReminderJob.cs, TestDataHelper.cs); high confidence these are real project-specific risks |
+| Stack (no new packages) | HIGH | Verified directly against both repos' `.csproj` files and current .NET 10 docs |
+| Features (table stakes / anti-features) | HIGH | Grounded in the old branch's real, code-reviewed implementation plus this project's own PROJECT.md history |
+| Architecture (Quest Board side) | HIGH | Read actual `GroupController`, `GroupRepository`, `ServiceExtensions.cs`, `Program.cs`, `_Layout.cshtml` |
+| Architecture (Omphalos side) | HIGH | Read actual `AuthEndpoints.cs`, `AuthService.cs`, `SessionRepository.cs`, `UserRepository.cs`, EF configurations |
+| Identity matching resolution | HIGH | Two independent research passes converged, directly citing this codebase's own prior bug as evidence |
+| Pitfalls (codebase-specific) | HIGH | Verified by reading both repos' source, entity definitions, auth endpoints, config, CI workflows |
+| Pitfalls (general HMAC/timing-attack guidance) | MEDIUM | Corroborated across 2+ external sources, not an official Microsoft doc for this exact pattern |
+| Omphalos Postgres collation / existing unique index | LOW | Not directly queryable without a live DB connection — flagged as a Phase 37 gap |
 
-**Overall confidence:** MEDIUM
+**Overall confidence:** HIGH — the two gaps below are narrow and don't affect the overall design.
 
 ### Gaps to Address
 
-- **ModernRonin.ProjectRenamer + .slnx compatibility:** The tool was built for .sln format; .slnx support is unverified. Plan a manual find-and-replace fallback before starting Phase 1.
-- **Hangfire in-flight job argument compatibility:** When SessionReminderJob.ExecuteAsync gains a new groupId parameter, any jobs queued against the old signature will fail deserialization on pickup. Determine whether a queue drain window or a backward-compatible default parameter is the right mitigation before Phase 3 planning.
-- **EF Core named filters availability in 10.0.9 GA:** HasQueryFilter with a name argument is documented as EF Core 10+. Verify this API shipped in 10.0.9 GA (not only preview). If unavailable, fall back to the combined-lambda IgnoreQueryFilters() approach.
-- **Group picker persistence across LXC restart:** Session is in-memory by default; if the host restarts the active group selection is lost. Determine whether a distributed session store (backed by the existing SQL Server connection) or a UserPreference DB column is the right mitigation.
+- Omphalos's live Postgres collation and whether `Users.Username` already has a unique index — verify with a direct schema query at the start of Phase 37, before writing the migration
+- Exact Omphalos SSO route path — confirm with the maintainer rather than assuming `/api/sso/login`
+- Whether `AllowedOrigins`/CORS population is strictly required for a top-level redirect (not a fetch) — likely not blocking, confirm during Phase 37 implementation
 
 ## Sources
 
-### Primary (MEDIUM confidence, official Microsoft docs)
-- https://learn.microsoft.com/en-us/ef/core/querying/filters: EF Core Global Query Filters, named filters, bypass patterns
-- https://learn.microsoft.com/en-us/ef/core/miscellaneous/multitenancy: DbContext injection pattern for multi-tenancy
-- https://learn.microsoft.com/en-us/ef/core/modeling/relationships/many-to-many: junction table without explicit entity
-- https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/areas: Areas folder structure, route registration, ViewImports caveat
-- https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-context: IHttpContextAccessor registration
+### Primary (HIGH confidence)
+- Direct inspection of `C:\Repos\quest-board` source (current `main`/milestone branch) — controllers, entities, `Program.cs`, `.csproj` files, `PROJECT.md` decision log
+- Direct inspection of `C:\Repos\omphalos` source (`origin/main` and `feature/shared-locations-library`, confirmed identical on all SSO-relevant files) — entities, endpoints, `Program.cs`, `appsettings.json`, CI config
+- `origin/milestone/3-omphalos-integration` (abandoned branch) — reviewed as historical reference for the old requirements/HMAC design, not treated as ground truth
+- Microsoft Learn (.NET 10-versioned docs) — `HMACSHA256`, `CryptographicOperations.FixedTimeEquals`, `WebEncoders`
 
-### Secondary (MEDIUM confidence, community, multi-source agreement)
-- https://codewithmukesh.com/blog/global-query-filters-efcore/: selective IgnoreQueryFilters by name
-- https://www.thereformedprogrammer.net/building-asp-net-core-and-ef-core-multi-tenant-apps-part2-administration/: SuperAdmin vs tenant Admin hierarchy
-- https://www.milanjovanovic.tech/blog/multi-tenant-applications-with-ef-core: architecture patterns
-
-### Tertiary (LOW confidence, single source or community blog)
-- https://github.com/ModernRonin/ProjectRenamer: rename tooling, .slnx support unverified
-- https://antondevtips.com/blog/how-to-implement-multitenancy-in-asp-net-core-with-ef-core: ITenantProvider patterns
-- https://andyp.dev/posts/disable-user-registrations-in-asp-net-core-3-identity: self-registration removal approach
-- https://dev.to/luqman_bolajoko/implementing-aspnet-identity-for-a-multi-tenant-application-best-practices-4an6: never apply HasQueryFilter to UserEntity
+### Secondary (MEDIUM confidence)
+- Soatok's cryptography blog, Wikipedia, Paragon Initiative — HMAC canonicalization and timing-attack general guidance, cross-verified across 2+ sources
+- Primer, AWS Well-Architected — graceful-degradation UX pattern guidance
 
 ---
-*Research completed: 2026-06-29*
+*Research completed: 2026-07-02*
 *Ready for roadmap: yes*

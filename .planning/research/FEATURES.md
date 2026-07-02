@@ -1,219 +1,182 @@
 # Feature Research
 
-**Domain:** Multi-tenancy for an ASP.NET Core 10 MVC D&D group management app
-**Researched:** 2026-06-29
-**Confidence:** MEDIUM (EF Core multi-tenancy via official MS docs and context7; UX patterns from industry observation; implementation details LOW due to websearch-only sourcing for some items)
+**Domain:** Cross-app SSO handoff (companion-app deep link, browser-redirect SSO between two self-hosted apps)
+**Researched:** 2026-07-02
+**Confidence:** HIGH — grounded in (1) direct inspection of both live codebases (Quest Board `.planning/PROJECT.md`, Omphalos `AuthService.cs`/`AuthEndpoints.cs`/`GameSession.cs`), (2) the abandoned `milestone/3-omphalos-integration` branch's completed Phase 10-11 code + its Phase 11 code review (`11-REVIEW.md`) which caught a real SSO-bypass bug, and (3) general websearch on HMAC handoff / replay-protection / graceful-degradation patterns (MEDIUM confidence on the general-industry portions, cross-checked against multiple sources).
 
----
+## Project-Specific Grounding
+
+This is not a greenfield "what does SSO look like" question — a prior attempt (`milestone/3-omphalos-integration`, phases 10-11) built and shipped the Quest Board side of this exact feature before being abandoned as unmergeable. That code is a real, reviewed prior implementation, not a hypothesis:
+
+- **Phase 10** (Admin Settings) and **Phase 11** (Navigation + Token Generation) both completed and passed code review on the old branch.
+- **Phase 20** (Omphalos-side SSO endpoint + session linking) was never started — no `ExternalQuestId` field exists on Omphalos's `GameSession` entity today, confirmed by direct grep of the current Omphalos repo. The Omphalos side of this milestone is genuinely greenfield.
+- The old Phase 11 code review caught a real instance of the exact anti-pattern this research needs to flag: **WR-01** found the navbar "Open Omphalos" link pointing directly at the raw base URL with no token attached, bypassing SSO entirely and dropping the DM on Omphalos's login wall. This is now baked into the table-stakes list below as a named pitfall, not a hypothetical.
+- The old design locked a canonical HMAC message format: `expiry={unix_ts}&questId={id}&questTitle={url_encoded_title}&username={lower}`, alphabetical key order, HMAC-SHA256, lowercase hex signature, 300-second TTL. This is a reasonable, well-scoped starting point and is referenced below where relevant, but the actual token contract is this milestone's design decision to re-verify, not something to blindly re-adopt (multi-tenancy didn't exist when it was designed).
+
+Key facts about current Omphalos auth (confirmed from source, not assumed):
+- Login issues a JWT via a **private** `AuthService.GenerateToken(User)` method — not on `IAuthService` today, so it isn't callable from an SSO service without either promoting it to the interface or duplicating token-issuance logic.
+- The JWT is delivered as an httpOnly `omphalos_token` cookie, `SameSite=Lax`, with a `Secure=true` TODO still commented out in `AuthEndpoints.cs` — i.e. Omphalos isn't cookie-hardened yet regardless of this milestone.
+- `GameSession.Id` is a **client-generated string** with no existing FK/link back to a Quest Board quest — session-quest linking requires a net-new field (e.g. `ExternalQuestId`) plus a lookup method.
+- Omphalos has **no tenant/org concept** — every entity scopes to `UserId` only. This is why Quest Board's settings are instance-wide (Platform/SuperAdmin), not per-group — there is nothing on the Omphalos side for a per-group setting to bind to.
+- CORS scaffolding (`AllowedOrigins` array) already exists in Omphalos config but is empty/inert — enabling it is a config change, not new code.
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-These are the behaviors users assume exist the moment "multi-group" is mentioned. Missing any of these makes the feature feel incomplete or broken.
+Features users assume exist. Missing these = the "one-click SSO" pitch is broken or embarrassing.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Group entity with display name | Any multi-tenant system needs a named container | LOW | Single `GroupEntity { Id, Name, CreatedAt }` table. No complex config needed at this scale. |
-| Per-group data isolation (quests, shop, characters) | Users expect they cannot see another group's quests | MEDIUM | EF Core Global Query Filters on every tenant-scoped entity: `.HasQueryFilter(e => e.GroupId == _currentGroupId)`. Requires adding `GroupId` FK to `QuestEntity`, `ShopItemEntity`, `CharacterEntity`, `TradeItemEntity`, `UserTransactionEntity`, `DungeonMasterProfileEntity`. |
-| User↔group membership (many-to-many) | A user can belong to multiple D&D groups | MEDIUM | `UserGroupEntity { UserId, GroupId, Role }` junction table. Composite PK `(UserId, GroupId)`. Role field allows per-group role assignment (Admin/DM/Player scoped to that group). All existing users seeded into the "EuphoriaInn" group on migration. |
-| Active-group context persisted across requests | After switching groups, every page should reflect the chosen group | MEDIUM | Session-based: `HttpContext.Session.SetInt32("ActiveGroupId", groupId)`. Resolved per-request by `ITenantService` injected into `QuestBoardContext`. Session already exists (IdleTimeout = 24h). No auth cookie re-issue required — simpler than claims for cookie-auth apps. |
-| Group picker at login (for multi-group users) | A user in two groups must be able to choose which one to enter | LOW | After `PasswordSignInAsync` succeeds, check membership count. If count == 1, set session and redirect to Home. If count > 1, redirect to a dedicated `GET /Groups/Pick` page listing their groups. Single-group users (most of the 17 members) never see this page. |
-| Group switcher in navigation | Users who belong to multiple groups must be able to change context without logging out | LOW | Navbar dropdown showing current group name + list of other memberships. POST to `/Groups/Switch/{id}` updates session and redirects to Home. Standard UX pattern (Slack, GitHub, Linear). Invisible to single-group users — navbar element only renders if membership count > 1. |
-| SuperAdmin role with cross-group access | A platform owner must be able to manage all groups | MEDIUM | Add `"SuperAdmin"` role to Identity. `SuperAdminOnly` authorization policy. `ITenantService` returns `null` for SuperAdmin, and `QuestBoardContext` filter uses: `.HasQueryFilter(e => _currentGroupId == null \|\| e.GroupId == _currentGroupId)`. SuperAdmin sees all data unfiltered. |
-| Dedicated management area for SuperAdmin | SuperAdmin needs a place to create/view/delete groups and manage cross-group users | MEDIUM | MVC Area at `/Groups` (or `/Platform`) with `[Authorize(Policy = "SuperAdminOnly")]`. Separate from `/Admin` (which remains per-group). Contains: group list, create group, assign group admin. |
-| Admin-only user creation (no self-registration) | In a closed trusted group, admins create accounts — open registration is a security hole | LOW | Remove the public `Register` GET/POST actions from `AccountController` (or gate them with `[Authorize(Policy = "AdminOnly")]`). Move user creation to `AdminController.CreateUser` (form: Name, Email, Password, Role, Group). Reuses existing `ConfirmationEmailJob` to send welcome/confirm email. |
-| Group-scoped admin panel | Group admins should only see and manage users in their own group | LOW | Existing `AdminController.Users()` filters by `ActiveGroupId` from session — returns only users whose `UserGroupEntity` has the current group. SuperAdmin bypasses this filter. |
-| Existing data migrated into default group | All current quests, users, shop items stay intact after migration | MEDIUM | EF Core migration sets `GroupId = 1` (EuphoriaInn) for all existing rows via `migrationBuilder.Sql(...)`. Data seeder ensures EuphoriaInn group exists before migration runs. |
+| Signed, short-lived, single-purpose redirect token | The entire pitch is "one click, already authenticated" — any link that isn't cryptographically bound to (user, quest, expiry) is either insecure or just a bookmark | MEDIUM | Old design (HMAC-SHA256 over canonical alphabetical query string, 300s TTL) is a solid baseline; BCL-only, zero new NuGet packages on either side |
+| Auto-provision Omphalos user on first SSO click | DMs must never see Omphalos's own login/register form as part of this flow — that's a broken handoff, not a feature gap | MEDIUM | Needs a stable identity key to match Quest Board users to Omphalos users across two independent user tables (see Dependencies) |
+| Auto-create-or-find the matching GameSession | "Land in the correct session" is the literal goal; if it silently creates duplicates on every click, the feature actively harms Omphalos's data (fragmented session notes per quest) | MEDIUM | Requires a net-new `ExternalQuestId` (or similar) column + find-or-create lookup — does not exist in Omphalos today |
+| Every UI entry point (navbar + quest page buttons) routes through the SAME signed-token endpoint — no raw/unsigned links anywhere | Any link that bypasses the token issuance defeats the whole feature for that one entry point | LOW | Directly caught as a bug (WR-01) in the old implementation: the navbar link pointed at the raw base URL with no token, dropping DMs on a login wall. Explicitly re-verify every click surface routes through the signed-URL generator, including the navbar |
+| Graceful hide when integration is unconfigured (no URL / no secret / disabled toggle) | A visible "Open Session Notes" button that 404s or errors is worse than no button — users don't distinguish "not configured" from "broken" | LOW | Single `IsConfigured` gate (`IsEnabled && URL set && secret set`) already proven in the old Phase 10 code; apply consistently everywhere the button/link can render |
+| Expired-token error handling with an actionable retry, not a raw 401/500 | Users double-click, leave a tab open overnight then click it, etc. — an expired token is a routine, not exceptional, event at 300s TTL | LOW | Omphalos SSO endpoint should return a friendly "link expired, go back and click again" page/redirect, not a bare status code |
+| Role mapping: only DM/Admin can reach the SSO launch action | Quest Board already gates this UI to DM/Admin (`DungeonMasterOnly` policy); the SSO endpoint must independently enforce it doesn't trust the client to have checked | LOW | Defense in depth — `[Authorize(Policy = "DungeonMasterOnly")]` on the Quest Board launch action AND signature validation + explicit role/claim on the Omphalos side; never rely on "the button was hidden" as the only control |
+| Standalone-operation fallback when integration env/config is absent | Omphalos is maintained by someone else and used outside this pairing — the SSO endpoint must be inert, not crash-on-boot, when `QUEST_BOARD_SECRET` (or equivalent) isn't set | LOW | Confirmed as an explicit design goal in the old ROADMAP: "Omphalos starts and operates normally when `QUEST_BOARD_SECRET` is not set — only the SSO endpoint is affected" |
+| Consistent identity across repeated SSO visits (same Quest Board user always lands as the same Omphalos user) | Breaking this means session notes/characters get split across "ghost" duplicate accounts, which is a data-integrity failure a small trusted group will notice immediately | MEDIUM | Needs a durable matching key — see Dependencies section; username string-matching is fragile (renames, case, uniqueness) |
 
 ### Differentiators (Competitive Advantage)
 
-Features that add value beyond the minimum viable multi-group experience. Not required for v5.0 launch, but worth knowing about.
+Not required for the core loop to work, but meaningfully improve the experience for this specific pairing. Worth doing because they're cheap given what already exists, not because they're expected.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Per-group role assignment (role is group-scoped, not global) | A user can be DM in one group and Player in another — this is realistic for the D&D hobby | MEDIUM | Requires storing `Role` in `UserGroupEntity` rather than relying solely on global Identity roles. When entering a group context, load the group-scoped role and use it for policy checks. Requires custom authorization handler reading group context. **Significant complexity increase** — only worthwhile if users actually DM in multiple groups. |
-| Group invite link (time-limited URL) | Admin generates a signup link for a new member rather than manually creating their account | MEDIUM | Generates a signed token stored in DB with expiry. Invitee clicks link, sets their own password. Avoids admin knowing the new member's password. Not needed at 17 members where admin creating accounts is fine. |
-| Group branding (name, description, avatar) | Each D&D group has a custom identity in the platform | LOW | Add `Description` and `AvatarUrl` to `GroupEntity`. Display on group picker page. Very low implementation cost but low value until multiple groups actually exist. |
-| Group-scoped shop catalog | Each group has its own shop items independent of other groups | Already in table stakes | This is included in the base isolation requirement — not a differentiator. |
+| Quest title/date passed through and shown on session creation | DM lands in Omphalos and the session is already titled/dated sensibly instead of "New Session" — saves a manual rename every time | LOW | Already in the old token contract (`questTitle` param); cheap to carry through to session creation |
+| "Open Session Notes" surfaced at the point of use (quest Details + Manage pages), not just a generic navbar link | Matches the actual DM workflow — they're already looking at the quest when they want notes, not browsing a global menu | LOW | Already validated UX from the old Phase 11 design; button lives inside the existing "DM Controls" card, not a new page |
+| Foundation seam for future Omphalos → Quest Board calls (e.g. reading session status back) without building it now | PROJECT.md explicitly calls this out as an architectural non-blocker to leave open | LOW | This is just "don't paint yourself into a corner" — e.g. keep the quest↔session mapping queryable from both sides, keep CORS/config seams named generically rather than one-directionally. Do not build the reverse API itself this milestone |
+| SuperAdmin-configurable per-instance URL/secret via existing Platform Settings pattern | Reuses an established, already-reviewed area (`/platform`, key-value settings) instead of inventing new admin UI | LOW | Direct reuse of Phase 29's Platform Settings pattern from v5.0 — not new design work |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+### Anti-Features (Commonly Requested, Often Problematic — Named Explicitly for This Project's Scale)
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Per-user email opt-out per group | "A user in two groups might want reminders from one but not the other" | Cross-group preference state adds a third dimension (user × group × preference) to what is currently a flat `HasKey` field. At 17 members and 1-3 groups this never occurs. | Defer; the existing `HasKey` field already handles the single-group opt-out case. |
-| Global roles that carry across groups (one role for all groups) | Simpler to assign once | Breaks the logical model — a DM in Group A should not automatically be a DM in Group B. Would require role re-architecture with no user benefit at current scale. | Scope roles to the group via `UserGroupEntity.Role`. For v5.0, if only one group exists, global roles work fine — migrate to per-group later when a second group is created with different membership. |
-| Self-service tenant creation by any admin | Group admins request the ability to spawn new groups | A rogue group creation gives them data isolation but no platform visibility. SuperAdmin must be the gatekeeper to prevent proliferation at small scale. | SuperAdmin creates groups; group admin manages membership within their group. |
-| Real-time group presence / activity indicators | "Show which group members are online" | Requires WebSocket/SignalR infrastructure, not present in the stack. Enormous complexity for a hobby app. | Not needed — session-based auth already exists, and D&D groups coordinate via Discord/WhatsApp anyway. |
-| Separate database per group | Maximum isolation, no accidental leakage | At 1-3 groups and 17 users, managing multiple connection strings, separate migrations, and separate Hangfire instances is over-engineering by an order of magnitude. | Single shared database with EF Core Global Query Filters. Proven pattern, zero ops overhead. |
-| JWT-based active tenant claims | "Store the active group in the auth token for statelessness" | This app uses cookie auth + sessions — already in place from v1.x. Re-issuing the auth cookie on every group switch (via `RefreshSignInAsync`) introduces latency and complexity with no benefit for an MVC app. | Store active group in `HttpContext.Session` (already configured with 24h idle timeout). Resolved per-request by `ITenantService`. |
-| Schema-per-group database partitioning | Schema isolation without separate databases | EF Core does not support migrations across multiple schemas for the same DbContext. Would require manual migration scripting. No benefit over query filters at this scale. | Global Query Filters with `GroupId` discriminator column. |
+These are standard advice for public-facing multi-tenant SaaS SSO. At ~17 members, self-hosted, one collaborator owning both repos, and a trusted-group threat model, they add real implementation and maintenance cost for protection against attackers who realistically aren't in this system's threat model.
 
----
+| Feature | Why Requested | Why Problematic (at this scale) | Alternative |
+|---------|---------------|------------------------------------|-------------|
+| Full OAuth2/OIDC authorization-code flow between the two apps | "Real" SSO between two apps sounds like it should use the industry-standard protocol | Needs an authorization server, redirect URI allowlisting, client registration, token introspection or JWKS endpoint, refresh-token handling — multi-week build for two apps run by the same person/small group, replacing a link click with infrastructure | Signed short-lived HMAC redirect URL (already proven in the old Phase 11 code) — same security property (can't be forged without the shared secret) at a fraction of the code |
+| Nonce store / used-token tracking table to prevent replay | Textbook advice for preventing token reuse ("what if someone intercepts the URL and replays it") | Requires a persistent store (DB table or cache) shared or duplicated across two apps on two different databases (SQL Server + PostgreSQL), plus cleanup/expiry jobs — for a link that (a) travels over HTTPS between a DM's own browser tabs, (b) is scoped to a specific quest+user+300s window, and (c) even if replayed, only grants access to a session that user's own DM role already permits them to see | Rely on the 300-second TTL alone. A replayed token is only exploitable by someone who already had network access to intercept an HTTPS request from a trusted group member within a 5-minute window — not a realistic threat for 17 people on a self-hosted deployment. If this needs revisiting, the trigger is a first real incident, not a checklist item |
+| Real-time bidirectional session-state sync (Omphalos pushes live updates back to Quest Board, or vice versa) | Feels natural once both apps are "connected" — why not keep them in sync live? | Needs websockets/SignalR or polling infrastructure, conflict resolution for concurrent edits, and cross-repo coordination on two apps with independent release cadences and different owners | PROJECT.md already scopes this correctly: leave an architectural seam (don't block it), but don't build it. If Omphalos data needs to inform Quest Board later, a simple polled read-only API call is enough — not a sync engine |
+| Full user account linking / identity federation UI (let users manually link/unlink their Quest Board and Omphalos accounts, view linked-account status, etc.) | Common in consumer SaaS ("Connect your Google account") | For 17 trusted users where auto-provisioning by a stable key is deterministic and admin-configured, a self-service linking UI is a feature nobody asked for solving a problem (ambiguous identity) that a well-chosen provisioning key avoids entirely | Auto-provision deterministically off a stable identifier (see Dependencies) with no user-facing linking screen; if a mismatch ever happens, it's an admin/DB fix, not a self-service flow to build |
+| Per-group Omphalos configuration (multiple Omphalos URLs/secrets, one per Quest Board group) | Quest Board is now multi-tenant (v5.0), so it's tempting to make every integration setting per-group for consistency | Omphalos itself has no tenant/org concept — it's flat, `UserId`-scoped. A per-group Quest Board setting would have nothing on the Omphalos side to bind to; it would just be unused configuration surface | Instance-wide setting under `/platform`, configured once by SuperAdmin — already the direction PROJECT.md has settled on |
+| Building a "reverse" full REST API (Omphalos → Quest Board) as part of this milestone, even just the read side | Once the token contract exists, extending it both ways feels like completing the picture | Doubles the design surface (auth, versioning, error handling) for a direction nothing in this milestone's goal requires; the stated goal is one-click navigation into Omphalos, not data sync | Leave the seam (e.g., don't hardcode assumptions that make a future reverse call awkward) but scope this milestone strictly to the outbound Quest Board → Omphalos handoff |
+| Token encryption (JWE) on top of signing | "Signed AND encrypted" sounds more secure | The token payload (quest ID, quest title, username, expiry) contains nothing sensitive — no passwords, no PII beyond a display name already visible to any logged-in user. Encrypting adds a second secret/key-management burden for no confidentiality benefit; HMAC already prevents tampering | Signing only (HMAC-SHA256), as already proven in the old implementation. If quest titles could ever contain sensitive content, address that narrowly, not by encrypting the whole envelope |
 
 ## Feature Dependencies
 
 ```
-[Group entity (GroupEntity table)]
-    └──required by──> [User↔group membership (UserGroupEntity)]
-    └──required by──> [GroupId FK on all tenant-scoped entities]
-    └──required by──> [SuperAdmin management area]
-    └──required by──> [Group picker page]
-    └──required by──> [Group switcher in nav]
+Instance-wide Platform Settings (URL + shared secret)
+    └──requires──> Existing /platform SuperAdmin area (v5.0, already built)
 
-[GroupId FK on all tenant-scoped entities]
-    └──required by──> [EF Core Global Query Filters (per-entity HasQueryFilter)]
-    └──required by──> [Data migration seeding GroupId = 1 for existing rows]
+Signed redirect token generation (Quest Board side)
+    └──requires──> Instance-wide Platform Settings (needs URL + secret to sign against)
+    └──enables───> "Open Session Notes" buttons (quest Details/Manage pages)
+    └──enables───> Omphalos SSO validation endpoint
 
-[EF Core Global Query Filters]
-    └──required by──> [Per-group data isolation (quests, shop, characters, etc.)]
-    └──requires bypass for──> [SuperAdmin cross-group access (ITenantService returns null)]
+Omphalos SSO endpoint: token validation
+    └──requires──> Shared-secret contract agreed with Quest Board (same HMAC message format both sides)
+    └──enables───> Auto-provision Omphalos user
+    └──enables───> Find-or-create GameSession
 
-[User↔group membership (UserGroupEntity)]
-    └──required by──> [Group picker at login]
-    └──required by──> [Group switcher in nav]
-    └──required by──> [Group-scoped admin panel (filter users by group)]
-    └──required by──> [Admin-only user creation (assign new user to group)]
+Auto-provision Omphalos user
+    └──requires──> Stable cross-app identity key (see note below — NOT yet decided)
+    └──requires──> AuthService.GenerateToken(User) promoted from private to IAuthService
+                       (or an equivalent cookie-issuing path added) — current method is private,
+                       not callable from a new SsoService without this change
 
-[ITenantService (resolves active GroupId from session)]
-    └──required by──> [QuestBoardContext (injected into DbContext constructor)]
-    └──required by──> [Group switcher (writes to session)]
-    └──required by──> [Group picker (writes to session after selection)]
+Find-or-create GameSession linked to a Quest Board quest
+    └──requires──> Net-new ExternalQuestId (or equivalent) column/index on Omphalos's GameSession
+                       (does not exist today — confirmed by source inspection)
 
-[Active-group context (session)]
-    └──required by──> [ITenantService]
-    └──set by──> [Group picker at login]
-    └──updated by──> [Group switcher in nav]
+"No manual login" end-to-end UX
+    └──requires──> Signed redirect token generation
+    └──requires──> Omphalos SSO endpoint (validation + auto-provision + session find-or-create)
+    └──requires──> Omphalos issuing its normal omphalos_token cookie as the final step of the SSO
+                       endpoint (reuse existing cookie-issuance code path, do not invent a second one)
 
-[SuperAdmin role + policy]
-    └──required by──> [SuperAdmin management area]
-    └──required by──> [ITenantService null-group bypass]
-    └──required by──> [Cross-group user visibility in platform area]
+Graceful degradation (hidden buttons, standalone Omphalos operation)
+    └──enhances──> Every UI entry point above (LOW cost, must be threaded through consistently)
+    └──conflicts with──> None — this is purely defensive and should never be skipped for time
 
-[Admin-only user creation]
-    └──requires removal of──> [Public Register action in AccountController]
-    └──reuses──> [ConfirmationEmailJob (existing Hangfire job)]
-    └──requires──> [UserGroupEntity assignment at creation time]
+Full OAuth2/OIDC ──conflicts──> Signed short-lived HMAC redirect URL
+    (mutually exclusive design choices solving the same problem; do not attempt both)
+
+Nonce/replay store ──conflicts with project scale──> 300-second TTL alone
+    (the TTL is the entire replay-protection surface being recommended; a nonce store is
+    redundant defense-in-depth this project's threat model doesn't justify)
 ```
 
 ### Dependency Notes
 
-- **Group entity must be first:** Every other feature depends on `GroupEntity` existing. It is the foundation migration.
-- **Global Query Filters depend on GroupId FKs:** You cannot add the filters before adding the FK columns with a migration. Data migration (setting `GroupId = 1` for existing rows) must run as part of the same migration step.
-- **ITenantService is the central seam:** It is read by both the DbContext (for filtering) and controllers (for authorization checks). Design it as a `Scoped` service so it resolves once per request.
-- **Session already exists:** The app already configures `IdleTimeout = 24h` sessions. No new session infrastructure needed — just write `ActiveGroupId` to it.
-- **Admin-only user creation can be a late phase:** Removing self-registration does not block any other feature. Do it early to close the security gap, but it has no downstream dependencies.
-- **Per-group role scoping (differentiator) conflicts with current global Identity role model:** If implemented, it changes how authorization handlers read roles. Keep it out of v5.0 scope unless explicitly required.
-
----
-
-## UX Flow: Expected Behaviors
-
-### (a) Switching Between Groups (member of 2+ groups)
-
-1. User is logged in, sees "EuphoriaInn" in navbar group indicator.
-2. Clicks the group name dropdown → sees list of their other group memberships.
-3. Clicks another group name → browser POSTs to `/Groups/Switch/{newGroupId}`.
-4. Server validates user is a member of that group, writes `ActiveGroupId` to session.
-5. Redirects to `/` (Home). All pages now show that group's quests, shop, calendar.
-6. No logout. No re-authentication. Session cookie unchanged.
-7. **Single-group users:** group indicator in navbar is non-interactive (plain text, no dropdown). They never interact with the switcher.
-
-### (b) SuperAdmin Managing Groups
-
-1. SuperAdmin logs in → lands on normal Home page (scoped to their own active group, or a "platform" default group).
-2. Platform management link appears in navbar (e.g. "Platform" or gear icon), not visible to regular users.
-3. `/Groups` area lists all groups with member counts, creation dates.
-4. SuperAdmin can: create group (name → saves GroupEntity), view group members, remove group (with confirmation — destructive).
-5. SuperAdmin can enter any group's `/Admin` area by switching active group context (same switcher, but accessible to all groups not just own memberships).
-6. SuperAdmin does NOT see cross-group data in the normal views (Home, Quest Board, Shop) unless they explicitly switch to that group — isolation UX is maintained even for SuperAdmin.
-
-### (c) Group Admin Creating a User
-
-1. Admin navigates to `/Admin/Users` → sees only users in their active group.
-2. Clicks "Create User" button → form: Display Name, Email, Password, Role (Player/DM/Admin).
-3. Admin submits → system creates `UserEntity` via `UserManager.CreateAsync`, assigns to `UserGroupEntity` with current group + selected role, enqueues `ConfirmationEmailJob`.
-4. User receives email with confirmation link. Until confirmed, `EmailConfirmed = false` (existing behavior).
-5. New user appears in Admin's user list immediately.
-6. **No public registration page.** The `GET /Account/Register` route returns 403 (or is removed entirely). The Login page has no "Register" link.
-
----
+- **Auto-provision requires a stable cross-app identity key — this is an open design decision, not yet made.** The old implementation used `currentUser.Name` (a free-text display name), explicitly choosing it over `User.Identity.Name` because Quest Board's `UserName` is the email address and would leak email into the Omphalos username. But Quest Board's own `CLAUDE.md` decision log (see PROJECT.md Key Decisions) records that `User.Name` has **no uniqueness constraint** — any user can rename freely via `AccountController.Edit`, and this already caused a real ownership-check impersonation bug fixed in Phase 34.3 ("Ownership checks standardized on `User.Id` comparison, not `User.Name`"). Reusing a non-unique display name as the cross-app matching key for Omphalos user provisioning risks the same class of bug: two Quest Board users with colliding names would provision as (or hijack) the same Omphalos account. This needs to be resolved during phase design — likely by minting a stable, non-PII identifier (e.g. Quest Board's `User.Id` GUID, or a normalized+de-duplicated username) rather than reusing the mutable display name verbatim.
+- **`AuthService.GenerateToken(User)` promoted from private to `IAuthService` requires** whoever builds the Omphalos-side SSO endpoint to touch `IAuthService`/`AuthService` — flagged in the old ROADMAP as "IAuthService.GenerateToken promotion," confirmed still true today since the method is still private in the current codebase.
+- **Find-or-create GameSession requires** a schema change (EF Core migration) on the Omphalos side (PostgreSQL) — this is cross-repo coordination through normal PR review on that repo, not Quest Board's branch protection, per PROJECT.md's Constraints section.
+- **Graceful degradation enhances every table-stakes UI entry point** and should not be treated as a separate late-stage feature — bake the `IsConfigured` check into each surface as it's built, the way Phase 10/11 already did successfully.
 
 ## MVP Definition
 
-### Launch With (v5.0 — these are the required features)
+### Launch With (v1 — this milestone, per PROJECT.md's Active requirements)
 
-- [ ] Group entity + EF Core migration — foundation for everything
-- [ ] GroupId FK + data migration on all tenant-scoped entities (Quest, ShopItem, Character, TradeItem, UserTransaction, DungeonMasterProfile) — isolation foundation
-- [ ] UserGroupEntity junction table with composite PK + seed existing users into EuphoriaInn group — membership model
-- [ ] ITenantService (Scoped, reads session) + EF Core Global Query Filters wired into QuestBoardContext — isolation enforcement
-- [ ] Group picker page (login redirect for multi-group users) + group switcher in navbar — active-group UX
-- [ ] SuperAdmin role + policy + platform management area at `/Groups` — system administration
-- [ ] Admin-only user creation in AdminController + self-registration removed from AccountController — closed-group security
+- [ ] Instance-wide Platform Settings page (Omphalos URL + shared secret) — table stakes, reuses existing `/platform` pattern
+- [ ] Signed, short-lived (5 min or similar) redirect token generation on Quest Board, applied consistently to every entry point (navbar + quest Details + quest Manage) — table stakes; explicitly re-verify no surface links the raw base URL unsigned (this exact bug shipped once already)
+- [ ] Omphalos SSO endpoint: validate token → auto-provision user (with a decided, unique matching key) → find-or-create linked GameSession → issue normal `omphalos_token` cookie → redirect into the session — table stakes, this is the actual goal of the milestone
+- [ ] Graceful hide of all Omphalos UI when unconfigured/disabled — table stakes, cheap, must not be skipped
+- [ ] Expired/invalid-token friendly error handling on the Omphalos side — table stakes, routine occurrence at a short TTL
+- [ ] Role enforcement independently on both sides (Quest Board gates the button; Omphalos independently validates the signature — never trust "the button was hidden") — table stakes
+- [ ] Standalone-operation fallback: Omphalos boots and runs normally with the SSO env/config absent — table stakes, protects the other maintainer's ownership of that repo
 
-### Defer to v5.x (after v5.0 ships and the second group is actually created)
+### Add After Validation (v1.x)
 
-- [ ] Per-group role scoping (role stored in UserGroupEntity, not global Identity roles) — trigger: a user is DM in one group and Player in another
-- [ ] Group invite link (time-limited signup URL) — trigger: admin reports that password creation on behalf of new members is inconvenient
-- [ ] Group branding (description, avatar) — trigger: second group is created and wants a distinct identity
+- [ ] Quest title/date passed through into initial session naming — differentiator, cheap, but not required for the core loop to be considered done; sequence after the SSO round-trip works end-to-end at all
+- [ ] Any UX polish on the redirect experience (loading state, "opening Omphalos..." interstitial) — only worth doing once the underlying flow is proven reliable
 
-### Out of Scope (anti-features, confirmed above)
+### Future Consideration (v2+ — explicitly out of scope this milestone per PROJECT.md)
 
-- Separate database per group
-- JWT-based active tenant claims
-- Schema-per-group isolation
-- Real-time presence indicators
-- Self-service group creation by non-SuperAdmin
-
----
+- [ ] Bidirectional API (Omphalos → Quest Board reads) — PROJECT.md explicitly defers this; only the architectural seam should exist, not the implementation
+- [ ] Any self-service account-linking UI — not needed while provisioning is deterministic and the group is small/trusted
+- [ ] Per-group Omphalos configuration — defer indefinitely unless Omphalos itself grows a tenant concept
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Group entity + migration | LOW (invisible) | LOW | P1 (unblocks everything) |
-| GroupId FK + data migration on all entities | LOW (invisible) | MEDIUM | P1 (isolation foundation) |
-| EF Core Global Query Filters | HIGH (correctness guarantee) | MEDIUM | P1 |
-| UserGroupEntity junction table | HIGH | MEDIUM | P1 |
-| ITenantService (session-based) | HIGH (wires filters to requests) | LOW | P1 |
-| Group picker at login | MEDIUM (only needed for multi-group users) | LOW | P1 |
-| Group switcher in navbar | MEDIUM (only needed for multi-group users) | LOW | P1 |
-| Admin-only user creation | HIGH (security) | LOW | P1 |
-| Remove self-registration | HIGH (security) | LOW | P1 |
-| SuperAdmin role + policy | MEDIUM | LOW | P1 |
-| SuperAdmin management area (/Groups) | MEDIUM | MEDIUM | P1 |
-| Data migration seeding GroupId=1 | HIGH (data integrity) | LOW | P1 (part of migration) |
-| Per-group role scoping | LOW at 1-2 groups | HIGH | P3 |
-| Group invite links | LOW at current scale | MEDIUM | P3 |
+| Platform Settings (URL + secret) | HIGH | LOW | P1 |
+| Signed token generation, all entry points consistent | HIGH | MEDIUM | P1 |
+| Omphalos SSO validation endpoint | HIGH | MEDIUM | P1 |
+| Auto-provision Omphalos user (stable key) | HIGH | MEDIUM | P1 |
+| Find-or-create GameSession + ExternalQuestId | HIGH | MEDIUM | P1 |
+| Graceful hide when unconfigured | HIGH | LOW | P1 |
+| Expired-token friendly handling | MEDIUM | LOW | P1 |
+| Role enforcement on both sides | HIGH | LOW | P1 |
+| Standalone-operation fallback | MEDIUM | LOW | P1 |
+| Quest title/date passthrough to session naming | MEDIUM | LOW | P2 |
+| Bidirectional API seam (not implementation) | LOW (now) | LOW | P2 |
+| OAuth2/OIDC full flow | LOW (at this scale) | HIGH | P3 — do not build |
+| Nonce/replay store | LOW (at this scale) | MEDIUM | P3 — do not build |
+| Real-time bidirectional sync | LOW (not asked for) | HIGH | P3 — do not build |
+| Self-service account linking UI | LOW (at this scale) | MEDIUM | P3 — do not build |
+| Per-group Omphalos config | LOW (nothing to bind to) | MEDIUM | P3 — do not build |
+| Token encryption (JWE) on top of signing | LOW (no sensitive payload) | LOW-MEDIUM | P3 — do not build |
 
----
-
-## Dependencies on Existing Systems
-
-| Existing System | Impact | Required Change |
-|----------------|--------|-----------------|
-| `QuestBoardContext` (EF Core DbContext) | Must inject `ITenantService`, apply filters in `OnModelCreating` | Constructor change + `HasQueryFilter` calls per entity |
-| `UserEntity` (ASP.NET Identity) | Needs navigation to `ICollection<UserGroupEntity>` | EF config only, no identity table schema change |
-| `AccountController.Register` | Must be locked down (admin-only or removed) | Authorization attribute or route removal |
-| `AdminController.Users()` | Must filter by active group via `UserGroupEntity` | Query change + GroupId context |
-| `QuestService`, `ShopService`, `CharacterService` | Data already group-filtered by Global Query Filter — no service code changes needed | None (filter is transparent to services) |
-| `Hangfire reminder job` | Queries quests — these are already group-scoped via filter | ReminderLog also needs GroupId if reminders must be group-isolated |
-| Session (IdleTimeout = 24h) | ActiveGroupId stored here — already configured | Just write/read int from session |
-| Authorization policies (AdminOnly, DungeonMasterOnly) | Must continue to work within group context | Add SuperAdminOnly policy; existing policies unchanged |
-| AutoMapper profiles (EntityProfile, ViewModelProfile) | Group model and ViewModel needed | New `GroupEntity → Group → GroupViewModel` mapping pair |
-
----
+**Priority key:**
+- P1: Must have — this is the milestone's actual scope per PROJECT.md
+- P2: Should have if time allows, sequenced after P1 works end-to-end
+- P3: Explicitly out of scope — named here so it doesn't get re-proposed mid-milestone as "obviously needed"
 
 ## Sources
 
-- EF Core Global Query Filters + multi-tenancy (official): [Microsoft Learn — Multi-tenancy EF Core](https://learn.microsoft.com/en-us/ef/core/miscellaneous/multitenancy) — MEDIUM confidence (official docs, sound patterns)
-- EF Core 10 named filters + selective IgnoreQueryFilters: [codewithmukesh.com — Global Query Filters EFCore](https://codewithmukesh.com/blog/global-query-filters-efcore/) — MEDIUM confidence
-- Multi-tenant admin hierarchy (SuperAdmin vs tenant Admin): [The Reformed Programmer — Building ASP.NET Core multi-tenant apps Part 2](https://www.thereformedprogrammer.net/building-asp-net-core-and-ef-core-multi-tenant-apps-part2-administration/) — MEDIUM confidence
-- Tenant context resolution (ITenantProvider, session vs claims): [Anton Dev Tips — How to implement multitenancy in ASP.NET Core](https://antondevtips.com/blog/how-to-implement-multitenancy-in-asp-net-core-with-ef-core) — LOW confidence (websearch)
-- Group switcher UX patterns: [WorkOS — Multi-tenant session management](https://workos.com/blog/multi-tenant-session-management) + [Auth0 multi-tenant best practices](https://auth0.com/docs/get-started/auth0-overview/create-tenants/multi-tenant-apps-best-practices) — LOW confidence (industry-observed patterns)
-- Disabling ASP.NET Core Identity self-registration: [andyp.dev — Disable user registrations](https://andyp.dev/posts/disable-user-registrations-in-asp-net-core-3-identity) + [damienbod.com — Disabling parts of Identity](https://damienbod.com/2018/08/07/disabling-parts-of-asp-net-core-identity/) — LOW confidence (websearch, but matches this app's custom controller pattern)
+- Direct inspection: `C:\Repos\quest-board\.planning\PROJECT.md` (current milestone scope, constraints, Omphalos facts, key decisions log including the `User.Name` uniqueness bug)
+- Direct inspection: `C:\Repos\omphalos\src\Omphalos.Services\Implementations\AuthService.cs`, `AuthEndpoints.cs`, `Omphalos.Domain\Entities\GameSession.cs` (current auth/session model, confirmed no `ExternalQuestId` exists)
+- Prior implementation (real code, not hypothesis): `origin/milestone/3-omphalos-integration` branch, Phase 10 (Admin Settings) and Phase 11 (Navigation + Token Generation) — completed and code-reviewed; `11-REVIEW.md` WR-01 finding (unsigned navbar link bypassing SSO) directly informed the table-stakes list; `11-RESEARCH.md`/`11-CONTEXT.md` for the locked HMAC canonical message format and TTL; old `ROADMAP.md` for the never-built Phase 20 (Omphalos SSO endpoint) scope and its "standalone operation when env var absent" success criterion
+- [HMAC Secrets Explained: Authentication You Can Actually Implement](https://blog.gitguardian.com/hmac-secrets-explained-authentication/) — HMAC as the right tool for 1:1 controlled-both-ends integrations (MEDIUM confidence, cross-checked against Tyk/Okta HMAC docs)
+- [Tyk Documentation — Sign Requests with HMAC](https://tyk.io/docs/basic-config-and-security/security/authentication-authorization/hmac-signatures) — canonical-string signing pattern
+- [Okta — HMAC Definition](https://www.okta.com/identity-101/hmac/) — HMAC fundamentals
+- [Curity — JWT Security Best Practices Checklist](https://curity.io/resources/learn/jwt-best-practices/) — short-lived token as primary replay mitigation (MEDIUM confidence)
+- [GitHub node-jsonwebtoken — Prevention against replay attacks discussion](https://github.com/auth0/node-jsonwebtoken/issues/36) — nonce stores as one option among several, not universally required (LOW-MEDIUM confidence, community discussion not official doc)
+- [Primer (GitHub Design System) — Degraded Experiences](https://primer.style/product/ui-patterns/degraded-experiences/) — hide UI elements rather than show broken/error states when a dependency is unavailable (MEDIUM confidence, official design-system documentation)
+- [AWS Well-Architected — REL05-BP01 Graceful Degradation](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_mitigate_interaction_failure_graceful_degradation.html) — soft-dependency pattern (HIGH confidence, official AWS docs)
 
 ---
-
-*Feature research for: Milestone 5 Multi-Tenancy — D&D Quest Board*
-*Researched: 2026-06-29*
+*Feature research for: Cross-app SSO handoff (Quest Board → Omphalos)*
+*Researched: 2026-07-02*
