@@ -849,11 +849,20 @@ public class QuestController(
         // Override OriginalQuestId from route to prevent form spoofing
         viewModel.OriginalQuestId = id;
 
-        // Player import happens at the service layer inside CreateFollowUpQuestAsync
-        int newQuestId;
+        // Delegate the create-shell + apply-details + rollback-on-failure sequence to the service
         try
         {
-            newQuestId = await questService.CreateFollowUpQuestAsync(id, token);
+            var newQuestId = await questService.CreateFollowUpQuestWithDetailsAsync(
+                id,
+                viewModel.Title,
+                viewModel.Description,
+                viewModel.ChallengeRating,
+                viewModel.TotalPlayerCount,
+                viewModel.DungeonMasterSession,
+                viewModel.ProposedDates,
+                token);
+
+            return RedirectToAction("Manage", new { id = newQuestId });
         }
         catch (InvalidOperationException ex)
         {
@@ -864,33 +873,6 @@ public class QuestController(
                 .ToList();
             return View(viewModel);
         }
-
-        // Apply the proposed dates and title/description edits from the form
-        // (CreateFollowUpQuestAsync creates the quest shell without dates; dates come from the form)
-        // If the update fails, clean up the orphaned shell quest before re-throwing
-        try
-        {
-            await questService.UpdateQuestPropertiesWithNotificationsAsync(
-                newQuestId,
-                viewModel.Title,
-                viewModel.Description,
-                viewModel.ChallengeRating,
-                viewModel.TotalPlayerCount,
-                viewModel.DungeonMasterSession,
-                updateProposedDates: true,
-                viewModel.ProposedDates,
-                token);
-        }
-        catch
-        {
-            // Roll back the shell quest so the unique FK is freed and retries are possible
-            var orphan = await questService.GetQuestWithDetailsAsync(newQuestId, token);
-            if (orphan != null)
-                await questService.RemoveAsync(orphan);
-            throw;
-        }
-
-        return RedirectToAction("Manage", new { id = newQuestId });
     }
 
 }
