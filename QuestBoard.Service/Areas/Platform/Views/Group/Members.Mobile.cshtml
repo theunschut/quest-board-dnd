@@ -1,0 +1,124 @@
+@model GroupMembersViewModel
+@{
+    ViewData["Title"] = $"Members — {Model.Group.Name}";
+}
+
+@section Styles {
+    <link href="~/css/platform-group.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="platform-group-card-mobile mb-3">
+    <div class="mb-3">
+        <h5 class="mb-0">
+            <i class="fas fa-users text-danger me-2"></i>Members &mdash; @Model.Group.Name
+        </h5>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="mb-3">
+        <a asp-controller="Group" asp-action="Index" asp-area="Platform" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Groups
+        </a>
+    </div>
+
+    @if (Model.Members.Any())
+    {
+        @foreach (var member in Model.Members)
+        {
+            <div class="group-card-mobile mb-3">
+                <strong class="parchment-text">@(member.User?.Name ?? "Unknown")</strong>
+                <div>
+                    <small>@(member.User?.Email ?? "")</small>
+                </div>
+                <div class="mt-2">
+                    @if (member.GroupRole == GroupRole.Admin)
+                    {
+                        <span class="badge bg-danger">
+                            <i class="fas fa-shield-alt me-1"></i>Admin
+                        </span>
+                    }
+                    else if (member.GroupRole == GroupRole.DungeonMaster)
+                    {
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-crown me-1"></i>DungeonMaster
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-primary">
+                            <i class="fas fa-dice-d20 me-1"></i>Player
+                        </span>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    <form asp-action="RemoveMember" asp-route-id="@Model.Group.Id" method="post" asp-antiforgery="true">
+                        <input type="hidden" name="userId" value="@member.UserId" />
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="fas fa-user-minus me-1"></i>Remove Member
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="py-5 text-center">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No members in this group yet.</p>
+        </div>
+    }
+
+    <hr>
+
+    <h5><i class="fas fa-user-plus text-danger me-2"></i>Add Member</h5>
+
+    @if (Model.AvailableUsers.Any())
+    {
+        <form asp-action="AddMember" asp-route-id="@Model.Group.Id" method="post" asp-antiforgery="true">
+            <div class="mb-3">
+                <label asp-for="AddMember.UserId" class="form-label">User</label>
+                <select asp-for="AddMember.UserId" class="form-select">
+                    <option value="">-- Select a user --</option>
+                    @foreach (var u in Model.AvailableUsers)
+                    {
+                        <option value="@u.Id">@u.Name (@u.Email)</option>
+                    }
+                </select>
+                <span asp-validation-for="AddMember.UserId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="AddMember.Role" class="form-label">Role</label>
+                <select asp-for="AddMember.Role" class="form-select" asp-items="Html.GetEnumSelectList<GroupRole>()">
+                </select>
+                <span asp-validation-for="AddMember.Role" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-user-plus me-2"></i>Add to Group
+            </button>
+        </form>
+    }
+    else
+    {
+        <p class="text-muted fst-italic">All users are already members of this group.</p>
+    }
+</div>
