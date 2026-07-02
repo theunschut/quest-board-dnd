@@ -238,4 +238,41 @@ internal class QuestService(
 
         return followUp.Id;
     }
+
+    /// <inheritdoc/>
+    public async Task<int> CreateFollowUpQuestWithDetailsAsync(
+        int originalQuestId, string title, string description, int challengeRating, int totalPlayerCount,
+        bool dungeonMasterSession, IList<DateTime> proposedDates, CancellationToken token = default)
+    {
+        // Create the shell quest and import selected players first
+        var newQuestId = await CreateFollowUpQuestAsync(originalQuestId, token);
+
+        try
+        {
+            // Apply the proposed dates and title/description edits from the form
+            // (CreateFollowUpQuestAsync creates the quest shell without dates; dates come from the form)
+            await UpdateQuestPropertiesWithNotificationsAsync(
+                newQuestId, title, description, challengeRating, totalPlayerCount,
+                dungeonMasterSession, updateProposedDates: true, proposedDates, token);
+        }
+        catch
+        {
+            // Roll back the shell quest so the unique FK is freed and retries are possible.
+            // A failure during rollback must never mask the original exception below.
+            try
+            {
+                var orphan = await GetQuestWithDetailsAsync(newQuestId, token);
+                if (orphan != null)
+                    await RemoveAsync(orphan, token);
+            }
+            catch
+            {
+                // Swallow rollback failures - the primary exception is what the caller needs to see.
+            }
+
+            throw;
+        }
+
+        return newQuestId;
+    }
 }

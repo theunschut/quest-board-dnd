@@ -76,6 +76,16 @@ public interface IQuestService : IBaseService<Quest>
     Task<int> CreateFollowUpQuestAsync(int originalQuestId, CancellationToken token = default);
 
     /// <summary>
+    /// Creates a follow-up quest from a finalized original quest, then applies the given
+    /// title, description, challenge rating, player count, DM-session flag, and proposed dates.
+    /// Imports IsSelected=true signups from the original quest as SignupRole.Player.
+    /// If applying the details fails, the newly created follow-up shell is removed before the
+    /// original exception is re-thrown, so no orphaned quest is left behind.
+    /// Returns the Id of the newly created follow-up quest.
+    /// </summary>
+    Task<int> CreateFollowUpQuestWithDetailsAsync(int originalQuestId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, IList<DateTime> proposedDates, CancellationToken token = default);
+
+    /// <summary>
     /// Returns all quests where DungeonMasterId == dmUserId, ordered by most recent first.
     /// Includes both finalized and active quests.
     /// </summary>
