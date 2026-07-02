@@ -79,3 +79,36 @@ EMAIL-04 / REMIND-02 — digest batching (single combined email for multiple sam
 - `.planning/milestones/v4.0-ROADMAP.md`
 - `.planning/milestones/v4.0-REQUIREMENTS.md`
 - `.planning/milestones/v4.0-phases/` (phases 20–25)
+
+---
+
+## v5.0 — Multi-Tenancy
+
+**Shipped:** 2026-07-02
+**Phases:** 26–34.3 (12 phases, incl. 3 inserted) | **Plans:** 48
+**Timeline:** 4 days (2026-06-29 → 2026-07-02)
+**Files changed:** 754 | **Lines:** +56,450 / -6,374
+
+### Delivered
+
+Transformed the Quest Board from a single-tenant EuphoriaInn app into a generic, rebrandable multi-group platform: full `EuphoriaInn.*` → `QuestBoard.*` namespace rename, a `GroupEntity`/`UserGroups` schema with EF Core Global Query Filters for tenant isolation, a `SuperAdmin` role with a dedicated `/platform` management area, group-picker UX with admin-only user creation, unauthenticated-visitor lockdown with a public landing page, a passwordless first-login flow driven by welcome/forgot-password emails, session persistence across app restarts via `AddDistributedSqlServerCache`, admin email rate limiting, and a closing codebase cleanup/security-hardening pass that also caught and fixed a pre-ship group-role authorization regression.
+
+### Key Accomplishments
+
+1. Renamed the entire codebase from `EuphoriaInn.*` to `QuestBoard.*` with zero behavior change, verified against the full 191-test suite
+2. Built the multi-group data model — `GroupEntity`, `UserGroups` junction, `GroupId` FKs — with EF Core Global Query Filters enforcing tenant isolation on quests and shop items
+3. Added a `SuperAdmin` role, a dedicated `/platform` management area, and group-picker UX with admin-only user creation (self-registration removed)
+4. Locked down authentication — public landing page at `/`, quest board moved to `/quests`, first-login password-set flow via welcome email, self-service enumeration-safe forgot-password flow
+5. Made session state durable across app restarts (`AddDistributedSqlServerCache`) and rate-limited repeatable admin email-send actions to protect the mail relay's quota
+6. Closed with a dedicated security/performance hardening pass (Phases 34/34.1/34.2) and caught + fixed a pre-ship group-role authorization regression (Phase 34.3) before any production deploy
+
+### Known Deferred Items at Close
+
+- `GroupSessionMiddleware` POST-body data-loss risk on session expiry mid-submission — flagged by code review, not yet fixed
+- Digest batching for session reminders (EMAIL-04/REMIND-02) — still deferred, same-day quests have never occurred in a year of operation
+- Profile picture crop/avatar selection (issue #78) — still paused pending SkiaSharp native-lib verification on the deployment host
+
+### Archive
+
+- `.planning/milestones/v5.0-ROADMAP.md`
+- `.planning/milestones/v5.0-REQUIREMENTS.md`
