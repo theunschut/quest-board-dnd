@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Multi-Tenancy
 status: executing
-stopped_at: Completed 34.3-01-PLAN.md
-last_updated: "2026-07-02T11:57:56.801Z"
+stopped_at: Completed 34.3-05-PLAN.md
+last_updated: "2026-07-02T12:03:02.024Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 13
   completed_phases: 11
   total_plans: 48
-  completed_plans: 43
+  completed_plans: 44
   percent: 85
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-29 — v5.0 Multi-Tenancy started)
 ## Current Position
 
 Phase: 34.3 (group-role-authorization-regression-fix-inline-ownership-che) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-02
 
@@ -122,8 +122,8 @@ Items acknowledged and deferred at milestone close on 2026-06-28:
 
 **Resume file:** None
 
-Last session: 2026-07-02T11:57:56.788Z
-Stopped at: Completed 34.3-01-PLAN.md
+Last session: 2026-07-02T12:03:02.010Z
+Stopped at: Completed 34.3-05-PLAN.md
 Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execute-phase 34.2 — strict order required per 34.2-CONTEXT.md D-05)
 
 ## Performance Metrics
@@ -160,6 +160,7 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 | Phase 34.2 P04 | 4min | 2 tasks | 7 files |
 | Phase 34.2 P05 | 8min | 4 tasks | 5 files |
 | Phase 34.3 P01 | 5min | 2 tasks | 3 files |
+| Phase 34.3 P05 | 2min | 2 tasks | 3 files |
 
 ## Decisions
 
@@ -192,3 +193,5 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 - [Phase 34.2-05]: Used cast-invariant enum round-trip assertion instead of building a real AutoMapper IMapper — AutoMapper 16.1.1's LicenseKey requirement has no test-project equivalent and no existing test builds a real IMapper from EntityProfile
 - [Phase ?]: 34.3-01: GetEffectiveGroupRoleAsync takes no owner/currentUser parameter — ownership checks stay inline at each downstream call site, only role resolution is centralized
 - [Phase ?]: 34.3-01: New UserServiceTests.cs fixture uses NSubstitute (matching QuestServiceTests.cs codebase convention), not Moq as the plan's note suggested
+- [Phase 34.3-05]: Hangfire gates simplified to SuperAdmin-only (not migrated to GroupRole) per D-01, preserving Phase 29 intent
+- [Phase 34.3-05]: IdentityService.AdminResetPasswordAsync redundant inner Admin check deleted outright — Repository layer cannot reach Service-layer IActiveGroupContext; outer AdminOnly policy is the real gate

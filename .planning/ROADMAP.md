@@ -392,7 +392,7 @@ Plans: 6 plans in 3 waves
 **Wave 1** *(parallel — disjoint file sets: shared helper vs. Hangfire/IdentityService dead-clause deletions)*
 
 - [x] 34.3-01-PLAN.md — shared `GetEffectiveGroupRoleAsync` helper on `IUserService`/`UserService` (SuperAdmin bypass + group-role lookup, D-02) + unit tests
-- [ ] 34.3-05-PLAN.md — delete dead `IsInRole("Admin")` clauses: both Hangfire gates → SuperAdmin-only (D-01) + `IdentityService.AdminResetPasswordAsync` redundant Admin check (24th site, user-approved)
+- [x] 34.3-05-PLAN.md — delete dead `IsInRole("Admin")` clauses: both Hangfire gates → SuperAdmin-only (D-01) + `IdentityService.AdminResetPasswordAsync` redundant Admin check (24th site, user-approved)
 
 **Wave 2** *(blocked on 34.3-01 — controllers call the helper; disjoint controller files run in parallel)*
 
