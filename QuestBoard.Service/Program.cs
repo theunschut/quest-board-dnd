@@ -345,10 +345,10 @@ if (!app.Environment.IsEnvironment("Testing"))
 if (app.Environment.IsProduction())
 {
     var missingEmailKeys = new List<string>();
-    if (string.IsNullOrWhiteSpace(app.Configuration["Email:FromEmail"]))
-        missingEmailKeys.Add("Email:FromEmail");
-    if (string.IsNullOrWhiteSpace(app.Configuration["Email:SmtpServer"]))
-        missingEmailKeys.Add("Email:SmtpServer");
+    if (string.IsNullOrWhiteSpace(app.Configuration["EmailSettings:FromEmail"]))
+        missingEmailKeys.Add("EmailSettings:FromEmail");
+    if (string.IsNullOrWhiteSpace(app.Configuration["EmailSettings:SmtpServer"]))
+        missingEmailKeys.Add("EmailSettings:SmtpServer");
 
     if (missingEmailKeys.Count > 0)
     {
