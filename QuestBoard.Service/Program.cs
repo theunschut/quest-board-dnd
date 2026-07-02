@@ -236,6 +236,10 @@ if (!builder.Environment.IsEnvironment("Testing"))
                 DisableGlobalLocks = true
             }));
 
+    // Exponential backoff for transient job failures — 5 attempts over 1/2/4/8/16 seconds,
+    // so transient SMTP/Resend/DB blips recover instead of exhausting Hangfire's default retries.
+    GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 5, DelaysInSeconds = new[] { 1, 2, 4, 8, 16 } });
+
     builder.Services.AddHangfireServer(options =>
     {
         options.WorkerCount = 2;
