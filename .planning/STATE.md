@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Multi-Tenancy
 status: executing
-stopped_at: Completed 34.2-01-PLAN.md
-last_updated: "2026-07-02T08:13:37.862Z"
+stopped_at: Completed 34.2-03-PLAN.md
+last_updated: "2026-07-02T08:20:35.765Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 12
   completed_phases: 10
   total_plans: 42
-  completed_plans: 39
+  completed_plans: 40
   percent: 83
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-29 — v5.0 Multi-Tenancy started)
 ## Current Position
 
 Phase: 34.2 (performance-architecture-fix-tech-debt-refactors-questcontro) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-07-02
 
@@ -121,8 +121,8 @@ Items acknowledged and deferred at milestone close on 2026-06-28:
 
 **Resume file:** None
 
-Last session: 2026-07-02T08:13:37.850Z
-Stopped at: Completed 34.2-01-PLAN.md
+Last session: 2026-07-02T08:20:35.755Z
+Stopped at: Completed 34.2-03-PLAN.md
 Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execute-phase 34.2 — strict order required per 34.2-CONTEXT.md D-05)
 
 ## Performance Metrics
@@ -155,6 +155,7 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 | Phase 34 P05 | 5min | - tasks | - files |
 | Phase 34.2 P01 | 12min | 3 tasks | 4 files |
 | Phase 34.2 P02 | 8min | - tasks | - files |
+| Phase 34.2 P03 | 12min | 4 tasks | 6 files |
 
 ## Decisions
 
@@ -179,3 +180,5 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 - [Phase 34.2]: No ILogger dependency added to QuestService for rollback-failure logging - out of scope; primary-exception propagation is the correctness guarantee instead
 - [Phase ?]: Phase 34.2-02: ControllerExtensions.RedirectWithMessage keeps tempDataKey as an explicit parameter (not just Success/Error wrappers) to preserve ResetPassword's existing SuccessMessage key without behavior change
 - [Phase ?]: Phase 34.2-02: TryReturnInvalidModel applied only to AdminController.CreateUser (clean early-return); EditUser/ResetPassword kept their inverted if(ModelState.IsValid) wrapper shape per D-01 (don't force extraction where nothing to extract)
+- [Phase ?]: Phase 34.2-03: ShopItemEntity has no image BLOB column of its own — the actionable D-08 list-view fix was removing .Include(si => si.Transactions) from GetAllAsync, not an image load
+- [Phase ?]: Phase 34.2-03: Verified ShopManagementController.Index (GetAllAsync's only caller) never reads ShopItem.Transactions, so the include was removed outright rather than replaced with a projected/count-only load

@@ -367,13 +367,13 @@ Plans:
 **Goal:** Fix the Tech Debt, Performance Bottlenecks, Fragile Areas, Scaling Limits, and Dependencies at Risk items catalogued in `.planning/codebase/CONCERNS.md`, plus remaining Test Coverage Gaps: `QuestController`/`AdminController` cleanup via selective service-layer extraction + MVC-boilerplate helpers (no physical controller split, per 34.2-CONTEXT.md D-01/D-02), `DateTime.Now` → `UtcNow` fix in `ShopSeedService`, follow-up quest two-phase-update consolidation into a service method, composite index on `Quests(IsFinalized, FinalizedDate)`, shop-item query projection, Hangfire job scope-management helper + `AutomaticRetryAttribute` retry policy (not the nonexistent `UseAutoRetry` API — see Phase 34 RESEARCH.md), EF Core Global Query Filter documentation, AutoMapper enum-cast validation test, `ActiveGroupId` null-guard, and dependency migration-plan documentation (Identity email sender routing, Resend SMTP single-point-of-failure). Cross-controller `Forbid()` defense-in-depth checks and Hangfire job-queue batching are documentation-only in this phase (deferred code implementation, per D-06/D-09). Deferred from the Phase 34 split per CONTEXT.md D-03 — part of closing the v5.0 Multi-Tenancy milestone alongside Phase 34 and Phase 34.1.
 **Requirements**: None mapped — cleanup/hardening phase; tracked by CONCERNS.md item names + CONTEXT.md decisions D-01..D-11.
 **Depends on:** Phase 34, Phase 34.1 (AdminController.cs is restructured by 34.1's Resend extraction before 34.2's further service-layer extraction — see 34.2-CONTEXT.md D-05)
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 **Wave 1** *(parallel — disjoint file sets: follow-up service / MVC helpers+Admin / EF+perf+retry / jobs+docs)*
 
 - [x] 34.2-01-PLAN.md — follow-up quest two-phase consolidation into `QuestService.CreateFollowUpQuestWithDetailsAsync` (D-01/D-04) + `DateTime.Now`→`UtcNow` in ShopSeedService
 - [x] 34.2-02-PLAN.md — net-new `ControllerExtensions` MVC-boilerplate helpers (D-02) applied to AdminController user/quest-admin actions (Resend/EmailStats excluded per D-03)
-- [ ] 34.2-03-PLAN.md — composite index `Quests(IsFinalized, FinalizedDate)` migration (D-07) + shop list-query projection (D-08) + Hangfire `AutomaticRetryAttribute` retry policy + query-filter documentation comments
+- [x] 34.2-03-PLAN.md — composite index `Quests(IsFinalized, FinalizedDate)` migration (D-07) + shop list-query projection (D-08) + Hangfire `AutomaticRetryAttribute` retry policy + query-filter documentation comments
 - [ ] 34.2-04-PLAN.md — `HangfireJobHelper` scope-management helper applied to 3 jobs + documentation-only notes (Forbid() D-06, Hangfire batching D-09, dependencies-at-risk, enum-cast convention)
 
 **Wave 2** *(blocked on 34.2-03)*
