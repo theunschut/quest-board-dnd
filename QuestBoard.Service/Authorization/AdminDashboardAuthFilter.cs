@@ -11,7 +11,7 @@ public class AdminDashboardAuthFilter : IDashboardAuthorizationFilter
         if (httpContext.User.Identity?.IsAuthenticated != true)
             return false;
 
-        if (!httpContext.User.IsInRole("Admin") && !httpContext.User.IsInRole("SuperAdmin"))
+        if (!httpContext.User.IsInRole("SuperAdmin"))
             return false;
 
         return true;
