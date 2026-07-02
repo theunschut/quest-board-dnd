@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Multi-Tenancy
-status: executing
-stopped_at: Completed 34.2-04-PLAN.md
-last_updated: "2026-07-02T08:27:45.528Z"
+status: verifying
+stopped_at: Completed 34.2-05-PLAN.md
+last_updated: "2026-07-02T08:35:59.401Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 12
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 42
-  completed_plans: 41
-  percent: 83
+  completed_plans: 42
+  percent: 92
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-29 — v5.0 Multi-Tenancy started)
 
 Phase: 34.2 (performance-architecture-fix-tech-debt-refactors-questcontro) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-02
 
 ```
@@ -121,8 +121,8 @@ Items acknowledged and deferred at milestone close on 2026-06-28:
 
 **Resume file:** None
 
-Last session: 2026-07-02T08:27:45.518Z
-Stopped at: Completed 34.2-04-PLAN.md
+Last session: 2026-07-02T08:35:59.392Z
+Stopped at: Completed 34.2-05-PLAN.md
 Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execute-phase 34.2 — strict order required per 34.2-CONTEXT.md D-05)
 
 ## Performance Metrics
@@ -157,6 +157,7 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 | Phase 34.2 P02 | 8min | - tasks | - files |
 | Phase 34.2 P03 | 12min | 4 tasks | 6 files |
 | Phase 34.2 P04 | 4min | 2 tasks | 7 files |
+| Phase 34.2 P05 | 8min | 4 tasks | 5 files |
 
 ## Decisions
 
@@ -185,3 +186,5 @@ Next step: /gsd-execute-phase 34 (then /gsd-execute-phase 34.1, then /gsd-execut
 - [Phase ?]: Phase 34.2-03: Verified ShopManagementController.Index (GetAllAsync's only caller) never reads ShopItem.Transactions, so the include was removed outright rather than replaced with a projected/count-only load
 - [Phase ?]: HangfireJobHelper.RunInScopeAsync only calls SetGroupId when groupId is non-null, preserving DailyReminderJob's intentional cross-group sweep while guaranteeing SetGroupId always runs before repository resolution in group-scoped jobs
 - [Phase ?]: Forbid() defense-in-depth (D-06) and Hangfire batching (D-09) remain documentation-only in Phase 34.2 Plan 04 - no code implementing either was written, per the mandatory scope exclusion
+- [Phase 34.2-05]: RequireActiveGroupId() is an available seam only — not wired into any controller, the DbContext query filter, or the Hangfire path — Plan explicitly scoped this as a defensive helper, not force-wired into existing paths that would break the null-see-all contract
+- [Phase 34.2-05]: Used cast-invariant enum round-trip assertion instead of building a real AutoMapper IMapper — AutoMapper 16.1.1's LicenseKey requirement has no test-project equivalent and no existing test builds a real IMapper from EntityProfile

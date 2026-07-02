@@ -84,7 +84,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 - [x] **Phase 33: Session Persistence & Admin Email Rate Limiting** - ActiveGroupId survives app restarts via AddDistributedSqlServerCache; admin email resend buttons rate-limited 3/hour per target user (completed 2026-07-01)
 - [x] **Phase 34: Codebase Cleanup & Security Hardening (34a — Mechanical Cleanup)** - Remove dead code, strip GSD-ID/phase comment tags codebase-wide, backfill XML docs on all 35 interfaces, capture clean dependency scan — 5 plans (Wave 1, parallel). Remaining CONCERNS.md fixes split into recommended 34b (Security & Bugs) + 34c (Performance & Architecture) per D-03. (completed 2026-07-01)
 - [x] **Phase 34.1: Security & Bugs -- fix Known Bugs and Security Considerations items from CONCERNS.md plus related Test Coverage Gaps (verify-and-close the stale SessionReminderJob null-dereference claim; Resend 429 retry-backoff; CSRF regression test; secret-logging verification) -- deferred from the Phase 34 split per D-03** (completed 2026-07-02)
-- [ ] **Phase 34.2: Performance & Architecture** - `QuestController`/`AdminController` cleanup via selective service-layer extraction + net-new MVC-boilerplate helpers (no physical split, D-01/D-02), composite index + shop-query projection + Hangfire `AutomaticRetryAttribute`, `HangfireJobHelper` scope helper, `ActiveGroupId` null-guard, and documentation-only notes for `Forbid()` defense-in-depth (D-06) and Hangfire job-queue batching (D-09) — 5 plans (2 waves), depends on Phase 34 and 34.1
+- [x] **Phase 34.2: Performance & Architecture** - `QuestController`/`AdminController` cleanup via selective service-layer extraction + net-new MVC-boilerplate helpers (no physical split, D-01/D-02), composite index + shop-query projection + Hangfire `AutomaticRetryAttribute`, `HangfireJobHelper` scope helper, `ActiveGroupId` null-guard, and documentation-only notes for `Forbid()` defense-in-depth (D-06) and Hangfire job-queue batching (D-09) — 5 plans (2 waves), depends on Phase 34 and 34.1 (completed 2026-07-02)
 
 </details>
 
@@ -367,7 +367,7 @@ Plans:
 **Goal:** Fix the Tech Debt, Performance Bottlenecks, Fragile Areas, Scaling Limits, and Dependencies at Risk items catalogued in `.planning/codebase/CONCERNS.md`, plus remaining Test Coverage Gaps: `QuestController`/`AdminController` cleanup via selective service-layer extraction + MVC-boilerplate helpers (no physical controller split, per 34.2-CONTEXT.md D-01/D-02), `DateTime.Now` → `UtcNow` fix in `ShopSeedService`, follow-up quest two-phase-update consolidation into a service method, composite index on `Quests(IsFinalized, FinalizedDate)`, shop-item query projection, Hangfire job scope-management helper + `AutomaticRetryAttribute` retry policy (not the nonexistent `UseAutoRetry` API — see Phase 34 RESEARCH.md), EF Core Global Query Filter documentation, AutoMapper enum-cast validation test, `ActiveGroupId` null-guard, and dependency migration-plan documentation (Identity email sender routing, Resend SMTP single-point-of-failure). Cross-controller `Forbid()` defense-in-depth checks and Hangfire job-queue batching are documentation-only in this phase (deferred code implementation, per D-06/D-09). Deferred from the Phase 34 split per CONTEXT.md D-03 — part of closing the v5.0 Multi-Tenancy milestone alongside Phase 34 and Phase 34.1.
 **Requirements**: None mapped — cleanup/hardening phase; tracked by CONCERNS.md item names + CONTEXT.md decisions D-01..D-11.
 **Depends on:** Phase 34, Phase 34.1 (AdminController.cs is restructured by 34.1's Resend extraction before 34.2's further service-layer extraction — see 34.2-CONTEXT.md D-05)
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 **Wave 1** *(parallel — disjoint file sets: follow-up service / MVC helpers+Admin / EF+perf+retry / jobs+docs)*
 
@@ -378,4 +378,4 @@ Plans:
 
 **Wave 2** *(blocked on 34.2-03)*
 
-- [ ] 34.2-05-PLAN.md — `ActiveGroupId` `RequireActiveGroupId` null-guard (ASVS V4) + AutoMapper enum-cast round-trip test + Group Query Filter enforcement test + Hangfire retry-policy test
+- [x] 34.2-05-PLAN.md — `ActiveGroupId` `RequireActiveGroupId` null-guard (ASVS V4) + AutoMapper enum-cast round-trip test + Group Query Filter enforcement test + Hangfire retry-policy test
