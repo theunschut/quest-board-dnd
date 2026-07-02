@@ -337,6 +337,26 @@ if (!app.Environment.IsEnvironment("Testing"))
         "0 9 * * *");
 }
 
+// Fail fast in Production if email delivery is unconfigured — without this, SmtpClient creation
+// silently no-ops (see EmailService.CreateSmtpClient) and quest/reminder/password-reset emails
+// are dropped with nothing but a log warning. Development and Testing are intentionally exempt
+// so local dev and the integration-test factory can boot without email config.
+if (app.Environment.IsProduction())
+{
+    var missingEmailKeys = new List<string>();
+    if (string.IsNullOrWhiteSpace(app.Configuration["Email:FromEmail"]))
+        missingEmailKeys.Add("Email:FromEmail");
+    if (string.IsNullOrWhiteSpace(app.Configuration["Email:SmtpServer"]))
+        missingEmailKeys.Add("Email:SmtpServer");
+
+    if (missingEmailKeys.Count > 0)
+    {
+        throw new InvalidOperationException(
+            $"Email delivery cannot function without the following configuration key(s): {string.Join(", ", missingEmailKeys)}. " +
+            "Set them via appsettings.json or environment variable overrides before starting in Production.");
+    }
+}
+
 app.Run();
 
 static async Task SeedShopDataAsync(WebApplication app)
