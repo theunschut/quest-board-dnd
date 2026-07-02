@@ -4,9 +4,13 @@ using System.Text.Json;
 
 namespace QuestBoard.Service.Services;
 
-public class ResendStatsClient(IHttpClientFactory httpClientFactory, ILogger<ResendStatsClient> logger)
+public class ResendStatsClient(IHttpClientFactory httpClientFactory, ILogger<ResendStatsClient> logger, TimeSpan? baseDelay = null)
 {
     private const int MaxRetries = 3;
+
+    // Exposed via constructor so tests can shrink the exponential backoff (1s/2s/4s in production)
+    // to a near-zero delay without changing production defaults.
+    private readonly TimeSpan _baseDelay = baseDelay ?? TimeSpan.FromSeconds(1);
 
     public async Task<(IReadOnlyList<ResendEmailRecord> records, bool error)> FetchAllRecordsAsync(
         string apiKey, DateTime cutoffUtc, CancellationToken token)
@@ -38,7 +42,7 @@ public class ResendStatsClient(IHttpClientFactory httpClientFactory, ILogger<Res
                     if (attempt == MaxRetries)
                         break;
 
-                    var delay = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    var delay = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromMilliseconds(_baseDelay.TotalMilliseconds * Math.Pow(2, attempt));
                     Console.Error.WriteLine($"[Resend] 429 received, retrying in {delay.TotalSeconds}s (attempt {attempt + 1}/{MaxRetries})");
                     await Task.Delay(delay, token);
                 }

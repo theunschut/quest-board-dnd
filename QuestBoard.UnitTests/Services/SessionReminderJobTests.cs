@@ -213,4 +213,31 @@ public class SessionReminderJobTests
         // Assert: email IS sent for confirmed player
         await _emailService.Received(1).SendAsync("player@example.com", Arg.Any<string>(), Arg.Any<string>());
     }
+
+    // ---------------------------------------------------------------------------
+    // Null DungeonMaster navigation property
+    // ---------------------------------------------------------------------------
+
+    // Verify-and-close: a quest can end up with no DungeonMaster row (e.g. the DM account was
+    // removed). The job already reads quest.DungeonMaster?.Name ?? string.Empty, so this test
+    // documents/locks that the null-safe read holds rather than fixing a bug.
+    [Fact]
+    public async Task ExecuteAsync_QuestWithNullDungeonMaster_DoesNotThrow()
+    {
+        // Arrange: finalized quest with DungeonMaster == null and one selected, email-confirmed signup
+        var quest = MakeQuest(1);
+        quest.DungeonMaster = null;
+        var signup = MakeSignup(quest, playerId: 50, isSelected: true, emailConfirmed: true);
+        quest.PlayerSignups.Add(signup);
+
+        _questRepository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>()).Returns(quest);
+        _reminderLog.ExistsAsync(1, 50, Arg.Any<CancellationToken>()).Returns(false);
+
+        // Act — must not throw
+        var act = async () => await _sut.ExecuteAsync(questId: 1, groupId: 1, forceResend: false, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().NotThrowAsync();
+        await _emailService.Received(1).SendAsync("player@example.com", Arg.Any<string>(), Arg.Any<string>());
+    }
 }
