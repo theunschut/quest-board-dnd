@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-07-02T15:05:36.302Z"
 last_activity: 2026-07-02
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,41 +20,71 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 — v2.0 Omphalos Integration milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 35 — Platform Settings + Token Contract
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-02 — Milestone v2.0 started
+Phase: 35 of 37 (Platform Settings + Token Contract)
+Plan: — (not yet planned)
+Status: Roadmap approved — ready to plan Phase 35
+Last activity: 2026-07-02 — ROADMAP.md created (Phases 35–37), 34/34 v1 requirements mapped
 
-## Deferred Items
+Progress: [░░░░░░░░░░] 0%
 
-Items acknowledged and deferred at milestone close on 2026-07-02:
+## Performance Metrics
 
-| Category | Item | Status |
-|----------|------|--------|
-| requirement | EMAIL-04 — digest session reminder (multiple same-day quests → one email) | Deferred since v4.0 — same-day quests have never occurred in one year of operation |
-| requirement | REMIND-02 — combined reminder for multi-quest days | Deferred — same as EMAIL-04 |
-| tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Deferred — flagged by code review in Phase 31, not yet fixed |
-| requirement | Profile picture crop/avatar selection (issue #78) | Deferred since v2.x — SkiaSharp native lib availability unverified on deployment host |
+**Velocity:**
+- Total plans completed: 0
+- Average duration: — min
+- Total execution time: — hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: —
+- Trend: —
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
-### Pending for Next Milestone
+### Decisions
 
-- `GroupSessionMiddleware` POST-body data-loss risk — see Deferred Items above
-- Profile picture crop/avatar selection (issue #78) — verify SkiaSharp native lib on aspnet:10 Debian Bookworm
-- Digest batching (EMAIL-04/REMIND-02) — revisit when same-day quest scheduling becomes common
-- Any other backlog items in ROADMAP.md
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
 
-Full per-phase architectural decisions, deviations, and performance metrics for v5.0 (Phases 26–34.3) are preserved in each phase's SUMMARY.md under `.planning/phases/`, and the durable decision log lives in `.planning/PROJECT.md`'s Key Decisions table.
+- v2.0 scoping: HMAC-signed redirect token (not OAuth2/OIDC) behind a swappable `IIntegrationTokenService`/`SsoService` seam — both apps are first-party, under common operational control
+- v2.0 scoping: identity match key is Quest Board's `UserEntity.Id` (int), never `Name`/`UserName`/email — precedented by the Phase 34.3 display-name authorization bug
+- v2.0 scoping: replay protection is in scope this milestone (short-lived used-token tracking on top of the 5-minute TTL) — user pushed back on an initial "small trusted group" scope-cut
+- v2.0 phases start at Phase 35, continuing from v5.0's Phase 34.3 — old Phase 10/11 slots stay marked superseded, not reused
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+- Phase 37 touches `C:\Repos\omphalos`, a repo owned by another maintainer — goes through that repo's own PR review, not this project's branch protection. This is the milestone's actual critical path (external review latency, not implementation effort) and is the same failure mode that killed the original `milestone/3-omphalos-integration` attempt. Open that PR early.
+- Phase 37 has two unverified LOW-confidence items flagged by research: Omphalos's live Postgres collation / whether `Users.Username` already has a unique index, and the exact SSO route path (`/api/sso/login` is a working assumption, not confirmed with the maintainer) — resolve both at the start of Phase 37, before writing the migration.
+- `GroupSessionMiddleware` POST-body data-loss risk on session expiry mid-submission — still deferred from v5.0, not yet fixed.
+
+## Deferred Items
+
+Items acknowledged and carried forward from previous milestone close:
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| requirement | EMAIL-04 / REMIND-02 — digest session reminder (multiple same-day quests → one email) | Deferred — same-day quests have never occurred in one year of operation | v4.0 close |
+| tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Deferred — flagged by code review in Phase 31, not yet fixed | v5.0 close |
+| requirement | Profile picture crop/avatar selection (issue #78) | Deferred — SkiaSharp native lib availability unverified on deployment host | v5.0 close (originally v2.x) |
 
 ## Session Continuity
 
-**Resume file:** None
-
-Last session: 2026-07-02T13:00:01.218Z
-Stopped at: v5.0 milestone archived
-Next step: `/gsd:new-milestone`
+Last session: 2026-07-02T15:05:36.302Z
+Stopped at: ROADMAP.md created for v2.0 (Phases 35–37), 34/34 requirements mapped, coverage validated
+Resume file: None
+Next step: `/gsd:plan-phase 35`

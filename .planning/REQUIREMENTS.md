@@ -111,8 +111,8 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 | LINK-04 | Phase 37 | Omphalos | Pending |
 
 **Coverage:**
-- v1 requirements: 34 total
-- Mapped to phases: 34/34
+- v1 requirements: 35 total
+- Mapped to phases: 35/35
 - Unmapped: 0
 
 ---

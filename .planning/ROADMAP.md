@@ -7,7 +7,7 @@
 - ✅ **v3.0 Mobile Version** — Phases 12–19 (shipped 2026-06-25)
 - ✅ **v4.0 Email Notifications** — Phases 20–25 (shipped 2026-06-28)
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
-- 🚧 **v2.0 Omphalos Integration (redo)** — Phases 35+ (in progress — branch: `milestone/v2-omphalos-integration`)
+- 🚧 **v2.0 Omphalos Integration (redo)** — Phases 35–37 (in progress — branch: `milestone/v2-omphalos-integration`)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it is not assigned to any active milestone._
 
@@ -90,6 +90,58 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 
 </details>
 
+### 🚧 v2.0 Omphalos Integration (redo) (Phases 35–37) — IN PROGRESS
+
+**Milestone Goal:** DMs can open Omphalos session notes for any quest with one click — navigated automatically into the correct session, authenticated via a short-lived signed token. Redo of the abandoned attempt (old Phase 10–11, superseded above); redone from scratch against current `main` since that branch diverged too far to merge cleanly.
+
+- [ ] **Phase 35: Platform Settings + Token Contract** - SuperAdmin-configurable Omphalos URL/secret and the written HMAC token-format contract
+- [ ] **Phase 36: Navigation + Token Generation** - Signed-URL token service and every Omphalos entry point (navbar link, quest-page buttons)
+- [ ] **Phase 37: Omphalos SSO Endpoint + Session Linking** - Omphalos-side SSO validation, auto-provisioning, and quest↔session linking
+
+## Phase Details
+
+### Phase 35: Platform Settings + Token Contract
+**Repo**: Quest Board (`C:\Repos\quest-board`)
+**Goal**: SuperAdmin can configure the Omphalos integration (URL, shared secret, enabled toggle) instance-wide from the Platform area, and the HMAC token-format contract that Phases 36/37 depend on is written down and agreed before either side implements against it.
+**Depends on**: Nothing (first phase of this milestone — no external dependency, lowest risk, built first per research)
+**Requirements**: SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-06, SETT-07, SETT-08
+**Success Criteria** (what must be TRUE):
+  1. SuperAdmin can navigate to an Omphalos Settings page under `/platform` and save a URL, a masked shared secret, and an enabled toggle
+  2. Saving the settings form with the secret field left blank preserves the previously-saved secret rather than wiping it
+  3. A non-SuperAdmin (Admin, DungeonMaster, Player) cannot reach the settings page
+  4. Settings persist across app restarts in a single-row `IntegrationSetting` table created by an EF Core migration
+  5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document copied into both repos' planning docs
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 36: Navigation + Token Generation
+**Repo**: Quest Board (`C:\Repos\quest-board`)
+**Goal**: Every Omphalos entry point in the UI (DM navbar link, quest-page buttons) generates a signed, time-limited redirect token through one shared service and lands the user in Omphalos — with no surface ever linking to Omphalos's raw base URL unsigned.
+**Depends on**: Phase 35 (settings service must exist at compile time; token contract must be written)
+**Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-06, TOKEN-01, TOKEN-02, TOKEN-03, TOKEN-04, TOKEN-05, TOKEN-06
+**Success Criteria** (what must be TRUE):
+  1. DM/Admin sees an "Open DM Tool" link in the navbar dropdown and an "Open Session Notes" button on both the Quest Detail and Quest Manage pages, only when integration is enabled and configured
+  2. Clicking any of these entry points shows a brief "Opening Omphalos…" transition, then redirects with a signed URL — never the raw configured base URL
+  3. The generated token carries Quest Board's `UserEntity.Id` (never `Name`/`UserName`/email), the quest ID, title, and date, and expires 5 minutes after generation
+  4. When integration is disabled or unconfigured, none of these entry points render, and directly hitting the `LaunchOmphalos` action returns a graceful response instead of a raw error
+  5. A Player (non-DM/Admin) cannot trigger `LaunchOmphalos` even by direct URL — the action enforces `DungeonMasterOnly` independent of button visibility
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 37: Omphalos SSO Endpoint + Session Linking
+**Repo**: Omphalos (`C:\Repos\omphalos`) — owned/maintained by another GitHub identity; changes here go through that repo's normal PR review, not Quest Board's branch protection. Budget for review-latency slack: this is the actual critical path (external maintainer availability, not implementation effort), and the same "branch diverged before merge" failure mode killed the original attempt. Open the PR early and keep it small/reviewable. Confirm the exact SSO route path and live Postgres collation/unique-index state with the maintainer at the start of this phase — both are flagged LOW/unverified in research.
+**Goal**: Omphalos validates an incoming Quest Board token, auto-provisions or matches the user deterministically by stable ID, finds-or-creates the linked game session, and signs the user into its own session — independently enforcing its own authorization rather than trusting that Quest Board's button was hidden.
+**Depends on**: Phase 35's written token contract (no compile-time coupling to Phase 35/36 code — can run in parallel with Phase 36 once the contract exists)
+**Requirements**: SSO-01, SSO-02, SSO-03, SSO-04, SSO-05, SSO-06, SSO-07, SSO-08, SSO-09, SSO-10, SSO-11, LINK-01, LINK-02, LINK-03, LINK-04
+**Success Criteria** (what must be TRUE):
+  1. Visiting the SSO endpoint with a valid, unexpired, unused signed token lands the user in Omphalos, authenticated via the existing `omphalos_token` JWT cookie, inside the correct session
+  2. An invalid/missing signature returns HTTP 400; an expired token shows a friendly "link expired" message (not a bare 401/500); a previously-used token is rejected by replay protection
+  3. A first-time Quest Board identity is auto-provisioned in Omphalos with a role mapped from their Quest Board role (DM/Admin → Omphalos Admin, Player → Omphalos Player); a repeat visit from the same identity matches the existing account via `QuestBoardUserId` and never creates a duplicate
+  4. Re-opening the same quest's session notes lands in the same Omphalos `GameSession` every time (found via `ExternalQuestId`, not recreated); a first visit creates it titled/dated from the token payload
+  5. If the Quest Board shared secret is absent from Omphalos's environment, the SSO endpoint alone returns a clear error while the rest of Omphalos continues operating normally for its own users
+  6. The `omphalos_token` cookie is issued with `Secure=true`
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -131,3 +183,6 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 | 34.1. Security & Bugs | v5.0 | 2/2 | Complete | 2026-07-02 |
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
+| 35. Platform Settings + Token Contract | v2.0 (redo) | 0/? | Not started | - |
+| 36. Navigation + Token Generation | v2.0 (redo) | 0/? | Not started | - |
+| 37. Omphalos SSO Endpoint + Session Linking | v2.0 (redo) | 0/? | Not started | - |
