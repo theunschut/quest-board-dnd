@@ -62,6 +62,7 @@ ConnectionStrings__DefaultConnection=Server=<SQL_SERVER_CT_IP>;Database=QuestBoa
 EmailSettings__SmtpUsername=<GMAIL_ADDRESS>
 EmailSettings__SmtpPassword=<GMAIL_APP_PASSWORD>
 EmailSettings__FromEmail=<FROM_EMAIL>
+ReverseProxy__KnownProxies__0=<TRAEFIK_CT_IP>
 EOF
 
 chmod 600 /etc/questboard/env
@@ -117,7 +118,7 @@ After=network.target
 [Service]
 User=questboard
 WorkingDirectory=/opt/questboard
-ExecStart=/usr/bin/dotnet /opt/questboard/EuphoriaInn.Service.dll
+ExecStart=/usr/bin/dotnet /opt/questboard/QuestBoard.Service.dll
 Restart=always
 RestartSec=10
 EnvironmentFile=/etc/questboard/env
@@ -208,6 +209,8 @@ EOF
 Traefik picks up file changes automatically — no restart needed. Verify the route appears in the Traefik dashboard.
 
 > **Note:** `entryPoints` and `certResolver` names must match what's defined in your `traefik.yml`. Common names are `websecure` and `letsencrypt` but adjust if yours differ.
+
+> **Note:** the App CT trusts `X-Forwarded-For` only from IPs listed in `ReverseProxy__KnownProxies__0` (see the environment file above). Without this set to the Traefik CT's IP, the app sees every request as coming from Traefik itself — this breaks per-client rate limiting (e.g. the Forgot Password rate limiter) by collapsing all visitors into one shared bucket.
 
 ---
 

@@ -1,0 +1,42 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.ViewModels.AccountViewModels
+@model LoginViewModel
+
+@section Styles {
+    <link href="~/css/account.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="account-card-mobile mb-3">
+    <h5 class="mb-3"><i class="fas fa-sign-in-alt text-warning me-2"></i>Log in</h5>
+
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    <form asp-action="Login" asp-route-returnurl="@ViewData["ReturnUrl"]" method="post">
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" />
+            <span asp-validation-for="Password" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input asp-for="RememberMe" class="form-check-input" />
+            <label asp-for="RememberMe" class="form-check-label"></label>
+        </div>
+
+        <div class="mb-3">
+            <a asp-action="ForgotPassword" class="text-decoration-none">Forgot password?</a>
+        </div>
+
+        <div class="d-grid gap-2 mt-3">
+            <button type="submit" class="btn btn-warning btn-lg">
+                <i class="fas fa-sign-in-alt me-2"></i>Log in
+            </button>
+        </div>
+    </form>
+</div>

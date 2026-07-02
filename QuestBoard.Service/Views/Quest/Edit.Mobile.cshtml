@@ -1,0 +1,112 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.ViewModels.QuestViewModels
+@model EditQuestViewModel
+@{
+    ViewData["Title"] = $"Edit Quest: {Model.Quest.Title}";
+}
+
+@section Styles {
+    <link href="~/css/quest-edit.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="container-fluid px-2 mt-2">
+
+    @if (Model.HasExistingSignups)
+    {
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Note:</strong> Players have already signed up for this quest.
+            Removing or significantly changing dates will notify affected players via email and remove their votes for those dates.
+        </div>
+    }
+
+    <div class="quest-edit-card-mobile mb-3">
+
+        <div class="mb-3">
+            <h5 class="mb-0">
+                <i class="fas fa-edit text-warning me-2"></i>Edit Quest: @Model.Quest.Title
+            </h5>
+        </div>
+
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+            <input type="hidden" asp-for="Id" />
+
+            <div class="mb-3">
+                <label asp-for="Quest.Title" class="form-label">Quest Title <span class="text-danger">*</span></label>
+                <input asp-for="Quest.Title" class="form-control" placeholder="Enter the quest title..." />
+                <span asp-validation-for="Quest.Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Quest.Description" class="form-label">Description <span class="text-danger">*</span></label>
+                <textarea asp-for="Quest.Description" class="form-control" rows="4" placeholder="Describe the quest, what players can expect, any special requirements..."></textarea>
+                <span asp-validation-for="Quest.Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Quest.ChallengeRating" class="form-label">Challenge Rating <span class="text-danger">*</span></label>
+                <input asp-for="Quest.ChallengeRating" type="number" class="form-control" min="1" max="20" step="1" placeholder="Enter level (e.g., 1, 5, 10, 15)" />
+                <span asp-validation-for="Quest.ChallengeRating" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Quest.TotalPlayerCount" class="form-label">Total Player Count <span class="text-danger">*</span></label>
+                <input asp-for="Quest.TotalPlayerCount" inputmode="numeric" class="form-control" />
+                <span asp-validation-for="Quest.TotalPlayerCount" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input asp-for="Quest.DungeonMasterSession" class="form-check-input" type="checkbox" />
+                    <label asp-for="Quest.DungeonMasterSession" class="form-check-label">
+                        <i class="fas fa-crown text-warning me-2"></i>Dungeon Master Session Only
+                    </label>
+                </div>
+                <div class="form-text">Check to make this quest visible to DMs and Admins only.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Proposed Dates &amp; Times <span class="text-danger">*</span></label>
+                <div id="proposed-dates">
+                    @{
+                        var sortedProposedDates = Model.Quest.ProposedDates.OrderBy(pd => pd).ToList();
+                    }
+                    @for (int i = 0; i < sortedProposedDates.Count; i++)
+                    {
+                        <div class="mb-3 proposed-date-item">
+                            <label class="form-label small">Proposed Date @(i + 1)</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" readonly value="@sortedProposedDates[i].ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")" />
+                                <input type="hidden" name="Quest.ProposedDates[@i]" value="@sortedProposedDates[i].ToString("yyyy-MM-ddTHH:mm")" />
+                                <button type="button" class="btn btn-danger" onclick="removeProposedDate(this)">
+                                    <i class="fas fa-trash me-1"></i>Remove
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" onclick="addProposedDate()">
+                    <i class="fas fa-plus me-1"></i>Add Another Date Option
+                </button>
+                <span asp-validation-for="Quest.ProposedDates" class="text-danger d-block mt-1"></span>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-warning flex-fill">
+                    <i class="fas fa-save me-2"></i>Update Quest
+                </button>
+                <a href="@Url.Action("Manage", "Quest", new { id = Model.Id })" class="btn btn-secondary flex-fill">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Quest
+                </a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_QuestFormScripts"); }
+}

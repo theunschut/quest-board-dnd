@@ -1,0 +1,92 @@
+@using QuestBoard.Service.Components.Emails
+
+<_EmailLayout Subject="Welcome to the D&D Quest Board" PreviewText="Set your password to claim your seat at the table">
+    <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-image:url('@(AppUrl)/images/Blanks/Blanks%20w%20Shadow/Poster4.png');background-size:cover;background-position:center top;background-color:#F4E4BC;margin:0 auto;">
+        <tr>
+            <td style="height:588px;overflow:hidden;">
+                <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+
+                    <!-- Row 1: Spacer -->
+                    <tr>
+                        <td style="height:60px;"></td>
+                    </tr>
+
+                    <!-- Row 2: Title -->
+                    <tr>
+                        <td style="padding:8px 16px;text-align:center;">
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="font-size:40px;font-weight:700;font-family:'Cinzel',serif;color:#1a0f08;line-height:1.2;text-align:center;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);">Welcome, @UserName!</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:22px;font-weight:700;font-family:'Cinzel',serif;color:#1a0f08;text-align:center;padding-top:12px;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);">Your Seat At The Table Awaits</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;text-align:center;padding-top:6px;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9);">Set your password to enter the guild hall.</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Row 3: Body text -->
+                    <tr style="height:100%;">
+                        <td style="padding:24px 20%;vertical-align:top;height:100%;">
+                            @if (IsNewAccount)
+                            {
+                                <p style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;">
+                                    A guild registrar has opened an account in your name. Click the seal below to set your password —
+                                    this single step also confirms your email address, so you'll be ready to join the next quest.
+                                </p>
+                            }
+                            else
+                            {
+                                <p style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;">
+                                    Your account needs one more step before you can enter. Click the seal below to set your password —
+                                    this single step also confirms your email address, so you'll be ready to join the next quest.
+                                </p>
+                            }
+                            <p style="font-size:13px;font-family:Georgia,serif;color:#5a4030;line-height:1.5;font-style:italic;text-shadow:1px 1px 3px rgba(255,255,255,0.8);margin:16px 0 0 0;">
+                                If you were not expecting this invitation, you may discard this scroll — no action is required.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Row 4: Gold Divider -->
+                    <tr>
+                        <td style="padding:0 20%;"><hr style="border:none;border-top:1px solid #FFD700;margin:0;" /></td>
+                    </tr>
+
+                    <!-- Row 5: Spacer -->
+                    <tr>
+                        <td style="height:16px;"></td>
+                    </tr>
+
+                    <!-- Row 6: Wax Seal (left) + CTA Button (center) -->
+                    <tr>
+                        <td style="padding:16px 16px 96px 16px;">
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="width:90px;vertical-align:bottom;">
+                                        <img src="@(AppUrl)/images/Wax%20Seals/Crown%20Seal.png" width="80" alt="Wax Seal" style="display:block;" />
+                                    </td>
+                                    <td style="text-align:center;vertical-align:middle;">
+                                        <a href="@CallbackUrl" style="background-color:#FFD700;color:#1a0f08;font-family:'Cinzel',serif;font-size:15px;font-weight:bold;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;border:2px solid #8B4513;text-align:center;">Set My Password</a>
+                                    </td>
+                                    <td style="width:90px;"></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</_EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string UserName { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string CallbackUrl { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string AppUrl { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public bool IsNewAccount { get; set; } = true;
+}

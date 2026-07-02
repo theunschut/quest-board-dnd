@@ -1,0 +1,112 @@
+@using QuestBoard.Service.ViewModels.ShopViewModels
+@using QuestBoard.Domain.Enums
+@model ShopItemViewModel
+@{
+    ViewData["Title"] = Model.Name + " - Shop Details";
+    var isModal = ViewBag.IsModal == true;
+}
+
+@if (isModal)
+{
+    <!-- Modal Content - No main card wrapper -->
+    <div class="item-details-content">
+        <!-- Modal header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">@Model.Name</h2>
+            <span class="badge bg-primary fs-6">
+                <i class="fas fa-tag me-1"></i>
+                @Model.Type
+            </span>
+        </div>
+        
+        @await Html.PartialAsync("_ShopItemDetailsContent", Model)
+    </div>
+}
+else
+{
+    <!-- Full Page Content - With main card wrapper -->
+    <div class="item-details-content">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">@Model.Name</h1>
+                <span class="badge bg-primary fs-6">
+                    <i class="fas fa-tag me-1"></i>
+                    @Model.Type
+                </span>
+            </div>
+            <div class="card-body modern-card-body">
+                @await Html.PartialAsync("_ShopItemDetailsContent", Model)
+            </div>
+        </div>
+    </div>
+
+    <!-- Full page view navigation -->
+    <div class="mt-4">
+        <a href="/Shop" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Shop
+        </a>
+    </div>
+}
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+    @if (TempData["Success"] != null)
+    {
+        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">Success</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Success"]
+            </div>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header bg-danger text-white">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong class="me-auto">Error</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Error"]
+            </div>
+        </div>
+    }
+    @if (TempData["GoldReceived"] != null)
+    {
+        <div class="toast show gold-toast" role="alert" data-bs-autohide="true" data-bs-delay="6000">
+            <div class="toast-header bg-warning text-dark">
+                <i class="fas fa-coins me-2"></i>
+                <strong class="me-auto">Gold Received!</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-coins fa-2x text-warning me-3"></i>
+                    <div>
+                        <strong class="fs-5">+@TempData["GoldReceived"] gp</strong>
+                        <br>
+                        <small class="text-muted">@TempData["Success"]</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Initialize toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            const toastElements = document.querySelectorAll('.toast');
+            toastElements.forEach(function(toastElement) {
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+            });
+        });
+    </script>
+}

@@ -1,249 +1,505 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-04-15
+**Analysis Date:** 2026-07-01
+
+## Tech Debt
+
+### Large Controller Files — Monolithic Quest Management
+
+**Issue:** `QuestController.cs` is 896 lines, containing quest creation, management, finalization, follow-up creation, and complex error handling in a single class.
+
+**Files:** `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs`
+
+**Impact:** 
+- Difficult to test individual features (mixed concerns: quest CRUD, signup management, email dispatch)
+- Hard to navigate; Create/Edit/Finalize/FollowUp all share similar patterns but duplicated
+- Follow-up quest logic is fragile (two-phase update with manual rollback on error — see lines 854–891)
+
+**Fix approach:**
+- Extract follow-up quest creation into a dedicated controller action or service wrapper
+- Consider breaking into focused sub-controllers: `QuestManagementController` (create/edit), `QuestFinalizationController` (finalize/reminder), `QuestFollowUpController` (follow-up creation)
+- Reduce quest controller to <500 lines by delegating business logic entirely to services
+
+### AdminController Size and Multi-Concern Design
+
+**Issue:** `AdminController.cs` is 424 lines, mixing user management, email stats, Resend API integration, email previews, and quest operations.
+
+**Files:** `QuestBoard.Service/Controllers/Admin/AdminController.cs`
+
+**Impact:**
+- Hard to test; email stats fetching with external HTTP client is embedded in user management logic
+- Resend API key handling requires manual per-request Bearer token injection (line 151 comment "Authorization header is NOT set here")
+- Email preview testing shares controller space with production admin operations
+
+**Fix approach:**
+- Extract Resend stats into a dedicated `ResendStatsController` or service wrapper
+- Move email preview into `EmailPreviewController` (already separated but not fully isolated)
+- Reduce AdminController to user/role management only
+
+### DateTime.Now Usage in ShopSeedService
+
+**Issue:** `ShopSeedService.cs` uses `DateTime.Now` (local time, not UTC) for seeding shop item availability dates.
+
+**Files:** `QuestBoard.Domain/Services/ShopSeedService.cs` lines 223–224
+
+**Impact:**
+- Inconsistent with rest of codebase (all other timestamps use `DateTime.UtcNow`)
+- Seed dates will be wrong if deployment host timezone differs from dev machine
+- Makes it ambiguous whether seeded availability windows are server-local or UTC
+
+**Fix approach:**
+- Replace both `DateTime.Now` calls with `DateTime.UtcNow`
+- Document timezone handling: production server is CET/CEST; quest finalized dates and reminder job use server-local time intentionally, but all transactional timestamps should be UTC
+
+### Manual Cleanup on Quest Deletion (NoAction Cascade)
+
+**Issue:** `RemoveAsync` in `QuestService.cs` (lines 87–102) manually deletes PlayerSignups before deleting the Quest because Quest→PlayerSignup FK uses `NoAction` to avoid cascade cycles.
+
+**Files:** `QuestBoard.Domain/Services/QuestService.cs`, `QuestBoard.Repository/Entities/QuestBoardContext.cs` line 64
+
+**Impact:**
+- Fragile: if someone forgets to call `RemoveAsync` and uses repository directly, orphaned PlayerSignups will block quest deletion
+- DateVotes still cascade-delete from PlayerSignups (correct), but the service layer has to remember the order
+- No database-level protection if the pattern is bypassed
+
+**Fix approach:**
+- Add a comment above the FK configuration in `QuestBoardContext.cs` explaining why NoAction is used (SQL Server prevents cascade delete cycles)
+- Add integration test specifically for quest deletion with active player signups to prevent regression
+- Consider adding a repository-level guard: `DeleteQuestAsync(id)` that enforces cleanup order internally
+
+### Two-Phase Follow-Up Quest Update with Rollback
+
+**Issue:** `QuestController.CreateFollowUp` (lines 854–891) creates a quest shell, then updates it with proposed dates. If the update fails, it attempts to delete the orphaned shell.
+
+**Files:** `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` lines 854–891
+
+**Impact:**
+- Rollback may fail silently if the delete itself errors (exception not re-raised, only logged implicitly)
+- Between shell creation and update, a race condition is theoretically possible if another action reads the incomplete quest
+- The orphan cleanup happens in the controller, not the service layer, so it can be easily forgotten in future refactors
+
+**Fix approach:**
+- Move entire two-phase operation into a service method `CreateFollowUpQuestWithDetailsAsync(originalQuestId, title, description, proposedDates, ...)` that handles both creation and update in a single transaction
+- Add explicit logging on rollback failure so errors don't silently disappear
+- Add integration test that covers update failure scenario to ensure cleanup is tested
 
 ---
 
-## Security Concerns
+## Known Bugs
 
-### 1. Hardcoded Database Password in Committed Config File
+### Email Settings Not Validated on Startup
 
-- **Risk:** Development database credentials are committed to git and visible to anyone with repo access.
-- **Files:** `EuphoriaInn.Service/appsettings.json` line 15
-- **Detail:** The connection string `Password=QuestBoardUser!` is checked into source control. While this is a dev credential, it normalises the practice and the same file is copied into Docker images.
-- **Fix approach:** Replace with a placeholder (empty string or `<see-env>`), add `appsettings.json` to `.gitignore` for sensitive overrides, and provide `appsettings.Development.json.example`. Use environment variable overrides (`ConnectionStrings__DefaultConnection`) in production.
+**Issue:** `EmailService.cs` (line 16–20) logs a warning and returns null if `FromEmail` is not configured, but the application continues. Hangfire jobs will then fail silently.
 
-### 2. `.env` File Committed to Git
+**Files:** `QuestBoard.Domain/Services/EmailService.cs` lines 16–20
 
-- **Risk:** The `.env` file is tracked by git (confirmed via `git ls-files`). If a developer ever puts real SMTP or DB passwords into it, they will be permanently in history.
-- **Files:** `.env` (repo root)
-- **Detail:** Currently contains placeholder values, but the pattern is dangerous. The `.gitignore` exists for this project but does not exclude `.env`.
-- **Fix approach:** Add `.env` to `.gitignore`. Keep only `.env.example` tracked. Document that developers copy `.env.example` to `.env` locally.
+**Symptoms:** 
+- Quest finalization, password reset, welcome emails all fail if SMTP config is missing
+- No error visible in Hangfire dashboard (job completes but email was never sent)
+- Admins only discover the issue when users report not receiving emails
 
-### 3. Account Lockout Disabled for Login
+**Workaround:** Check `appsettings.json` Email section manually during deployment setup
 
-- **Risk:** No brute-force protection on login. An attacker can try unlimited passwords against any account.
-- **Files:** `EuphoriaInn.Service/Controllers/Admin/AccountController.cs` line 26
-- **Detail:** `lockoutOnFailure: false` is explicitly passed to `PasswordSignInAsync`. ASP.NET Core Identity supports lockout out of the box but it is disabled here.
-- **Fix approach:** Change to `lockoutOnFailure: true` and configure `options.Lockout` in `Program.cs` (e.g., `MaxFailedAccessAttempts = 5`, `DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15)`).
+**Fix approach:**
+- Add startup validation in `Program.cs`: throw if `Email:FromEmail` or `Email:SmtpServer` are empty in production environment
+- Document required email config in deployment guide
 
-### 4. Minimum Password Length Is Too Short
+### Nullable Navigation Property in PlayerSignup Causes Null Dereference Risk
 
-- **Risk:** Weak passwords are accepted (minimum 6 characters).
-- **Files:** `EuphoriaInn.Service/Program.cs` lines 36–41
-- **Detail:** `RequiredLength = 6` and `RequireNonAlphanumeric = false`. OWASP recommends at least 8–12 characters with complexity.
-- **Fix approach:** Increase `RequiredLength` to at least 8 and consider setting `RequireNonAlphanumeric = true`.
+**Issue:** `SessionReminderJob.cs` line checks `if (quest == null)` but does not guard against null `quest.DungeonMaster` in subsequent usage.
 
-### 5. Users Can Self-Grant the `HasKey` Privilege
+**Files:** `QuestBoard.Service/Jobs/SessionReminderJob.cs`
 
-- **Risk:** Any authenticated user can check the "I have a building key" checkbox on their own profile edit form, granting themselves a flag that displays on public quest pages.
-- **Files:** `EuphoriaInn.Service/Views/Account/Edit.cshtml` lines 38–44; `EuphoriaInn.Service/Controllers/Admin/AccountController.cs` line 128
-- **Detail:** `HasKey` is exposed as an editable checkbox in the regular user profile edit view and is directly saved to `user.HasKey` without any role check. While the flag only affects a UI indicator (who can lock up a venue), it is a privilege that should be admin-controlled.
-- **Fix approach:** Remove the `HasKey` field from `EditProfileViewModel` and `Account/Edit.cshtml`. Only allow it to be set via `Admin/EditUser`.
+**Symptoms:**
+- If a quest's DungeonMaster is deleted before the session reminder fires, the job will crash with NullReferenceException
+- Hangfire will retry the job (default: 10 times), consuming retries without alerting admin
 
-### 6. No Rate Limiting on Any Endpoint
+**Workaround:** None; depends on data integrity constraint (DM row must not be deleted if quest exists)
 
-- **Risk:** Registration, password change, and purchase endpoints are unprotected against abuse.
-- **Files:** `EuphoriaInn.Service/Program.cs` (no `AddRateLimiter` call)
-- **Fix approach:** Add ASP.NET Core rate limiting middleware (available in .NET 7+). Apply a fixed-window policy to `Account/Login`, `Account/Register`, and `Shop/Purchase`.
+**Fix approach:**
+- Add explicit null check: `if (quest?.DungeonMaster == null) { logger.LogWarning(...); return; }`
+- Add database-level FK constraint ON DELETE behavior review (currently `NoAction` for DungeonMaster FK)
 
-### 7. No Error Controller/View for Production Exception Handler
+### Resend API Rate Limiting and Pagination Not Handled
 
-- **Risk:** `app.UseExceptionHandler("/Error")` is configured for non-development environments, but there is no `ErrorController` or `Views/Shared/Error.cshtml`. Any unhandled exception in production will result in a blank or framework-default response.
-- **Files:** `EuphoriaInn.Service/Program.cs` line 84
-- **Fix approach:** Create an `ErrorController` with a `[Route("/Error")]` action and corresponding `Views/Shared/Error.cshtml`.
+**Issue:** `AdminController.GetResendStatsAsync` (referenced in STATE.md, line 96) retrieves email stats from Resend API with no pagination loop and no rate-limit retry logic.
 
-### 8. `User` Domain Model Exposes a `Password` Property
+**Files:** Resend HTTP client usage in `AdminController.cs` (implementation details in STATE.md concern note)
 
-- **Risk:** The domain `User` class has a public `Password` string property. If any AutoMapper mapping or serialization inadvertently maps this field, password data could leak.
-- **Files:** `EuphoriaInn.Domain/Models/User.cs` lines 20, 34, 40
-- **Detail:** The property is included in `Equals()` and `GetHashCode()`. The AutoMapper profile explicitly ignores it (`opt => opt.Ignore()`), but its presence is a latent risk. It has no apparent use since Identity manages passwords.
-- **Fix approach:** Remove the `Password` property from the `User` domain model. Remove it from `Equals`/`GetHashCode`. The field has no runtime value.
+**Impact:**
+- Stats dashboard shows incomplete data if Resend API returns multiple pages
+- Network errors or rate limits (429 Too Many Requests) will cause dashboard to error instead of retrying
 
-### 9. Profile Image Served with Hardcoded `image/jpeg` Content-Type
-
-- **Risk:** PNG and GIF files uploaded as profile pictures are served with `Content-Type: image/jpeg`. Some browsers may refuse to render them or handle them incorrectly.
-- **Files:** `EuphoriaInn.Service/Controllers/Characters/GuildMembersController.cs` line 270
-- **Detail:** `return File(profilePicture, "image/jpeg")` is always used regardless of what format was uploaded. The upload validates `.jpg`, `.jpeg`, `.png`, `.gif`.
-- **Fix approach:** Store the MIME type alongside the image data (add a `ContentType` column to `CharacterImages`) or detect it from magic bytes at serve time.
+**Fix approach:**
+- Implement pagination loop: `while (pageCount < totalPages)` to fetch all pages
+- Add retry-with-backoff for 429 responses (e.g., exponential backoff: 1s → 2s → 4s)
+- Cache results for 5 minutes (already done per STATE.md, but document TTL)
 
 ---
 
-## Performance Concerns
+## Security Considerations
 
-### 10. N+1 Query: Admin User Listing Calls `GetRolesAsync` Per User
+### No CSRF Token Validation on Some State-Changing Actions
 
-- **Risk:** The `Admin/Users` page executes one `GetRolesAsync` database call per user. With many users, this generates N+1 queries.
-- **Files:** `EuphoriaInn.Service/Controllers/Admin/AdminController.cs` lines 14–28
-- **Detail:** `foreach (var user in allUsers)` calls `await userService.GetRolesAsync(user)`, which hits the Identity `UserRoles` join table once per user.
-- **Fix approach:** Use `UserManager.Users` with a join on `UserRoles` and `Roles` at the repository layer, or batch-load all role mappings in a single query and join in memory.
+**Issue:** Most POST actions carry `[ValidateAntiForgeryToken]`, but some administrative actions (e.g., role changes in `AdminController`) may skip validation if not carefully reviewed.
 
-### 11. `GetCompletedQuestsAsync` Loads All Quests then Filters In Memory
+**Files:** `QuestBoard.Service/Controllers/Admin/AdminController.cs` (lines 55–93 carry `[ValidateAntiForgeryToken]` — currently safe)
 
-- **Risk:** As the quest log grows, this method loads every quest (with all related entities) from the database and then discards the majority in-process.
-- **Files:** `EuphoriaInn.Domain/Services/QuestService.cs` lines 331–342; `EuphoriaInn.Repository/QuestRepository.cs` (`GetQuestsWithDetailsAsync`)
-- **Detail:** `repository.GetQuestsWithDetailsAsync` returns all quests, then the service filters by `IsFinalized && FinalizedDate <= yesterday`. The filter should be pushed to the database.
-- **Fix approach:** Add a `GetCompletedQuestsAsync` method on `IQuestRepository` with a `.Where(q => q.IsFinalized && q.FinalizedDate <= cutoff)` clause applied before `ToListAsync`.
+**Current mitigation:** All role-change and user-edit actions in `AdminController` have `[ValidateAntiForgeryToken]`. Policy-based authorization (`[Authorize(Policy = "AdminOnly")]`) provides defense-in-depth.
 
-### 12. Character Profile Images Stored as Binary Blobs in SQL Server
+**Recommendations:**
+- Code review before adding new POST actions to ensure anti-forgery token is always present
+- Add a test that verifies all state-changing actions have the attribute
 
-- **Risk:** Every request for a character image fetches potentially large byte arrays from SQL Server. This bypasses HTTP caching and puts unnecessary load on the database.
-- **Files:** `EuphoriaInn.Repository/Entities/CharacterImageEntity.cs`; `EuphoriaInn.Repository/CharacterRepository.cs` (`GetCharacterProfilePictureAsync`)
-- **Detail:** `byte[] ImageData` with no size constraint. The entity is defined as a separate table (moved there in the `MoveCharacterImagesToSeparateTable` migration) which is good for query projection, but images are still DB-stored blobs.
-- **Fix approach:** Move images to filesystem or blob storage (Azure Blob, S3). Store only a URL in the database. Add `Cache-Control` headers to the image endpoint.
+### Email Configuration Secrets Potentially Logged
 
-### 13. Quest Detail Page Loads All Quests for Calendar Context
+**Issue:** `EmailService.cs` logs warnings if email is not configured, but does not guard against sensitive values (SMTP password) being logged in exception traces.
 
-- **Risk:** Every quest details page fetches the full `GetQuestsForCalendarAsync` result (all quests with full eager loads) to build the small mini-calendar sidebar.
-- **Files:** `EuphoriaInn.Service/Controllers/QuestBoard/QuestController.cs` lines 267–282
-- **Detail:** `GetQuestsForCalendarAsync` loads every quest with player signups, proposed dates, votes, and player data. This is done on every page load of every quest.
-- **Fix approach:** Only load quests for the months that have proposed dates for this specific quest, or move the calendar to a separate lazy-loaded AJAX endpoint.
+**Files:** `QuestBoard.Domain/Services/EmailService.cs`, `QuestBoard.Service/Controllers/Admin/AdminController.cs` (email preview feature)
 
-### 14. Deep Eager Loading on Most Quest Queries (`ProjectWithoutCharacterImages`)
+**Current mitigation:** Email settings read from `appsettings.json` (safe in deployed environment via env var override), not hardcoded. Exception logging does not explicitly log settings.
 
-- **Risk:** The default "project without character images" query loads a 5-level-deep object graph for every quest list: Quest → ProposedDates → PlayerVotes → PlayerSignup → Player, plus PlayerSignups → DateVotes and PlayerSignups → Character → Classes.
-- **Files:** `EuphoriaInn.Repository/QuestRepository.cs` lines 96–113
-- **Detail:** This is used for all list views (Home, MyQuests, Edit) regardless of whether every level of data is actually needed. `AsSplitQuery` mitigates the Cartesian product, but it still issues 6+ SQL queries per call.
-- **Fix approach:** Introduce projection-specific repository methods that only include the navigations needed for each view. For example, the home page index does not need `DateVotes` inside `PlayerSignups`.
+**Recommendations:**
+- Ensure email config never leaks into structured logging; use dedicated `_logger.LogError(ex, "Email send failed")` without including settings in the message
+- Avoid logging the full exception message if it contains connection strings
 
----
+### Resend API Token in HttpClient Default Headers Not Recommended
 
-## Technical Debt
+**Issue:** `Program.cs` (lines 150–157) creates a named HttpClient for Resend API but does NOT set the Authorization header (per comment). Instead, it's added per-request in `AdminController`.
 
-### 15. `SecurityConfiguration` Class Is Dead Code
+**Files:** `QuestBoard.Service/Program.cs` lines 150–157, `QuestBoard.Service/Controllers/Admin/AdminController.cs` line 151 (comment)
 
-- **Risk:** Misleads developers into thinking a custom hashing scheme is in use, when all password handling is delegated to ASP.NET Core Identity.
-- **Files:** `EuphoriaInn.Domain/Configuration/SecurityConfiguration.cs`
-- **Detail:** The class defines `PasswordIterations`, `SaltSize`, `HashSize`. It is not registered, injected, or used anywhere. The `appsettings.json` has a matching `Security` section whose values go nowhere.
-- **Fix approach:** Delete the class and remove the `Security` section from `appsettings.json`.
+**Current mitigation:** Token is correctly stored in `appsettings.json` and retrieved per-request; no hardcoded or default header leaks.
 
-### 16. `UpdateQuestPropertiesAsync` (Non-Notification Variant) Is Dead Code
-
-- **Risk:** Maintains an unnecessary parallel implementation that diverges silently.
-- **Files:** `EuphoriaInn.Domain/Services/QuestService.cs` lines 144–163; `EuphoriaInn.Domain/Interfaces/IQuestService.cs` line 24
-- **Detail:** This method exists alongside `UpdateQuestPropertiesWithNotificationsAsync`. The controllers only call the notification variant. The non-notification variant is defined on the interface but never called from any controller.
-- **Fix approach:** Remove `UpdateQuestPropertiesAsync` from both the interface and the service.
-
-### 17. `IsSameDateTime` Uses Magic Number (30-Minute Window)
-
-- **Risk:** Implicit business rule buried in a private method. If proposed dates can be changed to within 30 minutes of an existing date, the old date is silently preserved and the new one is dropped.
-- **Files:** `EuphoriaInn.Domain/Services/QuestService.cs` line 191
-- **Detail:** `Math.Abs((date1 - date2).TotalMinutes) <= 30` — undocumented and non-configurable.
-- **Fix approach:** Extract as a named constant with a comment. Consider whether minute-level precision is appropriate for quest scheduling or whether date-only comparison is sufficient.
-
-### 18. `PlayerSignupEntity.SignupRole` Uses Raw Int with Inline Magic Numbers
-
-- **Risk:** `SignupRole == 1` is used in multiple places in service code without reference to the `SignupRole` enum, making refactoring error-prone.
-- **Files:** `EuphoriaInn.Domain/Services/QuestService.cs` line 25 (`playerSignup.SignupRole == 1`); `EuphoriaInn.Domain/Services/PlayerSignupService.cs` line 21 (`playerSignupEntity.SignupRole == 1`)
-- **Fix approach:** The entity should expose the enum directly (or the service should cast to `SignupRole` before comparing). At minimum, use a named constant: `const int SpectatorRole = 1`.
-
-### 19. Email Service Reconstructs SMTP Client on Every Email Send
-
-- **Risk:** Configuration is re-read from `IConfiguration` and a new `SmtpClient` is constructed and disposed on every call. `System.Net.Mail.SmtpClient` is also marked `[Obsolete]` in .NET for new development.
-- **Files:** `EuphoriaInn.Domain/Services/EmailService.cs` lines 15–31 and 70–86
-- **Detail:** Both `SendQuestFinalizedEmailAsync` and `SendQuestDateChangedEmailAsync` duplicate the same SMTP setup block. The `[Quest Board URL]` placeholder in the date-changed email body has never been replaced (line 102).
-- **Fix approach:** Extract SMTP client creation to a private method or use a library like `MailKit` (which is not deprecated). Fix the `[Quest Board URL]` placeholder.
-
-### 20. Duplicate ViewModel Directory: `CharacterViewModels` vs `GuildMembersViewModels`
-
-- **Risk:** Naming inconsistency in the view model folder structure. Two separate folders serve overlapping concerns.
-- **Files:** `EuphoriaInn.Service/ViewModels/CharacterViewModels/GuildMembersIndexViewModel.cs`; `EuphoriaInn.Service/ViewModels/GuildMembersViewModels/GuildMembersIndexViewModel.cs`
-- **Detail:** `CharacterViewModels/GuildMembersIndexViewModel.cs` actually defines `CharactersIndexViewModel` (different type, different namespace). The similar filename across two folders is confusing.
-- **Fix approach:** Rename the `CharacterViewModels` file to `CharactersIndexViewModel.cs` to match the class name and clarify intent.
+**Recommendations:**
+- Document this pattern in code comment: "Bearer token must be added per-request in AdminController, not set globally in Program.cs, because each request may need different scoping or the service may change."
+- Consider centralizing token retrieval in a dedicated `ResendApiClient` class to avoid duplication if stats retrieval is called from multiple places in the future
 
 ---
 
-## Missing / Incomplete Features
+## Performance Bottlenecks
 
-### 21. No Email Verification on Registration
+### No Database Indexing on Session Reminder Queries
 
-- **Risk:** Anyone can register with an arbitrary email address. Notifications may be sent to unverified addresses.
-- **Files:** `EuphoriaInn.Domain/Services/UserService.cs` (`CreateAsync`, lines 38–57)
-- **Detail:** `userManager.CreateAsync` is called and the user is immediately signed in. There is no call to `GenerateEmailConfirmationTokenAsync` or similar.
-- **Fix approach:** Implement email confirmation flow using Identity's built-in token provider, or at minimum add a note that email verification is out of scope.
+**Issue:** `GetQuestsForTomorrowAllGroupsAsync` (called by `DailyReminderJob.cs`) does a full table scan of Quests to find quests finalized for tomorrow.
 
-### 22. `[Quest Board URL]` Placeholder in Email Body
+**Files:** `QuestBoard.Repository/QuestRepository.cs`, `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 23
 
-- **Risk:** Players receiving the "quest dates changed" email see a literal `[Quest Board URL]` text instead of a real link.
-- **Files:** `EuphoriaInn.Domain/Services/EmailService.cs` line 102
-- **Fix approach:** Inject `IConfiguration` or a settings class to get the application's public base URL and replace the placeholder with the actual `/Quest/Details/{questId}` URL. The `questId` would need to be added as a parameter.
+**Cause:** 
+- Query filters on `IsFinalized = true` and `FinalizedDate = tomorrow` (a computed range)
+- No composite index on `(IsFinalized, FinalizedDate)`
+- EF Core Global Query Filter for group scoping may prevent index optimization
 
-### 23. Shop `SellItemToShop` Does Not Validate User Owns the Item
+**Improvement path:**
+- Add composite index: `CREATE INDEX IX_Quests_Finalized_Date ON Quests(IsFinalized, FinalizedDate)` 
+- Benchmark: compare query time on 10K+ quests with and without index
+- Monitor slow log if job execution time increases as quest count grows
 
-- **Risk:** A user can sell any quantity of any published shop item without previously owning it, effectively creating gold from nothing.
-- **Files:** `EuphoriaInn.Domain/Services/ShopService.cs` lines 187–221; `EuphoriaInn.Service/Controllers/Shop/ShopController.cs` lines 153–180
-- **Detail:** `SellItemToShopAsync(int itemId, int quantity, User user)` only checks that the item exists and is published. It does not verify the user has a purchase transaction for that item. Compare to `ReturnOrSellItemAsync` which does check `originalTransaction.UserId == user.Id`.
-- **Fix approach:** Before processing a sell-to-shop transaction, verify the user has sufficient quantity in unretired purchase transactions for that item.
+### Shop Item Queries Not Optimized for Large Inventory
 
----
+**Issue:** `GetPublishedItemsAsync` and other shop queries load full ShopItem entities without projection. Images are stored as BLOB.
 
-## Scalability Concerns
+**Files:** `QuestBoard.Repository/ShopRepository.cs`
 
-### 24. No Pagination on Any List View
+**Cause:** 
+- Character images and DM profile images stored as `byte[]` in database
+- No lazy-loading or explicit .Include() control — risk of N+1 query
+- Large image BLOBs loaded unnecessarily for list views that only need Name/Price/Type
 
-- **Risk:** Home page, Quest Log, Shop, Guild Members, and Admin pages all load unbounded lists.
-- **Files:** `EuphoriaInn.Service/Controllers/QuestBoard/HomeController.cs`; `EuphoriaInn.Service/Controllers/Admin/AdminController.cs`; `EuphoriaInn.Service/Controllers/Shop/ShopController.cs`
-- **Detail:** Every list query uses `ToListAsync` with no `Skip`/`Take`. For a small D&D group this is fine, but if the quest log or shop grows large, page load times will degrade.
-- **Fix approach:** Add pagination parameters (`page`, `pageSize`) with sensible defaults to list queries and corresponding pagination controls in views.
+**Improvement path:**
+- Add optional `.ThenInclude(si => si.Images)` only for detail views; list views exclude images
+- Or: Extract images into separate `ShopItemImage` table with explicit loading
+- Benchmark shop page load time on production data; if <100ms, no action needed
 
-### 25. No Caching on Frequently-Read, Rarely-Changed Data
+### Hangfire Job Queue Not Filtered by Group
 
-- **Risk:** Every calendar view, home page load, and quest details page re-queries the full quest dataset from SQL Server.
-- **Files:** `EuphoriaInn.Repository/QuestRepository.cs` (`GetQuestsForCalendarAsync`, `GetQuestsWithSignupsForRoleAsync`)
-- **Fix approach:** Apply `IMemoryCache` (already available in ASP.NET Core) with a short TTL (e.g. 30 seconds) on calendar and home-page quest list queries.
+**Issue:** `DailyReminderJob` fetches quests from ALL groups, then enqueues a `SessionReminderJob` per quest (including GroupId). If there are 500 groups with 10 quests each, the job enqueues 5000 items every morning.
 
----
+**Files:** `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 23, `QuestBoard.Repository/QuestRepository.cs`
 
-## Error Handling Gaps
+**Impact:** 
+- Hangfire job queue grows linearly with group count
+- No sharding or batching; single daily job does all work
+- Risk of slowdown when deployed to multi-tenant customers with many groups
 
-### 26. Generic Exception Caught and Swallowed in Shop Controller
+**Improvement path:**
+- Consider breaking DailyReminderJob into a recurring job per group (if number of groups is manageable, <100)
+- Or: Implement batching — enqueue a single `SessionReminderBatchJob` that processes all quests in one transaction instead of N separate jobs
+- Monitor Hangfire dashboard queue length as group count increases; if queue >1000 items, implement batching
 
-- **Risk:** Unexpected errors in shop operations are silently converted to a generic TempData message. The original exception is not logged.
-- **Files:** `EuphoriaInn.Service/Controllers/Shop/ShopController.cs` lines 97, 143, 175
-- **Detail:**
-  ```csharp
-  catch (Exception)
-  {
-      TempData["Error"] = "An error occurred...";
-      return RedirectToAction(...);
-  }
-  ```
-  No `ILogger` is injected in `ShopController`. Errors will not appear in application logs.
-- **Fix approach:** Inject `ILogger<ShopController>` and call `_logger.LogError(ex, ...)` inside the catch block.
-
-### 27. Race Condition in Shop Item Stock Decrement
-
-- **Risk:** Concurrent purchases of a limited-stock item can over-sell stock. Two requests can both read `quantity > 0`, both pass the check, and both decrement.
-- **Files:** `EuphoriaInn.Domain/Services/ShopService.cs` lines 77–101
-- **Detail:** The check-then-update sequence (`if (itemEntity.Quantity > 0)` → `itemEntity.Quantity -= quantity`) is not atomic. EF Core does not use database-level row locking here.
-- **Fix approach:** Use an optimistic concurrency check on `ShopItemEntity` (add a `[Timestamp]` / `[ConcurrencyCheck]` column) or issue a direct SQL `UPDATE ... SET Quantity = Quantity - @qty WHERE Quantity >= @qty` and check rows affected.
-
-### 28. Spectator Email Notifications on Finalize Use Stale Quest State
-
-- **Risk:** The finalized email loop operates on the `quest` object fetched before `FinalizeQuestAsync` mutates the database. Spectator logic reads `ps.Role == SignupRole.Spectator` on the pre-save in-memory collection.
-- **Files:** `EuphoriaInn.Service/Controllers/QuestBoard/QuestController.cs` lines 643–656
-- **Detail:** `quest` is fetched before `FinalizeQuestAsync`. The loop then tries to send emails using that same in-memory `quest.PlayerSignups`. If EF's `AsNoTracking` returns a separate object graph, `selectedPlayerIds` comparison may work, but the condition `|| ps.Role == SignupRole.Spectator` sends to all spectators regardless of whether they were actually included in `selectedPlayerIds`.
-- **Fix approach:** Re-fetch the quest after `FinalizeQuestAsync` before building the email list, or restructure `FinalizeQuestAsync` to return the list of email-eligible signups.
+**Status (Phase 34.2):** documented as deferred, not implemented — see ARCHITECTURE.md.
 
 ---
 
-## Configuration / Secrets Management
+## Fragile Areas
 
-### 29. Email Settings Left Empty in Committed `appsettings.json`
+### Hangfire Job Execution Context Requires Manual Service Scope Management
 
-- **Risk:** Email notifications silently fail in any environment where settings are not overridden. The application logs a `LogWarning` and returns silently.
-- **Files:** `EuphoriaInn.Service/appsettings.json` lines 17–24
-- **Detail:** `SmtpUsername`, `SmtpPassword`, `FromEmail` are all empty strings. Developers may not notice emails are not sending in development.
-- **Note:** This is intentional per design, but there is no startup validation or health-check flag that surfaces the missing email configuration.
-- **Fix approach:** Add a startup validation log (e.g., `LogInformation("Email notifications are DISABLED: EmailSettings not configured.")`) so developers know the state.
+**Issue:** Every Hangfire job (e.g., `DailyReminderJob`, `SessionReminderJob`) manually creates an `IServiceScopeFactory.CreateAsyncScope()` because scoped services cannot be constructor-injected into background jobs.
 
-### 30. Email SMTP Config Re-read Inside Business Logic Instead of Options Pattern
+**Files:** `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 20, and similar in all other job files
 
-- **Risk:** Configuration access is scattered and non-validatable at startup.
-- **Files:** `EuphoriaInn.Domain/Services/EmailService.cs` lines 15–22 and 70–77
-- **Detail:** `configuration.GetSection("EmailSettings")["SmtpServer"]` is called inside each send method. If settings change at runtime (rare but possible with `IConfiguration` reloading), the behaviour is unpredictable.
-- **Fix approach:** Use `IOptions<EmailSettings>` with a typed `EmailSettings` record validated via `services.AddOptions<EmailSettings>().BindConfiguration("EmailSettings")`.
+**Why fragile:** 
+- If a new service is added and injected into a job without using `IServiceScopeFactory`, the job will fail at runtime
+- No compiler check; pattern is easy to forget
+- Scopes are created but not always explicitly disposed (relying on `await using`)
+
+**Safe modification:**
+- Always use `await using var scope = scopeFactory.CreateAsyncScope()` pattern; never constructor-inject scoped services
+- Document this in a job base class or README, not just comments scattered in each file
+- Add a static job helper class: `public static class HangfireJobHelper { public static async Task RunInScopeAsync(IServiceScopeFactory factory, Func<IServiceProvider, Task> action) }` to centralize the pattern
+
+**Test coverage:** 
+- Integration tests verify jobs execute without error, but don't test scope lifecycle
+- No test breaks if scope management is accidentally broken in a new job
+
+### Query Filter Application Inconsistent Across Entity Types
+
+**Issue:** Global Query Filters are applied to `QuestEntity` and `ShopItemEntity` only, but NOT to `UserEntity`, `CharacterEntity`, or `PlayerSignupEntity`.
+
+**Files:** `QuestBoard.Repository/Entities/QuestBoardContext.cs`, `QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`
+
+**Why fragile:**
+- New code that assumes all entities are filtered by group will silently leak data if the filter is not applied
+- Example: if someone adds a query `Characters.Where(c => ...)` without checking the model configuration, they will get all characters across all groups
+- Different entities have different query requirements (UserEntity must NOT be filtered because Identity queries rows globally)
+
+**Safe modification:**
+- Add a comment in `OnModelCreating` before each HasQueryFilter call explaining why it applies to that entity
+- Add a comment above entities that are NOT filtered explaining why (e.g., "UserEntity excludes filter because Identity framework queries all users globally for login")
+- Document the rule in CONVENTIONS.md: "Global Query Filters must be explicitly enabled per entity type; check `QuestBoardContext.OnModelCreating` before querying a new entity type."
+
+**Test coverage:**
+- Integration tests verify quest and shop item queries are group-scoped
+- No test verifies that characters are NOT group-scoped (if a filter is accidentally added, test won't catch it)
+
+### Manual Enum Casting at AutoMapper Boundaries
+
+**Issue:** `EntityProfile.cs` casts enums between `int` storage and domain enum types at the automapper boundary (e.g., `(int)src.Type`, `(SignupRole)src.SignupRole`).
+
+**Files:** `QuestBoard.Repository/Automapper/EntityProfile.cs` lines 47, 50, 61, 64, 70–77, 82–85, 89–90, 107–110, 125, 129
+
+**Why fragile:**
+- If an enum value is added (e.g., `ItemType.Artifact = 10`) but the database still has old rows with `Type = 5`, the cast will silently truncate or wrap to an undefined enum value
+- No validation that the int value is a valid enum member
+- If an enum is reordered (e.g., `Common = 0` becomes `Common = 1`), all existing data becomes corrupted on read
+
+**Safe modification:**
+- Add a note in CONVENTIONS.md: "Enums must not be reordered and new values must be appended. Document any enum change in migration notes."
+- Consider adding explicit validation in the mapping: `(ItemType)Enum.Parse(typeof(ItemType), src.Type.ToString())` (slower but safer; may not be necessary if data integrity is maintained)
+- Add a data validation test: fetch a sample record and verify enums deserialize correctly
+
+**Test coverage:**
+- Unit tests mock enum conversions; they don't test against real database data with edge-case enum values
+- No test covers "what happens if an old enum value is in the database?"
+
+### Missing GroupId on Historical Hangfire Job Data
+
+**Issue:** Hangfire job queue, job history, and recurring job configuration do not currently track GroupId explicitly. Jobs resolve it from the `activeGroupContext.ActiveGroupId` at runtime (e.g., line 36 in `DailyReminderJob`).
+
+**Files:** `QuestBoard.Service/Jobs/DailyReminderJob.cs` line 35–36, `QuestBoard.Service/Program.cs` lines 297–300
+
+**Why fragile:**
+- If an app restart happens during job execution, the active group context will be reset to null or default
+- Historical job data in Hangfire SQL Server table will not show which group was processed (debugging is harder)
+- No audit trail if a job fails and you need to replay it for a specific group
+
+**Safe modification:**
+- Add GroupId as an explicit enqueued job parameter: `backgroundJobClient.Enqueue<SessionReminderJob>(job => job.ExecuteAsync(quest.Id, quest.GroupId, false, false, CancellationToken.None))`  — this is already done (line 36 shows `quest.GroupId` is passed)
+- Ensure all job enqueue calls include GroupId explicitly, not relying on context
+- Document that Hangfire dashboard shows GroupId in each job's arguments for audit purposes
 
 ---
 
-*Concerns audit: 2026-04-15*
+## Scaling Limits
+
+### EF Core Global Query Filter Scoping at Runtime
+
+**Issue:** Global Query Filters on Quests and ShopItems are applied based on `activeGroupContext.ActiveGroupId` at query time. If this value is null or incorrect, the filter either includes all data or excludes everything unexpectedly.
+
+**Files:** `QuestBoard.Repository/Entities/QuestBoardContext.cs`, `QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`, `QuestBoard.Service/Program.cs` lines 175–177
+
+**Current capacity:** Works for single-tenant and small multi-tenant deployments (<100 groups) because GroupId is simple int lookup
+
+**Limit:** 
+- If ActiveGroupId resolution becomes async or non-deterministic (e.g., user holds roles in multiple groups and the picker is not enforced), queries will silently scope wrong data
+- No compile-time safety; wrong group scope is a runtime data-integrity bug
+
+**Scaling path:**
+- Phase 30 (Group Picker Enforcement) must ensure SessionKeys.ActiveGroupId is always set before any data query
+- Add assertion in Repository: `if (activeGroupContext.ActiveGroupId == null) throw InvalidOperationException("Group context not initialized")` — converts silent data leaks to explicit errors
+- Monitor logs for "Group context not initialized" errors in production; if any appear, Phase 30 enforcement was not sufficient
+
+### Hangfire Job Retry Limit on Transient Failures
+
+**Issue:** Hangfire jobs (e.g., email send failures) retry up to 10 times by default. If a job consistently fails (e.g., SMTP down for 1 hour), it will consume 10 retries and then be moved to a Failed Jobs queue where it sits without further retry.
+
+**Files:** All job files in `QuestBoard.Service/Jobs/`, `QuestBoard.Service/Program.cs` lines 186–205 (Hangfire config)
+
+**Current capacity:** Works if SMTP/Resend outages are <10 minutes. For longer outages, admin must manually retry jobs from dashboard.
+
+**Limit:**
+- No exponential backoff configured (default immediate retry for each attempt)
+- No alert if multiple jobs land in Failed Jobs queue (symptoms go unnoticed)
+
+**Scaling path:**
+- Add retry policy in Hangfire config: `UseAutoRetry(5)` with exponential backoff (1s, 2s, 4s, 8s, 16s)
+- Set up monitoring/alerting in production: if Failed Jobs queue has >10 items, send alert to admin
+- Document admin manual recovery process: Hangfire dashboard → Failed Jobs → Requeue
+
+### No Tenant Isolation Enforcement at API Boundary
+
+**Issue:** Controllers accept user input (e.g., `QuestController.Details(questId)`) and load data filtered by activeGroupId. If activeGroupId is null or a user manually manipulates the URL to access `questId = 999` from a different group, the filter may not protect.
+
+**Files:** All controllers in `QuestBoard.Service/Controllers/`, Query filter in `QuestBoardContext.cs`
+
+**Current capacity:** Works because activeGroupId is set per request via session and group picker enforces selection
+
+**Limit:**
+- If Phase 30 Group Picker Enforcement misses a code path, a user can access data from unassigned group
+- Global Query Filter is a safety net, not a primary security boundary
+
+**Scaling path:**
+- Add explicit authorization check in each controller: `if (quest.GroupId != activeGroupContext.ActiveGroupId) return Forbid()`
+- Or: Create a service wrapper: `IAuthorizedQuestRepository` that enforces GroupId match in every Get method
+- Add comprehensive test: for each controller action that loads an entity, verify it returns Forbid() if the entity's GroupId differs from activeGroupId
+
+**Status (Phase 34.2):** documented as deferred, not implemented — see ARCHITECTURE.md.
+
+---
+
+## Dependencies at Risk
+
+### SMTP/Email Configuration Tightly Coupled to ASP.NET Core Identity Email Sender
+
+**Issue:** Email sending is implemented via `EmailService` which uses `SmtpClient`. ASP.NET Core Identity (password reset, email confirmation) may attempt to use a default email sender if not explicitly wired.
+
+**Files:** `QuestBoard.Domain/Services/EmailService.cs`, `QuestBoard.Service/Program.cs` lines 44–63 (Identity config)
+
+**Risk:** 
+- Identity might attempt to send emails through a different path if email sender is not registered correctly
+- Hangfire jobs send emails directly via EmailService, but controllers may use Identity's built-in email sender for password reset
+
+**Migration plan:**
+- Ensure all identity email operations (password reset, email confirmation) are routed through `IEmailService` via a custom `UserManager` override or email sender middleware
+- Document current flow: Password reset email → handled by `ForgotPasswordEmailJob` via Hangfire (not Identity's built-in sender)
+- Test: verify that a password reset request enqueues a job, not tries to send via unconfigured Identity sender
+
+### Resend SMTP Relay as Single Point of Failure
+
+**Issue:** Email delivery depends on Resend SMTP relay. If Resend is down, all email notifications fail.
+
+**Files:** `QuestBoard.Domain/Services/EmailService.cs` line 22 (SmtpClient connection), `QuestBoard.Service/Program.cs` line 153 (HttpClient for Resend stats)
+
+**Risk:** 
+- No fallback SMTP server configured
+- No retries with exponential backoff in `SendAsync` (Hangfire provides job retries, but SmtpClient throws immediately on connection failure)
+- Resend API for stats is HTTP-only; if Resend API is down, the stats dashboard will fail
+
+**Migration plan:**
+- Add secondary SMTP relay config (fallback): if primary fails, retry with secondary
+- Or: Configure multiple SmtpClient instances in a round-robin: try server1, then server2, then fail
+- For stats: wrap Resend API calls in try-catch; return cached data if API is unavailable (currently cached for 5 min anyway)
+- Monitor: if SessionReminder emails start failing, check Resend status page and SMTP logs on host
+
+---
+
+## Missing Critical Features
+
+### No Digest Batching for Same-Day Quests
+
+**Issue:** Session reminders and finalized quest emails are sent individually per quest. If a player signed up for 3 quests on the same day, they receive 3 separate emails.
+
+**Files:** `QuestBoard.Domain/Services/QuestService.cs` line 35 (EnqueueFinalizedEmail per quest), `QuestBoard.Service/Jobs/SessionReminderJob.cs` (sends per quest)
+
+**Blocking:** 
+- Email spam for active players with multiple same-day quests
+- No known production impact yet (same-day quests have never occurred in one year of operation — per STATE.md line 48)
+
+**Fix approach:**
+- Implement `BatchSessionReminders(playerId, reminders[])` that groups reminders by player
+- Change `DailyReminderJob` to collect all reminder emails per player, then send one combined email
+- Requires email template redesign to show multiple quests in one email
+- **Deferred until multi-quest same-day sessions occur in practice**
+
+### No Email Unsubscribe / Preference Management
+
+**Issue:** All confirmed users receive all emails (session reminders, finalized quests, password resets). No opt-out mechanism.
+
+**Files:** All job files that check `EmailConfirmed` before sending
+
+**Blocking:**
+- Not an issue for trusted small group (17 members); low risk of spam complaints
+- Would become critical if the platform is deployed to larger external communities
+
+**Fix approach:**
+- Add `User.EmailPreferences` or `UserEmailSettings` entity (one row per user)
+- For each email category, store bool flag: `OptOutSessionReminders`, `OptOutFinalizedQuests`, etc.
+- Check flag before enqueuing job: `if (user.EmailPreferences?.OptOutSessionReminders == true) return;`
+- Add settings UI in account page
+
+---
+
+## Test Coverage Gaps
+
+### Hangfire Job Retry Behavior Not Tested
+
+**Issue:** Hangfire jobs are tested to ensure they execute without error, but not tested for retry behavior when an upstream dependency (SMTP, database) fails.
+
+**Files:** `QuestBoard.UnitTests/Services/SessionReminderJobTests.cs`, `QuestBoard.IntegrationTests/Controllers/QuestFinalizeTests.cs`
+
+**What's not tested:**
+- Job executes, catches exception, re-queues successfully
+- Retry count increments correctly
+- Failed jobs are moved to Failed Jobs queue after 10 retries
+
+**Risk:** 
+- A job could be retrying but never succeeding; issue only noticed if admin checks Hangfire dashboard regularly
+- Code change could break retry logic without tests catching it
+
+**Fix approach:**
+- Add test: `SessionReminderJob_EmailSendFailure_RetriesCorrectly` that mocks `EmailService.SendAsync` to throw, verifies Hangfire records retry
+- Add test: `SessionReminderJob_PersistentFailure_MovesToFailedQueue` that verifies job lands in Failed after 10 retries
+- Requires test setup that fully simulates Hangfire (not just unit test of the job method)
+
+### Group Query Filter Enforcement Not Tested
+
+**Issue:** Global Query Filter on Quests and ShopItems is tested implicitly (integration tests pass), but no explicit test verifies that querying without setting activeGroupId returns no results.
+
+**Files:** `QuestBoard.Repository/Entities/QuestBoardContext.cs`, test factory in `QuestBoard.IntegrationTests/WebApplicationFactoryBase.cs`
+
+**What's not tested:**
+- If a query is run with `activeGroupContext.ActiveGroupId = null`, does the filter exclude all rows?
+- If a query is run with `activeGroupContext.ActiveGroupId = 999` (non-existent group), are results correctly empty?
+- If a new entity type is added to the domain, does the developer remember to add a query filter?
+
+**Risk:** 
+- Data could leak across groups if someone forgets to apply a filter
+- Silent data-integrity bug; tests pass, but multi-tenant deployments expose data
+
+**Fix approach:**
+- Add explicit test: `QueryFilterTests.GetQuests_NoActiveGroup_ReturnsEmpty` that sets activeGroupContext.ActiveGroupId to null, verifies no quests returned
+- Add test: `QueryFilterTests.GetQuests_UnassignedGroup_ReturnsEmpty` that sets activeGroupContext.ActiveGroupId to 999, verifies no quests returned
+- Add test for each filtered entity type (Quests, ShopItems)
+
+### Follow-Up Quest Cleanup on Update Failure Not Tested
+
+**Issue:** `QuestController.CreateFollowUp` (lines 854–891) attempts to rollback (delete) an orphaned quest if the follow-up update fails. This rollback code is not tested.
+
+**Files:** `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` lines 854–891
+
+**What's not tested:**
+- If `UpdateQuestPropertiesWithNotificationsAsync` throws, does the orphaned quest get deleted?
+- If the delete itself fails, does the exception propagate correctly?
+
+**Risk:** 
+- Orphaned incomplete quests could accumulate in the database if the rollback fails
+- Users see an error but a partial quest was still created, causing confusion
+
+**Fix approach:**
+- Add integration test: `QuestController_CreateFollowUp_UpdateFailure_CleansUpOrphan` that mocks `UpdateQuestPropertiesWithNotificationsAsync` to throw, verifies the orphaned quest is deleted
+- Add test: `QuestController_CreateFollowUp_DeleteFailure_PropagatesException` that mocks the delete to also fail, verifies exception is not swallowed
+
+---
+
+*Concerns audit: 2026-07-01*

@@ -1,0 +1,102 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.ViewModels.AccountViewModels
+@model ProfileViewModel
+@{
+    ViewData["Title"] = "Profile";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-user-cog text-success me-2"></i>
+                    @ViewData["Title"]
+                </h2>
+            </div>
+            <div class="card-body modern-card-body">
+                <div class="row mb-3">
+                    <label class="col-sm-3 col-form-label">Name:</label>
+                    <div class="col-sm-9">
+                        <p class="form-control-plaintext">@Model.User?.Name</p>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label class="col-sm-3 col-form-label">Email:</label>
+                    <div class="col-sm-9">
+                        <p class="form-control-plaintext">@Model.User?.Email</p>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label class="col-sm-3 col-form-label">Account Type:</label>
+                    <div class="col-sm-9">
+                        @if ((bool?)ViewData["IsAdmin"] == true)
+                        {
+                            <p class="form-control-plaintext">
+                                <i class="fas fa-shield-alt text-danger me-2"></i>
+                                Administrator
+                            </p>
+                        }
+                        else if ((bool?)ViewData["IsDungeonMaster"] == true)
+                        {
+                            <p class="form-control-plaintext">
+                                <i class="fas fa-crown text-warning me-2"></i>
+                                Dungeon Master & Player
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="form-control-plaintext">
+                                Player
+                            </p>
+                        }
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label class="col-sm-3 col-form-label">Building Access:</label>
+                    <div class="col-sm-9">
+                        @if (Model.User?.HasKey == true)
+                        {
+                            <p class="form-control-plaintext">
+                                <i class="fas fa-key text-success me-2"></i>
+                                Has Building Key
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="form-control-plaintext">
+                                <i class="fas fa-times text-muted me-2"></i>
+                                No Building Key
+                            </p>
+                        }
+                    </div>
+                </div>
+
+                <hr>
+
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>
+                        @TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <div class="d-flex justify-content-between">
+                    <a asp-controller="Quest" asp-action="Index" class="btn btn-warning">
+                        <i class="fas fa-home me-2"></i>
+                        Back to Quest Board
+                    </a>
+                    <a asp-action="Edit" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>
+                        Edit Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

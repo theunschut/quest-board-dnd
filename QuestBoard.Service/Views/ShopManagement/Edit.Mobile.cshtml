@@ -1,0 +1,260 @@
+@using QuestBoard.Service.ViewModels.ShopViewModels
+@model EditShopItemViewModel
+
+@section Styles {
+    <link href="~/css/shop-management-edit.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="container-fluid px-2 mt-2">
+    <div class="shop-mgmt-edit-card-mobile mb-3">
+
+        <div class="mb-3">
+            <h5 class="mb-0">
+                <i class="fas fa-edit text-warning me-2"></i>Edit Item
+            </h5>
+        </div>
+
+        <form asp-action="Edit" method="post">
+            <input asp-for="Id" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <!-- Status Information — keep for DMs -->
+            <div class="alert alert-info mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="alert-heading mb-1">
+                            <i class="fas fa-info-circle me-2"></i>Current Status
+                        </h6>
+                        <span class="badge @(Model.Status switch
+                        {
+                            ItemStatus.Published => "bg-success",
+                            ItemStatus.Draft => "bg-secondary",
+                            ItemStatus.Archived => "bg-secondary",
+                            _ => "bg-secondary"
+                        })">
+                            @Model.Status.ToString().Replace("Published", "Available")
+                        </span>
+                        @if (Model.Status == ItemStatus.Draft)
+                        {
+                            <small class="text-muted ms-2">This item is awaiting DM approval</small>
+                        }
+                    </div>
+                    <small class="text-muted">Item ID: #@Model.Id</small>
+                </div>
+            </div>
+
+            <!-- Name -->
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <!-- Type -->
+            <div class="mb-3">
+                <label asp-for="Type" class="form-label"></label>
+                <select asp-for="Type" class="form-select" onchange="updatePriceSuggestion()">
+                    <option value="Equipment" selected="@(Model.Type == ItemType.Equipment)">Equipment</option>
+                    <option value="MagicItem" selected="@(Model.Type == ItemType.MagicItem)">Magic Item</option>
+                    <option value="QuestItems" selected="@(Model.Type == ItemType.QuestItems)">Quest Item</option>
+                </select>
+                <span asp-validation-for="Type" class="text-danger"></span>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <!-- Rarity -->
+            <div class="mb-3">
+                <label asp-for="Rarity" class="form-label"></label>
+                <select asp-for="Rarity" id="Rarity" class="form-select" onchange="updatePriceSuggestion()">
+                    <option value="Common" selected="@(Model.Rarity == ItemRarity.Common)">Common</option>
+                    <option value="Uncommon" selected="@(Model.Rarity == ItemRarity.Uncommon)">Uncommon</option>
+                    <option value="Rare" selected="@(Model.Rarity == ItemRarity.Rare)">Rare</option>
+                    <option value="VeryRare" selected="@(Model.Rarity == ItemRarity.VeryRare)">Very Rare</option>
+                    <option value="Legendary" selected="@(Model.Rarity == ItemRarity.Legendary)">Legendary</option>
+                </select>
+                <span asp-validation-for="Rarity" class="text-danger"></span>
+                @if (Model.Status == ItemStatus.Draft)
+                {
+                    <div class="form-text text-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Changes to rarity may require re-approval
+                    </div>
+                }
+            </div>
+
+            <!-- Quantity -->
+            <div class="mb-3">
+                <label asp-for="Quantity" class="form-label"></label>
+                <input asp-for="Quantity" type="number" class="form-control" min="-1" />
+                <span asp-validation-for="Quantity" class="text-danger"></span>
+                <div class="form-text">Set to -1 for unlimited stock, 0 means sold out, positive numbers for limited stock</div>
+            </div>
+
+            <!-- Price (no input-group, no buttons) -->
+            <div class="mb-3">
+                <label for="Price" class="form-label">Price (Gold Pieces)</label>
+                <input asp-for="Price" type="number" class="form-control" min="0" step="0.01" />
+                <span asp-validation-for="Price" class="text-danger"></span>
+                <div class="form-text" id="price-suggestion">
+                    Select a rarity to see pricing suggestions.
+                </div>
+            </div>
+
+            <!-- Reference URL -->
+            <div class="mb-3">
+                <label asp-for="ReferenceUrl" class="form-label"></label>
+                <input asp-for="ReferenceUrl" type="url" class="form-control" />
+                <span asp-validation-for="ReferenceUrl" class="text-danger"></span>
+                <div class="form-text">Optional D&amp;D Beyond link for reference</div>
+            </div>
+
+            <!-- Availability Window -->
+            <div class="mb-4 availability-window-section">
+                <h5 class="text-info mb-3">
+                    <i class="fas fa-clock me-2"></i>Availability Window
+                </h5>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="enableAvailabilityWindow" onchange="toggleAvailabilityWindow()" @(Model.AvailableFrom != null || Model.AvailableUntil != null ? "checked" : "")>
+                    <label class="form-check-label" for="enableAvailabilityWindow">
+                        Set specific availability dates for this item
+                    </label>
+                    <div class="form-text">Check this to set when the item should be available in the shop. Leave unchecked for permanent availability.</div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="AvailableFrom" class="form-label"></label>
+                    <input asp-for="AvailableFrom" type="datetime-local" class="form-control" disabled="@(Model.AvailableFrom == null && Model.AvailableUntil == null)" />
+                    <span asp-validation-for="AvailableFrom" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="AvailableUntil" class="form-label"></label>
+                    <input asp-for="AvailableUntil" type="datetime-local" class="form-control" disabled="@(Model.AvailableFrom == null && Model.AvailableUntil == null)" />
+                    <span asp-validation-for="AvailableUntil" class="text-danger"></span>
+                </div>
+            </div>
+
+            <!-- Warning for review items -->
+            @if (Model.Status == ItemStatus.Draft)
+            {
+                <div class="alert alert-warning mb-4">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Item Under Review
+                    </h6>
+                    <p class="mb-0">This item is currently being reviewed by other Dungeon Masters. Major changes may require re-approval.</p>
+                </div>
+            }
+
+            <hr>
+
+            <div class="d-flex justify-content-between">
+                <a href="/ShopManagement" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Management
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Price suggestions based on Tasha's Cauldron
+        const pricingGuide = {
+            'Common': { min: 50, max: 100, text: 'Common items typically cost 50-100 gp' },
+            'Uncommon': { min: 101, max: 500, text: 'Uncommon items typically cost 101-500 gp' },
+            'Rare': { min: 501, max: 5000, text: 'Rare items typically cost 501-5,000 gp' },
+            'VeryRare': { min: 5001, max: 50000, text: 'Very Rare items typically cost 5,001-50,000 gp' },
+            'Legendary': { min: 50001, max: 200000, text: 'Legendary items typically cost 50,001+ gp' }
+        };
+
+        function toggleAvailabilityWindow() {
+            const checkbox = document.getElementById('enableAvailabilityWindow');
+            const availableFrom = document.querySelector('input[name="AvailableFrom"]');
+            const availableUntil = document.querySelector('input[name="AvailableUntil"]');
+
+            if (checkbox.checked) {
+                availableFrom.disabled = false;
+                availableUntil.disabled = false;
+            } else {
+                availableFrom.disabled = true;
+                availableUntil.disabled = true;
+                availableFrom.value = '';
+                availableUntil.value = '';
+            }
+        }
+
+        // Fixed prices from Tasha's Cauldron (matching ShopService CalculateItemPriceAsync)
+        const calculatedPrices = {
+            'Common': 100,
+            'Uncommon': 500,
+            'Rare': 5000,
+            'VeryRare': 50000,
+            'Legendary': 200000
+        };
+
+        function updatePriceSuggestion() {
+            const rarity = document.getElementById('Rarity').value;
+            const suggestionDiv = document.getElementById('price-suggestion');
+
+            if (rarity && pricingGuide[rarity]) {
+                const guide = pricingGuide[rarity];
+                const calculatedPrice = calculatedPrices[rarity];
+                suggestionDiv.innerHTML = `<i class="fas fa-coins me-1"></i>${guide.text}<br><small class="text-muted">Tasha's recommended: ${calculatedPrice} gp</small>`;
+                suggestionDiv.className = 'form-text text-info';
+            } else {
+                suggestionDiv.innerHTML = 'Select a rarity to see pricing suggestions.';
+                suggestionDiv.className = 'form-text';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePriceSuggestion();
+        });
+    </script>
+
+    <style>
+        .rarity-common {
+            background-color: #6c757d !important;
+            color: white !important;
+        }
+
+        .rarity-uncommon {
+            background-color: #198754 !important;
+            color: white !important;
+        }
+
+        .rarity-rare {
+            background-color: #0d6efd !important;
+            color: white !important;
+        }
+
+        .rarity-veryrare {
+            background-color: #6f42c1 !important;
+            color: white !important;
+        }
+
+        .rarity-legendary {
+            background: linear-gradient(45deg, #dc3545, #ffc107) !important;
+            color: white !important;
+            animation: legendary-glow 2s ease-in-out infinite alternate;
+        }
+
+        @@keyframes legendary-glow {
+            0% {
+                box-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+            }
+
+            100% {
+                box-shadow: 0 0 15px rgba(255, 193, 7, 0.8);
+            }
+        }
+    </style>
+}

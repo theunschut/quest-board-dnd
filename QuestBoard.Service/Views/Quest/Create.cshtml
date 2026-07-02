@@ -1,0 +1,131 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.ViewModels.QuestViewModels
+@model QuestViewModel
+@{
+    ViewData["Title"] = "Create Quest";
+}
+
+<div class="row">
+    <div class="col-lg-8 col-md-7">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-scroll text-warning me-2"></i>
+                    Create New Quest
+                </h2>
+            </div>
+            <div class="card-body modern-card-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <form asp-action="Create" method="post">
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label">Quest Title <span class="text-danger">*</span></label>
+                        <input asp-for="Title" class="form-control" placeholder="Enter the quest title..." />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <textarea asp-for="Description" class="form-control" rows="4" placeholder="Describe the quest, what players can expect, any special requirements..."></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ChallengeRating" class="form-label">Challenge Rating <span class="text-danger">*</span></label>
+                        <input asp-for="ChallengeRating" type="number" class="form-control" min="1" max="20" step="1" placeholder="Enter level (e.g., 1, 5, 10, 15)" />
+                        <div class="form-text text-muted">Enter the recommended player level for this quest (1-20). This helps players understand if the quest is appropriate for their character level.</div>
+                        <span asp-validation-for="ChallengeRating" class="text-danger"></span>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <label asp-for="TotalPlayerCount" class="form-label">Total Player Count <span class="text-danger">*</span></label>
+                        <input asp-for="TotalPlayerCount" inputmode="numeric" class="form-control" />
+                        <span asp-validation-for="TotalPlayerCount" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input asp-for="DungeonMasterSession" class="form-check-input" type="checkbox" />
+                            <label asp-for="DungeonMasterSession" class="form-check-label">
+                                <i class="fas fa-crown text-warning me-2"></i>Dungeon Master Session Only
+                            </label>
+                        </div>
+                        <div class="form-text text-muted">Check this box to make this quest visible only to Dungeon Masters and Admins. Regular players will not be able to see or sign up for this quest.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Proposed Dates & Times <span class="text-danger">*</span></label>
+                        <div id="proposed-dates">
+                            @for (int i = 0; i < Model.ProposedDates.Count; i++)
+                            {
+                                <div class="mb-3 proposed-date-item">
+                                    <label class="form-label">Proposed Date @(i + 1)</label>
+                                    <div class="input-group">
+                                        <input asp-for="ProposedDates[i]" type="datetime-local" class="form-control" required step="60" />
+                                        <button type="button" class="btn btn-danger" onclick="removeProposedDate(this)">
+                                            <i class="fas fa-trash me-1"></i>Remove
+                                        </button>
+                                    </div>
+                                    <span asp-validation-for="ProposedDates[i]" class="text-danger"></span>
+                                </div>
+                            }
+                        </div>
+                        <button type="button" class="btn btn-warning btn-sm" onclick="addProposedDate()">
+                            <i class="fas fa-plus me-1"></i>Add Another Date Option
+                        </button>
+                        <div class="form-text text-muted">Provide multiple date/time options for players to vote on. At least one date is required.</div>
+                        <span asp-validation-for="ProposedDates" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-warning me-2">
+                            <i class="fas fa-plus me-2"></i>Create Quest
+                        </button>
+                        <a href="@Url.Action("Index", "Quest")" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 col-md-5">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Quest Creation Tips
+                </h4>
+            </div>
+            <div class="card-body modern-card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-warning me-2"></i>
+                        Provide a clear, engaging title
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-warning me-2"></i>
+                        Include difficulty expectations
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-warning me-2"></i>
+                        Offer multiple date options
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-warning me-2"></i>
+                        Set realistic player limits
+                    </li>
+                    <li>
+                        <i class="fas fa-check text-warning me-2"></i>
+                        Include any special requirements
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_QuestFormScripts"); }
+}

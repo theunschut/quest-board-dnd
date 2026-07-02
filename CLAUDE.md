@@ -8,12 +8,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Important**: SQL Server runs on the Windows host, not in WSL. Use `localhost` in the connection string for local development; Docker uses the `sqlserver` service name.
 
+## Branching
+
+**Never commit directly to `main`.** Main has branch protection rules. All work — including planning docs, migrations, and feature code — must go on a feature branch.
+
+- Milestone work: `milestone/v<N>-<name>` (e.g. `milestone/v5-multi-tenancy`)
+- Feature work: `feature/<short-description>`
+
+If you realize commits have landed on `main` by mistake: create the branch from current `main`, then `git reset --hard <pre-commit-sha>` on `main` to remove them.
+
 ## Development Commands
+
+**Build failures due to locked files**: If `dotnet build` or `dotnet test` fails because output files are in use, Visual Studio is most likely running the app under the debugger. Ask the user to stop the debugger (Shift+F5) before retrying the build.
 
 ```bash
 # Build and run
 dotnet build
-dotnet run --project EuphoriaInn.Service
+dotnet run --project QuestBoard.Service
 
 # Docker
 docker-compose up -d
@@ -23,28 +34,32 @@ docker-compose logs -f questboard
 Migrations are **auto-applied on startup** via `context.Database.Migrate()` — no manual `database update` needed in dev.
 
 ```bash
-# Add/remove migrations (run from EuphoriaInn.Service/)
-dotnet ef migrations add MigrationName --project ../EuphoriaInn.Repository
-dotnet ef migrations remove --project ../EuphoriaInn.Repository
+# Add/remove migrations (run from QuestBoard.Service/)
+dotnet ef migrations add MigrationName --project ../QuestBoard.Repository
+dotnet ef migrations remove --project ../QuestBoard.Repository
 ```
 
 ## Architecture
 
 Three-layer clean architecture: **Service → Domain → Repository** (strict one-way dependency).
 
-- `EuphoriaInn.Service` — MVC controllers, Razor views, ViewModels, authorization handlers
-- `EuphoriaInn.Domain` — business logic, domain models, service interfaces
-- `EuphoriaInn.Repository` — EF Core entities, repositories, `QuestBoardContext`, migrations
+- `QuestBoard.Service` — MVC controllers, Razor views, ViewModels, authorization handlers
+- `QuestBoard.Domain` — business logic, domain models, service interfaces
+- `QuestBoard.Repository` — EF Core entities, repositories, `QuestBoardContext`, migrations
 
 AutoMapper runs at two boundaries:
-- Entity ↔ DomainModel: `EuphoriaInn.Domain/Automapper/EntityProfile.cs`
-- DomainModel ↔ ViewModel: `EuphoriaInn.Service/Automapper/ViewModelProfile.cs`
+- Entity ↔ DomainModel: `QuestBoard.Domain/Automapper/EntityProfile.cs`
+- DomainModel ↔ ViewModel: `QuestBoard.Service/Automapper/ViewModelProfile.cs`
 
 Authorization policies: `"DungeonMasterOnly"` (DungeonMaster or Admin role), `"AdminOnly"` (Admin role only).
 
 ## Entity Framework
 
-**IMPORTANT**: EF packages belong only in `EuphoriaInn.Repository` — never add them to the Service project.
+**IMPORTANT**: EF packages belong only in `QuestBoard.Repository` — never add them to the Service project.
+
+## Code Comments
+
+**Never embed GSD planning/tracking references in source code** — no requirement IDs (`D-06`, `TENANT-03`, `EMAIL-04`), phase/plan numbers (`Phase 28`, `31-01`), or review-finding IDs (`WR-03`, `31-REVIEW`) in comments, XML doc comments, or string literals. These references go stale the moment a phase closes and become dead noise that a future cleanup phase has to hunt down and strip (see Phase 34). Write comments that explain the *why* in plain language that stays true independent of which phase touched the code — e.g. `// Backfill LockoutEnabled for existing users so the lockout policy applies retroactively`, not `// SEC-02: backfill LockoutEnabled...`. Planning/tracking context belongs in `.planning/`, not in source. This does not apply to git commit messages, which are expected to reference phase/plan IDs for traceability.
 
 ## Code Navigation — RIP MCP
 

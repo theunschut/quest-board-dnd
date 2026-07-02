@@ -1,0 +1,51 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.AdminViewModels
+@model CreateUserViewModel
+@{
+    ViewData["Title"] = "Create New User";
+}
+
+@section Styles {
+    <link href="~/css/admin-form.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="admin-form-card-mobile mb-3">
+    <div class="mb-3">
+        <h5 class="mb-0">
+            <i class="fas fa-user-plus text-warning me-2"></i>Create New User
+        </h5>
+    </div>
+
+    <form asp-action="CreateUser" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" type="email" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="GroupRole" class="form-label"></label>
+            <select asp-for="GroupRole" asp-items="Html.GetEnumSelectList<GroupRole>()" class="form-select"></select>
+            <span asp-validation-for="GroupRole" class="text-danger"></span>
+        </div>
+
+        <hr>
+
+        <div class="d-grid gap-2">
+            <a asp-action="Users" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Users
+            </a>
+            <button type="submit" class="btn btn-warning">
+                <i class="fas fa-user-plus me-2"></i>Create User
+            </button>
+        </div>
+    </form>
+</div>

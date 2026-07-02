@@ -1,0 +1,323 @@
+@using QuestBoard.Service.ViewModels.ShopViewModels
+@using QuestBoard.Domain.Enums
+@using Microsoft.AspNetCore.Http
+@model ShopIndexViewModel
+
+@functions {
+    string BuildTabUrl(ItemType? tabType, IList<ItemRarity> rarities, string? sort, string? search = null)
+    {
+        var pairs = new List<KeyValuePair<string, string?>>();
+        if (tabType.HasValue)
+            pairs.Add(new("type", tabType.Value.ToString()));
+        foreach (var r in rarities)
+            pairs.Add(new("rarity", r.ToString()));
+        if (!string.IsNullOrEmpty(sort))
+            pairs.Add(new("sort", sort));
+        if (!string.IsNullOrEmpty(search))
+            pairs.Add(new("search", search));
+        // page intentionally omitted — tab switch resets to page 1
+        return Url.Action("Index", "Shop") + Microsoft.AspNetCore.Http.QueryString.Create(pairs).Value;
+    }
+
+    string BuildPageUrl(int pageNumber)
+    {
+        var pairs = new List<KeyValuePair<string, string?>>();
+        if (Model.SelectedType.HasValue)
+            pairs.Add(new("type", Model.SelectedType.Value.ToString()));
+        foreach (var r in Model.SelectedRarities)
+            pairs.Add(new("rarity", r.ToString()));
+        if (!string.IsNullOrEmpty(Model.SelectedSort))
+            pairs.Add(new("sort", Model.SelectedSort));
+        if (!string.IsNullOrEmpty(Model.SearchQuery))
+            pairs.Add(new("search", Model.SearchQuery));
+        if (pageNumber > 1)
+            pairs.Add(new("page", pageNumber.ToString()));
+        return Url.Action("Index", "Shop") + Microsoft.AspNetCore.Http.QueryString.Create(pairs).Value;
+    }
+
+    IEnumerable<int?> PageWindow(int current, int total)
+    {
+        var pages = new SortedSet<int> { 1, total };
+        for (int i = Math.Max(1, current - 2); i <= Math.Min(total, current + 2); i++)
+            pages.Add(i);
+
+        int? prev = null;
+        foreach (var p in pages)
+        {
+            if (prev.HasValue && p - prev.Value > 1)
+                yield return null; // ellipsis
+            yield return p;
+            prev = p;
+        }
+    }
+}
+
+@section Styles {
+    <link href="~/css/shop.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+@{
+    bool hasActiveFilters = Model.SelectedRarities.Any() || Model.SelectedSort != null || !string.IsNullOrEmpty(Model.SearchQuery);
+}
+
+<!-- Shop Header -->
+<div class="shop-header-card mb-3">
+    <h5 class="mb-0"><i class="fas fa-store text-warning me-2"></i>The Mystical Merchant's Emporium</h5>
+    <p class="shop-subtitle mb-0">"Welcome, adventurer! Browse my wares and find what you seek..."</p>
+</div>
+
+<!-- Filter & Sort trigger button -->
+<button class="btn btn-warning w-100 mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#shopFilterOffcanvas">
+    <i class="fas fa-filter me-2"></i>Filter &amp; Sort
+    @if (hasActiveFilters)
+    {
+        <span class="badge bg-dark ms-1">Active</span>
+    }
+</button>
+
+<!-- Filter & Sort offcanvas drawer -->
+<div class="offcanvas offcanvas-bottom" id="shopFilterOffcanvas" tabindex="-1">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title">Filter &amp; Sort</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form method="get" action="@Url.Action("Index", "Shop")">
+            <!-- Category type tabs -->
+            <div class="mb-3">
+                <label class="form-label">Category</label>
+                <div class="d-grid gap-2">
+                    <a href="@BuildTabUrl(null, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)"
+                       class="btn @(Model.SelectedType == null ? "btn-warning" : "btn-outline-secondary") btn-sm">
+                        <i class="fas fa-list me-2"></i>All Items
+                    </a>
+                    <a href="@BuildTabUrl(ItemType.Equipment, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)"
+                       class="btn @(Model.SelectedType == ItemType.Equipment ? "btn-warning" : "btn-outline-secondary") btn-sm">
+                        <i class="fas fa-shield-alt me-2"></i>Equipment
+                    </a>
+                    <a href="@BuildTabUrl(ItemType.MagicItem, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)"
+                       class="btn @(Model.SelectedType == ItemType.MagicItem ? "btn-warning" : "btn-outline-secondary") btn-sm">
+                        <i class="fas fa-magic me-2"></i>Magic Items
+                    </a>
+                    <a href="@BuildTabUrl(ItemType.QuestItems, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)"
+                       class="btn @(Model.SelectedType == ItemType.QuestItems ? "btn-warning" : "btn-outline-secondary") btn-sm">
+                        <i class="fas fa-magic me-2"></i>Quest Items
+                    </a>
+                </div>
+            </div>
+
+            <!-- Rarity checkboxes -->
+            <div class="mb-3">
+                <label class="form-label">Rarity</label>
+                @foreach (var r in Enum.GetValues<ItemRarity>())
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="rarity" value="@r"
+                               id="rarity_@r" @(Model.SelectedRarities.Contains(r) ? "checked" : "") />
+                        <label class="form-check-label" for="rarity_@r">
+                            <span class="item-rarity rarity-@r.ToString().ToLower()">
+                                @r.ToString().Replace("VeryRare", "Very Rare")
+                            </span>
+                        </label>
+                    </div>
+                }
+            </div>
+
+            <!-- Sort select -->
+            <div class="mb-3">
+                <label class="form-label" for="sortSelectMobile">Sort</label>
+                <select id="sortSelectMobile" name="sort" class="form-select">
+                    @if (Model.SelectedSort == null || Model.SelectedSort == "")
+                    {
+                        <option value="" selected="selected">Default</option>
+                    }
+                    else
+                    {
+                        <option value="">Default</option>
+                    }
+                    @if (Model.SelectedSort == "price_asc")
+                    {
+                        <option value="price_asc" selected="selected">Price &#8593;</option>
+                    }
+                    else
+                    {
+                        <option value="price_asc">Price &#8593;</option>
+                    }
+                    @if (Model.SelectedSort == "price_desc")
+                    {
+                        <option value="price_desc" selected="selected">Price &#8595;</option>
+                    }
+                    else
+                    {
+                        <option value="price_desc">Price &#8595;</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Search input -->
+            <div class="mb-3">
+                <label class="form-label" for="searchMobile">Search</label>
+                <input type="text" id="searchMobile" name="search" class="form-control"
+                       placeholder="Search items by name or description..."
+                       value="@Model.SearchQuery" autocomplete="off" />
+            </div>
+
+            <!-- Reset page to 1 on filter apply -->
+            <input type="hidden" name="page" value="1" />
+
+            <!-- Action buttons -->
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning flex-grow-1">Apply Filters</button>
+                @if (Model.SelectedRarities.Any() || Model.SelectedSort != null || !string.IsNullOrEmpty(Model.SearchQuery))
+                {
+                    <a href="@Url.Action("Index", "Shop")" class="btn btn-outline-secondary">Clear Filters</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Item grid -->
+@if (Model.Items.Any())
+{
+    <div class="shop-grid-mobile">
+        @foreach (var item in Model.Items)
+        {
+            <div class="shop-item-card-mobile"
+                 data-bs-toggle="modal" data-bs-target="#itemDetailsModal"
+                 data-item-url="@Url.Action("Details", "Shop", new { id = item.Id, isModal = true })">
+
+                <div class="shop-item-name">@item.Name</div>
+                <span class="item-rarity rarity-@item.Rarity.ToString().ToLower()">
+                    @item.Rarity.ToString().Replace("VeryRare", "Very Rare")
+                </span>
+                <div class="shop-item-price"><i class="fas fa-coins me-1"></i>@item.Price gp</div>
+
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <button type="button" class="btn btn-warning btn-sm w-100 mt-2"
+                            data-bs-toggle="modal" data-bs-target="#itemDetailsModal"
+                            data-item-url="@Url.Action("Details", "Shop", new { id = item.Id, isModal = true })"
+                            onclick="event.stopPropagation()"
+                            @(item.Status != ItemStatus.Published || item.Quantity == 0 ? "disabled" : "")>
+                        <i class="fas fa-shopping-cart me-1"></i>Buy
+                    </button>
+                }
+                else
+                {
+                    <a href="@Url.Action("Login", "Account")" class="btn btn-warning btn-sm w-100 mt-2"
+                       title="Login required" onclick="event.stopPropagation()">
+                        <i class="fas fa-lock me-1"></i>Login to Buy
+                    </a>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="shop-empty-state">
+        <i class="fas fa-box-open fa-3x mb-2"></i>
+        <h5>No items found</h5>
+        <p class="text-muted mb-0">Try adjusting your filters or search query.</p>
+    </div>
+}
+
+<!-- Pagination -->
+@if (Model.TotalPages > 1)
+{
+    <div class="shop-pagination-mobile">
+        @foreach (var p in PageWindow(Model.CurrentPage, Model.TotalPages))
+        {
+            if (p == null)
+            {
+                <span class="btn btn-sm btn-outline-secondary disabled">&#8230;</span>
+            }
+            else
+            {
+                <a href="@BuildPageUrl(p.Value)" class="btn btn-sm @(p == Model.CurrentPage ? "btn-warning" : "btn-outline-secondary")">@p</a>
+            }
+        }
+    </div>
+}
+
+<!-- Item Details Modal -->
+<div class="modal fade" id="itemDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="itemDetailsTitle">Item Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="itemDetailsBody">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+    @if (TempData["Success"] != null)
+    {
+        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">Success</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Success"]
+            </div>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header bg-danger text-white">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong class="me-auto">Error</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Error"]
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Initialize toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            const toastElements = document.querySelectorAll('.toast');
+            toastElements.forEach(function(toastElement) {
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+            });
+        });
+
+        // Minimal script for modal loading (Bootstrap 5 doesn't have remote modal)
+        document.getElementById('itemDetailsModal').addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            if (!button) return;
+            const itemUrl = button.getAttribute('data-item-url');
+            if (itemUrl) {
+                fetch(itemUrl)
+                    .then(response => response.text())
+                    .then(html => document.getElementById('itemDetailsBody').innerHTML = html)
+                    .catch(() => {}); // silently ignore fetch errors
+            }
+        });
+
+        // Handle purchase button clicks separately from card clicks
+        document.addEventListener('DOMContentLoaded', function() {
+            const purchaseButtons = document.querySelectorAll('.purchase-btn[data-bs-toggle="modal"]');
+            purchaseButtons.forEach(button => {
+                button.addEventListener('click', function(event) {
+                    event.stopPropagation(); // Prevent card click from also triggering
+                });
+            });
+        });
+    </script>
+}

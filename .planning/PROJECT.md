@@ -1,10 +1,24 @@
 # D&D Quest Board
 
-## Current State: v4.0.0 Shipped
+## Current State: v5.0 In Progress
 
-**Shipped:** 2026-06-28
+**Previous milestone shipped:** v4.0.0 — 2026-06-28
 **Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
-**Deployment:** Single container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
+**Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
+
+---
+
+## Current Milestone: v5.0 Multi-Tenancy
+
+**Goal:** Transform the Quest Board from a single-tenant EuphoriaInn app into a generic, rebrandable multi-group platform.
+
+**Target features:**
+- Full rename: EuphoriaInn → QuestBoard (namespaces, project files, config, CI — existing "EuphoriaInn" group name in data is unchanged)
+- Group entity with EF Core Global Query Filters — all content (quests, shop, characters) scoped per group
+- Many-to-many user↔group membership via junction table; all existing users seeded into "EuphoriaInn" group
+- Active-group context and group-picker (persistence mechanism TBD by planner; not /superadmin route)
+- SuperAdmin role — system-wide access, dedicated group-management area (route TBD, e.g. /groups)
+- Admin-only user creation — self-registration removed; group admins create accounts within their group
 
 ---
 
@@ -45,6 +59,13 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - ✓ Idempotent reminder dedup via ReminderLog table — v4.0 (Phase 22)
 - ✓ Admin email stats dashboard (Resend API: sent/delivered/bounced/failed) — v4.0 (Phase 23)
 - ✓ Email confirmation flow — admin resend button, job guards, callback endpoint — v4.0 (Phase 24)
+- ✓ First-login password flow — admin-created accounts are passwordless until the user sets their own password via a Welcome email link; self-service Forgot Password flow with enumeration-safe, rate-limited reset; old confirm-email-only flow retired — v5.0 (Phase 32)
+- ✓ Session persistence — `ActiveGroupId` (and all other session data) survives app restarts via a SQL Server-backed distributed cache (`AddDistributedSqlServerCache`), replacing the in-memory session store — v5.0 (Phase 33)
+- ✓ Admin email-resend rate limiting — "Resend Welcome/Confirmation Email" and `EditUser`'s email-change confirmation are limited to 3/hour per target user, protecting the Resend relay's quota from accidental button-mashing; one-shot automated sends (e.g. `CreateUser`'s welcome email) remain exempt — v5.0 (Phase 33)
+- ✓ Codebase cleanup and security hardening — dead code removed (`RegisterViewModel`), GSD requirement-ID/phase-number comment tags stripped across the entire codebase (C#, Razor views, CSS, dotfiles) while preserving substantive comments, XML `<summary>` doc backfill on all 37 public Domain/Repository interfaces, clean dependency vulnerability scan captured as evidence — v5.0 (Phase 34)
+- ✓ Known Bugs and Security Considerations closure — Production-only fail-fast startup guard when email config is missing, `ResendStatsClient` extracted with bounded 429 retry-with-backoff, Resend Bearer-token and secret-safe logging patterns documented, regression tests for all three plus a reflection-based CSRF `[ValidateAntiForgeryToken]` coverage sweep and a verify-and-close test for the stale `SessionReminderJob` null-dereference claim — v5.0 (Phase 34.1)
+- ✓ Performance & Architecture closure — follow-up quest create+rollback consolidated into `QuestService.CreateFollowUpQuestWithDetailsAsync`, net-new `ControllerExtensions` MVC-boilerplate helpers applied to `AdminController`, composite index on `Quests(IsFinalized, FinalizedDate)`, lean shop list-view projection, global Hangfire `AutomaticRetryAttribute` retry policy, `HangfireJobHelper` scope/group-context helper across all 3 jobs, EF Core Global Query Filter documentation, AutoMapper enum-cast round-trip test, and the `RequireActiveGroupId()` ASVS V4 null-guard wired into `QuestController.SendReminder`'s job dispatch — v5.0 (Phase 34.2), closes the v5.0 Multi-Tenancy milestone's 9 phases
+- ✓ Group role authorization regression fix — ~20 inline `IsInRole("Admin"/"DungeonMaster")` call sites across `QuestController`, `QuestLogController`, `DungeonMasterController`, and `Admin/AccountController`, orphaned by Phase 27's move of per-group roles out of `AspNetUserRoles`, migrated to a shared `GetEffectiveGroupRoleAsync` helper (SuperAdmin bypass preserved); code review then caught and fixed a display-name authorization-bypass bug and a SuperAdmin-reachable `RequireActiveGroupId()` crash the migration itself introduced — v5.0 (Phase 34.3), discovered during manual pre-ship testing
 
 ### Active
 
@@ -84,7 +105,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 - **Compatibility:** No user-facing functionality may be removed or broken
 - **Tech stack:** ASP.NET Core 10 MVC + SQL Server + EF Core — no framework changes
-- **Deployment:** Must remain deployable via single `dotnet run` / `docker-compose up`; no additional setup steps
+- **Deployment:** Must remain deployable via `dotnet run` on LXC Linux host; no additional setup steps
 - **Database:** All schema changes require EF Core migrations; auto-applied on startup
 - **Email:** 100 emails/day, 3 000/month Resend relay limit; 17 members — batch-first design
 
@@ -100,7 +121,41 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 | Resend stats via plain HttpClient (no SDK) | Read-only stats endpoint; avoids unnecessary package dependency | ✓ Good — simple, maintainable |
 | Dropped digest batching (EMAIL-04/REMIND-02) | Same-day quests have never occurred in one year; complexity not justified yet | — Pending: revisit when scheduling density increases |
 | Profile picture crop paused | SkiaSharp native lib availability on deployment host unverified | — Pending: verify libSkiaSharp on aspnet:10 Debian Bookworm before resuming |
+| SuperAdminOnly policy uses RequireRole("SuperAdmin") — no custom handler | SuperAdmin is a system-wide Identity role, not group-scoped; RequireRole is sufficient and simpler | ✓ Good — Phase 29 |
+| Platform area at /platform (not /superadmin) | SuperAdmin manages all groups; the area is about the platform, not the user's title | ✓ Good — Phase 29 |
+| Hangfire dashboard restricted to SuperAdmin; nav link hidden for non-SuperAdmins | SuperAdmin is the system-level admin; group-scoped Admins should not access background job infrastructure | ✓ Good — Phase 29 |
+| Promote/demote write actions guard on null ActiveGroupId (no ?? 1 fallback for writes) | Writes without an active group context could mutate the wrong group; reads use ?? 1 as a display-only workaround until Phase 30 sets the session key | ✓ Phase 30 must set session key and remove all ?? 1 fallbacks |
+| [Bind(Prefix = "AddMember")] on AddMember action parameter | Members view renders AddMemberViewModel fields with "AddMember." prefix (nested asp-for); Bind prefix aligns binder with posted field names | ✓ Good — Phase 29 |
+| Landing/quests split: `/` becomes a public marketing page, quest board moved to `/quests` | Unauthenticated visitors must not see group-scoped content at the app's root | ✓ Good — Phase 31; authenticated visitors hitting `/` auto-redirect to `/quests` (added mid-verification after user found the logged-out landing copy confusing when already signed in) |
+| Session-recovery middleware redirects an authenticated user with no active group to `/groups/pick` | Prevents broken/empty group-scoped pages when the session's group selection expires but the auth cookie persists | ✓ Good — Phase 31; SuperAdmin and picker/auth/platform/error paths exempted to avoid redirect loops |
+| GroupSessionMiddleware redirects on all HTTP verbs, including POST | Simplicity — one redirect check before Authorization, no verb-specific branching | — Pending: code review flagged a POST-body data-loss risk if session expires mid-submission (31-REVIEW.md CR-01); not yet fixed |
+| SetPassword gets its own "set-password" rate-limit policy rather than sharing ForgotPassword's | A legitimate forgot-password + set-password flow by one user would otherwise consume 2 of the same 3-request/15-min budget; confirmed concretely when reusing the shared policy broke an integration test | ✓ Good — Phase 32 |
+| ForwardedHeaders trust is config-driven (ReverseProxy:KnownProxies, empty by default) rather than hardcoded | Traefik runs on a separate CT from the App CT; without trusting its IP, RemoteIpAddress-based rate limiting collapses into one shared bucket for all users in production | ✓ Good — Phase 32; env var set at deploy time via docs/server-setup.md |
+| No custom Hangfire cleanup job for `AspNetSessionState` expired rows | `SqlServerCache`'s own internal polling (`ExpiredItemsDeletionInterval`, default 30min) already purges expired rows; verified against source — a duplicate job would race it for no benefit | ✓ Good — Phase 33; code review initially flagged this as missing (reviewer lacked research-doc context) but it was already correctly decided against |
+| Admin email rate limit partitioned by target userId, not admin identity | Protects any one recipient's inbox from repeated sends regardless of which admin triggers it | ✓ Good — Phase 33 |
+| Comment-tag cleanup (D-06) took 4 gap-closure rounds before verification passed | Each verifier ran a fresh, independently-derived grep pattern that only covered previously-known comment syntax (C#, then Razor/HTML, then CSS, then dotfiles) — genuinely different syntax per file type kept surfacing new occurrences, not sloppy execution | ✓ Good — Phase 34; codified as a CLAUDE.md "Code Comments" rule banning GSD tracking IDs from source going forward, so a dedicated cleanup phase is never needed again |
+| Production email-config startup guard checked `Email:FromEmail`/`Email:SmtpServer` instead of the actual `EmailSettings:FromEmail`/`EmailSettings:SmtpServer` binding | Planning-stage typo carried faithfully through execution; the wrong keys never exist so the guard would have thrown on every Production boot regardless of real config | ✓ Fixed — Phase 34.1; caught by code review (CR-01) same phase, before shipping |
+| `RequireActiveGroupId()` guard built as an opt-in seam (Phase 34.2 plan scope), not force-wired into controllers | Avoids widening one plan's blast radius across every `ActiveGroupId` call site in one pass | ✓ Wired into `QuestController.SendReminder` same phase — code review (WR-01) and verification both flagged the guard's own target bug (`?? 1` fallback) as still live; user chose "fix now" over deferring |
+| Ownership checks standardized on `User.Id` comparison, not `User.Name` | `User.Name` has no uniqueness constraint (`AccountController.Edit` lets any user rename freely); a name-based DM-ownership check let one user impersonate another by colliding display names | ✓ Fixed — Phase 34.3; code review (CR-01) caught it same phase, before shipping |
+| SuperAdmin short-circuit for `GetEffectiveGroupRoleAsync`/`RequireActiveGroupId()` must be applied per call site, not just once | 34.3-06's own self-caught fix only special-cased `QuestController.Index`; code review (CR-02) found ~13 sibling call sites across 3 controllers still crashed for a SuperAdmin with no active group | ✓ Fixed — Phase 34.3; user chose "fix now" over shipping with known SuperAdmin 500s |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
 
 ---
 
-*Last updated: 2026-06-28 after v4.0 milestone*
+*Last updated: 2026-07-02 — Phase 34.3 complete (Group Role Authorization Regression Fix) — urgent pre-ship fix, inserted after the v5.0 Multi-Tenancy milestone's original 9 phases*

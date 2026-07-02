@@ -1,0 +1,120 @@
+/* Touch target sizing */
+.btn,
+a.nav-link,
+input:not([type=checkbox]):not([type=radio]),
+select,
+textarea,
+.form-control,
+.form-select {
+    min-height: 44px;
+}
+
+/* Mobile typography scale */
+body {
+    font-size: 16px; /* prevents iOS auto-zoom on input focus */
+    line-height: 1.5;
+    /* Notice board background — same image as desktop site.css */
+    background-image: url('/images/Notice Board-blank2.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/* Mobile spacing overrides */
+.container-fluid {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+/* Headings on notice board — matches desktop site.css h1-h6 rule */
+h1, h2, h3, h4, h5, h6 {
+    color: #1a0f08;
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.9),
+                 -1px -1px 2px rgba(255, 255, 255, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.7);
+    font-weight: bold;
+}
+
+/* text-muted on notice board — dark warm brown matching desktop */
+.text-muted {
+    color: #2c1810 !important;
+    font-weight: 600;
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Navbar brand — Cinzel font, parchment, matches desktop .navbar-brand */
+.navbar-brand {
+    font-family: 'Cinzel', serif;
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: #F4E4BC !important;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9),
+                 -1px -1px 3px rgba(0, 0, 0, 0.9),
+                 2px 2px 8px rgba(0, 0, 0, 0.8),
+                 1px 1px 2px rgba(255, 215, 0, 0.3) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Brown navbar — exact same gradient/border as desktop site.css .navbar:not(footer) */
+.mobile-layout .navbar {
+    min-height: 56px;
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(160, 82, 45, 0.5) 50%, rgba(205, 133, 63, 0.5) 100%) !important;
+    border-bottom: 2px solid rgba(139, 69, 19, 0.9);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+}
+
+/* Offcanvas nav panel — dark translucent brown overlay */
+.offcanvas {
+    background-color: rgba(20, 8, 0, 0.97) !important;
+}
+
+.offcanvas-header.bg-dark {
+    background: rgba(139, 69, 19, 0.6) !important;
+    border-bottom: 1px solid rgba(205, 133, 63, 0.4);
+}
+
+.offcanvas-title {
+    color: #F4E4BC !important;
+    font-family: 'Cinzel', serif;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* Nav links in offcanvas — parchment, matches desktop .navbar-nav .nav-link */
+.offcanvas .nav-link {
+    color: #F4E4BC !important;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
+    border-bottom: 1px solid rgba(139, 69, 19, 0.3);
+    padding: 0.75rem 0;
+}
+
+.offcanvas .nav-link:hover,
+.offcanvas .nav-link:focus {
+    color: #FFD700 !important;
+    background-color: rgba(139, 69, 19, 0.2) !important;
+}
+
+/* Primary button — brown gradient matching desktop site.css .btn-primary */
+.btn-primary {
+    background: linear-gradient(45deg, #8B4513, #A0522D) !important;
+    border-color: #654321 !important;
+    color: white !important;
+    font-weight: 600 !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #A0522D, #CD853F) !important;
+    border-color: #654321 !important;
+    color: white !important;
+}
+
+/* Danger alert — matches desktop site.css .alert-danger */
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.9) !important;
+    border-color: #dc3545 !important;
+    color: #ffffff !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
+}

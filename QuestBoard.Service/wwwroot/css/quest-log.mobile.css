@@ -1,0 +1,60 @@
+/* Quest Log Mobile — quest-log.mobile.css */
+
+/* Individual log entry — glass card matching desktop modern-card */
+.quest-log-item {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* Entry title — parchment matching desktop modern-card headings */
+.quest-log-item-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #F4E4BC;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* Headings inside card — parchment */
+.quest-log-item h6 {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Meta text (date, DM) inside card — faded parchment matching modern-card .text-muted */
+.quest-log-item small,
+.quest-log-item .text-muted {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Badges inside card */
+.quest-log-item .badge {
+    text-shadow: none !important;
+}
+
+/* Hover/active feedback — matches modern-card:hover */
+.quest-log-item:hover {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    transform: translateY(-2px);
+}
+
+.quest-log-item:active {
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateY(0);
+}
+
+/* Page heading uses Cinzel font (loaded by _Layout.Mobile.cshtml via Google Fonts CDN) */
+.cinzel-heading {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+}

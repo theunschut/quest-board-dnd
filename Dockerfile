@@ -8,26 +8,26 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy only production project files (exclude test projects)
-COPY ["EuphoriaInn.Domain/EuphoriaInn.Domain.csproj", "EuphoriaInn.Domain/"]
-COPY ["EuphoriaInn.Repository/EuphoriaInn.Repository.csproj", "EuphoriaInn.Repository/"]
-COPY ["EuphoriaInn.Service/EuphoriaInn.Service.csproj", "EuphoriaInn.Service/"]
+COPY ["QuestBoard.Domain/QuestBoard.Domain.csproj", "QuestBoard.Domain/"]
+COPY ["QuestBoard.Repository/QuestBoard.Repository.csproj", "QuestBoard.Repository/"]
+COPY ["QuestBoard.Service/QuestBoard.Service.csproj", "QuestBoard.Service/"]
 
 # Restore packages with BuildKit cache mount for faster rebuilds
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet restore "EuphoriaInn.Service/EuphoriaInn.Service.csproj"
+    dotnet restore "QuestBoard.Service/QuestBoard.Service.csproj"
 
 # Copy source code for production projects only
-COPY ["EuphoriaInn.Domain/", "EuphoriaInn.Domain/"]
-COPY ["EuphoriaInn.Repository/", "EuphoriaInn.Repository/"]
-COPY ["EuphoriaInn.Service/", "EuphoriaInn.Service/"]
+COPY ["QuestBoard.Domain/", "QuestBoard.Domain/"]
+COPY ["QuestBoard.Repository/", "QuestBoard.Repository/"]
+COPY ["QuestBoard.Service/", "QuestBoard.Service/"]
 
 # Build only the Service project (which transitively builds Domain and Repository)
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet build "EuphoriaInn.Service/EuphoriaInn.Service.csproj" -c Release --no-restore
+    dotnet build "QuestBoard.Service/QuestBoard.Service.csproj" -c Release --no-restore
 
 FROM build AS publish
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet publish "EuphoriaInn.Service/EuphoriaInn.Service.csproj" -c Release -o /app/publish --no-build
+    dotnet publish "QuestBoard.Service/QuestBoard.Service.csproj" -c Release -o /app/publish --no-build
 
 # Build runtime image
 FROM base AS final
@@ -38,4 +38,4 @@ COPY --from=publish /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-ENTRYPOINT ["dotnet", "EuphoriaInn.Service.dll"]
+ENTRYPOINT ["dotnet", "QuestBoard.Service.dll"]

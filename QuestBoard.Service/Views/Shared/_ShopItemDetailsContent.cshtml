@@ -1,0 +1,267 @@
+@using QuestBoard.Service.ViewModels.ShopViewModels
+@using QuestBoard.Domain.Enums
+@model ShopItemViewModel
+
+<div class="row">
+    <!-- Item Image Placeholder -->
+    <div class="col-md-4 mb-3">
+        <div class="item-image-placeholder bg-secondary rounded d-flex align-items-center justify-content-center" style="height: 250px;">
+            @{
+                string iconClass = Model.Type switch
+                {
+                    ItemType.Equipment => "fas fa-hammer",
+                    ItemType.MagicItem => "fas fa-magic",
+                    ItemType.QuestItems => "fas fa-scroll",
+                    _ => "fas fa-box"
+                };
+            }
+            <i class="@iconClass fa-4x text-light opacity-50"></i>
+        </div>
+        
+        <!-- Price and Rarity -->
+        <div class="text-center mt-3">
+            <div class="item-price fs-4 text-warning mb-2">
+                <i class="fas fa-coins me-2"></i>@Model.Price gp
+            </div>
+            <span class="item-rarity rarity-@Model.Rarity.ToString().ToLower() fs-6">
+                @Model.Rarity.ToString().Replace("VeryRare", "Very Rare")
+            </span>
+        </div>
+    </div>
+
+    <!-- Item Details -->
+    <div class="col-md-8">
+        <!-- Stock Information -->
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-warehouse me-2"></i>Availability
+                </h6>
+            </div>
+            <div class="card-body modern-card-body">
+                <div class="d-flex align-items-center mb-2">
+                    @if (Model.Quantity == -1)
+                    {
+                        <span class="badge bg-success">
+                            <i class="fas fa-infinity me-1"></i>Unlimited Stock
+                        </span>
+                    }
+                    else if (Model.Quantity == 0)
+                    {
+                        <span class="badge bg-danger">
+                            <i class="fas fa-times-circle me-1"></i>Out of Stock
+                        </span>
+                    }
+                    else if (Model.Quantity <= 5)
+                    {
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Only @Model.Quantity left in stock
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-info">
+                            <i class="fas fa-box me-1"></i>@Model.Quantity in stock
+                        </span>
+                    }
+                </div>
+
+                @if (Model.AvailableFrom.HasValue || Model.AvailableUntil.HasValue)
+                {
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            @if (Model.AvailableFrom.HasValue && Model.AvailableUntil.HasValue)
+                            {
+                                <span>
+                                    <i class="fas fa-clock me-1"></i>Available from @Model.AvailableFrom.Value.ToString("MMM dd") to @Model.AvailableUntil.Value.ToString("MMM dd, yyyy")
+                                </span>
+                            }
+                            else if (Model.AvailableFrom.HasValue)
+                            {
+                                <span>
+                                    <i class="fas fa-clock me-1"></i>Available starting @Model.AvailableFrom.Value.ToString("MMM dd, yyyy")
+                                </span>
+                            }
+                            else if (Model.AvailableUntil.HasValue)
+                            {
+                                <span>
+                                    <i class="fas fa-clock me-1"></i>Available until @Model.AvailableUntil.Value.ToString("MMM dd, yyyy")
+                                </span>
+                            }
+                        </small>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Item Properties -->
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Item Properties
+                </h6>
+            </div>
+            <div class="card-body modern-card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-muted">Type:</small>
+                        <div>@Model.Type</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Rarity:</small>
+                        <div>@Model.Rarity.ToString().Replace("VeryRare", "Very Rare")</div>
+                    </div>
+                </div>
+                
+                @if (Model.Status == ItemStatus.Draft)
+                {
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        This item is currently under review by the Dungeon Masters and is not yet available for purchase.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Item Description -->
+<div class="card modern-card mb-3">
+    <div class="card-header modern-card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-scroll me-2"></i>Description
+        </h6>
+    </div>
+    <div class="card-body modern-card-body">
+        <p class="mb-0">@Model.Description</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ReferenceUrl))
+{
+    <!-- D&D Beyond Reference -->
+    <div class="mb-3">
+        <a href="@Model.ReferenceUrl" target="_blank" class="btn btn-outline-info">
+            <i class="fas fa-external-link-alt me-2"></i>View on D&D Beyond
+        </a>
+    </div>
+}
+
+<!-- Purchase Section -->
+<hr>
+@if (User.Identity?.IsAuthenticated == true)
+{
+    @if (Model.Status == ItemStatus.Published && Model.Quantity != 0)
+    {
+        <div class="text-center">
+            <form method="post" action="@Url.Action("Purchase", "Shop", new { id = Model.Id })">
+                @Html.AntiForgeryToken()
+                
+                <!-- Quantity Selection -->
+                <div class="mb-3">
+                    <div class="row justify-content-center">
+                        <div class="col-md-4 col-sm-6">
+                            <label for="quantity" class="form-label">
+                                <i class="fas fa-sort-numeric-up me-1"></i>Quantity
+                            </label>
+                            <input type="number" class="form-control text-center" id="quantity" name="quantity" 
+                                   value="1" min="1" max="@(Model.Quantity == -1 ? 99 : Model.Quantity)">
+                            @if (Model.Quantity > 0)
+                            {
+                                <small class="text-muted">Max: @Model.Quantity available</small>
+                            }
+                            else if (Model.Quantity == -1)
+                            {
+                                <small class="text-muted">Unlimited stock available</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Purchase Item
+                </button>
+            </form>
+        </div>
+    }
+    else if (Model.Status == ItemStatus.Draft)
+    {
+        <div class="alert alert-info text-center">
+            <i class="fas fa-hourglass-half me-2"></i>
+            This item is currently under review and not available for purchase.
+        </div>
+    }
+    else if (Model.Quantity == 0 && Model.Status == ItemStatus.Published)
+    {
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-times-circle me-2"></i>
+            This item is currently out of stock.
+        </div>
+    }
+
+    <!-- Sell to Shop Section -->
+    @if (Model.Status == ItemStatus.Published)
+    {
+        <hr>
+        <div class="text-center">
+            <h6 class="mb-3">
+                <i class="fas fa-hand-holding-usd me-2"></i>Sell to Shop
+            </h6>
+            <p class="text-muted">
+                Sell this item to the shop for <strong class="text-warning">@((Model.Price / 2).ToString("N0")) gp</strong>
+                <small>(half the shop price)</small>
+            </p>
+            <form method="post" action="@Url.Action("SellToShop", "Shop", new { id = Model.Id })" onsubmit="return confirmSell(event, '@Model.Name', @((Model.Price / 2).ToString("N0")))">
+                @Html.AntiForgeryToken()
+                
+                <!-- Quantity Selection for Selling -->
+                <div class="mb-3">
+                    <div class="row justify-content-center">
+                        <div class="col-md-4 col-sm-6">
+                            <label for="sellQuantity" class="form-label">
+                                <i class="fas fa-sort-numeric-up me-1"></i>Quantity to Sell
+                            </label>
+                            <input type="number" class="form-control text-center" id="sellQuantity" name="quantity" 
+                                   value="1" min="1" max="99" onchange="updateSellPrice('@Model.Price')">
+                            <small class="text-muted">You will receive: <strong id="totalSellPrice">@((Model.Price / 2).ToString("N0"))</strong> gp</small>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-warning btn-lg">
+                    <i class="fas fa-hand-holding-usd me-2"></i>
+                    Sell to Shop
+                </button>
+            </form>
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-info text-center">
+        <i class="fas fa-sign-in-alt me-2"></i>
+        <a href="/Account/Login" class="text-decoration-none">Login</a> to purchase this item.
+    </div>
+}
+
+<script>
+    function updateSellPrice(shopPrice) {
+        const quantity = document.getElementById('sellQuantity').value;
+        const sellPricePerUnit = parseFloat(shopPrice) / 2;
+        const totalSellPrice = (sellPricePerUnit * quantity).toFixed(0);
+        document.getElementById('totalSellPrice').textContent = parseInt(totalSellPrice).toLocaleString();
+    }
+
+    function confirmSell(event, itemName, pricePerUnit) {
+        const quantity = document.getElementById('sellQuantity').value;
+        const totalPrice = (pricePerUnit * quantity).toFixed(0);
+        const message = `Are you sure you want to sell ${quantity}x ${itemName} to the shop for ${parseInt(totalPrice).toLocaleString()} gp?`;
+        
+        if (!confirm(message)) {
+            event.preventDefault();
+            return false;
+        }
+        return true;
+    }
+</script>

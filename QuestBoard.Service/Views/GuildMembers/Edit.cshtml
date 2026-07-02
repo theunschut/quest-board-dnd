@@ -1,0 +1,214 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.CharacterViewModels
+@model CharacterViewModel
+@{
+    ViewData["Title"] = $"Edit {Model.Name}";
+}
+
+<!-- Use the same form as Create, just with different title and action -->
+<div class="character-form-page">
+    <div class="card modern-card">
+        <div class="card-header modern-card-header">
+            <h2 class="mb-0">
+                <i class="fas fa-edit me-2"></i>
+                Edit @Model.Name
+            </h2>
+        </div>
+        <div class="card-body modern-card-body">
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="OwnerId" />
+
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="ProfilePictureFile" class="form-label">Profile Picture</label>
+                        @if (Model.ProfilePicture != null)
+                        {
+                            <div class="mb-2">
+                                <img src="@Url.Action("GetProfilePicture", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />
+                            </div>
+                        }
+                        <input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" />
+                        <small class="form-text text-muted">Upload a new character portrait (JPG, PNG, GIF - Max 5 MB)</small>
+                        <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
+                        <div id="fileSizeError" class="text-danger" style="display: none;"></div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label">Character Name <span class="text-danger">*</span></label>
+                            <input asp-for="Name" class="form-control" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Level" class="form-label">Level <span class="text-danger">*</span></label>
+                                <input asp-for="Level" type="number" class="form-control" min="1" max="20" />
+                                <span asp-validation-for="Level" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Status" class="form-label">Status</label>
+                                <select asp-for="Status" asp-items="Html.GetEnumSelectList<CharacterStatus>()" class="form-select"></select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Role" class="form-label">Role</label>
+                            <select asp-for="Role" asp-items="Html.GetEnumSelectList<CharacterRole>()" class="form-select"></select>
+                            <small class="form-text text-muted">Setting as Main will change your other characters to Backup</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Classes <span class="text-danger">*</span></label>
+                    <small class="form-text text-muted d-block mb-2">
+                        Total class levels must equal character level (@Model.Level).
+                    </small>
+                    <div id="class-list">
+                        @for (var i = 0; i < (Model.Classes.Any() ? Model.Classes.Count : 1); i++)
+                        {
+                            var classData = Model.Classes.Count > i ? Model.Classes[i] : new CharacterClassViewModel { ClassLevel = 1 };
+                            <div class="class-entry mb-2" data-index="@i">
+                                <div class="row">
+                                    <div class="col-md-5">
+                                        <select name="Classes[@i].Class" class="form-select" required>
+                                            <option value="">Select Class</option>
+                                            @foreach (DndClass dndClass in Enum.GetValues(typeof(DndClass)))
+                                            {
+                                                <option value="@((int)dndClass)" selected="@(classData.Class == dndClass)">@dndClass</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" name="Classes[@i].ClassLevel" class="form-control" 
+                                               value="@classData.ClassLevel" 
+                                               placeholder="Level" min="1" max="20" required />
+                                    </div>
+                                    <div class="col-md-3">
+                                        @if (i > 0)
+                                        {
+                                            <button type="button" class="btn btn-danger remove-class">
+                                                <i class="fas fa-trash"></i> Remove
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" id="add-class">
+                        <i class="fas fa-plus me-1"></i>Add Another Class
+                    </button>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SheetLink" class="form-label">Character Sheet Link</label>
+                    <input asp-for="SheetLink" type="url" class="form-control" />
+                    <span asp-validation-for="SheetLink" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label">Description</label>
+                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Backstory" class="form-label">Backstory</label>
+                    <textarea asp-for="Backstory" class="form-control" rows="5"></textarea>
+                    <span asp-validation-for="Backstory" class="text-danger"></span>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                    <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let classIndex = @Model.Classes.Count;
+
+        // File size validation
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB in bytes
+        const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+
+        document.getElementById('profilePictureInput')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const errorDiv = document.getElementById('fileSizeError');
+            
+            if (file) {
+                // Check file size
+                if (file.size > MAX_FILE_SIZE) {
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    errorDiv.textContent = `File size (${sizeMB} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image.`;
+                    errorDiv.style.display = 'block';
+                    e.target.value = ''; // Clear the input
+                    return;
+                }
+
+                // Check file type
+                if (!ALLOWED_TYPES.includes(file.type)) {
+                    errorDiv.textContent = 'Only image files (JPG, PNG, GIF) are allowed.';
+                    errorDiv.style.display = 'block';
+                    e.target.value = ''; // Clear the input
+                    return;
+                }
+
+                // Clear any previous errors
+                errorDiv.style.display = 'none';
+                errorDiv.textContent = '';
+            }
+        });
+
+        document.getElementById('add-class').addEventListener('click', function() {
+            const classListDiv = document.getElementById('class-list');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'class-entry mb-2';
+            newEntry.setAttribute('data-index', classIndex);
+            newEntry.innerHTML = `
+                <div class="row">
+                    <div class="col-md-5">
+                        <select name="Classes[${classIndex}].Class" class="form-select" required>
+                            <option value="">Select Class</option>
+                            @foreach (DndClass dndClass in Enum.GetValues(typeof(DndClass)))
+                            {
+                                <text><option value="@((int)dndClass)">@dndClass</option></text>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" name="Classes[${classIndex}].ClassLevel" class="form-control" 
+                               value="1" placeholder="Level" min="1" max="20" required />
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-danger remove-class">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                    </div>
+                </div>
+            `;
+            classListDiv.appendChild(newEntry);
+            classIndex++;
+        });
+
+        document.getElementById('class-list').addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-class') || e.target.closest('.remove-class')) {
+                const entry = e.target.closest('.class-entry');
+                entry.remove();
+            }
+        });
+    </script>
+}

@@ -1,0 +1,103 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Models.QuestBoard
+@model Quest
+@{
+    var questStatus = "";
+    var statusIcon = "";
+    var statusText = "";
+    
+    if (Model.IsFinalized && Model.FinalizedDate.HasValue && Model.FinalizedDate.Value < DateTime.UtcNow.AddDays(-1))
+    {
+        questStatus = "quest-status-done";
+        statusIcon = "fas fa-flag-checkered";
+        statusText = "Done";
+    }
+    else if (Model.IsFinalized)
+    {
+        questStatus = "quest-status-finalized";
+        statusIcon = "fas fa-check-circle";
+        statusText = "Finalized";
+    }
+    else
+    {
+        questStatus = "quest-status-open";
+        statusIcon = "fas fa-clock";
+        statusText = "Open";
+    }
+}
+
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="card modern-card quest-card @questStatus">
+        <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+            <span class="badge cr-badge">
+                <i class="fas fa-dice-d20 me-1"></i>
+                CR @Model.ChallengeRating
+            </span>
+            <small class="fw-bold">
+                <i class="@statusIcon me-1"></i>@statusText
+            </small>
+        </div>
+        <div class="card-body modern-card-body">
+            <h5 class="card-title text-warning">@Model.Title</h5>
+            <p class="card-text">@Model.Description</p>
+
+            @if (Model.IsFinalized)
+            {
+                <p class="card-text">
+                    <strong class="text-warning">Date:</strong><br>
+                    <small class="text-muted">@Model.FinalizedDate?.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
+                </p>
+                <div class="card-text">
+                    <strong class="text-warning d-block mb-2">Players:</strong>
+                    <table class="quest-players-table">
+                        <tbody>
+                            @foreach (var player in Model.PlayerSignups.Where(ps => ps.IsSelected).OrderBy(ps => ps.SignupTime))
+                            {
+                                <tr>
+                                    <td class="player-name-cell">@player.Player.Name</td>
+                                    @if (player.Character != null)
+                                    {
+                                        <td class="character-avatar-cell">
+                                            <img src="@Url.Action("GetProfilePicture", "GuildMembers", new { id = player.Character.Id })"
+                                                 alt="@player.Character.Name"
+                                                 class="character-table-avatar"
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                            <span class="character-table-avatar-placeholder" style="display: none;">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                        </td>
+                                        <td class="character-name-cell">@player.Character.Name</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="character-avatar-cell" colspan="2">
+                                            <span class="text-muted small">No character</span>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="card-text">
+                    <strong class="text-warning">Signups:</strong> @Model.PlayerSignups.Count<br>
+                    <strong class="text-warning">Created:</strong> @Model.CreatedAt.ToString("MMM dd, yyyy")
+                </p>
+            }
+        </div>
+        <div class="card-footer modern-card-footer">
+            <a href="@Url.Action("Details", "Quest", new { id = Model.Id })" class="btn btn-warning btn-sm me-2">
+                <i class="fas fa-eye me-1"></i>View
+            </a>
+            <a href="@Url.Action("Manage", "Quest", new { id = Model.Id })" class="btn btn-success btn-sm me-2">
+                <i class="fas fa-cogs me-1"></i>Manage
+            </a>
+            <a href="#" class="btn btn-danger btn-sm" onclick="deleteQuest(@Model.Id)">
+                <i class="fas fa-trash me-1"></i>Delete
+            </a>
+        </div>
+    </div>
+</div>

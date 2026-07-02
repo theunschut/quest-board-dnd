@@ -1,0 +1,74 @@
+@model QuestBoard.Service.ViewModels.AdminViewModels.EmailStatsViewModel
+
+@{
+    ViewData["Title"] = "Email Stats";
+}
+
+<div class="card modern-card">
+    <div class="card-header modern-card-header">
+        <h2 class="mb-0">
+            <i class="fas fa-envelope-open-text text-info me-2"></i>
+            Email Stats
+        </h2>
+    </div>
+    <div class="card-body modern-card-body">
+        @if (Model.IsMissingKey)
+        {
+            <div class="alert alert-warning" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>ResendApiKey not configured</strong> — add it to <code>appsettings.json</code> to enable stats.
+            </div>
+        }
+        else if (Model.IsApiError)
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-times-circle me-2"></i>
+                <strong>Could not fetch email stats</strong> — Resend API returned an error. Check your API key and try again.
+            </div>
+        }
+        else
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-md-6 col-xl-3">
+                    <div class="card modern-card text-center p-3">
+                        <i class="fas fa-paper-plane fa-2x mb-2 text-primary"></i>
+                        <div class="fs-1 fw-bold text-primary">@Model.Sent</div>
+                        <div class="small text-muted">In Transit</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card modern-card text-center p-3">
+                        <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                        <div class="fs-1 fw-bold text-success">@Model.Delivered</div>
+                        <div class="small text-muted">Delivered</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card modern-card text-center p-3">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
+                        <div class="fs-1 fw-bold text-warning">@Model.Bounced</div>
+                        <div class="small text-muted">Bounced</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card modern-card text-center p-3">
+                        <i class="fas fa-times-circle fa-2x mb-2 text-danger"></i>
+                        <div class="fs-1 fw-bold text-danger">@Model.Failed</div>
+                        <div class="small text-muted">Failed</div>
+                    </div>
+                </div>
+            </div>
+            <p class="small text-muted mt-2 mb-0">
+                <i class="fas fa-clock me-1"></i>
+                Stats as of @Model.AsOf?.ToString("g") — cached for 5 minutes
+            </p>
+        }
+
+        <hr />
+        <div class="d-flex justify-content-end mt-3">
+            <a href="/Admin/EmailStats?force=true" class="btn btn-primary">
+                <i class="fas fa-sync-alt me-2"></i>Refresh
+            </a>
+        </div>
+    </div>
+</div>

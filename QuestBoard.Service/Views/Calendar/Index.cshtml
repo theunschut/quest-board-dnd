@@ -1,0 +1,69 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.ViewModels.CalendarViewModels
+@model CalendarViewModel
+@{
+    ViewData["Title"] = "Quest Calendar";
+}
+
+<div class="row">
+    <div class="col-lg-10 col-md-9">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">
+                    <i class="fas fa-calendar-alt text-info me-2"></i>
+                    @ViewData["Title"]
+                </h2>
+                <div class="calendar-navigation">
+                    <a href="@Url.Action("Index", new { year = Model.FirstDayOfMonth.AddMonths(-1).Year, month = Model.FirstDayOfMonth.AddMonths(-1).Month })" 
+                       class="btn btn-primary btn-sm me-2">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    <span class="fw-bold">@Model.MonthName</span>
+                    <a href="@Url.Action("Index", new { year = Model.FirstDayOfMonth.AddMonths(1).Year, month = Model.FirstDayOfMonth.AddMonths(1).Month })" 
+                       class="btn btn-primary btn-sm ms-2">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="card-body modern-card-body p-0">
+                @{ 
+                    ViewBag.IsDetailsPage = false;
+                }
+                @await Html.PartialAsync("_Calendar", Model)
+            </div>
+        </div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="col-lg-2 col-md-3">
+        <div class="card modern-card legend-card">
+            <div class="card-header modern-card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Legend
+                </h6>
+            </div>
+            <div class="card-body modern-card-body p-2">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="legend-item proposed me-2"></div>
+                    <small>Proposed</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="legend-item finalized me-2"></div>
+                    <small>Finalized</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    <small>No building key</small>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        Click quests for details
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -23,7 +23,7 @@ The app will be available at `http://localhost:8080`.
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
-dotnet run --project EuphoriaInn.Service
+dotnet run --project QuestBoard.Service
 ```
 
 ## Tech Stack

@@ -1,0 +1,7 @@
+@using QuestBoard.Domain.Interfaces
+@{
+    var isMobile = Context.Items["IsMobile"] is true;
+    Layout = isMobile
+        ? "~/Views/Shared/_Layout.Mobile.cshtml"
+        : "_Layout";
+}

@@ -1,0 +1,79 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.ViewModels.AdminViewModels
+@model EditUserViewModel
+@{
+    ViewData["Title"] = "Edit User";
+}
+
+<div class="mb-4">
+    <h1>@ViewData["Title"]</h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-user-edit text-warning me-2"></i>
+                    @ViewData["Title"]
+                </h2>
+            </div>
+            <div class="card-body modern-card-body">
+                <form asp-action="EditUser" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    
+                    <input asp-for="Id" type="hidden" />
+                    
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" class="form-control" type="email" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input asp-for="HasKey" class="form-check-input" type="checkbox" />
+                            <label asp-for="HasKey" class="form-check-label">
+                                <i class="fas fa-key text-success me-2"></i>
+                                User has a building key (can close the building)
+                            </label>
+                        </div>
+                        <span asp-validation-for="HasKey" class="text-danger"></span>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <h5>Password Management</h5>
+                        <p class="text-muted">Reset this user's password (they will need to use the new password to log in).</p>
+                        <a asp-action="ResetPassword" asp-route-userId="@Model.Id" class="btn btn-outline-danger">
+                            <i class="fas fa-key me-2"></i>
+                            Reset Password
+                        </a>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Users" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Back to Users
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+

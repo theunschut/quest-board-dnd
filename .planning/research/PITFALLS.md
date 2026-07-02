@@ -1,407 +1,288 @@
-# Pitfalls Research — Milestone 4: Hangfire + Email Notifications
+# Pitfalls Research
 
-**Domain:** Adding Hangfire background jobs and HTML email templates to an existing ASP.NET Core 10 MVC app (SQL Server, EF Core, single Docker container, Resend SMTP relay)
-**Researched:** 2026-06-25
-**Confidence:** HIGH — all critical pitfalls verified against official Hangfire docs, GitHub issues, and official ASP.NET Core documentation
+**Domain:** Adding multi-tenancy (EF Core Global Query Filters + junction table + SuperAdmin role + namespace rename) to a live ASP.NET Core 10 MVC application with a production SQL Server database and 191 active tests
+**Researched:** 2026-06-29
+**Confidence:** MEDIUM (codebase-grounded; web sources LOW confidence, cross-validated against actual code)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Scoped DbContext Injected Directly into a Hangfire Job Class
+### Pitfall 1: Global Query Filter Evaluates to NULL and Silently Returns No Rows
 
 **What goes wrong:**
-Hangfire job instances are resolved from DI once and reused across invocations, or resolved in a scope that does not match the HTTP request lifecycle. If a job class has `DbContext` (or any domain service that wraps one) in its constructor, the `DbContext` instance may be shared across concurrent job executions, disposed prematurely, or kept alive across unrelated operations. The runtime symptom is `InvalidOperationException: A second operation was started on this context instance before a previous operation completed` or `ObjectDisposedException`.
+`HasQueryFilter(e => e.GroupId == _currentGroupId)` where `_currentGroupId` is resolved at query time from an injected `ITenantContext`. If `ITenantContext.CurrentGroupId` is null (no active group set), EF Core translates the WHERE clause to `WHERE GroupId = NULL`, which matches nothing — every query returns an empty result set. The app does not crash; it just shows blank pages, empty quest boards, and zero shop items. The failure mode is invisible and may pass a smoke test.
 
 **Why it happens:**
-The existing codebase registers all services as `Scoped` (correct for HTTP requests). Developers copy this pattern directly into a Hangfire job class, not realizing that Hangfire creates its own DI scope per-job execution — but only if you opt into it via the `UseActivator` extension. Without explicit scope management, the job's injected `DbContext` outlives or conflicts with the job's execution unit.
+The `ITenantContext` is typically backed by a session cookie, claim, or HTTP header. It returns null during: (a) unauthenticated requests to public pages, (b) the SuperAdmin context where no specific group is active, (c) Hangfire job execution where HttpContext is null, (d) any startup seed code that runs before a request exists.
 
 **How to avoid:**
-Inject `IServiceScopeFactory` into the job constructor (it is a singleton — safe to inject). Inside the job method, create an explicit scope and resolve the service from it:
-
-```csharp
-public class SessionReminderJob(IServiceScopeFactory scopeFactory)
-{
-    public async Task ExecuteAsync(CancellationToken token)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var questService = scope.ServiceProvider.GetRequiredService<IQuestService>();
-        // use questService — DbContext is properly scoped to this invocation
-    }
-}
-```
-
-Alternatively, call `.AddHangfire(...).AddHangfireServer()` with `.UseDefaultActivator()` replaced by a custom `IJobActivator` that creates a new scope per invocation — this makes standard constructor injection safe for job classes.
+- Design `ITenantContext` to have an explicit "unresolved" state distinct from "null" — throw `InvalidOperationException("No active group context")` for unresolved rather than returning null.
+- Register a filter that returns all rows when no group is active, only for controllers marked with `[AllowAnonymous]` or routes that are intentionally cross-tenant (SuperAdmin area).
+- In `QuestBoardContext.OnModelCreating`, use a named filter so SuperAdmin code can call `IgnoreQueryFilters("GroupFilter")` without disabling soft-delete or other filters.
+- Verify public endpoints (home page, login page) do not trigger GroupId-filtered queries.
 
 **Warning signs:**
-- `InvalidOperationException` referencing "second operation" in Hangfire logs
-- Intermittent `NullReferenceException` inside job execution when email list query returns unexpected results
-- `ObjectDisposedException` on `QuestBoardContext`
+- Integration tests that seed data return 0 results after adding filters.
+- `HomeController` shows an empty quest list for unauthenticated visitors.
+- `SeedShopDataAsync` in `Program.cs` fails silently because it inserts items but they vanish on retrieval (no active GroupId during startup scope).
 
-**Phase to address:** Hangfire infrastructure setup phase (first phase that registers Hangfire and creates the job class skeleton).
+**Phase to address:** Group entity + Global Filter introduction phase. Must be the first thing proven before any other multi-tenancy work.
 
 ---
 
-### Pitfall 2: Default 10 Automatic Retries Cause Duplicate Emails
+### Pitfall 2: DailyReminderJob Queries Across All Groups After Global Filter Is Added
 
 **What goes wrong:**
-Hangfire retries failed jobs 10 times by default with exponential back-off. If a job sends N emails and then fails (e.g., the DB update that marks the job done throws), Hangfire retries and sends N emails again. Players receive multiple copies of the same reminder. This is worse for digest jobs: a player confirmed for 3 quests gets 3 digest emails, each sent multiple times.
+`DailyReminderJob.ExecuteAsync` creates a scope via `IServiceScopeFactory.CreateAsyncScope()` and calls `questRepository.GetFinalizedQuestsForDateAsync(tomorrow)`. After adding the global query filter, the `DbContext` inside that scope has **no active GroupId** (HttpContext is null in Hangfire). With the "return nothing on null" approach (Pitfall 1 fix), the job sends zero reminders for every group. With the "skip filter on null" approach, it returns quests across all groups — correct sweep behaviour, but the job then enqueues `SessionReminderJob` for those quests. `SessionReminderJob` uses a newly created scope that also has no active GroupId — so it queries `PlayerSignups` with no group scope, risking loading signups from the wrong group's data if a quest was somehow duplicated across groups.
 
 **Why it happens:**
-Email sends are not atomic with database state. The `EmailService` swallows exceptions internally (see current implementation — it catches and logs), so the send succeeds silently, but if any subsequent operation throws, Hangfire sees a failed job and retries the whole method.
+The codebase already uses `IServiceScopeFactory` in all jobs (a solved problem per PROJECT.md), but that pattern resolves scoped services — it does not set an HTTP context or active tenant. `DailyReminderJob` is legitimately a cross-group sweep, but `SessionReminderJob` is quest-specific and must be group-scoped after multi-tenancy lands.
 
 **How to avoid:**
-Design the job for idempotency before the first line of email sending:
-
-1. Track send status in the database. Add a `ReminderSentAt` timestamp to the quest or a separate `EmailSentLog` table. Before sending any email in the job, query whether a reminder was already sent for this quest+date+player combination today.
-2. Check before send, not after. The guard must happen inside the job method so retries skip already-sent notifications:
-
-```csharp
-if (quest.ReminderSentAt?.Date == DateTime.UtcNow.Date)
-    return; // already sent today, skip silently
-```
-
-3. Reduce retry count for email jobs. Decorate the job method with `[AutomaticRetry(Attempts = 3)]` to limit blast radius if the idempotency guard itself has a bug.
-
-4. Mark sent before calling email, or accept exactly-once cannot be guaranteed. Use a database transaction to atomically set `ReminderSentAt` and verify; if the transaction commits, the email is safe to send.
+- `DailyReminderJob` must explicitly bypass the group filter using `IgnoreQueryFilters` or a dedicated SuperAdmin scope — it legitimately needs all groups' quests.
+- `SessionReminderJob.ExecuteAsync` receives `questId` as a parameter. After multi-tenancy, add `groupId` as a second explicit parameter. The job resolves the tenant via `groupId`, not via HttpContext.
+- The enqueue call in `DailyReminderJob` becomes: `Enqueue<SessionReminderJob>(j => j.ExecuteAsync(quest.Id, quest.GroupId, false, false, CancellationToken.None))`.
+- `QuestFinalizedEmailJob`, `QuestDateChangedEmailJob`, and `ConfirmationEmailJob` all have the same pattern — each must receive `GroupId` explicitly when enqueued.
 
 **Warning signs:**
-- Players report receiving the same email twice in the same day
-- Hangfire dashboard shows a job that previously succeeded being retried again
-- `ReminderSentAt` or similar guard column not present in migrations
+- After adding global filters, no reminder emails are sent for any group (filter returns nothing in background context).
+- Or conversely: a reminder email is sent to players from the wrong group because the quest's PlayerSignups loaded cross-group.
+- The `ReminderLogEntity` dedup check uses `(questId, playerId)` — this remains correct because Identity assigns int Ids globally, not per-group.
 
-**Phase to address:** Reminder job implementation phase — the idempotency guard must be part of the initial job design, not retrofitted later.
+**Phase to address:** Hangfire job adaptation phase — after Group entity and global filters land. Must update all four email jobs in one PR.
 
 ---
 
-### Pitfall 3: Hangfire Recurring Job Fires Immediately on First Registration
+### Pitfall 3: Namespace Rename Breaks the Migration Build Before a Single Line of Multi-Tenancy Code Is Written
 
 **What goes wrong:**
-When `RecurringJob.AddOrUpdate` is called on startup for a job that has never run before (or whose cron expression changes), Hangfire treats the `LastExecutionTime` as null/past and immediately enqueues the job. For a daily reminder that should fire at 08:00, the first app start triggers a reminder send at whatever time the container starts — potentially at 03:00 after a Docker redeploy.
+`QuestBoardContextModelSnapshot.cs` and every `.Designer.cs` migration file embeds the CLR type attribute `[DbContext(typeof(EuphoriaInn.Repository.Entities.QuestBoardContext))]` and string literals like `"EuphoriaInn.Repository.Entities.CharacterClassEntity"`. After renaming the assembly and all namespaces from `EuphoriaInn.*` to `QuestBoard.*`, the existing migration files reference types that no longer exist. The project fails to compile and `dotnet ef migrations add` cannot run.
 
 **Why it happens:**
-Hangfire calculates "is it time to run?" by comparing `LastExecutionTime` + cron schedule against `DateTime.UtcNow`. A null `LastExecutionTime` makes the job overdue. This is documented behavior with multiple open GitHub issues (HangfireIO/Hangfire#1373, #1448, #1797) and no official fix.
+EF Core migrations are code, not metadata. The `.Designer.cs` files reference the concrete DbContext type by name via the `[DbContext]` attribute. The model snapshot stores entity CLR type names as string literals that EF uses to match model state between migrations. A namespace rename without updating these files breaks the entire migration chain at the C# layer.
 
 **How to avoid:**
-Two options — choose one:
-
-Option A (preferred): Make the job logic harmless when run at odd hours. The reminder job queries "quests finalized for tomorrow" — if there are none, it exits silently. This is naturally safe even on unexpected firing, so no extra protection is needed.
-
-Option B: Suppress the startup execution by calling `RecurringJob.Trigger` only from a separate one-time startup hook rather than relying on `AddOrUpdate` timing behavior.
-
-Do not try to manually set `LastExecutionTime` in the HangFire schema directly — Hangfire schema writes are unsupported outside of Hangfire APIs and will be overwritten.
+1. Rename namespaces first — just project and namespace renames, zero logic changes.
+2. Do a global find-replace across all `Migrations/*.cs` and `Migrations/*.Designer.cs` files: `EuphoriaInn.Repository` → `QuestBoard.Repository`, `EuphoriaInn.Domain` → `QuestBoard.Domain`, etc.
+3. Update the `[DbContext(typeof(...))]` attributes in all `.Designer.cs` files.
+4. Run `dotnet build` from a clean checkout (no cached `obj/` or `bin/`) — must compile clean before running `dotnet ef`.
+5. Run `dotnet ef migrations add NamespaceRename --project ../QuestBoard.Repository` to regenerate the snapshot with correct new type names. This migration will have an empty `Up()` method — correct.
+6. Verify `dotnet ef database update` succeeds on the development SQL Server without rolling back existing data.
+7. The `__EFMigrationsHistory` table stores `MigrationId` values by timestamp+name (e.g. `20260626190255_AddReminderLog`) — renaming namespaces does NOT change these IDs. Production data is safe; only the C# build is affected.
 
 **Warning signs:**
-- Email reminders arrive in the middle of the night after a deployment
-- Hangfire dashboard shows the recurring job's first execution at a time that does not match the cron schedule
-- Container restart logs show job execution within 30 seconds of startup
+- `CS0246: The type or namespace name 'EuphoriaInn' could not be found` in migration files after rename.
+- `dotnet ef migrations add` reports it cannot find the DbContext type.
+- `ModelSnapshot` fails to load with a type resolution exception at startup.
 
-**Phase to address:** Hangfire infrastructure setup phase — job logic must be written to be safe at any execution time before the recurring registration is added.
+**Phase to address:** Namespace Rename phase — must be its own isolated phase, fully verified (build + `dotnet ef` + all 191 tests green) before any multi-tenancy changes begin.
 
 ---
 
-### Pitfall 4: Hangfire Dashboard Exposed Without Authentication in Production
+### Pitfall 4: InMemory Test Factory Has No GroupId Context — All Integration Tests Fail After Filter Addition
 
 **What goes wrong:**
-Hangfire's default dashboard policy allows access only from localhost. When the app runs inside Docker on a reverse-proxied server, `localhost` often matches the container's loopback interface — which means the dashboard is reachable from the host without authentication if port 8080 is even briefly exposed, or via the reverse proxy if headers are forwarded. Hangfire exposes full job arguments (serialized objects including player IDs, email addresses, and quest titles) in the dashboard UI.
+`WebApplicationFactoryBase` uses `options.UseInMemoryDatabase(Database.DatabaseName)`. EF Core's InMemory provider **does** apply `HasQueryFilter`. The filter evaluates its expression against the injected `ITenantContext`. In tests, `TestAuthHandler` sets `UserId`, `UserName`, `Email`, and `Roles` claims, but does **not** set an active `GroupId`. The global filter evaluates to `e.GroupId == 0` (default int) or `e.GroupId == null`, returning zero rows for every query. All 139 existing integration tests that call `TestDataHelper.CreateTestQuestAsync` will create entities without a `GroupId` and get 0 results back — every assertion on content will fail.
 
 **Why it happens:**
-Hangfire's built-in `LocalRequestsOnlyAuthorizationFilter` checks `context.Request.IsLocal`, which depends on `HttpContext.Connection.RemoteIpAddress`. In Docker behind a reverse proxy, this IP is often `::1` or `127.0.0.1` (the proxy's loopback), making every request appear local.
+`TestDataHelper` creates entities by directly calling `context.Quests.Add(quest)` without setting `GroupId`. After the global filter is added, these entities are invisible to all subsequent reads in the same test because `GroupId` is 0 and no group with Id 0 is the active tenant.
 
 **How to avoid:**
-Replace the default authorization filter with a custom `IDashboardAuthorizationFilter` that checks ASP.NET Core Identity roles:
-
-```csharp
-public class HangfireAdminAuthorizationFilter : IDashboardAuthorizationFilter
-{
-    public bool Authorize(DashboardContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        return httpContext.User.Identity?.IsAuthenticated == true
-            && httpContext.User.IsInRole("Admin");
-    }
-}
-```
-
-Register with:
-```csharp
-app.MapHangfireDashboard("/hangfire", new DashboardOptions
-{
-    Authorization = [new HangfireAdminAuthorizationFilter()]
-});
-```
-
-Do not rely on `LocalRequestsOnlyAuthorizationFilter` in the Docker deployment.
+- `TestDataHelper` must be updated to accept a `groupId` parameter (or use a constant `TestGroupId = 1`).
+- `WebApplicationFactoryBase.ConfigureTestServices` must register a test `ITenantContext` implementation that always returns `GroupId = 1`.
+- `TestDataHelper.SeedRolesAsync` must also create the test group (Id = 1, Name = "TestGroup") and assign all test users to it.
+- The `TestAuthHandler` authorization header format `userId:userName:email:roles` may need to extend to `userId:userName:email:roles:groupId` for tests that need to simulate switching groups.
+- Tests that intentionally test cross-group SuperAdmin behaviour need a factory override with `IgnoreQueryFilters` or a SuperAdmin `ITenantContext`.
 
 **Warning signs:**
-- `/hangfire` accessible without logging in
-- Dashboard shows job arguments containing player email addresses
-- Reverse proxy logs show requests to `/hangfire` from external IPs returning 200
+- After adding `HasQueryFilter`, running `dotnet test` shows 100+ failures, all due to empty result sets or 404s for entities that were just created.
+- `content.Should().Contain("Adventure Quest")` fails immediately in `QuestControllerIntegrationTests_Comprehensive`.
 
-**Phase to address:** Hangfire infrastructure setup phase — the dashboard must be locked before the route is registered; it cannot be added as an afterthought.
+**Phase to address:** Test infrastructure update — must happen **in the same commit** as the global filter addition. Do not merge a PR that breaks 139 integration tests.
 
 ---
 
-### Pitfall 5: Hangfire SQL Server Schema Conflicts with EF Core Startup Migration
+### Pitfall 5: Locking Out the Only Admin After Removing Self-Registration
 
 **What goes wrong:**
-The app calls `context.Database.Migrate()` on startup (auto-applied). Hangfire SQL Server storage also runs its own schema installer (`Install.sql`) on startup by default. In a fresh database, both run sequentially and succeed. In an already-running production database (container restart, redeploy), Hangfire's schema installer attempts `CREATE SCHEMA [HangFire]` which can fail with `SqlException: There is already an object named 'Schema' in the database` if a partial install occurred previously, crashing the app before it starts serving requests.
+Self-registration is removed. The only way to create accounts becomes Admin-only user creation. If the production deployment runs before at least one Admin account exists with a known password and correct group membership, all admin functions become inaccessible. Recovery requires directly manipulating SQL Server (`AspNetUserRoles` table) — an operational risk that must be pre-planned.
 
 **Why it happens:**
-Hangfire's schema installer is not idempotent by default in all code paths (issue HangfireIO/Hangfire#1586). The `PrepareSchemaIfNecessary` flag defaults to `true`, triggering schema creation on every startup.
+The removal of the Register controller/view is a code change applied on startup. The data migration that seeds the EuphoriaInn group and assigns existing users to it may not simultaneously guarantee Admin roles are correctly preserved. If the migration seed accidentally fails to assign the existing Admin user to the new group structure, the user exists in `AspNetUsers` but their `AdminHandler` check (`userService.IsInRoleAsync`) fails because the group-aware role lookup returns nothing.
 
 **How to avoid:**
-Hangfire's schema installer is `IF NOT EXISTS` guarded in modern versions (1.7+) so this is usually safe, but verify with explicit options:
-
-```csharp
-services.AddHangfire(config => config
-    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
-    {
-        PrepareSchemaIfNecessary = true,  // keep true; modern Hangfire handles idempotency
-        SchemaName = "HangFire"           // explicit prevents surprises
-    }));
-```
-
-Do NOT use `Hangfire.EntityFrameworkCore` (the `sergezhigunov` package) — it is a third-party package that merges Hangfire tables into the EF Core migration chain. This adds maintenance overhead and breaks if Hangfire updates its schema independently. Use the official `Hangfire.SqlServer` package with its own schema management.
+- Before removing the Register endpoint, verify via the production DB that at least one user has the `Admin` role in `AspNetUserRoles`.
+- The data migration that seeds `GROUP=EuphoriaInn` must preserve all existing `AspNetUserRoles` entries untouched — add a test migration assertion.
+- Add a startup guard: if no Admin user exists and self-registration is disabled, log a `CRITICAL` error and refuse to start (fail fast rather than silently lock out).
+- The `SuperAdmin` role must be bootstrapped from environment variables (e.g. `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`) — separate from the group Admin system.
+- Test the lockout scenario explicitly: run the migration against a copy of the production DB snapshot and verify admin login works before deploying.
 
 **Warning signs:**
-- App fails to start after a container restart with `SqlException` referencing `HangFire` schema
-- EF migrations succeed but app crashes before serving the first request
-- Docker healthcheck fails repeatedly after redeploy
+- Production deploy completes but `/Admin` returns 403 for all users.
+- `AdminHandler.HandleRequirementAsync` calls `userService.IsInRoleAsync(context.User, "Admin")` — if role claims are missing from the cookie (stale login session), this returns false even for real admins.
 
-**Phase to address:** Hangfire infrastructure setup phase — test a cold-start AND a warm-restart (stop container, start again) before declaring setup complete.
+**Phase to address:** Self-registration removal + data migration phase. These two must be planned together; the data migration must run and be verified before the registration endpoint is deleted.
 
 ---
 
-### Pitfall 6: Manual DM Trigger and Recurring Job Send Reminders Concurrently to the Same Players
+### Pitfall 6: Applying a Global Query Filter to UserEntity Breaks ASP.NET Identity's Internal User Lookups
 
 **What goes wrong:**
-A DM clicks "Send Reminder" at 07:55. The recurring daily job fires at 08:00. Both enqueue a reminder job for the same quest. Both jobs read the database, find the same confirmed players, and send emails. Players receive two copies within minutes.
+Adding `HasQueryFilter(u => u.UserGroups.Any(g => g.GroupId == _currentGroupId))` to `UserEntity` in `QuestBoardContext.OnModelCreating` will break ASP.NET Core Identity's internal `UserStore` queries. `FindByEmailAsync`, `FindByNameAsync`, and `FindByIdAsync` all query the `Users` DbSet directly. With a group filter active, these calls return null for any user who is not in the currently active group — including SuperAdmins who have no specific active group set. Login fails silently.
 
 **Why it happens:**
-`DisableConcurrentExecution` prevents two instances of the same job method from running simultaneously, but it does not prevent two different enqueued instances of the same method from queuing up and running one after the other. The idempotency guard from Pitfall 2 (`ReminderSentAt` check) is the correct defence — a second job execution within the same calendar day sees the timestamp set by the first and exits.
+The ASP.NET Core Identity team has explicitly stated they do not support multi-tenancy. `UserStore<UserEntity>` queries the `Users` DbSet and does not call `IgnoreQueryFilters` — it has no awareness of custom filters. Any filter on `UserEntity` is applied to Identity's own internal lookups.
 
 **How to avoid:**
-The `ReminderSentAt` idempotency guard (Pitfall 2) is the primary fix. Additionally, set `DisableConcurrentExecution` on the job method to prevent simultaneous execution (locks the Hangfire row for the duration):
-
-```csharp
-[DisableConcurrentExecution(timeoutInSeconds: 300)]
-public async Task SendRemindersForQuestAsync(int questId) { ... }
-```
-
-Note: `DisableConcurrentExecution` does not work with in-memory storage — use SQL Server storage (as planned).
+- **Do NOT put a global query filter on `UserEntity` itself.** Apply group filters only on content entities: `QuestEntity`, `ShopItemEntity`, `CharacterEntity`, `DungeonMasterProfileEntity`, `TradeItemEntity`, `UserTransactionEntity`, `PlayerSignupEntity`, `ReminderLogEntity`.
+- The junction table `UserGroupEntity` (user-to-group membership) is a separate entity used only for membership queries — it does not filter the user itself.
+- The existing `AdminHandler` calls `userService.IsInRoleAsync(context.User, "Admin")` and `DungeonMasterHandler` calls `userService.IsInRoleAsync(context.User, "DungeonMaster")` — these are claim-based and must remain unchanged.
+- Group-scoped authorization uses a new policy (`GroupMemberOnly`) that checks the GroupId claim, separate from role-based policies.
 
 **Warning signs:**
-- Players report two reminder emails received within minutes of each other
-- Hangfire dashboard shows two "Succeeded" runs for the same quest on the same day
-- `ReminderSentAt` column absent from the data model
+- Login returns "invalid username or password" for all users after adding group filter.
+- `UserManager.FindByEmailAsync` returns null for valid users.
+- Password reset, email confirmation, and change-email flows all fail.
 
-**Phase to address:** Reminder job implementation phase — both `DisableConcurrentExecution` and `ReminderSentAt` guard must be in the initial implementation.
+**Phase to address:** Group entity definition phase. Document "no global filter on UserEntity" as an architecture constraint before any code is written.
 
 ---
 
-### Pitfall 7: Razor View Rendering Fails Inside a Background Job (No HttpContext)
+### Pitfall 7: TestAuthHandler Missing GroupId Claim Causes Silent 403 for All Authenticated Tests
 
 **What goes wrong:**
-The obvious approach for HTML email templates is to use `IRazorViewEngine` or `IRazorPageActivator` to render a `.cshtml` view to a string, then pass that string to the SMTP client. This works in controller actions. Inside a Hangfire background job, `IHttpContextAccessor.HttpContext` is `null`, causing `NullReferenceException` inside the Razor rendering pipeline when it tries to access request-scoped services (URL helpers, route data, anti-forgery tokens).
+`TestAuthHandler.HandleAuthenticateAsync` parses `userId:userName:email:roles` from the Authorization header. After adding a `GroupMemberHandler` that checks `context.User.FindFirst("GroupId")`, tests using `CreateAuthenticatedDMClientAsync` will have no `GroupId` claim. The handler fails silently — the requirement goes unmet, and the controller returns 403. All DM and player integration tests fail with 403, which looks identical to a real authorization regression.
 
 **Why it happens:**
-The MVC Razor rendering engine depends on `HttpContext` being available via `IHttpContextAccessor`. Background job threads have no HTTP request context, so `HttpContext` is always null.
+`AuthenticationHelper` was built for a single-tenant world. Adding a new `IAuthorizationHandler` to the pipeline without updating `TestAuthHandler` to emit the required claims causes silent 403 failures that are indistinguishable from actual policy regressions.
 
 **How to avoid:**
-Two reliable approaches for this stack:
-
-Option A (simplest, recommended): Use a dedicated email template library that does not depend on `HttpContext`. RazorLight (NuGet: `RazorLight`) compiles `.cshtml` files using the Razor engine without requiring ASP.NET Core's request pipeline. Templates can be embedded resources or file-system paths. This is the standard approach documented for .NET email rendering outside of HTTP contexts.
-
-Option B: Use C# string interpolation or a simple `StringBuilder`-based template for the small number of email types in this project. For two email types (finalized + reminder), this is maintainable and removes a dependency.
-
-Do NOT attempt to fake an `HttpContext` by newing one up — this leads to partial rendering and missing route data.
+- When adding any new `IAuthorizationHandler`, update `TestAuthHandler` in the same PR to emit the required claims.
+- Extend `CreateAuthenticatedClientAsync` with an optional `groupId` parameter defaulting to `1` (test group).
+- The existing `DungeonMasterOnly` and `AdminOnly` policies must NOT gain a GroupId check — they remain role-only. Only new policies (`GroupMemberOnly`, `GroupAdminOnly`) are group-aware.
+- Add a dedicated test for `GroupMemberHandler` that verifies it succeeds with a valid GroupId claim and fails without one.
 
 **Warning signs:**
-- `NullReferenceException` with stack trace through `Microsoft.AspNetCore.Mvc.Razor` inside a Hangfire job log
-- Email body renders as empty string
-- Template rendering works in dev (where `HttpContext` may be populated) but fails in Docker (where jobs run truly off-request)
+- After adding `GroupMemberHandler`, all existing DM and admin integration tests return 403.
+- `QuestController` `Create_Get_WhenAuthenticatedAsDM_ShouldReturnCreateForm` fails with 403 despite the DM role being correctly set.
 
-**Phase to address:** HTML email template phase — the rendering strategy must be chosen before any template is written.
+**Phase to address:** Authorization handler update phase, co-deployed with any new GroupId-bearing claim addition to the pipeline.
 
 ---
 
-### Pitfall 8: Resend Stats Dashboard Assumes a Direct Aggregate API Endpoint (There Isn't One)
+### Pitfall 8: SeedShopDataAsync Creates Orphaned Shop Items Without GroupId
 
 **What goes wrong:**
-The PROJECT.md specifies "live sent/bounced/failed counts from Resend API." The natural assumption is that Resend has a `GET /stats` or `GET /summary` endpoint returning aggregate counts. It does not. Resend's API provides per-email retrieval (`GET /emails/{id}`) and list endpoints, but no server-side aggregate. The dashboard UI on resend.com aggregates these, but the API does not expose that aggregation.
+`Program.cs` calls `SeedShopDataAsync` which calls `shopSeedService.SeedBasicEquipmentAsync(adminUser.Id)`. After adding `GroupId` as a required non-nullable column on `ShopItemEntity` and a global query filter, this startup call either: (a) fails with a SQL Server constraint violation because `GroupId` is 0/not set, or (b) creates items with `GroupId = 0` that are invisible to all groups (no group has Id 0). The shop is empty on first boot after the migration.
 
 **Why it happens:**
-Resend is positioned as a transactional email API, not an analytics platform. Their analytics are available via their web dashboard and via webhooks feeding into external systems — not via a polling GET endpoint.
+The shop seed was written pre-multi-tenancy. It creates items attributed to a user, not a group. After adding group scoping, the seed method signature must change.
 
 **How to avoid:**
-Build the stats page using one of two approaches:
-
-Option A (recommended for this scale): Call `GET /emails` (the list endpoint) and aggregate counts in application code. Filter by date range, count by `last_event` field values (`delivered`, `bounced`, `failed`). This works for 100 emails/day without hitting rate limits.
-
-Option B: Configure Resend webhooks to push events (`email.sent`, `email.delivered`, `email.bounced`) to a local endpoint and store counts in a SQL table. Higher accuracy, requires a new inbound endpoint and migration.
-
-The stats dashboard phase plan must explicitly describe which approach is used. Option A is simpler but requires an API key (not just the SMTP relay credentials). The current `EmailSettings` model has `SmtpUsername`/`SmtpPassword` but no `ApiKey` field — this field needs adding.
+- Update `SeedShopDataAsync` to accept and pass the EuphoriaInn group's `GroupId` when creating seed items.
+- Make the seed idempotent by checking `context.ShopItems.IgnoreQueryFilters().Any(i => i.GroupId == groupId && i.Name == "...")` before inserting.
+- Consider seeding shop items per-group during group creation rather than at application startup — cleaner for a multi-group world.
 
 **Warning signs:**
-- Phase plan references `GET /resend/stats` or similar — this endpoint does not exist
-- Code calling `HttpClient` to Resend API fails with 404 on an assumed aggregate endpoint
-- Stats dashboard shows 0 for all metrics because the wrong endpoint is called
+- Application starts without error but shop is empty for all users after migration.
+- `ShopItems` table contains rows with `GroupId = 0` or null that are never displayed.
 
-**Phase to address:** Stats dashboard phase — the data source strategy must be defined in the phase plan before any HTTP client code is written.
-
----
-
-### Pitfall 9: Digest Batching Groups Quests by Player ID but Uses Application Local Time Instead of UTC
-
-**What goes wrong:**
-The digest job is supposed to send one email per player who has multiple quests on the same calendar day. "Same day" means different things depending on timezone. If the job groups quests by `FinalizedDate.Date` using `DateTime.Now.Date` (local server time), players in a different timezone receive the wrong grouping, or quests near midnight are split across two digest emails. More concretely: the Docker container runs UTC; a Dutch player's "tomorrow" is UTC+2.
-
-**Why it happens:**
-`DateTime.Now` in a Docker Linux container is always UTC. `FinalizedDate` in the database may be stored in local time if the original finalization code used `DateTime.Now` rather than `DateTime.UtcNow`. The two do not match when the developer runs locally on Windows (UTC+1/+2) and the container runs on Linux (UTC+0).
-
-**How to avoid:**
-Audit the current `FinalizedDate` storage: check whether existing quests store UTC or local time. Use `DateTime.UtcNow` consistently throughout the reminder job. Group quests by `FinalizedDate.Date` normalized to UTC. For the Dutch audience in this project, UTC+1/+2 means "tomorrow" at 08:00 UTC is actually "tomorrow" for players — acceptable without full timezone support.
-
-The reminder job's "find quests for tomorrow" query must use:
-```csharp
-var tomorrow = DateTime.UtcNow.Date.AddDays(1);
-var quests = await questService.GetQuestsByFinalizedDateAsync(tomorrow);
-```
-
-Not `DateTime.Now` or `DateTime.Today`.
-
-**Warning signs:**
-- Reminders fire for today's quests, not tomorrow's, in the Docker environment
-- Digest email groups quests incorrectly across calendar day boundary
-- `FinalizedDate` values in database are 1-2 hours off from expected UTC times
-
-**Phase to address:** Reminder job implementation phase — the UTC/local date boundary must be in the acceptance criteria.
+**Phase to address:** Data migration + seeding phase — update `SeedShopDataAsync` in the same migration that creates the Groups table.
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts that seem reasonable but create long-term problems.
-
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Use in-memory Hangfire storage | No schema changes, faster to wire up | Jobs lost on container restart; `DisableConcurrentExecution` does not work; no dashboard persistence | Never — SQL Server is already present |
-| Skip `ReminderSentAt` idempotency column | Saves one migration | Duplicate emails on any job retry | Never — adds one nullable `DateTime` column |
-| Hardcode Resend API key in appsettings.json | Simpler setup | Key leaked in git history if committed | Never — use environment variable via `EmailSettings__ResendApiKey` |
-| Use `DateTime.Now` in reminder job | Simpler code | Wrong day boundary in Docker (UTC vs local) | Never |
-| Render email body as plain string interpolation | Eliminates RazorLight dependency | Harder to maintain multi-line HTML | Acceptable for MVP if templates stay simple (2 email types) |
-| Register Hangfire job classes as Scoped in DI | Consistent with other services | DbContext may be shared across concurrent jobs if scope not managed in job method | Never — use `IServiceScopeFactory` inside the job |
+| Skip filter on null GroupId (return all rows) | Simplifies startup/seed code; background jobs work without explicit groupId | Cross-tenant data leakage if null GroupId reaches a user-facing query | Never for user-facing queries; only for explicitly SuperAdmin-scoped operations with named filter bypass |
+| Global filter on UserEntity | Simpler model (user sees only their group) | Breaks Identity's internal UserStore queries (login, password reset, confirm email) | Never |
+| Hardcode GroupId = 1 in test infrastructure | Faster test migration from single-tenant | Tests never verify cross-group isolation | Acceptable for MVP phase; must add cross-group isolation tests before shipping multi-group |
+| Namespace rename mixed with multi-tenancy feature PR | Fewer PRs | Impossible to bisect — is the failure a rename bug or a filter bug? | Never — isolate the rename PR completely |
+| Reuse `ReminderLogEntity` (questId, playerId) unique index without adding groupId | No migration change needed | Correct — Identity assigns player Ids globally; no per-group Id collision | Acceptable permanently |
 
 ---
 
 ## Integration Gotchas
 
-Common mistakes when connecting to external services.
-
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Hangfire + EF Core | Inject `IQuestService` directly into job constructor and use it across the full method | Inject `IServiceScopeFactory`, create scope inside job method, resolve `IQuestService` from scope |
-| Hangfire + SQL Server | Leave `PrepareSchemaIfNecessary = true` without testing warm restart | Test stop+start of Docker container; Hangfire 1.8+ handles idempotency but verify explicitly |
-| Hangfire Dashboard + Docker reverse proxy | Rely on `LocalRequestsOnlyAuthorizationFilter` | Implement `IDashboardAuthorizationFilter` checking `httpContext.User.IsInRole("Admin")` |
-| Resend API + stats | Call a non-existent aggregate endpoint | Call `GET /emails` list endpoint and aggregate in app code; add `ResendApiKey` to `EmailSettings` |
-| Resend SMTP + API stats | Assume SMTP credentials are separate from API credentials | The SMTP password is the API key — the same key works for REST API calls; add a named `ApiKey` property to `EmailSettings` for HTTP client code |
-| RazorLight + background job | Use `IHttpContextAccessor` inside the template model or helpers | RazorLight renders without `HttpContext`; pass all model data explicitly as a typed model class |
-
----
-
-## Performance Traps
-
-Patterns that work at small scale but fail as usage grows.
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Reminder job loads all quests, filters in C# | Job is slow; DbContext allocates large result sets | Add `WHERE FinalizedDate = @tomorrow` to the repository query | 100+ quests in the database |
-| Stats page calls `GET /emails` on every page load without caching | Dashboard is slow; Resend rate-limit hit | Cache the result in-memory for 5 minutes (`IMemoryCache`) | Multiple admin users refreshing simultaneously |
-| Digest job N+1: loads player details per quest in a loop | One DB roundtrip per confirmed player | Load all relevant quest+player data in a single `.Include()` query | 10+ quests for the same day |
+| EF Core + InMemory (test factory) | Adding HasQueryFilter without updating test ITenantContext registration | Register `TestTenantContext : ITenantContext` returning `GroupId = 1` in `ConfigureTestServices` |
+| Hangfire + GlobalQueryFilter | Relying on the filter to scope DailyReminderJob across groups | DailyReminderJob calls `IgnoreQueryFilters` (cross-group sweep); SessionReminderJob receives explicit `groupId` parameter |
+| EF Core named filters (EF10) | Using `IgnoreQueryFilters()` with no args disables ALL filters | Use `HasQueryFilter("GroupFilter", ...)` (EF10) and disable by name to preserve other named filters |
+| EF Core required navigation + filter | Inner join on a filtered required navigation silently drops parent rows | Make navigations to filtered entities optional (LEFT JOIN) or add matching filter to parent entity |
+| ASP.NET Identity + filter | Filtering UserEntity by GroupId breaks UserManager.FindByEmailAsync | Never apply HasQueryFilter to UserEntity; scope only content entities |
+| AutoMapper + GroupId | EntityProfile maps Entity → DomainModel without GroupId | Add GroupId to both EntityProfile (Entity→Domain) and exclude from ViewModelProfile if not surfaced in UI |
 
 ---
 
 ## Security Mistakes
 
-Domain-specific security issues beyond general web security.
-
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Hangfire dashboard with no auth filter | Any authenticated user (Player role) can view and re-trigger jobs; job args may contain email addresses | Implement `IDashboardAuthorizationFilter` requiring `Admin` role; test with a Player-role user account |
-| Resend API key stored in `appsettings.json` (committed) | Key leaked to git; Resend account used for spam | Store in `.env` file (already in `.gitignore`); inject via `EmailSettings__ResendApiKey` env var in `docker-compose.yml` |
-| `/hangfire` route not restricted at reverse proxy | Dashboard accessible to external users if reverse proxy forwards all paths | Rely on the auth filter as the primary control; consider also denying `/hangfire` at the reverse proxy level |
+| Using IgnoreQueryFilters() in a controller action for "admin view" without SuperAdmin policy | Any user who bypasses the policy check sees all groups' data | IgnoreQueryFilters only in SuperAdmin-routed actions protected by `[Authorize("SuperAdminOnly")]` |
+| Using FromSqlRaw / ExecuteSqlRaw without manual GroupId WHERE clause | Full cross-tenant data exposure — global filters do not apply to non-composable raw SQL | Audit all raw SQL usages before adding global filters; add an integration test that proves group isolation |
+| Session-based GroupId cookie with no server-side validation | User changes their active GroupId cookie to access another group | Validate GroupId server-side: confirm the authenticated user is a member of the claimed group on every request via middleware or ActionFilter |
+| Forgetting to add GroupId to future entities | New entity type silently unscoped — exposes data across groups | Document GroupId as a required field in CONVENTIONS.md; add an integration test that asserts every DbSet is filtered |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces.
-
-- [ ] **Hangfire setup:** Dashboard visited at `/hangfire` as a non-Admin user — must return 403, not the dashboard
-- [ ] **Hangfire setup:** Container stopped and restarted — app must start without `SqlException` from schema conflicts; recurring job must not send emails at restart
-- [ ] **Reminder job:** Player confirmed for 2 quests on the same day receives exactly 1 digest email (not 2 separate emails)
-- [ ] **Reminder job:** Job executed twice in sequence (simulated retry) — player receives exactly 1 email total, not 2
-- [ ] **Reminder job:** No quests finalized for tomorrow — job exits silently, no error in Hangfire dashboard
-- [ ] **HTML templates:** Email renders correctly in Gmail, Outlook web, and mobile Gmail — table-based layout, inline styles only (no `class=` attributes)
-- [ ] **Stats dashboard:** Shows 0 correctly when no emails sent (not an error state or exception)
-- [ ] **Stats dashboard:** `ResendApiKey` environment variable absent — dashboard shows friendly "API key not configured" message, not an unhandled exception
-- [ ] **Docker env vars:** `docker-compose.yml` updated with `EmailSettings__ResendApiKey` placeholder (commented, consistent with existing SMTP var pattern)
+- [ ] **Global filter on GroupId:** Verify the filter is also correct for related entities loaded via `.Include()` — PlayerSignup.Quest, Character.Owner, UserTransaction.ShopItem each carry their own GroupId or are only accessible via a parent that already carries the filter.
+- [ ] **Namespace rename:** Run `dotnet build` from a clean checkout (no cached `obj/` or `bin/`) to confirm all Designer.cs files compile. A dirty build masks missing type references because cached assemblies are used.
+- [ ] **Hangfire jobs:** After adding a `groupId` parameter to `SessionReminderJob.ExecuteAsync`, previously queued Hangfire jobs stored in SQL Server will fail deserialization (their serialized argument list lacks the new parameter). Plan a queue drain window before deploying.
+- [ ] **Admin lockout:** Verify admin login works on a DB snapshot copy before production deploy. Do not assume seeding preserved role assignments.
+- [ ] **Test suite count:** After every multi-tenancy PR, confirm `dotnet test` shows 191+ passing (not a silent all-failures-as-skipped situation).
+- [ ] **Self-registration removed:** Confirm the `/Account/Register` GET and POST both redirect to login — not just the nav link removed. Automated tools can still POST directly to the endpoint.
+- [ ] **Group picker persistence:** Whatever mechanism persists the active GroupId (cookie, claim, session) must survive a page reload and a process restart on the LXC host. Test with explicit session expiry.
+- [ ] **ReminderLog dedup integrity:** Confirm the unique index `(QuestId, PlayerId)` in `ReminderLogEntity` correctly deduplicates across a multi-group deployment — verify that player int Ids remain globally unique (they do, since Identity assigns Ids globally).
 
 ---
 
 ## Recovery Strategies
 
-When pitfalls occur despite prevention, how to recover.
-
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Duplicate emails sent (Pitfall 2, 6) | LOW | Add `ReminderSentAt` guard via migration; redeploy; notify players of error; no data loss |
-| Dashboard accessible to non-admins (Pitfall 4) | LOW | Hot-fix auth filter in `Program.cs`; redeploy; no data leaked if caught quickly |
-| Scoped DbContext crash (Pitfall 1) | MEDIUM | Rewrite job class to use `IServiceScopeFactory`; job failures leave no data corruption — jobs are just failed in Hangfire dashboard |
-| Hangfire schema startup crash (Pitfall 5) | LOW | Manually verify schema exists in SQL Server; if partial, run Hangfire install script manually once; set `PrepareSchemaIfNecessary = false` temporarily |
-| Wrong Resend stats endpoint (Pitfall 8) | LOW | Swap to list+aggregate approach; no data loss; dashboard shows correct counts after fix |
-| UTC/local date bug (Pitfall 9) | LOW | Change `DateTime.Now` to `DateTime.UtcNow` in one query; redeploy; no migration needed |
+| Global filter returning null/empty (blank pages in production) | MEDIUM | Deploy hotfix: set default GroupId to the first group if null; restore data visibility immediately without a DB change |
+| Hangfire jobs failing post-deploy due to argument schema change | LOW | Delete failed jobs from Hangfire dashboard at `/hangfire`; re-enqueue with correct signature via Admin UI or temporary script |
+| Namespace rename breaks migration build | MEDIUM | Revert the rename PR; do a targeted find-replace on the Migrations/ directory only in a new branch; re-verify clean build before merging |
+| Admin lockout in production | HIGH | DB access required: `INSERT INTO AspNetUserRoles (UserId, RoleId) VALUES (...)` directly against SQL Server at /opt/questboard/; test this procedure against a DB copy before deploying |
+| 191 integration tests fail after filter addition | LOW | Roll back the filter PR; update test infrastructure (ITenantContext stub, TestDataHelper groupId) in a separate branch; re-merge with tests green |
+| UserEntity filter breaks login | CRITICAL | Revert the HasQueryFilter on UserEntity immediately — this is a login-breaking production incident; a deploy is required within minutes |
 
 ---
 
 ## Pitfall-to-Phase Mapping
 
-How roadmap phases should address these pitfalls.
-
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| 1 — Scoped DbContext in Hangfire job | Hangfire infrastructure setup | Unit test: resolve job class from DI scope, call method, assert no `InvalidOperationException` |
-| 2 — Duplicate emails on retry | Reminder job implementation | Integration test: call job method twice for same quest+date; assert exactly 1 email sent |
-| 3 — Recurring job fires on startup | Hangfire infrastructure setup | Acceptance criterion: container restart does not trigger reminder email send |
-| 4 — Dashboard without auth | Hangfire infrastructure setup | Integration test: request `/hangfire` as Player-role user; assert 403 |
-| 5 — Schema conflict on warm restart | Hangfire infrastructure setup | Manual test: `docker-compose stop && docker-compose up` — app must reach healthy state |
-| 6 — Manual trigger + recurring collision | Reminder job implementation | Integration test: enqueue job twice concurrently; assert 1 email per player |
-| 7 — Razor rendering without HttpContext | HTML template phase | Unit test: render template in test without `IHttpContextAccessor`; assert non-empty HTML string |
-| 8 — Resend aggregate endpoint assumption | Stats dashboard phase | Phase plan must name the exact API endpoint before any HTTP client code is written |
-| 9 — UTC vs local date in digest query | Reminder job implementation | Integration test: set `FinalizedDate` to UTC midnight tomorrow; assert job finds the quest |
+| P1 — Null GroupId returns empty rows | Group entity + filter introduction | `dotnet test` passes with seeded group; home page shows quests without crash |
+| P2 — DailyReminderJob cross-group sweep | Hangfire job adaptation (after filters land) | Integration test: DailyReminderJob with two groups only queues reminders for the correct group's quests |
+| P3 — Namespace rename breaks migration build | Namespace rename phase (isolated, first) | `dotnet build` clean from `obj/`-free checkout; `dotnet ef migrations add NamespaceRename` succeeds; all 191 tests pass |
+| P4 — Test factory has no GroupId context | Test infrastructure update (same PR as global filter) | All 191 tests pass after update; new cross-tenant isolation test added |
+| P5 — Admin lockout after registration removal | Self-registration removal + data migration phase | Pre-deploy checklist: Admin role confirmed in DB; staging deploy + admin login verified |
+| P6 — UserEntity filter breaks login | Group entity definition phase (architecture decision doc) | UserEntity has no HasQueryFilter; login smoke test passes in staging |
+| P7 — TestAuthHandler missing GroupId claim | Authorization handler update phase | New GroupMemberHandler test passes; all 139 existing integration tests remain green |
+| P8 — SeedShopDataAsync creates orphaned data | Data migration + seeding phase | ShopItems in DB have correct GroupId; shop page shows items after fresh deploy |
 
 ---
 
 ## Sources
 
-- [Hangfire — Dealing with Exceptions (official docs)](https://docs.hangfire.io/en/latest/background-processing/dealing-with-exceptions.html) — default 10 retry behavior
-- [Hangfire — Best Practices (official docs)](https://docs.hangfire.io/en/latest/best-practices.html) — idempotency, minimal arguments
-- [Hangfire — Using Dashboard (official docs)](https://docs.hangfire.io/en/latest/configuration/using-dashboard.html) — default local-only access, `IDashboardAuthorizationFilter`
-- [Hangfire — Using SQL Server (official docs)](https://docs.hangfire.io/en/latest/configuration/using-sql-server.html) — `PrepareSchemaIfNecessary`, schema management
-- [HangfireIO/Hangfire#1373 — Recurrent job executes on app restart (GitHub)](https://github.com/HangfireIO/Hangfire/issues/1373) — immediate execution on `AddOrUpdate`
-- [HangfireIO/Hangfire#1797 — Cron change causes immediate execution (GitHub)](https://github.com/HangfireIO/Hangfire/issues/1797) — confirmed behavior
-- [HangfireIO/Hangfire#1960 — Job executed twice despite DisableConcurrentExecution (GitHub)](https://github.com/HangfireIO/Hangfire/issues/1960) — limitations of the attribute
-- [Securing Hangfire Dashboard with Custom Auth Policy — Sahan Sera dev blog](https://sahansera.dev/securing-hangfire-dashboard-with-endpoint-routing-auth-policy-aspnetcore/) — role-based auth filter pattern
-- [Prevent a Hangfire job from running when already active — Tim Deschryver](https://timdeschryver.dev/blog/prevent-a-hangfire-job-from-running-when-it-is-already-active) — `DisableConcurrentExecution` patterns and limits
-- [Using Razor templates to render HTML emails in ASP.NET Core — End Point Dev, 2025](https://www.endpointdev.com/blog/2025/08/using-razor-templates-to-render-html-emails-in-asp-net/) — Razor outside HTTP context
-- [Building a Resend analytics dashboard — Tinybird](https://www.tinybird.co/blog/building-a-resend-analytics-dashboard) — webhook-based aggregate stats; no direct aggregate API endpoint confirmed
-- [Resend SMTP documentation](https://resend.com/docs/send-with-smtp) — SMTP logs not available; same API key used for SMTP and API calls
-- [ASP.NET Core — Access HttpContext (Microsoft Learn)](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-context) — `HttpContext` null in background threads causes `NullReferenceException`
+- [EF Core Global Query Filters — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/querying/filters)
+- [Implementing Secure Multi-Tenancy with EF Global Query Filters — Medium](https://medium.com/@assiljanbeih/implementing-secure-multi-tenancy-with-eflobal-query-filters-net-9502ac290fb2)
+- [Allow ignoring Global Query Filters for specific Include navigations — GitHub Issue #37296](https://github.com/dotnet/efcore/issues/37296)
+- [Warning: Role has global query filter and is required end of relationship — GitHub Issue #26185](https://github.com/dotnet/efcore/issues/26185)
+- [Hangfire + HttpContext null in background jobs — GitHub Issue #2004](https://github.com/HangfireIO/Hangfire/issues/2004)
+- [How to Access HttpContext and Services with Hangfire — Wrapt Dev Blog](https://wrapt.dev/blog/hangfire-job-context)
+- [EF Core Migration Files — Learn EF Core](https://www.learnentityframeworkcore.com/migrations/migration-files)
+- [Migrations do not fully qualify types — GitHub Issue #25933](https://github.com/dotnet/efcore/issues/25933)
+- [ASP.NET Identity and multi-tenancy best practices — DEV Community](https://dev.to/luqman_bolajoko/implementing-aspnet-identity-for-a-multi-tenant-application-best-practices-4an6)
+- [DbContext Lifetime, Configuration, and Initialization — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/)
+- Codebase analysis: `QuestBoardContext.cs`, `WebApplicationFactoryBase.cs`, `AuthenticationHelper.cs`, `TestDataHelper.cs`, `DailyReminderJob.cs`, `SessionReminderJob.cs`, `AdminHandler.cs`, `Program.cs`
 
 ---
-
-*Pitfalls research for: Milestone 4 — Hangfire + HTML Email Notifications (ASP.NET Core 10, SQL Server, Docker)*
-*Researched: 2026-06-25*
+*Pitfalls research for: Multi-tenancy addition to ASP.NET Core 10 MVC + EF Core + Hangfire (D&D Quest Board v5.0)*
+*Researched: 2026-06-29*

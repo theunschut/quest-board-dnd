@@ -1,0 +1,490 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Models.QuestBoard
+@model Quest
+@{
+    ViewData["Title"] = $"Manage Quest: {Model.Title}";
+    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+}
+
+@section Styles {
+    <link href="~/css/dm-manage.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+@if (!(bool)ViewBag.IsAuthorized)
+{
+    <div class="alert alert-danger">
+        <h5>Access Denied</h5>
+        <p>You are not authorized to manage this quest. Only the quest's Dungeon Master can access this page.</p>
+        <a href="@Url.Action("Details", "Quest", new { id = Model.Id })" class="btn btn-secondary">Back to Quest Details</a>
+    </div>
+}
+else
+{
+    <div class="container-fluid px-2 mt-2">
+        <div class="dm-manage-section-card mb-3">
+
+            @* Quest title + CR badge row *@
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 dm-manage-title">@ViewData["Title"]</h5>
+                <span class="badge bg-dark border ms-2">
+                    <i class="fas fa-dice-d20 me-1"></i>CR @Model.ChallengeRating
+                </span>
+            </div>
+
+            @* TempData error alert *@
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @if (Model.IsFinalized)
+            {
+                @* === FINALIZED STATE === *@
+                var finalizedDate = Model.ProposedDates!.FirstOrDefault(pd => pd.Date.Date == Model.FinalizedDate?.Date);
+                if (finalizedDate != null)
+                {
+                    var yesVotes = finalizedDate.PlayerVotes.Where(v => v.Vote == VoteType.Yes).ToList();
+                    var maybeVotes = finalizedDate.PlayerVotes.Where(v => v.Vote == VoteType.Maybe).ToList();
+                    var noVotes = finalizedDate.PlayerVotes.Where(v => v.Vote == VoteType.No).ToList();
+
+                    <h6 class="dm-manage-subheading mb-2">Selected Date</h6>
+                    <div class="manage-date-option date-option border-success mb-3 p-2">
+                        <div class="mb-1">
+                            <strong class="dm-manage-date-label">@finalizedDate.Date.ToString("dddd, MMM dd 'at' h:mm tt")</strong>
+                            <span class="badge bg-success ms-1">Finalized</span>
+                        </div>
+                        <div class="d-flex gap-1 mt-1 dm-vote-summary">
+                            <span class="badge bg-success">
+                                <i class="fas fa-check me-1"></i>@yesVotes.Count Yes
+                            </span>
+                            <span class="text-muted align-self-center small">&middot;</span>
+                            <span class="badge bg-warning text-dark">
+                                <i class="fas fa-question me-1"></i>@maybeVotes.Count Maybe
+                            </span>
+                            <span class="text-muted align-self-center small">&middot;</span>
+                            <span class="badge bg-danger">
+                                <i class="fas fa-times me-1"></i>@noVotes.Count No
+                            </span>
+                        </div>
+                    </div>
+                }
+
+                <hr>
+
+                var selectedPlayers = Model.PlayerSignups
+                    .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
+                    .OrderBy(ps => ps.SignupTime)
+                    .ToList();
+                var selectedAssistants = Model.PlayerSignups
+                    .Where(ps => ps.IsSelected && ps.Role == SignupRole.AssistantDM)
+                    .OrderBy(ps => ps.SignupTime)
+                    .ToList();
+                var selectedSpectators = Model.PlayerSignups
+                    .Where(ps => ps.IsSelected && ps.Role == SignupRole.Spectator)
+                    .OrderBy(ps => ps.SignupTime)
+                    .ToList();
+                var allSelectedParticipants = new List<PlayerSignup>();
+                allSelectedParticipants.AddRange(selectedPlayers);
+                allSelectedParticipants.AddRange(selectedAssistants);
+                allSelectedParticipants.AddRange(selectedSpectators);
+
+                <h6 class="dm-manage-subheading mb-2">Selected Participants</h6>
+                @if (allSelectedParticipants.Any())
+                {
+                    @foreach (var participant in allSelectedParticipants)
+                    {
+                        string roleBadge;
+                        string roleText;
+                        if (participant.Role == SignupRole.Player) { roleBadge = "bg-primary"; roleText = "Player"; }
+                        else if (participant.Role == SignupRole.AssistantDM) { roleBadge = "bg-success"; roleText = "Asst. DM"; }
+                        else { roleBadge = "bg-info text-dark"; roleText = "Spectator"; }
+
+                        <div class="participant-row d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="fw-bold dm-manage-player-name">@participant.Player.Name</span>
+                                <br>
+                                <small>@(participant.Character?.Name ?? "No character")</small>
+                            </div>
+                            <span class="badge @roleBadge">@roleText</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">No participants selected for this quest.</p>
+                }
+
+                <hr>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <form asp-action="Open" method="post" class="flex-fill">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button type="submit" class="btn btn-warning w-100"
+                                onclick="return confirm('Are you sure you want to open this quest? This will reopen it for changes and reset player selections.');">
+                            <i class="fas fa-unlock me-1"></i>Open Quest
+                        </button>
+                    </form>
+                    @if (Model.FollowUpQuest == null)
+                    {
+                        <a href="@Url.Action("CreateFollowUp", "Quest", new { id = Model.Id })"
+                           class="btn btn-primary flex-fill">
+                            <i class="fas fa-scroll me-1"></i>Create Follow-Up
+                        </a>
+                    }
+                    <button type="button" class="btn btn-outline-secondary w-100"
+                            onclick="window.location.reload()">
+                        <i class="fas fa-sync me-1"></i>Refresh Data
+                    </button>
+                </div>
+            }
+            else
+            {
+                @* === UN-FINALIZED STATE === *@
+                @if (!Model.ProposedDates?.Any() == true)
+                {
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>No Proposed Dates</h5>
+                        <p>This quest doesn't have any proposed dates yet. Please edit the quest to add some dates before you can finalize it.</p>
+                        <div class="mt-3">
+                            <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary">
+                                <i class="fas fa-edit me-1"></i>Edit Quest
+                            </a>
+                            <a href="#" class="btn btn-danger ms-2" onclick="deleteQuest(@Model.Id)">
+                                <i class="fas fa-trash me-1"></i>Delete Quest
+                            </a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <form asp-action="Finalize" asp-route-id="@Model.Id" method="post">
+
+                        <h6 class="dm-manage-subheading mb-2">Proposed Dates &amp; Voting Results:</h6>
+                        @{
+                            var maxYesVotes = Model.ProposedDates!.Max(pd => pd.PlayerVotes.Count(v => v.Vote == VoteType.Yes));
+                            var hasMultipleDatesWithSameVotes = Model.ProposedDates?.Count(pd => pd.PlayerVotes.Count(v => v.Vote == VoteType.Yes) == maxYesVotes) > 1;
+                            var orderedDates = Model.ProposedDates?.OrderBy(pd => pd.Date).ToList();
+                        }
+                        @foreach (var date in orderedDates ?? [])
+                        {
+                            var yesVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Yes).ToList();
+                            var maybeVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Maybe).ToList();
+                            var noVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.No).ToList();
+                            var isRecommended = !hasMultipleDatesWithSameVotes && yesVotes.Count == maxYesVotes;
+
+                            <div class="manage-date-option date-option @(isRecommended ? "border-success" : "") mb-3 p-2"
+                                 data-date-id="@date.Id"
+                                 data-yes-votes="@string.Join(",", yesVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))"
+                                 data-maybe-votes="@string.Join(",", maybeVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))"
+                                 data-no-votes="@string.Join(",", noVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input date-selector" type="radio"
+                                           name="SelectedDateId" value="@date.Id"
+                                           id="date_@date.Id" @(isRecommended ? "checked" : "") />
+                                    <label class="form-check-label dm-manage-date-label" for="date_@date.Id">
+                                        <strong>@date.Date.ToString("dddd, MMM dd 'at' h:mm tt")</strong>
+                                        @if (isRecommended)
+                                        {
+                                            <span class="badge bg-success ms-1">Recommended</span>
+                                        }
+                                    </label>
+                                </div>
+                                @* Condensed vote badges — no per-player name lists *@
+                                <div class="d-flex gap-1 ms-4 mt-1 dm-vote-summary">
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>@yesVotes.Count Yes
+                                    </span>
+                                    <span class="text-muted align-self-center small">&middot;</span>
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-question me-1"></i>@maybeVotes.Count Maybe
+                                    </span>
+                                    <span class="text-muted align-self-center small">&middot;</span>
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times me-1"></i>@noVotes.Count No
+                                    </span>
+                                </div>
+                            </div>
+                        }
+
+                        <hr>
+
+                        <h6 class="dm-manage-subheading mb-2">Player Selection:</h6>
+                        <p class="text-muted">Select up to @Model.TotalPlayerCount players for this quest.</p>
+
+                        @{
+                            ProposedDate? dateForPlayerSelection = null;
+                            List<PlayerSignup?> availablePlayers = new List<PlayerSignup?>();
+
+                            if (Model.ProposedDates?.Any() == true)
+                            {
+                                dateForPlayerSelection = hasMultipleDatesWithSameVotes ?
+                                    orderedDates?.First() :
+                                    orderedDates?.FirstOrDefault(pd => pd.PlayerVotes.Count(v => v.Vote == VoteType.Yes) == maxYesVotes);
+
+                                if (dateForPlayerSelection != null)
+                                {
+                                    availablePlayers = dateForPlayerSelection.PlayerVotes
+                                        .Where(v => v.Vote == VoteType.Yes)
+                                        .Select(v => v.PlayerSignup)
+                                        .OrderBy(ps => ps?.SignupTime)
+                                        .ToList();
+                                }
+                            }
+
+                            var playerSignups = Model.PlayerSignups
+                                .Where(ps => ps.Role == SignupRole.Player)
+                                .OrderBy(ps => ps.SignupTime)
+                                .ToList();
+                            var assistantDMs = Model.PlayerSignups
+                                .Where(ps => ps.Role == SignupRole.AssistantDM)
+                                .OrderBy(ps => ps.SignupTime)
+                                .ToList();
+                            var spectators = Model.PlayerSignups
+                                .Where(ps => ps.Role == SignupRole.Spectator)
+                                .OrderBy(ps => ps.SignupTime)
+                                .ToList();
+                        }
+
+                        <div id="player-selection">
+                            @if (playerSignups.Any())
+                            {
+                                <div class="mb-3">
+                                    <h6 class="dm-manage-subheading mb-2">
+                                        <i class="fas fa-users me-2"></i>Players (Select up to @Model.TotalPlayerCount)
+                                    </h6>
+                                    @for (int i = 0; i < playerSignups.Count; i++)
+                                    {
+                                        var player = playerSignups[i];
+                                        var isInTopPlayers = i < Model.TotalPlayerCount && availablePlayers.Contains(player);
+                                        <div class="form-check player-item d-flex justify-content-between align-items-center py-2 border-bottom"
+                                             data-player-id="@player.Id" data-role="player">
+                                            <div class="flex-grow-1">
+                                                <input class="form-check-input player-checkbox" type="checkbox"
+                                                       name="SelectedPlayerIds" value="@player.Id"
+                                                       id="player_@player.Id" @(isInTopPlayers ? "checked" : "") />
+                                                <label class="form-check-label dm-manage-player-label" for="player_@player.Id">
+                                                    @player.Player.Name
+                                                    <small class="d-block">
+                                                        <span class="availability-status"></span>
+                                                    </small>
+                                                </label>
+                                            </div>
+                                            @if ((bool)ViewBag.IsAdmin)
+                                            {
+                                                <button type="button" class="btn btn-danger btn-sm ms-2"
+                                                        onclick="removePlayerSignup(@player.Id, '@player.Player.Name')"
+                                                        title="Remove player">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (assistantDMs.Any())
+                            {
+                                <div class="mb-3">
+                                    <h6 class="dm-manage-subheading mb-2">
+                                        <i class="fas fa-user-shield me-2"></i>Assistant DMs (Pre-selected, uncheck to exclude)
+                                    </h6>
+                                    @foreach (var assistant in assistantDMs)
+                                    {
+                                        var isAvailable = availablePlayers.Contains(assistant);
+                                        <div class="form-check player-item d-flex justify-content-between align-items-center py-2 border-bottom"
+                                             data-player-id="@assistant.Id" data-role="assistant">
+                                            <div class="flex-grow-1">
+                                                <input class="form-check-input assistant-checkbox" type="checkbox"
+                                                       name="SelectedPlayerIds" value="@assistant.Id"
+                                                       id="assistant_@assistant.Id" checked />
+                                                <label class="form-check-label dm-manage-player-label" for="assistant_@assistant.Id">
+                                                    @assistant.Player.Name
+                                                    <small class="d-block">
+                                                        <span class="availability-status"></span>
+                                                    </small>
+                                                </label>
+                                            </div>
+                                            @if ((bool)ViewBag.IsAdmin)
+                                            {
+                                                <button type="button" class="btn btn-danger btn-sm ms-2"
+                                                        onclick="removePlayerSignup(@assistant.Id, '@assistant.Player.Name')"
+                                                        title="Remove player">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (spectators.Any())
+                            {
+                                <div class="mb-3">
+                                    <h6 class="dm-manage-subheading mb-2">
+                                        <i class="fas fa-eye me-2"></i>Spectators (Auto-approved)
+                                    </h6>
+                                    @foreach (var spectator in spectators)
+                                    {
+                                        <div class="player-item text-muted d-flex justify-content-between align-items-center py-2 border-bottom"
+                                             data-player-id="@spectator.Id" data-role="spectator">
+                                            <div class="flex-grow-1">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                @spectator.Player.Name
+                                            </div>
+                                            @if ((bool)ViewBag.IsAdmin)
+                                            {
+                                                <button type="button" class="btn btn-danger btn-sm ms-2"
+                                                        onclick="removePlayerSignup(@spectator.Id, '@spectator.Player.Name')"
+                                                        title="Remove spectator">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary flex-fill">
+                                <i class="fas fa-check-circle me-1"></i>Finalize Quest
+                            </button>
+                            <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })"
+                               class="btn btn-secondary flex-fill">
+                                <i class="fas fa-edit me-1"></i>Edit Quest
+                            </a>
+                            <a href="#" class="btn btn-danger w-100" onclick="deleteQuest(@Model.Id)">
+                                <i class="fas fa-trash me-1"></i>Delete Quest
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary w-100"
+                                    onclick="window.location.reload()">
+                                <i class="fas fa-sync me-1"></i>Refresh Data
+                            </button>
+                        </div>
+
+                    </form>
+                }
+            }
+
+        </div>
+    </div>
+}
+
+<script>
+    function deleteQuest(id) {
+        if (confirm("Are you sure?")) {
+            fetch(`/Quest/Delete/${id}`, {
+                method: "DELETE",
+                headers: {
+                    'RequestVerificationToken': '@tokens.RequestToken'
+                }
+            }).then(res => {
+                if (res.ok) {
+                    window.location.href = window.location.origin;
+                } else {
+                    alert("Delete failed.");
+                }
+            });
+        }
+    }
+
+    function removePlayerSignup(signupId, playerName) {
+        if (confirm(`Are you sure you want to remove ${playerName} from this quest? This will delete their signup and all associated votes.`)) {
+            fetch(`/Quest/RemovePlayerSignup/${signupId}`, {
+                method: "DELETE",
+                headers: {
+                    'RequestVerificationToken': '@tokens.RequestToken'
+                }
+            }).then(async res => {
+                if (res.ok) {
+                    // Reload the page to show updated data
+                    window.location.reload();
+                } else {
+                    // Log the response for debugging
+                    const responseText = await res.text();
+                    console.error("Response status:", res.status);
+                    console.error("Response body:", responseText);
+                    alert(`Failed to remove player. Status: ${res.status}. Check console for details.`);
+                }
+            }).catch(err => {
+                console.error("Error removing player:", err);
+                alert("An error occurred while removing the player.");
+            });
+        }
+    }
+
+    function updatePlayerAvailability() {
+        const selectedDateOption = document.querySelector('.date-selector:checked');
+        if (!selectedDateOption) return;
+
+        const dateContainer = selectedDateOption.closest('.date-option');
+        const yesVotes = dateContainer.dataset.yesVotes ? dateContainer.dataset.yesVotes.split(',').filter(id => id) : [];
+        const maybeVotes = dateContainer.dataset.maybeVotes ? dateContainer.dataset.maybeVotes.split(',').filter(id => id) : [];
+        const noVotes = dateContainer.dataset.noVotes ? dateContainer.dataset.noVotes.split(',').filter(id => id) : [];
+
+        // Update each player item
+        document.querySelectorAll('.player-item').forEach(playerItem => {
+            const playerId = playerItem.dataset.playerId;
+            const checkbox = playerItem.querySelector('.player-checkbox');
+            const statusSpan = playerItem.querySelector('.availability-status');
+
+            // Determine availability status
+            let status = '';
+            let shouldBeChecked = false;
+
+            if (yesVotes.includes(playerId)) {
+                status = '<span class="text-success">- Available (Yes)</span>';
+                shouldBeChecked = true;
+            } else if (maybeVotes.includes(playerId)) {
+                status = '<span class="text-warning">- Maybe available</span>';
+                shouldBeChecked = true; // Consider "maybe" as selected per requirements
+            } else if (noVotes.includes(playerId)) {
+                status = '<span class="text-danger">- Not available (No)</span>';
+                shouldBeChecked = false;
+            } else {
+                status = '<span class="text-muted">- No vote</span>';
+                shouldBeChecked = false;
+            }
+
+            // Update the status display
+            statusSpan.innerHTML = status;
+
+            // Update checkbox based on availability
+            checkbox.checked = shouldBeChecked;
+        });
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePlayerAvailability();
+
+        // Add event listeners to date radio buttons
+        document.querySelectorAll('.date-selector').forEach(radio => {
+            radio.addEventListener('change', updatePlayerAvailability);
+        });
+
+        // Add event listeners to player checkboxes for validation
+        // Only count Player role checkboxes toward the limit
+        document.querySelectorAll('.player-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                // Count only checkboxes whose parent has data-role="player"
+                const selectedPlayerCount = Array.from(document.querySelectorAll('.player-checkbox:checked'))
+                    .filter(cb => cb.closest('[data-role="player"]'))
+                    .length;
+                const maxPlayers = @Model.TotalPlayerCount;
+
+                if (selectedPlayerCount > maxPlayers) {
+                    this.checked = false;
+                    alert('Cannot select more than ' + maxPlayers + ' players for this quest.');
+                }
+            });
+        });
+    });
+</script>

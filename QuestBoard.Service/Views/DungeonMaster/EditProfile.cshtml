@@ -1,0 +1,99 @@
+@using QuestBoard.Service.ViewModels.DungeonMasterViewModels
+@model EditDMProfileViewModel
+@{
+    ViewData["Title"] = "Edit DM Profile";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h2 class="mb-0">
+                        <i class="fas fa-user-edit me-2"></i>Edit DM Profile
+                    </h2>
+                </div>
+                <div class="card-body modern-card-body">
+                    <form asp-action="EditProfile" asp-route-id="@Model.DungeonMasterId"
+                          method="post" enctype="multipart/form-data">
+                        <input type="hidden" asp-for="DungeonMasterId" />
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="row">
+                            <!-- Photo column -->
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="ProfilePictureFile" class="form-label">Profile Photo</label>
+                                @if (Model.ProfilePicture?.Length > 0)
+                                {
+                                    <div class="mb-2 text-center">
+                                        <img src="@Url.Action("GetDMProfilePicture", new { id = Model.DungeonMasterId })"
+                                             alt="Current profile photo"
+                                             class="rounded-circle dm-profile-photo" />
+                                    </div>
+                                }
+                                <input type="file" asp-for="ProfilePictureFile"
+                                       class="form-control" accept="image/*"
+                                       id="dmProfilePictureInput" />
+                                <small class="form-text text-muted">JPG, PNG or GIF — max 5 MB</small>
+                                <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
+                                <div id="dmFileSizeError" class="text-danger" style="display: none;"></div>
+                            </div>
+
+                            <!-- Bio column -->
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label asp-for="Bio" class="form-label">Bio</label>
+                                    <textarea asp-for="Bio" class="form-control"
+                                              rows="6" maxlength="2000"></textarea>
+                                    <span asp-validation-for="Bio" class="text-danger"></span>
+                                    <small class="form-text text-muted">
+                                        Introduce yourself to the players (max 2000 characters).
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Profile" asp-route-id="@Model.DungeonMasterId"
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Profile
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-2"></i>Save Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const DM_MAX_FILE_SIZE = 5 * 1024 * 1024;
+        const DM_ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+
+        document.getElementById('dmProfilePictureInput')?.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            const errorDiv = document.getElementById('dmFileSizeError');
+            if (file) {
+                if (file.size > DM_MAX_FILE_SIZE) {
+                    errorDiv.textContent = `File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image.`;
+                    errorDiv.style.display = 'block';
+                    e.target.value = '';
+                    return;
+                }
+                if (!DM_ALLOWED_TYPES.includes(file.type)) {
+                    errorDiv.textContent = 'Only image files (JPG, PNG, GIF) are allowed.';
+                    errorDiv.style.display = 'block';
+                    e.target.value = '';
+                    return;
+                }
+                errorDiv.style.display = 'none';
+                errorDiv.textContent = '';
+            }
+        });
+    </script>
+}

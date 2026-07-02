@@ -1,0 +1,187 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.ViewModels.QuestViewModels
+@model FollowUpQuestViewModel
+@{
+    ViewData["Title"] = "Create Follow-Up Quest";
+}
+
+<div class="row">
+    <div class="col-lg-8 col-md-7">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-scroll text-warning me-2"></i>
+                    Create Follow-Up Quest
+                </h2>
+            </div>
+            <div class="card-body modern-card-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <form asp-action="CreateFollowUp" asp-route-id="@Model.OriginalQuestId" method="post">
+                    <input type="hidden" asp-for="OriginalQuestId" />
+                    <input type="hidden" asp-for="DungeonMasterId" />
+
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This form is pre-filled from the original quest. Update the title, add at least one date, and save to create the follow-up.
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label">Quest Title <span class="text-danger">*</span></label>
+                        <input asp-for="Title" class="form-control" placeholder="Enter the quest title..." />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <textarea asp-for="Description" class="form-control" rows="4" placeholder="Describe the quest..."></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ChallengeRating" class="form-label">Challenge Rating <span class="text-danger">*</span></label>
+                        <input asp-for="ChallengeRating" type="number" class="form-control" min="1" max="20" step="1" />
+                        <div class="form-text text-muted">Recommended player level for this quest (1-20).</div>
+                        <span asp-validation-for="ChallengeRating" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="TotalPlayerCount" class="form-label">Total Player Count <span class="text-danger">*</span></label>
+                        <input asp-for="TotalPlayerCount" inputmode="numeric" class="form-control" />
+                        <span asp-validation-for="TotalPlayerCount" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Proposed Dates &amp; Times <span class="text-danger">*</span></label>
+                        <div id="proposed-dates">
+                            @for (int i = 0; i < Model.ProposedDates.Count; i++)
+                            {
+                                <div class="proposed-date-entry mb-2">
+                                    <div class="input-group">
+                                        <input type="datetime-local" name="ProposedDates[@i]"
+                                               value="@Model.ProposedDates[i].ToString("yyyy-MM-ddTHH:mm")"
+                                               class="form-control" />
+                                        <button type="button" class="btn btn-outline-danger" onclick="removeDate(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addDate()">
+                            <i class="fas fa-plus me-1"></i>Add Date
+                        </button>
+                        <span asp-validation-for="ProposedDates" class="text-danger d-block mt-1"></span>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="@Url.Action("Manage", "Quest", new { id = Model.OriginalQuestId })"
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Back to Quest
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-scroll me-2"></i>
+                            Save Follow-Up Quest
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-md-5">
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h5>Pre-Approved Players</h5>
+            </div>
+            <div class="card-body modern-card-body">
+                <p class="text-muted">
+                    <i class="fas fa-users me-2"></i>
+                    Selected players from the original quest will be automatically added as pre-approved signups once this quest is saved.
+                </p>
+                @if (ViewBag.PreApprovedPlayers != null && ((IEnumerable<dynamic>)ViewBag.PreApprovedPlayers).Any())
+                {
+                    <ul class="list-unstyled small">
+                        @foreach (var player in ViewBag.PreApprovedPlayers)
+                        {
+                            <li><i class="fas fa-check-circle text-success me-2"></i>@player.Name</li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted small">No players were selected on the original quest. You can add players manually after saving.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let dateCount = @Model.ProposedDates.Count;
+
+        function addDate() {
+            const container = document.getElementById('proposed-dates');
+            const entry = document.createElement('div');
+            entry.className = 'proposed-date-entry mb-2';
+            entry.innerHTML = `
+                <div class="input-group">
+                    <input type="datetime-local" name="ProposedDates[${dateCount}]" class="form-control" />
+                    <button type="button" class="btn btn-outline-danger" onclick="removeDate(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+            container.appendChild(entry);
+
+            // Pre-fill new input: last filled date + 1 day at 18:00, or today at 18:00
+            const newInput = entry.querySelector('input[type="datetime-local"]');
+            const allInputs = container.querySelectorAll('input[type="datetime-local"]');
+            // allInputs includes the new one; check second-to-last and earlier for a prior value
+            let baseDate = null;
+            for (let i = allInputs.length - 2; i >= 0; i--) {
+                if (allInputs[i].value) {
+                    baseDate = new Date(allInputs[i].value);
+                    break;
+                }
+            }
+            if (baseDate && !isNaN(baseDate.getTime())) {
+                baseDate.setDate(baseDate.getDate() + 1);
+                baseDate.setHours(18, 0, 0, 0);
+            } else {
+                baseDate = new Date();
+                baseDate.setHours(18, 0, 0, 0);
+            }
+            const year = baseDate.getFullYear();
+            const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+            const day = String(baseDate.getDate()).padStart(2, '0');
+            const hours = String(baseDate.getHours()).padStart(2, '0');
+            const minutes = String(baseDate.getMinutes()).padStart(2, '0');
+            newInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+            dateCount++;
+        }
+
+        function removeDate(button) {
+            button.closest('.proposed-date-entry').remove();
+            renumberDates();
+        }
+
+        function renumberDates() {
+            const entries = document.querySelectorAll('#proposed-dates .proposed-date-entry input[type="datetime-local"]');
+            entries.forEach((input, i) => {
+                input.name = `ProposedDates[${i}]`;
+            });
+            dateCount = entries.length;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const container = document.getElementById('proposed-dates');
+            if (container && container.querySelectorAll('.proposed-date-entry').length === 0) {
+                addDate();
+            }
+        });
+    </script>
+}

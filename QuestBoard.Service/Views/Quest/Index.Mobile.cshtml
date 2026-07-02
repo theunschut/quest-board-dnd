@@ -1,0 +1,98 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Models.QuestBoard
+@model IEnumerable<Quest>
+@{
+    ViewData["Title"] = "Quest Board";
+    ViewData["BodyClass"] = "home-page";
+    var currentUserId = ViewBag.CurrentUserId as int?;
+    var currentUserName = ViewBag.CurrentUserName as string;
+}
+@section Styles {
+    <link href="~/css/home.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="container-fluid px-2 mt-2">
+    @if (!Model.Any())
+    {
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-scroll fa-3x mb-3"></i>
+            <h5>No Quests Available</h5>
+            <p>Check back soon — a Dungeon Master may post a quest at any time.</p>
+        </div>
+    }
+    else
+    {
+        <div class="quest-list-mobile">
+            @foreach (var quest in Model)
+            {
+                var isUserSignedUp = currentUserId.HasValue
+                    && quest.PlayerSignups.Any(ps => ps.Player.Id == currentUserId.Value);
+
+                var navUrl = currentUserName != null && currentUserName == quest.DungeonMaster?.Name
+                    ? Url.Action("Manage", "Quest", new { id = quest.Id })
+                    : Url.Action("Details", "Quest", new { id = quest.Id });
+
+                string statusBadge;
+                string statusIcon;
+                string statusText;
+
+                if (quest.IsFinalized && quest.FinalizedDate.HasValue
+                    && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+                {
+                    statusBadge = "bg-secondary";
+                    statusIcon = "fas fa-flag-checkered";
+                    statusText = "Done";
+                }
+                else if (quest.IsFinalized)
+                {
+                    statusBadge = "bg-primary";
+                    statusIcon = "fas fa-check-circle";
+                    statusText = "Finalized";
+                }
+                else
+                {
+                    statusBadge = "bg-success";
+                    statusIcon = "fas fa-clock";
+                    statusText = "Open";
+                }
+                <div class="quest-card-mobile"
+                     onclick="window.location.href='@navUrl'">
+
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <h6 class="quest-card-title mb-0 pe-2">@quest.Title</h6>
+                        <div class="d-flex flex-column align-items-end gap-1">
+                            <span class="badge @statusBadge flex-shrink-0">
+                                <i class="@statusIcon me-1"></i>@statusText
+                            </span>
+                            @if (isUserSignedUp)
+                            {
+                                <span class="badge bg-success flex-shrink-0">
+                                    <i class="fas fa-check me-1"></i>Signed up
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-crown me-1"></i>@(quest.DungeonMaster?.Name ?? "Unknown DM")
+                        </small>
+                        <span class="badge bg-dark border">
+                            <i class="fas fa-dice-d20 me-1"></i>CR @quest.ChallengeRating
+                        </span>
+                    </div>
+
+                    @if (quest.IsFinalized && quest.FinalizedDate.HasValue)
+                    {
+                        <div class="mt-1">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-check me-1"></i>
+                                @quest.FinalizedDate.Value.ToString("MMM dd, yyyy 'at' h:mm tt")
+                            </small>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

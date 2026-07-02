@@ -1,127 +1,139 @@
 # Technology Stack
 
-**Analysis Date:** 2026-04-15
+**Analysis Date:** 2026-07-01
 
 ## Languages
 
 **Primary:**
-- C# 12 (implicit via .NET 8 SDK) — all backend logic, domain models, repositories, services, controllers
-- HTML/Razor — server-side views in `EuphoriaInn.Service/Views/`
-- CSS — custom stylesheets in `EuphoriaInn.Service/wwwroot/css/`
-- JavaScript — vanilla JS in `EuphoriaInn.Service/wwwroot/js/site.js`
+- C# - Used across all three layers (Service, Domain, Repository)
 
 ## Runtime
 
 **Environment:**
-- .NET 8.0 (all five projects target `net8.0`)
+- .NET 10.0 (ASP.NET Core 10 MVC)
+- Kestrel HTTP server
+- Windows host for development; Docker container for production
 
 **Package Manager:**
-- NuGet (dotnet restore)
-- No lockfile committed (no `packages.lock.json` detected)
+- NuGet (.csproj package management)
+- Lockfile: Not applicable (auto-generated; use `packages.lock.json` when needed)
 
 ## Frameworks
 
 **Core:**
-- ASP.NET Core 8 MVC (`Microsoft.NET.Sdk.Web`) — web layer in `EuphoriaInn.Service/`
-- ASP.NET Core Identity 8.0.11 — authentication and user management
-  - `Microsoft.AspNetCore.Identity` 2.3.1 — domain layer
-  - `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 8.0.11 — repository layer
-  - `Microsoft.AspNetCore.Identity.UI` 8.0.11 — service layer scaffolding
+- ASP.NET Core 10 (MVC) - Web application framework
+- Entity Framework Core 10.0.9 - ORM for database access
 
-**Mapping:**
-- AutoMapper 14.0.0 — entity-to-model and model-to-viewmodel mapping
-  - Used in both `EuphoriaInn.Domain` and `EuphoriaInn.Service`
-  - Profiles: `EuphoriaInn.Domain/Automapper/EntityProfile.cs`, `EuphoriaInn.Service/Automapper/ViewModelProfile.cs`
+**Identity & Authentication:**
+- ASP.NET Core Identity - User management, roles, password reset, email confirmation
+- Uses `IdentityDbContext<UserEntity, IdentityRole<int>, int>` in `QuestBoard.Repository/Entities/QuestBoardContext.cs`
+
+**Background Jobs:**
+- Hangfire 1.8.23 (AspNetCore + SqlServer) - Scheduled and enqueued email jobs
+- Stored in SQL Server; runs on 2 worker threads
+- Configured in `QuestBoard.Service/Program.cs` lines 186-204
+- Dashboard at `/hangfire` (Admin/SuperAdmin only)
+
+**View Templating:**
+- Razor Views - Server-side HTML templates
+- Mobile view location expander enabled in `QuestBoard.Service/Program.cs` line 38
 
 **Testing:**
-- xUnit 2.5.3 — test runner for both `EuphoriaInn.UnitTests` and `EuphoriaInn.IntegrationTests`
-- FluentAssertions 8.8.0 — assertion library in both test projects
-- NSubstitute 5.3.0 — mocking framework (unit tests only)
-- Microsoft.AspNetCore.Mvc.Testing 8.0.11 — integration test host (`EuphoriaInn.IntegrationTests`)
-- coverlet.collector 6.0.0 — code coverage collection
+- xUnit v3 (test framework for both unit and integration tests)
+- xUnit.Runner v3.1.5 - Test runner
+- Microsoft.NET.Test.Sdk 18.7.0
+
+**Mapping:**
+- AutoMapper 16.1.1 - Object-to-object mapping
+- Registered in two layers: Entity↔DomainModel and DomainModel↔ViewModel
+- License key: configurable via environment variable `AutoMapper__LicenseKey`
 
 **Build/Dev:**
-- .NET SDK 8.0 (dotnet CLI)
-- Entity Framework Core Tools 9.0.6 (`Microsoft.EntityFrameworkCore.Tools`) — migration tooling
-- Visual Studio solution format (`EuphoriaInn.slnx`, VS version 18.2)
+- Entity Framework Core Tools 10.0.9 - CLI tools for migrations (design-time only)
+- Entity Framework Core Design 10.0.9 - Design-time services for migrations
 
 ## Key Dependencies
 
 **Critical:**
-- `Microsoft.EntityFrameworkCore` 9.0.6 — ORM base (`EuphoriaInn.Repository`)
-- `Microsoft.EntityFrameworkCore.SqlServer` 9.0.6 — SQL Server provider (`EuphoriaInn.Repository`)
-- `Microsoft.EntityFrameworkCore.Design` 9.0.6 — design-time tools for migrations (`EuphoriaInn.Repository`)
-- `AutoMapper` 14.0.0 — cross-layer object mapping (`EuphoriaInn.Domain`, `EuphoriaInn.Service`)
-- `System.Security.Cryptography.Xml` 8.0.3 — cryptographic support (`EuphoriaInn.Domain`)
+- Microsoft.EntityFrameworkCore 10.0.9 - Core EF infrastructure
+- Microsoft.EntityFrameworkCore.SqlServer 10.0.9 - SQL Server provider
+- Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.9 - Identity with EF Core
+- Hangfire.AspNetCore 1.8.23 - Hangfire integration with ASP.NET Core
+- Hangfire.SqlServer 1.8.23 - Hangfire background job storage in SQL Server
 
-**Testing Infrastructure:**
-- `Microsoft.EntityFrameworkCore.InMemory` 8.0.11 — in-memory EF provider (integration tests)
-- `Microsoft.EntityFrameworkCore.Sqlite` 9.0.6 — SQLite provider for integration test database (`EuphoriaInn.IntegrationTests`)
-- `Microsoft.Data.Sqlite` — SQLite connection used by `TestDatabase` helper
-- `Microsoft.NET.Test.Sdk` 17.8.0 — test SDK
+**Infrastructure:**
+- Microsoft.AspNetCore.Identity.UI 10.0.9 - Identity UI components (scaffolding support)
+- Microsoft.Extensions.Configuration.Binder 10.0.9 - Configuration binding
+- Microsoft.Extensions.Options.ConfigurationExtensions 10.0.9 - Options pattern for settings
+- System.Security.Cryptography.Xml 10.0.9 - XML cryptography support (legacy identity features)
+- Microsoft.AspNetCore.HttpOverrides - X-Forwarded-For header handling for reverse proxies
 
-**Utility:**
-- `Microsoft.Extensions.Configuration.Binder` 9.0.6 — configuration binding (`EuphoriaInn.Domain`)
-- `System.Net.Http` 4.3.4 — HTTP client (both test projects)
-- `System.Text.RegularExpressions` 4.3.1 — regex support (both test projects)
-
-## Frontend Libraries (CDN)
-
-All loaded via CDN in `EuphoriaInn.Service/Views/Shared/_Layout.cshtml`:
-- Bootstrap 5.3.0 — CSS framework and JS components
-- Font Awesome 6.4.0 — icon library
-- jQuery 3.6.0 — DOM utilities
-- Google Fonts (Cinzel) — D&D themed typography
-
-Custom CSS files:
-- `EuphoriaInn.Service/wwwroot/css/site.css`
-- `EuphoriaInn.Service/wwwroot/css/calendar.css`
-- `EuphoriaInn.Service/wwwroot/css/quests.css`
-- `EuphoriaInn.Service/wwwroot/css/shop.css`
-- `EuphoriaInn.Service/wwwroot/css/guild-members.css`
-
-## Database
-
-**Production:**
-- Microsoft SQL Server 2022 (`mcr.microsoft.com/mssql/server:2022-latest`)
-- EF Core code-first with explicit migrations in `EuphoriaInn.Repository/Migrations/`
-- Auto-applied on startup via `context.Database.Migrate()` in `EuphoriaInn.Repository/Extensions/ServiceExtensions.cs`
-- `DbContext`: `EuphoriaInn.Repository/Entities/QuestBoardContext.cs` — extends `IdentityDbContext<UserEntity, IdentityRole<int>, int>`
-
-**Testing:**
-- SQLite in-memory (`:memory:`) via persistent `SqliteConnection` — see `EuphoriaInn.IntegrationTests/Helpers/TestDatabase.cs`
-- Schema initialised with `EnsureCreated()` per test run
+**Testing Libraries:**
+- FluentAssertions 8.10.0 - Readable assertions in tests
+- NSubstitute 5.3.0 - Mocking framework for unit tests
+- Microsoft.AspNetCore.Mvc.Testing 10.0.9 - WebApplicationFactory for integration tests
+- Microsoft.EntityFrameworkCore.InMemory 10.0.9 - In-memory database for integration tests
 
 ## Configuration
 
 **Environment:**
-- `EuphoriaInn.Service/appsettings.json` — base config (connection string, email settings, security config, logging)
-- `EuphoriaInn.Service/appsettings.Development.json` — development overrides (logging levels only)
-- Docker/production overrides via environment variables (double-underscore convention: `ConnectionStrings__DefaultConnection`)
+- Settings sourced from `appsettings.json` and environment variables
+- Active configuration bound via `IConfiguration` in dependency injection
+- Main entry point: `QuestBoard.Service/Program.cs`
 
-**Security config keys:**
-- `Security:PasswordIterations` — PBKDF2 iteration count
-- `Security:SaltSize` — salt byte length
-- `Security:HashSize` — hash byte length
+**Key Configurations Required:**
+- `ConnectionStrings__DefaultConnection` - SQL Server connection string (required)
+- `EmailSettings__SmtpServer` - SMTP server for email (default: 192.168.6.13)
+- `EmailSettings__SmtpPort` - SMTP port (default: 25)
+- `EmailSettings__SmtpUsername` - SMTP username (optional for relay servers)
+- `EmailSettings__SmtpPassword` - SMTP password (optional for relay servers)
+- `EmailSettings__FromEmail` - Sender email address (required if sending)
+- `EmailSettings__FromName` - Sender display name (default: "D&D Quest Board")
+- `EmailSettings__AppUrl` - Public application URL for links in emails (required)
+- `EmailSettings__ResendApiKey` - Resend API key for analytics (optional)
+- `AutoMapper__LicenseKey` - AutoMapper enterprise license (optional, for license compliance)
+- `ReverseProxy__KnownProxies__0=<ip>` - IPs of trusted reverse proxies for X-Forwarded-For trust (production only)
 
 **Build:**
-- Multi-stage Dockerfile at `Dockerfile` — base `mcr.microsoft.com/dotnet/aspnet:8.0`, build `mcr.microsoft.com/dotnet/sdk:8.0`
-- `docker-compose.yml` — orchestrates `questboard` app + `sqlserver` containers
+- Project files use `net10.0` target framework across all layers
+- Implicit usings enabled; nullable reference types enabled
+- Web project: `Microsoft.NET.Sdk.Web`
+- Class library projects: `Microsoft.NET.Sdk`
 
 ## Platform Requirements
 
 **Development:**
-- .NET 8 SDK
-- SQL Server (runs on Windows host when developing in WSL)
-- dotnet-ef global tool for migration management
+- Visual Studio 2024 or VS Code with C# extension
+- .NET 10.0 SDK
+- SQL Server 2022+ (localhost or networked)
+  - Dev connection string: `Server=localhost;Database=QuestBoard;User Id=QuestBoardUser;Password=QuestBoardUser!;Trusted_Connection=true;TrustServerCertificate=true;`
+- Docker (optional, for containerized SQL Server: see docker-compose.yml)
 
 **Production:**
-- Docker + Docker Compose
-- External Docker network `net-dnd`
-- Published image: `ghcr.io/theunschut/dnd-quest-board:latest` (GitHub Container Registry)
-- Port 7080 (host) → 8080 (container)
-- Health check endpoint: `GET /health`
+- .NET 10.0 runtime
+- SQL Server 2022 (or SQL Server 2019 compatible)
+  - Production connection string uses service name: `Server=sqlserver;Database=QuestBoard;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=true;`
+- SMTP server reachable (for email delivery) or Resend API key
+- Docker & Docker Compose (single container deployment)
+- Reverse proxy support: Traefik or similar (optional; configure `ReverseProxy__KnownProxies` if used)
+
+## Architecture Highlights
+
+**Three-Layer Clean Architecture:**
+1. `QuestBoard.Service` - MVC controllers, views, authorization handlers, background job definitions
+2. `QuestBoard.Domain` - Business logic, service interfaces, models, AutoMapper profiles
+3. `QuestBoard.Repository` - EF Core entities, repositories, DbContext, migrations
+
+**Strict Dependency Direction:**
+- Service → Domain → Repository
+- No circular dependencies
+- Entity Framework packages confined to Repository layer only
+
+**Dependency Injection:**
+- Service registration in extension methods: `AddRepositoryServices()`, `AddDomainServices()`, `AddControllersWithViews()`
+- Scoped lifetime for DbContext, repositories, and most services
+- Session-scoped active group context for multi-tenancy
 
 ---
 
-*Stack analysis: 2026-04-15*
+*Stack analysis: 2026-07-01*

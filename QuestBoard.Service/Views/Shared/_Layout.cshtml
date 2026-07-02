@@ -1,0 +1,199 @@
+@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.Constants
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - D&D Quest Board</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/quests.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/guild-members.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dm-profile.css" asp-append-version="true" />
+</head>
+<body class="d-flex flex-column min-vh-100 @ViewData["BodyClass"]">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-2">
+            <div class="container-fluid px-3">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a class="navbar-brand" asp-controller="Quest" asp-action="Index"><i class="fas fa-dice-d20"></i> D&D Quest Board</a>
+                }
+                else
+                {
+                    <a class="navbar-brand" asp-controller="Home" asp-action="Index"><i class="fas fa-dice-d20"></i> D&D Quest Board</a>
+                }
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbar">
+                    <ul class="navbar-nav me-auto">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            @* Admin-only navigation items *@
+                            @if ((await AuthorizationService.AuthorizeAsync(User, "AdminOnly")).Succeeded)
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle text-danger" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-shield-alt me-1"></i>Admin
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Admin" asp-action="Users">
+                                                <i class="fas fa-users-cog me-2"></i>User Management
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Admin" asp-action="Quests">
+                                                <i class="fas fa-scroll me-2"></i>Quest Management
+                                            </a>
+                                        </li>
+                                        @if (User.IsInRole("SuperAdmin"))
+                                        {
+                                        <li>
+                                            <a class="dropdown-item" href="/hangfire">
+                                                <i class="fas fa-tasks me-2"></i>Background Jobs
+                                            </a>
+                                        </li>
+                                        }
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Admin" asp-action="EmailStats">
+                                                <i class="fas fa-envelope-open-text me-2"></i>Email Stats
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+
+                            @* DM-only navigation items *@
+                            @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle text-danger" href="#" id="dungeonMasterDropdown" role="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-crown me-1"></i>Dungeon Master
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Quest" asp-action="Create">
+                                                <i class="fas fa-scroll me-2"></i>Create Quest
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="ShopManagement" asp-action="Index">
+                                                <i class="fas fa-coins me-2"></i>Manage Shop
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="DungeonMaster" asp-action="EditProfile">
+                                                <i class="fas fa-user-edit me-2"></i>Edit My Profile
+                                            </a>
+                                        </li>
+
+                                    </ul>
+                                </li>
+                            }
+
+                            @* Available to all authenticated users *@
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Shop" asp-action="Index">
+                                    <i class="fas fa-store me-1"></i>Shop
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="QuestLog" asp-action="Index">
+                                    <i class="fas fa-book-open me-1"></i>Quest Log
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="GuildMembers" asp-action="Index">
+                                    <i class="fas fa-people-group me-1"></i>Guild Members
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Players" asp-action="Index">
+                                    <i class="fas fa-users me-1"></i>Players
+                                </a>
+                            </li>
+
+                        }
+                    </ul>
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Calendar" asp-action="Index">
+                                <i class="fas fa-calendar-alt me-1"></i>Calendar
+                            </a>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            var currentUser = await UserService.GetUserAsync(User);
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-user me-1"></i>@currentUser.Name
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
+                                            <i class="fas fa-user-cog me-2"></i>Profile
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    @{
+                                        var activeGroupName = HttpContextAccessor.HttpContext?.Session?.GetString(SessionKeys.ActiveGroupName);
+                                    }
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="GroupPicker" asp-action="Index">
+                                            <i class="fas fa-arrows-rotate me-2"></i>@(string.IsNullOrEmpty(activeGroupName) ? "Switch Group" : activeGroupName)
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Login">
+                                    <i class="fas fa-sign-in-alt me-1"></i>Login
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container mt-3 flex-grow-1">
+        <main role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="navbar navbar-dark bg-dark mt-auto">
+        <div class="container">
+            <span class="navbar-text">D&D Quest Board. Created by Theun Schut.</span>
+            <a href="https://github.com/theunschut/dnd-quest-board" target="_blank" class="navbar-brand">
+                <i class="fab fa-github"></i>
+            </a>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
