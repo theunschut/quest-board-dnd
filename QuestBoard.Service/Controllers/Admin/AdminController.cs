@@ -202,7 +202,13 @@ public class AdminController(IUserService userService, IQuestService questServic
                     var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
                     var callbackUrl = Url.Action("ConfirmEmailChange", "Account",
                         new { userId = user.Id, newEmail = model.Email, token = encodedToken }, Request.Scheme);
-                    jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(model.Email, user.Name, callbackUrl!, CancellationToken.None));
+                    if (callbackUrl == null)
+                    {
+                        logger.LogError("Failed to generate ConfirmEmailChange callback URL for userId {UserId}", user.Id);
+                        return this.RedirectWithError(nameof(Users), $"Failed to send confirmation email to {model.Email} for {user.Name}. Please try again.");
+                    }
+
+                    jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(model.Email, user.Name, callbackUrl, CancellationToken.None));
                     return this.RedirectWithSuccess(nameof(Users), $"A confirmation email has been sent to {model.Email} for {user.Name}. The address will update once confirmed.");
                 }
             }
