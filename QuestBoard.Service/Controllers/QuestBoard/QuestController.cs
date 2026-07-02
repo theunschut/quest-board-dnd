@@ -39,12 +39,11 @@ public class QuestController(
             currentUserId = user?.Id;
 
             // Determine user role for quest filtering
-            var isAdmin = await userService.IsInRoleAsync(User, "Admin");
-            var isDungeonMaster = await userService.IsInRoleAsync(User, "DungeonMaster");
+            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 
-            if (isAdmin)
+            if (role == GroupRole.Admin)
                 userRole = Role.Admin;
-            else if (isDungeonMaster)
+            else if (role == GroupRole.DungeonMaster)
                 userRole = Role.DungeonMaster;
         }
 
@@ -279,7 +278,7 @@ public class QuestController(
 
         // Check if current user can manage this quest (DM or admin)
         var isQuestDm = currentUser?.Name == quest.DungeonMaster?.Name;
-        var isAdmin = currentUser != null && await userService.IsInRoleAsync(User, "Admin");
+        var isAdmin = currentUser != null && await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
         ViewBag.CanManage = isQuestDm || isAdmin;
 
         // Get all quests for calendar context
@@ -736,7 +735,7 @@ public class QuestController(
 
         // Check if current user is the quest's DM or an admin
         var isQuestDm = currentUser.Name.Equals(quest.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.IsInRoleAsync(User, "Admin");
+        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
         ViewBag.IsAuthorized = isQuestDm || isAdmin;
         ViewBag.IsAdmin = isAdmin;
 
