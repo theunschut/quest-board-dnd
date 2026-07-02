@@ -1,3 +1,5 @@
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Service.ViewModels.QuestLogViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +10,8 @@ namespace QuestBoard.Service.Controllers.QuestBoard;
 [Authorize]
 public class QuestLogController(
     IUserService userService,
-    IQuestService questService
+    IQuestService questService,
+    IActiveGroupContext activeGroupContext
     ) : Controller
 {
     [HttpGet]
@@ -53,7 +56,7 @@ public class QuestLogController(
 
         // Check if current user can edit recap (DM or admin)
         var isQuestDm = currentUser?.Name == quest.DungeonMaster?.Name;
-        var isAdmin = currentUser != null && await userService.IsInRoleAsync(User, "Admin");
+        var isAdmin = currentUser != null && await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
         ViewBag.CanEditRecap = isQuestDm || isAdmin;
 
         var viewModel = new QuestLogDetailsViewModel
@@ -90,7 +93,7 @@ public class QuestLogController(
 
         // Check if current user is the quest's DM or an admin
         var isQuestDm = currentUser.Name.Equals(quest.DungeonMaster?.Name, StringComparison.OrdinalIgnoreCase);
-        var isAdmin = await userService.IsInRoleAsync(User, "Admin");
+        var isAdmin = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId()) == GroupRole.Admin;
 
         if (!isQuestDm && !isAdmin)
         {
