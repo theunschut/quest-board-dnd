@@ -50,8 +50,16 @@ public interface IUserService : IBaseService<User>
     Task<GroupRole?> GetEffectiveGroupRoleAsync(ClaimsPrincipal user, int groupId);
 
     /// <summary>
-    /// Returns the given ClaimsPrincipal's group role in the specified group, or null if they are not a member.
+    /// Returns the given ClaimsPrincipal's raw group role in the specified group, or null if they are not a member.
     /// </summary>
+    /// <remarks>
+    /// This does NOT apply the SuperAdmin bypass — a SuperAdmin with no membership row in the
+    /// group returns null here even though they should be treated as an Admin-equivalent for
+    /// authorization purposes. Callers making an authorization decision should use
+    /// <see cref="GetEffectiveGroupRoleAsync"/> instead, or implement their own explicit
+    /// SuperAdmin short-circuit before falling back to this method (as the DM/Admin authorization
+    /// handlers do).
+    /// </remarks>
     Task<GroupRole?> GetGroupRoleAsync(ClaimsPrincipal user, int groupId);
 
     /// <summary>
