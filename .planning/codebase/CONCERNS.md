@@ -227,6 +227,8 @@
 - Or: Implement batching — enqueue a single `SessionReminderBatchJob` that processes all quests in one transaction instead of N separate jobs
 - Monitor Hangfire dashboard queue length as group count increases; if queue >1000 items, implement batching
 
+**Status (Phase 34.2):** documented as deferred, not implemented — see ARCHITECTURE.md.
+
 ---
 
 ## Fragile Areas
@@ -361,6 +363,8 @@
 - Add explicit authorization check in each controller: `if (quest.GroupId != activeGroupContext.ActiveGroupId) return Forbid()`
 - Or: Create a service wrapper: `IAuthorizedQuestRepository` that enforces GroupId match in every Get method
 - Add comprehensive test: for each controller action that loads an entity, verify it returns Forbid() if the entity's GroupId differs from activeGroupId
+
+**Status (Phase 34.2):** documented as deferred, not implemented — see ARCHITECTURE.md.
 
 ---
 

@@ -140,6 +140,12 @@
 - Uses fluent API: `CreateMap<Quest, QuestViewModel>()` with `.ForMember()` overrides
 - Ignores or maps to calculated values for non-stored fields
 
+## Enum Handling
+
+Enums that are stored as `int` in the database and cast at the AutoMapper `EntityProfile` boundary (e.g. `(int)src.Type`, `(SignupRole)src.SignupRole`) must be **append-only and never reordered**. New values must always get the next unused int; reordering existing values corrupts data already persisted with the old numeric mapping, since the database only stores the int and has no knowledge of the enum's symbolic names.
+
+A round-trip validation test guards this convention going forward — it verifies that every enum value present in the database deserializes back to the same symbolic name it was written with.
+
 ## Three-Layer Dependency Direction
 
 **Architecture constraint (CLAUDE.md):**

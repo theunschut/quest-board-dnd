@@ -236,8 +236,8 @@
 
 **Why it's wrong:** Multi-tenancy isolation violated; emails sent to wrong groups; data leakage across tenants.
 
-**Do this instead:** Always pass groupId to job enqueue method; job constructor receives explicit groupId; call `ActiveGroupContextService.SetGroupId(groupId)` before any repository resolution.
-- Example: `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs:17-18` (groupId parameter), `line 31-32` (SetGroupId call)
+**Do this instead:** Always pass groupId to job enqueue method; job constructor receives explicit groupId; call `ActiveGroupContextService.SetGroupId(groupId)` before any repository resolution. This is centralized in `HangfireJobHelper.RunInScopeAsync`, which every job now calls instead of setting up its own scope inline.
+- Example: `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs:15-16` (groupId parameter), `QuestBoard.Service/Jobs/HangfireJobHelper.cs` (SetGroupId call, centralized)
 
 ### Repository Mutable State Without Re-Query
 
@@ -256,6 +256,29 @@
 
 **Do this instead:** Always inject interfaces defined in Domain (IQuestRepository, IQuestService, etc.); repository classes are internal to Repository project.
 - Example: Controllers inject `IQuestService` (`QuestBoard.Service/Controllers/QuestBoard/QuestController.cs:17`)
+
+## Deferred Hardening / Scaling Notes
+
+### Tenant-isolation defense-in-depth (deferred)
+
+The EF Core Global Query Filter on `QuestEntity` and `ShopItemEntity` provides working cross-tenant protection today — a quest or shop item belonging to another group is not returned to a controller under normal navigation, because every query is transparently scoped by `ActiveGroupId`.
+
+Per-controller `Forbid()` defense-in-depth checks (comparing a loaded entity's `GroupId` against the active group before returning it) are a deferred hardening idea for a future phase. It is not implemented now because the footprint of adding and testing this check across every controller action rivals the size of a full controller refactor, and the query filter already closes the practical risk. If a future phase enforces Group Picker selection at every entry point without gaps, this becomes pure defense-in-depth rather than the primary safety net; until then it remains a documented, accepted residual risk.
+
+### Hangfire fan-out is intentional
+
+`DailyReminderJob` correctly fetches all groups' due quests once (`GetQuestsForTomorrowAllGroupsAsync`), then enqueues one small `SessionReminderJob` per quest. This fan-out pattern gives:
+- Parallel worker processing — multiple small jobs can run concurrently across Hangfire's worker pool
+- Isolated per-job retry — one quest's email failure does not block or retry every other quest's reminder
+- Horizontal scaling — additional Hangfire server instances increase throughput without code changes
+
+A monolithic `SessionReminderBatchJob` that processed all quests in one job would lose all three properties. Batching is a monitored future scaling path — worth revisiting only if the Hangfire queue depth grows into the thousands — not a current problem at this app's scale.
+
+### Dependencies at risk
+
+All Identity-adjacent emails (password reset, welcome/confirmation) route through Hangfire jobs that call `IEmailService` directly — ASP.NET Core Identity's built-in email sender is not used anywhere in this codebase. This avoids the risk of Identity silently falling back to an unconfigured default sender.
+
+The Resend SMTP relay is a single point of failure: there is no secondary relay configured, and `SmtpClient` throws immediately on connection failure rather than retrying internally. The practical mitigation is Hangfire's own job retry (bounded via `AutomaticRetryAttribute`), not a fallback relay — if Resend is down for longer than the retry window allows, jobs land in the Failed Jobs queue for manual admin retry from the Hangfire dashboard.
 
 ## Error Handling
 
