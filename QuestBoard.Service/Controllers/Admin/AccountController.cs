@@ -48,7 +48,7 @@ public class AccountController(IUserService userService, IIdentityService identi
                     {
                         // userId is a database-internal integer identifier, not personal data — despite
                         // flowing from GetIdByEmailAsync(model.Email), it carries no PII of its own.
-                        logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", userId.Value); // lgtm[cs/exposure-of-sensitive-information]
+                        logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", userId.Value);
                     }
                     else
                     {
