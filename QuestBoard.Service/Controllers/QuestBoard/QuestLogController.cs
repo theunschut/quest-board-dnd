@@ -11,7 +11,8 @@ namespace QuestBoard.Service.Controllers.QuestBoard;
 public class QuestLogController(
     IUserService userService,
     IQuestService questService,
-    IActiveGroupContext activeGroupContext
+    IActiveGroupContext activeGroupContext,
+    IGroupService groupService
     ) : Controller
 {
     [HttpGet]
@@ -24,6 +25,7 @@ public class QuestLogController(
             CompletedQuests = completedQuests
         };
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(viewModel);
     }
 
@@ -37,8 +39,12 @@ public class QuestLogController(
             return NotFound();
         }
 
-        // Verify this is a completed quest (DM-only sessions are not shown in the quest log)
-        if (!quest.IsFinalized || !quest.FinalizedDate.HasValue || quest.FinalizedDate.Value.Date > DateTime.UtcNow.AddDays(-1).Date || quest.DungeonMasterSession)
+        // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
+        // admitting closed campaign quests even though they never set FinalizedDate.
+        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
+            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+            && !quest.DungeonMasterSession;
+        if (!isCompletedOneShot && !quest.IsClosed)
         {
             return NotFound();
         }
@@ -64,6 +70,7 @@ public class QuestLogController(
             Quest = quest
         };
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(viewModel);
     }
 
@@ -79,8 +86,11 @@ public class QuestLogController(
             return NotFound();
         }
 
-        // Verify this is a completed quest
-        if (!quest.IsFinalized || !quest.FinalizedDate.HasValue || quest.FinalizedDate.Value.Date > DateTime.UtcNow.AddDays(-1).Date)
+        // Verify this is a completed quest, admitting closed campaign quests even though
+        // they never set FinalizedDate.
+        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
+            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date;
+        if (!isCompletedOneShot && !quest.IsClosed)
         {
             return BadRequest("Cannot update recap for a quest that is not completed.");
         }
@@ -112,4 +122,18 @@ public class QuestLogController(
         User.IsInRole("SuperAdmin")
             ? GroupRole.Admin
             : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+    // Resolves the active group's board type server-side, mirroring QuestController's helper.
+    // SuperAdmin legitimately has no active group selected, so default to OneShot rather than
+    // calling RequireActiveGroupId(), which would throw.
+    private async Task<BoardType> GetActiveBoardTypeAsync(CancellationToken token = default)
+    {
+        if (activeGroupContext.ActiveGroupId is not { } groupId)
+        {
+            return BoardType.OneShot;
+        }
+
+        var group = await groupService.GetByIdAsync(groupId, token);
+        return group?.BoardType ?? BoardType.OneShot;
+    }
 }
