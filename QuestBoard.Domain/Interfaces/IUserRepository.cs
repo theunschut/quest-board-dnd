@@ -23,6 +23,11 @@ public interface IUserRepository : IBaseRepository<User>
     Task<IList<User>> GetAllPlayers(CancellationToken token = default);
 
     /// <summary>
+    /// Returns all members of the specified group, regardless of their group role.
+    /// </summary>
+    Task<IList<User>> GetAllGroupMembers(int groupId, CancellationToken token = default);
+
+    /// <summary>
     /// Returns the given user's group role in the specified group, or null if they are not a member.
     /// </summary>
     Task<GroupRole?> GetGroupRoleAsync(int userId, int groupId);

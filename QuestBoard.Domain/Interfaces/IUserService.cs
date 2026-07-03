@@ -44,6 +44,11 @@ public interface IUserService : IBaseService<User>
     Task<IList<User>> GetAllPlayersAsync(CancellationToken token = default);
 
     /// <summary>
+    /// Returns all members of the specified group, regardless of their group role.
+    /// </summary>
+    Task<IList<User>> GetAllGroupMembersAsync(int groupId, CancellationToken token = default);
+
+    /// <summary>
     /// Returns the effective GroupRole for the given ClaimsPrincipal in the specified group,
     /// treating SuperAdmin as an automatic Admin-equivalent bypass that requires no group membership.
     /// </summary>

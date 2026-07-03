@@ -52,6 +52,12 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     }
 
     /// <inheritdoc/>
+    public async Task<IList<User>> GetAllGroupMembersAsync(int groupId, CancellationToken token = default)
+    {
+        return await repository.GetAllGroupMembers(groupId, token);
+    }
+
+    /// <inheritdoc/>
     public async Task<GroupRole?> GetEffectiveGroupRoleAsync(ClaimsPrincipal user, int groupId)
     {
         if (user.IsInRole("SuperAdmin"))
