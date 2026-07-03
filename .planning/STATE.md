@@ -4,8 +4,8 @@ milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
 status: executing
 stopped_at: Phase 35 planned (3 plans)
-last_updated: "2026-07-03T11:26:29.192Z"
-last_activity: 2026-07-03 -- Phase 35 planning complete
+last_updated: "2026-07-03T11:29:04.142Z"
+last_activity: 2026-07-03 -- Phase 35 execution started
 progress:
   total_phases: 1
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 35 — Board Type Configuration
+**Current focus:** Phase 35 — board-type-configuration
 
 ## Current Position
 
-Phase: 35 of 37 (Board Type Configuration)
-Plan: 35-01 / 35-02 / 35-03 (planned, not yet executed)
-Status: Ready to execute
-Last activity: 2026-07-03 -- Phase 35 planning complete
+Phase: 35 (board-type-configuration) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 35
+Last activity: 2026-07-03 -- Phase 35 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
