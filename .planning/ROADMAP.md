@@ -143,7 +143,12 @@ Plans:
   4. A brand-new email address still creates a new account and sends the existing welcome email, unchanged
   5. The group-admin Create User form and the (not-yet-built) platform-level create-user entry point both exhibit identical collision behavior once Phase 40 wires the platform entry point onto this phase's shared method
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+
+- [ ] 39-01-PLAN.md — Shared collision-aware CreateOrAddToGroupAsync Domain method + result type, with unit coverage of all four outcomes
+- [ ] 39-02-PLAN.md — AddedToGroup email component + Hangfire job, RedirectWithWarning helper, and Users.cshtml warning banner
+- [ ] 39-03-PLAN.md — CreateUser POST refactored onto the shared method (three-outcome flash, stranded-account resend), plus blocking security human-verify
 
 ### Phase 40: Platform Members Page Redesign
 
