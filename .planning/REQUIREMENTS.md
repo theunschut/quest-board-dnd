@@ -1,0 +1,78 @@
+# Requirements: D&D Quest Board
+
+**Defined:** 2026-07-03
+**Core Value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
+
+## v6.0 Requirements
+
+Requirements for the Board Types (Campaign Mode) milestone. Each maps to roadmap phases.
+
+### Board Type Configuration
+
+- [ ] **BOARD-01**: SuperAdmin can choose a group's board type (One-Shot or Campaign) when creating a group
+- [ ] **BOARD-02**: Board type cannot be changed after group creation
+
+### Campaign Quests
+
+- [ ] **CQUEST-01**: DM can post a quest for a campaign group without selecting proposed dates
+- [ ] **CQUEST-02**: Campaign quest pages show no per-quest signup or date-voting UI — the party is the group's fixed roster
+- [ ] **CQUEST-03**: DM can close a campaign quest (simple status toggle), hiding it from the active quest board
+- [ ] **CQUEST-04**: DM can reopen a closed campaign quest
+- [ ] **CQUEST-05**: Party can browse closed campaign quests in the Quest Log immediately after closing (no next-day wait like one-shot finalization)
+- [ ] **CQUEST-06**: No quest-related emails are sent for campaign-group quests (no posted/reminder/finalized notifications)
+
+### Navigation
+
+- [ ] **NAV-01**: Calendar nav item is hidden for campaign-type groups
+- [ ] **NAV-02**: Shop nav item is hidden for campaign-type groups
+- [ ] **NAV-03**: Guild member directory nav item remains visible for all board types (no change)
+- [ ] **NAV-04**: "Manage Shop" nav item (DM dropdown) is hidden for campaign-type groups
+- [ ] **NAV-05**: "Edit My Profile" nav item (DM dropdown) is hidden for campaign-type groups
+- [ ] **NAV-06**: "Players" nav item is hidden for campaign-type groups
+
+### Access Control
+
+- [ ] **ACCESS-01**: "Email Stats" page and nav item are restricted to SuperAdmin only (currently visible/accessible to Admin role too), for all group types
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Changing board type after group creation | Locked at creation to avoid migrating quests/signups between incompatible modes |
+| Per-quest party tagging for campaign quests | Roster is fixed at the group level; no per-quest signup or player-selection UI at all |
+| Rewards/gold flow tied to closing a campaign quest | Closing is a simple status toggle; gold/loot tracking stays manual/in-game |
+| Quest-related emails for campaign groups | Campaign mode is a running log/board, not a scheduling tool — no posted/reminder/finalized notifications |
+| Separate Area/controller stack for campaign quests | Feasibility research (2026-07-03) confirmed a shared `QuestController`/`QuestService` gated by a `BoardType` enum covers this; `CalendarController` and the `PlayerSignup` stack need zero changes |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BOARD-01 | TBD | Pending |
+| BOARD-02 | TBD | Pending |
+| CQUEST-01 | TBD | Pending |
+| CQUEST-02 | TBD | Pending |
+| CQUEST-03 | TBD | Pending |
+| CQUEST-04 | TBD | Pending |
+| CQUEST-05 | TBD | Pending |
+| CQUEST-06 | TBD | Pending |
+| NAV-01 | TBD | Pending |
+| NAV-02 | TBD | Pending |
+| NAV-03 | TBD | Pending |
+| NAV-04 | TBD | Pending |
+| NAV-05 | TBD | Pending |
+| NAV-06 | TBD | Pending |
+| ACCESS-01 | TBD | Pending |
+
+**Coverage:**
+- v6.0 requirements: 15 total
+- Mapped to phases: 0
+- Unmapped: 15 ⚠️ (filled in by roadmap creation)
+
+---
+*Requirements defined: 2026-07-03*
+*Last updated: 2026-07-03 after initial definition*
