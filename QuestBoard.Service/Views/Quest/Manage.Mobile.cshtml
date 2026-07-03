@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = $"Manage Quest: {Model.Title}";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 @section Styles {
@@ -27,9 +28,12 @@ else
             @* Quest title + CR badge row *@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0 dm-manage-title">@ViewData["Title"]</h5>
-                <span class="badge bg-dark border ms-2">
-                    <i class="fas fa-dice-d20 me-1"></i>CR @Model.ChallengeRating
-                </span>
+                @if (boardType != BoardType.Campaign)
+                {
+                    <span class="badge bg-dark border ms-2">
+                        <i class="fas fa-dice-d20 me-1"></i>CR @Model.ChallengeRating
+                    </span>
+                }
             </div>
 
             @* TempData error alert *@
@@ -42,6 +46,8 @@ else
                 </div>
             }
 
+            @if (boardType != BoardType.Campaign)
+            {
             @if (Model.IsFinalized)
             {
                 @* === FINALIZED STATE === *@
@@ -371,6 +377,32 @@ else
 
                     </form>
                 }
+            }
+            }
+            @if (boardType == BoardType.Campaign)
+            {
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    @if (!Model.IsClosed)
+                    {
+                        <form asp-action="Close" method="post" class="flex-fill">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-secondary w-100">Close Quest</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="Reopen" method="post" class="flex-fill">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning w-100">Reopen Quest</button>
+                        </form>
+                    }
+                    <button type="button" class="btn btn-outline-secondary w-100"
+                            onclick="window.location.reload()">
+                        <i class="fas fa-sync me-1"></i>Refresh Data
+                    </button>
+                </div>
             }
 
         </div>
