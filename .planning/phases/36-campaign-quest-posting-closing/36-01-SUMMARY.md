@@ -103,3 +103,7 @@ None - no external service configuration required. The migration auto-applies on
 ---
 *Phase: 36-campaign-quest-posting-closing*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+All claimed files found on disk; both task commits (`3fb4e1c`, `db2dcca`) verified present in git log.
