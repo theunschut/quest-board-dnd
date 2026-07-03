@@ -52,7 +52,7 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
         var uniqueName = "TestGroup_" + Guid.NewGuid().ToString("N")[..8];
-        var formData = new Dictionary<string, string> { ["Name"] = uniqueName };
+        var formData = new Dictionary<string, string> { ["Name"] = uniqueName, ["BoardType"] = ((int)BoardType.OneShot).ToString() };
 
         var response = await client.PostAsync("/platform/Group/Create",
             new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
@@ -68,7 +68,7 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
         var uniqueName = "NewGroup_" + Guid.NewGuid().ToString("N")[..8];
-        var formData = new Dictionary<string, string> { ["Name"] = uniqueName };
+        var formData = new Dictionary<string, string> { ["Name"] = uniqueName, ["BoardType"] = ((int)BoardType.OneShot).ToString() };
 
         await client.PostAsync("/platform/Group/Create",
             new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
@@ -87,7 +87,7 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
 
         // Create a new empty group to delete
         var uniqueName = "DeleteMe_" + Guid.NewGuid().ToString("N")[..8];
-        var createData = new Dictionary<string, string> { ["Name"] = uniqueName };
+        var createData = new Dictionary<string, string> { ["Name"] = uniqueName, ["BoardType"] = ((int)BoardType.OneShot).ToString() };
         await client.PostAsync("/platform/Group/Create",
             new FormUrlEncodedContent(createData), TestContext.Current.CancellationToken);
 
@@ -111,7 +111,7 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
 
         // Create a new empty group to delete
         var uniqueName = "DelPost_" + Guid.NewGuid().ToString("N")[..8];
-        var createData = new Dictionary<string, string> { ["Name"] = uniqueName };
+        var createData = new Dictionary<string, string> { ["Name"] = uniqueName, ["BoardType"] = ((int)BoardType.OneShot).ToString() };
         await client.PostAsync("/platform/Group/Create",
             new FormUrlEncodedContent(createData), TestContext.Current.CancellationToken);
 
@@ -135,7 +135,7 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
 
         // Create a group and add a member to it so HasMembersAsync returns true
         var uniqueName = "HasMembers_" + Guid.NewGuid().ToString("N")[..8];
-        var createData = new Dictionary<string, string> { ["Name"] = uniqueName };
+        var createData = new Dictionary<string, string> { ["Name"] = uniqueName, ["BoardType"] = ((int)BoardType.OneShot).ToString() };
         await client.PostAsync("/platform/Group/Create",
             new FormUrlEncodedContent(createData), TestContext.Current.CancellationToken);
 
