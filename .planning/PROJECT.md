@@ -10,12 +10,13 @@
 
 ## Current Milestone: v6.1 Bugfixes
 
-**Goal:** Close three admin-facing user-management gaps found after v6.0 shipped.
+**Goal:** Close four admin-facing user-management gaps found after v6.0 shipped.
 
 **Target features:**
 - Scope `AdminController.Users()` to the active group — it currently calls `userService.GetAllAsync()` with no group filter, leaking every platform user into a group admin's user list
-- Redesign the Platform (super-admin) group Members page (`Areas/Platform/Controllers/GroupController.cs`): replace the plain `<select>` dropdown of available users with a searchable/filterable table, and add a "create new user" entry point scoped to that group, mirroring the existing group-admin Create User form
+- Redesign the Platform (super-admin) group Members page (`Areas/Platform/Controllers/GroupController.cs`): two-column layout (members left, searchable non-members right), replacing the plain `<select>` dropdown, plus a "create new user" entry point scoped to that group, mirroring the existing group-admin Create User form
 - Existing-email collision handling in Create User flows: today `IdentityService.CreateUserAsync` hard-fails with a duplicate-username error if the email already belongs to a user; instead, auto-add that user to the group with the selected role and send a new "you've been added to a group" notification email (distinct from the new-account welcome email) — applied consistently in both the group-admin `AdminController.CreateUser` and the new platform create-user entry point
+- Fix `AdminController.DeleteUser`: it currently hard-deletes the `UserEntity` row (cascading their membership out of *every* group, not just the active one, and throwing an unhandled `DbUpdateException` for any user with quest/shop/transaction/trade/reminder history, since those FKs are `DeleteBehavior.NoAction`) — repurpose the group-admin "Delete" button to remove-from-group only, and add a SuperAdmin-only "disable account" action (reusing Identity's existing `LockoutEnd` mechanism) as the real way to deactivate a problem account without data loss
 
 ---
 
@@ -72,6 +73,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - [ ] Group admin user list (`AdminController.Users`) scoped to the active group instead of all platform users — v6.1
 - [ ] Platform group Members page: searchable/filterable table replacing the plain user dropdown, plus a group-scoped "create new user" entry point — v6.1
 - [ ] Existing-email collision in Create User flows auto-adds the user to the group (with role + notification email) instead of failing — v6.1
+- [ ] Group-admin "Delete" button hard-deletes the user account (cascades out of every group, crashes for users with quest/shop/transaction history) instead of removing them from the active group only; SuperAdmin has no way to disable an account without deleting it — v6.1
 - [ ] Digest batching for session reminders — single combined email when player has multiple same-day quests (EMAIL-04/REMIND-02 — deferred; same-day quests have never occurred in one year)
 - [ ] Profile picture crop/avatar selection for guild member page (issue #78) — paused from v2.x; SkiaSharp native lib availability needs verification on deployment host
 - [ ] `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed

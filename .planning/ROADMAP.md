@@ -8,7 +8,7 @@
 - ✅ **v4.0 Email Notifications** — Phases 20–25 (shipped 2026-06-28)
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
-- 🚧 **v6.1 Bugfixes** — Phases 38–40 (in progress — started 2026-07-03)
+- 🚧 **v6.1 Bugfixes** — Phases 38–41 (in progress — started 2026-07-03)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it is not assigned to any active milestone._
 
@@ -103,15 +103,16 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 </details>
 
 <details open>
-<summary>🚧 v6.1 Bugfixes (Phases 38–40) — IN PROGRESS (started 2026-07-03)</summary>
+<summary>🚧 v6.1 Bugfixes (Phases 38–41) — IN PROGRESS (started 2026-07-03)</summary>
 
-**Overview:** Closes three admin-facing user-management gaps found after v6.0 shipped: a group admin user-list PII leak (`AdminController.Users()` shows every platform user, not just the active group's), a raw `<select>` dropdown on the Platform Members page with no create-user entry point, and a hard-fail on email collision during user creation instead of a friendlier auto-add-to-group flow. All three are additive extensions of existing seams — zero new packages, zero new migrations.
+**Overview:** Closes four admin-facing user-management gaps found after v6.0 shipped: a group admin user-list PII leak (`AdminController.Users()` shows every platform user, not just the active group's), a raw `<select>` dropdown on the Platform Members page with no create-user entry point, a hard-fail on email collision during user creation instead of a friendlier auto-add-to-group flow, and a group-admin "Delete" button that hard-deletes a user's entire account (cascading them out of every group, and crashing on FK constraints for any user with quest/shop/transaction history) instead of just removing them from the active group. All four are additive extensions of existing seams — zero new packages, zero new migrations.
 
-**Requirements:** USERS-01, CREATE-01 through CREATE-04, MEMBERS-01 through MEMBERS-03 (8 total, see `.planning/REQUIREMENTS.md`)
+**Requirements:** USERS-01, CREATE-01 through CREATE-04, MEMBERS-01 through MEMBERS-03, SAFE-01 through SAFE-04 (12 total, see `.planning/REQUIREMENTS.md`)
 
 - [ ] Phase 38: Group-Scoped User List — Group admin's Users page shows only members of the active group, closing a cross-tenant PII leak
 - [ ] Phase 39: Shared Collision-Aware User Creation & Email — Creating a user with an existing email adds them to the group instead of failing, with a distinct notification email, applied identically everywhere user creation happens
 - [ ] Phase 40: Platform Members Page Redesign — Two-column Members page with a searchable available-users table and a group-scoped Create New User entry point
+- [ ] Phase 41: Safe User Removal & Account Disable — Group-admin Delete removes from the active group only (not a hard account delete), and SuperAdmin can disable/re-enable an account via Identity's lockout mechanism
 
 ### Phase 38: Group-Scoped User List
 **Goal**: A group admin viewing the Users management page sees only members of their currently active group — no other group's users are visible.
@@ -147,12 +148,24 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 41: Safe User Removal & Account Disable
+**Goal**: Removing a user from a group no longer risks deleting their account or breaking the database, and a SuperAdmin has a real way to deactivate a problem account without destroying data.
+**Depends on**: Nothing (independent of Phases 38–40)
+**Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04
+**Success Criteria** (what must be TRUE):
+  1. A group admin clicking "Delete" on the Users page removes the user from the active group only — their account and any other group memberships are untouched
+  2. A user who has DM'd quests, listed shop items, made gold transactions, or received reminders can still be removed from a group without an unhandled server error
+  3. A SuperAdmin can disable a user account so it can no longer sign in, with no data deleted
+  4. A SuperAdmin can re-enable a previously disabled account, restoring login access
+  5. A disabled user attempting to log in sees a message that does not falsely imply a 15-minute temporary lockout
+**Plans**: TBD
+
 </details>
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -199,3 +212,4 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40
 | 38. Group-Scoped User List | v6.1 | 0/TBD | Not started | — |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 0/TBD | Not started | — |
 | 40. Platform Members Page Redesign | v6.1 | 0/TBD | Not started | — |
+| 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |

@@ -24,6 +24,13 @@ Requirements for the Bugfixes milestone. Each maps to roadmap phases.
 - [ ] **MEMBERS-02**: The right-hand "other users" list is a searchable/filterable table (filter by name or email) instead of a plain dropdown select
 - [ ] **MEMBERS-03**: The Platform group Members page has a "Create New User" entry point (in the right column) that creates (or, per CREATE-01, adds) a user scoped to the group being managed
 
+### Safe User Removal & Account Disable
+
+- [ ] **SAFE-01**: Group admin's "Delete" button on the Users page removes the user from the active group only — their account and any other group memberships stay intact
+- [ ] **SAFE-02**: SuperAdmin can disable a user account so it can no longer log in, without deleting any account data
+- [ ] **SAFE-03**: SuperAdmin can re-enable a previously disabled account
+- [ ] **SAFE-04**: A disabled user attempting to log in sees an accurate message, not the existing "try again in 15 minutes" failed-attempts copy
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -49,12 +56,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEMBERS-01 | Phase 40 | Pending |
 | MEMBERS-02 | Phase 40 | Pending |
 | MEMBERS-03 | Phase 40 | Pending |
+| SAFE-01 | Phase 41 | Pending |
+| SAFE-02 | Phase 41 | Pending |
+| SAFE-03 | Phase 41 | Pending |
+| SAFE-04 | Phase 41 | Pending |
 
 **Coverage:**
-- v6.1 requirements: 8 total
-- Mapped to phases: 8
+- v6.1 requirements: 12 total
+- Mapped to phases: 12
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-03 after roadmap creation (ROADMAP.md phases 38-40)*
+*Last updated: 2026-07-03 after adding Phase 41 (Safe User Removal & Account Disable)*
