@@ -16,7 +16,7 @@ Requirements for the Bugfixes milestone. Each maps to roadmap phases.
 - [x] **CREATE-01**: Creating a user with an email that already belongs to an existing platform user adds that user to the active group with the selected role, instead of failing with a duplicate-account error
 - [x] **CREATE-02**: A user added to a group via the email-collision path receives a "you've been added to a group" notification email, distinct from the new-account welcome email (no set-password link)
 - [x] **CREATE-03**: Creating a user with an email that already belongs to a member of the current group shows a friendly "already a member" message instead of a duplicate-membership error
-- [ ] **CREATE-04**: Email-collision handling behaves identically whether triggered from the group-admin Create User form or the new platform-level Create User entry point
+- [x] **CREATE-04**: Email-collision handling behaves identically whether triggered from the group-admin Create User form or the new platform-level Create User entry point
 
 ### Platform Members Page Redesign
 
@@ -52,7 +52,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CREATE-01 | Phase 39 | Complete |
 | CREATE-02 | Phase 39 | Complete |
 | CREATE-03 | Phase 39 | Complete |
-| CREATE-04 | Phase 39 | Pending |
+| CREATE-04 | Phase 39 | Complete |
 | MEMBERS-01 | Phase 40 | Pending |
 | MEMBERS-02 | Phase 40 | Pending |
 | MEMBERS-03 | Phase 40 | Pending |

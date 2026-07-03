@@ -4,17 +4,17 @@ milestone: v6.1
 milestone_name: Bugfixes
 current_phase: 39
 current_phase_name: shared-collision-aware-user-creation-email
-status: executing
-stopped_at: Completed 39-02-PLAN.md
-last_updated: "2026-07-03T23:12:28.727Z"
-last_activity: 2026-07-03
-last_activity_desc: Plan 39-02 complete (AddedToGroup email, Hangfire job, warning flash)
+status: verifying
+stopped_at: Completed 39-03-PLAN.md
+last_updated: "2026-07-04T01:16:00.000Z"
+last_activity: 2026-07-04
+last_activity_desc: Plan 39-03 complete (CreateUser POST wired onto CreateOrAddToGroupAsync; phase 39 fully complete)
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
-  percent: 25
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-03 — v6.1 Bugfixes milestone starte
 
 ## Current Position
 
-Phase: 39 (shared-collision-aware-user-creation-email) — EXECUTING
+Phase: 39 (shared-collision-aware-user-creation-email) — COMPLETE
 Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-07-03 — Plan 39-02 complete (AddedToGroup email, Hangfire job, warning flash)
+Status: Phase complete — ready for verification
+Last activity: 2026-07-04 — Plan 39-03 complete (CreateUser POST wired onto CreateOrAddToGroupAsync; phase 39 fully complete)
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Last activity: 2026-07-03 — Plan 39-02 complete (AddedToGroup email, Hangfire 
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 38. Group-Scoped User List | 1/1 | Complete — ready for verification |
-| 39. Shared Collision-Aware User Creation & Email | 2/3 | In progress |
+| 39. Shared Collision-Aware User Creation & Email | 3/3 | Complete — ready for verification |
 | 40. Platform Members Page Redesign | 0/TBD | Not started |
 
 **Recent Trend:**
@@ -56,6 +56,7 @@ Last activity: 2026-07-03 — Plan 39-02 complete (AddedToGroup email, Hangfire 
 | Phase 38 P01 | 25min | 3 tasks | 6 files |
 | Phase 39 P01 | 12min | 3 tasks | 4 files |
 | Phase 39 P02 | 3min | 3 tasks | 4 files |
+| Phase 39 P03 | 8min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Full prior-milestone decision log: PROJECT.md Key Decisions table; v6.0 detail i
 - [Phase 39]: UserService now composes IGroupService (constructor dependency) to use throw-on-collision AddMemberAsync for already-member detection, diverging from AdminController.CreateUser's current upsert-based SetGroupRoleAsync
 - [Phase 39]: AddedToGroup.razor CTA links to plain /Account/Login with no token — user already has a password from their original account
 - [Phase 39]: Warning banner reuses existing dismissible alert markup (icon + message + btn-close) rather than a toast notification, per the deferred site-wide toast conversion decision
+- [Phase 39]: IGroupService injected directly into AdminController's primary constructor to resolve the group Name for the AddedToGroup email body
+- [Phase 39]: AddedToGroupStrandedAccount branch returns the identical success flash string as AddedToGroup so the admin sees no distinction between which email template actually fired
 
 ### Pending Todos
 
@@ -104,11 +107,11 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T23:12:28.718Z
-Stopped at: Completed 39-02-PLAN.md
+Last session: 2026-07-04T01:16:00.000Z
+Stopped at: Completed 39-03-PLAN.md
 Resume file: None
-Next step: `/gsd-execute-phase 39` (continue with Plan 03)
+Next step: Phase 39 complete — proceed to Phase 40 (Platform Members Page Redesign)
 
 ## Operator Next Steps
 
-- Run `/gsd-execute-phase 39` to continue with Plan 03 (controller integration wiring the shared method, email job, and warning flash into AdminController.CreateUser) of the Shared Collision-Aware User Creation & Email phase.
+- Phase 39 (Shared Collision-Aware User Creation & Email) is fully complete — all 3 plans executed, human-verify checkpoint approved. Run `/gsd-plan-phase 40` to plan the Platform Members Page Redesign phase, which reuses `CreateOrAddToGroupAsync` for its new create-user entry point.

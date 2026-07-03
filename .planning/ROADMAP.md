@@ -152,7 +152,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 39-03-PLAN.md — CreateUser POST refactored onto the shared method (three-outcome flash, stranded-account resend), plus blocking security human-verify
+- [x] 39-03-PLAN.md — CreateUser POST refactored onto the shared method (three-outcome flash, stranded-account resend), plus blocking security human-verify
 
 ### Phase 40: Platform Members Page Redesign
 
@@ -234,6 +234,6 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
 | 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
-| 39. Shared Collision-Aware User Creation & Email | v6.1 | 2/3 | In Progress|  |
+| 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete   | 2026-07-03 |
 | 40. Platform Members Page Redesign | v6.1 | 0/TBD | Not started | — |
 | 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |
