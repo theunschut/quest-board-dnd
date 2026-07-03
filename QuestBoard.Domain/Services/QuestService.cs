@@ -182,7 +182,7 @@ internal class QuestService(
                          && q.FinalizedDate.HasValue
                          && q.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
                          && !q.DungeonMasterSession)
-                        || q.IsClosed)
+                        || (q.IsClosed && !q.DungeonMasterSession))
             .OrderByDescending(q => q.IsClosed ? q.ClosedDate : q.FinalizedDate)
             .ToList();
     }
