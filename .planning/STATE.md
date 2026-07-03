@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
-status: ready-to-execute
-stopped_at: Phase 35 planned (3 plans, 3 waves)
-last_updated: "2026-07-03T11:16:48.531Z"
-last_activity: 2026-07-03 — Phase 35 planned: 3 plans across 3 waves (data foundation, controller/viewmodel wiring, Razor views + human-verify)
+status: executing
+stopped_at: Phase 35 planned (3 plans)
+last_updated: "2026-07-03T11:26:29.192Z"
+last_activity: 2026-07-03 -- Phase 35 planning complete
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mod
 Phase: 35 of 37 (Board Type Configuration)
 Plan: 35-01 / 35-02 / 35-03 (planned, not yet executed)
 Status: Ready to execute
-Last activity: 2026-07-03 — Phase 35 planned: 3 plans across 3 waves
+Last activity: 2026-07-03 -- Phase 35 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 

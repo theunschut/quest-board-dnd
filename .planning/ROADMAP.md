@@ -104,44 +104,62 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 ## Phase Details
 
 ### Phase 35: Board Type Configuration
+
 **Goal**: A SuperAdmin can set a group's board type (One-Shot or Campaign) when creating it, and that choice is permanent — the rest of the app can reliably branch on it.
 **Depends on**: Nothing (first phase of v6.0; builds on existing `GroupEntity`/`Platform/GroupController` from v5.0)
 **Requirements**: BOARD-01, BOARD-02
 **Success Criteria** (what must be TRUE):
+
   1. SuperAdmin sees a One-Shot/Campaign choice on the group creation form and the selected value is saved on the group
   2. The board type is displayed (read-only) on the group edit/details view, with no control to change it after creation
   3. Attempting to submit a board-type value on the edit form has no effect — the group's stored `BoardType` is unchanged
   4. Existing groups created before this phase default to One-Shot with no behavior change
+
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 35-01-PLAN.md — Data foundation: BoardType enum, entity/domain/projection models, AutoMapper + repository projections, EF migration, and failing integration-test scaffolds
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 35-02-PLAN.md — ViewModels + GroupController wiring: required nullable BoardType on Create, display-only on Edit, Create POST persists, Edit POST ignores (tamper protection)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 35-03-PLAN.md — Razor views: Board Type dropdown (Create), disabled dropdown (Edit), badge column/card (Index), all desktop + mobile, plus human-verify checkpoint
+
 **UI hint**: yes
 
 ### Phase 36: Campaign Quest Posting & Closing
+
 **Goal**: A DM running a campaign-type group can post quests and manage their lifecycle (close/reopen) without any of the one-shot scheduling machinery, and campaign quests never trigger scheduling-related emails.
 **Depends on**: Phase 35 (requires `BoardType` to exist and be readable on the group)
 **Requirements**: CQUEST-01, CQUEST-02, CQUEST-03, CQUEST-04, CQUEST-05, CQUEST-06
 **Success Criteria** (what must be TRUE):
+
   1. DM posting a quest in a campaign group sees no proposed-dates picker, and the quest saves successfully without dates
   2. A campaign quest's detail/manage page shows no signup or date-voting section — only quest content and a Close/Reopen control
   3. DM can close an open campaign quest via a single action, and it immediately disappears from the active quest board
   4. DM can reopen a closed campaign quest, and it immediately reappears on the active quest board
   5. A closed campaign quest appears in the Quest Log right away (no next-day wait), while one-shot finalized quests keep their existing next-day Quest Log behavior unchanged
   6. No email is sent (posted/reminder/finalized) for any quest action inside a campaign group — verified for post, close, and reopen
+
 **Plans**: TBD
 
 ### Phase 37: Navigation & Access Control
+
 **Goal**: Campaign groups show only the nav items relevant to their board type, and the Email Stats page is restricted to SuperAdmin regardless of group type.
 **Depends on**: Phase 35 (nav visibility branches on `BoardType`); independent of Phase 36
 **Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-06, ACCESS-01
 **Success Criteria** (what must be TRUE):
+
   1. In a campaign group, the desktop and mobile nav both hide Calendar, Shop, "Manage Shop", "Edit My Profile", and "Players" — Guild member directory stays visible
   2. In a one-shot group, all nav items render exactly as before this phase (no regression)
   3. A user with the Admin role (not SuperAdmin) can no longer see the "Email Stats" nav link or load the Email Stats page — a direct URL request is rejected, not just hidden from nav
   4. A SuperAdmin can still see and load the Email Stats page in both one-shot and campaign groups
+
 **Plans**: TBD
 **UI hint**: yes
 
