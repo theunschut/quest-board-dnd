@@ -28,6 +28,13 @@ public class AccountController(IUserService userService, IIdentityService identi
         return View();
     }
 
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult AccessDenied()
+    {
+        return View();
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting("forgot-password")]
