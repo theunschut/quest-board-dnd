@@ -159,6 +159,12 @@ public class AdminController(IUserService userService, IQuestService questServic
     [HttpGet]
     public async Task<IActionResult> EditUser(int userId)
     {
+        var groupId = activeGroupContext.ActiveGroupId;
+        if (groupId == null) return RedirectToAction(nameof(Users));
+        // Guard against a crafted request for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
+        if (targetRole == null) return RedirectToAction(nameof(Users));
+
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
@@ -182,6 +188,12 @@ public class AdminController(IUserService userService, IQuestService questServic
     {
         if (ModelState.IsValid)
         {
+            var groupId = activeGroupContext.ActiveGroupId;
+            if (groupId == null) return RedirectToAction(nameof(Users));
+            // Guard against a crafted POST for a user outside the active group
+            var targetRole = await userService.GetGroupRoleByIdAsync(model.Id, groupId.Value);
+            if (targetRole == null) return RedirectToAction(nameof(Users));
+
             var user = await userService.GetByIdAsync(model.Id);
             if (user == null)
             {
@@ -236,6 +248,12 @@ public class AdminController(IUserService userService, IQuestService questServic
     [HttpGet]
     public async Task<IActionResult> ResetPassword(int userId)
     {
+        var groupId = activeGroupContext.ActiveGroupId;
+        if (groupId == null) return RedirectToAction(nameof(Users));
+        // Guard against a crafted request for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
+        if (targetRole == null) return RedirectToAction(nameof(Users));
+
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
@@ -257,6 +275,12 @@ public class AdminController(IUserService userService, IQuestService questServic
     {
         if (ModelState.IsValid)
         {
+            var groupId = activeGroupContext.ActiveGroupId;
+            if (groupId == null) return RedirectToAction(nameof(Users));
+            // Guard against a crafted POST for a user outside the active group
+            var targetRole = await userService.GetGroupRoleByIdAsync(model.UserId, groupId.Value);
+            if (targetRole == null) return RedirectToAction(nameof(Users));
+
             var user = await userService.GetByIdAsync(model.UserId);
             if (user == null)
             {
@@ -283,6 +307,13 @@ public class AdminController(IUserService userService, IQuestService questServic
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteUser(int id)
     {
+        var groupId = activeGroupContext.ActiveGroupId;
+        if (groupId == null) return NotFound();
+
+        // Guard against a crafted request for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(id, groupId.Value);
+        if (targetRole == null) return NotFound();
+
         var user = await userService.GetByIdAsync(id);
         if (user == null)
         {
@@ -305,6 +336,12 @@ public class AdminController(IUserService userService, IQuestService questServic
             Response.StatusCode = StatusCodes.Status429TooManyRequests;
             return Content("Too many requests. Please try again later.");
         }
+
+        var groupId = activeGroupContext.ActiveGroupId;
+        if (groupId == null) return RedirectToAction(nameof(Users));
+        // Guard against a crafted POST for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
+        if (targetRole == null) return RedirectToAction(nameof(Users));
 
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
