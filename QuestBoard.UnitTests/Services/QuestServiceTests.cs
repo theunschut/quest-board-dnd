@@ -167,4 +167,116 @@ public class QuestServiceTests
             Arg.Any<DateTime>(),
             Arg.Any<DateTime>());
     }
+
+    // ---------------------------------------------------------------------------
+    // CloseQuestAsync / ReopenQuestAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task CloseQuestAsync_DelegatesToRepository_AndSendsNoEmail()
+    {
+        // Arrange
+        _repository.CloseQuestAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.CloseQuestAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        await _repository.Received(1).CloseQuestAsync(1, Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceiveWithAnyArgs().EnqueueFinalizedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string[]>(), Arg.Any<string[]>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task ReopenQuestAsync_DelegatesToRepository_AndSendsNoEmail()
+    {
+        // Arrange
+        _repository.ReopenQuestAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.ReopenQuestAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        await _repository.Received(1).ReopenQuestAsync(1, Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceiveWithAnyArgs().EnqueueFinalizedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string[]>(), Arg.Any<string[]>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    // ---------------------------------------------------------------------------
+    // GetCompletedQuestsAsync
+    // ---------------------------------------------------------------------------
+
+    private static Quest MakeCompletedQuestCandidate(
+        int id, bool isFinalized, DateTime? finalizedDate, bool isClosed, DateTime? closedDate, bool dungeonMasterSession = false) =>
+        new()
+        {
+            Id = id,
+            Title = $"Quest {id}",
+            Description = "A quest",
+            IsFinalized = isFinalized,
+            FinalizedDate = finalizedDate,
+            IsClosed = isClosed,
+            ClosedDate = closedDate,
+            DungeonMasterSession = dungeonMasterSession,
+            PlayerSignups = [],
+            ProposedDates = []
+        };
+
+    [Fact]
+    public async Task GetCompletedQuestsAsync_IncludesClosedCampaignQuest_WithNoNextDayWait()
+    {
+        // Arrange: closed today, never finalized — must still appear immediately (no next-day wait)
+        var closedToday = MakeCompletedQuestCandidate(1, isFinalized: false, finalizedDate: null, isClosed: true, closedDate: DateTime.UtcNow);
+
+        _repository.GetQuestsWithDetailsAsync(Arg.Any<CancellationToken>())
+            .Returns((IList<Quest>)[closedToday]);
+
+        // Act
+        var result = await _sut.GetCompletedQuestsAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().ContainSingle(q => q.Id == 1);
+    }
+
+    [Fact]
+    public async Task GetCompletedQuestsAsync_PreservesOneShotNextDayWait()
+    {
+        // Arrange: one-shot finalized yesterday (included), one-shot finalized today (excluded — next-day wait)
+        var finalizedYesterday = MakeCompletedQuestCandidate(1, isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(-2), isClosed: false, closedDate: null);
+        var finalizedToday = MakeCompletedQuestCandidate(2, isFinalized: true, finalizedDate: DateTime.UtcNow, isClosed: false, closedDate: null);
+
+        _repository.GetQuestsWithDetailsAsync(Arg.Any<CancellationToken>())
+            .Returns((IList<Quest>)[finalizedYesterday, finalizedToday]);
+
+        // Act
+        var result = await _sut.GetCompletedQuestsAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().ContainSingle(q => q.Id == 1);
+        result.Should().NotContain(q => q.Id == 2);
+    }
+
+    [Fact]
+    public async Task GetCompletedQuestsAsync_OrdersClosedAndFinalizedQuestsTogether_ClosedNotSortedAsNull()
+    {
+        // Arrange: an older one-shot finalized quest and a just-closed campaign quest (ClosedDate=now, FinalizedDate=null)
+        // The closed quest must sort by ClosedDate, not fall to the bottom as a null FinalizedDate.
+        var olderFinalized = MakeCompletedQuestCandidate(1, isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(-5), isClosed: false, closedDate: null);
+        var justClosed = MakeCompletedQuestCandidate(2, isFinalized: false, finalizedDate: null, isClosed: true, closedDate: DateTime.UtcNow);
+
+        _repository.GetQuestsWithDetailsAsync(Arg.Any<CancellationToken>())
+            .Returns((IList<Quest>)[olderFinalized, justClosed]);
+
+        // Act
+        var result = await _sut.GetCompletedQuestsAsync(TestContext.Current.CancellationToken);
+
+        // Assert: newest first — justClosed (ClosedDate=now) before olderFinalized (FinalizedDate=5 days ago)
+        result.Should().HaveCount(2);
+        result[0].Id.Should().Be(2);
+        result[1].Id.Should().Be(1);
+    }
 }
