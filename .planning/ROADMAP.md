@@ -159,7 +159,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 36-03-PLAN.md — Close/Reopen controller actions + authz/CSRF, conditional Create validation, ViewBag.BoardType threading, Quest Log guard fixes, integration tests
+- [x] 36-03-PLAN.md — Close/Reopen controller actions + authz/CSRF, conditional Create validation, ViewBag.BoardType threading, Quest Log guard fixes, integration tests
 
 **Wave 4** *(blocked on Wave 3; 36-04 and 36-05 run in parallel — no file overlap)*
 
@@ -228,5 +228,5 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 36. Campaign Quest Posting & Closing | v6.0 | 2/5 | In Progress|  |
+| 36. Campaign Quest Posting & Closing | v6.0 | 3/5 | In Progress|  |
 | 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |
