@@ -18,7 +18,8 @@ public class QuestController(
     IQuestService questService,
     ICharacterService characterService,
     IReminderJobDispatcher reminderJobDispatcher,
-    IActiveGroupContext activeGroupContext
+    IActiveGroupContext activeGroupContext,
+    IGroupService groupService
     ) : Controller
 {
     [HttpGet]
@@ -58,6 +59,7 @@ public class QuestController(
 
         ViewBag.CurrentUserName = currentUserName;
         ViewBag.CurrentUserId = currentUserId;
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(quests);
     }
 
@@ -72,6 +74,7 @@ public class QuestController(
             return Challenge();
         }
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(new QuestViewModel());
     }
 
@@ -309,6 +312,7 @@ public class QuestController(
         ViewBag.IsDetailsPage = true;
         ViewBag.CurrentQuestId = id;
         ViewBag.CurrentUserId = currentUser?.Id;
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
 
         var signup = new PlayerSignup
         {
@@ -668,6 +672,68 @@ public class QuestController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = "DungeonMasterOnly")]
+    public async Task<IActionResult> Close(int id)
+    {
+        var quest = await questService.GetQuestWithDetailsAsync(id);
+
+        if (quest == null || quest.IsClosed)
+        {
+            return NotFound();
+        }
+
+        var currentUser = await userService.GetUserAsync(User);
+        if (currentUser == null)
+        {
+            return Challenge();
+        }
+
+        // Verify DM authorization
+        var role = await GetEffectiveRoleAsync();
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
+        {
+            return Forbid();
+        }
+
+        // Close the quest using the specialized service method
+        await questService.CloseQuestAsync(id);
+
+        return RedirectToAction("Manage", new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "DungeonMasterOnly")]
+    public async Task<IActionResult> Reopen(int id)
+    {
+        var quest = await questService.GetQuestWithDetailsAsync(id);
+
+        if (quest == null || !quest.IsClosed)
+        {
+            return NotFound();
+        }
+
+        var currentUser = await userService.GetUserAsync(User);
+        if (currentUser == null)
+        {
+            return Challenge();
+        }
+
+        // Verify DM authorization
+        var role = await GetEffectiveRoleAsync();
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
+        {
+            return Forbid();
+        }
+
+        // Reopen the quest using the specialized service method
+        await questService.ReopenQuestAsync(id);
+
+        return RedirectToAction("Manage", new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "DungeonMasterOnly")]
     public async Task<IActionResult> SendReminder(int id, bool forceResend = false, CancellationToken token = default)
     {
         var quest = await questService.GetQuestWithDetailsAsync(id);
@@ -752,6 +818,7 @@ public class QuestController(
         var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         ViewBag.IsAuthorized = isQuestDm || isAdmin;
         ViewBag.IsAdmin = isAdmin;
+        ViewBag.BoardType = await GetActiveBoardTypeAsync();
 
         return View(quest);
     }
@@ -896,6 +963,15 @@ public class QuestController(
         User.IsInRole("SuperAdmin")
             ? GroupRole.Admin
             : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+    // Resolves the active group's board type server-side. Never trust a client-posted
+    // BoardType — a single lookup per render/mutation is fine since BoardType is immutable
+    // per group and every quest on a board shares it.
+    private async Task<BoardType> GetActiveBoardTypeAsync(CancellationToken token = default)
+    {
+        var group = await groupService.GetByIdAsync(activeGroupContext.RequireActiveGroupId(), token);
+        return group?.BoardType ?? BoardType.OneShot;
+    }
 
     // Id-based identity comparison for "is this the quest's DM" — deliberately avoids
     // currentUser.Equals(dungeonMaster), which is full value equality (Id, Name, Email, HasKey,
