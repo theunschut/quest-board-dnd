@@ -23,6 +23,19 @@ public class AccountControllerIntegrationTests(WebApplicationFactoryBase factory
         content.Should().Contain("Login");
     }
 
+    [Fact]
+    public async Task AccessDenied_Get_ShouldReturnSuccessWithGeneralizedCopy()
+    {
+        // Act
+        var response = await _client.GetAsync("/Account/AccessDenied", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("You Don't Have Permission");
+        content.Should().NotContain("Dungeon Master");
+    }
+
     // Public self-registration was removed — the route
     // no longer exists, so both GET and POST must 404.
     [Fact]

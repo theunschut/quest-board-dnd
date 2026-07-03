@@ -354,6 +354,9 @@ public class AdminController(IUserService userService, IQuestService questServic
         return Ok();
     }
 
+    // Requires SuperAdmin in addition to the class-level AdminOnly policy — an Admin who is
+    // not also a SuperAdmin must not see platform-wide email delivery stats.
+    [Authorize(Policy = "SuperAdminOnly")]
     [HttpGet]
     public async Task<IActionResult> EmailStats(bool force = false, CancellationToken token = default)
     {
