@@ -1,5 +1,18 @@
 # Milestones — D&D Quest Board
 
+## v6.0 Board Types (Campaign Mode) (Shipped: 2026-07-03)
+
+**Phases completed:** 3 phases, 11 plans, 28 tasks
+
+**Key accomplishments:**
+
+- Board Type UI shipped across all six Platform Group views (Create/Edit/Index, desktop + mobile) plus a global CSS fix so disabled form fields actually look disabled.
+- Campaign quest board, Manage, Details, and Create views (desktop + mobile) render conditionally on `ViewBag.BoardType` — no CR badge, no signup/date-voting, Close/Reopen buttons on Manage, stripped Create form — with one-shot rendering unchanged.
+- Quest Log Index and Details (desktop + mobile) drop the CR badge and Adventurers count for campaign-closed entries, show the completed date from `ClosedDate` (falling back to `FinalizedDate` for one-shot), and keep the Session Recap flow working unchanged.
+- OneShot allowlist nav gating shipped in both desktop and mobile layouts (LayoutNavigationTests 16/16 green), plus a circular DI dependency fix (new IBoardTypeResolver service) discovered and resolved during the human-verify checkpoint that had left the app unable to start.
+
+---
+
 ## v1.0 — Architecture & Features
 
 **Shipped:** prior to 2026-06

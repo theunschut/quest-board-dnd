@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
-status: milestone_complete
-stopped_at: Milestone complete (Phase 37 was final phase)
-last_updated: 2026-07-03T18:51:26.954Z
-last_activity: 2026-07-03 -- Phase 37 execution started
+status: Awaiting next milestone
+stopped_at: Phase 37 context gathered
+last_updated: "2026-07-03T19:28:15.854Z"
+last_activity: 2026-07-03 — Milestone v6.0 completed and archived
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
   completed_plans: 11
-  percent: 67
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mod
 
 ## Current Position
 
-Phase: 37
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-03
-
-Progress: [░░░░░░░░░░] 0%
+Phase: Milestone v6.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-03 — Milestone v6.0 completed and archived
 
 ## Performance Metrics
 
@@ -97,3 +95,7 @@ Last session: 2026-07-03T16:32:32.120Z
 Stopped at: Phase 37 context gathered
 Resume file: .planning/phases/37-navigation-access-control/37-CONTEXT.md
 Next step: `/gsd:execute-phase 35`
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
