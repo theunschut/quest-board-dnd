@@ -231,6 +231,18 @@ public class QuestController(
             return View(viewModel);
         }
 
+        // BoardType is always resolved server-side from the active group, never trusted
+        // from the posted form. Mirror the sanitization performed in Create so a
+        // Campaign quest can never end up with DM-only-session/CR/player-count values.
+        var boardType = await GetActiveBoardTypeAsync(token);
+        if (boardType == BoardType.Campaign)
+        {
+            viewModel.Quest.ChallengeRating = 1;
+            viewModel.Quest.TotalPlayerCount = 0;
+            viewModel.Quest.DungeonMasterSession = false;
+            viewModel.Quest.ProposedDates = [];
+        }
+
         await questService.UpdateQuestPropertiesWithNotificationsAsync(
             id,
             viewModel.Quest.Title,
