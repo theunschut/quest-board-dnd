@@ -97,3 +97,9 @@ Phase 39 is now fully complete (all 3 plans done). `CreateOrAddToGroupAsync` is 
 ---
 *Phase: 39-shared-collision-aware-user-creation-email*
 *Completed: 2026-07-04*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/Controllers/Admin/AdminController.cs
+- FOUND: 86c580d (Task 1 commit)
+- FOUND: 72b0188 (this SUMMARY's commit)
