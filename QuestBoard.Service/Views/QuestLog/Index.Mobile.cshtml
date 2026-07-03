@@ -1,8 +1,10 @@
 @using QuestBoard.Service.ViewModels.QuestLogViewModels
+@using QuestBoard.Domain.Enums
 @model QuestLogIndexViewModel
 @{
     ViewData["Title"] = "Quest Log";
     ViewData["BodyClass"] = "quest-log-page";
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 @section Styles {
     <link href="~/css/quest-log.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -38,11 +40,14 @@
                      onclick="window.location.href='@Url.Action("Details", "QuestLog", new { id = quest.Id })'">
                     <div class="d-flex justify-content-between align-items-start mb-1">
                         <h6 class="quest-log-item-title mb-0 me-2">@quest.Title</h6>
-                        <span class="badge bg-secondary flex-shrink-0">CR @quest.ChallengeRating</span>
+                        @if (boardType != BoardType.Campaign)
+                        {
+                            <span class="badge bg-secondary flex-shrink-0">CR @quest.ChallengeRating</span>
+                        }
                     </div>
                     <small class="text-muted d-block">
                         <i class="fas fa-calendar-check me-1"></i>
-                        @(quest.FinalizedDate?.ToString("MMM dd, yyyy") ?? "Unknown Date")
+                        @((quest.FinalizedDate ?? quest.ClosedDate)?.ToString("MMM dd, yyyy") ?? "Unknown Date")
                     </small>
                     <small class="text-muted">
                         <i class="fas fa-crown me-1"></i>
