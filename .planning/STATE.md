@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: Bugfixes
 status: planning
-last_updated: "2026-07-03T20:30:02.417Z"
+last_updated: "2026-07-03T00:00:00.000Z"
 last_activity: 2026-07-03
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone shipped and archived)
+See: .planning/PROJECT.md (updated 2026-07-03 — v6.1 Bugfixes milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Milestone complete
+**Current focus:** Phase 38 — Group-Scoped User List
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-03 — Milestone v6.1 started
+Phase: 38 — Group-Scoped User List
+Plan: — (not yet planned)
+Status: Roadmap created, awaiting `/gsd-plan-phase 38`
+Last activity: 2026-07-03 — ROADMAP.md created for v6.1
 
 ## Performance Metrics
 
@@ -40,31 +40,42 @@ Last activity: 2026-07-03 — Milestone v6.1 started
 
 | Phase | Plans | Status |
 |-------|-------|--------|
-| 35. Board Type Configuration | 3/3 | Complete |
-| 36. Campaign Quest Posting & Closing | 5/5 | Complete |
-| 37. Navigation & Access Control | 3/3 | Complete |
+| 38. Group-Scoped User List | 0/TBD | Not started |
+| 39. Shared Collision-Aware User Creation & Email | 0/TBD | Not started |
+| 40. Platform Members Page Redesign | 0/TBD | Not started |
 
 **Recent Trend:**
 
-- v6.0 shipped in ~1.4 days across 3 phases — fastest pace yet, continuing v5.0's acceleration. See .planning/RETROSPECTIVE.md for details.
+- v6.0 shipped in ~1.4 days across 3 phases — fastest pace yet. See .planning/RETROSPECTIVE.md for details.
+- v6.1 is a 3-phase bugfix milestone (8 requirements), continuing directly from Phase 37.
 
 ## Accumulated Context
 
 ### Decisions
 
-v6.0 is shipped and archived. Full decision log: PROJECT.md Key Decisions table; milestone-specific detail: `.planning/milestones/v6.0-ROADMAP.md` and `.planning/RETROSPECTIVE.md`.
+- Phase ordering: Phase 39 (shared collision-aware creation logic) must ship before Phase 40 (Platform Members page) because Phase 40's new create-user entry point reuses Phase 39's shared method — avoids this codebase's recurring duplicated-logic-diverges bug class (see `GetActiveBoardTypeAsync` 3x precedent in PROJECT.md Known Issues).
+- Phase 38 is fully independent and safest to ship first — pure read-path fix, smallest blast radius, closes a live PII leak.
+- MEMBERS-01 was refined after research: the Platform Members page uses a two-column layout (current members left, searchable available-users + Add User + Create New User right), not a single-column redesign. Phase 40's scope reflects this.
+
+Full prior-milestone decision log: PROJECT.md Key Decisions table; v6.0 detail in `.planning/milestones/v6.0-ROADMAP.md` and `.planning/RETROSPECTIVE.md`.
 
 ### Pending Todos
 
-None — awaiting next milestone (`/gsd:new-milestone`).
+None yet — roadmap just created. Next: `/gsd-plan-phase 38`.
 
 ### Blockers/Concerns
 
-None open for v6.0 (shipped clean per `.planning/v6-MILESTONE-AUDIT.md` → now `.planning/milestones/v6.0-MILESTONE-AUDIT.md`).
+None open for v6.1 yet.
 
 Carried forward, still unresolved, not addressed by any milestone yet:
 
 - `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
+
+### Risk Flags for Planning (from research)
+
+- Phase 38: group-scoping join must be an explicit manual join (`UserEntity` has no Global Query Filter) — mirror `UserRepository.GetAllDungeonMasters`/`GetAllPlayers` exactly; add a cross-group-isolation regression test.
+- Phase 39: no consent step before auto-adding an existing user to a group on email collision (by milestone spec) — needs explicit UAT/human-verify since it's a silent privilege-grant path. Build a dedicated `GroupMembershipAddedEmailJob`/`AddedToGroup.razor` with no callback-URL/password-reset token.
+- Phase 40: new Platform `CreateMember`/create-user action must source `groupId` strictly from the route, never from session `IActiveGroupContext` — this exact session/route confusion bug class has already caused two prior incidents (Phase 30, Phase 34.3). Never inject `IActiveGroupContext` into `GroupController`.
 
 ## Deferred Items
 
@@ -79,11 +90,11 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T21:24:23.000Z
-Stopped at: v6.0 milestone archived (phases moved to .planning/milestones/v6.0-phases/)
+Last session: 2026-07-03T00:00:00.000Z
+Stopped at: ROADMAP.md and STATE.md created for v6.1 Bugfixes milestone
 Resume file: —
-Next step: `/gsd:new-milestone`
+Next step: `/gsd-plan-phase 38`
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Review and approve the roadmap, then run `/gsd-plan-phase 38` to begin planning the Group-Scoped User List phase.

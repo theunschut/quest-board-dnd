@@ -41,20 +41,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| USERS-01 | TBD | Pending |
-| CREATE-01 | TBD | Pending |
-| CREATE-02 | TBD | Pending |
-| CREATE-03 | TBD | Pending |
-| CREATE-04 | TBD | Pending |
-| MEMBERS-01 | TBD | Pending |
-| MEMBERS-02 | TBD | Pending |
-| MEMBERS-03 | TBD | Pending |
+| USERS-01 | Phase 38 | Pending |
+| CREATE-01 | Phase 39 | Pending |
+| CREATE-02 | Phase 39 | Pending |
+| CREATE-03 | Phase 39 | Pending |
+| CREATE-04 | Phase 39 | Pending |
+| MEMBERS-01 | Phase 40 | Pending |
+| MEMBERS-02 | Phase 40 | Pending |
+| MEMBERS-03 | Phase 40 | Pending |
 
 **Coverage:**
 - v6.1 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8 ⚠️ (pending roadmap creation)
+- Mapped to phases: 8
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-03 after initial definition*
+*Last updated: 2026-07-03 after roadmap creation (ROADMAP.md phases 38-40)*

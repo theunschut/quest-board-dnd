@@ -8,6 +8,7 @@
 - ✅ **v4.0 Email Notifications** — Phases 20–25 (shipped 2026-06-28)
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
+- 🚧 **v6.1 Bugfixes** — Phases 38–40 (in progress — started 2026-07-03)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it is not assigned to any active milestone._
 
@@ -96,15 +97,62 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 **Overview:** Let a DM choose a group's quest-board type at creation — the existing One-Shot board (date voting + finalization) or a new Campaign board for ongoing games with a fixed party — without forking the controller/service/view stack. Full phase-level detail archived to `.planning/milestones/v6.0-ROADMAP.md`.
 
 - [x] Phase 35: Board Type Configuration — SuperAdmin sets a group's board type at creation; locked afterward (completed 2026-07-03)
-- [x] Phase 36: Campaign Quest Posting & Closing — DM can post, close, and reopen campaign quests with no date voting or per-quest signup, and no quest-related emails are sent (completed 2026-07-03)
-- [x] Phase 37: Navigation & Access Control — Board-type-aware nav visibility, plus Email Stats locked to SuperAdmin only (completed 2026-07-03)
+- [x] Phase 36: Campaign Quest Posting & Closing — DM can post, close, and reopen campaign quests with no date voting or per-quest signup, and no quest-related emails are sent (completed 2026-07-03)
+- [x] Phase 37: Navigation & Access Control — Board-type-aware nav visibility, plus Email Stats locked to SuperAdmin only (completed 2026-07-03)
+
+</details>
+
+<details open>
+<summary>🚧 v6.1 Bugfixes (Phases 38–40) — IN PROGRESS (started 2026-07-03)</summary>
+
+**Overview:** Closes three admin-facing user-management gaps found after v6.0 shipped: a group admin user-list PII leak (`AdminController.Users()` shows every platform user, not just the active group's), a raw `<select>` dropdown on the Platform Members page with no create-user entry point, and a hard-fail on email collision during user creation instead of a friendlier auto-add-to-group flow. All three are additive extensions of existing seams — zero new packages, zero new migrations.
+
+**Requirements:** USERS-01, CREATE-01 through CREATE-04, MEMBERS-01 through MEMBERS-03 (8 total, see `.planning/REQUIREMENTS.md`)
+
+- [ ] Phase 38: Group-Scoped User List — Group admin's Users page shows only members of the active group, closing a cross-tenant PII leak
+- [ ] Phase 39: Shared Collision-Aware User Creation & Email — Creating a user with an existing email adds them to the group instead of failing, with a distinct notification email, applied identically everywhere user creation happens
+- [ ] Phase 40: Platform Members Page Redesign — Two-column Members page with a searchable available-users table and a group-scoped Create New User entry point
+
+### Phase 38: Group-Scoped User List
+**Goal**: A group admin viewing the Users management page sees only members of their currently active group — no other group's users are visible.
+**Depends on**: Nothing (first phase; fully independent read-path fix)
+**Requirements**: USERS-01
+**Success Criteria** (what must be TRUE):
+  1. A group admin opening the Users page sees only users who belong to the currently active group
+  2. A group admin never sees a user from a different group on the Users page, even when multiple groups share the platform
+  3. Each listed user still shows their correct role within the active group (no regression from the existing per-user role display)
+**Plans**: TBD
+
+### Phase 39: Shared Collision-Aware User Creation & Email
+**Goal**: Creating a user whose email already exists on the platform adds that person to the target group instead of failing, and everyone affected is notified appropriately — with identical behavior regardless of which screen triggered the creation.
+**Depends on**: Nothing structurally, but must complete before Phase 40 (Platform's create-user entry point reuses this phase's shared method)
+**Requirements**: CREATE-01, CREATE-02, CREATE-03, CREATE-04
+**Success Criteria** (what must be TRUE):
+  1. An admin submitting the Create User form with an email that belongs to an existing user (not yet in this group) adds that user to the group with the selected role, instead of showing a duplicate-account error
+  2. A user added to a group via the email-collision path receives a "you've been added to a group" email that is visibly distinct from the new-account welcome email and contains no set-password link
+  3. An admin submitting the Create User form with an email that already belongs to a member of the current group sees a friendly "already a member" message, not a duplicate-membership error
+  4. A brand-new email address still creates a new account and sends the existing welcome email, unchanged
+  5. The group-admin Create User form and the (not-yet-built) platform-level create-user entry point both exhibit identical collision behavior once Phase 40 wires the platform entry point onto this phase's shared method
+**Plans**: TBD
+
+### Phase 40: Platform Members Page Redesign
+**Goal**: A SuperAdmin managing a group's membership sees current members and searchable non-member users side by side, and can create a new user scoped to that group without leaving the page.
+**Depends on**: Phase 39 (reuses the shared collision-aware creation method for its Create New User entry point)
+**Requirements**: MEMBERS-01, MEMBERS-02, MEMBERS-03
+**Success Criteria** (what must be TRUE):
+  1. The Platform group Members page shows a two-column layout — current group members on the left, other platform users on the right
+  2. The right-hand column lets a SuperAdmin filter the non-member user list by typing part of a name or email, replacing the plain dropdown select
+  3. A SuperAdmin can add a listed non-member user to the group directly from the right-hand column
+  4. The right-hand column has a "Create New User" entry point that creates or adds (per the Phase 39 collision behavior) a user scoped to the group being managed, without requiring a session-level active group
+**Plans**: TBD
+**UI hint**: yes
 
 </details>
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -148,3 +196,6 @@ Phases execute in numeric order: 35 → 36 → 37
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
 | 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
+| 38. Group-Scoped User List | v6.1 | 0/TBD | Not started | — |
+| 39. Shared Collision-Aware User Creation & Email | v6.1 | 0/TBD | Not started | — |
+| 40. Platform Members Page Redesign | v6.1 | 0/TBD | Not started | — |
