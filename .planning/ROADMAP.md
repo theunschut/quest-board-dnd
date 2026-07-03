@@ -151,7 +151,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 36-01-PLAN.md — Data foundation: IsClosed/ClosedDate on entity + domain model, EF migration, campaign-group + closed-quest test seeding
+- [x] 36-01-PLAN.md — Data foundation: IsClosed/ClosedDate on entity + domain model, EF migration, campaign-group + closed-quest test seeding
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -228,5 +228,5 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 36. Campaign Quest Posting & Closing | v6.0 | 0/5 | Not started | - |
+| 36. Campaign Quest Posting & Closing | v6.0 | 1/5 | In Progress|  |
 | 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |
