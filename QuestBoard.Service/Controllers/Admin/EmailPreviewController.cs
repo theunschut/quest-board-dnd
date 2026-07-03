@@ -29,6 +29,7 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
               <li><a href="{{appUrl}}/EmailPreview/QuestDateChanged">Quest Date Changed</a></li>
               <li><a href="{{appUrl}}/EmailPreview/SessionReminder">Session Reminder</a></li>
               <li><a href="{{appUrl}}/EmailPreview/Welcome">Welcome</a></li>
+              <li><a href="{{appUrl}}/EmailPreview/AddedToGroup">Added To Group</a></li>
               <li><a href="{{appUrl}}/EmailPreview/ForgotPassword">Forgot Password</a></li>
               <li><a href="{{appUrl}}/EmailPreview/ChangeEmailConfirm">Change Email Confirm</a></li>
             </ul></body></html>
@@ -79,6 +80,21 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
             [nameof(Components.Emails.Welcome.UserName)] = "Arannis",
             [nameof(Components.Emails.Welcome.CallbackUrl)] = $"{appUrl}/Account/SetPassword?userId=preview&token=preview-token",
             [nameof(Components.Emails.Welcome.AppUrl)] = appUrl,
+        });
+        return Content(html, "text/html");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> AddedToGroup()
+    {
+        var appUrl = emailOptions.Value.AppUrl;
+        var html = await emailRenderService.RenderAsync<Components.Emails.AddedToGroup>(new()
+        {
+            [nameof(Components.Emails.AddedToGroup.UserName)] = "Arannis",
+            [nameof(Components.Emails.AddedToGroup.GroupName)] = "The Iron Vanguard",
+            [nameof(Components.Emails.AddedToGroup.Role)] = "Player",
+            [nameof(Components.Emails.AddedToGroup.LoginUrl)] = $"{appUrl}/Account/Login",
+            [nameof(Components.Emails.AddedToGroup.AppUrl)] = appUrl,
         });
         return Content(html, "text/html");
     }
