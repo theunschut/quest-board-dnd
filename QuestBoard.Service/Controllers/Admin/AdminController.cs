@@ -26,7 +26,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction("Index", "GroupPicker");
 
-        var allUsers = await userService.GetAllAsync();
+        var allUsers = await userService.GetAllGroupMembersAsync(groupId.Value);
         var userViewModels = new List<UserManagementViewModel>();
 
         foreach (var user in allUsers)
@@ -58,6 +58,9 @@ public class AdminController(IUserService userService, IQuestService questServic
     {
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
+        // Guard against a crafted POST for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
+        if (targetRole == null) return RedirectToAction(nameof(Users));
         await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Admin);
         return RedirectToAction(nameof(Users));
     }
@@ -68,6 +71,9 @@ public class AdminController(IUserService userService, IQuestService questServic
     {
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
+        // Guard against a crafted POST for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
+        if (targetRole == null) return RedirectToAction(nameof(Users));
         await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Player);
         return RedirectToAction(nameof(Users));
     }
@@ -78,6 +84,9 @@ public class AdminController(IUserService userService, IQuestService questServic
     {
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
+        // Guard against a crafted POST for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
+        if (targetRole == null) return RedirectToAction(nameof(Users));
         await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.DungeonMaster);
         return RedirectToAction(nameof(Users));
     }
@@ -88,6 +97,9 @@ public class AdminController(IUserService userService, IQuestService questServic
     {
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
+        // Guard against a crafted POST for a user outside the active group
+        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
+        if (targetRole == null) return RedirectToAction(nameof(Users));
         await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Player);
         return RedirectToAction(nameof(Users));
     }
