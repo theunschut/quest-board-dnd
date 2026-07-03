@@ -1,8 +1,10 @@
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Service.ViewModels.QuestViewModels
 @model QuestViewModel
 @{
     ViewData["Title"] = "Create Quest";
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 <div class="row">
@@ -29,53 +31,56 @@
                         <span asp-validation-for="Description" class="text-danger"></span>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="ChallengeRating" class="form-label">Challenge Rating <span class="text-danger">*</span></label>
-                        <input asp-for="ChallengeRating" type="number" class="form-control" min="1" max="20" step="1" placeholder="Enter level (e.g., 1, 5, 10, 15)" />
-                        <div class="form-text text-muted">Enter the recommended player level for this quest (1-20). This helps players understand if the quest is appropriate for their character level.</div>
-                        <span asp-validation-for="ChallengeRating" class="text-danger"></span>
-                    </div>
-
-
-                    <div class="mb-3">
-                        <label asp-for="TotalPlayerCount" class="form-label">Total Player Count <span class="text-danger">*</span></label>
-                        <input asp-for="TotalPlayerCount" inputmode="numeric" class="form-control" />
-                        <span asp-validation-for="TotalPlayerCount" class="text-danger"></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input asp-for="DungeonMasterSession" class="form-check-input" type="checkbox" />
-                            <label asp-for="DungeonMasterSession" class="form-check-label">
-                                <i class="fas fa-crown text-warning me-2"></i>Dungeon Master Session Only
-                            </label>
+                    @if (boardType != BoardType.Campaign)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="ChallengeRating" class="form-label">Challenge Rating <span class="text-danger">*</span></label>
+                            <input asp-for="ChallengeRating" type="number" class="form-control" min="1" max="20" step="1" placeholder="Enter level (e.g., 1, 5, 10, 15)" />
+                            <div class="form-text text-muted">Enter the recommended player level for this quest (1-20). This helps players understand if the quest is appropriate for their character level.</div>
+                            <span asp-validation-for="ChallengeRating" class="text-danger"></span>
                         </div>
-                        <div class="form-text text-muted">Check this box to make this quest visible only to Dungeon Masters and Admins. Regular players will not be able to see or sign up for this quest.</div>
-                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Proposed Dates & Times <span class="text-danger">*</span></label>
-                        <div id="proposed-dates">
-                            @for (int i = 0; i < Model.ProposedDates.Count; i++)
-                            {
-                                <div class="mb-3 proposed-date-item">
-                                    <label class="form-label">Proposed Date @(i + 1)</label>
-                                    <div class="input-group">
-                                        <input asp-for="ProposedDates[i]" type="datetime-local" class="form-control" required step="60" />
-                                        <button type="button" class="btn btn-danger" onclick="removeProposedDate(this)">
-                                            <i class="fas fa-trash me-1"></i>Remove
-                                        </button>
+
+                        <div class="mb-3">
+                            <label asp-for="TotalPlayerCount" class="form-label">Total Player Count <span class="text-danger">*</span></label>
+                            <input asp-for="TotalPlayerCount" inputmode="numeric" class="form-control" />
+                            <span asp-validation-for="TotalPlayerCount" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input asp-for="DungeonMasterSession" class="form-check-input" type="checkbox" />
+                                <label asp-for="DungeonMasterSession" class="form-check-label">
+                                    <i class="fas fa-crown text-warning me-2"></i>Dungeon Master Session Only
+                                </label>
+                            </div>
+                            <div class="form-text text-muted">Check this box to make this quest visible only to Dungeon Masters and Admins. Regular players will not be able to see or sign up for this quest.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Proposed Dates &amp; Times <span class="text-danger">*</span></label>
+                            <div id="proposed-dates">
+                                @for (int i = 0; i < Model.ProposedDates.Count; i++)
+                                {
+                                    <div class="mb-3 proposed-date-item">
+                                        <label class="form-label">Proposed Date @(i + 1)</label>
+                                        <div class="input-group">
+                                            <input asp-for="ProposedDates[i]" type="datetime-local" class="form-control" required step="60" />
+                                            <button type="button" class="btn btn-danger" onclick="removeProposedDate(this)">
+                                                <i class="fas fa-trash me-1"></i>Remove
+                                            </button>
+                                        </div>
+                                        <span asp-validation-for="ProposedDates[i]" class="text-danger"></span>
                                     </div>
-                                    <span asp-validation-for="ProposedDates[i]" class="text-danger"></span>
-                                </div>
-                            }
+                                }
+                            </div>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="addProposedDate()">
+                                <i class="fas fa-plus me-1"></i>Add Another Date Option
+                            </button>
+                            <div class="form-text text-muted">Provide multiple date/time options for players to vote on. At least one date is required.</div>
+                            <span asp-validation-for="ProposedDates" class="text-danger"></span>
                         </div>
-                        <button type="button" class="btn btn-warning btn-sm" onclick="addProposedDate()">
-                            <i class="fas fa-plus me-1"></i>Add Another Date Option
-                        </button>
-                        <div class="form-text text-muted">Provide multiple date/time options for players to vote on. At least one date is required.</div>
-                        <span asp-validation-for="ProposedDates" class="text-danger"></span>
-                    </div>
+                    }
 
                     <div class="mb-3">
                         <button type="submit" class="btn btn-warning me-2">
