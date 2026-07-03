@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: Bugfixes
 current_phase: 39
-current_phase_name: Shared Collision-Aware User Creation & Email
+current_phase_name: shared-collision-aware-user-creation-email
 status: executing
-stopped_at: Phase 39 context gathered
-last_updated: "2026-07-03T22:57:57.082Z"
+stopped_at: Completed 39-01-PLAN.md
+last_updated: "2026-07-03T23:07:21.333Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 38 complete, transitioned to Phase 39
+last_activity_desc: Plan 39-01 complete (shared collision-aware creation method)
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 4
+  completed_plans: 2
   percent: 25
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03 — v6.1 Bugfixes milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 38 — group-scoped-user-list
+**Current focus:** Phase 39 — shared-collision-aware-user-creation-email
 
 ## Current Position
 
-Phase: 39 — Shared Collision-Aware User Creation & Email
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-03 — Phase 38 complete, transitioned to Phase 39
+Phase: 39 (shared-collision-aware-user-creation-email) — EXECUTING
+Plan: 2 of 3
+Status: Executing Phase 39
+Last activity: 2026-07-03 — Plan 39-01 complete (shared collision-aware creation method)
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Last activity: 2026-07-03 — Phase 38 complete, transitioned to Phase 39
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 38. Group-Scoped User List | 1/1 | Complete — ready for verification |
-| 39. Shared Collision-Aware User Creation & Email | 0/TBD | Not started |
+| 39. Shared Collision-Aware User Creation & Email | 1/3 | In progress |
 | 40. Platform Members Page Redesign | 0/TBD | Not started |
 
 **Recent Trend:**
@@ -54,6 +54,7 @@ Last activity: 2026-07-03 — Phase 38 complete, transitioned to Phase 39
 - v6.1 is a 3-phase bugfix milestone (8 requirements), continuing directly from Phase 37.
 
 | Phase 38 P01 | 25min | 3 tasks | 6 files |
+| Phase 39 P01 | 12min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Full prior-milestone decision log: PROJECT.md Key Decisions table; v6.0 detail i
 
 - [Phase 38]: Added a dedicated GetAllGroupMembers/GetAllGroupMembersAsync method rather than unioning GetAllDungeonMasters+GetAllPlayers, per plan's explicit non-default choice
 - [Phase 38]: Membership guard on the four role-change POST actions reuses existing GetGroupRoleByIdAsync(userId, groupId) rather than adding a new IsMemberOfGroupAsync method
+- [Phase 39]: UserService now composes IGroupService (constructor dependency) to use throw-on-collision AddMemberAsync for already-member detection, diverging from AdminController.CreateUser's current upsert-based SetGroupRoleAsync
 
 ### Pending Todos
 
@@ -99,11 +101,11 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T22:35:09.984Z
-Stopped at: Phase 39 context gathered
-Resume file: .planning/phases/39-shared-collision-aware-user-creation-email/39-CONTEXT.md
-Next step: `/gsd-execute-phase 38`
+Last session: 2026-07-03T23:07:21.320Z
+Stopped at: Completed 39-01-PLAN.md
+Resume file: None
+Next step: `/gsd-execute-phase 39` (continue with Plan 02)
 
 ## Operator Next Steps
 
-- Run `/gsd-execute-phase 38` to execute the Group-Scoped User List plan (1 plan, 1 wave, 3 tasks, verification passed).
+- Run `/gsd-execute-phase 39` to continue with Plan 02 (AddedToGroup email job/template) of the Shared Collision-Aware User Creation & Email phase.
