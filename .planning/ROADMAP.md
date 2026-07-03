@@ -146,7 +146,27 @@ Plans:
   5. A closed campaign quest appears in the Quest Log right away (no next-day wait), while one-shot finalized quests keep their existing next-day Quest Log behavior unchanged
   6. No email is sent (posted/reminder/finalized) for any quest action inside a campaign group — verified for post, close, and reopen
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 36-01-PLAN.md — Data foundation: IsClosed/ClosedDate on entity + domain model, EF migration, campaign-group + closed-quest test seeding
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 36-02-PLAN.md — Close/Reopen service+repository methods (no email), IsClosed-aware board filters + Quest Log OR-branch, unit tests (RED→GREEN)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 36-03-PLAN.md — Close/Reopen controller actions + authz/CSRF, conditional Create validation, ViewBag.BoardType threading, Quest Log guard fixes, integration tests
+
+**Wave 4** *(blocked on Wave 3; 36-04 and 36-05 run in parallel — no file overlap)*
+
+- [ ] 36-04-PLAN.md — Campaign board/Manage/Details/Create views (desktop + mobile): Open/Closed seal, CR/signup removal, Close/Reopen buttons, stripped Create form + human-verify
+- [ ] 36-05-PLAN.md — Campaign Quest Log views (desktop + mobile): CR/Adventurers removal, ClosedDate display, recap preserved + human-verify
+
+**UI hint**: yes
 
 ### Phase 37: Navigation & Access Control
 
@@ -208,5 +228,5 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 36. Campaign Quest Posting & Closing | v6.0 | 0/? | Not started | - |
+| 36. Campaign Quest Posting & Closing | v6.0 | 0/5 | Not started | - |
 | 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |
