@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
-status: executing
-stopped_at: Phase 35 planned (3 plans)
-last_updated: "2026-07-03T11:29:04.142Z"
+status: milestone_complete
+stopped_at: Milestone complete (Phase 35 was final phase)
+last_updated: 2026-07-03T12:17:24.801Z
 last_activity: 2026-07-03 -- Phase 35 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 3
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 35 — board-type-configuration
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 35 (board-type-configuration) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 35
-Last activity: 2026-07-03 -- Phase 35 execution started
+Phase: 35
+Plan: Not started
+Status: Milestone complete
+Last activity: 2026-07-03
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -47,6 +47,7 @@ Progress: [░░░░░░░░░░] 0%
 | 35. Board Type Configuration | 0/3 | - | - |
 | 36. Campaign Quest Posting & Closing | 0/? | - | - |
 | 37. Navigation & Access Control | 0/? | - | - |
+| 35 | 3 | - | - |
 
 **Recent Trend:**
 

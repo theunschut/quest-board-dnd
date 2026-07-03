@@ -207,6 +207,6 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.1. Security & Bugs | v5.0 | 2/2 | Complete | 2026-07-02 |
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
-| 35. Board Type Configuration | v6.0 | 3/3 | Complete   | 2026-07-03 |
+| 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 36. Campaign Quest Posting & Closing | v6.0 | 0/? | Not started | - |
 | 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |

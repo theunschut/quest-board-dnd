@@ -52,8 +52,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BOARD-01 | Phase 35 | Pending |
-| BOARD-02 | Phase 35 | Pending |
+| BOARD-01 | Phase 35 | Complete |
+| BOARD-02 | Phase 35 | Complete |
 | CQUEST-01 | Phase 36 | Pending |
 | CQUEST-02 | Phase 36 | Pending |
 | CQUEST-03 | Phase 36 | Pending |
