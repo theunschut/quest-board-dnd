@@ -18,7 +18,7 @@ using System.Threading.RateLimiting;
 namespace QuestBoard.Service.Controllers.Admin;
 
 [Authorize(Policy = "AdminOnly")]
-public class AdminController(IUserService userService, IQuestService questService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient) : Controller
+public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Users()
@@ -122,38 +122,71 @@ public class AdminController(IUserService userService, IQuestService questServic
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction("Index", "GroupPicker");
 
-        var result = await userService.CreateAsync(model.Email, model.Name);
+        var result = await userService.CreateOrAddToGroupAsync(model.Email, model.Name, groupId.Value, model.GroupRole);
 
-        if (result.Succeeded)
+        switch (result.Outcome)
         {
-            var userId = await identityService.GetIdByEmailAsync(model.Email);
-            if (userId.HasValue)
-            {
-                await userService.SetGroupRoleAsync(userId.Value, groupId.Value, model.GroupRole);
-
-                var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(userId.Value);
-                if (rawToken != null)
+            case CreateOrAddToGroupOutcome.NewAccountCreated:
                 {
-                    var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
-                    var callbackUrl = Url.Action("SetPassword", "Account", new { userId = userId.Value, token = encodedToken }, Request.Scheme);
-                    if (callbackUrl == null)
-                        // userId is a database-internal integer identifier, not personal data — despite
-                        // flowing from GetIdByEmailAsync(model.Email), it carries no PII of its own.
-                        logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", userId.Value);
-                    else
-                        jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(model.Email, model.Name, callbackUrl, true, CancellationToken.None));
+                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
+                    if (rawToken != null)
+                    {
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
+                        var callbackUrl = Url.Action("SetPassword", "Account", new { userId = result.UserId.Value, token = encodedToken }, Request.Scheme);
+                        if (callbackUrl == null)
+                            // userId is a database-internal integer identifier, not personal data — despite
+                            // flowing from the newly created account, it carries no PII of its own.
+                            logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", result.UserId.Value);
+                        else
+                            jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(model.Email, model.Name, callbackUrl, true, CancellationToken.None));
+                    }
+
+                    return this.RedirectWithSuccess(nameof(Users), $"Account created for {model.Name}. A welcome email with a set-password link has been sent.");
                 }
-            }
 
-            return this.RedirectWithSuccess(nameof(Users), $"Account created for {model.Name}. A welcome email with a set-password link has been sent.");
+            case CreateOrAddToGroupOutcome.AddedToGroup:
+                {
+                    var group = await groupService.GetByIdAsync(groupId.Value);
+                    var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
+                    if (loginUrl == null || group == null)
+                        logger.LogError("Failed to generate Login callback URL or resolve group for userId {UserId}", result.UserId);
+                    else
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
+
+                    return this.RedirectWithSuccess(nameof(Users), $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.");
+                }
+
+            case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
+                {
+                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
+                    if (rawToken != null)
+                    {
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
+                        var callbackUrl = Url.Action("SetPassword", "Account", new { userId = result.UserId.Value, token = encodedToken }, Request.Scheme);
+                        if (callbackUrl == null)
+                            logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", result.UserId.Value);
+                        else
+                        {
+                            var hasExistingPassword = await userService.HasPasswordAsync(result.UserId.Value);
+                            jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, callbackUrl, !hasExistingPassword, CancellationToken.None));
+                        }
+                    }
+
+                    return this.RedirectWithSuccess(nameof(Users), $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.");
+                }
+
+            case CreateOrAddToGroupOutcome.AlreadyMember:
+                return this.RedirectWithWarning(nameof(Users), $"{result.Name} is already a member of this group.");
+
+            case CreateOrAddToGroupOutcome.Failed:
+            default:
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error);
+                }
+
+                return View(model);
         }
-
-        foreach (var error in result.Errors)
-        {
-            ModelState.AddModelError(string.Empty, error.Description);
-        }
-
-        return View(model);
     }
 
     [HttpGet]
