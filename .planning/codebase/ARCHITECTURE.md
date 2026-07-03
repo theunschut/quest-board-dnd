@@ -1,15 +1,19 @@
-<!-- refreshed: 2026-07-02 -->
+<!-- refreshed: 2026-07-03 -->
+<!-- last_mapped_commit: e5b37a73cda29bf355c4de6ebf4663b1625c3cf6 -->
 # Architecture
 
-**Analysis Date:** 2026-07-02
+**Analysis Date:** 2026-07-03
 
 ## System Overview
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     Service Layer (ASP.NET Core MVC)            │
-│  Controllers | Views | ViewModels | Authorization | Middleware  │
-│         QuestBoard.Service/                                      │
+┌──────────────────────────────────────────────────────────────────┐
+│  HTTP Request Entry → Kestrel (Port 8080)                        │
+│  QuestBoard.Service/Program.cs: DI, Middleware, Routing Setup    │
+├──────────────────────────────────────────────────────────────────┤
+│              Service Layer (ASP.NET Core 10 MVC)                 │
+│  Controllers | Views | ViewModels | Authorization | Middleware   │
+│         QuestBoard.Service/                                       │
 ├──────────────┬──────────────────────┬───────────────────────────┤
 │   QuestBoard │   Admin/Account/     │    Platform Area          │
 │  Controllers │ Authorization        │    /platform/group/*      │
@@ -38,7 +42,7 @@
                         │
                         ▼
         ┌────────────────────────────────┐
-        │  SQL Server Database (Local)   │
+        │  SQL Server Database (Container)   │
         │  AspNetSessionState table      │
         │  (distributed cache)           │
         └────────────────────────────────┘
@@ -55,6 +59,26 @@ Background Job Processing:
         → ActiveGroupContextService.SetGroupId(groupId)
         → Domain Services + Repositories
         → Email/Reminder Dispatch
+
+
+Deployment Pipeline:
+        Source (main branch) → GitHub Actions (.github/workflows/)
+                            │
+                    ┌───────┴───────┐
+                    │               │
+            .NET CI Build    Docker Build & Publish
+          (dotnet.yml)      (docker-publish.yml)
+                │                   │
+        Build/Test/Verify    Build multi-stage Docker image
+                │            Push to ghcr.io (on tag)
+                │                   │
+                └───────────┬───────┘
+                            │
+                Production Deployment
+             docker-compose.yml (container host)
+             ├─ QuestBoard container (ghcr.io image)
+             ├─ SQL Server 2022 container
+             └─ Shared network: net-dnd
 ```
 
 ## Component Responsibilities
@@ -192,6 +216,79 @@ Background Job Processing:
 - Triggers: Cron schedule (09:00 daily for session reminders); ad-hoc via `IBackgroundJobClient.Enqueue` for quest finalization emails.
 - Responsibilities: Background email dispatch, retry logic with exponential backoff (5 attempts: 1/2/4/8/16 seconds).
 
+## Deployment & CI/CD Pipeline
+
+**Production Deployment:**
+- **Container runtime:** `ghcr.io/theunschut/dnd-quest-board:latest` (published via GitHub Actions on semver tags)
+- **Deployment method:** `docker-compose.yml` on container host
+- **Services:** QuestBoard application container (port 8080 internal) + SQL Server 2022 container
+- **Network:** Shared Docker network `net-dnd` for service-to-service communication
+- **Persistence:** SQL Server data volume (`sqlserver_data:/var/opt/mssql`)
+- **Health checks:** Application exposes `/health` endpoint (Kestrel responds after migrations auto-apply)
+
+**Build Pipeline (.NET CI):**
+- **File:** `.github/workflows/dotnet.yml`
+- **Trigger:** Push to `main` or any pull request
+- **Environment:** Ubuntu-latest, .NET 10 (note: workflow specifies 8.0.x but project uses .NET 10)
+- **Steps:** Restore → Build → Test
+- **Scope:** Builds all three projects (Domain, Repository, Service); runs unit + integration tests
+
+**Docker Build Pipeline:**
+- **File:** `.github/workflows/docker-publish.yml`
+- **Trigger:** Semver tag push (e.g., `git tag v1.2.3 && git push origin v1.2.3`)
+- **Registry:** GitHub Container Registry (ghcr.io)
+- **Image name:** `ghcr.io/theunschut/dnd-quest-board:{version}`
+- **Build:** Multi-stage Dockerfile with BuildKit cache mounts for NuGet packages
+  - Stage 1 (`base`): Runtime image (ASP.NET Core 10 runtime)
+  - Stage 2 (`build`): SDK image; restores packages, builds Service project
+  - Stage 3 (`publish`): Publishes Release build to `/app/publish`
+  - Stage 4 (`final`): Copies artifacts to runtime; sets environment variables
+- **Optimization:** `--mount=type=cache` for NuGet packages; BuildKit inline cache to GHA
+- **Signing:** Cosign-signs published image with Rekor transparency log
+- **Output:** Ready-to-run image with entrypoint `dotnet QuestBoard.Service.dll`
+
+**Dockerfile Multi-Stage Build:**
+- **Base stage:** `mcr.microsoft.com/dotnet/aspnet:10.0` (runtime only, ~200MB)
+- **Build stage:** `mcr.microsoft.com/dotnet/sdk:10.0` (full SDK, builds Release configuration)
+- **Publish stage:** Publishes to `/app/publish` (stripped of debug symbols)
+- **Final stage:** Copies only published artifacts; discards SDK + source
+- **Env vars:** `ASPNETCORE_URLS=http://+:8080`, `ASPNETCORE_ENVIRONMENT=Production`
+- **Health probe:** Docker Compose health check uses `curl http://localhost:8080/health`
+
+**Docker Compose (Development & Production):**
+- **Services:**
+  - `questboard`: Application container (port 7080 external → 8080 internal)
+    - Depends on SQL Server (`depends_on`)
+    - Environment: Production mode, connection string points to `sqlserver` service name
+    - Restart: Unless-stopped (survives host reboot)
+    - Health check: HTTP GET /health with 3 retries, 40s start period
+  - `sqlserver`: SQL Server 2022 image
+    - Port 1433 exposed for local admin queries
+    - Data volume persists database
+    - Environment: SA password (from .env)
+    - Restart: Unless-stopped
+- **Networking:** External network `net-dnd` (created manually or by Compose)
+- **Configuration:** Database and email settings via environment variables (not committed secrets)
+
+**Migration Tooling:**
+- **File:** `.config/dotnet-tools.json` (local tool manifest)
+- **Tool:** `dotnet-ef` v9.0.6 (Entity Framework CLI)
+- **Usage:** `dotnet ef migrations add MigrationName --project ../QuestBoard.Repository`
+- **Helper script:** `create-migration.sh` (Windows WSL/Git Bash) — documents the migration workflow
+
+**Solution File:**
+- **File:** `QuestBoard.slnx` (modern solution format)
+- **Structure:** 
+  - Platform targets: Any CPU, x64, x86
+  - `/Tests/` folder: Unit tests + Integration tests
+  - Production projects: Domain, Repository, Service (in dependency order)
+- **Purpose:** IDE navigation, batch build for all platforms, test grouping
+
+**Build Context Optimization:**
+- **File:** `.dockerignore`
+- **Excludes:** Node modules, compiled output (bin/obj), git files, IDE settings, test projects, Docker files themselves
+- **Benefit:** Reduces Docker build context size (faster COPY operations in Dockerfile)
+
 ## Architectural Constraints
 
 - **Threading:** Single-threaded ASP.NET Core request loop (Kestrel); Hangfire background threads pool-based (2 workers configured in Program.cs line 245).
@@ -200,6 +297,8 @@ Background Job Processing:
 - **No UserEntity query filter:** EF Core Identity requires unrestricted user queries (login, token generation, password reset all fail if UserEntity is filtered). Chart note: UserEntity intentionally excluded from global filters (QuestBoardContext line 254).
 - **Session persistence:** Hangfire jobs cannot access `HttpContext.Session` (no HttpContext in background threads). `ActiveGroupContextService.SetGroupId()` bridges this gap.
 - **SuperAdmin group scoping:** SuperAdmin intentionally has `ActiveGroupId = null` (sees all data) to manage cross-tenant concerns. Check `GroupSessionMiddleware` line 65–66 and `GroupPickerController` line 19 for SuperAdmin bypass.
+- **Docker network:** Production deployment requires pre-created `net-dnd` network (or Compose auto-creates on first `up`). Service-to-service comms use service name `sqlserver` (not `localhost`), not container IP.
+- **Database migration timing:** Migrations auto-apply during `Program.cs` startup (`context.Database.Migrate()`), blocking HTTP requests until complete. Large schemas or slow connections extend app startup time.
 
 ## Anti-Patterns
 
@@ -227,6 +326,14 @@ Background Job Processing:
 
 **Do this instead:** Use `QuestBoard.Service`, `QuestBoard.Domain`, `QuestBoard.Repository` exclusively. The old `EuphoriaInn.*` directories may still exist in the repo (for legacy test fixtures), but all active code uses the new names.
 
+### Using Localhost in Docker Compose Connection String
+
+**What happens:** A developer hardcodes `Server=localhost` in the connection string, then runs the app in a Docker container.
+
+**Why it's wrong:** Inside a container, `localhost` refers to the container itself, not the host or other containers. SQL Server on a different container becomes unreachable; connection hangs and times out.
+
+**Do this instead:** Use the service name from `docker-compose.yml`: `Server=sqlserver;Database=QuestBoard;...` (as seen in `docker-compose.yml` line 13). Host development can still use `localhost` (via appsettings.Development.json or .env overrides).
+
 ## Error Handling
 
 **Strategy:** Layered error responses with minimal end-user exposure.
@@ -238,6 +345,7 @@ Background Job Processing:
 - **Database failures** (500): Unhandled exceptions propagate to ASP.NET Core error handler middleware (`app.UseExceptionHandler("/Error")`).
 - **Hangfire job failures** (logged, retried): AutomaticRetryAttribute with exponential backoff (5 attempts, 1/2/4/8/16 seconds). Failed job details visible in Hangfire dashboard (SuperAdmin only).
 - **Rate limit violations** (429): `EnableRateLimiting` on actions; custom handler writes "Too many requests" response.
+- **Container health check failures:** If `/health` endpoint is down for 40s+ (start period), Docker marks container unhealthy; orchestration tools can restart it.
 
 ## Cross-Cutting Concerns
 
@@ -256,4 +364,4 @@ Background Job Processing:
 
 ---
 
-*Architecture analysis: 2026-07-02*
+*Architecture analysis: 2026-07-03*

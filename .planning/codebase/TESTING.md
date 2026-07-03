@@ -1,6 +1,7 @@
 # Testing Patterns
 
 **Analysis Date:** 2026-07-02
+**last_mapped_commit:** e5b37a73cda29bf355c4de6ebf4663b1625c3cf6
 
 ## Test Framework
 
@@ -21,7 +22,10 @@
 
 **Run Commands:**
 ```bash
-# Run all tests
+# Run all tests (via CI pipeline)
+dotnet test --no-build --verbosity normal
+
+# Run all tests (with full build)
 dotnet test
 
 # Run all unit tests only
@@ -39,6 +43,11 @@ dotnet test --verbosity detailed
 # Run tests from solution root
 dotnet test --filter "FullyQualifiedName~UnitTests"
 ```
+
+**CI Pipeline** (`.github/workflows/dotnet.yml`):
+- Runs on: `ubuntu-latest` with .NET 8.0.x
+- Sequence: `dotnet restore` → `dotnet build --no-restore` → `dotnet test --no-build --verbosity normal`
+- Triggers: on push to `main` and on pull requests
 
 ## Test File Organization
 
@@ -359,4 +368,4 @@ global using Microsoft.Extensions.DependencyInjection;
 
 ---
 
-*Testing analysis: 2026-07-02*
+*Testing analysis: 2026-07-02 (updated 2026-07-03)*
