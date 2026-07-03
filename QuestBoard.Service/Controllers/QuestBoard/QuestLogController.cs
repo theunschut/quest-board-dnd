@@ -86,10 +86,11 @@ public class QuestLogController(
             return NotFound();
         }
 
-        // Verify this is a completed quest, admitting closed campaign quests even though
-        // they never set FinalizedDate.
+        // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
+        // admitting closed campaign quests even though they never set FinalizedDate.
         var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
-            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date;
+            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+            && !quest.DungeonMasterSession;
         if (!isCompletedOneShot && !quest.IsClosed)
         {
             return BadRequest("Cannot update recap for a quest that is not completed.");
