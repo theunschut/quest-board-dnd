@@ -96,7 +96,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 **Overview:** Let a DM choose a group's quest-board type at creation — the existing One-Shot board (date voting + finalization) or a new Campaign board for ongoing games with a fixed party — without forking the controller/service/view stack.
 
 - [x] Phase 35: Board Type Configuration — SuperAdmin sets a group's board type at creation; locked afterward (completed 2026-07-03)
-- [ ] Phase 36: Campaign Quest Posting & Closing — DM can post, close, and reopen campaign quests with no date voting or per-quest signup, and no quest-related emails are sent
+- [x] Phase 36: Campaign Quest Posting & Closing — DM can post, close, and reopen campaign quests with no date voting or per-quest signup, and no quest-related emails are sent (completed 2026-07-03)
 - [ ] Phase 37: Navigation & Access Control — Board-type-aware nav visibility, plus Email Stats locked to SuperAdmin only
 
 </details>
@@ -164,7 +164,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3; 36-04 and 36-05 run in parallel — no file overlap)*
 
 - [x] 36-04-PLAN.md — Campaign board/Manage/Details/Create views (desktop + mobile): Open/Closed seal, CR/signup removal, Close/Reopen buttons, stripped Create form + human-verify
-- [ ] 36-05-PLAN.md — Campaign Quest Log views (desktop + mobile): CR/Adventurers removal, ClosedDate display, recap preserved + human-verify
+- [x] 36-05-PLAN.md — Campaign Quest Log views (desktop + mobile): CR/Adventurers removal, ClosedDate display, recap preserved + human-verify
 
 **UI hint**: yes
 
@@ -228,5 +228,5 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 36. Campaign Quest Posting & Closing | v6.0 | 4/5 | In Progress|  |
+| 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete   | 2026-07-03 |
 | 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |
