@@ -479,6 +479,13 @@ div {
     background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
+/* Disabled fields must read as non-interactive, not just be non-interactive */
+.form-control:disabled, .form-select:disabled, input:disabled, textarea:disabled, select:disabled {
+    background-color: rgba(0, 0, 0, 0.12) !important;
+    color: rgba(26, 15, 8, 0.55) !important;
+    cursor: not-allowed;
+}
+
 /* Fantasy themed navbar with brown background - exclude footer */
 .navbar:not(footer) {
     background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(160, 82, 45, 0.5) 50%, rgba(205, 133, 63, 0.5) 100%) !important;
@@ -1138,6 +1145,15 @@ p, li, span, small {
     border-color: #3498db !important;
     box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25) !important;
     color: #1a1a1a !important;
+}
+
+/* Disabled fields must read as non-interactive, not just be non-interactive */
+.modern-card .form-control:disabled,
+.modern-card .form-select:disabled {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    color: rgba(26, 26, 26, 0.55) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+    cursor: not-allowed;
 }
 
 /* Modern alert styling */
