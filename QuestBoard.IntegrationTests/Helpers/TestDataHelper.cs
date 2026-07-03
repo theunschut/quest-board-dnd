@@ -13,7 +13,10 @@ public static class TestDataHelper
         int challengeRating = 5,
         bool isFinalized = false,
         bool dungeonMasterSession = false,
-        DateTime? finalizedDate = null)
+        DateTime? finalizedDate = null,
+        bool isClosed = false,
+        DateTime? closedDate = null,
+        int groupId = 1)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -28,8 +31,10 @@ public static class TestDataHelper
             FinalizedDate = finalizedDate,
             DungeonMasterSession = dungeonMasterSession,
             TotalPlayerCount = 4,
-            GroupId = 1,
-            CreatedAt = DateTime.UtcNow
+            GroupId = groupId,
+            CreatedAt = DateTime.UtcNow,
+            IsClosed = isClosed,
+            ClosedDate = closedDate
         };
 
         context.Quests.Add(quest);
@@ -179,6 +184,24 @@ public static class TestDataHelper
         if (!context.Groups.Any(g => g.Id == 1))
         {
             context.Groups.Add(new GroupEntity { Id = 1, Name = "EuphoriaInn", CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync();
+        }
+    }
+
+    public static async Task SeedCampaignGroupAsync(IServiceProvider services, int groupId = 2)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        if (!context.Groups.Any(g => g.Id == groupId))
+        {
+            context.Groups.Add(new GroupEntity
+            {
+                Id = groupId,
+                Name = "Campaign Test Group",
+                BoardType = (int)BoardType.Campaign,
+                CreatedAt = DateTime.UtcNow
+            });
             await context.SaveChangesAsync();
         }
     }

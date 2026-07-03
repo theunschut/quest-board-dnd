@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
-status: completed
+status: executing
 stopped_at: Phase 36 context gathered
-last_updated: "2026-07-03T12:48:29.965Z"
-last_activity: 2026-07-03
+last_updated: "2026-07-03T13:53:30.973Z"
+last_activity: 2026-07-03 -- Phase 36 execution started
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 3
+  total_plans: 8
   completed_plans: 3
-  percent: 50
+  percent: 38
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Milestone complete
+**Current focus:** Phase 36 — campaign-quest-posting-closing
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-03
+Phase: 36 (campaign-quest-posting-closing) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 36
+Last activity: 2026-07-03 -- Phase 36 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
