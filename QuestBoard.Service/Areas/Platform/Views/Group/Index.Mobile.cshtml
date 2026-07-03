@@ -42,6 +42,16 @@
             <div class="group-card-mobile mb-3">
                 <strong class="parchment-text">@item.Name</strong>
                 <div>
+                    @if (item.BoardType == BoardType.Campaign)
+                    {
+                        <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1"></i>Campaign</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1"></i>One-Shot</span>
+                    }
+                </div>
+                <div>
                     <small>Members: @item.MemberCount &middot; Created: @item.CreatedAt.ToString("yyyy-MM-dd")</small>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mt-2">
