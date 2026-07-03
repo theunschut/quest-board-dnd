@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
-status: completed
+status: executing
 stopped_at: Phase 37 context gathered
-last_updated: "2026-07-03T16:32:32.132Z"
-last_activity: 2026-07-03
+last_updated: "2026-07-03T17:26:11.803Z"
+last_activity: 2026-07-03 -- Phase 37 planning complete
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 8
+  total_plans: 11
   completed_plans: 8
   percent: 67
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mod
 
 Phase: 36
 Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-03
+Status: Ready to execute
+Last activity: 2026-07-03 -- Phase 37 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
