@@ -31,7 +31,7 @@ public class GroupController(IGroupService groupService, IUserService userServic
         if (!ModelState.IsValid) return View(model);
         try
         {
-            await groupService.AddAsync(new Group { Name = model.Name });
+            await groupService.AddAsync(new Group { Name = model.Name, BoardType = model.BoardType!.Value });
             TempData["Success"] = "Group created successfully.";
             return RedirectToAction(nameof(Index));
         }
@@ -50,7 +50,7 @@ public class GroupController(IGroupService groupService, IUserService userServic
     {
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
-        return View(new GroupEditViewModel { Id = group.Id, Name = group.Name });
+        return View(new GroupEditViewModel { Id = group.Id, Name = group.Name, BoardType = group.BoardType });
     }
 
     [HttpPost]
