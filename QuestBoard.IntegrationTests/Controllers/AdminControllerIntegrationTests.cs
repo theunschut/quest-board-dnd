@@ -298,7 +298,7 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
             var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
             context.UserGroups.Add(new UserGroupEntity { UserId = inGroupUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
             context.UserGroups.Add(new UserGroupEntity { UserId = outOfGroupUser.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
-            await context.SaveChangesAsync();
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Act
