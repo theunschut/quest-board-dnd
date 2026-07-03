@@ -110,3 +110,7 @@ None - no external service configuration required.
 ---
 *Phase: 38-group-scoped-user-list*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+All created/modified files exist on disk; all task commit hashes (7d49c00, 96de7cd, a19830e) and the summary commit (041ab99) are present in git log.
