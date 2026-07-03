@@ -1,24 +1,26 @@
 # D&D Quest Board
 
-## Current State: v5.0 Shipped
+## Current State: v6.0 In Progress
 
-**Current milestone shipped:** v5.0 Multi-Tenancy — 2026-07-02
-**Previous milestone shipped:** v4.0.0 — 2026-06-28
+**Previous milestone shipped:** v5.0 Multi-Tenancy — 2026-07-02
 **Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
 **Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
 
 ---
 
-## Next Milestone Goals
+## Current Milestone: v6.0 Board Types (Campaign Mode)
 
-No milestone started yet. Candidates carried forward from v5.0 (see Active requirements below):
+**Goal:** Let a DM choose a group's quest-board type at creation — the existing One-Shot board (date voting + finalization) or a new Campaign board for ongoing games with a fixed party — without forking the controller/service/view stack.
 
-- `GroupSessionMiddleware` POST-body data-loss risk on session expiry mid-submission (code review flagged, not yet fixed)
-- Digest batching for session reminders (EMAIL-04/REMIND-02)
-- Profile picture crop/avatar selection (issue #78)
-- v2.0 Omphalos Integration (Phases 10–11) remains in progress on a separate branch, independent of v5.0
-
-Run `/gsd:new-milestone` to scope the next milestone.
+**Target features:**
+- `BoardType` enum (`OneShot` / `Campaign`) on `GroupEntity`, set at group creation via `Platform/GroupController`, locked (not editable) afterward
+- Campaign quest posting: DM posts a quest with no date picker, no per-quest signup — the party is just the group's fixed roster
+- Campaign quest closing: DM can Close/Reopen a quest as a simple status toggle — no player-selection step, no rewards/gold flow tied to it
+- Additive `CloseQuestAsync`/`ReopenQuestAsync` on `QuestService`, kept separate from the existing `FinalizeQuestAsync`/`OpenQuestAsync` so the one-shot flow (Core Value) is untouched
+- Signup/proposed-dates sections extracted from `Details.cshtml`/`Manage.cshtml` into partials, conditionally rendered by board type
+- No quest-related emails for campaign boards (no posted/reminder/finalized notifications)
+- Calendar nav link and reminder job scoped to skip campaign groups
+- `BoardType` dispatch uses switch expressions, matching the existing `ShopService.CalculateItemPriceAsync` (`ItemRarity`) convention
 
 ---
 
@@ -159,4 +161,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-02 — v5.0 Multi-Tenancy milestone shipped (Phases 26–34.3, 12 phases, 48 plans)*
+*Last updated: 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone started*
