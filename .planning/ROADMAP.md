@@ -185,8 +185,8 @@ Plans:
 Plans:
 **Wave 1** *(37-01 and 37-02 run in parallel — no file overlap)*
 
-- [ ] 37-01-PLAN.md — Foundation: extend IActiveGroupContext with GetBoardTypeAsync + settable BoardType test double + failing LayoutNavigationTests scaffold (RED)
-- [ ] 37-02-PLAN.md — Email Stats access control: SuperAdminOnly gate on EmailStats, AccessDenied action + ConfigureApplicationCookie wiring, generalized AccessDenied view, backend tests
+- [x] 37-01-PLAN.md — Foundation: extend IActiveGroupContext with GetBoardTypeAsync + settable BoardType test double + failing LayoutNavigationTests scaffold (RED)
+- [x] 37-02-PLAN.md — Email Stats access control: SuperAdminOnly gate on EmailStats, AccessDenied action + ConfigureApplicationCookie wiring, generalized AccessDenied view, backend tests
 
 **Wave 2** *(blocked on 37-01 and 37-02)*
 
@@ -240,4 +240,4 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
-| 37. Navigation & Access Control | v6.0 | 0/3 | Planned | - |
+| 37. Navigation & Access Control | v6.0 | 2/3 | In Progress|  |
