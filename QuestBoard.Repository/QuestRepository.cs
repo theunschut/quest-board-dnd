@@ -59,7 +59,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     {
         var oneDayAgo = DateTime.UtcNow.AddDays(-1);
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
-            .Where(q => !q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo))
+            .Where(q => (!q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo)) && !q.IsClosed)
             .OrderByDescending(q => q.CreatedAt)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<Quest>>(entities);
@@ -71,7 +71,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         var oneDayAgo = DateTime.UtcNow.AddDays(-1);
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
             .Where(q => (!q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo)) &&
-                        (!q.DungeonMasterSession || isAdminOrDm))
+                        (!q.DungeonMasterSession || isAdminOrDm) && !q.IsClosed)
             .OrderByDescending(q => q.CreatedAt)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<Quest>>(entities);
@@ -152,6 +152,30 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         {
             playerSignup.IsSelected = false;
         }
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task CloseQuestAsync(int questId, CancellationToken token = default)
+    {
+        var entity = await DbContext.Quests.FirstOrDefaultAsync(q => q.Id == questId, cancellationToken: token);
+        if (entity == null) return;
+
+        entity.IsClosed = true;
+        entity.ClosedDate = DateTime.UtcNow;
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task ReopenQuestAsync(int questId, CancellationToken token = default)
+    {
+        var entity = await DbContext.Quests.FirstOrDefaultAsync(q => q.Id == questId, cancellationToken: token);
+        if (entity == null) return;
+
+        entity.IsClosed = false;
+        entity.ClosedDate = null;
 
         await DbContext.SaveChangesAsync(token);
     }
