@@ -9,7 +9,7 @@ Requirements for the Bugfixes milestone. Each maps to roadmap phases.
 
 ### Group-Scoped User List
 
-- [ ] **USERS-01**: Group admin's Users management page shows only members of the currently active group, not all platform users
+- [x] **USERS-01**: Group admin's Users management page shows only members of the currently active group, not all platform users
 
 ### Shared User Creation & Email-Collision Handling
 
@@ -48,7 +48,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| USERS-01 | Phase 38 | Pending |
+| USERS-01 | Phase 38 | Complete |
 | CREATE-01 | Phase 39 | Pending |
 | CREATE-02 | Phase 39 | Pending |
 | CREATE-03 | Phase 39 | Pending |
@@ -62,6 +62,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-04 | Phase 41 | Pending |
 
 **Coverage:**
+
 - v6.1 requirements: 12 total
 - Mapped to phases: 12
 - Unmapped: 0 ✓

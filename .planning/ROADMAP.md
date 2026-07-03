@@ -115,51 +115,64 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 - [ ] Phase 41: Safe User Removal & Account Disable — Group-admin Delete removes from the active group only (not a hard account delete), and SuperAdmin can disable/re-enable an account via Identity's lockout mechanism
 
 ### Phase 38: Group-Scoped User List
+
 **Goal**: A group admin viewing the Users management page sees only members of their currently active group — no other group's users are visible.
 **Depends on**: Nothing (first phase; fully independent read-path fix)
 **Requirements**: USERS-01
 **Success Criteria** (what must be TRUE):
+
   1. A group admin opening the Users page sees only users who belong to the currently active group
   2. A group admin never sees a user from a different group on the Users page, even when multiple groups share the platform
   3. Each listed user still shows their correct role within the active group (no regression from the existing per-user role display)
+
 **Plans**: 1 plan
 Plans:
-- [ ] 38-01-PLAN.md — Group-scoped members read method, Users() read-scope + four role-change POST membership guards, cross-group-isolation regression test
+
+- [x] 38-01-PLAN.md — Group-scoped members read method, Users() read-scope + four role-change POST membership guards, cross-group-isolation regression test
 
 ### Phase 39: Shared Collision-Aware User Creation & Email
+
 **Goal**: Creating a user whose email already exists on the platform adds that person to the target group instead of failing, and everyone affected is notified appropriately — with identical behavior regardless of which screen triggered the creation.
 **Depends on**: Nothing structurally, but must complete before Phase 40 (Platform's create-user entry point reuses this phase's shared method)
 **Requirements**: CREATE-01, CREATE-02, CREATE-03, CREATE-04
 **Success Criteria** (what must be TRUE):
+
   1. An admin submitting the Create User form with an email that belongs to an existing user (not yet in this group) adds that user to the group with the selected role, instead of showing a duplicate-account error
   2. A user added to a group via the email-collision path receives a "you've been added to a group" email that is visibly distinct from the new-account welcome email and contains no set-password link
   3. An admin submitting the Create User form with an email that already belongs to a member of the current group sees a friendly "already a member" message, not a duplicate-membership error
   4. A brand-new email address still creates a new account and sends the existing welcome email, unchanged
   5. The group-admin Create User form and the (not-yet-built) platform-level create-user entry point both exhibit identical collision behavior once Phase 40 wires the platform entry point onto this phase's shared method
+
 **Plans**: TBD
 
 ### Phase 40: Platform Members Page Redesign
+
 **Goal**: A SuperAdmin managing a group's membership sees current members and searchable non-member users side by side, and can create a new user scoped to that group without leaving the page.
 **Depends on**: Phase 39 (reuses the shared collision-aware creation method for its Create New User entry point)
 **Requirements**: MEMBERS-01, MEMBERS-02, MEMBERS-03
 **Success Criteria** (what must be TRUE):
+
   1. The Platform group Members page shows a two-column layout — current group members on the left, other platform users on the right
   2. The right-hand column lets a SuperAdmin filter the non-member user list by typing part of a name or email, replacing the plain dropdown select
   3. A SuperAdmin can add a listed non-member user to the group directly from the right-hand column
   4. The right-hand column has a "Create New User" entry point that creates or adds (per the Phase 39 collision behavior) a user scoped to the group being managed, without requiring a session-level active group
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 41: Safe User Removal & Account Disable
+
 **Goal**: Removing a user from a group no longer risks deleting their account or breaking the database, and a SuperAdmin has a real way to deactivate a problem account without destroying data.
 **Depends on**: Nothing (independent of Phases 38–40)
 **Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04
 **Success Criteria** (what must be TRUE):
+
   1. A group admin clicking "Delete" on the Users page removes the user from the active group only — their account and any other group memberships are untouched
   2. A user who has DM'd quests, listed shop items, made gold transactions, or received reminders can still be removed from a group without an unhandled server error
   3. A SuperAdmin can disable a user account so it can no longer sign in, with no data deleted
   4. A SuperAdmin can re-enable a previously disabled account, restoring login access
   5. A disabled user attempting to log in sees a message that does not falsely imply a 15-minute temporary lockout
+
 **Plans**: TBD
 
 </details>
@@ -211,7 +224,7 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
 | 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 38. Group-Scoped User List | v6.1 | 0/TBD | Not started | — |
+| 38. Group-Scoped User List | v6.1 | 1/1 | Complete   | 2026-07-03 |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 0/TBD | Not started | — |
 | 40. Platform Members Page Redesign | v6.1 | 0/TBD | Not started | — |
 | 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |

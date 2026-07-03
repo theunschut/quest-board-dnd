@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: Bugfixes
 current_phase: 38
-current_phase_name: Group-Scoped User List
-status: planning
+current_phase_name: group-scoped-user-list
+status: verifying
 stopped_at: Phase 38 planned
-last_updated: "2026-07-03T23:29:00.000Z"
+last_updated: "2026-07-03T21:37:25.875Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 38 planned (1 plan, 1 wave)
+last_activity_desc: Phase 38 execution started
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 1
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03 — v6.1 Bugfixes milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 38 — Group-Scoped User List
+**Current focus:** Phase 38 — group-scoped-user-list
 
 ## Current Position
 
-Phase: 38 — Group-Scoped User List
-Plan: 1 of 1 in current phase
-Status: Ready to execute
-Last activity: 2026-07-03 — Phase 38 planned (1 plan, 1 wave, verification passed)
+Phase: 38 (group-scoped-user-list) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-07-03 — Phase 38 execution started
 
 ## Performance Metrics
 
@@ -44,7 +44,7 @@ Last activity: 2026-07-03 — Phase 38 planned (1 plan, 1 wave, verification pas
 
 | Phase | Plans | Status |
 |-------|-------|--------|
-| 38. Group-Scoped User List | 0/1 | Ready to execute |
+| 38. Group-Scoped User List | 1/1 | Complete — ready for verification |
 | 39. Shared Collision-Aware User Creation & Email | 0/TBD | Not started |
 | 40. Platform Members Page Redesign | 0/TBD | Not started |
 
@@ -52,6 +52,8 @@ Last activity: 2026-07-03 — Phase 38 planned (1 plan, 1 wave, verification pas
 
 - v6.0 shipped in ~1.4 days across 3 phases — fastest pace yet. See .planning/RETROSPECTIVE.md for details.
 - v6.1 is a 3-phase bugfix milestone (8 requirements), continuing directly from Phase 37.
+
+| Phase 38 P01 | 25min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -62,6 +64,9 @@ Last activity: 2026-07-03 — Phase 38 planned (1 plan, 1 wave, verification pas
 - MEMBERS-01 was refined after research: the Platform Members page uses a two-column layout (current members left, searchable available-users + Add User + Create New User right), not a single-column redesign. Phase 40's scope reflects this.
 
 Full prior-milestone decision log: PROJECT.md Key Decisions table; v6.0 detail in `.planning/milestones/v6.0-ROADMAP.md` and `.planning/RETROSPECTIVE.md`.
+
+- [Phase 38]: Added a dedicated GetAllGroupMembers/GetAllGroupMembersAsync method rather than unioning GetAllDungeonMasters+GetAllPlayers, per plan's explicit non-default choice
+- [Phase 38]: Membership guard on the four role-change POST actions reuses existing GetGroupRoleByIdAsync(userId, groupId) rather than adding a new IsMemberOfGroupAsync method
 
 ### Pending Todos
 
@@ -94,7 +99,7 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T23:29:00.000Z
+Last session: 2026-07-03T21:37:03.527Z
 Stopped at: Phase 38 planned
 Resume file: .planning/phases/38-group-scoped-user-list/38-01-PLAN.md
 Next step: `/gsd-execute-phase 38`
