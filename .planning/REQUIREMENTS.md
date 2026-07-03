@@ -52,27 +52,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BOARD-01 | TBD | Pending |
-| BOARD-02 | TBD | Pending |
-| CQUEST-01 | TBD | Pending |
-| CQUEST-02 | TBD | Pending |
-| CQUEST-03 | TBD | Pending |
-| CQUEST-04 | TBD | Pending |
-| CQUEST-05 | TBD | Pending |
-| CQUEST-06 | TBD | Pending |
-| NAV-01 | TBD | Pending |
-| NAV-02 | TBD | Pending |
-| NAV-03 | TBD | Pending |
-| NAV-04 | TBD | Pending |
-| NAV-05 | TBD | Pending |
-| NAV-06 | TBD | Pending |
-| ACCESS-01 | TBD | Pending |
+| BOARD-01 | Phase 35 | Pending |
+| BOARD-02 | Phase 35 | Pending |
+| CQUEST-01 | Phase 36 | Pending |
+| CQUEST-02 | Phase 36 | Pending |
+| CQUEST-03 | Phase 36 | Pending |
+| CQUEST-04 | Phase 36 | Pending |
+| CQUEST-05 | Phase 36 | Pending |
+| CQUEST-06 | Phase 36 | Pending |
+| NAV-01 | Phase 37 | Pending |
+| NAV-02 | Phase 37 | Pending |
+| NAV-03 | Phase 37 | Pending |
+| NAV-04 | Phase 37 | Pending |
+| NAV-05 | Phase 37 | Pending |
+| NAV-06 | Phase 37 | Pending |
+| ACCESS-01 | Phase 37 | Pending |
 
 **Coverage:**
 - v6.0 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️ (filled in by roadmap creation)
+- Mapped to phases: 15
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-03 after initial definition*
+*Last updated: 2026-07-03 after roadmap creation (Phases 35–37)*

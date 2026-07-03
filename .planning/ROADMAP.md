@@ -7,6 +7,7 @@
 - ✅ **v3.0 Mobile Version** — Phases 12–19 (shipped 2026-06-25)
 - ✅ **v4.0 Email Notifications** — Phases 20–25 (shipped 2026-06-28)
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
+- 🚧 **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (in progress)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it is not assigned to any active milestone._
 
@@ -89,7 +90,60 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 
 </details>
 
+<details>
+<summary>🚧 v6.0 Board Types (Campaign Mode) (Phases 35–37) — IN PROGRESS</summary>
+
+**Overview:** Let a DM choose a group's quest-board type at creation — the existing One-Shot board (date voting + finalization) or a new Campaign board for ongoing games with a fixed party — without forking the controller/service/view stack.
+
+- [ ] Phase 35: Board Type Configuration — SuperAdmin sets a group's board type at creation; locked afterward
+- [ ] Phase 36: Campaign Quest Posting & Closing — DM can post, close, and reopen campaign quests with no date voting or per-quest signup, and no quest-related emails are sent
+- [ ] Phase 37: Navigation & Access Control — Board-type-aware nav visibility, plus Email Stats locked to SuperAdmin only
+
+</details>
+
+## Phase Details
+
+### Phase 35: Board Type Configuration
+**Goal**: A SuperAdmin can set a group's board type (One-Shot or Campaign) when creating it, and that choice is permanent — the rest of the app can reliably branch on it.
+**Depends on**: Nothing (first phase of v6.0; builds on existing `GroupEntity`/`Platform/GroupController` from v5.0)
+**Requirements**: BOARD-01, BOARD-02
+**Success Criteria** (what must be TRUE):
+  1. SuperAdmin sees a One-Shot/Campaign choice on the group creation form and the selected value is saved on the group
+  2. The board type is displayed (read-only) on the group edit/details view, with no control to change it after creation
+  3. Attempting to submit a board-type value on the edit form has no effect — the group's stored `BoardType` is unchanged
+  4. Existing groups created before this phase default to One-Shot with no behavior change
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 36: Campaign Quest Posting & Closing
+**Goal**: A DM running a campaign-type group can post quests and manage their lifecycle (close/reopen) without any of the one-shot scheduling machinery, and campaign quests never trigger scheduling-related emails.
+**Depends on**: Phase 35 (requires `BoardType` to exist and be readable on the group)
+**Requirements**: CQUEST-01, CQUEST-02, CQUEST-03, CQUEST-04, CQUEST-05, CQUEST-06
+**Success Criteria** (what must be TRUE):
+  1. DM posting a quest in a campaign group sees no proposed-dates picker, and the quest saves successfully without dates
+  2. A campaign quest's detail/manage page shows no signup or date-voting section — only quest content and a Close/Reopen control
+  3. DM can close an open campaign quest via a single action, and it immediately disappears from the active quest board
+  4. DM can reopen a closed campaign quest, and it immediately reappears on the active quest board
+  5. A closed campaign quest appears in the Quest Log right away (no next-day wait), while one-shot finalized quests keep their existing next-day Quest Log behavior unchanged
+  6. No email is sent (posted/reminder/finalized) for any quest action inside a campaign group — verified for post, close, and reopen
+**Plans**: TBD
+
+### Phase 37: Navigation & Access Control
+**Goal**: Campaign groups show only the nav items relevant to their board type, and the Email Stats page is restricted to SuperAdmin regardless of group type.
+**Depends on**: Phase 35 (nav visibility branches on `BoardType`); independent of Phase 36
+**Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-06, ACCESS-01
+**Success Criteria** (what must be TRUE):
+  1. In a campaign group, the desktop and mobile nav both hide Calendar, Shop, "Manage Shop", "Edit My Profile", and "Players" — Guild member directory stays visible
+  2. In a one-shot group, all nav items render exactly as before this phase (no regression)
+  3. A user with the Admin role (not SuperAdmin) can no longer see the "Email Stats" nav link or load the Email Stats page — a direct URL request is rejected, not just hidden from nav
+  4. A SuperAdmin can still see and load the Email Stats page in both one-shot and campaign groups
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 35 → 36 → 37
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -130,3 +184,6 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 | 34.1. Security & Bugs | v5.0 | 2/2 | Complete | 2026-07-02 |
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
+| 35. Board Type Configuration | v6.0 | 0/? | Not started | - |
+| 36. Campaign Quest Posting & Closing | v6.0 | 0/? | Not started | - |
+| 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |
