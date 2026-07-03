@@ -137,3 +137,9 @@ None - no external service configuration required.
 ---
 *Phase: 36-campaign-quest-posting-closing*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+All claimed files found on disk (`QuestController.cs`, `QuestLogController.cs`, `QuestViewModel.cs`,
+`QuestCloseTests.cs`, `deferred-items.md`, this summary); all four task commits (`ccb1c04`, `115160d`,
+`aaf8c89`, `f340596`) verified present in git log.
