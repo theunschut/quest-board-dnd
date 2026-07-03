@@ -85,7 +85,7 @@
             <div class="wax-seal" style="bottom: @(sealBottom)%; left: @(sealLeft)%;">
                 <img src="/images/Wax Seals/@waxSeal"
                      alt="@((boardType == BoardType.Campaign ? (quest.IsClosed ? "Closed" : "Open") : (quest.IsFinalized ? "Finalized" : "Open"))) Quest"
-                     class="seal-image @((boardType == BoardType.Campaign ? quest.IsClosed : quest.IsFinalized) ? "finalized-seal" : "open-seal")" />
+                     class="seal-image @((boardType == BoardType.Campaign || quest.IsFinalized) ? "finalized-seal" : "open-seal")" />
             </div>
 
             <!-- User Signup Seal -->
