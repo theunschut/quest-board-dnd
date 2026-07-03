@@ -18,7 +18,7 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone started)
+See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone shipped and archived)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
 **Current focus:** Milestone complete
@@ -34,47 +34,36 @@ Last activity: 2026-07-03 — Milestone v6.0 completed and archived
 
 **Velocity:**
 
-- Total plans completed (v6.0): 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed (v6.0): 11/11
+- Timeline: ~1.4 days (2026-07-02 → 2026-07-03)
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 35. Board Type Configuration | 0/3 | - | - |
-| 36. Campaign Quest Posting & Closing | 0/? | - | - |
-| 37. Navigation & Access Control | 0/? | - | - |
-| 35 | 3 | - | - |
-| 36 | 5 | - | - |
-| 37 | 3 | - | - |
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 35. Board Type Configuration | 3/3 | Complete |
+| 36. Campaign Quest Posting & Closing | 5/5 | Complete |
+| 37. Navigation & Access Control | 3/3 | Complete |
 
 **Recent Trend:**
 
-- Last 5 plans (v5.0 close): stable, no regressions carried into v6.0
-- Trend: N/A (v6.0 not yet executed)
+- v6.0 shipped in ~1.4 days across 3 phases — fastest pace yet, continuing v5.0's acceleration. See .planning/RETROSPECTIVE.md for details.
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- v6.0 planning: Reuse existing `QuestController`/`QuestService`/Areas — no new controller or Area. `BoardType` enum on `GroupEntity` gates conditional branches.
-- v6.0 planning: `BoardType` dispatch uses C# switch expressions (matching `ShopService.CalculateItemPriceAsync`'s `ItemRarity` precedent), not if/else chains.
-- v6.0 planning: New `CloseQuestAsync`/`ReopenQuestAsync` kept additive and separate from existing `FinalizeQuestAsync`/`OpenQuestAsync` to avoid regressing the one-shot flow (Core Value).
-- v6.0 planning: Phase order is data-model-first (35) → core capability (36) → lighter/independent nav+access fixes (37), since 36 and 37 both depend on 35 but not on each other.
+v6.0 is shipped and archived. Full decision log: PROJECT.md Key Decisions table; milestone-specific detail: `.planning/milestones/v6.0-ROADMAP.md` and `.planning/RETROSPECTIVE.md`.
 
 ### Pending Todos
 
-None yet.
+None — awaiting next milestone (`/gsd:new-milestone`).
 
 ### Blockers/Concerns
 
-None yet for v6.0.
+None open for v6.0 (shipped clean per `.planning/v6-MILESTONE-AUDIT.md` → now `.planning/milestones/v6.0-MILESTONE-AUDIT.md`).
 
-Carried forward from v5.0 (still unresolved, not in v6.0 scope):
+Carried forward, still unresolved, not addressed by any milestone yet:
 
 - `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
 
@@ -91,10 +80,10 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T16:32:32.120Z
-Stopped at: Phase 37 context gathered
-Resume file: .planning/phases/37-navigation-access-control/37-CONTEXT.md
-Next step: `/gsd:execute-phase 35`
+Last session: 2026-07-03T21:24:23.000Z
+Stopped at: v6.0 milestone archived (phases moved to .planning/milestones/v6.0-phases/)
+Resume file: —
+Next step: `/gsd:new-milestone`
 
 ## Operator Next Steps
 
