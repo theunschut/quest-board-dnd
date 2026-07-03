@@ -67,6 +67,7 @@ public class WebApplicationFactoryBase : WebApplicationFactory<Program>
             // IBackgroundJobClient — register a no-op stub so the controller can be instantiated.
             services.AddSingleton<IBackgroundJobClient>(new NoOpBackgroundJobClient());
             services.AddSingleton<IActiveGroupContext>(TestGroupContext);
+            services.AddSingleton<IBoardTypeResolver>(TestGroupContext);
 
             // Replace IAntiforgery with a decorator that validates everything but delegates token generation
             var antiforgeryDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(Microsoft.AspNetCore.Antiforgery.IAntiforgery));

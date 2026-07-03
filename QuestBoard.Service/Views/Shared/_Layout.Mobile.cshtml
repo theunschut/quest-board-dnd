@@ -2,7 +2,7 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Constants
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@inject IActiveGroupContext ActiveGroupContext
+@inject IBoardTypeResolver BoardTypeResolver
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,7 +49,7 @@
         </div>
         <div class="offcanvas-body">
             @{
-                var activeBoardType = await ActiveGroupContext.GetBoardTypeAsync();
+                var activeBoardType = await BoardTypeResolver.GetBoardTypeAsync();
             }
             <ul class="navbar-nav">
                 @if (User.Identity?.IsAuthenticated == true)

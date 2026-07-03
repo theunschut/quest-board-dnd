@@ -221,6 +221,12 @@ builder.Services.AddScoped<ActiveGroupContextService>();
 builder.Services.AddScoped<IActiveGroupContext>(sp =>
     sp.GetRequiredService<ActiveGroupContextService>());
 
+// IBoardTypeResolver is intentionally separate from IActiveGroupContext — it depends on
+// IGroupService, whose repository chain depends on QuestBoardContext, which itself depends
+// on IActiveGroupContext. Resolving BoardType via ActiveGroupContextService would create a
+// circular DI dependency (QuestBoardContext -> IActiveGroupContext -> IGroupService -> QuestBoardContext).
+builder.Services.AddScoped<IBoardTypeResolver, BoardTypeResolver>();
+
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     // HangfireQuestEmailDispatcher requires IBackgroundJobClient which is only
