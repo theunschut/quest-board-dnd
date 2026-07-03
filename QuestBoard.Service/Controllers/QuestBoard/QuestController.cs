@@ -93,8 +93,26 @@ public class QuestController(
         // Automatically set the current user as the DM
         viewModel.DungeonMasterId = currentUser.Id;
 
+        // BoardType is always resolved server-side from the active group, never trusted
+        // from the posted form.
+        var boardType = await GetActiveBoardTypeAsync(token);
+        if (boardType == BoardType.OneShot && (viewModel.ProposedDates == null || viewModel.ProposedDates.Count == 0))
+        {
+            ModelState.AddModelError(nameof(viewModel.ProposedDates), "At least one proposed date is required.");
+        }
+        else if (boardType == BoardType.Campaign)
+        {
+            // Campaign quests have no date picker or per-quest signup — silently override
+            // any posted values with fixed defaults regardless of what the client sent.
+            viewModel.ProposedDates = [];
+            viewModel.ChallengeRating = 1;
+            viewModel.TotalPlayerCount = 0;
+            viewModel.DungeonMasterSession = false;
+        }
+
         if (!ModelState.IsValid)
         {
+            ViewBag.BoardType = boardType;
             return View(viewModel);
         }
 
