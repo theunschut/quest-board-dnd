@@ -180,7 +180,18 @@ Plans:
   3. A user with the Admin role (not SuperAdmin) can no longer see the "Email Stats" nav link or load the Email Stats page — a direct URL request is rejected, not just hidden from nav
   4. A SuperAdmin can still see and load the Email Stats page in both one-shot and campaign groups
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1** *(37-01 and 37-02 run in parallel — no file overlap)*
+
+- [ ] 37-01-PLAN.md — Foundation: extend IActiveGroupContext with GetBoardTypeAsync + settable BoardType test double + failing LayoutNavigationTests scaffold (RED)
+- [ ] 37-02-PLAN.md — Email Stats access control: SuperAdminOnly gate on EmailStats, AccessDenied action + ConfigureApplicationCookie wiring, generalized AccessDenied view, backend tests
+
+**Wave 2** *(blocked on 37-01 and 37-02)*
+
+- [ ] 37-03-PLAN.md — Layout nav gating (desktop + mobile): OneShot allowlist for the 5 campaign-hidden items, D-04 anonymous-Calendar fix, SuperAdmin Email Stats link gate, LayoutNavigationTests GREEN + human-verify checkpoint
+
 **UI hint**: yes
 
 ## Progress
@@ -229,4 +240,4 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
-| 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |
+| 37. Navigation & Access Control | v6.0 | 0/3 | Planned | - |
