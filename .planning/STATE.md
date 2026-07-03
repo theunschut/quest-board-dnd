@@ -2,11 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: Bugfixes
+current_phase: 38
+current_phase_name: Group-Scoped User List
 status: planning
-last_updated: "2026-07-03T00:00:00.000Z"
+stopped_at: Phase 38 context gathered
+last_updated: "2026-07-03T21:11:31.780Z"
 last_activity: 2026-07-03
+last_activity_desc: ROADMAP.md created for v6.1
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -90,9 +94,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T00:00:00.000Z
-Stopped at: ROADMAP.md and STATE.md created for v6.1 Bugfixes milestone
-Resume file: —
+Last session: 2026-07-03T21:11:31.769Z
+Stopped at: Phase 38 context gathered
+Resume file: .planning/phases/38-group-scoped-user-list/38-CONTEXT.md
 Next step: `/gsd-plan-phase 38`
 
 ## Operator Next Steps
