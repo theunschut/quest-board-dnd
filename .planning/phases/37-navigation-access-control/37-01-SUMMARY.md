@@ -120,3 +120,19 @@ None - no external service configuration required.
 ---
 *Phase: 37-navigation-access-control*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+All 6 claimed files verified present:
+- QuestBoard.Domain/Interfaces/IActiveGroupContext.cs
+- QuestBoard.Service/Services/ActiveGroupContextService.cs
+- QuestBoard.IntegrationTests/Helpers/MutableGroupContext.cs
+- QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs
+- QuestBoard.UnitTests/Services/SessionReminderJobTests.cs
+- .planning/phases/37-navigation-access-control/37-01-SUMMARY.md
+
+All 4 claimed commit hashes verified in git log:
+- 8119b75 (Task 1)
+- 58d0a46 (Task 2)
+- 167e430 (Task 3)
+- bcef962 (SUMMARY.md)
