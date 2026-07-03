@@ -11,6 +11,7 @@ public class GroupCreateViewModel
     public string Name { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Board type is required.")]
+    [EnumDataType(typeof(BoardType), ErrorMessage = "Select a valid board type.")]
     [Display(Name = "Board Type")]
     public BoardType? BoardType { get; set; }
 }
