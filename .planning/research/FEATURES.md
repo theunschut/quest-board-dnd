@@ -1,219 +1,145 @@
 # Feature Research
 
-**Domain:** Multi-tenancy for an ASP.NET Core 10 MVC D&D group management app
-**Researched:** 2026-06-29
-**Confidence:** MEDIUM (EF Core multi-tenancy via official MS docs and context7; UX patterns from industry observation; implementation details LOW due to websearch-only sourcing for some items)
+**Domain:** Admin/user-management UX for a small internal multi-tenant (group-scoped) SaaS-style app
+**Researched:** 2026-07-03
+**Confidence:** MEDIUM (codebase analysis HIGH; external pattern corroboration LOW — see Sources)
 
----
+*Supersedes the v5.0 multi-tenancy research previously in this file — that milestone shipped (Phases 29–34.3, see PROJECT.md). This is fresh research for the v6.1 Bugfixes milestone.*
+
+## Context Recap
+
+Three bugfixes for v6.1, all touching the existing admin/user-management surface:
+
+1. `AdminController.Users()` (group-admin, `/Admin/Users`) — currently calls `userService.GetAllAsync()` with **no group filter**, leaking every platform user (all groups) into a single group's admin view.
+2. `Areas/Platform/Controllers/GroupController.Members()` (SuperAdmin, `/platform/Group/Members/{id}`) — "Add Member" is a plain `<select>` dropdown built from `allUsers.Where(u => !memberUserIds.Contains(u.Id))`; needs to become a searchable/filterable table, plus a group-scoped "create new user" entry point.
+3. `IdentityService.CreateUserAsync` — hard-fails via `UserManager.CreateAsync` uniqueness constraint (`UserName = email`) when the email already exists anywhere on the platform; needs to instead detect the collision and auto-add the existing user to the target group with the selected role, sending a distinct notification email.
+
+Existing infra confirmed by reading the code: `IActiveGroupContext.ActiveGroupId`, `GroupRole` enum (Admin/DungeonMaster/Player) with `userService.GetGroupRoleByIdAsync`/`SetGroupRoleAsync`/repository `AddMemberAsync`, Hangfire `IBackgroundJobClient` + `IEmailService`/`IEmailRenderService` job pattern (see `WelcomeEmailJob`), no existing client-side search/filter pattern anywhere in the codebase (this is genuinely new for the app), `[Bind(Prefix = "AddMember")]` nested-viewmodel convention on `GroupController`.
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-These are the behaviors users assume exist the moment "multi-group" is mentioned. Missing any of these makes the feature feel incomplete or broken.
+Features that are the minimum correct/expected behavior — missing these is a bug, not a design choice (this maps directly to the three PROJECT.md requirements).
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Group entity with display name | Any multi-tenant system needs a named container | LOW | Single `GroupEntity { Id, Name, CreatedAt }` table. No complex config needed at this scale. |
-| Per-group data isolation (quests, shop, characters) | Users expect they cannot see another group's quests | MEDIUM | EF Core Global Query Filters on every tenant-scoped entity: `.HasQueryFilter(e => e.GroupId == _currentGroupId)`. Requires adding `GroupId` FK to `QuestEntity`, `ShopItemEntity`, `CharacterEntity`, `TradeItemEntity`, `UserTransactionEntity`, `DungeonMasterProfileEntity`. |
-| User↔group membership (many-to-many) | A user can belong to multiple D&D groups | MEDIUM | `UserGroupEntity { UserId, GroupId, Role }` junction table. Composite PK `(UserId, GroupId)`. Role field allows per-group role assignment (Admin/DM/Player scoped to that group). All existing users seeded into the "EuphoriaInn" group on migration. |
-| Active-group context persisted across requests | After switching groups, every page should reflect the chosen group | MEDIUM | Session-based: `HttpContext.Session.SetInt32("ActiveGroupId", groupId)`. Resolved per-request by `ITenantService` injected into `QuestBoardContext`. Session already exists (IdleTimeout = 24h). No auth cookie re-issue required — simpler than claims for cookie-auth apps. |
-| Group picker at login (for multi-group users) | A user in two groups must be able to choose which one to enter | LOW | After `PasswordSignInAsync` succeeds, check membership count. If count == 1, set session and redirect to Home. If count > 1, redirect to a dedicated `GET /Groups/Pick` page listing their groups. Single-group users (most of the 17 members) never see this page. |
-| Group switcher in navigation | Users who belong to multiple groups must be able to change context without logging out | LOW | Navbar dropdown showing current group name + list of other memberships. POST to `/Groups/Switch/{id}` updates session and redirects to Home. Standard UX pattern (Slack, GitHub, Linear). Invisible to single-group users — navbar element only renders if membership count > 1. |
-| SuperAdmin role with cross-group access | A platform owner must be able to manage all groups | MEDIUM | Add `"SuperAdmin"` role to Identity. `SuperAdminOnly` authorization policy. `ITenantService` returns `null` for SuperAdmin, and `QuestBoardContext` filter uses: `.HasQueryFilter(e => _currentGroupId == null \|\| e.GroupId == _currentGroupId)`. SuperAdmin sees all data unfiltered. |
-| Dedicated management area for SuperAdmin | SuperAdmin needs a place to create/view/delete groups and manage cross-group users | MEDIUM | MVC Area at `/Groups` (or `/Platform`) with `[Authorize(Policy = "SuperAdminOnly")]`. Separate from `/Admin` (which remains per-group). Contains: group list, create group, assign group admin. |
-| Admin-only user creation (no self-registration) | In a closed trusted group, admins create accounts — open registration is a security hole | LOW | Remove the public `Register` GET/POST actions from `AccountController` (or gate them with `[Authorize(Policy = "AdminOnly")]`). Move user creation to `AdminController.CreateUser` (form: Name, Email, Password, Role, Group). Reuses existing `ConfirmationEmailJob` to send welcome/confirm email. |
-| Group-scoped admin panel | Group admins should only see and manage users in their own group | LOW | Existing `AdminController.Users()` filters by `ActiveGroupId` from session — returns only users whose `UserGroupEntity` has the current group. SuperAdmin bypasses this filter. |
-| Existing data migrated into default group | All current quests, users, shop items stay intact after migration | MEDIUM | EF Core migration sets `GroupId = 1` (EuphoriaInn) for all existing rows via `migrationBuilder.Sql(...)`. Data seeder ensures EuphoriaInn group exists before migration runs. |
+| Group-scoped user list (filter `Users()` by `ActiveGroupId`) | A group admin managing "their" users must never see or accidentally act on another group's members — this is a tenant-isolation bug today, not a missing nice-to-have | LOW | Swap `userService.GetAllAsync()` for a group-scoped repository query (e.g. `GetUsersInGroupAsync(groupId)`, joining on the `UserGroup`/membership table used by `GetGroupRoleByIdAsync`). No new UI needed — same `Users.cshtml` view, filtered dataset. Directly parallels the WorkOS/Filament pattern of scoping the query, not the view. |
+| Live substring filter on the Members/"add existing user" table (name + email, case-insensitive, as-you-type) | Table-stakes UX for any list-with-a-search-box at this scale; users expect typing to narrow results with no page reload | LOW | Vanilla JS `input` event + `textContent.toLowerCase().includes()` row toggle. No backend round-trip, no library. Matches every vanilla-JS table-filter reference found (W3Schools pattern, GeeksforGeeks, dev.to) — this is the de facto standard approach, not an opinion. |
+| Keep full member/user table visible (no pagination) at ~17 users, N groups | Pagination below ~50-100 rows adds clicks without solving a real problem; a scrollable/filterable single table is faster to scan | LOW | Explicit anti-over-engineering guardrail — see Anti-Features. |
+| "Create new user" entry point reachable from the Platform Members page, scoped to that group | SuperAdmin currently must leave the Members page, use group-admin's `AdminController.CreateUser` (which requires an *active* group context session, not applicable to a SuperAdmin browsing arbitrary groups by ID), then navigate back — today there's no group-scoped create-user path in the Platform area at all | MEDIUM | Needs a `Platform/Group/CreateUser?groupId=X` (or similar) action mirroring `AdminController.CreateUser`'s body but parameterized by an explicit `groupId` route/query value instead of `IActiveGroupContext.ActiveGroupId` (SuperAdmin has no "active group" session concept the way a group admin does). This is the one piece of real new server logic in this list — everything else is filtering an existing query or adding client JS. |
+| Existing-email collision auto-adds to group + sends a *distinct* notification email (not the Welcome email) | An admin typing a real teammate's email into "Create User" is a completely ordinary action ("oh, they're already on the platform from another group") — hard-failing with a raw duplicate-username error is a bug that surprises the admin and blocks a legitimate operation | MEDIUM | Requires: (1) pre-check via `identityService.GetIdByEmailAsync(email)` *before* calling `CreateUserAsync`, short-circuiting to `SetGroupRoleAsync`/`AddMemberAsync` on collision; (2) a second email template + Hangfire job (e.g. `AddedToGroupEmailJob`) distinct from `WelcomeEmailJob`, since the recipient already has a password and should not get a "set your password" link; (3) apply identically in both `AdminController.CreateUser` and the new Platform create-user action — shared logic belongs in `UserService`/a new domain-level method, not duplicated per controller. |
+| If the existing user is *already a member of this group*, surface a clear "already a member" message rather than a duplicate-add attempt | `GroupService.AddMemberAsync`/repository already throws `InvalidOperationException` for exactly this case (see `GroupController.AddMember`'s existing catch block) | LOW | Reuse the existing `InvalidOperationException` catch pattern already proven in `AddMember` — same message style ("This user is already a member of the group."), no new mechanism required. |
 
-### Differentiators (Competitive Advantage)
+### Differentiators (Nice, Not Required for This Milestone)
 
-Features that add value beyond the minimum viable multi-group experience. Not required for v5.0 launch, but worth knowing about.
+Not required to close the three PROJECT.md gaps, but worth flagging since they sit directly adjacent and a reviewer may ask "why didn't you also...".
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Per-group role assignment (role is group-scoped, not global) | A user can be DM in one group and Player in another — this is realistic for the D&D hobby | MEDIUM | Requires storing `Role` in `UserGroupEntity` rather than relying solely on global Identity roles. When entering a group context, load the group-scoped role and use it for policy checks. Requires custom authorization handler reading group context. **Significant complexity increase** — only worthwhile if users actually DM in multiple groups. |
-| Group invite link (time-limited URL) | Admin generates a signup link for a new member rather than manually creating their account | MEDIUM | Generates a signed token stored in DB with expiry. Invitee clicks link, sets their own password. Avoids admin knowing the new member's password. Not needed at 17 members where admin creating accounts is fine. |
-| Group branding (name, description, avatar) | Each D&D group has a custom identity in the platform | LOW | Add `Description` and `AvatarUrl` to `GroupEntity`. Display on group picker page. Very low implementation cost but low value until multiple groups actually exist. |
-| Group-scoped shop catalog | Each group has its own shop items independent of other groups | Already in table stakes | This is included in the base isolation requirement — not a differentiator. |
+| Cross-group visibility for SuperAdmin on the group-admin `Users()` page (e.g. a "viewing as Group X" banner or group switcher) | Clarifies scope when a SuperAdmin browses a specific group's user list rather than the platform-wide view they're used to | LOW | Not required — the fix is a query-level scope change; a banner is polish. Consider only if human verification finds the scoped list confusing without context. |
+| Debounced input on the live filter | Prevents excessive re-renders on very large tables | LOW (but unnecessary) | At ~17 users / dozens of rows max, a synchronous filter is imperceptibly fast — debounce is solving a problem that doesn't exist yet at this row count. Skip. |
+| Highlighting matched substrings in filtered rows | Slightly nicer scan experience | LOW | Cosmetic; skip unless trivially cheap to add alongside the base filter — not worth a separate task. |
+| Combined "invite or add" single form (radio toggle between "new user" / "existing user" before submit, instead of one form that auto-detects) | Some SaaS tools (implied by GitHub/Slack's explicit-consent model) make the new-vs-existing choice explicit upfront rather than resolving it server-side on submit | MEDIUM | Deliberately **not** recommended here — see Anti-Features: GitHub/Slack's explicit-invite-and-accept flow exists because they're inviting a *stranger* across trust boundaries; this app's admin is directly adding a known teammate to a group they already administer, so the "silent auto-add" the milestone spec already calls for is the right level of friction, not the interstitial. |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+### Anti-Features (Commonly Considered, Wrong Fit Here)
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Per-user email opt-out per group | "A user in two groups might want reminders from one but not the other" | Cross-group preference state adds a third dimension (user × group × preference) to what is currently a flat `HasKey` field. At 17 members and 1-3 groups this never occurs. | Defer; the existing `HasKey` field already handles the single-group opt-out case. |
-| Global roles that carry across groups (one role for all groups) | Simpler to assign once | Breaks the logical model — a DM in Group A should not automatically be a DM in Group B. Would require role re-architecture with no user benefit at current scale. | Scope roles to the group via `UserGroupEntity.Role`. For v5.0, if only one group exists, global roles work fine — migrate to per-group later when a second group is created with different membership. |
-| Self-service tenant creation by any admin | Group admins request the ability to spawn new groups | A rogue group creation gives them data isolation but no platform visibility. SuperAdmin must be the gatekeeper to prevent proliferation at small scale. | SuperAdmin creates groups; group admin manages membership within their group. |
-| Real-time group presence / activity indicators | "Show which group members are online" | Requires WebSocket/SignalR infrastructure, not present in the stack. Enormous complexity for a hobby app. | Not needed — session-based auth already exists, and D&D groups coordinate via Discord/WhatsApp anyway. |
-| Separate database per group | Maximum isolation, no accidental leakage | At 1-3 groups and 17 users, managing multiple connection strings, separate migrations, and separate Hangfire instances is over-engineering by an order of magnitude. | Single shared database with EF Core Global Query Filters. Proven pattern, zero ops overhead. |
-| JWT-based active tenant claims | "Store the active group in the auth token for statelessness" | This app uses cookie auth + sessions — already in place from v1.x. Re-issuing the auth cookie on every group switch (via `RefreshSignInAsync`) introduces latency and complexity with no benefit for an MVC app. | Store active group in `HttpContext.Session` (already configured with 24h idle timeout). Resolved per-request by `ITenantService`. |
-| Schema-per-group database partitioning | Schema isolation without separate databases | EF Core does not support migrations across multiple schemas for the same DbContext. Would require manual migration scripting. No benefit over query filters at this scale. | Global Query Filters with `GroupId` discriminator column. |
-
----
+| Feature | Why It Seems Appealing | Why Problematic at This Scale | Alternative |
+|---------|------------------------|-------------------------------|-------------|
+| Full JS grid/DataTables library (DataTables.net, ag-grid, Tabulator) for the searchable Members table | "Search" + "table" pattern-matches to "add a grid library" | Adds a new client dependency, a new CSS theme to reconcile with the existing `modern-card` Bootstrap styling, and server-side paging/sorting machinery this app will never need at ~17 users across a handful of groups — pure complexity tax with no user-visible benefit over vanilla JS | Vanilla JS `input`-event substring filter over the existing Bootstrap `table-striped table-hover` markup (same pattern already used elsewhere in the app for tables, just add the script) |
+| Server-side search/filter API endpoint (AJAX call per keystroke) | "Feels more scalable" / mirrors patterns from larger apps | Unnecessary round-trip latency and a new endpoint to secure/test, for a dataset small enough to ship to the client in the initial page render already (the Members view already loads `AvailableUsers` server-side today) | Keep filtering 100% client-side against the already-rendered/already-fetched row set |
+| Confirming interstitial ("This email already has an account — send an invite instead?") before auto-adding on collision | Mirrors GitHub/Slack's explicit-consent invite model, feels "safer" | GitHub/Slack are inviting a *stranger* into a workspace/org across a trust boundary the invitee controls (they must accept). Here, a **group Admin/SuperAdmin who already has authority over the target group** is adding a known person — the milestone's own spec calls for silent auto-add + notification, which matches the lower-friction "org admin directly assigns access" pattern (e.g. Google Workspace admin adding an existing user to a new OU, or a Microsoft Entra ID admin assigning group membership) rather than the peer-to-peer invite pattern. An extra confirmation click here is friction without a corresponding security benefit, since the actor already had permission to add *any* user (new or existing) to the group | Silent auto-add + role assignment + a clearly-worded "you've been added to [Group]" notification email (distinct copy from Welcome) so the *added user* — not the admin — gets the confirmation signal, after the fact |
+| Pagination on the group-scoped Users list or Members "add existing user" table | "Best practice for tables" in the abstract | At ~17 total platform users split across a handful of groups, any single group's list is a handful of rows; pagination adds a control and a click for zero scanability benefit and actively hides rows during search-as-you-filter (paginated + client-filtered is a well-known bad combo — filtering should reveal rows a pagination boundary would otherwise hide) | One flat, filterable table; revisit only if user count grows by an order of magnitude |
+| Building a new generic "cross-group user picker" component/service abstraction | Anticipates future reuse | Two of the three fixes only need a straightforward query filter and a client-side script; premature abstraction for a reuse case that doesn't exist yet | Ship the group-scoped query and the vanilla-JS filter inline where needed; extract a shared helper only if a third call site appears |
+| Two separate email templates diverging significantly in tone/branding from `Welcome.razor` | Feels like it deserves distinct visual treatment | Adds template-maintenance surface for a one-year-old email system that already has 6 job/template pairs (`WelcomeEmailJob`, `ForgotPasswordEmailJob`, `ChangeEmailConfirmationJob`, `QuestFinalizedEmailJob`, `QuestDateChangedEmailJob`, `DailyReminderJob`/`SessionReminderJob`) — a 7th wildly different design is inconsistent and more to keep in sync | Copy the existing `Welcome.razor` component structure (same `IEmailRenderService.RenderAsync<T>` + `Dictionary<string,object?>` parameter pattern), swap subject/body copy and drop the `CallbackUrl`/set-password CTA since the recipient already has a password |
 
 ## Feature Dependencies
 
 ```
-[Group entity (GroupEntity table)]
-    └──required by──> [User↔group membership (UserGroupEntity)]
-    └──required by──> [GroupId FK on all tenant-scoped entities]
-    └──required by──> [SuperAdmin management area]
-    └──required by──> [Group picker page]
-    └──required by──> [Group switcher in nav]
+[Fix 1: Group-scoped Users() list]
+    └──independent── no dependency on Fix 2 or Fix 3; pure query-filter change
 
-[GroupId FK on all tenant-scoped entities]
-    └──required by──> [EF Core Global Query Filters (per-entity HasQueryFilter)]
-    └──required by──> [Data migration seeding GroupId = 1 for existing rows]
+[Fix 2: Searchable Members table + group-scoped Create User entry point]
+    └──requires──> existing GroupRole/AddMemberAsync infra (already built, Phase 29/30)
+    └──shares-logic-with──> Fix 3 (the new Platform "create user" action must apply the
+                              same collision-handling as AdminController.CreateUser)
 
-[EF Core Global Query Filters]
-    └──required by──> [Per-group data isolation (quests, shop, characters, etc.)]
-    └──requires bypass for──> [SuperAdmin cross-group access (ITenantService returns null)]
-
-[User↔group membership (UserGroupEntity)]
-    └──required by──> [Group picker at login]
-    └──required by──> [Group switcher in nav]
-    └──required by──> [Group-scoped admin panel (filter users by group)]
-    └──required by──> [Admin-only user creation (assign new user to group)]
-
-[ITenantService (resolves active GroupId from session)]
-    └──required by──> [QuestBoardContext (injected into DbContext constructor)]
-    └──required by──> [Group switcher (writes to session)]
-    └──required by──> [Group picker (writes to session after selection)]
-
-[Active-group context (session)]
-    └──required by──> [ITenantService]
-    └──set by──> [Group picker at login]
-    └──updated by──> [Group switcher in nav]
-
-[SuperAdmin role + policy]
-    └──required by──> [SuperAdmin management area]
-    └──required by──> [ITenantService null-group bypass]
-    └──required by──> [Cross-group user visibility in platform area]
-
-[Admin-only user creation]
-    └──requires removal of──> [Public Register action in AccountController]
-    └──reuses──> [ConfirmationEmailJob (existing Hangfire job)]
-    └──requires──> [UserGroupEntity assignment at creation time]
+[Fix 3: Existing-email collision → auto-add + notification email]
+    └──requires──> IIdentityService.GetIdByEmailAsync (already exists — used today in
+                    AdminController.CreateUser's success path, needs to move earlier to
+                    a pre-check)
+    └──requires──> GroupService.AddMemberAsync (already exists, already throws
+                    InvalidOperationException on duplicate membership — reuse, don't rebuild)
+    └──requires──> new AddedToGroupEmailJob + email template (net-new, mirrors
+                    WelcomeEmailJob's IServiceScopeFactory + IEmailRenderService pattern)
+    └──consumed-by──> AdminController.CreateUser (existing, needs the pre-check added)
+    └──consumed-by──> Platform/Group's new create-user action (Fix 2's entry point)
 ```
 
 ### Dependency Notes
 
-- **Group entity must be first:** Every other feature depends on `GroupEntity` existing. It is the foundation migration.
-- **Global Query Filters depend on GroupId FKs:** You cannot add the filters before adding the FK columns with a migration. Data migration (setting `GroupId = 1` for existing rows) must run as part of the same migration step.
-- **ITenantService is the central seam:** It is read by both the DbContext (for filtering) and controllers (for authorization checks). Design it as a `Scoped` service so it resolves once per request.
-- **Session already exists:** The app already configures `IdleTimeout = 24h` sessions. No new session infrastructure needed — just write `ActiveGroupId` to it.
-- **Admin-only user creation can be a late phase:** Removing self-registration does not block any other feature. Do it early to close the security gap, but it has no downstream dependencies.
-- **Per-group role scoping (differentiator) conflicts with current global Identity role model:** If implemented, it changes how authorization handlers read roles. Keep it out of v5.0 scope unless explicitly required.
-
----
-
-## UX Flow: Expected Behaviors
-
-### (a) Switching Between Groups (member of 2+ groups)
-
-1. User is logged in, sees "EuphoriaInn" in navbar group indicator.
-2. Clicks the group name dropdown → sees list of their other group memberships.
-3. Clicks another group name → browser POSTs to `/Groups/Switch/{newGroupId}`.
-4. Server validates user is a member of that group, writes `ActiveGroupId` to session.
-5. Redirects to `/` (Home). All pages now show that group's quests, shop, calendar.
-6. No logout. No re-authentication. Session cookie unchanged.
-7. **Single-group users:** group indicator in navbar is non-interactive (plain text, no dropdown). They never interact with the switcher.
-
-### (b) SuperAdmin Managing Groups
-
-1. SuperAdmin logs in → lands on normal Home page (scoped to their own active group, or a "platform" default group).
-2. Platform management link appears in navbar (e.g. "Platform" or gear icon), not visible to regular users.
-3. `/Groups` area lists all groups with member counts, creation dates.
-4. SuperAdmin can: create group (name → saves GroupEntity), view group members, remove group (with confirmation — destructive).
-5. SuperAdmin can enter any group's `/Admin` area by switching active group context (same switcher, but accessible to all groups not just own memberships).
-6. SuperAdmin does NOT see cross-group data in the normal views (Home, Quest Board, Shop) unless they explicitly switch to that group — isolation UX is maintained even for SuperAdmin.
-
-### (c) Group Admin Creating a User
-
-1. Admin navigates to `/Admin/Users` → sees only users in their active group.
-2. Clicks "Create User" button → form: Display Name, Email, Password, Role (Player/DM/Admin).
-3. Admin submits → system creates `UserEntity` via `UserManager.CreateAsync`, assigns to `UserGroupEntity` with current group + selected role, enqueues `ConfirmationEmailJob`.
-4. User receives email with confirmation link. Until confirmed, `EmailConfirmed = false` (existing behavior).
-5. New user appears in Admin's user list immediately.
-6. **No public registration page.** The `GET /Account/Register` route returns 403 (or is removed entirely). The Login page has no "Register" link.
-
----
+- **Fix 1 is fully independent** — it's a one-line-of-intent change (add a group filter to the query) with no coupling to the other two fixes. Safe to sequence first or in parallel.
+- **Fix 2's "create new user" entry point should be built to call the same collision-aware creation logic as Fix 3**, not a copy-pasted duplicate of `AdminController.CreateUser`'s current (collision-unaware) body — otherwise Fix 2 ships with the same bug Fix 3 is fixing, just in a second location. This means Fix 3's collision-handling logic should land in a shared service method (e.g. `UserService.CreateOrAddToGroupAsync(email, name, groupId, role)`) that both `AdminController.CreateUser` and the new Platform action call, rather than being written twice.
+- **Fix 3's notification email is net-new infrastructure** (new Hangfire job + new Razor email component) but follows an established, low-risk pattern already proven 6 times in this codebase — low complexity in practice despite being "new code," because it's copying a template, not inventing an approach.
+- **No conflicts** between any of the three fixes — they touch different controllers/views and can be planned as parallel or sequential phases without ordering constraints beyond the shared-logic note above.
 
 ## MVP Definition
 
-### Launch With (v5.0 — these are the required features)
+All three fixes are individually small and already fully scoped by PROJECT.md — there isn't a meaningful "MVP subset" to carve out within any single fix. The MVP framing that matters here is **what NOT to add** while doing them.
 
-- [ ] Group entity + EF Core migration — foundation for everything
-- [ ] GroupId FK + data migration on all tenant-scoped entities (Quest, ShopItem, Character, TradeItem, UserTransaction, DungeonMasterProfile) — isolation foundation
-- [ ] UserGroupEntity junction table with composite PK + seed existing users into EuphoriaInn group — membership model
-- [ ] ITenantService (Scoped, reads session) + EF Core Global Query Filters wired into QuestBoardContext — isolation enforcement
-- [ ] Group picker page (login redirect for multi-group users) + group switcher in navbar — active-group UX
-- [ ] SuperAdmin role + policy + platform management area at `/Groups` — system administration
-- [ ] Admin-only user creation in AdminController + self-registration removed from AccountController — closed-group security
+### Ship With This Milestone
 
-### Defer to v5.x (after v5.0 ships and the second group is actually created)
+- [ ] Group-scoped query filter on `AdminController.Users()` — closes the tenant-leak bug
+- [ ] Vanilla-JS live filter (name + email, case-insensitive substring, `input` event) on the Platform Members "add existing user" table
+- [ ] Group-scoped "Create New User" entry point in the Platform area, calling the same shared creation logic as the group-admin flow
+- [ ] Shared collision-aware user-creation method: existing email → auto-add to group + role + `AddedToGroupEmailJob` notification; new email → existing `CreateAsync` + `WelcomeEmailJob` path (unchanged)
+- [ ] "Already a member" message reusing the existing `InvalidOperationException` catch pattern when the colliding email is already in the target group
 
-- [ ] Per-group role scoping (role stored in UserGroupEntity, not global Identity roles) — trigger: a user is DM in one group and Player in another
-- [ ] Group invite link (time-limited signup URL) — trigger: admin reports that password creation on behalf of new members is inconvenient
-- [ ] Group branding (description, avatar) — trigger: second group is created and wants a distinct identity
+### Explicitly Not This Milestone
 
-### Out of Scope (anti-features, confirmed above)
-
-- Separate database per group
-- JWT-based active tenant claims
-- Schema-per-group isolation
-- Real-time presence indicators
-- Self-service group creation by non-SuperAdmin
-
----
+- [ ] Any JS grid library — vanilla JS is sufficient and consistent with the rest of the app's stack (no existing client-side framework beyond plain Bootstrap + inline scripts, per `Users.cshtml`'s existing `deleteUser` script)
+- [ ] Pagination anywhere in this flow — dataset too small to justify it
+- [ ] Server-side/AJAX search — data is small enough to filter client-side against the already-rendered page
+- [ ] A confirming interstitial before auto-add-on-collision — the milestone spec (and the admin-assigns-access precedent, not the peer-invite precedent) calls for silent auto-add + after-the-fact email
+- [ ] Cross-group visibility banner/switcher on the group-admin `Users()` page — polish, not a gap-fix; revisit only if verification surfaces confusion
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Group entity + migration | LOW (invisible) | LOW | P1 (unblocks everything) |
-| GroupId FK + data migration on all entities | LOW (invisible) | MEDIUM | P1 (isolation foundation) |
-| EF Core Global Query Filters | HIGH (correctness guarantee) | MEDIUM | P1 |
-| UserGroupEntity junction table | HIGH | MEDIUM | P1 |
-| ITenantService (session-based) | HIGH (wires filters to requests) | LOW | P1 |
-| Group picker at login | MEDIUM (only needed for multi-group users) | LOW | P1 |
-| Group switcher in navbar | MEDIUM (only needed for multi-group users) | LOW | P1 |
-| Admin-only user creation | HIGH (security) | LOW | P1 |
-| Remove self-registration | HIGH (security) | LOW | P1 |
-| SuperAdmin role + policy | MEDIUM | LOW | P1 |
-| SuperAdmin management area (/Groups) | MEDIUM | MEDIUM | P1 |
-| Data migration seeding GroupId=1 | HIGH (data integrity) | LOW | P1 (part of migration) |
-| Per-group role scoping | LOW at 1-2 groups | HIGH | P3 |
-| Group invite links | LOW at current scale | MEDIUM | P3 |
+| Group-scoped `Users()` filter | HIGH (fixes a real data-leak/confusion bug) | LOW | P1 |
+| Live filter on Members table | MEDIUM (usability improvement over a dropdown) | LOW | P1 |
+| Platform-scoped "Create New User" entry point | HIGH (closes a real workflow gap for SuperAdmins) | MEDIUM | P1 |
+| Collision → auto-add + notification email | HIGH (removes a hard-fail on an ordinary action) | MEDIUM | P1 |
+| Shared creation-logic extraction (avoid duplicating collision handling) | MEDIUM (prevents Fix 2 from reintroducing Fix 3's bug) | LOW (refactor, not new logic) | P1 |
+| Cross-group visibility banner | LOW | LOW | P3 |
+| Match highlighting in filtered rows | LOW | LOW | P3 |
+| JS grid library | NEGATIVE (adds risk/maintenance without benefit) | HIGH | Do not build |
+| Confirming interstitial on collision | NEGATIVE (contradicts spec, adds friction) | MEDIUM | Do not build |
 
----
+## Comparable-System Analysis
 
-## Dependencies on Existing Systems
+| Concern | GitHub Org Invite | Slack Workspace Invite | This App's Recommended Approach |
+|---------|--------------------|-------------------------|----------------------------------|
+| Existing email, adding to new org/workspace | Sends invite email; recipient must click "Accept" — explicit consent required | Blocks/flags duplicate accounts; requires the invitee to actively join or admin to resolve manually | **Silent auto-add** — no accept step, because the actor is an Admin/SuperAdmin who already has authority over the target group, not a stranger inviting across a trust boundary |
+| Notification to the added user | Invite email with an actionable link (join now) | N/A (errors out rather than silently joining) | Distinct "you've been added to [Group]" email — informational, not actionable (no set-password CTA since they already have a password) |
+| User list scoping | Org members list is inherently org-scoped (you can't see another org's members without being a member) | Workspace member list is workspace-scoped | Group-scoped query filter, matching the same principle — this app's bug is that it currently does NOT do what GitHub/Slack do by default |
+| Add-existing-user UX | Autocomplete-style username/email search box, not a raw dropdown | Autocomplete-style email entry | Live-filtered table (functionally equivalent search-as-you-type experience, adapted to this app's existing server-rendered-then-filtered table pattern rather than an autocomplete widget, since the full list is already small enough to render up front) |
 
-| Existing System | Impact | Required Change |
-|----------------|--------|-----------------|
-| `QuestBoardContext` (EF Core DbContext) | Must inject `ITenantService`, apply filters in `OnModelCreating` | Constructor change + `HasQueryFilter` calls per entity |
-| `UserEntity` (ASP.NET Identity) | Needs navigation to `ICollection<UserGroupEntity>` | EF config only, no identity table schema change |
-| `AccountController.Register` | Must be locked down (admin-only or removed) | Authorization attribute or route removal |
-| `AdminController.Users()` | Must filter by active group via `UserGroupEntity` | Query change + GroupId context |
-| `QuestService`, `ShopService`, `CharacterService` | Data already group-filtered by Global Query Filter — no service code changes needed | None (filter is transparent to services) |
-| `Hangfire reminder job` | Queries quests — these are already group-scoped via filter | ReminderLog also needs GroupId if reminders must be group-isolated |
-| Session (IdleTimeout = 24h) | ActiveGroupId stored here — already configured | Just write/read int from session |
-| Authorization policies (AdminOnly, DungeonMasterOnly) | Must continue to work within group context | Add SuperAdminOnly policy; existing policies unchanged |
-| AutoMapper profiles (EntityProfile, ViewModelProfile) | Group model and ViewModel needed | New `GroupEntity → Group → GroupViewModel` mapping pair |
-
----
+**Why the difference is correct, not a shortcut:** GitHub/Slack's explicit-consent model exists because *anyone* can attempt to invite *anyone else's* email — the friction protects the invitee from unwanted org membership. In this app, only a group Admin or platform SuperAdmin (both already vetted, both already having unilateral authority to add *any* user, new or existing, to the group) can trigger this flow at all. The authority check already happened at the `[Authorize(Policy = "AdminOnly"/"SuperAdminOnly")]` layer; adding a second consent gate for the *target* user doesn't add security, it adds friction to a routine internal-tool operation the milestone spec already decided against.
 
 ## Sources
 
-- EF Core Global Query Filters + multi-tenancy (official): [Microsoft Learn — Multi-tenancy EF Core](https://learn.microsoft.com/en-us/ef/core/miscellaneous/multitenancy) — MEDIUM confidence (official docs, sound patterns)
-- EF Core 10 named filters + selective IgnoreQueryFilters: [codewithmukesh.com — Global Query Filters EFCore](https://codewithmukesh.com/blog/global-query-filters-efcore/) — MEDIUM confidence
-- Multi-tenant admin hierarchy (SuperAdmin vs tenant Admin): [The Reformed Programmer — Building ASP.NET Core multi-tenant apps Part 2](https://www.thereformedprogrammer.net/building-asp-net-core-and-ef-core-multi-tenant-apps-part2-administration/) — MEDIUM confidence
-- Tenant context resolution (ITenantProvider, session vs claims): [Anton Dev Tips — How to implement multitenancy in ASP.NET Core](https://antondevtips.com/blog/how-to-implement-multitenancy-in-asp-net-core-with-ef-core) — LOW confidence (websearch)
-- Group switcher UX patterns: [WorkOS — Multi-tenant session management](https://workos.com/blog/multi-tenant-session-management) + [Auth0 multi-tenant best practices](https://auth0.com/docs/get-started/auth0-overview/create-tenants/multi-tenant-apps-best-practices) — LOW confidence (industry-observed patterns)
-- Disabling ASP.NET Core Identity self-registration: [andyp.dev — Disable user registrations](https://andyp.dev/posts/disable-user-registrations-in-asp-net-core-3-identity) + [damienbod.com — Disabling parts of Identity](https://damienbod.com/2018/08/07/disabling-parts-of-asp-net-core-identity/) — LOW confidence (websearch, but matches this app's custom controller pattern)
+- Direct codebase reads: `AdminController.cs`, `Areas/Platform/Controllers/GroupController.cs`, `Members.cshtml`, `Users.cshtml`, `UserService.cs`, `GroupService.cs`, `IdentityService.cs`, `WelcomeEmailJob.cs` — HIGH confidence, ground truth for current behavior and existing infra
+- [Multi-tenancy — Filament docs](https://filamentphp.com/docs/3.x/panels/tenancy) — LOW confidence (single-pass web search, unverified) — tenant query-scoping pattern
+- [How to design an RBAC model for multi-tenant SaaS — WorkOS](https://workos.com/blog/how-to-design-multi-tenant-rbac-saas) — LOW confidence — per-org role scoping principle
+- [Inviting users to join your organization — GitHub Docs](https://docs.github.com/en/organizations/managing-membership-in-your-organization/inviting-users-to-join-your-organization) — LOW confidence (single-pass) but describes a well-known, widely-documented product behavior — explicit-consent invite semantics
+- [Manage how people join your workspace — Slack](https://slack.com/help/articles/115004856503-Manage-how-people-join-your-workspace) — LOW confidence — duplicate-account handling behavior
+- [How To Create a Filter/Search Table — W3Schools](https://www.w3schools.com/howto/howto_js_filter_table.asp) — LOW confidence but representative of the canonical, widely-repeated vanilla-JS table-filter pattern (corroborated independently by GeeksforGeeks, dev.to, and daily-dev-tips.com results in the same search pass)
+- [How to Perform Real Time Search and Filter on HTML table — GeeksforGeeks](https://www.geeksforgeeks.org/html/how-to-perform-a-real-time-search-and-filter-on-a-html-table/) — LOW confidence, corroborating source for the same pattern
+
+**Confidence caveat:** All external (non-codebase) findings above come from unverified single-pass web search (classified LOW by this project's confidence tooling). They are used here only to confirm well-established, low-controversy conventions (vanilla-JS table filtering, tenant query scoping, invite-vs-auto-add semantics) that are independently corroborated by multiple sources in the same search pass and align with this app's own existing architecture — not as authoritative citations for a novel or contested claim. Treat the *codebase-grounded* recommendations (what to change in `AdminController`, `GroupController`, `UserService`, the email-job pattern) as the HIGH-confidence core of this document.
 
 ---
-
-*Feature research for: Milestone 5 Multi-Tenancy — D&D Quest Board*
-*Researched: 2026-06-29*
+*Feature research for: admin user-management bugfixes (v6.1)*
+*Researched: 2026-07-03*
