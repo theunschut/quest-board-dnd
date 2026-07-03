@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
-status: milestone_complete
-stopped_at: Milestone complete (Phase 36 was final phase)
-last_updated: 2026-07-03T15:18:47.306Z
-last_activity: 2026-07-03 -- Phase 36 execution started
+status: completed
+stopped_at: Phase 37 context gathered
+last_updated: "2026-07-03T16:32:32.132Z"
+last_activity: 2026-07-03
 progress:
-  total_phases: 2
-  completed_phases: 1
+  total_phases: 3
+  completed_phases: 2
   total_plans: 8
   completed_plans: 8
-  percent: 50
+  percent: 67
 ---
 
 # Project State
@@ -92,7 +92,7 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T12:48:29.935Z
-Stopped at: Phase 36 context gathered
-Resume file: .planning/phases/36-campaign-quest-posting-closing/36-CONTEXT.md
+Last session: 2026-07-03T16:32:32.120Z
+Stopped at: Phase 37 context gathered
+Resume file: .planning/phases/37-navigation-access-control/37-CONTEXT.md
 Next step: `/gsd:execute-phase 35`
