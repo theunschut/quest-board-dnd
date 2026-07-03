@@ -1,6 +1,8 @@
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Constants
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject IBoardTypeResolver BoardTypeResolver
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,6 +35,9 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbar">
+                    @{
+                        var activeBoardType = await BoardTypeResolver.GetBoardTypeAsync();
+                    }
                     <ul class="navbar-nav me-auto">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
@@ -62,11 +67,14 @@
                                             </a>
                                         </li>
                                         }
+                                        @if (User.IsInRole("SuperAdmin"))
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="Admin" asp-action="EmailStats">
                                                 <i class="fas fa-envelope-open-text me-2"></i>Email Stats
                                             </a>
                                         </li>
+                                        }
                                     </ul>
                                 </li>
                             }
@@ -84,27 +92,36 @@
                                                 <i class="fas fa-scroll me-2"></i>Create Quest
                                             </a>
                                         </li>
+                                        @if (activeBoardType == BoardType.OneShot)
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="ShopManagement" asp-action="Index">
                                                 <i class="fas fa-coins me-2"></i>Manage Shop
                                             </a>
                                         </li>
+                                        }
+                                        @if (activeBoardType == BoardType.OneShot)
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="DungeonMaster" asp-action="EditProfile">
                                                 <i class="fas fa-user-edit me-2"></i>Edit My Profile
                                             </a>
                                         </li>
+                                        }
 
                                     </ul>
                                 </li>
                             }
 
                             @* Available to all authenticated users *@
+                            @if (activeBoardType == BoardType.OneShot)
+                            {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Shop" asp-action="Index">
                                     <i class="fas fa-store me-1"></i>Shop
                                 </a>
                             </li>
+                            }
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="QuestLog" asp-action="Index">
                                     <i class="fas fa-book-open me-1"></i>Quest Log
@@ -115,22 +132,29 @@
                                     <i class="fas fa-people-group me-1"></i>Guild Members
                                 </a>
                             </li>
+                            @if (activeBoardType == BoardType.OneShot)
+                            {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Players" asp-action="Index">
                                     <i class="fas fa-users me-1"></i>Players
                                 </a>
                             </li>
+                            }
 
                         }
                     </ul>
                     <ul class="navbar-nav ms-auto">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Calendar" asp-action="Index">
-                                <i class="fas fa-calendar-alt me-1"></i>Calendar
-                            </a>
-                        </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
+                            if (activeBoardType == BoardType.OneShot)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Calendar" asp-action="Index">
+                                        <i class="fas fa-calendar-alt me-1"></i>Calendar
+                                    </a>
+                                </li>
+                            }
+
                             var currentUser = await UserService.GetUserAsync(User);
 
                             <li class="nav-item dropdown">

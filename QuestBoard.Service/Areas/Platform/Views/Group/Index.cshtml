@@ -40,6 +40,7 @@
                     <thead>
                         <tr>
                             <th scope="col">Name</th>
+                            <th scope="col">Board Type</th>
                             <th scope="col">Members</th>
                             <th scope="col">Created</th>
                             <th scope="col">Actions</th>
@@ -50,6 +51,16 @@
                         {
                             <tr>
                                 <td>@item.Name</td>
+                                <td>
+                                    @if (item.BoardType == BoardType.Campaign)
+                                    {
+                                        <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1"></i>Campaign</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1"></i>One-Shot</span>
+                                    }
+                                </td>
                                 <td>@item.MemberCount</td>
                                 <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
                                 <td class="text-end">

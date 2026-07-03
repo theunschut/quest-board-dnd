@@ -1,320 +1,367 @@
-<!-- refreshed: 2026-07-01 -->
+<!-- refreshed: 2026-07-03 -->
+<!-- last_mapped_commit: e5b37a73cda29bf355c4de6ebf4663b1625c3cf6 -->
 # Architecture
 
-**Analysis Date:** 2026-07-01
+**Analysis Date:** 2026-07-03
 
 ## System Overview
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    HTTP Request / Response                       │
-├──────────────────┬──────────────────┬──────────────────┬─────────┤
-│   Controllers    │    Middleware    │  Authorization   │  Jobs   │
-│ `Controllers/`   │ `Middleware/`    │ `Authorization/` │`Jobs/`  │
-├──────────────────┴──────────────────┴──────────────────┴─────────┤
-│                    QuestBoard.Service Layer                      │
-│ ViewModels, Razor Views, AutoMapper (ViewModel ↔ DomainModel)  │
-│ Email Rendering, Background Job Dispatchers, Group Session      │
-└────────────────────────┬─────────────────────────────────────────┘
-                         │
-         ┌───────────────┴───────────────┐
-         ▼                               ▼
-┌──────────────────────────┐   ┌──────────────────────────┐
-│  QuestBoard.Domain Layer │   │  Cross-Cutting: Hangfire │
-│  Business Services       │   │  Background Job Runner   │
-│  Domain Models & Enums   │   │  SQL Server Job Queue    │
-│ `Services/`, `Models/`   │   │ (separate execution ctx) │
-│ `Interfaces/`            │   │                          │
-└──────────────┬───────────┘   └──────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────────────┐
-│         QuestBoard.Repository Layer                       │
-│  Entity Framework Core, DbContext, EF Migrations         │
-│  Repositories, Entity Mapping (Entity ↔ DomainModel)    │
-│  `Entities/`, `Migrations/`, `BaseRepository.cs`        │
-├──────────────────────────────────────────────────────────┤
-│                SQL Server Database                        │
-│  Tables: Quests, Users, PlayerSignups, ShopItems, etc.  │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  HTTP Request Entry → Kestrel (Port 8080)                        │
+│  QuestBoard.Service/Program.cs: DI, Middleware, Routing Setup    │
+├──────────────────────────────────────────────────────────────────┤
+│              Service Layer (ASP.NET Core 10 MVC)                 │
+│  Controllers | Views | ViewModels | Authorization | Middleware   │
+│         QuestBoard.Service/                                       │
+├──────────────┬──────────────────────┬───────────────────────────┤
+│   QuestBoard │   Admin/Account/     │    Platform Area          │
+│  Controllers │ Authorization        │    /platform/group/*      │
+│  `Controllers/` │  `Authorization/` │  `Areas/Platform/`        │
+└────────┬─────┴────────┬─────────────┴──────────┬────────────────┘
+         │              │                        │
+         └──────────────┼────────────────────────┘
+                        │
+         ┌──────────────▼──────────────┐
+         │   Domain Layer (Business)   │
+         │    QuestBoard.Domain/       │
+         │                             │
+         │  Interfaces | Services      │
+         │  Models | Enums             │
+         │  Extensions                 │
+         └──────────────┬──────────────┘
+                        │
+         ┌──────────────▼────────────────────┐
+         │   Repository Layer (Data Access)  │
+         │     QuestBoard.Repository/        │
+         │                                   │
+         │  EF Core Context | Repositories  │
+         │  Entities | Migrations           │
+         │  AutoMapper (Entity ↔ Domain)    │
+         └──────────────┬────────────────────┘
+                        │
+                        ▼
+        ┌────────────────────────────────┐
+        │  SQL Server Database (Container)   │
+        │  AspNetSessionState table      │
+        │  (distributed cache)           │
+        └────────────────────────────────┘
+
+
+Background Job Processing:
+        ┌──────────────────────────────────┐
+        │    Hangfire (SQL Server-backed)  │
+        │    QuestBoard.Service/Jobs/      │
+        └────────────┬─────────────────────┘
+                     │
+                     ▼
+        Scoped DI Container
+        → ActiveGroupContextService.SetGroupId(groupId)
+        → Domain Services + Repositories
+        → Email/Reminder Dispatch
+
+
+Deployment Pipeline:
+        Source (main branch) → GitHub Actions (.github/workflows/)
+                            │
+                    ┌───────┴───────┐
+                    │               │
+            .NET CI Build    Docker Build & Publish
+          (dotnet.yml)      (docker-publish.yml)
+                │                   │
+        Build/Test/Verify    Build multi-stage Docker image
+                │            Push to ghcr.io (on tag)
+                │                   │
+                └───────────┬───────┘
+                            │
+                Production Deployment
+             docker-compose.yml (container host)
+             ├─ QuestBoard container (ghcr.io image)
+             ├─ SQL Server 2022 container
+             └─ Shared network: net-dnd
 ```
 
 ## Component Responsibilities
 
 | Component | Responsibility | File |
 |-----------|----------------|------|
-| **QuestController** | Quest listing, creation, finalization, date changes | `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` |
-| **AccountController** | User login, registration, password reset, email confirmation | `QuestBoard.Service/Controllers/Admin/AccountController.cs` |
-| **AdminController** | User management, role assignments, email stats | `QuestBoard.Service/Controllers/Admin/AdminController.cs` |
-| **ShopController** | Player shop browsing, item purchase, gold transactions | `QuestBoard.Service/Controllers/Shop/ShopController.cs` |
-| **ShopManagementController** | DM/Admin item creation, editing, deletion | `QuestBoard.Service/Controllers/Shop/ShopManagementController.cs` |
-| **GroupSessionMiddleware** | Session group context validation, redirect to group picker if expired | `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs` |
-| **QuestService** | Quest business logic: finalize, retrieve with filtered data, email dispatch | `QuestBoard.Domain/Services/QuestService.cs` |
-| **PlayerSignupService** | Player signup registration, vote casting, signup withdrawal | `QuestBoard.Domain/Services/PlayerSignupService.cs` |
-| **QuestRepository** | Quest EF Core queries, get with details/signup, state mutations | `QuestBoard.Repository/QuestRepository.cs` |
-| **BaseRepository** | Generic CRUD: Add, Get, Update, Remove, AutoMapper mapping | `QuestBoard.Repository/BaseRepository.cs` |
-| **QuestBoardContext** | EF Core DbContext, schema modeling, OnModelCreating config, multi-group filtering | `QuestBoard.Repository/Entities/QuestBoardContext.cs` |
-| **ActiveGroupContextService** | Reads session group ID for HTTP requests; overridden by Hangfire jobs | `QuestBoard.Service/Services/ActiveGroupContextService.cs` |
-| **HangfireQuestEmailDispatcher** | Enqueues quest email jobs (finalized, date changed) to SQL Server queue | `QuestBoard.Service/Services/HangfireQuestEmailDispatcher.cs` |
-| **QuestFinalizedEmailJob** | Hangfire background job — renders email template, calls email service | `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs` |
+| HomeController | Entry point; redirects authenticated users to quest board | `QuestBoard.Service/Controllers/QuestBoard/HomeController.cs` |
+| QuestController | Quest CRUD, finalization, player signup management | `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` |
+| GroupPickerController | Group selection UI; stores ActiveGroupId in session | `QuestBoard.Service/Controllers/GroupPickerController.cs` |
+| Platform/GroupController | SuperAdmin-only group CRUD and membership management | `QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs` |
+| AccountController | Login, password reset, email confirmation, user management | `QuestBoard.Service/Controllers/Admin/AccountController.cs` |
+| AdminController | SuperAdmin dashboard, user creation/editing | `QuestBoard.Service/Controllers/Admin/AdminController.cs` |
+| QuestService | Quest finalization, email dispatch coordination | `QuestBoard.Domain/Services/QuestService.cs` |
+| GroupService | Group CRUD, membership queries (group-scoped) | `QuestBoard.Domain/Services/GroupService.cs` |
+| QuestBoardContext | EF Core DbContext; applies global query filters for group isolation | `QuestBoard.Repository/Entities/QuestBoardContext.cs` |
+| ActiveGroupContextService | Reads/writes active group from session; allows jobs to override | `QuestBoard.Service/Services/ActiveGroupContextService.cs` |
+| GroupSessionMiddleware | Enforces group session; redirects to picker if missing | `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs` |
+| QuestFinalizedEmailJob | Hangfire job; sends finalized quest emails to players | `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs` |
+| DailyReminderJob | Scheduled (09:00 CET daily); sends session reminders | `QuestBoard.Service/Jobs/DailyReminderJob.cs` |
 
 ## Pattern Overview
 
-**Overall:** Three-layer clean architecture with strict one-way dependency: **Service → Domain → Repository**.
+**Overall:** Clean Architecture with strict 3-layer dependency flow (Service → Domain → Repository) plus multi-tenancy via Global Query Filters.
 
 **Key Characteristics:**
-- **Unidirectional dependency flow** — Service depends on Domain; Domain depends on Repository; Repository never references Service
-- **Domain as contract layer** — Interfaces in Domain define boundaries; Service and Repository implement them
-- **AutoMapper at two boundaries** — Entity ↔ DomainModel (Repository layer) and DomainModel ↔ ViewModel (Service layer)
-- **Multi-tenancy via group context** — ActiveGroupContext scoped to request (via session) or job execution (via override); DB queries filtered by GroupId
-- **Background jobs via Hangfire** — Email and reminder jobs enqueued as SQL Server durable jobs, executed asynchronously with dedicated thread pool
+- **Three-layer dependency**: Service layer depends on Domain; Domain depends on Repository; Repository never depends upward.
+- **Multi-tenancy by group**: Authenticated, non-SuperAdmin users are scoped to one group at a time (via session). SuperAdmin has no active group (sees all).
+- **Global query filters**: `QuestEntity` and `ShopItemEntity` carry `GroupId` and are automatically filtered by `IActiveGroupContext.ActiveGroupId` at the EF Core level.
+- **Session-backed group context**: `ActiveGroupId` persists in SQL Server distributed cache (`AspNetSessionState` table) so group context survives app restarts.
+- **Hangfire background jobs with group context**: Scoped DI pattern (HangfireJobHelper) sets `ActiveGroupContextService.SetGroupId(groupId)` before running job queries.
+- **AutoMapper at two boundaries**: Entity ↔ DomainModel (Repository layer) and DomainModel ↔ ViewModel (Service layer) to decouple presentations.
 
 ## Layers
 
-**Service Layer (QuestBoard.Service):**
-- Purpose: HTTP request handling, authorization, view model transformation, background job dispatch
+**Service Layer:**
+- Purpose: MVC controllers, views, view models, authorization, middleware, background job definitions.
 - Location: `QuestBoard.Service/`
-- Contains: MVC Controllers, Razor Views, ViewModels, Authorization handlers, Middleware, Jobs, AutoMapper ViewModelProfile, Services (Hangfire dispatcher, email renderer, group context)
-- Depends on: Domain (service interfaces, enums, domain models), ASP.NET Core framework, Hangfire client
-- Used by: Browser clients via HTTP/MVC routing
+- Contains: Controllers (organized by feature), Razor views, ViewModels, Authorization handlers, Middleware, Hangfire job classes.
+- Depends on: Domain layer (IServices, domain models, enums), Repository layer (IdentityService, UserManager), Hangfire, ASP.NET Core Identity.
+- Used by: HTTP clients; Hangfire scheduler.
 
-**Domain Layer (QuestBoard.Domain):**
-- Purpose: Business logic, domain models, service/repository contracts, cross-cutting enums
+**Domain Layer:**
+- Purpose: Business logic, domain models, service interfaces, validation rules.
 - Location: `QuestBoard.Domain/`
-- Contains: Service implementations (business rules, email dispatch coordination), Domain models (Quest, PlayerSignup, User, etc.), Service/Repository interfaces, Enums (Role, SignupRole, CharacterStatus, etc.), Extensions
-- Depends on: Repository (repository interfaces), AutoMapper
-- Used by: Service layer (calls services), Repository layer (implements repositories)
+- Contains: Services (business logic implementations), Models (domain entities), Interfaces (service/repository contracts), Enums, Extensions.
+- Depends on: Repository layer (only for IRepository interfaces and IActiveGroupContext); no direct code references to EF Core or SQL.
+- Used by: Service layer, Repository layer (for mapper profiles).
 
-**Repository Layer (QuestBoard.Repository):**
-- Purpose: Data access, EF Core entity modeling, database schema definition, AutoMapper EntityProfile
+**Repository Layer:**
+- Purpose: Data access, EF Core migrations, entity mappings, AutoMapper to domain models.
 - Location: `QuestBoard.Repository/`
-- Contains: EF Core entities (QuestEntity, UserEntity, etc.), QuestBoardContext (DbContext), Repository implementations (QuestRepository, CharacterRepository, etc.), EF Core Migrations, AutoMapper EntityProfile
-- Depends on: Domain (domain models, interfaces), EF Core, SQL Server
-- Used by: Domain layer (called by service implementations)
+- Contains: Repositories (EF-based implementations), Entities (EF data models), QuestBoardContext, Migrations, EntityProfile (AutoMapper).
+- Depends on: Domain layer (for model interfaces, IActiveGroupContext injected into DbContext).
+- Used by: Domain services via interface injection; service layer for identity/user manager access.
 
 ## Data Flow
 
-### Primary Request Path: Quest Creation (POST /Quest/Create)
+### Primary Request Path (Authenticated, Group-Scoped)
 
-1. **Controller Entry** (`QuestController.Create(POST)` — `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs:76`)
-   - Extracts QuestViewModel from request body
-   - Resolves injected `IQuestService` (Domain service interface)
-   - Validates ViewModel state
+1. **Authentication middleware** validates JWT/session claims; `User.Identity.IsAuthenticated == true` gates entry.
+2. **GroupSessionMiddleware** (`QuestBoard.Service/Middleware/GroupSessionMiddleware.cs`) resolves `IActiveGroupContext` from session. If `ActiveGroupId == null` and user is not SuperAdmin, redirects to `/groups/pick`.
+3. **Controller action** (e.g., `QuestController.Index`) receives authenticated request with `IActiveGroupContext` set to session's `ActiveGroupId`.
+4. **Domain service** (e.g., `IQuestService.GetQuestsWithSignupsAsync`) uses `IQuestRepository`.
+5. **Repository layer** queries via `QuestBoardContext`. Global query filter automatically applies `WHERE GroupId == activeGroupContext.ActiveGroupId` to `QuestEntity` DbSet.
+6. **EF Core** translates filtered LINQ to SQL; executes against SQL Server.
+7. **Entity → DomainModel** mapping via `EntityProfile` (AutoMapper).
+8. **DomainModel → ViewModel** mapping via `ViewModelProfile` (AutoMapper).
+9. **View rendered** with ViewModel data; browser receives HTML.
 
-2. **Service Processing** (`QuestService.AddAsync()` — `QuestBoard.Domain/Services/QuestService.cs`)
-   - Inherits from `BaseService<Quest>` which wraps repository calls
-   - Calls `IQuestRepository.AddAsync(domainModel)` to persist
+### Group Selection Flow
 
-3. **AutoMapper Transformation** (Domain → Entity)
-   - `EntityProfile.cs` maps Quest (domain model) → QuestEntity (EF entity)
-   - OriginalQuest/FollowUpQuest mapped shallowly to avoid AutoMapper recursion
-   - Controller property mapping: ProposedDates list → individual DateTime objects
+1. User logs in; no `ActiveGroupId` in session yet.
+2. **GroupSessionMiddleware** detects null, redirects GET request to `/groups/pick`.
+3. **GroupPickerController.Index** calls `IGroupService.GetGroupsForUserAsync(userId)` or `GetAllWithMemberCountAsync()` (SuperAdmin).
+4. **GroupPickerController.SelectGroup** (POST) stores group ID: `HttpContext.Session.SetInt32(SessionKeys.ActiveGroupId, groupId)`.
+5. Session middleware on next request reads the stored ID; request proceeds normally.
 
-4. **Repository Persistence** (`QuestRepository.AddAsync()` — `QuestBoard.Repository/QuestRepository.cs:18`)
-   - Maps domain Quest to QuestEntity via AutoMapper
-   - Attaches entity to DbSet<QuestEntity>
-   - Calls SaveChangesAsync() to flush to SQL Server
-   - Propagates DB-generated Id back to domain model for immediate use
+### Background Job Execution (Quest Finalization Email)
 
-5. **View Response**
-   - Controller redirects to `QuestController.Index(GET)`
-   - Repository query fetches updated quests with signups (projected via `ProjectWithoutCharacterImages()`)
-   - AutoMapper maps QuestEntity collection back to Quest domain models
-   - ViewModelProfile maps Quest → QuestViewModel for display
-   - Razor view renders quest list
-
-### Background Job Path: Quest Finalized Email (Hangfire)
-
-1. **Job Enqueue** (occurs in Service layer during quest finalization)
-   - `QuestService.FinalizeQuestAsync()` calls `IQuestEmailDispatcher.EnqueueFinalizedEmail(...questId, groupId, ...)`
-   - Concrete implementation: `HangfireQuestEmailDispatcher.EnqueueFinalizedEmail()` → `IBackgroundJobClient.Enqueue<QuestFinalizedEmailJob>()`
-   - Job is serialized to SQL Server Hangfire job table with questId, groupId, recipient emails
-
-2. **Hangfire Background Execution** (separate thread, no HTTP context)
-   - Hangfire worker thread deserializes job and calls `QuestFinalizedEmailJob.ExecuteAsync(questId, groupId, ...)`
-   - Service scope created; `ActiveGroupContextService.SetGroupId(groupId)` called to establish context (D-09)
-   - Scope-injected `IQuestRepository` queries for quest; repository filter applies GROUP BY clause to respect multi-tenancy
-   - Email renderer resolves `IEmailRenderService` to render Razor email template (QuestFinalized component)
-   - `IEmailService` sends via Resend API
-
-3. **Result Tracking**
-   - `repository.SetFinalizedEmailSentForDateAsync()` records date email was sent to prevent duplicate sends
-
-### Group Context Flow (Multi-Tenancy)
-
-1. **HTTP Request** — `GroupSessionMiddleware` resolves `IActiveGroupContext` from DI container
-   - Context reads `Session[SessionKeys.ActiveGroupId]` (int? or null)
-   - If null and not exempt path → redirect to group picker (`/groups/pick`)
-
-2. **Domain/Repository Queries** — Queries automatically filtered by `GroupId`
-   - QuestBoardContext receives injected `IActiveGroupContext` in constructor
-   - OnModelCreating or per-query uses `activeGroupContext.ActiveGroupId` to generate WHERE clauses
-   - Example: `Quests.Where(q => q.GroupId == activeGroupContext.ActiveGroupId)`
-
-3. **Hangfire Job Execution** — No HTTP context (Session unavailable)
-   - Job receives explicit `groupId` parameter
-   - `ActiveGroupContextService.SetGroupId(groupId)` sets override before any repository resolution
-   - Same group filtering applies
+1. **QuestService.FinalizeQuestAsync** calls `IQuestEmailDispatcher.EnqueueFinalizedEmail(...)`.
+2. **HangfireQuestEmailDispatcher** enqueues via `IBackgroundJobClient.Enqueue<QuestFinalizedEmailJob>(...)`.
+3. **Hangfire background thread** dequeues job; instantiates `QuestFinalizedEmailJob`.
+4. **QuestFinalizedEmailJob.ExecuteAsync** calls `HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, async sp => {...})`.
+5. **HangfireJobHelper** creates DI scope, resolves `ActiveGroupContextService` (concrete type, not interface), calls `SetGroupId(groupId)`.
+6. Job's lambda receives scoped provider; resolves `IQuestRepository`, `IEmailRenderService`, `IEmailService`.
+7. **Repository queries** respect the overridden `ActiveGroupContextService._overriddenGroupId`; only see quests/items from `groupId`.
+8. Email rendering and sending proceed; job completes.
 
 **State Management:**
-- HTTP request state: Session (user, group context), HttpContext
-- Background job state: Hangfire SQL Server job queue, domain model snapshots passed to job
-- Transient state within request: Scoped DI services (QuestBoardContext, repositories, services)
-- Persistent state: SQL Server (all entities, Hangfire job queue, migrations)
+- **Session state**: `ActiveGroupId` stored in `AspNetSessionState` table (SQL Server distributed cache). Survives app restarts.
+- **IActiveGroupContext**: Scoped per request/job; reads session in HTTP context, or uses override set by Hangfire jobs.
+- **Group filter override**: `ActiveGroupContextService._groupIdOverridden` flag prevents jobs from seeing unrelated group data.
 
 ## Key Abstractions
 
-**IBaseRepository<T> / IBaseService<T>:**
-- Purpose: Define standard CRUD contract and implementation pattern
-- Examples: `IQuestRepository : IBaseRepository<Quest>`, `QuestService : BaseService<Quest>`
-- Pattern: Generic base + specialized repo/service for complex queries (GetQuestsWithDetailsAsync, FinalizeQuestAsync)
-
-**IQuestEmailDispatcher:**
-- Purpose: Decouple Domain service from Service-layer job infrastructure (Hangfire)
-- Examples: `HangfireQuestEmailDispatcher` (production), `NullQuestEmailDispatcher` (testing)
-- Pattern: Domain QuestService calls dispatcher.EnqueueFinalizedEmail(); implementation decides if async (Hangfire) or no-op
-
 **IActiveGroupContext:**
-- Purpose: Inject current group context into QuestBoardContext so queries filter by group; works across HTTP and Hangfire
-- Implementation: `ActiveGroupContextService` reads session for HTTP, accepts override for jobs
-- Pattern: Scoped DI service shared between QuestBoardContext and Hangfire jobs via SetGroupId()
+- Purpose: Provides the current request/job's group scoping level.
+- Examples: `QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`
+- Pattern: Injected into `QuestBoardContext` (DbContext constructor); evaluated at query-filter time; allows jobs to override via concrete `ActiveGroupContextService.SetGroupId(groupId)`.
 
-**IEntity / IModel:**
-- Purpose: Marker interfaces to bind generic repository CRUD to concrete types
-- Usage: All EF entities implement IEntity; all domain models implement IModel
+**IQuestEmailDispatcher / HangfireQuestEmailDispatcher:**
+- Purpose: Abstract background job enqueuing; allows tests to swap with `NullQuestEmailDispatcher`.
+- Examples: `QuestBoard.Domain/Interfaces/IQuestEmailDispatcher.cs`, `QuestBoard.Service/Services/HangfireQuestEmailDispatcher.cs`
+- Pattern: Service layer calls `dispatcher.Enqueue(...)` (async coordination), Hangfire pulls job from queue.
+
+**Global Query Filters (EF Core):**
+- Purpose: Enforce group isolation at the query level, not in application code.
+- Examples: `QuestBoardContext.OnModelCreating` lines 244–252.
+- Pattern: `modelBuilder.Entity<QuestEntity>().HasQueryFilter(e => activeGroupContext.ActiveGroupId == null || e.GroupId == activeGroupContext.ActiveGroupId)`.
+
+**AutoMapper Profiles:**
+- Purpose: Decouple entity/model/viewmodel representations.
+- Examples: `EntityProfile` (Entity ↔ DomainModel), `ViewModelProfile` (DomainModel ↔ ViewModel).
+- Pattern: Two boundary maps; models in the middle are never serialized directly to HTTP responses.
 
 ## Entry Points
 
-**HTTP Entry Point (MVC Routing):**
-- Location: `QuestBoard.Service/Program.cs:281-283` (default route)
-- Triggers: Browser requests to `/Quest`, `/Shop`, `/Account`, etc.
-- Responsibilities: Route to controller → invoke action → resolve dependencies → call domain services
+**HTTP Request (Authenticated):**
+- Location: `QuestBoard.Service/Controllers/QuestBoard/HomeController.cs`
+- Triggers: Browser navigation to `/` or `/quests`; user is either anonymous or authenticated.
+- Responsibilities: Redirects anonymous users to login; authenticated users to quest board index.
 
-**Area Entry Point (Platform/Group Management):**
-- Location: `QuestBoard.Service/Program.cs:276-279` (area route)
-- Pattern: `/platform/{controller}/{action}/{id}` 
-- Responsibilities: Group CRUD, tenant isolation setup
+**Group Picker (Session Missing):**
+- Location: `QuestBoard.Service/Controllers/GroupPickerController.cs`
+- Triggers: `GroupSessionMiddleware` detects `ActiveGroupId == null` and user is not SuperAdmin.
+- Responsibilities: Displays available groups; POST handler stores selected group in session.
 
-**Health Check Entry Point:**
-- Location: `QuestBoard.Service/Program.cs:285` (/health)
-- Responsibilities: Liveness probe for container orchestration
+**SuperAdmin Platform (Group Management):**
+- Location: `QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs`
+- Triggers: SuperAdmin navigates to `/platform/group/index`.
+- Responsibilities: Create, rename, delete groups; manage group members.
 
-**Hangfire Recurring Job Entry Point:**
-- Location: `QuestBoard.Service/Program.cs:297-300` (DailyReminderJob, runs at 09:00 server time)
-- Triggers: Cron schedule; Hangfire scheduler invokes job via SQL Server
-- Responsibilities: Sweep for sessions due reminders, enqueue email jobs
+**Hangfire Recurring Jobs:**
+- Location: `QuestBoard.Service/Program.cs` lines 339–342 (DailyReminderJob registration).
+- Triggers: Cron schedule (09:00 daily for session reminders); ad-hoc via `IBackgroundJobClient.Enqueue` for quest finalization emails.
+- Responsibilities: Background email dispatch, retry logic with exponential backoff (5 attempts: 1/2/4/8/16 seconds).
 
-**Database Entry Point:**
-- Location: `QuestBoard.Service/Program.cs:290` (ConfigureDatabase)
-- Triggers: App startup (non-Testing environments)
-- Responsibilities: Apply EF Core migrations auto (context.Database.Migrate()), seed shop data
+## Deployment & CI/CD Pipeline
+
+**Production Deployment:**
+- **Container runtime:** `ghcr.io/theunschut/dnd-quest-board:latest` (published via GitHub Actions on semver tags)
+- **Deployment method:** `docker-compose.yml` on container host
+- **Services:** QuestBoard application container (port 8080 internal) + SQL Server 2022 container
+- **Network:** Shared Docker network `net-dnd` for service-to-service communication
+- **Persistence:** SQL Server data volume (`sqlserver_data:/var/opt/mssql`)
+- **Health checks:** Application exposes `/health` endpoint (Kestrel responds after migrations auto-apply)
+
+**Build Pipeline (.NET CI):**
+- **File:** `.github/workflows/dotnet.yml`
+- **Trigger:** Push to `main` or any pull request
+- **Environment:** Ubuntu-latest, .NET 10 (note: workflow specifies 8.0.x but project uses .NET 10)
+- **Steps:** Restore → Build → Test
+- **Scope:** Builds all three projects (Domain, Repository, Service); runs unit + integration tests
+
+**Docker Build Pipeline:**
+- **File:** `.github/workflows/docker-publish.yml`
+- **Trigger:** Semver tag push (e.g., `git tag v1.2.3 && git push origin v1.2.3`)
+- **Registry:** GitHub Container Registry (ghcr.io)
+- **Image name:** `ghcr.io/theunschut/dnd-quest-board:{version}`
+- **Build:** Multi-stage Dockerfile with BuildKit cache mounts for NuGet packages
+  - Stage 1 (`base`): Runtime image (ASP.NET Core 10 runtime)
+  - Stage 2 (`build`): SDK image; restores packages, builds Service project
+  - Stage 3 (`publish`): Publishes Release build to `/app/publish`
+  - Stage 4 (`final`): Copies artifacts to runtime; sets environment variables
+- **Optimization:** `--mount=type=cache` for NuGet packages; BuildKit inline cache to GHA
+- **Signing:** Cosign-signs published image with Rekor transparency log
+- **Output:** Ready-to-run image with entrypoint `dotnet QuestBoard.Service.dll`
+
+**Dockerfile Multi-Stage Build:**
+- **Base stage:** `mcr.microsoft.com/dotnet/aspnet:10.0` (runtime only, ~200MB)
+- **Build stage:** `mcr.microsoft.com/dotnet/sdk:10.0` (full SDK, builds Release configuration)
+- **Publish stage:** Publishes to `/app/publish` (stripped of debug symbols)
+- **Final stage:** Copies only published artifacts; discards SDK + source
+- **Env vars:** `ASPNETCORE_URLS=http://+:8080`, `ASPNETCORE_ENVIRONMENT=Production`
+- **Health probe:** Docker Compose health check uses `curl http://localhost:8080/health`
+
+**Docker Compose (Development & Production):**
+- **Services:**
+  - `questboard`: Application container (port 7080 external → 8080 internal)
+    - Depends on SQL Server (`depends_on`)
+    - Environment: Production mode, connection string points to `sqlserver` service name
+    - Restart: Unless-stopped (survives host reboot)
+    - Health check: HTTP GET /health with 3 retries, 40s start period
+  - `sqlserver`: SQL Server 2022 image
+    - Port 1433 exposed for local admin queries
+    - Data volume persists database
+    - Environment: SA password (from .env)
+    - Restart: Unless-stopped
+- **Networking:** External network `net-dnd` (created manually or by Compose)
+- **Configuration:** Database and email settings via environment variables (not committed secrets)
+
+**Migration Tooling:**
+- **File:** `.config/dotnet-tools.json` (local tool manifest)
+- **Tool:** `dotnet-ef` v9.0.6 (Entity Framework CLI)
+- **Usage:** `dotnet ef migrations add MigrationName --project ../QuestBoard.Repository`
+- **Helper script:** `create-migration.sh` (Windows WSL/Git Bash) — documents the migration workflow
+
+**Solution File:**
+- **File:** `QuestBoard.slnx` (modern solution format)
+- **Structure:** 
+  - Platform targets: Any CPU, x64, x86
+  - `/Tests/` folder: Unit tests + Integration tests
+  - Production projects: Domain, Repository, Service (in dependency order)
+- **Purpose:** IDE navigation, batch build for all platforms, test grouping
+
+**Build Context Optimization:**
+- **File:** `.dockerignore`
+- **Excludes:** Node modules, compiled output (bin/obj), git files, IDE settings, test projects, Docker files themselves
+- **Benefit:** Reduces Docker build context size (faster COPY operations in Dockerfile)
 
 ## Architectural Constraints
 
-- **Threading:** Single-threaded per HTTP request (ASP.NET Core async/await); Hangfire runs 2 background worker threads (Program.cs:202)
-- **Global state:** `ActiveGroupContextService` scoped per request/job (not truly global); DI container is thread-safe singleton; no other module-level singletons beyond DI and logging factories
-- **Circular imports:** BaseService/BaseRepository use generics to avoid hard references; Domain interfaces prevent Service→Repository direct calls
-- **EF Tracking:** Repositories use AutoMapper to map tracked entities to domain models; domain models are untracked DTOs, mutations require re-query before update
-- **Multi-tenancy filter:** GroupId is always a required FK on quest/signup/shop entities; queries MUST filter by ActiveGroupId or behave as "null = see all" (SuperAdmin bypass)
-- **Authorization:** Done via ASP.NET Core [Authorize] attributes and `GroupSessionMiddleware`; no domain-layer authorization logic
-- **Dependency Injection:** Services registered in Program.cs:145-211; Scoped lifetime for QuestBoardContext, repositories, services; Hangfire background jobs use `CreateAsyncScope()` to resolve fresh instances
+- **Threading:** Single-threaded ASP.NET Core request loop (Kestrel); Hangfire background threads pool-based (2 workers configured in Program.cs line 245).
+- **Global state:** `ActiveGroupContextService` carries instance-level `_overriddenGroupId` flag; scoped per job execution, not global.
+- **Circular imports:** None observed. Dependencies flow strictly downward: Service → Domain → Repository.
+- **No UserEntity query filter:** EF Core Identity requires unrestricted user queries (login, token generation, password reset all fail if UserEntity is filtered). Chart note: UserEntity intentionally excluded from global filters (QuestBoardContext line 254).
+- **Session persistence:** Hangfire jobs cannot access `HttpContext.Session` (no HttpContext in background threads). `ActiveGroupContextService.SetGroupId()` bridges this gap.
+- **SuperAdmin group scoping:** SuperAdmin intentionally has `ActiveGroupId = null` (sees all data) to manage cross-tenant concerns. Check `GroupSessionMiddleware` line 65–66 and `GroupPickerController` line 19 for SuperAdmin bypass.
+- **Docker network:** Production deployment requires pre-created `net-dnd` network (or Compose auto-creates on first `up`). Service-to-service comms use service name `sqlserver` (not `localhost`), not container IP.
+- **Database migration timing:** Migrations auto-apply during `Program.cs` startup (`context.Database.Migrate()`), blocking HTTP requests until complete. Large schemas or slow connections extend app startup time.
 
 ## Anti-Patterns
 
-### AutoMapper Circular Recursion on Related Entities
+### Accessing ActiveGroupId Without Null Check
 
-**What happens:** Quest → QuestEntity maps OriginalQuest/FollowUpQuest recursively, causing infinite loop if AutoMapper isn't configured to stop.
+**What happens:** Code calls `activeGroupContext.ActiveGroupId` assuming it's never null, then passes it to a method expecting `int`.
 
-**Why it's wrong:** Infinite recursion exhausts stack; circular data fetches bloat response payloads; unclear what depth to fetch.
+**Why it's wrong:** SuperAdmin runs with `ActiveGroupId == null` by design. A NullReferenceException or silent "0" behavior exposes admin data incorrectly or crashes the request.
 
-**Do this instead:** Map related entities shallowly (Id + Title only) in EntityProfile.cs. If full details needed, fetch separately and compose in service layer.
-- Example: `QuestBoard.Repository/Automapper/EntityProfile.cs:18-26`
+**Do this instead:** Use `activeGroupContext.RequireActiveGroupId()` (extension in `QuestBoard.Domain/Extensions/ActiveGroupContextExtensions.cs`) in user-scoped paths; guard SuperAdmin separately in admin paths.
 
-### Missing Group Context in Background Jobs
+### Querying UserEntity with Group Scoping
 
-**What happens:** Hangfire jobs enqueue without groupId; background execution has no group context; queries return all groups instead of tenant-isolated data.
+**What happens:** EF Core developer adds a query filter to `UserEntity` "for consistency" with `QuestEntity`/`ShopItemEntity`.
 
-**Why it's wrong:** Multi-tenancy isolation violated; emails sent to wrong groups; data leakage across tenants.
+**Why it's wrong:** ASP.NET Core Identity internals query users during login, email confirmation, and password reset without passing group context. Silent query filter failures break authentication entirely.
 
-**Do this instead:** Always pass groupId to job enqueue method; job constructor receives explicit groupId; call `ActiveGroupContextService.SetGroupId(groupId)` before any repository resolution. This is centralized in `HangfireJobHelper.RunInScopeAsync`, which every job now calls instead of setting up its own scope inline.
-- Example: `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs:15-16` (groupId parameter), `QuestBoard.Service/Jobs/HangfireJobHelper.cs` (SetGroupId call, centralized)
+**Do this instead:** Leave `UserEntity` unfiltered. Access control is enforced via role checks (`GroupRole` on `UserGroupEntity`), not via query filters.
 
-### Repository Mutable State Without Re-Query
+### Referencing the Old EuphoriaInn Namespace
 
-**What happens:** Service updates a domain model, calls repository.UpdateAsync(); downstream code reads cached domain model that has stale related data.
+**What happens:** Old documentation or external scripts reference `EuphoriaInn.*` namespaces after the v5.0 multi-tenancy milestone.
 
-**Why it's wrong:** Observer of domain model sees inconsistent state; downstream mutations based on stale data cause silent bugs.
+**Why it's wrong:** All classes were renamed to `QuestBoard.*` in the namespace migration. Imports will fail; type reflection breaks.
 
-**Do this instead:** After update, re-fetch from repository to load fresh related entities.
-- Example: `QuestBoard.Domain/Services/QuestService.cs:20-21` (FinalizeQuestAsync re-fetches post-save)
+**Do this instead:** Use `QuestBoard.Service`, `QuestBoard.Domain`, `QuestBoard.Repository` exclusively. The old `EuphoriaInn.*` directories may still exist in the repo (for legacy test fixtures), but all active code uses the new names.
 
-### Service-Layer Repository Direct References
+### Using Localhost in Docker Compose Connection String
 
-**What happens:** Service injects `QuestRepository` (concrete class) instead of `IQuestRepository` (interface).
+**What happens:** A developer hardcodes `Server=localhost` in the connection string, then runs the app in a Docker container.
 
-**Why it's wrong:** Breaks layering; Service layer couples to Repository implementation details; testing becomes harder (can't swap mock).
+**Why it's wrong:** Inside a container, `localhost` refers to the container itself, not the host or other containers. SQL Server on a different container becomes unreachable; connection hangs and times out.
 
-**Do this instead:** Always inject interfaces defined in Domain (IQuestRepository, IQuestService, etc.); repository classes are internal to Repository project.
-- Example: Controllers inject `IQuestService` (`QuestBoard.Service/Controllers/QuestBoard/QuestController.cs:17`)
-
-## Deferred Hardening / Scaling Notes
-
-### Tenant-isolation defense-in-depth (deferred)
-
-The EF Core Global Query Filter on `QuestEntity` and `ShopItemEntity` provides working cross-tenant protection today — a quest or shop item belonging to another group is not returned to a controller under normal navigation, because every query is transparently scoped by `ActiveGroupId`.
-
-Per-controller `Forbid()` defense-in-depth checks (comparing a loaded entity's `GroupId` against the active group before returning it) are a deferred hardening idea for a future phase. It is not implemented now because the footprint of adding and testing this check across every controller action rivals the size of a full controller refactor, and the query filter already closes the practical risk. If a future phase enforces Group Picker selection at every entry point without gaps, this becomes pure defense-in-depth rather than the primary safety net; until then it remains a documented, accepted residual risk.
-
-### Hangfire fan-out is intentional
-
-`DailyReminderJob` correctly fetches all groups' due quests once (`GetQuestsForTomorrowAllGroupsAsync`), then enqueues one small `SessionReminderJob` per quest. This fan-out pattern gives:
-- Parallel worker processing — multiple small jobs can run concurrently across Hangfire's worker pool
-- Isolated per-job retry — one quest's email failure does not block or retry every other quest's reminder
-- Horizontal scaling — additional Hangfire server instances increase throughput without code changes
-
-A monolithic `SessionReminderBatchJob` that processed all quests in one job would lose all three properties. Batching is a monitored future scaling path — worth revisiting only if the Hangfire queue depth grows into the thousands — not a current problem at this app's scale.
-
-### Dependencies at risk
-
-All Identity-adjacent emails (password reset, welcome/confirmation) route through Hangfire jobs that call `IEmailService` directly — ASP.NET Core Identity's built-in email sender is not used anywhere in this codebase. This avoids the risk of Identity silently falling back to an unconfigured default sender.
-
-The Resend SMTP relay is a single point of failure: there is no secondary relay configured, and `SmtpClient` throws immediately on connection failure rather than retrying internally. The practical mitigation is Hangfire's own job retry (bounded via `AutomaticRetryAttribute`), not a fallback relay — if Resend is down for longer than the retry window allows, jobs land in the Failed Jobs queue for manual admin retry from the Hangfire dashboard.
+**Do this instead:** Use the service name from `docker-compose.yml`: `Server=sqlserver;Database=QuestBoard;...` (as seen in `docker-compose.yml` line 13). Host development can still use `localhost` (via appsettings.Development.json or .env overrides).
 
 ## Error Handling
 
-**Strategy:** Mix of exception propagation and data validation.
+**Strategy:** Layered error responses with minimal end-user exposure.
 
 **Patterns:**
-- **Validation errors:** [Authorize] attributes + ModelState in controllers; return View with ModelState.AddModelError()
-- **Business rule violations:** Domain services throw InvalidOperationException (e.g., duplicate follow-up quest, no eligible signups)
-- **Database errors:** EF Core DbUpdateException caught in repository specializations (e.g., QuestRepository.AddAsync checks for duplicate OriginalQuestId constraint)
-- **Authentication failures:** [Authorize] triggers Challenge(); GroupSessionMiddleware returns 409 Conflict if group context missing for non-idempotent requests
-- **Rate limiting:** RateLimiter middleware (Program.cs:105-135) returns 429 TooManyRequests for /forgot-password and /set-password endpoints
+- **Authorization failures** (403): `[Authorize]` attributes and policy-based handlers short-circuit before business logic runs.
+- **Validation failures** (400): `ModelState.IsValid` checks in controllers; AutoMapper projections are conservative (nulls rather than exceptions).
+- **Resource not found** (404): Repository returns `null` on missing ID; controller returns `NotFound()`.
+- **Database failures** (500): Unhandled exceptions propagate to ASP.NET Core error handler middleware (`app.UseExceptionHandler("/Error")`).
+- **Hangfire job failures** (logged, retried): AutomaticRetryAttribute with exponential backoff (5 attempts, 1/2/4/8/16 seconds). Failed job details visible in Hangfire dashboard (SuperAdmin only).
+- **Rate limit violations** (429): `EnableRateLimiting` on actions; custom handler writes "Too many requests" response.
+- **Container health check failures:** If `/health` endpoint is down for 40s+ (start period), Docker marks container unhealthy; orchestration tools can restart it.
 
 ## Cross-Cutting Concerns
 
-**Logging:** ILogger<T> injected via DI; used in Program.cs for migrations, repositories for deduplication logic (QuestFinalizedEmailJob.cs:43)
+**Logging:** `ILogger<T>` injected into services/jobs; logged to console + configured providers (appsettings.json).
 
 **Validation:** 
-- [Required], [StringLength] annotations on domain models
-- ModelState checks in controllers
-- Repository-level uniqueness constraints (PlayerDateVote index on (PlayerSignupId, ProposedDateId) — EntityProfile.cs:85-87)
+- **Input validation:** ViewModels use `[Required]`, `[StringLength]`, `[Range]` attributes; server-side model binding checks.
+- **Business rule validation:** Domain services enforce invariants (e.g., cannot add user to group twice; check `GroupService.AddMemberAsync`).
 
-**Authentication:** 
-- ASP.NET Core Identity (UserEntity, UserManager, SignInManager)
-- [Authorize] controller attributes
-- Role-based policies: "DungeonMasterOnly", "AdminOnly", "SuperAdminOnly"
+**Authentication:** ASP.NET Core Identity + session cookies. SuperAdmin role checked via `User.IsInRole("SuperAdmin")` in middleware and controllers. GroupRole checked via `IUserService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId())`.
 
-**Authorization:**
-- DungeonMasterHandler / AdminHandler (Program.cs:74-75) — check User.IsInRole()
-- GroupSessionMiddleware (Middleware/GroupSessionMiddleware.cs) — enforce group context presence
-- AdminDashboardAuthFilter (Authorization/AdminDashboardAuthFilter.cs) — Hangfire dashboard access check
-
-**Email Dispatch:**
-- IQuestEmailDispatcher interface (Domain contract)
-- HangfireQuestEmailDispatcher implementation (Service layer, calls Hangfire)
-- Background jobs render Razor components, call IEmailService (Resend API)
+**Authorization:** 
+- **"DungeonMasterOnly"** policy: `DungeonMasterRequirement` handler checks if user is DM (GroupRole.DungeonMaster or GroupRole.Admin) in active group, or SuperAdmin.
+- **"AdminOnly"** policy: `AdminRequirement` handler checks if user is group admin (GroupRole.Admin) or SuperAdmin.
+- **"SuperAdminOnly"** policy: `policy.RequireRole("SuperAdmin")` (built-in policy).
 
 ---
 
-*Architecture analysis: 2026-07-01*
+*Architecture analysis: 2026-07-03*

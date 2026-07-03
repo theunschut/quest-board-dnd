@@ -276,6 +276,9 @@ namespace QuestBoard.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("BoardType")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -393,6 +396,9 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("ChallengeRating")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ClosedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -414,6 +420,9 @@ namespace QuestBoard.Repository.Migrations
 
                     b.Property<int>("GroupId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsFinalized")
                         .HasColumnType("bit");

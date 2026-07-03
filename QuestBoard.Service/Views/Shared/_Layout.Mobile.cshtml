@@ -1,6 +1,8 @@
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Constants
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject IBoardTypeResolver BoardTypeResolver
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,6 +48,9 @@
                     data-bs-dismiss="offcanvas"></button>
         </div>
         <div class="offcanvas-body">
+            @{
+                var activeBoardType = await BoardTypeResolver.GetBoardTypeAsync();
+            }
             <ul class="navbar-nav">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
@@ -72,24 +77,33 @@
                                 <i class="fas fa-scroll me-2"></i>Create Quest
                             </a>
                         </li>
+                        @if (activeBoardType == BoardType.OneShot)
+                        {
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="ShopManagement" asp-action="Index">
                                 <i class="fas fa-coins me-2"></i>Manage Shop
                             </a>
                         </li>
+                        }
+                        @if (activeBoardType == BoardType.OneShot)
+                        {
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="DungeonMaster" asp-action="EditProfile">
                                 <i class="fas fa-user-edit me-2"></i>Edit My Profile
                             </a>
                         </li>
+                        }
                     }
 
                     @* Available to all authenticated users *@
+                    @if (activeBoardType == BoardType.OneShot)
+                    {
                     <li class="nav-item">
                         <a class="nav-link" asp-controller="Shop" asp-action="Index">
                             <i class="fas fa-store me-2"></i>Shop
                         </a>
                     </li>
+                    }
                     <li class="nav-item">
                         <a class="nav-link" asp-controller="QuestLog" asp-action="Index">
                             <i class="fas fa-book-open me-2"></i>Quest Log
@@ -100,19 +114,24 @@
                             <i class="fas fa-people-group me-2"></i>Guild Members
                         </a>
                     </li>
+                    @if (activeBoardType == BoardType.OneShot)
+                    {
                     <li class="nav-item">
                         <a class="nav-link" asp-controller="Players" asp-action="Index">
                             <i class="fas fa-users me-2"></i>Players
                         </a>
                     </li>
+                    }
                 }
 
-                @* Calendar — available to all *@
+                @if (User.Identity?.IsAuthenticated == true && activeBoardType == BoardType.OneShot)
+                {
                 <li class="nav-item">
                     <a class="nav-link" asp-controller="Calendar" asp-action="Index">
                         <i class="fas fa-calendar-alt me-2"></i>Calendar
                     </a>
                 </li>
+                }
 
                 @* User profile / auth section *@
                 @if (User.Identity?.IsAuthenticated == true)

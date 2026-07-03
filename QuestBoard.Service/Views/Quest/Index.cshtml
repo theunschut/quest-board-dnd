@@ -1,9 +1,11 @@
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @model IEnumerable<Quest>
 @{
     ViewData["Title"] = "Quest Board";
     ViewData["BodyClass"] = "home-page";
+    var boardType = (BoardType)ViewBag.BoardType;
     var posterImages = new string[]
     {
         "Poster1.png",
@@ -77,12 +79,13 @@
              style="background-image: url('/images/Blanks/Blanks w Shadow/@posterImage');"
              data-image-width="@dimensions.width"
              data-image-height="@dimensions.height"
-             onclick="window.location.href='@(ViewBag.CurrentUserName != null && ViewBag.CurrentUserName == quest.DungeonMaster?.Name ? Url.Action("Manage", "Quest", new { id = quest.Id }) : Url.Action("Details", "Quest", new { id = quest.Id }))'">
+             onclick="window.location.href='@(currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id ? Url.Action("Manage", "Quest", new { id = quest.Id }) : Url.Action("Details", "Quest", new { id = quest.Id }))'">
 
             <!-- Wax Seal (Finalized Quest) -->
             <div class="wax-seal" style="bottom: @(sealBottom)%; left: @(sealLeft)%;">
-                <img src="/images/Wax Seals/@waxSeal" alt="@(quest.IsFinalized ? "Finalized" : "Open") Quest"
-                     class="seal-image @(quest.IsFinalized ? "finalized-seal" : "open-seal")" />
+                <img src="/images/Wax Seals/@waxSeal"
+                     alt="@((boardType == BoardType.Campaign ? (quest.IsClosed ? "Closed" : "Open") : (quest.IsFinalized ? "Finalized" : "Open"))) Quest"
+                     class="seal-image @((boardType == BoardType.Campaign || quest.IsFinalized) ? "finalized-seal" : "open-seal")" />
             </div>
 
             <!-- User Signup Seal -->
@@ -94,13 +97,16 @@
                 </div>
             }
 
-            <!-- Challenge Rating -->
-            <div class="challenge-rating">
-                <span class="cr-badge">
-                    <i class="fas fa-dice-d20 cr-icon" title="Challenge Rating"></i>
-                    CR @quest.ChallengeRating
-                </span>
-            </div>
+            @if (boardType != BoardType.Campaign)
+            {
+                <!-- Challenge Rating -->
+                <div class="challenge-rating">
+                    <span class="cr-badge">
+                        <i class="fas fa-dice-d20 cr-icon" title="Challenge Rating"></i>
+                        CR @quest.ChallengeRating
+                    </span>
+                </div>
+            }
 
             <div class="quest-content">
                 <!-- Title at top -->
@@ -119,21 +125,24 @@
                         <strong>DM:</strong> @quest.DungeonMaster?.Name
                     </div>
 
-                    @if (quest.IsFinalized && quest.FinalizedDate.HasValue)
+                    @if (boardType != BoardType.Campaign)
                     {
-                        <div class="quest-date">
-                            <strong>Quest Date:</strong><br>
-                            @quest.FinalizedDate.Value.ToString("MMM dd, yyyy 'at' h:mm tt")
-                        </div>
-                        <div class="quest-players">
-                            <strong>Selected Adventurers:</strong> @quest.PlayerSignups.Where(ps => ps.IsSelected).Count()
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="quest-signups">
-                            <strong>Adventurers signed up:</strong> @quest.PlayerSignups.Count()
-                        </div>
+                        @if (quest.IsFinalized && quest.FinalizedDate.HasValue)
+                        {
+                            <div class="quest-date">
+                                <strong>Quest Date:</strong><br>
+                                @quest.FinalizedDate.Value.ToString("MMM dd, yyyy 'at' h:mm tt")
+                            </div>
+                            <div class="quest-players">
+                                <strong>Selected Adventurers:</strong> @quest.PlayerSignups.Where(ps => ps.IsSelected).Count()
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="quest-signups">
+                                <strong>Adventurers signed up:</strong> @quest.PlayerSignups.Count()
+                            </div>
+                        }
                     }
                 </div>
             </div>

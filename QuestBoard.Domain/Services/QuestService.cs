@@ -94,6 +94,18 @@ internal class QuestService(
     }
 
     /// <inheritdoc/>
+    public async Task CloseQuestAsync(int questId, CancellationToken token = default)
+    {
+        await repository.CloseQuestAsync(questId, token);
+    }
+
+    /// <inheritdoc/>
+    public async Task ReopenQuestAsync(int questId, CancellationToken token = default)
+    {
+        await repository.ReopenQuestAsync(questId, token);
+    }
+
+    /// <inheritdoc/>
     public override async Task RemoveAsync(Quest model, CancellationToken token = default)
     {
         var quest = await repository.GetQuestWithManageDetailsAsync(model.Id, token);
@@ -166,11 +178,12 @@ internal class QuestService(
         var quests = await repository.GetQuestsWithDetailsAsync(token);
 
         return quests
-            .Where(q => q.IsFinalized
-                        && q.FinalizedDate.HasValue
-                        && q.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
-                        && !q.DungeonMasterSession)
-            .OrderByDescending(q => q.FinalizedDate)
+            .Where(q => (q.IsFinalized
+                         && q.FinalizedDate.HasValue
+                         && q.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+                         && !q.DungeonMasterSession)
+                        || (q.IsClosed && !q.DungeonMasterSession))
+            .OrderByDescending(q => q.IsClosed ? q.ClosedDate : q.FinalizedDate)
             .ToList();
     }
 
@@ -210,6 +223,7 @@ internal class QuestService(
             TotalPlayerCount = original.TotalPlayerCount,
             DungeonMasterId = original.DungeonMasterId,
             DungeonMasterSession = false,
+            GroupId = original.GroupId,
             ProposedDates = [],
             OriginalQuestId = original.Id,
         };

@@ -19,7 +19,8 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
                 Id = g.Id,
                 Name = g.Name,
                 CreatedAt = g.CreatedAt,
-                MemberCount = g.UserGroups.Count
+                MemberCount = g.UserGroups.Count,
+                BoardType = (BoardType)g.BoardType
             })
             .ToListAsync(token);
     }
@@ -34,7 +35,8 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
                 Id = g.Id,
                 Name = g.Name,
                 CreatedAt = g.CreatedAt,
-                MemberCount = g.UserGroups.Count
+                MemberCount = g.UserGroups.Count,
+                BoardType = (BoardType)g.BoardType
             })
             .ToListAsync(token);
     }

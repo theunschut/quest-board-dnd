@@ -1,30 +1,16 @@
 # D&D Quest Board
 
-## Current State: v5.0 Shipped
+## Current State: v6.0 Shipped
 
-**Current milestone shipped:** v5.0 Multi-Tenancy — 2026-07-02
-**Previous milestone shipped:** v4.0.0 — 2026-06-28
+**Previous milestone shipped:** v6.0 Board Types (Campaign Mode) — 2026-07-03
 **Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
 **Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
 
 ---
 
-## Next Milestone Goals
-
-No milestone started yet. Candidates carried forward from v5.0 (see Active requirements below):
-
-- `GroupSessionMiddleware` POST-body data-loss risk on session expiry mid-submission (code review flagged, not yet fixed)
-- Digest batching for session reminders (EMAIL-04/REMIND-02)
-- Profile picture crop/avatar selection (issue #78)
-- v2.0 Omphalos Integration (Phases 10–11) remains in progress on a separate branch, independent of v5.0
-
-Run `/gsd:new-milestone` to scope the next milestone.
-
----
-
 ## What This Is
 
-A D&D campaign management web application for a group of players and Dungeon Masters. It handles quest creation and scheduling, player signup with date voting, a character/guild system, a shop with gold economy, and email notifications (HTML-templated, Hangfire-dispatched, Resend-relayed). Built with ASP.NET Core 10 MVC, SQL Server, and Docker — deployed as a single container to a self-hosted Linux environment.
+A D&D campaign management web application for a group of players and Dungeon Masters. It handles quest creation and scheduling, player signup with date voting, a character/guild system, a shop with gold economy, and email notifications (HTML-templated, Hangfire-dispatched, Resend-relayed). Groups choose a board type at creation — a One-Shot board (date voting + finalization, the original flow) or a Campaign board for ongoing games with a fixed party (no date voting/signup, simple Close/Reopen lifecycle, no scheduling emails). Built with ASP.NET Core 10 MVC, SQL Server, and Docker — deployed as a single container to a self-hosted Linux environment.
 
 ## Core Value
 
@@ -66,6 +52,9 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - ✓ Known Bugs and Security Considerations closure — Production-only fail-fast startup guard when email config is missing, `ResendStatsClient` extracted with bounded 429 retry-with-backoff, Resend Bearer-token and secret-safe logging patterns documented, regression tests for all three plus a reflection-based CSRF `[ValidateAntiForgeryToken]` coverage sweep and a verify-and-close test for the stale `SessionReminderJob` null-dereference claim — v5.0 (Phase 34.1)
 - ✓ Performance & Architecture closure — follow-up quest create+rollback consolidated into `QuestService.CreateFollowUpQuestWithDetailsAsync`, net-new `ControllerExtensions` MVC-boilerplate helpers applied to `AdminController`, composite index on `Quests(IsFinalized, FinalizedDate)`, lean shop list-view projection, global Hangfire `AutomaticRetryAttribute` retry policy, `HangfireJobHelper` scope/group-context helper across all 3 jobs, EF Core Global Query Filter documentation, AutoMapper enum-cast round-trip test, and the `RequireActiveGroupId()` ASVS V4 null-guard wired into `QuestController.SendReminder`'s job dispatch — v5.0 (Phase 34.2), closes the v5.0 Multi-Tenancy milestone's 9 phases
 - ✓ Group role authorization regression fix — ~20 inline `IsInRole("Admin"/"DungeonMaster")` call sites across `QuestController`, `QuestLogController`, `DungeonMasterController`, and `Admin/AccountController`, orphaned by Phase 27's move of per-group roles out of `AspNetUserRoles`, migrated to a shared `GetEffectiveGroupRoleAsync` helper (SuperAdmin bypass preserved); code review then caught and fixed a display-name authorization-bypass bug and a SuperAdmin-reachable `RequireActiveGroupId()` crash the migration itself introduced — v5.0 (Phase 34.3), discovered during manual pre-ship testing
+- ✓ Board type configuration (BOARD-01, BOARD-02) — `BoardType` enum (`OneShot`/`Campaign`) threaded through entity/domain/projection models and an EF Core migration; SuperAdmin picks a board type on group creation via a required, blank-first dropdown; the value is displayed read-only afterward (disabled dropdown on Edit, badge on Index) and is immutable server-side — Edit POST never reads `BoardType` (`[BindNever]` plus omission from the controller assignment), and Create rejects out-of-range values via `[EnumDataType]` — v6.0 (Phase 35)
+- ✓ Campaign quest posting & closing (CQUEST-01 through CQUEST-06) — additive `IsClosed`/`ClosedDate` fields and `CloseQuestAsync`/`ReopenQuestAsync` on `QuestService`, kept separate from `FinalizeQuestAsync`/`OpenQuestAsync` so the one-shot flow is untouched; campaign quest board/Manage/Details/Create views (desktop + mobile) drop the date picker, per-quest signup, and CR badge, replacing them with a single Close/Reopen control; closed campaign quests appear in the Quest Log immediately (no next-day wait) while one-shot next-day behavior is preserved; no quest-related emails fire for campaign boards. Code review caught and fixed a server-side authorization gap (`Close`/`Reopen`/`Edit` never validated `BoardType`, allowing a DM to close a one-shot quest or leave `DungeonMasterSession` set on a campaign quest) plus a Quest Log DM-session leak and a pre-existing follow-up-quest `GroupId` bug from Phase 34.2 — v6.0 (Phase 36)
+- ✓ Navigation & access control (NAV-01 through NAV-06, ACCESS-01) — `_Layout.cshtml`/`_Layout.Mobile.cshtml` hide Calendar, Shop, Manage Shop, Edit My Profile, and Players in campaign groups via an allowlist ("show only when confirmed One-Shot"), never a Campaign blocklist, so anonymous/no-group states default to hidden; Guild Members and Quest Log stay visible for all board types; Calendar additionally hidden for anonymous visitors; `AdminController.EmailStats` locked to `SuperAdminOnly` (ANDed with the class-level `AdminOnly`) with a real `/Account/AccessDenied` page wired app-wide via `ConfigureApplicationCookie`, replacing silent 404s on every policy failure. Human-verify checkpoint caught a genuine app-startup-blocking circular DI dependency (`ActiveGroupContextService` had grown a dependency on `IGroupService`, which transitively depends back on the `QuestBoardContext` that itself depends on `IActiveGroupContext`) — fixed by splitting the BoardType lookup onto a new `IBoardTypeResolver` service — v6.0 (Phase 37), closes the v6.0 Board Types (Campaign Mode) milestone's 3 phases
 
 ### Active
 
@@ -86,7 +75,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 ## Context
 
-**Codebase:** ~56 450 lines added / ~6 374 removed in v5.0 (754 files touched, incl. the full EuphoriaInn→QuestBoard rename). Full codebase estimated 40 000–50 000 LOC C#/Razor.
+**Codebase:** ~56 450 lines added / ~6 374 removed in v5.0 (754 files touched, incl. the full EuphoriaInn→QuestBoard rename). ~13 717 lines added / ~535 removed in v6.0 (121 files touched, 28 tasks across 11 plans). Full codebase estimated 40 000–50 000 LOC C#/Razor.
 
 **Tech stack:**
 - ASP.NET Core 10 MVC with Razor views (`.cshtml`) and Razor components (`.razor`) for email templates
@@ -101,6 +90,9 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - `NoOpBackgroundJobClient` stub registered in test factory alongside NullObject dispatchers — AdminController takes `IBackgroundJobClient` directly as constructor arg (fixed 2026-06-28)
 - `FinalizedDate` stored as server local time (CET/CEST) — reminder job uses `DateTime.Today.AddDays(1)` which is correct for LXC host timezone but should be reviewed if deployment timezone changes
 - Resend API stats only paginate backwards from now; historical data beyond 30 days not surfaced
+- BoardType lookup is implemented 3 times with near-identical logic (`QuestController.GetActiveBoardTypeAsync`, `QuestLogController.GetActiveBoardTypeAsync`, `BoardTypeResolver.GetBoardTypeAsync`) — verified safe (all three agree for every reachable request, since `GroupSessionMiddleware` guarantees a resolved `ActiveGroupId` for non-SuperAdmin users) but not consolidated onto the `IBoardTypeResolver` seam — v6.0 (Phase 37 integration audit)
+- Mobile nav (`_Layout.Mobile.cshtml`) has no Email Stats or Background Jobs link at all — pre-existing gap predating v6.0, not a regression; SuperAdmin can still reach both by direct URL on mobile, just without an in-app nav shortcut. Fix is ready-to-apply per `37-REVIEW.md` WR-01, not yet actioned — v6.0 (Phase 37)
+- Integration tests always override `IActiveGroupContext`/`IBoardTypeResolver` with a test double (`MutableGroupContext`), so no automated test exercises `Program.cs`'s real production DI graph end-to-end — a regression of the circular DI cycle fixed in Phase 37 wouldn't be caught by the current suite (mitigated once by a live `dotnet run` smoke test during verification, no permanent guard) — v6.0 (Phase 37)
 
 ## Constraints
 
@@ -139,6 +131,11 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 | `RequireActiveGroupId()` guard built as an opt-in seam (Phase 34.2 plan scope), not force-wired into controllers | Avoids widening one plan's blast radius across every `ActiveGroupId` call site in one pass | ✓ Wired into `QuestController.SendReminder` same phase — code review (WR-01) and verification both flagged the guard's own target bug (`?? 1` fallback) as still live; user chose "fix now" over deferring |
 | Ownership checks standardized on `User.Id` comparison, not `User.Name` | `User.Name` has no uniqueness constraint (`AccountController.Edit` lets any user rename freely); a name-based DM-ownership check let one user impersonate another by colliding display names | ✓ Fixed — Phase 34.3; code review (CR-01) caught it same phase, before shipping |
 | SuperAdmin short-circuit for `GetEffectiveGroupRoleAsync`/`RequireActiveGroupId()` must be applied per call site, not just once | 34.3-06's own self-caught fix only special-cased `QuestController.Index`; code review (CR-02) found ~13 sibling call sites across 3 controllers still crashed for a SuperAdmin with no active group | ✓ Fixed — Phase 34.3; user chose "fix now" over shipping with known SuperAdmin 500s |
+| `BoardType` immutability enforced by both convention (Edit POST never assigns it) and binding (`[BindNever]` on `GroupEditViewModel.BoardType`) | Code review (WR-01) found the original convention-only guard could silently regress under a future Edit-action refactor | ✓ Good — Phase 35 |
+| Disabled form-control/form-select `:disabled` styling added globally, not scoped to the Group Edit view | Human verification found disabled selects were visually indistinguishable from interactive ones (pre-existing unconditional `!important` background rules overrode Bootstrap's default disabled styling); the same latent bug already affected other disabled inputs elsewhere in the app (e.g. `ShopManagement/Edit`) | ✓ Good — Phase 35 |
+| `CloseQuestAsync`/`ReopenQuestAsync` kept as thin passthroughs on `QuestService`, structurally separate from `FinalizeQuestAsync`/`OpenQuestAsync` (zero dispatcher reference) | Guarantees no quest-related email can ever fire for a campaign-group action, by construction rather than by a conditional check that could be forgotten | ✓ Good — Phase 36 |
+| Per-action `GetActiveBoardTypeAsync` helper (`QuestController`/`QuestLogController`) defaults to `BoardType.OneShot` on a null active group, deliberately diverging from `IBoardTypeResolver`'s null-preserving nav-gating lookup (Phase 37) | The two callers have different correctness needs: quest-rendering logic needs a concrete board type to pick a view shape; nav-gating needs to treat "no group" as its own hidden state. Milestone audit traced this and confirmed `GroupSessionMiddleware` makes the divergence unobservable for any reachable non-SuperAdmin request | ✓ Good — Phase 36/37; confirmed safe by v6.0 milestone audit, not consolidated (see Known issues) |
+| `IBoardTypeResolver` split out of `IActiveGroupContext`/`ActiveGroupContextService` into its own interface + service | `ActiveGroupContextService` is a constructor dependency of `QuestBoardContext` (via `IActiveGroupContext`, for the tenant query filter); giving it a dependency on `IGroupService` (whose repository chain needs `QuestBoardContext`) created a circular DI graph that a factory-based registration hid from .NET's build-time cycle detector, so the app silently failed to start instead of throwing a clean error. Caught at the phase's human-verify checkpoint, not by `dotnet build` or automated tests | ✓ Fixed — Phase 37; no automated regression guard yet (see Known issues) |
 
 ## Evolution
 
@@ -159,4 +156,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-02 — v5.0 Multi-Tenancy milestone shipped (Phases 26–34.3, 12 phases, 48 plans)*
+*Last updated: 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone shipped and archived (Phases 35–37)*

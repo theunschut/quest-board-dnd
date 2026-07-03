@@ -129,6 +129,33 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task EmailStats_WhenAdminNotSuperAdmin_ShouldBeRejected()
+    {
+        // Arrange - Create user with Admin role (not SuperAdmin)
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "emailstatsadmin", "emailstatsadmin@example.com", roles: ["Admin"]);
+
+        // Act
+        var response = await adminClient.GetAsync("/Admin/EmailStats", TestContext.Current.CancellationToken);
+
+        // Assert - an Admin who is not also a SuperAdmin must be rejected server-side
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task EmailStats_WhenSuperAdmin_ShouldSucceed()
+    {
+        // Arrange - Create user with SuperAdmin role
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        // Act
+        var response = await superAdminClient.GetAsync("/Admin/EmailStats", TestContext.Current.CancellationToken);
+
+        // Assert - SuperAdmin passes both AdminOnly and SuperAdminOnly
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     // CreateUser auth gating — a non-admin must not reach the form
     [Fact]
     public async Task CreateUser_WhenNotAdmin_ShouldBeForbidden()

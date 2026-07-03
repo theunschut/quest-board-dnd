@@ -10,6 +10,7 @@
     var currentUserId = ViewBag.CurrentUserId as int?;
     var isPlayerSignedUp = (bool)ViewBag.IsPlayerSignedUp;
     var canManage = (bool)ViewBag.CanManage;
+    var boardType = (BoardType)ViewBag.BoardType;
 
     var selectedPlayers = Model.Quest?.PlayerSignups
         .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
@@ -35,7 +36,20 @@
     @{
         string statusBadge;
         string statusText;
-        if (Model.Quest?.IsFinalized == true && Model.Quest.FinalizedDate.HasValue
+        if (boardType == BoardType.Campaign)
+        {
+            if (Model.Quest?.IsClosed == true)
+            {
+                statusBadge = "bg-secondary";
+                statusText = "Closed";
+            }
+            else
+            {
+                statusBadge = "bg-success";
+                statusText = "Open";
+            }
+        }
+        else if (Model.Quest?.IsFinalized == true && Model.Quest.FinalizedDate.HasValue
             && Model.Quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
         {
             statusBadge = "bg-secondary";
@@ -55,9 +69,12 @@
     <div class="quest-header-card-mobile mb-3">
         <div class="d-flex justify-content-between align-items-start mb-2">
             <h5 class="mb-0 me-2">@Model.Quest?.Title</h5>
-            <span class="badge bg-dark border flex-shrink-0">
-                <i class="fas fa-dice-d20 me-1"></i>CR @Model.Quest?.ChallengeRating
-            </span>
+            @if (boardType != BoardType.Campaign)
+            {
+                <span class="badge bg-dark border flex-shrink-0">
+                    <i class="fas fa-dice-d20 me-1"></i>CR @Model.Quest?.ChallengeRating
+                </span>
+            }
         </div>
         <div class="d-flex justify-content-between align-items-center mb-2">
             <small class="text-muted">
@@ -75,7 +92,7 @@
     </div>
 
     @* Voting section: update vote (signed-up player, open quest) *@
-    @if (User.Identity?.IsAuthenticated == true && isPlayerSignedUp && Model.Quest?.IsFinalized == false)
+    @if (boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && isPlayerSignedUp && Model.Quest?.IsFinalized == false)
     {
         <div class="quest-section-card-mobile mb-3">
             <h6 class="quest-section-heading mb-3">
@@ -116,7 +133,7 @@
     }
 
     @* Voting section: date selection (not yet signed up, open quest) *@
-    @if (User.Identity?.IsAuthenticated == true && !isPlayerSignedUp && Model.Quest?.IsFinalized == false)
+    @if (boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && !isPlayerSignedUp && Model.Quest?.IsFinalized == false)
     {
         <div class="quest-section-card-mobile mb-3">
             <h6 class="quest-section-heading mb-2">

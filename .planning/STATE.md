@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Multi-Tenancy
-status: milestone_complete
-stopped_at: Milestone archived — ready for /gsd:new-milestone
-last_updated: 2026-07-02T13:00:01.218Z
-last_activity: 2026-07-02
+milestone: v6.0
+milestone_name: Board Types (Campaign Mode)
+status: Awaiting next milestone
+stopped_at: Phase 37 context gathered
+last_updated: "2026-07-03T19:28:15.854Z"
+last_activity: 2026-07-03 — Milestone v6.0 completed and archived
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 48
-  completed_plans: 48
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 11
   percent: 100
 ---
 
@@ -18,55 +18,73 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-02 — v5.0 Multi-Tenancy shipped)
+See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mode) milestone shipped and archived)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Planning next milestone
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 34.3 (final phase of v5.0)
-Status: Milestone shipped and archived
-Last activity: 2026-07-02
+Phase: Milestone v6.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-03 — Milestone v6.0 completed and archived
 
-v5.0 Multi-Tenancy: 12/12 phases complete, 48/48 plans complete. Full phase-by-phase detail archived to `.planning/milestones/v5.0-ROADMAP.md`.
+## Performance Metrics
 
-## Deferred Items
+**Velocity:**
 
-Items acknowledged and deferred at milestone close on 2026-07-02:
+- Total plans completed (v6.0): 11/11
+- Timeline: ~1.4 days (2026-07-02 → 2026-07-03)
 
-| Category | Item | Status |
-|----------|------|--------|
-| requirement | EMAIL-04 — digest session reminder (multiple same-day quests → one email) | Deferred since v4.0 — same-day quests have never occurred in one year of operation |
-| requirement | REMIND-02 — combined reminder for multi-quest days | Deferred — same as EMAIL-04 |
-| tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Deferred — flagged by code review in Phase 31, not yet fixed |
-| requirement | Profile picture crop/avatar selection (issue #78) | Deferred since v2.x — SkiaSharp native lib availability unverified on deployment host |
+**By Phase:**
 
-## Quick Tasks Completed
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 35. Board Type Configuration | 3/3 | Complete |
+| 36. Campaign Quest Posting & Closing | 5/5 | Complete |
+| 37. Navigation & Access Control | 3/3 | Complete |
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260702-t9m | Fix mobile GroupPicker index white-page bug caused by unrendered Styles section in _Layout.GroupPicker.cshtml | 2026-07-02 | 82aa549 | [260702-t9m-fix-mobile-grouppicker-index-white-page-](./quick/260702-t9m-fix-mobile-grouppicker-index-white-page-/) |
-| 260702-tz2 | Add mobile (.Mobile.cshtml) views for the Platform area's Group management pages (Index, Create, Edit, Delete, Members), matching existing mobile styling conventions | 2026-07-02 | 9c2ad2a | [260702-tz2-the-area-platform-view-don-t-have-a-mobi](./quick/260702-tz2-the-area-platform-view-don-t-have-a-mobi/) |
+**Recent Trend:**
+
+- v6.0 shipped in ~1.4 days across 3 phases — fastest pace yet, continuing v5.0's acceleration. See .planning/RETROSPECTIVE.md for details.
 
 ## Accumulated Context
 
-### Pending for Next Milestone
+### Decisions
 
-- `GroupSessionMiddleware` POST-body data-loss risk — see Deferred Items above
-- Profile picture crop/avatar selection (issue #78) — verify SkiaSharp native lib on aspnet:10 Debian Bookworm
-- Digest batching (EMAIL-04/REMIND-02) — revisit when same-day quest scheduling becomes common
-- v2.0 Omphalos Integration (Phases 10–11) — still in progress on a separate branch, independent of v5.0
-- Any backlog items in ROADMAP.md
+v6.0 is shipped and archived. Full decision log: PROJECT.md Key Decisions table; milestone-specific detail: `.planning/milestones/v6.0-ROADMAP.md` and `.planning/RETROSPECTIVE.md`.
 
-Full per-phase architectural decisions, deviations, and performance metrics for v5.0 (Phases 26–34.3) are preserved in each phase's SUMMARY.md under `.planning/phases/`, and the durable decision log lives in `.planning/PROJECT.md`'s Key Decisions table.
+### Pending Todos
+
+None — awaiting next milestone (`/gsd:new-milestone`).
+
+### Blockers/Concerns
+
+None open for v6.0 (shipped clean per `.planning/v6-MILESTONE-AUDIT.md` → now `.planning/milestones/v6.0-MILESTONE-AUDIT.md`).
+
+Carried forward, still unresolved, not addressed by any milestone yet:
+
+- `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
+
+## Deferred Items
+
+Items acknowledged and carried forward from previous milestone close (2026-07-02):
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| requirement | EMAIL-04 — digest session reminder (multiple same-day quests → one email) | Deferred since v4.0 — same-day quests have never occurred in one year of operation | v4.0 close |
+| requirement | REMIND-02 — combined reminder for multi-quest days | Deferred — same as EMAIL-04 | v4.0 close |
+| tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Deferred — flagged by code review in Phase 31, not yet fixed | v5.0 close |
+| requirement | Profile picture crop/avatar selection (issue #78) | Deferred since v2.x — SkiaSharp native lib availability unverified on deployment host | v5.0 close |
 
 ## Session Continuity
 
-**Resume file:** None
-
-Last session: 2026-07-02T13:00:01.218Z
-Stopped at: v5.0 milestone archived
+Last session: 2026-07-03T21:24:23.000Z
+Stopped at: v6.0 milestone archived (phases moved to .planning/milestones/v6.0-phases/)
+Resume file: —
 Next step: `/gsd:new-milestone`
 
-Last activity: 2026-07-02 - Completed quick task 260702-tz2: Add mobile views for the Platform area's Group management pages (Index, Create, Edit, Delete, Members)
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

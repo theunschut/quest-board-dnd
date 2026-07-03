@@ -81,6 +81,13 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("SuperAdminOnly", policy =>
         policy.RequireRole("SuperAdmin"));
 
+// Route authorization-policy failures to a real Access Denied page app-wide instead of a 404,
+// so a rejected request (e.g. a non-SuperAdmin hitting an admin-only URL) gets a clear message.
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.AccessDeniedPath = "/Account/AccessDenied";
+});
+
 // Trust X-Forwarded-For from the configured reverse proxy (e.g. Traefik)
 // so RemoteIpAddress reflects the real client instead of the proxy — otherwise every request
 // shares one partition key below. KnownProxies comes from ReverseProxy:KnownProxies config
@@ -213,6 +220,12 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ActiveGroupContextService>();
 builder.Services.AddScoped<IActiveGroupContext>(sp =>
     sp.GetRequiredService<ActiveGroupContextService>());
+
+// IBoardTypeResolver is intentionally separate from IActiveGroupContext — it depends on
+// IGroupService, whose repository chain depends on QuestBoardContext, which itself depends
+// on IActiveGroupContext. Resolving BoardType via ActiveGroupContextService would create a
+// circular DI dependency (QuestBoardContext -> IActiveGroupContext -> IGroupService -> QuestBoardContext).
+builder.Services.AddScoped<IBoardTypeResolver, BoardTypeResolver>();
 
 if (!builder.Environment.IsEnvironment("Testing"))
 {

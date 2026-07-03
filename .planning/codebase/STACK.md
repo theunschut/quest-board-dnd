@@ -1,139 +1,215 @@
 # Technology Stack
 
-**Analysis Date:** 2026-07-01
+**Analysis Date:** 2026-07-03
+**Last Mapped Commit:** e5b37a73cda29bf355c4de6ebf4663b1625c3cf6
 
 ## Languages
 
 **Primary:**
-- C# - Used across all three layers (Service, Domain, Repository)
+- C# 13 (ASP.NET Core 10) - All application code (Service, Domain, Repository layers)
 
 ## Runtime
 
 **Environment:**
-- .NET 10.0 (ASP.NET Core 10 MVC)
-- Kestrel HTTP server
-- Windows host for development; Docker container for production
+- .NET 10 (net10.0)
 
 **Package Manager:**
-- NuGet (.csproj package management)
-- Lockfile: Not applicable (auto-generated; use `packages.lock.json` when needed)
+- NuGet
+- Lockfile: `packages.lock.json` (implicit via .csproj declarations)
 
 ## Frameworks
 
 **Core:**
-- ASP.NET Core 10 (MVC) - Web application framework
-- Entity Framework Core 10.0.9 - ORM for database access
-
-**Identity & Authentication:**
-- ASP.NET Core Identity - User management, roles, password reset, email confirmation
-- Uses `IdentityDbContext<UserEntity, IdentityRole<int>, int>` in `QuestBoard.Repository/Entities/QuestBoardContext.cs`
-
-**Background Jobs:**
-- Hangfire 1.8.23 (AspNetCore + SqlServer) - Scheduled and enqueued email jobs
-- Stored in SQL Server; runs on 2 worker threads
-- Configured in `QuestBoard.Service/Program.cs` lines 186-204
-- Dashboard at `/hangfire` (Admin/SuperAdmin only)
-
-**View Templating:**
-- Razor Views - Server-side HTML templates
-- Mobile view location expander enabled in `QuestBoard.Service/Program.cs` line 38
+- ASP.NET Core 10.0.9 - Web application framework, MVC, routing, middleware
+- Entity Framework Core 10.0.9 - ORM for SQL Server database access
+- Microsoft.AspNetCore.Identity 10.0.9 - User authentication and authorization with role-based policies
 
 **Testing:**
-- xUnit v3 (test framework for both unit and integration tests)
-- xUnit.Runner v3.1.5 - Test runner
-- Microsoft.NET.Test.Sdk 18.7.0
-
-**Mapping:**
-- AutoMapper 16.1.1 - Object-to-object mapping
-- Registered in two layers: Entity↔DomainModel and DomainModel↔ViewModel
-- License key: configurable via environment variable `AutoMapper__LicenseKey`
+- xUnit 3.2.2 - Unit and integration test framework
+- FluentAssertions 8.10.0 - Assertion helpers and matchers
+- Microsoft.AspNetCore.Mvc.Testing 10.0.9 - WebApplicationFactory for integration testing
+- Microsoft.EntityFrameworkCore.InMemory 10.0.9 - In-memory database for test isolation
 
 **Build/Dev:**
-- Entity Framework Core Tools 10.0.9 - CLI tools for migrations (design-time only)
-- Entity Framework Core Design 10.0.9 - Design-time services for migrations
+- Microsoft.EntityFrameworkCore.Tools 10.0.9 - EF migrations CLI (dotnet ef)
+- Microsoft.EntityFrameworkCore.Design 10.0.9 - Design-time EF services
+
+**Background Jobs:**
+- Hangfire.AspNetCore 1.8.23 - Background job scheduling and retry logic
+- Hangfire.SqlServer 1.8.23 - SQL Server persistence for Hangfire jobs
 
 ## Key Dependencies
 
 **Critical:**
-- Microsoft.EntityFrameworkCore 10.0.9 - Core EF infrastructure
-- Microsoft.EntityFrameworkCore.SqlServer 10.0.9 - SQL Server provider
-- Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.9 - Identity with EF Core
-- Hangfire.AspNetCore 1.8.23 - Hangfire integration with ASP.NET Core
-- Hangfire.SqlServer 1.8.23 - Hangfire background job storage in SQL Server
+- AutoMapper 16.1.1 - Object-to-object mapping between domain models, entities, and view models
+- Microsoft.Extensions.Caching.SqlServer 10.0.9 - Distributed session state via SQL Server (persists across app restarts)
+- NSubstitute 5.3.0 - Mocking framework for unit tests
+- Microsoft.NET.Test.Sdk 18.7.0 - Test SDK runtime
 
 **Infrastructure:**
-- Microsoft.AspNetCore.Identity.UI 10.0.9 - Identity UI components (scaffolding support)
-- Microsoft.Extensions.Configuration.Binder 10.0.9 - Configuration binding
-- Microsoft.Extensions.Options.ConfigurationExtensions 10.0.9 - Options pattern for settings
-- System.Security.Cryptography.Xml 10.0.9 - XML cryptography support (legacy identity features)
-- Microsoft.AspNetCore.HttpOverrides - X-Forwarded-For header handling for reverse proxies
-
-**Testing Libraries:**
-- FluentAssertions 8.10.0 - Readable assertions in tests
-- NSubstitute 5.3.0 - Mocking framework for unit tests
-- Microsoft.AspNetCore.Mvc.Testing 10.0.9 - WebApplicationFactory for integration tests
-- Microsoft.EntityFrameworkCore.InMemory 10.0.9 - In-memory database for integration tests
+- Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.9 - Identity entity configurations for EF Core
+- xunit.runner.visualstudio 3.1.5 - Visual Studio test runner integration
 
 ## Configuration
 
 **Environment:**
-- Settings sourced from `appsettings.json` and environment variables
-- Active configuration bound via `IConfiguration` in dependency injection
-- Main entry point: `QuestBoard.Service/Program.cs`
-
-**Key Configurations Required:**
-- `ConnectionStrings__DefaultConnection` - SQL Server connection string (required)
-- `EmailSettings__SmtpServer` - SMTP server for email (default: 192.168.6.13)
-- `EmailSettings__SmtpPort` - SMTP port (default: 25)
-- `EmailSettings__SmtpUsername` - SMTP username (optional for relay servers)
-- `EmailSettings__SmtpPassword` - SMTP password (optional for relay servers)
-- `EmailSettings__FromEmail` - Sender email address (required if sending)
-- `EmailSettings__FromName` - Sender display name (default: "D&D Quest Board")
-- `EmailSettings__AppUrl` - Public application URL for links in emails (required)
-- `EmailSettings__ResendApiKey` - Resend API key for analytics (optional)
-- `AutoMapper__LicenseKey` - AutoMapper enterprise license (optional, for license compliance)
-- `ReverseProxy__KnownProxies__0=<ip>` - IPs of trusted reverse proxies for X-Forwarded-For trust (production only)
+- Appsettings-based configuration (`appsettings.json`)
+- Environment variables override appsettings via `builder.Configuration.GetConnectionString()` and `builder.Configuration["Section:Key"]`
+- Three environments: Development, Production, Testing
+  - Testing environment: Hangfire disabled, in-memory cache used instead of SQL Server cache, database isolation via `WebApplicationFactoryBase`
+- `ASPNETCORE_ENVIRONMENT` env var controls environment selection
 
 **Build:**
-- Project files use `net10.0` target framework across all layers
-- Implicit usings enabled; nullable reference types enabled
-- Web project: `Microsoft.NET.Sdk.Web`
-- Class library projects: `Microsoft.NET.Sdk`
+- SDK: `.NET 10 SDK`
+- Multi-stage Docker build with BuildKit cache for faster rebuilds
+- Target framework: `net10.0` (all projects)
+- Nullable reference types enabled (`<Nullable>enable</Nullable>`)
+- Implicit usings enabled (`<ImplicitUsings>enable</ImplicitUsings>`)
+
+**Key Configuration Files:**
+- `QuestBoard.Service/appsettings.json` - Database connection, email settings, Resend API key, reverse proxy trust config
+- `docker-compose.yml` - Local dev containerization with SQL Server 2022 and ASP.NET app
+- `Dockerfile` - Multi-stage production build image (base: .NET 10 runtime)
+- `.config/dotnet-tools.json` - Local tool manifest specifying `dotnet-ef` v9.0.6 for migration management
+
+## Local Tools
+
+**dotnet-tools.json** (`.config/dotnet-tools.json`):
+- `dotnet-ef` v9.0.6 - Entity Framework Core migration tooling for local development
+- Invoked via `dotnet ef` commands after restore
 
 ## Platform Requirements
 
 **Development:**
-- Visual Studio 2024 or VS Code with C# extension
-- .NET 10.0 SDK
-- SQL Server 2022+ (localhost or networked)
-  - Dev connection string: `Server=localhost;Database=QuestBoard;User Id=QuestBoardUser;Password=QuestBoardUser!;Trusted_Connection=true;TrustServerCertificate=true;`
-- Docker (optional, for containerized SQL Server: see docker-compose.yml)
+- Windows or Linux with .NET 10 SDK
+- SQL Server 2022 (local via `docker-compose up -d` or external `localhost`)
+- Visual Studio or VS Code with C# extensions recommended
+- Bash/PowerShell for command-line tooling (CLAUDE.md specifies Windows development with CRLF line endings)
+- `create-migration.sh` script available for migration generation from Windows WSL
 
 **Production:**
-- .NET 10.0 runtime
-- SQL Server 2022 (or SQL Server 2019 compatible)
-  - Production connection string uses service name: `Server=sqlserver;Database=QuestBoard;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=true;`
-- SMTP server reachable (for email delivery) or Resend API key
-- Docker & Docker Compose (single container deployment)
-- Reverse proxy support: Traefik or similar (optional; configure `ReverseProxy__KnownProxies` if used)
+- Container runtime (Docker) with `docker-compose.yml`
+- SQL Server 2022 database (externally managed, mounted from host)
+- Environment variables for:
+  - Database credentials and connection string
+  - Email configuration (SmtpServer, FromEmail, optional ResendApiKey)
+  - Session secret (implicit in distributed cache configuration)
+  - Reverse proxy known IP addresses (ReverseProxy:KnownProxies)
+- Kestrel HTTP server (configured on port 8080 in container)
+- Rate limiting enforced at application level (no external rate limiter required)
 
-## Architecture Highlights
+## Deployment Architecture
 
-**Three-Layer Clean Architecture:**
-1. `QuestBoard.Service` - MVC controllers, views, authorization handlers, background job definitions
-2. `QuestBoard.Domain` - Business logic, service interfaces, models, AutoMapper profiles
-3. `QuestBoard.Repository` - EF Core entities, repositories, DbContext, migrations
+**Container Image:**
+- Base: `mcr.microsoft.com/dotnet/aspnet:10.0`
+- Build base: `mcr.microsoft.com/dotnet/sdk:10.0`
+- Publishes as: `ghcr.io/theunschut/dnd-quest-board:latest` (referenced in docker-compose.yml)
+- Healthcheck: HTTP GET `/health` every 30s (10s timeout, 3 retries, 40s start grace period)
+- Multi-stage build (`.Dockerfile`):
+  - Stage 1 (base): ASP.NET 10.0 runtime image
+  - Stage 2 (build): .NET 10 SDK for compilation and publishing
+  - Stage 3 (publish): Outputs to `/app/publish`
+  - Stage 4 (final): Copies artifacts and runs service
+- BuildKit cache mount enabled for NuGet packages (`RUN --mount=type=cache,target=/root/.nuget/packages`)
+- Environment variables set in final image: `ASPNETCORE_URLS=http://+:8080`, `ASPNETCORE_ENVIRONMENT=Production`
+- Entry point: `dotnet QuestBoard.Service.dll`
 
-**Strict Dependency Direction:**
-- Service → Domain → Repository
-- No circular dependencies
-- Entity Framework packages confined to Repository layer only
+**Docker Compose** (`docker-compose.yml`):
+- App service: `ghcr.io/theunschut/dnd-quest-board:latest`
+  - Port mapping: 7080 (host) → 8080 (container)
+  - Network: `net-dnd` (external, must be pre-created)
+  - Depends on: `sqlserver` service
+  - Restart policy: `unless-stopped`
+  - Health check: HTTP GET `/health` every 30s
+- SQL Server 2022 service: `mcr.microsoft.com/mssql/server:2022-latest`
+  - Port mapping: 1433 (host) → 1433 (container)
+  - Volume mount: `sqlserver_data:/var/opt/mssql` (persisted across restarts)
+  - Environment: `ACCEPT_EULA=Y`, `MSSQL_SA_PASSWORD` from `.env`
+  - Restart policy: `unless-stopped`
 
-**Dependency Injection:**
-- Service registration in extension methods: `AddRepositoryServices()`, `AddDomainServices()`, `AddControllersWithViews()`
-- Scoped lifetime for DbContext, repositories, and most services
-- Session-scoped active group context for multi-tenancy
+**Database:**
+- SQL Server 2022 (`mcr.microsoft.com/mssql/server:2022-latest`)
+- Auto-migrations via `context.Database.Migrate()` in `Program.cs` (non-Testing environments only)
+- Session state table: `AspNetSessionState` (schema: `dbo`)
+- Hangfire job tables: auto-created in default schema
+- Connection string in docker-compose: `Server=sqlserver;Database=QuestBoard;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=true;`
+
+## CI/CD & GitHub Actions
+
+**Workflows Location:** `.github/workflows/`
+
+**dotnet.yml** — .NET build and test CI:
+- Triggers: Push to `main` branch, pull requests to `main`
+- Runs on: `ubuntu-latest`
+- Steps:
+  1. Checkout repository
+  2. Setup .NET (version 8.0.x — **note: older than runtime; CI uses .NET 8 while app runs .NET 10**)
+  3. Restore dependencies
+  4. Build (Release configuration)
+  5. Run all tests via `dotnet test`
+- Permissions: Read-only (`contents: read`)
+
+**docker-publish.yml** — Container image build and publish:
+- Triggers: Push with tags matching `v*.*.*` (semver releases only)
+- Runs on: `ubuntu-latest`
+- Registry: GitHub Container Registry (`ghcr.io`)
+- Image name: Derived from `github.repository` (resolves to `theunschut/dnd-quest-board`)
+- Build pipeline:
+  1. Checkout
+  2. Install cosign v2.4.1 (container signing tool, skip on PRs)
+  3. Setup Docker Buildx for multi-platform builds
+  4. Login to GHCR (skip on PRs)
+  5. Extract Docker metadata and apply semver tags
+  6. Build and push image
+     - Platform: `linux/amd64` only
+     - Cache: GitHub Actions cache (GHA) with max mode
+     - BuildKit inline cache enabled
+  7. Sign published image with cosign (skip on PRs)
+- Permissions: `contents: read`, `packages: write`, `id-token: write` (for cosign)
+
+**binary-release.yml** — Binary release and self-hosted deployment:
+- Triggers: 
+  - Push with semver tags (`v*.*.*`)
+  - Manual workflow dispatch with tag input
+- Jobs:
+  - `release` (only on push events):
+    - Runs on: `ubuntu-latest`
+    - Steps:
+      1. Checkout
+      2. Setup .NET (10.0.x — **correct version for app runtime**)
+      3. Publish Service project to Release configuration (`./publish`)
+      4. Create zip archive: `questboard-${tag}.zip`
+      5. Create GitHub release with zip attached
+    - Permissions: `contents: write` (create releases)
+  - `deploy` (conditional: runs after `release` succeeds OR on manual dispatch):
+    - Runs on: `self-hosted` runner (must be configured in repo settings)
+    - Steps:
+      1. Execute `/home/questboard/deploy.sh` with tag (from git ref or manual input)
+    - Permissions: Empty (no GitHub permissions needed)
+- **Note:** Self-hosted runner must have deployment script at `/home/questboard/deploy.sh`
+
+## Docker Build Optimization
+
+**BuildKit Features Used:**
+- Cache mount for NuGet packages (`.Dockerfile` lines 16, 25)
+- Inline cache enabled for GitHub Actions integration
+- Excludes test projects and development files via `.dockerignore`
+
+**.dockerignore** (`/.dockerignore`):
+- Excludes: `.dockerignore`, `.env`, `.git`, `.gitignore`, `.vs`, `.vscode`, `bin`, `obj`, `node_modules`, `docker-compose.yml`, `Dockerfile*`, `LICENSE`, `README.md`, test/dev artifacts
+- Purpose: Minimize final image size by excluding unnecessary build context
+
+## Local Development Tooling
+
+**create-migration.sh** (`/create-migration.sh`):
+- Purpose: Convenience script for Windows WSL migration generation
+- Steps:
+  1. Changes to `QuestBoard.Service/` directory
+  2. Adds `Microsoft.EntityFrameworkCore.Tools` package
+  3. Invokes `dotnet ef migrations add` with QuestBoard.Repository project
+- Usage: `bash create-migration.sh` (from Windows WSL environment)
 
 ---
 
-*Stack analysis: 2026-07-01*
+*Stack analysis: 2026-07-03*
+*Last mapped commit: e5b37a73cda29bf355c4de6ebf4663b1625c3cf6*

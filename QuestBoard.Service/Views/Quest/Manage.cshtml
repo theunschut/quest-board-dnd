@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = $"Manage Quest: {Model.Title}";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 
@@ -23,10 +24,13 @@ else
             <div class="card modern-card">
                 <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
                     <h2 class="mb-0">@ViewData["Title"]</h2>
-                    <span class="badge cr-badge fs-6">
-                        <i class="fas fa-dice-d20 me-1"></i>
-                        CR @Model.ChallengeRating
-                    </span>
+                    @if (boardType != BoardType.Campaign)
+                    {
+                        <span class="badge cr-badge fs-6">
+                            <i class="fas fa-dice-d20 me-1"></i>
+                            CR @Model.ChallengeRating
+                        </span>
+                    }
                 </div>
                 <div class="card-body modern-card-body">
                     @if (TempData["Error"] != null)
@@ -54,10 +58,12 @@ else
                         </form>
                     }
 
+                    @if (boardType != BoardType.Campaign)
+                    {
                     @if (Model.IsFinalized)
                     {
                         <h6>Selected Date:</h6>
-                        
+
                         var finalizedDate = Model.ProposedDates!.FirstOrDefault(pd => pd.Date.Date == Model.FinalizedDate?.Date);
                         if (finalizedDate != null)
                         {
@@ -524,6 +530,31 @@ else
                                         <i class="fas fa-envelope me-1"></i>Send Reminder
                                     </button>
                                 </form>
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                        </div>
+                    }
+                    }
+                    @if (boardType == BoardType.Campaign)
+                    {
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex gap-2">
+                                @if (!Model.IsClosed)
+                                {
+                                    <form asp-action="Close" method="post" style="display: inline;">
+                                        <input type="hidden" name="id" value="@Model.Id" />
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-secondary">Close Quest</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="Reopen" method="post" style="display: inline;">
+                                        <input type="hidden" name="id" value="@Model.Id" />
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-warning">Reopen Quest</button>
+                                    </form>
+                                }
                             </div>
                             <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
                         </div>

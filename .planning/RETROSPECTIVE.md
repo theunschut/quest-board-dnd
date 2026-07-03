@@ -98,3 +98,49 @@
 
 - Sessions: multiple across 4 days
 - Notable: 12 phases (9 planned + 3 inserted) shipped in 4 days is the fastest milestone pace so far — driven by short, well-scoped phases and parallel waves within phases
+
+---
+
+## Milestone: v6.0 — Board Types (Campaign Mode)
+
+**Shipped:** 2026-07-03
+**Phases:** 3 (35–37) | **Plans:** 11 | **Tasks:** 28
+**Timeline:** ~1.4 days (2026-07-02 → 2026-07-03)
+
+### What Was Built
+
+1. `BoardType` enum (`OneShot`/`Campaign`) on groups, chosen by SuperAdmin at creation and immutable afterward (enforced by both convention and `[BindNever]`)
+2. Campaign quest lifecycle — additive `IsClosed`/`ClosedDate` + `CloseQuestAsync`/`ReopenQuestAsync`, structurally separate from the one-shot `Finalize`/`Open` flow (zero dispatcher reference, so no email can ever fire)
+3. Campaign views (board/Manage/Details/Create, desktop + mobile) drop the date picker, per-quest signup, and CR badge for a single Close/Reopen control; closed quests appear in the Quest Log immediately (no next-day wait)
+4. Board-type-aware navigation — desktop and mobile nav hide Calendar/Shop/Manage Shop/Edit My Profile/Players for campaign groups via an allowlist, never a blocklist
+5. SuperAdmin-only Email Stats with a real app-wide `AccessDenied` page (`ConfigureApplicationCookie`) replacing silent 404s
+
+### What Worked
+
+- **Interface-first foundation plans:** Phase 37-01 defined the `GetBoardTypeAsync` contract and a RED test scaffold before Phase 37-03 consumed it in the layout — the executor never had to scavenger-hunt for the seam
+- **Parallel waves with zero file overlap:** 37-01/37-02 and 36-04/36-05 ran as parallel plans within the same wave since their `files_modified` never intersected — the intra-wave overlap check worked as designed
+- **Human-verify checkpoints caught real, non-cosmetic bugs:** Phase 37's checkpoint surfaced a genuine app-startup-blocking circular DI dependency, not just a visual nitpick — validates that these checkpoints earn their keep beyond CSS review
+- **Code review as a standing gate:** Caught a follow-up-quest `GroupId` bug, a SuperAdmin-crashing board-type lookup, a Quest Log DM-session leak, and (independently) the mobile Email Stats discoverability gap — all before or during the same phase, not post-ship
+
+### What Was Inefficient
+
+- **REQUIREMENTS.md checkbox drift — again:** v5.0's own retrospective (above) logged this exact failure mode as Key Lesson #3 ("traceability-table status and checkbox status can drift independently... reconcile them explicitly at milestone close"). v6.0 hit the identical issue — all 15 checkboxes stayed unchecked despite phases shipping and the status column saying "Complete"/"Pending" inconsistently. The lesson was written down but not turned into an enforced mechanism, so it recurred verbatim.
+- **Circular DI dependency invisible to build and automated tests:** `dotnet build` and the full test suite both stayed green while the app was completely unable to start, because integration tests register a test-double `IActiveGroupContext`/`IBoardTypeResolver` that never exercises the real `Program.cs` DI graph. Only a live `dotnet run` (first done manually by the user, then repeated by the verifier) caught it. No automated regression guard for this class of bug exists yet.
+- **New interface didn't trigger a consolidation pass:** Introducing `IBoardTypeResolver` to fix the DI cycle left the pre-existing `QuestController`/`QuestLogController` board-type lookups un-migrated onto the new seam — caught by the milestone-level integration checker, not during Phase 37 itself, because Phase 37's own scope didn't touch those files.
+
+### Patterns Established
+
+- **Keep DbContext-adjacent interfaces constructor-thin:** if a service is (even transitively) a constructor dependency of `QuestBoardContext`, it must never depend on anything that itself needs `QuestBoardContext` — split a richer capability into its own interface (`IBoardTypeResolver`) rather than growing the thin one (`IActiveGroupContext`)
+- **Allowlist over blocklist for "show only in state X" nav gating:** `== BoardType.OneShot` (not `!= BoardType.Campaign`) so every indeterminate case (anonymous, no active group) naturally resolves to hidden without a separate null-handling branch
+
+### Key Lessons
+
+1. **A written-down lesson isn't a fix until it's enforced:** the checkbox-drift lesson from v5.0 recurred in v6.0 verbatim. Consider a mechanical check (e.g., a phase-close gate that diffs `REQUIREMENTS.md` checkboxes against `VERIFICATION.md` status) rather than relying on the retrospective alone to prevent repeat occurrences.
+2. **DI-graph changes need a live-boot check, not just build+test green:** whenever a constructor dependency changes on a type that sits between `Program.cs` and a DbContext, run the app for real (not just `dotnet build`/`dotnet test`) before considering the change safe — mocked test doubles in integration tests can fully hide a circular dependency that only manifests against the real DI container.
+3. **When a new interface is introduced mid-phase to fix an architectural issue, immediately grep for existing duplicate implementations of the same concern** — the milestone-level integration checker found the 3x-duplicated BoardType lookup that Phase 37's own review didn't flag, since it was outside that phase's file scope.
+
+### Cost Observations
+
+- Sessions: 1 extended session
+- Model mix: opus (planning), sonnet (research/execution/verification/review/integration-check), haiku (codebase mapping) — consistent with the project's "balanced" model profile
+- Notable: 3 phases in ~1.4 days, continuing the accelerating pace from v5.0 (12 phases/4 days) — driven by the same short-scoped-phase + parallel-wave approach, plus the milestone-level integration checker catching cross-phase issues that no single phase's own review would surface

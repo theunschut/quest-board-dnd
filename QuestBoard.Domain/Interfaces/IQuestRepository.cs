@@ -52,6 +52,16 @@ public interface IQuestRepository : IBaseRepository<Quest>
     Task OpenQuestAsync(int questId, CancellationToken token = default);
 
     /// <summary>
+    /// Closes a campaign quest, setting IsClosed and recording the close date.
+    /// </summary>
+    Task CloseQuestAsync(int questId, CancellationToken token = default);
+
+    /// <summary>
+    /// Reopens a closed campaign quest, clearing IsClosed and its close date.
+    /// </summary>
+    Task ReopenQuestAsync(int questId, CancellationToken token = default);
+
+    /// <summary>
     /// Updates a quest's editable properties and, when requested, reconciles its proposed dates.
     /// Returns the distinct players whose date votes were removed as a result, so the caller can notify them.
     /// </summary>

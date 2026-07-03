@@ -22,7 +22,5 @@ public class QuestViewModel
 
     public bool DungeonMasterSession { get; set; }
 
-    [Required]
-    [MinLength(1, ErrorMessage = "At least one proposed date is required.")]
-    public IList<DateTime> ProposedDates { get; set; } = [DateTime.Today.AddDays(1).AddHours(18)];
+    public IList<DateTime> ProposedDates { get; set; } = [];
 }

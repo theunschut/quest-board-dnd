@@ -57,6 +57,16 @@ public interface IQuestService : IBaseService<Quest>
     Task OpenQuestAsync(int questId, CancellationToken token = default);
 
     /// <summary>
+    /// Closes a campaign quest, setting IsClosed and recording the close date. Sends no email.
+    /// </summary>
+    Task CloseQuestAsync(int questId, CancellationToken token = default);
+
+    /// <summary>
+    /// Reopens a closed campaign quest, clearing IsClosed and its close date. Sends no email.
+    /// </summary>
+    Task ReopenQuestAsync(int questId, CancellationToken token = default);
+
+    /// <summary>
     /// Returns finalized, non-DM-session quests whose finalized date is at least one day in the past.
     /// </summary>
     Task<IList<Quest>> GetCompletedQuestsAsync(CancellationToken token = default);
