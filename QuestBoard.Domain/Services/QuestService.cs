@@ -223,6 +223,7 @@ internal class QuestService(
             TotalPlayerCount = original.TotalPlayerCount,
             DungeonMasterId = original.DungeonMasterId,
             DungeonMasterSession = false,
+            GroupId = original.GroupId,
             ProposedDates = [],
             OriginalQuestId = original.Id,
         };
