@@ -97,7 +97,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 
 - [x] Phase 35: Board Type Configuration — SuperAdmin sets a group's board type at creation; locked afterward (completed 2026-07-03)
 - [x] Phase 36: Campaign Quest Posting & Closing — DM can post, close, and reopen campaign quests with no date voting or per-quest signup, and no quest-related emails are sent (completed 2026-07-03)
-- [ ] Phase 37: Navigation & Access Control — Board-type-aware nav visibility, plus Email Stats locked to SuperAdmin only
+- [x] Phase 37: Navigation & Access Control — Board-type-aware nav visibility, plus Email Stats locked to SuperAdmin only (completed 2026-07-03)
 
 </details>
 
@@ -190,7 +190,7 @@ Plans:
 
 **Wave 2** *(blocked on 37-01 and 37-02)*
 
-- [ ] 37-03-PLAN.md — Layout nav gating (desktop + mobile): OneShot allowlist for the 5 campaign-hidden items, D-04 anonymous-Calendar fix, SuperAdmin Email Stats link gate, LayoutNavigationTests GREEN + human-verify checkpoint
+- [x] 37-03-PLAN.md — Layout nav gating (desktop + mobile): OneShot allowlist for the 5 campaign-hidden items, D-04 anonymous-Calendar fix, SuperAdmin Email Stats link gate, LayoutNavigationTests GREEN + human-verify checkpoint
 
 **UI hint**: yes
 
@@ -240,4 +240,4 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
 | 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
-| 37. Navigation & Access Control | v6.0 | 2/3 | In Progress|  |
+| 37. Navigation & Access Control | v6.0 | 3/3 | Complete   | 2026-07-03 |
