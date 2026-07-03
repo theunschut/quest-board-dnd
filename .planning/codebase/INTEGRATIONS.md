@@ -1,6 +1,7 @@
 # External Integrations
 
-**Analysis Date:** 2026-07-02
+**Analysis Date:** 2026-07-03
+**Last Mapped Commit:** e5b37a73cda29bf355c4de6ebf4663b1625c3cf6
 
 ## APIs & External Services
 
@@ -32,6 +33,7 @@
   - Auto-apply: Enabled via `context.Database.Migrate()` on startup (non-Testing environments)
   - Session State Table: `AspNetSessionState` (distributed cache backing)
   - Hangfire Job Queue: Auto-created tables in default schema
+  - Docker: Service name `sqlserver` in docker-compose.yml, mapped port 1433 → 1433
 
 **File Storage:**
 - Local filesystem only - No cloud blob storage configured
@@ -93,7 +95,7 @@
 **Health Checks:**
 - Endpoint: `/health` (HTTP GET)
 - Interval: 30 seconds
-- Docker healthcheck: included in `docker-compose.yml`
+- Docker healthcheck: included in `docker-compose.yml` and `Dockerfile`
 
 ## CI/CD & Deployment
 
@@ -101,20 +103,35 @@
 - Docker container via `docker-compose.yml`
 - Container registry: GitHub Container Registry (`ghcr.io/theunschut/dnd-quest-board:latest`)
 - Self-hosted environment (not cloud-platform-specific)
+- Image signed with cosign v2.4.1 in Docker publish workflow
 
 **CI Pipeline:**
-- GitHub Actions (inferred from `.git` and GHCR registry; not analyzed in detail)
+- GitHub Actions (`.github/workflows/`)
+  - **dotnet.yml**: Build, restore, and test on push to `main` and PRs
+    - Runs on: `ubuntu-latest`
+    - .NET version: 8.0.x (note: differs from app runtime .NET 10)
+  - **docker-publish.yml**: Build and push container image on semver tag (`v*.*.*`)
+    - Publishes to GitHub Container Registry (`ghcr.io`)
+    - Platform: `linux/amd64` only
+    - Signs image with cosign after push
+  - **binary-release.yml**: Create binary release and deploy to self-hosted runner
+    - Publishes Service project and creates release zip
+    - .NET version: 10.0.x (correct app runtime)
+    - Deployment: Executes `/home/questboard/deploy.sh` on self-hosted runner
 
 **Deployment Process:**
-- `docker-compose up -d` starts app and SQL Server
+- `docker-compose up -d` starts app and SQL Server (requires pre-created `net-dnd` network)
 - Environment variables passed via docker-compose.yml or `.env` file (secrets)
 - Database migrations auto-apply on container startup
 - Kestrel server listens on port 8080 (mapped to host port 7080 in compose)
+- Self-hosted runner for binary deployment must be configured in GitHub repo settings
 
 ## Environment Configuration
 
-**Required Environment Variables (Production):**
+**Required Environment Variables (Production/docker-compose):**
 - `ConnectionStrings__DefaultConnection` - SQL Server connection string (required)
+  - Format in compose: `Server=sqlserver;Database=QuestBoard;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=true;`
+- `MSSQL_SA_PASSWORD` - SQL Server SA password (required for docker-compose, from `.env`)
 - `EmailSettings__FromEmail` - Sender email address (required in Production, validated on startup)
 - `EmailSettings__SmtpServer` - SMTP server hostname (required in Production, validated on startup)
 - `EmailSettings__SmtpPort` - SMTP port (default: 25)
@@ -132,7 +149,7 @@
 - `MSSQL_SA_PASSWORD` - SQL Server SA password (docker-compose only)
 
 **Secrets Location:**
-- `.env` file (docker-compose) - Contains `MSSQL_SA_PASSWORD` and email credentials
+- `.env` file (docker-compose) - Contains `MSSQL_SA_PASSWORD` and email credentials (git-ignored, never committed)
 - Environment variables (production deployment) - Set by container orchestration
 - User Secrets (development only) - Via `dotnet user-secrets` for `AutoMapper__LicenseKey`
 - **IMPORTANT:** Never commit `.env` or credential files to git; they are `.gitignored`
@@ -177,6 +194,17 @@
 
 **Implementation:** Built-in ASP.NET Core rate limiting middleware (no external service required)
 
+## Network Configuration
+
+**Docker Compose Network:**
+- Network name: `net-dnd` (external, must be pre-created)
+- App service: Connected to `net-dnd`, communicates with SQL Server via service name `sqlserver`
+- SQL Server service: Connected to `net-dnd`, port 1433 exposed
+- Host port mappings:
+  - App: 7080 (host) → 8080 (container, Kestrel)
+  - SQL Server: 1433 (host) → 1433 (container)
+
 ---
 
-*Integration audit: 2026-07-02*
+*Integration audit: 2026-07-03*
+*Last mapped commit: e5b37a73cda29bf355c4de6ebf4663b1625c3cf6*
