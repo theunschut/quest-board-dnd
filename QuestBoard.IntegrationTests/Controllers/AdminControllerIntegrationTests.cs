@@ -275,6 +275,42 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         response.Headers.Location!.OriginalString.Should().Contain("Users");
     }
 
+    // A group admin whose active group is group 1 must never see a user who belongs
+    // only to a different group on the Users management page.
+    [Fact]
+    public async Task Users_WhenAdmin_DoesNotShowUsersFromOtherGroups()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var inGroupMarker = $"InGroupOne {Guid.NewGuid():N}";
+        var outOfGroupMarker = $"InGroupTwoOnly {Guid.NewGuid():N}";
+
+        var inGroupUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "ingroupuser", "ingroupuser@example.com", name: inGroupMarker);
+        var outOfGroupUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "outofgroupuser", "outofgroupuser@example.com", name: outOfGroupMarker);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = inGroupUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = outOfGroupUser.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync();
+        }
+
+        // Act
+        var response = await adminClient.GetAsync("/Admin/Users", TestContext.Current.CancellationToken);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        content.Should().Contain(inGroupMarker, "in-group members must still render");
+        content.Should().NotContain(outOfGroupMarker, "a group admin must never see a user who belongs only to a different group");
+    }
+
     // Creates an unconfirmed target user (via IUserService.CreateAsync, which mirrors
     // AdminController.CreateUser's passwordless/unconfirmed account creation) and returns its id.
     private async Task<int> CreateUnconfirmedTargetUserAsync(string email, string name)
