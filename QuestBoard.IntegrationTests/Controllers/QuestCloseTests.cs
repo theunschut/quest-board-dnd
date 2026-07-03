@@ -15,23 +15,33 @@ public class QuestCloseTests(WebApplicationFactoryBase factory) : IClassFixture<
     {
         // Arrange
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, groupId: 2);
         var (client, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "closedm1", "closedm1@example.com", roles: ["DungeonMaster"]);
+        await AddCampaignGroupMembershipAsync(dm.Id, GroupRole.DungeonMaster);
         var quest = await TestDataHelper.CreateTestQuestAsync(
-            factory.Services, dm.Id, "Close Test Quest 1");
+            factory.Services, dm.Id, "Close Test Quest 1", groupId: 2);
 
-        // Act
-        var response = await client.PostAsync($"/Quest/Close/{quest.Id}", content: null, TestContext.Current.CancellationToken);
+        factory.TestGroupContext.ActiveGroupId = 2;
+        try
+        {
+            // Act
+            var response = await client.PostAsync($"/Quest/Close/{quest.Id}", content: null, TestContext.Current.CancellationToken);
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.Location!.OriginalString.Should().Contain($"/Quest/Manage/{quest.Id}");
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+            response.Headers.Location!.OriginalString.Should().Contain($"/Quest/Manage/{quest.Id}");
 
-        using var scope = factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
-        var persisted = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
-        persisted.Should().NotBeNull();
-        persisted!.IsClosed.Should().BeTrue();
+            using var scope = factory.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var persisted = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            persisted.Should().NotBeNull();
+            persisted!.IsClosed.Should().BeTrue();
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
     }
 
     [Fact]
@@ -39,23 +49,33 @@ public class QuestCloseTests(WebApplicationFactoryBase factory) : IClassFixture<
     {
         // Arrange
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, groupId: 2);
         var (client, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "reopendm1", "reopendm1@example.com", roles: ["DungeonMaster"]);
+        await AddCampaignGroupMembershipAsync(dm.Id, GroupRole.DungeonMaster);
         var quest = await TestDataHelper.CreateTestQuestAsync(
-            factory.Services, dm.Id, "Reopen Test Quest 1", isClosed: true, closedDate: DateTime.UtcNow);
+            factory.Services, dm.Id, "Reopen Test Quest 1", isClosed: true, closedDate: DateTime.UtcNow, groupId: 2);
 
-        // Act
-        var response = await client.PostAsync($"/Quest/Reopen/{quest.Id}", content: null, TestContext.Current.CancellationToken);
+        factory.TestGroupContext.ActiveGroupId = 2;
+        try
+        {
+            // Act
+            var response = await client.PostAsync($"/Quest/Reopen/{quest.Id}", content: null, TestContext.Current.CancellationToken);
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.Location!.OriginalString.Should().Contain($"/Quest/Manage/{quest.Id}");
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+            response.Headers.Location!.OriginalString.Should().Contain($"/Quest/Manage/{quest.Id}");
 
-        using var scope = factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
-        var persisted = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
-        persisted.Should().NotBeNull();
-        persisted!.IsClosed.Should().BeFalse();
+            using var scope = factory.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var persisted = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            persisted.Should().NotBeNull();
+            persisted!.IsClosed.Should().BeFalse();
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
     }
 
     [Fact]
@@ -63,27 +83,58 @@ public class QuestCloseTests(WebApplicationFactoryBase factory) : IClassFixture<
     {
         // Arrange
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, groupId: 2);
         var dm = await AuthenticationHelper.CreateTestUserAsync(
             factory.Services, "closeowner1", "closeowner1@example.com");
         var quest = await TestDataHelper.CreateTestQuestAsync(
-            factory.Services, dm.Id, "Close Test Quest 2");
+            factory.Services, dm.Id, "Close Test Quest 2", groupId: 2);
 
-        var (otherClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+        var (otherClient, otherDm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "closeotherdm1", "closeotherdm1@example.com", roles: ["DungeonMaster"]);
+        await AddCampaignGroupMembershipAsync(otherDm.Id, GroupRole.DungeonMaster);
 
-        // Act
-        var response = await otherClient.PostAsync($"/Quest/Close/{quest.Id}", content: null, TestContext.Current.CancellationToken);
+        factory.TestGroupContext.ActiveGroupId = 2;
+        try
+        {
+            // Act
+            var response = await otherClient.PostAsync($"/Quest/Close/{quest.Id}", content: null, TestContext.Current.CancellationToken);
 
-        // Assert — Forbid() resolves through the Identity.Application forbid scheme in tests,
-        // which redirects rather than returning a raw 403; match the codebase's established
-        // authorization-regression-test convention (see QuestControllerAuthorizationRegressionTests).
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+            // Assert — Forbid() resolves through the Identity.Application forbid scheme in tests,
+            // which redirects rather than returning a raw 403; match the codebase's established
+            // authorization-regression-test convention (see QuestControllerAuthorizationRegressionTests).
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
 
+            using var scope = factory.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var persisted = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            persisted.Should().NotBeNull();
+            persisted!.IsClosed.Should().BeFalse();
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    // Close/Reopen require the active group to resolve to BoardType.Campaign; membership
+    // for group 1 is seeded automatically by CreateAuthenticatedClientWithUserAsync, but group 2
+    // (the campaign board used by these tests) needs its own membership row.
+    private async Task AddCampaignGroupMembershipAsync(int userId, GroupRole groupRole)
+    {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
-        var persisted = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
-        persisted.Should().NotBeNull();
-        persisted!.IsClosed.Should().BeFalse();
+        var existingMembership = context.UserGroups
+            .FirstOrDefault(ug => ug.UserId == userId && ug.GroupId == 2);
+        if (existingMembership == null)
+        {
+            context.UserGroups.Add(new UserGroupEntity
+            {
+                UserId = userId,
+                GroupId = 2,
+                GroupRole = (int)groupRole
+            });
+            await context.SaveChangesAsync();
+        }
     }
 
     [Fact]
