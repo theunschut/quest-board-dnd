@@ -112,7 +112,12 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
   2. The board type is displayed (read-only) on the group edit/details view, with no control to change it after creation
   3. Attempting to submit a board-type value on the edit form has no effect — the group's stored `BoardType` is unchanged
   4. Existing groups created before this phase default to One-Shot with no behavior change
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 35-01-PLAN.md — Data foundation: BoardType enum, entity/domain/projection models, AutoMapper + repository projections, EF migration, and failing integration-test scaffolds
+- [ ] 35-02-PLAN.md — ViewModels + GroupController wiring: required nullable BoardType on Create, display-only on Edit, Create POST persists, Edit POST ignores (tamper protection)
+- [ ] 35-03-PLAN.md — Razor views: Board Type dropdown (Create), disabled dropdown (Edit), badge column/card (Index), all desktop + mobile, plus human-verify checkpoint
 **UI hint**: yes
 
 ### Phase 36: Campaign Quest Posting & Closing
@@ -184,6 +189,6 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.1. Security & Bugs | v5.0 | 2/2 | Complete | 2026-07-02 |
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
-| 35. Board Type Configuration | v6.0 | 0/? | Not started | - |
+| 35. Board Type Configuration | v6.0 | 0/3 | Planned | - |
 | 36. Campaign Quest Posting & Closing | v6.0 | 0/? | Not started | - |
 | 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Board Types (Campaign Mode)
-status: planning
-stopped_at: Phase 35 context gathered
-last_updated: "2026-07-03T10:33:11.929Z"
-last_activity: 2026-07-03 — ROADMAP.md created for v6.0 (Phases 35–37), 15/15 requirements mapped
+status: ready-to-execute
+stopped_at: Phase 35 planned (3 plans, 3 waves)
+last_updated: "2026-07-03T11:16:48.531Z"
+last_activity: 2026-07-03 — Phase 35 planned: 3 plans across 3 waves (data foundation, controller/viewmodel wiring, Razor views + human-verify)
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
+  total_plans: 3
   completed_plans: 0
   percent: 0
 ---
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-07-03 — v6.0 Board Types (Campaign Mod
 ## Current Position
 
 Phase: 35 of 37 (Board Type Configuration)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-07-03 — ROADMAP.md created for v6.0 (Phases 35–37), 15/15 requirements mapped
+Plan: 35-01 / 35-02 / 35-03 (planned, not yet executed)
+Status: Ready to execute
+Last activity: 2026-07-03 — Phase 35 planned: 3 plans across 3 waves
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -44,7 +44,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 35. Board Type Configuration | 0/? | - | - |
+| 35. Board Type Configuration | 0/3 | - | - |
 | 36. Campaign Quest Posting & Closing | 0/? | - | - |
 | 37. Navigation & Access Control | 0/? | - | - |
 
@@ -90,7 +90,7 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-03T10:33:11.916Z
-Stopped at: Phase 35 context gathered
-Resume file: .planning/phases/35-board-type-configuration/35-CONTEXT.md
-Next step: `/gsd:plan-phase 35`
+Last session: 2026-07-03T11:16:48.531Z
+Stopped at: Phase 35 planned (3 plans)
+Resume file: .planning/phases/35-board-type-configuration/35-01-PLAN.md
+Next step: `/gsd:execute-phase 35`
