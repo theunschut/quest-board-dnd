@@ -22,8 +22,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         {
             await base.AddAsync(model, token);
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Quests_OriginalQuestId") == true
-                                            || ex.InnerException?.Message.Contains("unique") == true)
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Quests_OriginalQuestId") == true)
         {
             throw new InvalidOperationException("A follow-up quest already exists for this quest.", ex);
         }
