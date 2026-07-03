@@ -122,7 +122,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
   1. A group admin opening the Users page sees only users who belong to the currently active group
   2. A group admin never sees a user from a different group on the Users page, even when multiple groups share the platform
   3. Each listed user still shows their correct role within the active group (no regression from the existing per-user role display)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 38-01-PLAN.md — Group-scoped members read method, Users() read-scope + four role-change POST membership guards, cross-group-isolation regression test
 
 ### Phase 39: Shared Collision-Aware User Creation & Email
 **Goal**: Creating a user whose email already exists on the platform adds that person to the target group instead of failing, and everyone affected is notified appropriately — with identical behavior regardless of which screen triggered the creation.
