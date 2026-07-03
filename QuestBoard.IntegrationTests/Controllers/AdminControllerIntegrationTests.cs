@@ -311,8 +311,65 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         content.Should().NotContain(outOfGroupMarker, "a group admin must never see a user who belongs only to a different group");
     }
 
+    // A group admin whose active group is group 1 must not be able to change the role of a
+    // user who belongs only to a different group, even with a crafted direct POST — the
+    // membership guard added to each of the four role-change actions must actually reject
+    // the request and leave the target's group membership unchanged.
+    [Theory]
+    [InlineData("/Admin/PromoteToAdmin")]
+    [InlineData("/Admin/DemoteFromAdmin")]
+    [InlineData("/Admin/PromoteToDM")]
+    [InlineData("/Admin/DemoteToPlayer")]
+    public async Task RoleChangeActions_WhenTargetUserOutOfGroup_ShouldNotChangeMembership(string endpoint)
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var outOfGroupUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "outofgrouprole", "outofgrouprole@example.com", name: "Out Of Group Role Target");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = outOfGroupUser.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var getResponse = await adminClient.GetAsync("/Admin/Users", TestContext.Current.CancellationToken);
+        var (token, cookieValue) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(getResponse);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            adminClient.DefaultRequestHeaders.Remove("Cookie");
+            adminClient.DefaultRequestHeaders.Add("Cookie", $".AspNetCore.Antiforgery={cookieValue}");
+        }
+
+        var formContent = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(
+            new Dictionary<string, string> { ["userId"] = outOfGroupUser.Id.ToString() },
+            token);
+
+        // Act — crafted POST for a user who is only a member of group 2, against group 1's admin
+        var response = await adminClient.PostAsync(endpoint, formContent, TestContext.Current.CancellationToken);
+
+        // Assert — the request is rejected (redirected without applying the change) and the
+        // target's only UserGroups row is untouched: still GroupId 2, still Player.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var assertContext = assertScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var memberships = assertContext.UserGroups.Where(ug => ug.UserId == outOfGroupUser.Id).ToList();
+        memberships.Should().ContainSingle("the guard must not create a new group-1 membership row for an out-of-group target");
+        memberships[0].GroupId.Should().Be(2, "the target's original group membership must be untouched");
+        memberships[0].GroupRole.Should().Be((int)GroupRole.Player, "the target's role must not change when the guard rejects the request");
+    }
+
     // Creates an unconfirmed target user (via IUserService.CreateAsync, which mirrors
     // AdminController.CreateUser's passwordless/unconfirmed account creation) and returns its id.
+    // Also assigns the target to group 1 (Player role), mirroring the group-membership row
+    // AdminController.CreateUser creates via SetGroupRoleAsync — the tests using this helper
+    // exercise admin actions against group 1, which now require the target to be a group 1
+    // member per the membership guard added to those actions.
     private async Task<int> CreateUnconfirmedTargetUserAsync(string email, string name)
     {
         using var scope = _factory.Services.CreateScope();
@@ -324,6 +381,9 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
 
         var resolvedUserId = await identityService.GetIdByEmailAsync(email);
         resolvedUserId.Should().NotBeNull();
+
+        await userService.SetGroupRoleAsync(resolvedUserId!.Value, 1, GroupRole.Player);
+
         return resolvedUserId!.Value;
     }
 
