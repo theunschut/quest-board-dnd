@@ -95,7 +95,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 
 **Overview:** Let a DM choose a group's quest-board type at creation — the existing One-Shot board (date voting + finalization) or a new Campaign board for ongoing games with a fixed party — without forking the controller/service/view stack.
 
-- [ ] Phase 35: Board Type Configuration — SuperAdmin sets a group's board type at creation; locked afterward
+- [x] Phase 35: Board Type Configuration — SuperAdmin sets a group's board type at creation; locked afterward (completed 2026-07-03)
 - [ ] Phase 36: Campaign Quest Posting & Closing — DM can post, close, and reopen campaign quests with no date voting or per-quest signup, and no quest-related emails are sent
 - [ ] Phase 37: Navigation & Access Control — Board-type-aware nav visibility, plus Email Stats locked to SuperAdmin only
 
@@ -128,7 +128,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 35-03-PLAN.md — Razor views: Board Type dropdown (Create), disabled dropdown (Edit), badge column/card (Index), all desktop + mobile, plus human-verify checkpoint
+- [x] 35-03-PLAN.md — Razor views: Board Type dropdown (Create), disabled dropdown (Edit), badge column/card (Index), all desktop + mobile, plus human-verify checkpoint
 
 **UI hint**: yes
 
@@ -207,6 +207,6 @@ Phases execute in numeric order: 35 → 36 → 37
 | 34.1. Security & Bugs | v5.0 | 2/2 | Complete | 2026-07-02 |
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
-| 35. Board Type Configuration | v6.0 | 2/3 | In Progress|  |
+| 35. Board Type Configuration | v6.0 | 3/3 | Complete   | 2026-07-03 |
 | 36. Campaign Quest Posting & Closing | v6.0 | 0/? | Not started | - |
 | 37. Navigation & Access Control | v6.0 | 0/? | Not started | - |
