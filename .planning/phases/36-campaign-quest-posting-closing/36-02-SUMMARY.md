@@ -110,3 +110,7 @@ None - no external service configuration required.
 ---
 *Phase: 36-campaign-quest-posting-closing*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+All claimed files found on disk; both task commits (`7ab6c95`, `f5837cd`) verified present in git log.
