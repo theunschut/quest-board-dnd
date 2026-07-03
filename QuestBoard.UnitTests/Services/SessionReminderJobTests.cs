@@ -33,7 +33,8 @@ public class SessionReminderJobTests
         // Build the IServiceScopeFactory → IServiceScope → IServiceProvider chain
         // ActiveGroupContextService must be resolvable — job calls GetRequiredService<ActiveGroupContextService>()
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        var groupContextService = new ActiveGroupContextService(httpContextAccessor);
+        var groupService = Substitute.For<IGroupService>();
+        var groupContextService = new ActiveGroupContextService(httpContextAccessor, groupService);
 
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ActiveGroupContextService)).Returns(groupContextService);
