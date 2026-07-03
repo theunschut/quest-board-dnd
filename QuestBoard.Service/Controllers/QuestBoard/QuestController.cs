@@ -703,6 +703,14 @@ public class QuestController(
             return NotFound();
         }
 
+        // Close/Reopen only makes sense for campaign-board quests; never trust the
+        // client-rendered button visibility to enforce this server-side.
+        var boardType = await GetActiveBoardTypeAsync();
+        if (boardType != BoardType.Campaign)
+        {
+            return BadRequest("Close is only supported for campaign quests.");
+        }
+
         var currentUser = await userService.GetUserAsync(User);
         if (currentUser == null)
         {
@@ -732,6 +740,14 @@ public class QuestController(
         if (quest == null || !quest.IsClosed)
         {
             return NotFound();
+        }
+
+        // Close/Reopen only makes sense for campaign-board quests; never trust the
+        // client-rendered button visibility to enforce this server-side.
+        var boardType = await GetActiveBoardTypeAsync();
+        if (boardType != BoardType.Campaign)
+        {
+            return BadRequest("Reopen is only supported for campaign quests.");
         }
 
         var currentUser = await userService.GetUserAsync(User);
