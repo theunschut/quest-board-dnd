@@ -1,8 +1,10 @@
 @using QuestBoard.Service.ViewModels.QuestLogViewModels
+@using QuestBoard.Domain.Enums
 @model QuestLogDetailsViewModel
 @{
     ViewData["Title"] = $"Quest Log: {Model.Quest.Title}";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 @section Styles {
@@ -16,17 +18,23 @@
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">@Model.Quest.Title</h5>
-            <span class="badge bg-secondary">
-                <i class="fas fa-dice-d20 me-1"></i>CR @Model.Quest.ChallengeRating
-            </span>
+            @if (boardType != BoardType.Campaign)
+            {
+                <span class="badge bg-secondary">
+                    <i class="fas fa-dice-d20 me-1"></i>CR @Model.Quest.ChallengeRating
+                </span>
+            }
         </div>
 
         <!-- Quest Information -->
         <div class="mb-3">
             <h6><i class="fas fa-info-circle me-2"></i>Quest Information</h6>
             <p class="mb-1"><strong>Dungeon Master:</strong> @Model.Quest.DungeonMaster?.Name</p>
-            <p class="mb-1"><strong>Challenge Rating:</strong> @Model.Quest.ChallengeRating</p>
-            <p class="mb-1"><strong>Completed On:</strong> @Model.Quest.FinalizedDate?.ToString("MMMM dd, yyyy 'at' h:mm tt")</p>
+            @if (boardType != BoardType.Campaign)
+            {
+                <p class="mb-1"><strong>Challenge Rating:</strong> @Model.Quest.ChallengeRating</p>
+            }
+            <p class="mb-1"><strong>Completed On:</strong> @((Model.Quest.FinalizedDate ?? Model.Quest.ClosedDate)?.ToString("MMMM dd, yyyy 'at' h:mm tt"))</p>
             <p class="mb-0"><strong>Created:</strong> @Model.Quest.CreatedAt.ToString("MMMM dd, yyyy")</p>
         </div>
         <hr />
@@ -40,42 +48,45 @@
         </div>
         <hr />
 
-        <!-- Adventurers -->
-        <div class="mb-3">
-            <h6><i class="fas fa-users me-2"></i>Adventurers</h6>
-            @{
-                var selectedPlayers = Model.Quest.PlayerSignups.Where(ps => ps.IsSelected).OrderBy(ps => ps.SignupTime).ToList();
-            }
-            @if (selectedPlayers.Any())
-            {
-                <ul class="list-unstyled mb-0">
-                    @foreach (var player in selectedPlayers)
-                    {
-                        <li class="mb-2">
-                            <strong>@player.Player.Name</strong>
-                            @if (player.Character != null)
-                            {
-                                <span>
-                                    (<img src="@Url.Action("GetProfilePicture", "GuildMembers", new { id = player.Character.Id })"
-                                         alt="@player.Character.Name"
-                                         class="character-mini-avatar"
-                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                    <span class="character-mini-avatar-placeholder" style="display: none;">
-                                        <i class="fas fa-user"></i>
+        @{
+            var selectedPlayers = Model.Quest.PlayerSignups.Where(ps => ps.IsSelected).OrderBy(ps => ps.SignupTime).ToList();
+        }
+        @if (boardType != BoardType.Campaign)
+        {
+            <!-- Adventurers -->
+            <div class="mb-3">
+                <h6><i class="fas fa-users me-2"></i>Adventurers</h6>
+                @if (selectedPlayers.Any())
+                {
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var player in selectedPlayers)
+                        {
+                            <li class="mb-2">
+                                <strong>@player.Player.Name</strong>
+                                @if (player.Character != null)
+                                {
+                                    <span>
+                                        (<img src="@Url.Action("GetProfilePicture", "GuildMembers", new { id = player.Character.Id })"
+                                             alt="@player.Character.Name"
+                                             class="character-mini-avatar"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                        <span class="character-mini-avatar-placeholder" style="display: none;">
+                                            <i class="fas fa-user"></i>
+                                        </span>
+                                        @player.Character.Name)
                                     </span>
-                                    @player.Character.Name)
-                                </span>
-                            }
-                        </li>
-                    }
-                </ul>
-            }
-            else
-            {
-                <p class="mb-0 text-muted">No adventurers participated in this quest.</p>
-            }
-        </div>
-        <hr />
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">No adventurers participated in this quest.</p>
+                }
+            </div>
+            <hr />
+        }
 
         <!-- Session Recap -->
         <div class="mb-0">

@@ -1,7 +1,9 @@
 @using QuestBoard.Service.ViewModels.QuestLogViewModels
+@using QuestBoard.Domain.Enums
 @model QuestLogIndexViewModel
 @{
     ViewData["Title"] = "Quest Log";
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 <div class="quest-log-container">
@@ -17,17 +19,20 @@
             {
                 // Calculate some stats for the quest
                 var selectedPlayers = quest.PlayerSignups.Where(ps => ps.IsSelected).ToList();
-                var questDate = quest.FinalizedDate?.ToString("MMMM dd, yyyy") ?? "Unknown Date";
+                var questDate = (quest.FinalizedDate ?? quest.ClosedDate)?.ToString("MMMM dd, yyyy") ?? "Unknown Date";
 
                 <div class="quest-log-card" onclick="window.location.href='@Url.Action("Details", "QuestLog", new { id = quest.Id })'">
-                    
+
                     <!-- Quest Header -->
                     <div class="quest-log-card-header">
                         <h3 class="quest-log-card-title">@quest.Title</h3>
-                        <span class="cr-badge">
-                            <i class="fas fa-dice-d20 me-1"></i>
-                            CR @quest.ChallengeRating
-                        </span>
+                        @if (boardType != BoardType.Campaign)
+                        {
+                            <span class="cr-badge">
+                                <i class="fas fa-dice-d20 me-1"></i>
+                                CR @quest.ChallengeRating
+                            </span>
+                        }
                     </div>
 
                     <!-- Quest Body -->
@@ -42,10 +47,13 @@
                                 <i class="fas fa-calendar-check me-2"></i>
                                 <span><strong>Completed:</strong> @questDate</span>
                             </div>
-                            <div class="meta-item">
-                                <i class="fas fa-users me-2"></i>
-                                <span><strong>Adventurers:</strong> @selectedPlayers.Count</span>
-                            </div>
+                            @if (boardType != BoardType.Campaign)
+                            {
+                                <div class="meta-item">
+                                    <i class="fas fa-users me-2"></i>
+                                    <span><strong>Adventurers:</strong> @selectedPlayers.Count</span>
+                                </div>
+                            }
                         </div>
 
                         <!-- Quest Description Preview -->
