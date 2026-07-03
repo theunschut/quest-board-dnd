@@ -119,3 +119,14 @@ None - no external service configuration required. The migration auto-applies on
 ---
 *Phase: 35-board-type-configuration*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+All created files and commit hashes verified present:
+- FOUND: QuestBoard.Domain/Enums/BoardType.cs
+- FOUND: QuestBoard.Repository/Migrations/20260703113120_AddBoardTypeToGroup.cs
+- FOUND: QuestBoard.Repository/Migrations/20260703113120_AddBoardTypeToGroup.Designer.cs
+- FOUND: .planning/phases/35-board-type-configuration/35-01-SUMMARY.md
+- FOUND commit: 0efad42 (Task 1)
+- FOUND commit: 7e1ab39 (Task 2)
+- FOUND commit: f6d5f5c (Task 3)
