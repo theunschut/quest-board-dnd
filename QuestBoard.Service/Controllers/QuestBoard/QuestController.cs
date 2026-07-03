@@ -119,6 +119,10 @@ public class QuestController(
         // Create Quest entity from ViewModel using AutoMapper
         var quest = mapper.Map<Quest>(viewModel);
 
+        // Tag the quest to the active group so it is visible on the correct board
+        // (QuestEntity is scoped by a global query filter on GroupId).
+        quest.GroupId = activeGroupContext.RequireActiveGroupId();
+
         // Set Quest reference for all ProposedDates
         foreach (var proposedDate in quest.ProposedDates)
         {
@@ -984,10 +988,17 @@ public class QuestController(
 
     // Resolves the active group's board type server-side. Never trust a client-posted
     // BoardType — a single lookup per render/mutation is fine since BoardType is immutable
-    // per group and every quest on a board shares it.
+    // per group and every quest on a board shares it. SuperAdmin legitimately has no active
+    // group selected (see ActiveGroupContextExtensions' documented contract), so default to
+    // OneShot rather than calling RequireActiveGroupId(), which would throw.
     private async Task<BoardType> GetActiveBoardTypeAsync(CancellationToken token = default)
     {
-        var group = await groupService.GetByIdAsync(activeGroupContext.RequireActiveGroupId(), token);
+        if (activeGroupContext.ActiveGroupId is not { } groupId)
+        {
+            return BoardType.OneShot;
+        }
+
+        var group = await groupService.GetByIdAsync(groupId, token);
         return group?.BoardType ?? BoardType.OneShot;
     }
 

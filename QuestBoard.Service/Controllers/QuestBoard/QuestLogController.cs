@@ -124,9 +124,16 @@ public class QuestLogController(
             : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 
     // Resolves the active group's board type server-side, mirroring QuestController's helper.
+    // SuperAdmin legitimately has no active group selected, so default to OneShot rather than
+    // calling RequireActiveGroupId(), which would throw.
     private async Task<BoardType> GetActiveBoardTypeAsync(CancellationToken token = default)
     {
-        var group = await groupService.GetByIdAsync(activeGroupContext.RequireActiveGroupId(), token);
+        if (activeGroupContext.ActiveGroupId is not { } groupId)
+        {
+            return BoardType.OneShot;
+        }
+
+        var group = await groupService.GetByIdAsync(groupId, token);
         return group?.BoardType ?? BoardType.OneShot;
     }
 }
