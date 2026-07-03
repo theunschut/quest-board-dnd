@@ -79,7 +79,7 @@
              style="background-image: url('/images/Blanks/Blanks w Shadow/@posterImage');"
              data-image-width="@dimensions.width"
              data-image-height="@dimensions.height"
-             onclick="window.location.href='@(ViewBag.CurrentUserName != null && ViewBag.CurrentUserName == quest.DungeonMaster?.Name ? Url.Action("Manage", "Quest", new { id = quest.Id }) : Url.Action("Details", "Quest", new { id = quest.Id }))'">
+             onclick="window.location.href='@(currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id ? Url.Action("Manage", "Quest", new { id = quest.Id }) : Url.Action("Details", "Quest", new { id = quest.Id }))'">
 
             <!-- Wax Seal (Finalized Quest) -->
             <div class="wax-seal" style="bottom: @(sealBottom)%; left: @(sealLeft)%;">
