@@ -255,4 +255,95 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         var membershipAfter = dbAfter.UserGroups.FirstOrDefault(ug => ug.UserId == memberUser.Id && ug.GroupId == 1);
         membershipAfter.Should().BeNull("UserGroups row should have been deleted");
     }
+
+    // Create group with a selected BoardType persists that selection
+    [Fact]
+    public async Task CreateGroup_WithBoardType_ShouldPersistSelection()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var uniqueName = "CampaignGroup_" + Guid.NewGuid().ToString("N")[..8];
+        var formData = new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["BoardType"] = ((int)BoardType.Campaign).ToString()
+        };
+
+        await client.PostAsync("/platform/Group/Create",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var group = dbContext.Groups.FirstOrDefault(g => g.Name == uniqueName);
+        group.Should().NotBeNull();
+        group!.BoardType.Should().Be((int)BoardType.Campaign);
+    }
+
+    // Create group without selecting a BoardType fails validation and re-renders the form
+    [Fact]
+    public async Task CreateGroup_WithoutBoardType_ShouldFailValidation()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var uniqueName = "NoBoardType_" + Guid.NewGuid().ToString("N")[..8];
+        var formData = new Dictionary<string, string> { ["Name"] = uniqueName };
+
+        var response = await client.PostAsync("/platform/Group/Create",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Board type is required.");
+    }
+
+    // Editing a group and posting a changed BoardType is silently ignored — the stored value never changes
+    [Fact]
+    public async Task EditGroup_PostingChangedBoardType_ShouldBeSilentlyIgnored()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var uniqueName = "EditBoardType_" + Guid.NewGuid().ToString("N")[..8];
+        var createData = new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["BoardType"] = ((int)BoardType.OneShot).ToString()
+        };
+        await client.PostAsync("/platform/Group/Create",
+            new FormUrlEncodedContent(createData), TestContext.Current.CancellationToken);
+
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var group = dbContext.Groups.FirstOrDefault(g => g.Name == uniqueName);
+        group.Should().NotBeNull();
+
+        var editData = new Dictionary<string, string>
+        {
+            ["Id"] = group!.Id.ToString(),
+            ["Name"] = uniqueName,
+            ["BoardType"] = ((int)BoardType.Campaign).ToString()
+        };
+        await client.PostAsync("/platform/Group/Edit",
+            new FormUrlEncodedContent(editData), TestContext.Current.CancellationToken);
+
+        using var scopeAfter = _factory.Services.CreateScope();
+        var dbAfter = scopeAfter.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var groupAfter = dbAfter.Groups.FirstOrDefault(g => g.Id == group.Id);
+        groupAfter.Should().NotBeNull();
+        groupAfter!.BoardType.Should().Be((int)BoardType.OneShot);
+    }
+
+    // Seeded default group (EuphoriaInn) defaults to OneShot via the migration's defaultValue: 0
+    [Fact]
+    public async Task GroupsIndex_SeededGroup_ShouldDefaultToOneShot()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var group = dbContext.Groups.FirstOrDefault(g => g.Name == "EuphoriaInn");
+
+        group.Should().NotBeNull();
+        group!.BoardType.Should().Be((int)BoardType.OneShot);
+    }
 }
