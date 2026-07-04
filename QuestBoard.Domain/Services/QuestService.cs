@@ -295,11 +295,13 @@ internal class QuestService(
         var signup = quest.PlayerSignups.FirstOrDefault(ps => ps.Id == playerSignupId);
         if (signup == null) return;
 
-        var wasSelected = signup.IsSelected;
+        // Only a selected Player-role signup frees a seat that counts against TotalPlayerCount;
+        // Assistant DM and Spectator seats are never part of that capacity.
+        var wasSelectedPlayer = signup.IsSelected && signup.Role == SignupRole.Player;
 
         await playerSignupRepository.RemoveAsync(signup, token);
 
-        if (!wasSelected) return;
+        if (!wasSelectedPlayer) return;
 
         var finalizedProposedDate = quest.ProposedDates
             .FirstOrDefault(pd => quest.FinalizedDate.HasValue && pd.Date.Date == quest.FinalizedDate.Value.Date);
