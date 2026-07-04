@@ -28,6 +28,8 @@ key-files:
     - QuestBoard.Service/Controllers/QuestBoard/QuestController.cs
     - QuestBoard.Service/Views/Quest/Details.cshtml
     - QuestBoard.Service/Views/Quest/Details.Mobile.cshtml
+    - QuestBoard.Domain/Services/QuestService.cs
+    - QuestBoard.UnitTests/Services/QuestServiceTests.cs
 
 key-decisions:
   - "Kept a defensive OrderBy(SignupTime)-only fallback for the rare case where the finalized proposed date can't be resolved (mirrors the controller's own 'Could not find the finalized date information' guard) — this is not a second live ordering path for the normal case, just a null-safety branch."
@@ -129,3 +131,23 @@ All 3 modified files verified present on disk with the expected content (`Change
 **Commit:** `5c6e241` (fix)
 
 **Status:** Task 4 human-verify checkpoint is being re-presented for another verification pass. Not yet approved.
+
+## Behavior Extension — Round 2 of Task 4 Checkpoint (Maybe Can Also Fill an Open Seat)
+
+During live testing of the Task 4 human-verify checkpoint, the tester reported: voting Maybe from a Yes-selected position kept them selected (expected), but voting Maybe while waitlisted (previously voted No) also kept them waitlisted, when they expected to move up to the selected table.
+
+The orchestrator confirmed the original design intent with the user directly: the shipped behavior (only a Yes vote can fill an open seat; Maybe never promotes) was a deliberate symmetric read of VOTE-05's "Maybe never promotes" language, extended from "a selected player's Maybe never bumps someone else" to "Maybe never grants a seat at all." The user's explicit answer: **"Maybe can also fill an open seat"** — a waitlisted player voting Maybe should be auto-selected immediately if a seat is free, exactly like a Yes vote does today. Only a No vote (or no free seat) leaves them waitlisted. This is a genuine behavior extension beyond the original plan text, confirmed by the user mid-checkpoint — not a misreading to walk back.
+
+**What changed:**
+- `QuestBoard.Domain/Services/QuestService.cs` — `ChangeVoteAsync`'s seat-granting branch condition changed from `if (vote == VoteType.Yes)` to `if (vote == VoteType.Yes || vote == VoteType.Maybe)`. The fresh server-side re-fetch, `selectedCount < quest.TotalPlayerCount` capacity check, and "never trust client-supplied capacity" guard are all unchanged — only the vote value that can trigger the branch was widened. A `VoteType.No` vote still never enters this branch.
+- **Explicitly unchanged:** the separate rule that a currently-*selected* player voting Maybe keeps their seat with no promotion of anyone else (VOTE-05's original scenario) — covered by the pre-existing `ChangeVoteAsync_SelectedPlayerVotesMaybe_DoesNotPromote` test, which still passes unmodified. That test exercises a different code path (the `seatFreed` / promotion branch driven by the repository's own vote-persistence return value), which this fix does not touch.
+- `QuestBoard.UnitTests/Services/QuestServiceTests.cs` — added `ChangeVoteAsync_WaitlistedPlayerVotesMaybe_SelectsWhenSeatAvailable` (asserts a waitlisted player's Maybe vote selects them when a seat is free, mirroring the same repository-mock/assertion shape as the existing selection tests) and `ChangeVoteAsync_WaitlistedPlayerVotesNo_StaysWaitlistedEvenWithSeatAvailable` (asserts a No vote from a waitlisted player never triggers the select-if-room branch, even with capacity available).
+
+**Verification:**
+- `dotnet build --no-incremental` — Build succeeded, 0 warnings, 0 errors
+- `dotnet test --filter FullyQualifiedName~QuestServiceTests` — 16/16 passed, including the two new tests and the unchanged `ChangeVoteAsync_SelectedPlayerVotesMaybe_DoesNotPromote`
+- `dotnet test --no-build` (full suite) — 291/292 passed; the only failure is the same pre-existing `AdminControllerIntegrationTests.SendConfirmationEmail_Post_WhenUserUnconfirmed_ShouldRedirectToUsersWithSuccess` rate-limit-policy flake already documented in Plan 02's and this plan's original SUMMARY sections, unrelated to this change
+
+**Task 4 checkpoint status:** Still outstanding — this fix must go through another round of human verification before the checkpoint can be marked resolved. Do not treat this SUMMARY update as closing Task 4.
+
+**Commit:** `d26cf73` — `fix(44-03): let a Maybe vote also fill an open seat, not just Yes`

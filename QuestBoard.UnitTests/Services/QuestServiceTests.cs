@@ -346,6 +346,48 @@ public class QuestServiceTests
     }
 
     [Fact]
+    public async Task ChangeVoteAsync_WaitlistedPlayerVotesMaybe_SelectsWhenSeatAvailable()
+    {
+        // Arrange: a waitlisted (not-yet-selected) player votes Maybe while a seat is free —
+        // a Maybe vote must be able to fill an open seat the same way a Yes vote does.
+        var voterSignup = MakeSignup(1, "voter@x.com", isSelected: false);
+        var quest = MakeFinalizedQuest(1, [voterSignup], totalPlayerCount: 4);
+
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.Maybe, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.Maybe, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        voterSignup.IsSelected.Should().BeTrue();
+        await _playerSignupRepository.Received(1).UpdateAsync(voterSignup, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangeVoteAsync_WaitlistedPlayerVotesNo_StaysWaitlistedEvenWithSeatAvailable()
+    {
+        // Arrange: a waitlisted player votes No while a seat is free — a No vote must never
+        // grant a seat, regardless of available capacity.
+        var voterSignup = MakeSignup(1, "voter@x.com", isSelected: false);
+        var quest = MakeFinalizedQuest(1, [voterSignup], totalPlayerCount: 4);
+
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.No, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.No, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        voterSignup.IsSelected.Should().BeFalse();
+        await _playerSignupRepository.DidNotReceive().UpdateAsync(Arg.Any<PlayerSignup>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RevokeSignupAsync_WhenRevokedSignupWasWaitlisted_DoesNotPromote()
     {
         // Arrange: the signup being revoked is waitlisted (IsSelected=false) — no seat was freed.
