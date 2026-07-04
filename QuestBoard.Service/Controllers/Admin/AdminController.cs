@@ -353,7 +353,7 @@ public class AdminController(IUserService userService, IQuestService questServic
             return NotFound();
         }
 
-        await userService.RemoveAsync(user);
+        await groupService.RemoveMemberAsync(groupId.Value, id);
         return Ok();
     }
 
