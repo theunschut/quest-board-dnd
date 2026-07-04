@@ -527,6 +527,106 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         responses.Should().Contain(r => r.StatusCode == HttpStatusCode.TooManyRequests);
     }
 
+    // DeleteUser must remove only the active-group membership row — the account itself
+    // and any other group memberships must survive (SAFE-01).
+    [Fact]
+    public async Task DeleteUser_Post_RemovesGroupMembershipOnly_AccountAndOtherMembershipsIntact()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var targetUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "removaltarget", "removaltarget@example.com", name: "Removal Target");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = targetUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = targetUser.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act — active group is group 1 (_factory.TestGroupContext.ActiveGroupId defaults to 1)
+        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{targetUser.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var userManager = assertScope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var account = await userManager.FindByIdAsync(targetUser.Id.ToString());
+        account.Should().NotBeNull("the account itself must survive a group-scoped removal");
+
+        var assertContext = assertScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var remainingMemberships = assertContext.UserGroups.Where(ug => ug.UserId == targetUser.Id).ToList();
+        remainingMemberships.Should().ContainSingle("only the active-group (1) membership should be removed");
+        remainingMemberships[0].GroupId.Should().Be(2, "the second group's membership must remain untouched");
+    }
+
+    // DeleteUser must not throw an unhandled DbUpdateException for a user with rows across
+    // all five NoAction FKs (quest DM, shop item creator, transaction, reminder log), and must
+    // not silently cascade-delete their characters/DM profile/signups (SAFE-01).
+    [Fact]
+    public async Task DeleteUser_Post_WithQuestShopTransactionReminderHistory_DoesNotThrow()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var targetUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "fkhistorytarget", "fkhistorytarget@example.com", name: "FK History Target");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = targetUser.Id, GroupId = 1, GroupRole = (int)GroupRole.DungeonMaster });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, targetUser.Id, "FK History Quest");
+        var shopItem = await TestDataHelper.CreateShopItemAsync(_factory.Services, targetUser.Id, "FK History Item");
+        var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, targetUser.Id, "FK History Character");
+        var signup = await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, targetUser.Id);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserTransactions.Add(new UserTransactionEntity
+            {
+                UserId = targetUser.Id,
+                ShopItemId = shopItem.Id,
+                TransactionType = 0,
+                Price = shopItem.Price,
+                Quantity = 1,
+                TransactionDate = DateTime.UtcNow
+            });
+            context.ReminderLogs.Add(new ReminderLogEntity
+            {
+                QuestId = quest.Id,
+                PlayerId = targetUser.Id,
+                SentAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act
+        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{targetUser.Id}", TestContext.Current.CancellationToken);
+
+        // Assert — no unhandled DbUpdateException (would surface as a 500)
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var userManager = assertScope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var account = await userManager.FindByIdAsync(targetUser.Id.ToString());
+        account.Should().NotBeNull("the account must survive even with rich FK history");
+
+        var assertContext = assertScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        assertContext.Characters.Any(c => c.Id == character.Id).Should().BeTrue("character rows must not be cascade-deleted");
+        assertContext.PlayerSignups.Any(s => s.Id == signup.Id).Should().BeTrue("signup rows must not be cascade-deleted");
+    }
+
     // CreateUser's one-shot automated welcome email is explicitly EXEMPT
     // from the resend rate limit — 4 distinct new-account creations must never 429.
     [Fact]
