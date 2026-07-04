@@ -171,7 +171,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 40-01-PLAN.md — Backend seam: GetAvailableUsers not-in-group + search query (repository/service/interfaces), CreateMemberViewModel, reshaped GroupMembersViewModel
+- [x] 40-01-PLAN.md — Backend seam: GetAvailableUsers not-in-group + search query (repository/service/interfaces), CreateMemberViewModel, reshaped GroupMembersViewModel
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -247,5 +247,5 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
-| 40. Platform Members Page Redesign | v6.1 | 0/3 | Not started | — |
+| 40. Platform Members Page Redesign | v6.1 | 1/3 | In Progress|  |
 | 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |
