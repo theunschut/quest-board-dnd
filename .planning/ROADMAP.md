@@ -8,7 +8,7 @@
 - ✅ **v4.0 Email Notifications** — Phases 20–25 (shipped 2026-06-28)
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
-- 🚧 **v6.1 Bugfixes** — Phases 38–41 (in progress — started 2026-07-03)
+- 🚧 **v6.1 Bugfixes** — Phases 38–42 (in progress — started 2026-07-03)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it is not assigned to any active milestone._
 
@@ -103,7 +103,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 </details>
 
 <details open>
-<summary>🚧 v6.1 Bugfixes (Phases 38–41) — IN PROGRESS (started 2026-07-03)</summary>
+<summary>🚧 v6.1 Bugfixes (Phases 38–42) — IN PROGRESS (started 2026-07-03)</summary>
 
 **Overview:** Closes four admin-facing user-management gaps found after v6.0 shipped: a group admin user-list PII leak (`AdminController.Users()` shows every platform user, not just the active group's), a raw `<select>` dropdown on the Platform Members page with no create-user entry point, a hard-fail on email collision during user creation instead of a friendlier auto-add-to-group flow, and a group-admin "Delete" button that hard-deletes a user's entire account (cascading them out of every group, and crashing on FK constraints for any user with quest/shop/transaction history) instead of just removing them from the active group. All four are additive extensions of existing seams — zero new packages, zero new migrations.
 
@@ -208,12 +208,31 @@ Plans:
 - [x] 41-03-PLAN.md — Platform UsersController + views + "Manage Users" entry point with self-disable guard (SAFE-02, SAFE-03)
 - [x] 41-04-PLAN.md — Login disabled-vs-lockout message distinction (SAFE-04)
 
+### Phase 42: Site-Wide Toast Notification Redesign
+
+**Goal:** All TempData flash messages app-wide render through one shared Bootstrap toast mechanism — a single `_Toasts.cshtml` partial wired into all 5 layouts — replacing ~26 views' duplicated static alert banners and local Shop toast markup, with a new Info type and standardized TempData keys.
+**Requirements**: None (deferred-idea promotion from Phase 39; no REQ-IDs mapped)
+**Depends on:** Phase 41
+**Plans:** 5/5 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 42-01-PLAN.md — Shared `_Toasts.cshtml` partial + all 5 layouts wired + `RedirectWithInfo` + AccountController key standardization + site.js init consolidation
+
+**Wave 2** *(blocked on Wave 1; all four run in parallel — disjoint files)*
+
+- [x] 42-02-PLAN.md — Shop migration: Index/Details (desktop + mobile) local toast + init removed, GoldReceived via shared partial, Mystical Merchant untouched
+- [x] 42-03-PLAN.md — Platform-area migration: Group Index/Members + Users Index (desktop + mobile) alert banners removed
+- [x] 42-04-PLAN.md — Account migration: Login/ForgotPassword/Profile (desktop + mobile) flash banners removed, Profile `*Message` keys retired
+- [x] 42-05-PLAN.md — Admin Users + Quest Manage (desktop + mobile) alert banners removed
+
 </details>
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -261,22 +280,4 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
 | 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
-
-### Phase 42: Site-Wide Toast Notification Redesign
-
-**Goal:** All TempData flash messages app-wide render through one shared Bootstrap toast mechanism — a single `_Toasts.cshtml` partial wired into all 5 layouts — replacing ~26 views' duplicated static alert banners and local Shop toast markup, with a new Info type and standardized TempData keys.
-**Requirements**: None (deferred-idea promotion from Phase 39; no REQ-IDs mapped)
-**Depends on:** Phase 41
-**Plans:** 5/5 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 42-01-PLAN.md — Shared `_Toasts.cshtml` partial + all 5 layouts wired + `RedirectWithInfo` + AccountController key standardization + site.js init consolidation
-
-**Wave 2** *(blocked on Wave 1; all four run in parallel — disjoint files)*
-
-- [x] 42-02-PLAN.md — Shop migration: Index/Details (desktop + mobile) local toast + init removed, GoldReceived via shared partial, Mystical Merchant untouched
-- [x] 42-03-PLAN.md — Platform-area migration: Group Index/Members + Users Index (desktop + mobile) alert banners removed
-- [x] 42-04-PLAN.md — Account migration: Login/ForgotPassword/Profile (desktop + mobile) flash banners removed, Profile `*Message` keys retired
-- [x] 42-05-PLAN.md — Admin Users + Quest Manage (desktop + mobile) alert banners removed
+| 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
