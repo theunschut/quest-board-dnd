@@ -9,5 +9,6 @@ public class GroupMembersViewModel
     public AddMemberViewModel AddMember { get; set; } = new();
     public IList<User> AvailableUsers { get; set; } = [];
     public string? SearchQuery { get; set; }
+    public string? MemberSearchQuery { get; set; }
     public CreateMemberViewModel CreateMember { get; set; } = new();
 }

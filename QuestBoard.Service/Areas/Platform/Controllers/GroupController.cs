@@ -123,11 +123,11 @@ public class GroupController(
 
     // Members page
     [HttpGet]
-    public async Task<IActionResult> Members(int id, string? search)
+    public async Task<IActionResult> Members(int id, string? search, string? memberSearch)
     {
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
-        var members = await groupService.GetMembersAsync(id);
+        var members = await groupService.GetMembersAsync(id, memberSearch);
         var availableUsers = await userService.GetAvailableUsersAsync(id, search);
         return View(new GroupMembersViewModel
         {
@@ -135,18 +135,19 @@ public class GroupController(
             Members = members,
             AvailableUsers = availableUsers,
             SearchQuery = search,
+            MemberSearchQuery = memberSearch,
             AddMember = new AddMemberViewModel()
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddMember(int id, AddMemberViewModel model, string? search)
+    public async Task<IActionResult> AddMember(int id, AddMemberViewModel model, string? search, string? memberSearch)
     {
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "Invalid form submission.";
-            return RedirectToAction(nameof(Members), new { id, search });
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
         try
         {
@@ -158,25 +159,27 @@ public class GroupController(
         {
             TempData["Error"] = "This user is already a member of the group.";
         }
-        return RedirectToAction(nameof(Members), new { id, search });
+        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateMember(int id, CreateMemberViewModel model)
+    public async Task<IActionResult> CreateMember(int id, CreateMemberViewModel model, string? search, string? memberSearch)
     {
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
 
         if (!ModelState.IsValid)
         {
-            var members = await groupService.GetMembersAsync(id);
-            var availableUsers = await userService.GetAvailableUsersAsync(id, null);
+            var invalidMembers = await groupService.GetMembersAsync(id, memberSearch);
+            var invalidAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
             return View(nameof(Members), new GroupMembersViewModel
             {
                 Group = group,
-                Members = members,
-                AvailableUsers = availableUsers,
+                Members = invalidMembers,
+                AvailableUsers = invalidAvailableUsers,
+                SearchQuery = search,
+                MemberSearchQuery = memberSearch,
                 CreateMember = model
             });
         }
@@ -199,7 +202,7 @@ public class GroupController(
                     }
 
                     TempData["Success"] = $"Account created for {model.Name}. A welcome email with a set-password link has been sent.";
-                    return RedirectToAction(nameof(Members), new { id });
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
             case CreateOrAddToGroupOutcome.AddedToGroup:
@@ -211,7 +214,7 @@ public class GroupController(
                         jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
 
                     TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
-                    return RedirectToAction(nameof(Members), new { id });
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
@@ -231,12 +234,12 @@ public class GroupController(
                     }
 
                     TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
-                    return RedirectToAction(nameof(Members), new { id });
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
             case CreateOrAddToGroupOutcome.AlreadyMember:
                 TempData["Warning"] = $"{result.Name} is already a member of this group.";
-                return RedirectToAction(nameof(Members), new { id });
+                return RedirectToAction(nameof(Members), new { id, search, memberSearch });
 
             case CreateOrAddToGroupOutcome.Failed:
             default:
@@ -246,13 +249,15 @@ public class GroupController(
                         ModelState.AddModelError(string.Empty, error);
                     }
 
-                    var members = await groupService.GetMembersAsync(id);
-                    var availableUsers = await userService.GetAvailableUsersAsync(id, null);
+                    var failedMembers = await groupService.GetMembersAsync(id, memberSearch);
+                    var failedAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
                     return View(nameof(Members), new GroupMembersViewModel
                     {
                         Group = group,
-                        Members = members,
-                        AvailableUsers = availableUsers,
+                        Members = failedMembers,
+                        AvailableUsers = failedAvailableUsers,
+                        SearchQuery = search,
+                        MemberSearchQuery = memberSearch,
                         CreateMember = model
                     });
                 }
@@ -261,10 +266,10 @@ public class GroupController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RemoveMember(int id, int userId)
+    public async Task<IActionResult> RemoveMember(int id, int userId, string? search, string? memberSearch)
     {
         await groupService.RemoveMemberAsync(id, userId);
         TempData["Success"] = "Member removed from the group.";
-        return RedirectToAction(nameof(Members), new { id });
+        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
     }
 }
