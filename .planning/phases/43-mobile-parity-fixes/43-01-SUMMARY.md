@@ -34,7 +34,7 @@ requirements-completed:
 # Metrics
 duration: 15min
 completed: 2026-07-04
-status: partial
+status: complete
 ---
 
 # Phase 43 Plan 01: iOS Safari Fixed-Background Fix Summary
@@ -94,18 +94,14 @@ None beyond the deviation above.
 ## User Setup Required
 None - no external service configuration required.
 
-## Next Phase Readiness
+## Task 3: Real-Device Verification — APPROVED
 
-**Automated work (Tasks 1-2) is complete and committed.** Task 3 — the blocking real-device iOS Safari verification checkpoint — has **not** been executed. Per the plan and this session's parallel-execution instructions, real-device verification requires a physical iPhone reachable over LAN, which cannot be run by an automated worktree agent.
+**Device:** iPhone 17 Pro, iOS 26 (physical device, real Wi-Fi LAN session — not devtools emulation).
 
-**What's needed to close out this plan:**
-1. A human (or a follow-up interactive session) must run the dev server bound to `0.0.0.0`, open a temporary Windows Firewall port, and browse to it from a physical iPhone over the same Wi-Fi network — see the plan's Task 3 `<how-to-verify>` steps for exact commands.
-2. Confirm the background stays visually fixed while scrolling past one full viewport height, check portrait/landscape rotation, and sanity-check desktop Chrome shows no regression.
-3. Record the exact iPhone model and iOS/Safari version in the verification evidence (per PITFALLS.md Pitfall 5 — a generic "tested on mobile" note is not sufficient).
-4. Once approved, this plan's success criteria (background stays fixed on real iOS Safari, no desktop/mobile regression, device/version recorded, no `background-attachment` in either file) will be fully met.
+**Result:** Background stays visually fixed in place while page content scrolls over it. User confirmed approval after retesting against the merged fix (an initial test failed because the fix was still isolated in an unmerged build worktree; after merging both plans' worktrees into the branch and restarting the dev server, retest passed).
 
-No blockers for Plan 43-02 (Session Recap badge) — it touches different files (`Index.Mobile.cshtml`, `quest-log.mobile.css`) and is independent of this plan's outstanding checkpoint.
+All 3 tasks now complete. MOBILE-01 fully satisfied: `background-attachment` is gone from both `mobile.css` and `site.css`, replaced by a `body::before` fixed-position layer, confirmed working on a real iOS Safari session.
 
 ---
 *Phase: 43-mobile-parity-fixes*
-*Completed: 2026-07-04 (partial — Tasks 1-2 only; Task 3 checkpoint pending)*
+*Completed: 2026-07-04*

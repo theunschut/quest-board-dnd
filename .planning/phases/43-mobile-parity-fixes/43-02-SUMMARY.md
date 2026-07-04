@@ -28,12 +28,13 @@ key-decisions:
 patterns-established:
   - "When porting a desktop component to mobile, scope new CSS directly under the mobile component root (.quest-log-item) rather than reproducing desktop's nested wrapper class that doesn't exist on mobile"
 
-requirements-completed: []  # MOBILE-02 not yet complete — Task 3 (real-device checkpoint) still pending
+requirements-completed:
+  - MOBILE-02
 
 # Metrics
-duration: n/a (partial — checkpoint pending)
+duration: n/a
 completed: 2026-07-04
-status: partial
+status: complete
 ---
 
 # Phase 43 Plan 02: Mobile Recap Badge Summary (Partial — Task 3 Pending)
@@ -79,37 +80,14 @@ None for Tasks 1-2. Both automated `grep` verification commands and `dotnet buil
 
 None for the code changes. Task 3's real-device verification requires temporary manual setup (dev server bound to `0.0.0.0:8000`, a temporary Windows Firewall rule, and a physical iPhone on the same LAN) — this setup is verification-time only, not a persistent environment requirement, and is not yet performed.
 
-## Next Phase Readiness — BLOCKED on Task 3
+## Task 3: Real-Device Verification — APPROVED
 
-**This plan is incomplete.** Task 3 is a blocking `checkpoint:human-verify` requiring a physical iPhone over LAN — it cannot be automated or fabricated. Execution halted here per the checkpoint protocol.
+**Device:** iPhone 17 Pro, iOS 26 (physical device, real Wi-Fi LAN session — not devtools emulation).
 
-### Checkpoint state
+**Result:** "Session Recap Available" amber/gold pill badge confirmed rendering correctly on the mobile Quest Log, matching desktop's styling, placement, and copy. User confirmed approval after retesting against the merged fix (an initial test cycle used an unmerged build worktree; after merging both plans' worktrees into the branch and restarting the dev server, retest passed).
 
-**Completed tasks:**
-
-| Task | Status | Commit |
-|------|--------|--------|
-| Task 1: Port recap-badge markup into mobile Quest Log card | done | `06c4345` |
-| Task 2: Add amber/gold `.recap-badge` CSS to `quest-log.mobile.css` | done | `7bda4d4` |
-| Task 3: Real-device verification of the mobile recap badge | **awaiting human verification** | — |
-
-**What's built:** The mobile Quest Log card now renders a "Session Recap Available" amber/gold pill badge (`fa-scroll` icon) as its own row below the DM name, whenever a completed quest has a non-empty recap — matching desktop's existing badge. Markup was ported into `Index.Mobile.cshtml`; matching `.recap-badge` CSS was added to `quest-log.mobile.css`.
-
-**Why a real device is required:** Because markup + CSS must render together correctly, and because this codebase has previously shipped mobile bugs that only appeared on real devices (see `.planning/research/PITFALLS.md` Pitfall 5), sign-off requires confirming the rendered result on a real mobile browser session — devtools "iPhone" emulation is not sufficient.
-
-**How to verify (steps for the human/orchestrator):**
-1. Ensure a completed quest with a non-empty `Recap` exists (and ideally one without, for the negative case). Add one via the DM quest-edit flow if none exists.
-2. Start the dev server bound to all interfaces: `dotnet run --project QuestBoard.Service --urls "http://0.0.0.0:8000"` (do not commit any config change). Add a temporary Windows Firewall inbound rule for TCP 8000; find the dev PC's LAN IP via `ipconfig`; confirm the iPhone is on the same Wi-Fi.
-3. On the physical iPhone in Safari, browse to `http://<dev-PC-LAN-IP>:8000` and navigate to the Quest Log (completed quests) list view.
-4. On a quest WITH a recap: expect an amber/gold pill reading "Session Recap Available" with a scroll icon, on its own row directly below the DM-name row, as the last thing in that card — matching desktop's amber pill (translucent gold background, gold border, parchment text), not the plain grey Bootstrap CR badge.
-5. On a quest WITHOUT a recap: expect no badge and no empty gap/placeholder.
-6. Cross-check against desktop's Quest Log: color, shape, icon, and label should match.
-7. Record the exact iPhone model + iOS/Safari version in the verification evidence (per PITFALLS.md Pitfall 5). Remove the temporary firewall rule afterward.
-
-**Resume signal:** Type "approved" (with the recorded device model + iOS version), or describe what renders wrong (wrong color/shape, wrong placement, badge missing on a recap quest, or badge showing on a no-recap quest).
-
-**Blockers:** Requires a physical iPhone on the same LAN as the dev machine — cannot be executed by this agent. `requirements-completed` in this summary's frontmatter is deliberately left empty; MOBILE-02 is not complete until Task 3 is approved.
+All 3 tasks now complete. MOBILE-02 fully satisfied.
 
 ---
 *Phase: 43-mobile-parity-fixes*
-*Partial completion recorded: 2026-07-04*
+*Completed: 2026-07-04*
