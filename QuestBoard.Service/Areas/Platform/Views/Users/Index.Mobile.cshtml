@@ -4,6 +4,10 @@
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
 
+@section Styles {
+    <link href="~/css/platform-users.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
 <div class="platform-users-card-mobile mb-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">
