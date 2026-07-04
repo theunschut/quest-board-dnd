@@ -389,7 +389,7 @@ public async Task<IList<User>> GetAllGroupMembers(int groupId, CancellationToken
 
 **If this table is empty:** N/A — see entries above. All three assumptions are low-risk, discretion-level naming/structuring choices, not behavioral or compliance claims — every functional/behavioral claim in this document was verified directly against the codebase (file reads, grep) in this research session.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 None blocking. All four CONTEXT.md discretion items have concrete resolutions above (Patterns 1–4). One minor structural choice remains fully at the planner's discretion with no wrong answer:
 
