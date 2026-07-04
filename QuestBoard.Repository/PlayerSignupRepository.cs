@@ -1,5 +1,6 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Repository.Entities;
@@ -75,17 +76,16 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
             .ToListAsync(cancellationToken);
 
         var entity = candidates
-            .OrderByDescending(ps => VotePriority(ps, finalizedProposedDateId))
+            .OrderByDescending(ps => WaitlistOrdering.VotePriority(VoteForProposedDate(ps, finalizedProposedDateId)))
             .ThenBy(ps => ps.LastVoteChangeTime ?? ps.SignupTime)
             .FirstOrDefault();
 
         return entity == null ? null : Mapper.Map<PlayerSignup>(entity);
     }
 
-    private static int VotePriority(PlayerSignupEntity entity, int proposedDateId)
+    private static int? VoteForProposedDate(PlayerSignupEntity entity, int proposedDateId)
     {
-        var vote = entity.DateVotes.FirstOrDefault(dv => dv.ProposedDateId == proposedDateId)?.Vote ?? (int)VoteType.No;
-        return vote;
+        return entity.DateVotes.FirstOrDefault(dv => dv.ProposedDateId == proposedDateId)?.Vote;
     }
 
     /// <inheritdoc/>

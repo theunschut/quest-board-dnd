@@ -24,4 +24,12 @@ public static class WaitlistOrdering
         var vote = ps.DateVotes.FirstOrDefault(dv => dv.ProposedDateId == proposedDateId)?.Vote ?? VoteType.No;
         return (int)vote;
     }
+
+    /// <summary>
+    /// The shared vote-priority/tiebreak rule used to rank waitlist candidates, expressed on
+    /// plain values so it can be reused by callers (e.g. Repository entities) that don't have a
+    /// domain <see cref="PlayerSignup"/> to hand. Higher vote value sorts first (Yes above Maybe
+    /// above No/none); ties break by the earliest ordering timestamp.
+    /// </summary>
+    public static int VotePriority(int? vote) => vote ?? (int)VoteType.No;
 }
