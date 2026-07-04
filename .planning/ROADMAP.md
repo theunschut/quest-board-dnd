@@ -113,6 +113,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 - [x] Phase 39: Shared Collision-Aware User Creation & Email — Creating a user with an existing email adds them to the group instead of failing, with a distinct notification email, applied identically everywhere user creation happens (completed 2026-07-04)
 - [x] Phase 40: Platform Members Page Redesign — Two-column Members page with a searchable available-users table and a group-scoped Create New User entry point (completed 2026-07-04)
 - [ ] Phase 41: Safe User Removal & Account Disable — Group-admin Delete removes from the active group only (not a hard account delete), and SuperAdmin can disable/re-enable an account via Identity's lockout mechanism
+- [ ] Phase 42: Site-Wide Toast Notification Redesign — Convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern (deferred from Phase 39)
 
 ### Phase 38: Group-Scoped User List
 
@@ -249,3 +250,14 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
 | 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |
+
+### Phase 42: Site-Wide Toast Notification Redesign
+
+**Goal:** [To be planned] — deferred idea from Phase 39 discussion: convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern (`Views/Shop/Index.cshtml`).
+**Requirements**: TBD
+**Depends on:** Phase 41
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 42 to break down)

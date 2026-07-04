@@ -76,6 +76,10 @@ Full prior-milestone decision log: PROJECT.md Key Decisions table; v6.0 detail i
 - [Phase 39]: IGroupService injected directly into AdminController's primary constructor to resolve the group Name for the AddedToGroup email body
 - [Phase 39]: AddedToGroupStrandedAccount branch returns the identical success flash string as AddedToGroup so the admin sees no distinction between which email template actually fired
 
+### Roadmap Evolution
+
+- Phase 42 added: Site-Wide Toast Notification Redesign — promotes the "Deferred Ideas" item from `39-DISCUSSION-LOG.md` (convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern) into its own roadmap phase for this milestone.
+
 ### Pending Todos
 
 None yet — Phase 38 planned. Next: `/gsd-execute-phase 38`.
