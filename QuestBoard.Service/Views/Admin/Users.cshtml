@@ -165,10 +165,10 @@
                             Edit
                         </a>
                         
-                        @* Delete User button - last *@
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteUser(@userModel.User.Id)">
-                            <i class="fas fa-trash"></i>
-                            Delete
+                        @* Remove from Group button - last *@
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeFromGroup(@userModel.User.Id)">
+                            <i class="fas fa-user-minus"></i>
+                            Remove from Group
                         </button>
                     </td>
                 </tr>
@@ -188,8 +188,8 @@
 </div>
 
 <script>
-    function deleteUser(id) {
-        if (confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+    function removeFromGroup(id) {
+        if (confirm("Are you sure you want to remove this user from the group? They will keep their account and any other group memberships.")) {
             fetch(`/Admin/DeleteUser/${id}`, {
                 method: "DELETE",
                 headers: {
@@ -199,7 +199,7 @@
                 if (res.ok) {
                     location.reload();
                 } else {
-                    alert("Delete failed.");
+                    alert("Remove from group failed.");
                 }
             });
         }
