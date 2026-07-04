@@ -1,6 +1,7 @@
 ---
 phase: quick
 plan: 260624-izh
+status: complete
 subsystem: mobile-ui
 tags: [mobile, bugfix, dark-theme, offcanvas, badges, css]
 key-files:
