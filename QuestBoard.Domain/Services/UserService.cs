@@ -171,7 +171,18 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
             }
 
             var newUserId = await identityService.GetIdByEmailAsync(email);
-            await SetGroupRoleAsync(newUserId!.Value, groupId, role);
+            if (newUserId == null)
+            {
+                return new CreateOrAddToGroupResult
+                {
+                    Outcome = CreateOrAddToGroupOutcome.Failed,
+                    Email = email,
+                    Name = name,
+                    Errors = ["Account was created but could not be re-resolved by email."]
+                };
+            }
+
+            await SetGroupRoleAsync(newUserId.Value, groupId, role);
 
             return new CreateOrAddToGroupResult
             {

@@ -137,6 +137,27 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task CreateOrAddToGroupAsync_WhenReResolutionAfterCreateReturnsNull_ReturnsFailed()
+    {
+        // Arrange — the account was created successfully, but the follow-up lookup by
+        // email (e.g. replica lag, or the account being deleted between the two calls)
+        // fails to find it. This must return Failed, not throw.
+        const string email = "vanished@example.com";
+        const string name = "Ghost Player";
+        _identityService.GetIdByEmailAsync(email).Returns((int?)null, (int?)null);
+        _identityService.CreateUserAsync(email, name).Returns(IdentityResult.Success);
+
+        // Act
+        var result = await _sut.CreateOrAddToGroupAsync(email, name, groupId: 1, GroupRole.Player);
+
+        // Assert
+        result.Outcome.Should().Be(CreateOrAddToGroupOutcome.Failed);
+        result.UserId.Should().BeNull();
+        result.Errors.Should().NotBeEmpty();
+        await _repository.DidNotReceive().SetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>());
+    }
+
+    [Fact]
     public async Task CreateOrAddToGroupAsync_WhenExistingConfirmedUserNotAMember_AddsMembershipAndReturnsAddedToGroup()
     {
         // Arrange

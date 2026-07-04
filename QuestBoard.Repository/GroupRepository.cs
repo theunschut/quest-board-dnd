@@ -60,7 +60,18 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
             GroupId = groupId,
             GroupRole = (int)groupRole
         });
-        await DbContext.SaveChangesAsync(token);
+
+        try
+        {
+            await DbContext.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException)
+        {
+            // A concurrent request can win the race between the AnyAsync check above and this
+            // insert; the table's unique index on (UserId, GroupId) then rejects the write.
+            // Surface it as the same friendly exception the pre-check throws.
+            throw new InvalidOperationException("User is already a member of this group.");
+        }
     }
 
     /// <inheritdoc/>
