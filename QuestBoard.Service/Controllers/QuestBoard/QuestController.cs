@@ -568,22 +568,6 @@ public class QuestController(
             return BadRequest("You are not signed up for this quest.");
         }
 
-        // Check if already selected
-        if (playerSignup.IsSelected)
-        {
-            return BadRequest("You are already selected for this quest.");
-        }
-
-        // Check if there are available spots for players
-        var selectedPlayersCount = quest.PlayerSignups
-            .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
-            .Count();
-
-        if (selectedPlayersCount >= quest.TotalPlayerCount)
-        {
-            return BadRequest("No available spots in this quest.");
-        }
-
         // Find the finalized date's corresponding proposed date
         var finalizedProposedDate = quest.ProposedDates
             .FirstOrDefault(pd => pd.Date.Date == quest.FinalizedDate.Value.Date);
@@ -593,8 +577,9 @@ public class QuestController(
             return BadRequest("Could not find the finalized date information.");
         }
 
-        // Use the specialized service method to update vote and mark as selected
-        await playerSignupService.ChangeVoteToYesAndSelectAsync(playerSignup.Id, finalizedProposedDate.Id);
+        // Delegate to the generalized vote-change path — selection is decided server-side
+        // from a fresh seat count, never rejecting on capacity.
+        await questService.ChangeVoteAsync(id, playerSignup.Id, VoteType.Yes, finalizedProposedDate.Id);
 
         return Ok();
     }
