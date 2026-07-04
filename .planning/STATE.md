@@ -14,17 +14,17 @@ progress:
   total_plans: 16
   completed_plans: 16
   percent: 100
-current_phase_name: Site-Wide Toast Notification Redesign
+current_phase_name: None — awaiting next milestone
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-04 — Phase 42 complete, v6.1 milestone's 5 phases all done)
+See: .planning/PROJECT.md (updated 2026-07-04 — v6.1 Bugfixes milestone shipped, 5 phases, 16 plans, 37 tasks)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** v6.1 Bugfixes milestone complete (5/5 phases) — awaiting `/gsd-complete-milestone v6.1`
+**Current focus:** Planning next milestone — run `/gsd-new-milestone`
 
 ## Current Position
 
@@ -37,70 +37,33 @@ Last activity: 2026-07-04 — Milestone v6.1 completed and archived
 
 **Velocity:**
 
-- Total plans completed (v6.0): 11/11
-- Timeline: ~1.4 days (2026-07-02 → 2026-07-03)
-
-**By Phase:**
-
-| Phase | Plans | Status |
-|-------|-------|--------|
-| 38. Group-Scoped User List | 1/1 | Complete — ready for verification |
-| 39. Shared Collision-Aware User Creation & Email | 3/3 | Complete — ready for verification |
-| 40. Platform Members Page Redesign | 0/TBD | Not started |
+- Total plans completed (v6.1): 16/16
+- Timeline: ~1 day (2026-07-03 22:30 → 2026-07-04 17:51)
 
 **Recent Trend:**
 
-- v6.0 shipped in ~1.4 days across 3 phases — fastest pace yet. See .planning/RETROSPECTIVE.md for details.
-- v6.1 is a 3-phase bugfix milestone (8 requirements), continuing directly from Phase 37.
-
-| Phase 38 P01 | 25min | 3 tasks | 6 files |
-| Phase 39 P01 | 12min | 3 tasks | 4 files |
-| Phase 39 P02 | 3min | 3 tasks | 4 files |
-| Phase 39 P03 | 8min | 3 tasks | 1 files |
+- v6.1 shipped in ~1 day across 5 phases (38–42), 16 plans, 37 tasks — fastest pace yet, edging out v6.0's ~1.4 days/3 phases. See `.planning/RETROSPECTIVE.md` for details.
 
 ## Accumulated Context
 
 ### Decisions
 
-- Phase ordering: Phase 39 (shared collision-aware creation logic) must ship before Phase 40 (Platform Members page) because Phase 40's new create-user entry point reuses Phase 39's shared method — avoids this codebase's recurring duplicated-logic-diverges bug class (see `GetActiveBoardTypeAsync` 3x precedent in PROJECT.md Known Issues).
-- Phase 38 is fully independent and safest to ship first — pure read-path fix, smallest blast radius, closes a live PII leak.
-- MEMBERS-01 was refined after research: the Platform Members page uses a two-column layout (current members left, searchable available-users + Add User + Create New User right), not a single-column redesign. Phase 40's scope reflects this.
-
-Full prior-milestone decision log: PROJECT.md Key Decisions table; v6.0 detail in `.planning/milestones/v6.0-ROADMAP.md` and `.planning/RETROSPECTIVE.md`.
-
-- [Phase 38]: Added a dedicated GetAllGroupMembers/GetAllGroupMembersAsync method rather than unioning GetAllDungeonMasters+GetAllPlayers, per plan's explicit non-default choice
-- [Phase 38]: Membership guard on the four role-change POST actions reuses existing GetGroupRoleByIdAsync(userId, groupId) rather than adding a new IsMemberOfGroupAsync method
-- [Phase 39]: UserService now composes IGroupService (constructor dependency) to use throw-on-collision AddMemberAsync for already-member detection, diverging from AdminController.CreateUser's current upsert-based SetGroupRoleAsync
-- [Phase 39]: AddedToGroup.razor CTA links to plain /Account/Login with no token — user already has a password from their original account
-- [Phase 39]: Warning banner reuses existing dismissible alert markup (icon + message + btn-close) rather than a toast notification, per the deferred site-wide toast conversion decision
-- [Phase 39]: IGroupService injected directly into AdminController's primary constructor to resolve the group Name for the AddedToGroup email body
-- [Phase 39]: AddedToGroupStrandedAccount branch returns the identical success flash string as AddedToGroup so the admin sees no distinction between which email template actually fired
-- [Phase 42]: RESEARCH found CONTEXT.md's stated "3 layouts" was incomplete — the Platform Area (`Areas/Platform/Views/Shared/_Layout.Platform.cshtml`/`.Platform.Mobile.cshtml`) resolves via its own separate `_ViewStart.cshtml`, independent of the root layouts; all 5 layouts were wired with the shared `_Toasts.cshtml` partial
-- [Phase 42]: TempData key naming standardized app-wide to Success/Error/Warning/Info, retiring AccountController's outlier SuccessMessage/ErrorMessage/InfoMessage keys — incidentally fixed two previously-silent broken message paths as an intentional side effect, not scope creep
-- [Phase 42]: GoldReceived "+X gp" toast kept as a bespoke Shop-specific block layered alongside the shared partial's generic Success toast, not folded into the generic system
+v6.1 Bugfixes milestone decisions archived — see PROJECT.md Key Decisions table and `.planning/milestones/v6.1-ROADMAP.md`.
 
 ### Roadmap Evolution
 
-- Phase 42 added: Site-Wide Toast Notification Redesign — promotes the "Deferred Ideas" item from `39-DISCUSSION-LOG.md` (convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern) into its own roadmap phase for this milestone.
-- Phase 42 complete (2026-07-04) — v6.1 Bugfixes milestone's 5 phases (38, 39, 40, 41, 42) all done. Milestone awaiting `/gsd-complete-milestone v6.1`.
+v6.1 Bugfixes milestone shipped 2026-07-04 (5 phases: 38–42) and archived to `.planning/milestones/v6.1-ROADMAP.md` / `v6.1-REQUIREMENTS.md`. Fresh `.planning/REQUIREMENTS.md` awaits the next milestone.
 
 ### Pending Todos
 
-None — all 5 v6.1 phases complete. Next: `/gsd-complete-milestone v6.1` to archive the milestone.
+None — start the next milestone with `/gsd-new-milestone`.
 
 ### Blockers/Concerns
 
-None open for v6.1 — all 5 phases shipped clean (no unresolved code review findings, no open UAT gaps).
-
-Carried forward, still unresolved, not addressed by any milestone yet:
+None open. Carried forward, still unresolved, not addressed by any milestone yet:
 
 - `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
-
-### Risk Flags for Planning (from research)
-
-- Phase 38: group-scoping join must be an explicit manual join (`UserEntity` has no Global Query Filter) — mirror `UserRepository.GetAllDungeonMasters`/`GetAllPlayers` exactly; add a cross-group-isolation regression test.
-- Phase 39: no consent step before auto-adding an existing user to a group on email collision (by milestone spec) — needs explicit UAT/human-verify since it's a silent privilege-grant path. Build a dedicated `GroupMembershipAddedEmailJob`/`AddedToGroup.razor` with no callback-URL/password-reset token.
-- Phase 40: new Platform `CreateMember`/create-user action must source `groupId` strictly from the route, never from session `IActiveGroupContext` — this exact session/route confusion bug class has already caused two prior incidents (Phase 30, Phase 34.3). Never inject `IActiveGroupContext` into `GroupController`.
+- `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` appears to be dead code (Platform area's `_ViewStart.cshtml` never selects it) — discovered during Phase 42 research, deliberately left unfixed as out-of-scope for that phase. See PROJECT.md Known Issues.
 
 ## Deferred Items
 
@@ -116,9 +79,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 ## Session Continuity
 
 Last session: 2026-07-04T00:00:00Z
-Stopped at: Phase 42 complete — v6.1 milestone (5 phases) fully done, pending `/gsd-complete-milestone`
+Stopped at: v6.1 Bugfixes milestone shipped and archived (5 phases, 16 plans, 37 tasks)
 Resume file: None
-Next step: Run `/gsd-complete-milestone v6.1` to archive the milestone and prepare for the next one
+Next step: Run `/gsd-new-milestone` to start the next milestone
 
 ## Operator Next Steps
 
