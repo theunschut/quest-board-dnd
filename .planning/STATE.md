@@ -3,35 +3,35 @@ gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: Bugfixes
 current_phase: 42
-current_phase_name: Site-Wide Toast Notification Redesign
-status: executing
-stopped_at: Phase 42 UI-SPEC approved
-last_updated: "2026-07-04T14:59:15.967Z"
+status: milestone_complete_pending_archive
+stopped_at: Phase 42 complete — v6.1 milestone (5 phases) fully done, pending /gsd-complete-milestone
+last_updated: "2026-07-04T15:31:23.756Z"
 last_activity: 2026-07-04
-last_activity_desc: Phase 42 execution started
+last_activity_desc: Phase 42 complete
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 16
+  completed_plans: 16
   percent: 100
+current_phase_name: Site-Wide Toast Notification Redesign
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-03 — v6.1 Bugfixes milestone started)
+See: .planning/PROJECT.md (updated 2026-07-04 — Phase 42 complete, v6.1 milestone's 5 phases all done)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 42 — Site-Wide Toast Notification Redesign
+**Current focus:** v6.1 Bugfixes milestone complete (5/5 phases) — awaiting `/gsd-complete-milestone v6.1`
 
 ## Current Position
 
-Phase: 42 (Site-Wide Toast Notification Redesign) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 42
-Last activity: 2026-07-04 — Phase 42 execution started
+Phase: 42 (Site-Wide Toast Notification Redesign) — COMPLETE
+Plan: 5/5 complete
+Status: v6.1 Bugfixes milestone complete — pending archive
+Last activity: 2026-07-04 — Phase 42 complete, UAT approved, all 5 v6.1 phases done
 
 ## Performance Metrics
 
@@ -75,18 +75,22 @@ Full prior-milestone decision log: PROJECT.md Key Decisions table; v6.0 detail i
 - [Phase 39]: Warning banner reuses existing dismissible alert markup (icon + message + btn-close) rather than a toast notification, per the deferred site-wide toast conversion decision
 - [Phase 39]: IGroupService injected directly into AdminController's primary constructor to resolve the group Name for the AddedToGroup email body
 - [Phase 39]: AddedToGroupStrandedAccount branch returns the identical success flash string as AddedToGroup so the admin sees no distinction between which email template actually fired
+- [Phase 42]: RESEARCH found CONTEXT.md's stated "3 layouts" was incomplete — the Platform Area (`Areas/Platform/Views/Shared/_Layout.Platform.cshtml`/`.Platform.Mobile.cshtml`) resolves via its own separate `_ViewStart.cshtml`, independent of the root layouts; all 5 layouts were wired with the shared `_Toasts.cshtml` partial
+- [Phase 42]: TempData key naming standardized app-wide to Success/Error/Warning/Info, retiring AccountController's outlier SuccessMessage/ErrorMessage/InfoMessage keys — incidentally fixed two previously-silent broken message paths as an intentional side effect, not scope creep
+- [Phase 42]: GoldReceived "+X gp" toast kept as a bespoke Shop-specific block layered alongside the shared partial's generic Success toast, not folded into the generic system
 
 ### Roadmap Evolution
 
 - Phase 42 added: Site-Wide Toast Notification Redesign — promotes the "Deferred Ideas" item from `39-DISCUSSION-LOG.md` (convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern) into its own roadmap phase for this milestone.
+- Phase 42 complete (2026-07-04) — v6.1 Bugfixes milestone's 5 phases (38, 39, 40, 41, 42) all done. Milestone awaiting `/gsd-complete-milestone v6.1`.
 
 ### Pending Todos
 
-None yet — Phase 38 planned. Next: `/gsd-execute-phase 38`.
+None — all 5 v6.1 phases complete. Next: `/gsd-complete-milestone v6.1` to archive the milestone.
 
 ### Blockers/Concerns
 
-None open for v6.1 yet.
+None open for v6.1 — all 5 phases shipped clean (no unresolved code review findings, no open UAT gaps).
 
 Carried forward, still unresolved, not addressed by any milestone yet:
 
@@ -111,11 +115,11 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-04T14:16:19.960Z
-Stopped at: Phase 42 UI-SPEC approved
-Resume file: .planning/phases/42-site-wide-toast-notification-redesign/42-UI-SPEC.md
-Next step: Phase 39 complete — proceed to Phase 40 (Platform Members Page Redesign)
+Last session: 2026-07-04T00:00:00Z
+Stopped at: Phase 42 complete — v6.1 milestone (5 phases) fully done, pending `/gsd-complete-milestone`
+Resume file: None
+Next step: Run `/gsd-complete-milestone v6.1` to archive the milestone and prepare for the next one
 
 ## Operator Next Steps
 
-- Phase 39 (Shared Collision-Aware User Creation & Email) is fully complete — all 3 plans executed, human-verify checkpoint approved. Run `/gsd-plan-phase 40` to plan the Platform Members Page Redesign phase, which reuses `CreateOrAddToGroupAsync` for its new create-user entry point.
+- v6.1 Bugfixes milestone is fully complete — all 5 phases (38-42) executed, verified, and UAT-approved. Run `/gsd-complete-milestone v6.1` to archive the milestone and start the next one.
