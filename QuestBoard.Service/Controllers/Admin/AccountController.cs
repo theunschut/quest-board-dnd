@@ -136,7 +136,19 @@ public class AccountController(IUserService userService, IIdentityService identi
 
             if (result.IsLockedOut)
             {
-                ModelState.AddModelError(string.Empty, "Account locked due to too many failed attempts. Try again in 15 minutes.");
+                // SignInResult.LockedOut carries no LockoutEnd payload, so re-resolve the user
+                // to tell a deliberately disabled account (LockoutEnd == MaxValue) apart from an
+                // ordinary temporary lockout from too many failed attempts.
+                var lockedOutUserId = await identityService.GetIdByEmailAsync(model.Email);
+                DateTimeOffset? lockoutEnd = lockedOutUserId.HasValue
+                    ? await identityService.GetLockoutEndAsync(lockedOutUserId.Value)
+                    : null;
+
+                var lockoutMessage = lockoutEnd == DateTimeOffset.MaxValue
+                    ? "This account has been disabled. Contact an administrator."
+                    : "Account locked due to too many failed attempts. Try again in 15 minutes.";
+
+                ModelState.AddModelError(string.Empty, lockoutMessage);
                 return View(model);
             }
 
