@@ -1,183 +1,423 @@
-<!-- refreshed: 2026-07-03 -->
-# Architecture Research — v6.1 Bugfixes (Admin User-Management Gaps)
+# Architecture Research
 
-**Domain:** Integration architecture for 3 admin/user-management fixes into an existing ASP.NET Core 10 MVC + EF Core clean-architecture app
-**Researched:** 2026-07-03
-**Confidence:** HIGH (all findings grounded in direct reads of the actual interfaces/controllers in this repo, not external research)
+**Domain:** Client-side image crop-before-upload for a server-rendered ASP.NET Core 10 MVC app (no SPA, no bundler)
+**Researched:** 2026-07-04
+**Confidence:** HIGH (codebase integration points — verified by direct file read) / MEDIUM (crop-library API choice — cross-verified across two independent sources)
 
-## Summary
+## Standard Architecture
 
-All three features are additive extensions of existing seams — no new architectural layer, dispatcher pattern, or cross-cutting abstraction is required. The codebase already contains most of the primitives needed:
+### System Overview
 
-- `IGroupService.GetMembersAsync(groupId)` already returns group-scoped `UserGroup` rows with `User` loaded — this is the join Feature 1 needs, just not yet used by `AdminController.Users()`.
-- `IIdentityService.GetIdByEmailAsync(email)` already exists (used by `AdminController.CreateUser` today, right after creation, not before). The "does this email already exist" check needed for Feature 3 is a **pre-check reuse of an existing method**, not a new one.
-- `Platform/GroupController` already has a full "existing user → add to group" flow (`Members` GET + `AddMember` POST, using `AddMemberViewModel`) that Feature 2's "create new user in this group" entry point should sit beside, reusing `groupService.AddMemberAsync` for the collision branch.
-- The email-job pattern has **no dispatcher interface for user-management emails** (unlike quest emails, which go through `IQuestEmailDispatcher`) — `AdminController` enqueues `WelcomeEmailJob`/`ChangeEmailConfirmationJob` directly via constructor-injected `IBackgroundJobClient`. A new `GroupMembershipAddedEmailJob` (or similarly named) should follow this exact same direct-enqueue pattern, not introduce a dispatcher abstraction.
-
-The one real architectural decision is **where the shared "existing-email-collision → add to group + notify" logic lives**. It must go in `UserService` (Domain layer), not in either controller, because both `AdminController` (group-scoped, Service layer, group-admin) and `Platform/GroupController` (SuperAdmin, Service layer, route-scoped) need to call it identically, and Domain is the only layer both controllers already depend on without depending on each other.
-
-## Feature 1 — Scope `AdminController.Users()` to the Active Group
-
-### Current state (the bug)
-
-`AdminController.Users()` (`QuestBoard.Service/Controllers/Admin/AdminController.cs:24-53`) calls `userService.GetAllAsync()` — inherited from `IBaseService<User>` — which returns **every user on the platform**, then does a per-user `GetGroupRoleByIdAsync` N+1 lookup to compute each row's role in the active group. Users who are not members of the active group still appear in the list (with all three role flags `false`), leaking cross-tenant user data into a group admin's view.
-
-### Integration point
-
-`IGroupService.GetMembersAsync(int groupId)` (`QuestBoard.Domain/Interfaces/IGroupService.cs:37`) already does the correct join: `UserGroups.Include(ug => ug.User).Where(ug => ug.GroupId == groupId)`, returning `IList<UserGroup>` with `GroupRole` and `User` populated per row. This is **already group-scoped and already has the role on it** — no per-user N+1 lookup needed at all.
-
-### New vs Modified
-
-| Component | New or Modified | What |
-|---|---|---|
-| `AdminController.Users()` | **Modified** | Replace `userService.GetAllAsync()` + `GetGroupRoleByIdAsync` loop with `groupService.GetMembersAsync(groupId.Value)`, project `UserManagementViewModel` from each `UserGroup.User` + `UserGroup.GroupRole` directly |
-| `AdminController` constructor | **Modified** | Add `IGroupService groupService` to the constructor parameter list (not currently injected there) |
-| `IUserService` / `UserService` | **No change needed** | `GetGroupRoleByIdAsync` becomes dead code for this call site but should stay — still used by other flows (verify via `FindReferences`/`FindCallers` before removing anything) |
-| `UserManagementViewModel` | **No change needed** | Already holds `User` + 3 bool role flags; `UserGroup.User` supplies the same shape `userService.GetAllAsync()` did |
-
-### Why not add `IUserService.GetByGroupIdAsync`
-
-The milestone context suggested "a new `UserService` method (e.g. `GetByGroupIdAsync`) that joins through the UserGroups junction." That method would duplicate `IGroupService.GetMembersAsync` — same join, same table, same shape (`UserGroup` already carries `User`). Adding a second method that returns the same data via a different path is exactly the kind of quiet duplication this codebase's Key Decisions log flags as a recurring source of drift (see the 3x-duplicated `GetActiveBoardTypeAsync` noted in `PROJECT.md`'s Known Issues). Reuse `IGroupService.GetMembersAsync` instead — it is already `GroupService`-side group-scoped, already returns `GroupRole`, and is already exercised by `Platform/GroupController.Members`, so both admin surfaces read group membership through the same seam.
-
-**Risk:** `GetMembersAsync` is currently only called from `Platform/GroupController` (SuperAdmin, no `[Authorize(Policy = "AdminOnly")]` scoping concerns there). Calling it from `AdminController` (group-admin surface) is safe because the `groupId` passed in is always `activeGroupContext.ActiveGroupId.Value` — same trust boundary as the code it replaces.
-
-## Feature 2 — Platform `GroupController.Members`: Searchable Table + Group-Scoped "Create New User"
-
-### Current state
-
-`Members(int id)` (`Areas/Platform/Controllers/GroupController.cs:114-130`) already computes `availableUsers` (platform users minus current members) and renders them in `GroupMembersViewModel.AvailableUsers` for a `<select>` dropdown, bound via `AddMemberViewModel` (`[Bind(Prefix = "AddMember")]`) to the `AddMember` POST action. This is the existing-user path and does not need re-architecting — only the view template's dropdown-to-searchable-table change, which is presentation-layer only (no controller/service change required for that half).
-
-The new requirement is a **second entry point**: "create new user in this group," mirroring `AdminController.CreateUser` but reachable when there is no `IActiveGroupContext.ActiveGroupId` in session (SuperAdmin is deliberately unscoped — see `ARCHITECTURE.md`'s "SuperAdmin group scoping" architectural constraint). The target `groupId` must come from the route/model (`id`), never from session.
-
-### Integration point
-
-`Platform/GroupController` already takes `IUserService userService` in its constructor (used today for `GetAllAsync` in `Members` and `GetByIdAsync` in `AddMember`). It does **not** currently take `IIdentityService` or `IBackgroundJobClient`/Hangfire — both need to be added.
-
-### New vs Modified
-
-| Component | New or Modified | What |
-|---|---|---|
-| `Platform/GroupController` constructor | **Modified** | Add `IIdentityService identityService`, `IBackgroundJobClient jobClient` (mirrors `AdminController`'s constructor shape) |
-| `Platform/GroupController.CreateMember(int id)` GET | **New action** | Renders a create-user form scoped to route `id`, analogous to `AdminController.CreateUser()` GET |
-| `Platform/GroupController.CreateMember(int id, CreateGroupMemberViewModel model)` POST | **New action** | Calls the shared collision-aware creation method (see Feature 3) with `groupId = id` from the route — never `activeGroupContext.ActiveGroupId`, which is null for SuperAdmin |
-| `CreateGroupMemberViewModel` (Platform ViewModels namespace) | **New** | Same shape as `CreateUserViewModel` (`Email`, `Name`, `GroupRole`) — reuse the type directly instead of duplicating it if the two views can share a partial/model (see Build Order note below) |
-| `GroupMembersViewModel` | **Modified (optional)** | Add a `CreateMember` sub-viewmodel property if the "create new user" form renders inline on the same Members page rather than a separate view, mirroring how `AddMember` is already nested |
-| Members.cshtml view | **Modified** | Replace `<select>` dropdown with searchable/filterable table (presentation only); add "create new user" entry point button/link to the new `CreateMember` action |
-
-### Why route `id`, not `IActiveGroupContext`
-
-`IActiveGroupContext.ActiveGroupId` (`QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`) is session-backed via `ActiveGroupContextService`, and is `null` by design for SuperAdmin (documented anti-pattern: "SuperAdmin group scoping... intentionally has `ActiveGroupId = null`"). The new Platform create-user action must take `groupId` as an explicit method parameter sourced from the route, exactly as `Members`/`AddMember`/`RemoveMember` already do (`int id` route parameter throughout `Platform/GroupController`). This also means the shared collision-handling service method (Feature 3) must accept `groupId` as an explicit parameter — it cannot read `IActiveGroupContext` internally, or it would silently no-op for SuperAdmin callers.
-
-## Feature 3 — Existing-Email Collision Handling in Create User Flows
-
-### Current state (the bug)
-
-`IdentityService.CreateUserAsync` (`QuestBoard.Repository/IdentityService.cs:37-55`) calls `userManager.CreateAsync(entity)` with no pre-check. ASP.NET Core Identity's `UserManager` enforces unique `UserName` (`= email` in this app's `CreateUserAsync`), so a duplicate email produces an `IdentityResult` failure (`DuplicateUserName` error) that `AdminController.CreateUser` currently surfaces as raw `ModelState` errors — a confusing/hard-fail UX instead of "add this existing user to your group."
-
-### Integration point — the collision check already exists, half-built
-
-`IIdentityService.GetIdByEmailAsync(string email)` (`QuestBoard.Domain/Interfaces/IIdentityService.cs:101`, implemented via `userManager.FindByEmailAsync` in `IdentityService.cs:152-156`) is **already in the codebase** and already called by `AdminController.CreateUser` — but only *after* a successful create, to fetch the just-created user's ID (`AdminController.cs:117`). The fix reorders this: call `GetIdByEmailAsync` (or a new `IUserService`-level wrapper) **before** attempting creation, and branch.
-
-### Where the shared logic must live: `UserService` (Domain layer), not either controller
-
-Both `AdminController.CreateUser` (group-scoped, reads `groupId` from `IActiveGroupContext`) and the new `Platform/GroupController.CreateMember` (reads `groupId` from the route) need identical branching logic:
-
-1. Look up `identityService.GetIdByEmailAsync(model.Email)`.
-2. If **no existing user** → current path: `userService.CreateAsync(...)` → `SetGroupRoleAsync` → generate reset token → enqueue `WelcomeEmailJob` (new-account variant).
-3. If **existing user found** → new path: `userService.SetGroupRoleAsync(existingUserId, groupId, model.GroupRole)` (reuses the exact same method `PromoteToAdmin`/`AddMember` already use to upsert a `UserGroupEntity` row — it is idempotent-safe, unlike `GroupService.AddMemberAsync` which throws `InvalidOperationException` on an existing row) → enqueue a new "added to group" notification email (distinct from `WelcomeEmailJob`).
-
-This branching logic is business logic with no HTTP/view concerns — it belongs in `UserService` per this codebase's established pattern ("Business logic lives in services, not controllers" — validated requirement from v1.x, `PROJECT.md` line 45). Concretely:
-
-```csharp
-// QuestBoard.Domain/Interfaces/IUserService.cs — new method
-/// <summary>
-/// Creates a new user and adds them to the group, or — if a user with this email
-/// already exists — adds the existing user to the group instead. Returns which
-/// branch was taken so the caller can pick the correct notification email and
-/// success message.
-/// </summary>
-Task<CreateOrAddToGroupResult> CreateOrAddToGroupAsync(string email, string name, int groupId, GroupRole role);
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Browser (no build step — plain <script> tags)                      │
+│  ┌───────────────────────┐   ┌──────────────────────────────────┐  │
+│  │ <input type="file">   │──▶│ Cropper.js v1.6.2 (CDN, vendored) │  │
+│  │ (existing form field) │   │ new Cropper(imgEl, opts)          │  │
+│  └───────────────────────┘   │ .getCroppedCanvas()               │  │
+│                                └──────────────┬───────────────────┘  │
+│                                               │ canvas.toBlob()      │
+│                                               ▼                      │
+│                                ┌──────────────────────────────────┐ │
+│                                │ DataTransfer trick: replace the   │ │
+│                                │ <input type="file">'s FileList    │ │
+│                                │ with the cropped Blob → File      │ │
+│                                └──────────────┬───────────────────┘ │
+│                                               │ normal <form> POST   │
+│                                               │ (multipart/form-data)│
+├───────────────────────────────────────────────┼──────────────────────┤
+│  QuestBoard.Service (MVC)                    ▼                      │
+│  GuildMembersController / DungeonMasterController                   │
+│  Edit/Create POST actions — model-bind IFormFile (unchanged shape)  │
+│  + read ORIGINAL bytes from a second posted IFormFile               │
+├───────────────────────────────────────────────────────────────────────┤
+│  QuestBoard.Domain (business logic — no EF, no System.Drawing IO)   │
+│  ICharacterService / IDungeonMasterProfileService                   │
+│  + new: ImageUploadValidator (size/type/dimension checks)           │
+├───────────────────────────────────────────────────────────────────────┤
+│  QuestBoard.Repository (EF Core — byte[] I/O only)                   │
+│  CharacterImageEntity / DungeonMasterProfileImageEntity              │
+│  + ADD: OriginalImageData byte[] column (existing ImageData column   │
+│    is repurposed to mean "cropped/display" bytes — see Recommended   │
+│    Schema Shape below)                                               │
+│  SQL Server — migration auto-applied on startup                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-Both controllers then reduce to: call `userService.CreateOrAddToGroupAsync(...)`, branch only on the **result** to pick which Hangfire job to enqueue (email rendering/URL-building stays in the Service layer, since `Url.Action(...)` needs `IUrlHelper`, which is a controller/MVC concern `UserService` in Domain cannot reach — this is why the email dispatch itself stays in the controllers, only the create-or-add decision moves to Domain).
+**Key point:** No server-side image-processing library is required. Cropping happens entirely client-side (canvas). The server's job is unchanged in kind — it still just reads an `IFormFile` into a `byte[]` — the only new work is reading a *second* `IFormFile` (for the original) and validating that the crop a client claims to have applied is sane. No `System.Drawing`, `ImageSharp`, or `SkiaSharp` needs to enter the Domain or Repository layer for this milestone. This directly avoids the exact problem — `SkiaSharp` native-library availability on the deployment host — that caused this feature to be paused since v1.0 (see PROJECT.md Key Decisions: "Profile picture crop paused... SkiaSharp native lib availability on deployment host unverified").
 
-### New vs Modified — Feature 3
+### Component Responsibilities
 
-| Component | New or Modified | What |
-|---|---|---|
-| `IUserService.CreateOrAddToGroupAsync(...)` | **New method** on existing interface | Returns an enum/result distinguishing "created new" vs "added existing", plus the resolved `userId` |
-| `UserService.CreateOrAddToGroupAsync` | **New implementation** | Calls `identityService.GetIdByEmailAsync` first; branches to `CreateAsync`+`SetGroupRoleAsync` or straight to `SetGroupRoleAsync` |
-| `CreateOrAddToGroupResult` (or a simple enum `UserCreationOutcome { Created, AddedExisting }` + userId out param) | **New small model** | Lives in `QuestBoard.Domain/Models` or `Enums` |
-| `AdminController.CreateUser` POST | **Modified** | Replace direct `userService.CreateAsync` + `SetGroupRoleAsync` + welcome-email block with a call to `CreateOrAddToGroupAsync`, then branch only on which email job to enqueue |
-| `Platform/GroupController.CreateMember` POST (new, Feature 2) | **New, but calls the same method** | Identical branch, `groupId` from route instead of `activeGroupContext` |
-| New email Razor component, e.g. `QuestBoard.Service/Components/Emails/AddedToGroup.razor` | **New** | Mirrors `Welcome.razor`/`ChangeEmailConfirm.razor` structure (`_EmailLayout` wrapper, `[Parameter, EditorRequired]` fields: `UserName`, `GroupName`, `AppUrl`, and probably a link straight into the app rather than a callback token, since the user already has a password) |
-| New Hangfire job, e.g. `QuestBoard.Service/Jobs/GroupMembershipAddedEmailJob.cs` | **New** | Copy the exact shape of `ChangeEmailConfirmationJob.cs` (`IServiceScopeFactory` + `ILogger<T>` constructor, `ExecuteAsync` resolves `IEmailRenderService`/`IEmailService`/`IOptions<EmailSettings>` from a fresh scope) — **do not** introduce an `IGroupMembershipEmailDispatcher` interface; no other user-management email in this codebase uses a dispatcher abstraction, only quest-related emails do (`IQuestEmailDispatcher`) because those need the swap-for-`NullQuestEmailDispatcher`-in-tests treatment that `AdminController`'s jobs never needed (`AdminController` already takes `IBackgroundJobClient` directly per the Known Issues note in `PROJECT.md`: "AdminController takes IBackgroundJobClient directly as constructor arg (fixed 2026-06-28)") |
-| `GroupService.AddMemberAsync` | **Not touched** | Still used for the *existing-user manual add* path in `Platform/GroupController.AddMember` (throws on duplicate — correct there, since the whole point of that screen is picking a user who is definitely not yet a member). `UserService.CreateOrAddToGroupAsync`'s existing-user branch should call `userService.SetGroupRoleAsync` instead (upsert semantics), because in the collision case the target user may already belong to *other* groups but this is their first time being added to *this* group — using upsert avoids a spurious exception path for what is actually the common/expected case here |
+| Component | Responsibility | Typical Implementation |
+|-----------|----------------|-------------------------|
+| Cropper.js v1.6.2 (vendored JS+CSS in `wwwroot/lib/cropperjs/`) | Renders the crop UI over the just-selected image, exposes `getCroppedCanvas()` | Plain `<script>`/`<link>` tags, no npm — see Library Choice below |
+| Crop-init JS (new `wwwroot/js/image-crop.js`) | Wires `<input type="file">` `change` event → shows a crop modal → on "Confirm crop" rewrites the form's file input(s) via `DataTransfer` so a normal POST carries the cropped bytes | Vanilla JS, follows existing `site.js` script-tag convention (no module bundler) |
+| `CharacterViewModel` / `EditDMProfileViewModel` (Service layer) | Model-binds the posted file(s); unchanged `[MaxFileSize]`/`[AllowedExtensions]` attributes still apply to whichever file is now "the" `ProfilePictureFile` | Add a second nullable `IFormFile? OriginalPictureFile` property |
+| `GuildMembersController` / `DungeonMasterController` (Service layer) | Reads both `IFormFile`s into `byte[]`, delegates size/type/dimension validation to Domain, calls the (widened) upsert service method with both byte arrays | Same `CopyToAsync(memoryStream)` pattern already used 3x in the codebase — just called twice |
+| New `IImageValidationService` (Domain layer, recommended) | Centralizes size/MIME validation that today is duplicated inline in 3 controller call sites (`GuildMembersController.Create`, `.Edit`, `DungeonMasterController.EditProfile`) | Plain C# — no image-processing dependency needed for a size/MIME check |
+| `CharacterService` / `DungeonMasterProfileService` (Domain layer) | Orchestrates the upsert call, unchanged responsibility, wider signature (`byte[] cropped, byte[] original`) | Extend existing `UpsertProfileAsync`/character-picture methods |
+| `CharacterRepository` / `DungeonMasterProfileRepository` (Repository layer) | Persists both byte arrays into the (modified) image entity; pure EF Core I/O, no processing | Extend existing `UpdateProfileImageAsync`/`UpsertProfileImageAsync` to accept and set two `byte[]` properties on the same row |
+| `CharacterImageEntity` / `DungeonMasterProfileImageEntity` (Repository layer) | Adds `OriginalImageData byte[]?` column alongside existing `ImageData` (kept as the display/cropped column — see schema section) | EF Core migration, `dotnet ef migrations add` |
+| `GetProfilePicture` / `GetDMProfilePicture` actions (Service layer) | Unchanged for the character-card/DM-list "cropped" thumbnail use. New action added to serve the **original** for the one place that needs it — the character details page | `return File(bytes, contentType)`, same pattern, new repository method `GetCharacterOriginalPictureAsync` |
 
-### Do not modify `IIdentityService.CreateUserAsync` or `GetIdByEmailAsync` signatures
+## Recommended Project Structure
 
-Both already have the right shape. No Repository-layer change is needed for this feature — everything new is additive at the Domain (`IUserService`) and Service (controllers, new job, new email component, new ViewModel fields) layers, consistent with the "EF packages belong only in Repository" / "Domain must not depend on Repository entities" constraints already validated in this codebase.
+```
+QuestBoard.Service/
+├── wwwroot/
+│   ├── lib/
+│   │   └── cropperjs/                # NEW — vendored (not CDN-only; see rationale)
+│   │       ├── cropper.min.js        # v1.6.2, pinned
+│   │       └── cropper.min.css
+│   ├── js/
+│   │   ├── site.js                   # existing — untouched
+│   │   └── image-crop.js             # NEW — shared crop-modal wiring, reused by all 3 forms
+│   └── css/
+│       └── image-crop.css            # NEW — crop modal chrome, follows modern-card conventions
+├── ViewModels/
+│   ├── CharacterViewModels/
+│   │   └── CharacterViewModel.cs     # MODIFIED — add OriginalPictureFile IFormFile?
+│   └── DungeonMasterViewModels/
+│       └── EditDMProfileViewModel.cs # MODIFIED — add OriginalPictureFile IFormFile?
+├── Controllers/
+│   ├── Characters/
+│   │   └── GuildMembersController.cs # MODIFIED — Create/Edit POST actions; new GetOriginalPicture action
+│   └── DungeonMaster/
+│       └── DungeonMasterController.cs # MODIFIED — EditProfile POST; new GetOriginalPicture action
+└── Views/
+    ├── GuildMembers/
+    │   ├── Create.cshtml / .Mobile.cshtml   # MODIFIED — crop modal markup + script include
+    │   ├── Edit.cshtml / .Mobile.cshtml     # MODIFIED — same
+    │   └── Details.cshtml                   # MODIFIED — switch <img> src to GetOriginalPicture (issue #78)
+    └── DungeonMaster/
+        └── EditProfile.cshtml / .Mobile.cshtml # MODIFIED — crop modal markup + script include
 
-## Build Order
+QuestBoard.Domain/
+├── Interfaces/
+│   ├── ICharacterService.cs                    # MODIFIED — widen picture-upsert signature; add GetCharacterOriginalPictureAsync
+│   ├── IDungeonMasterProfileService.cs         # MODIFIED — same
+│   └── IImageValidationService.cs              # NEW — optional but recommended (see Patterns)
+├── Services/
+│   ├── CharacterService.cs                     # MODIFIED
+│   ├── DungeonMasterProfileService.cs          # MODIFIED
+│   └── ImageValidationService.cs               # NEW
+└── Models/
+    ├── Character.cs                            # MODIFIED — add OriginalProfilePicture byte[]?
+    └── DungeonMasterProfile.cs                 # MODIFIED — same
 
-Recommended sequence, minimizing risk and avoiding rework:
+QuestBoard.Repository/
+├── Entities/
+│   ├── CharacterImageEntity.cs                 # MODIFIED — add OriginalImageData byte[]?
+│   └── DungeonMasterProfileImageEntity.cs      # MODIFIED — same
+├── CharacterRepository.cs                      # MODIFIED — UpdateProfileImageAsync takes 2 byte[]?; add GetCharacterOriginalPictureAsync
+├── DungeonMasterProfileRepository.cs            # MODIFIED — UpsertProfileImageAsync takes 2 byte[]?; add GetOriginalPictureAsync
+├── Automapper/EntityProfile.cs                 # MODIFIED — map new byte[]? properties
+└── Migrations/
+    └── {timestamp}_AddOriginalImageColumn.cs    # NEW — single additive migration
+```
 
-1. **`UserService.CreateOrAddToGroupAsync` (Feature 3's core, built once).** This is the shared seam both controllers will call. Build and unit-test it in isolation first — it has no HTTP/view dependencies, so it's the cheapest place to get the branching logic (existing vs new, `SetGroupRoleAsync` upsert semantics) correct before any controller touches it. Building this first also means Feature 2's new "create user" action is written against a finished interface, not a moving target.
+### Structure Rationale
 
-2. **New email component + Hangfire job (`AddedToGroup.razor` + `GroupMembershipAddedEmailJob`).** Independent of both controllers; can be built and manually verified (render + send) in parallel with step 1, or immediately after. Model directly off `ChangeEmailConfirmationJob`/`ChangeEmailConfirm.razor` since that's the simplest existing job (no token/callback-URL complexity like `WelcomeEmailJob`'s SetPassword link — the "added to group" notification likely just needs a plain "go to the app" link, not a token flow, since the recipient already has a password by definition of being an *existing* user).
+- **Vendor the JS/CSS instead of pure CDN `<script src="https://...">`:** Bootstrap/FontAwesome are loaded via CDN in `_Layout.cshtml` today, so a CDN reference would be *consistent* with existing convention — but Cropper.js is load-bearing for a core upload flow, not decorative chrome. Vendor the two files into `wwwroot/lib/cropperjs/` so the crop feature does not silently break if the CDN is unreachable from the small self-hosted LXC deployment's network path. This mirrors how the project already treats `site.js` (self-hosted, not CDN).
+- **One shared `image-crop.js`, not three duplicated inline scripts:** All 3 upload forms (`GuildMembers/Create`, `GuildMembers/Edit`, `DungeonMaster/EditProfile`) currently duplicate an inline file-size/type-validation `<script>` block per view (verified: `Edit.cshtml` lines 144-174 and equivalents in `Create.cshtml`/`EditProfile.cshtml`). Adding crop-modal wiring is the right moment to extract a shared script, matching this project's own precedent of consolidating duplicated JS (Phase 42 collapsed 4 duplicated toast-init scripts into `site.js`).
+- **`IImageValidationService` in Domain, not inline in controllers:** Today, MIME/size validation is duplicated 3× directly in controller methods (`GuildMembersController.Create`, `.Edit`, `DungeonMasterController.EditProfile`) — a known duplication pattern in this codebase already (PROJECT.md's Known Issues separately calls out a 3× duplication of `GetActiveBoardTypeAsync` as tech debt). Adding a second file input is a natural moment to centralize this in one Domain-layer service rather than adding a 4th inline copy.
 
-3. **Feature 1 (`AdminController.Users()` rescoping).** Fully independent of Features 2/3 — do this any time, ideally first or in parallel with step 1, since it's a pure read-path swap (`GetAllAsync` + N+1 → `groupService.GetMembersAsync`) with no email/creation logic involved and the smallest blast radius. Requires adding `IGroupService` to `AdminController`'s constructor.
+## Architectural Patterns
 
-4. **`AdminController.CreateUser` POST — rewire onto `CreateOrAddToGroupAsync`.** Now that step 1 exists, update the existing group-admin create-user flow to call the shared method and branch on the result to pick `WelcomeEmailJob` vs the new `GroupMembershipAddedEmailJob`. This is a **modification of a working flow**, so it should ship and be manually verified before Feature 2 reuses the same seam — regressions here would otherwise surface twice (once per controller).
+### Pattern 1: Client posts TWO files, not crop coordinates
 
-5. **Feature 2 — `Platform/GroupController.CreateMember` (new action) + Members view searchable-table change.** Built last because it depends on: the shared `CreateOrAddToGroupAsync` method (step 1) being proven correct via step 4's real-world usage, and the new email job (step 2) already existing. The searchable/filterable table replacement for the existing-user dropdown is presentation-only and can be built independently/in parallel at any point, since it doesn't touch the create-new-user logic at all — but sequencing it last alongside the new "create user" entry point avoids two separate view-file churns on `Members.cshtml`.
+**What:** On crop-confirm, the browser produces a cropped `Blob` via `canvas.toBlob()`. Rather than sending crop coordinates (x/y/w/h) to the server and asking it to re-crop the original — which would require a server-side image-processing library, exactly what caused this feature's original pause — the browser sends **both** the original file bytes (unmodified, from the original `File` object still held in memory) and the cropped blob as two separate `IFormFile` entries in the same `multipart/form-data` POST.
 
-**Why this order avoids duplicate logic:** Steps 1–2 build the shared pieces once, with no controller depending on them yet. Step 3 is a decoy-free warm-up (touches neither shared piece). Step 4 proves the shared seam against the *existing*, already-tested group-admin flow — the lowest-risk place to catch a bug in the branching logic, since `AdminController.CreateUser` already has coverage and a known-good baseline behavior to diff against. Only after that proof does step 5 add the *second* caller (Platform), which by construction cannot duplicate the collision logic because it's calling the same `IUserService` method, not reimplementing it.
+**When to use:** Any time "keep both variants" is a hard requirement (it is here — the character details page must keep showing the original per issue #78) and a server-side image pipeline is explicitly undesirable (it is — SkiaSharp was paused for exactly this).
 
-## Anti-Patterns to Avoid
+**Trade-offs:**
+- Zero new server dependencies; Domain/Repository layering stays exactly as strict as it is today (no image-processing package needed in any project).
+- Sidesteps the SkiaSharp-on-Linux-host verification blocker entirely — this is the single most important architectural consequence of this choice.
+- Server-side validation is still meaningful: it can check both files are valid image MIME types and within the existing 5 MB cap without ever decoding pixels.
+- Slightly larger request payload (transmits original bytes even though the server already effectively "has" them from a prior upload on Edit) — acceptable at this app's scale (17 members, occasional profile edits, not a hot path).
+- Server cannot mathematically re-verify that the "cropped" blob is actually a crop of the "original" blob without decoding both — accepted risk; this is a trusted internal tool for a friend group, not a public upload surface.
 
-### Anti-Pattern: Duplicating the collision check per controller
+**Example (client-side, vanilla JS, no bundler):**
+```javascript
+// wwwroot/js/image-crop.js
+function wireCropInput(inputId, previewImgId, cropperOptions) {
+    const input = document.getElementById(inputId);
+    input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-**What people might do:** Write `if (existingUserId.HasValue) { ... } else { ... }` inline in both `AdminController.CreateUser` and `Platform/GroupController.CreateMember`.
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const img = document.getElementById(previewImgId);
+            img.src = evt.target.result;
+            openCropModal(img, file, input, cropperOptions);
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
-**Why it's wrong:** Two independent implementations of "is this an upsert or a create" will drift the moment one gets a bugfix the other doesn't — the same failure mode this codebase's own history warns about (`PROJECT.md`'s Known Issues explicitly calls out `GetActiveBoardTypeAsync` being implemented 3x as tech debt requiring a dedicated audit to confirm it was still safe).
+function openCropModal(imgEl, originalFile, fileInputEl, options) {
+    const cropper = new Cropper(imgEl, { aspectRatio: 1, viewMode: 1, ...options });
 
-**Do this instead:** One `IUserService.CreateOrAddToGroupAsync` method; both controllers call it and only branch on the *result* to choose which email job to enqueue (since email dispatch requires `Url.Action`/`IUrlHelper`, a Service-layer/controller concern that cannot move into Domain).
+    document.getElementById('confirmCropBtn').onclick = () => {
+        cropper.getCroppedCanvas({ width: 512, height: 512 }).toBlob((croppedBlob) => {
+            const croppedFile = new File([croppedBlob], originalFile.name, { type: 'image/jpeg' });
 
-### Anti-Pattern: Introducing an `IUserEmailDispatcher` abstraction for the new email
+            // Replace the visible file input's FileList with the cropped result
+            // so the existing <form> posts the cropped bytes as ProfilePictureFile —
+            // no JS-driven fetch/AJAX needed, the form submits normally.
+            const croppedDT = new DataTransfer();
+            croppedDT.items.add(croppedFile);
+            fileInputEl.files = croppedDT.files;
 
-**What people might do:** Copy the `IQuestEmailDispatcher`/`HangfireQuestEmailDispatcher` pattern "for consistency."
+            // Also stash the untouched original into a second hidden file input
+            // so both ride along in the same multipart/form-data POST.
+            const originalInput = document.getElementById('originalPictureInput');
+            const originalDT = new DataTransfer();
+            originalDT.items.add(originalFile);
+            originalInput.files = originalDT.files;
 
-**Why it's wrong:** Every existing user-management email (`WelcomeEmailJob`, `ChangeEmailConfirmationJob`, `ForgotPasswordEmailJob`) is enqueued directly from controllers via constructor-injected `IBackgroundJobClient.Enqueue<T>(...)` — no dispatcher interface exists for this category, and `AdminController`'s Known Issues note explicitly documents that it deliberately takes `IBackgroundJobClient` directly (fixed away from a dispatcher-style abstraction on 2026-06-28). Introducing a dispatcher only for the new email breaks consistency with its siblings for no benefit — nothing here needs a `NullObject` test double swap the way quest-finalization emails do.
+            cropper.destroy();
+            closeCropModal();
+        }, 'image/jpeg', 0.92);
+    };
+}
+```
 
-**Do this instead:** `jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(...))`, identical to how `ChangeEmailConfirmationJob` is enqueued today.
+```html
+<!-- Existing field, now populated with the CROPPED result before submit -->
+<input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" />
 
-### Anti-Pattern: Reading `IActiveGroupContext.ActiveGroupId` inside the new Platform create-user action or inside `CreateOrAddToGroupAsync`
+<!-- New hidden field carrying the untouched ORIGINAL -->
+<input type="file" asp-for="OriginalPictureFile" class="d-none" id="originalPictureInput" />
+```
 
-**What people might do:** Have `UserService.CreateOrAddToGroupAsync` internally resolve `activeGroupContext.ActiveGroupId` instead of taking `groupId` as a parameter, since that's the pattern `AdminController`'s existing actions use.
+This is the cleanest way to wire a vanilla-JS/CDN-delivered crop library into an existing upload `<form>` so the cropped result — not the raw file — is what gets posted: **no AJAX, no fetch, no JS-driven `FormData` submit.** The existing Razor `<form method="post" enctype="multipart/form-data">` and `asp-for` model binding continue to work completely unchanged; only the *contents* of the `FileList` on two `<input type="file">` elements are swapped via `DataTransfer` immediately before the user clicks the existing "Save" submit button.
 
-**Why it's wrong:** `ActiveGroupId` is `null` for SuperAdmin by design (documented architectural constraint). If the shared method reads it internally, the Platform caller — which has a concrete target group from the route — would silently fail or throw for every SuperAdmin invocation, since SuperAdmin's session never has an active group.
+### Pattern 2: Validation lives in Domain, byte[] I/O stays in Repository
 
-**Do this instead:** `groupId` is always an explicit method parameter on the shared service method. `AdminController` passes `activeGroupContext.ActiveGroupId.Value` (after its existing null-guard); `Platform/GroupController.CreateMember` passes the route's `id` directly.
+**What:** The Domain layer's `IImageValidationService` (or inline checks in `CharacterService`/`DungeonMasterProfileService`) validates business rules purely from the `byte[]` payloads it's handed — file size and allowed MIME type (logic that already exists 3× in controllers today, just needs de-duplicating). The Repository layer never validates anything; it only reads/writes the two `byte[]` columns.
 
-## Integration Points Summary Table
+**When to use:** Any validation that depends on business meaning (file size limits, allowed formats) belongs in Domain because it's a business rule, not a storage concern — consistent with this codebase's existing rule that "business logic lives in services, not controllers" (validated requirement in PROJECT.md, Phase 02).
 
-| Existing Seam | Used By (today) | New Caller | Change Needed |
-|---|---|---|---|
-| `IGroupService.GetMembersAsync(groupId)` | `Platform/GroupController.Members` | `AdminController.Users()` | None — reuse as-is |
-| `IIdentityService.GetIdByEmailAsync(email)` | `AdminController.CreateUser` (post-create, to fetch new ID) | `UserService.CreateOrAddToGroupAsync` (pre-create, as the collision check) | None — reuse as-is, just called earlier/from a new call site |
-| `IUserService.SetGroupRoleAsync(userId, groupId, role)` | `AdminController.PromoteToAdmin/DemoteFromAdmin/PromoteToDM/DemoteToPlayer/CreateUser` | `UserService.CreateOrAddToGroupAsync`'s existing-user branch | None — reuse as-is (upsert semantics already correct for this case) |
-| `IBackgroundJobClient.Enqueue<T>` | `AdminController` (constructor-injected) | `Platform/GroupController` (needs adding to constructor) | Add constructor param to `Platform/GroupController` |
-| `IIdentityService` | `AdminController` (constructor-injected) | `Platform/GroupController` (needs adding to constructor) | Add constructor param to `Platform/GroupController` |
-| N/A | N/A | `IUserService.CreateOrAddToGroupAsync` | **New method** — the one genuinely new piece of business logic |
-| N/A | N/A | `GroupMembershipAddedEmailJob` + `AddedToGroup.razor` | **New job + new email template**, modeled directly on `ChangeEmailConfirmationJob`/`ChangeEmailConfirm.razor` |
+**Trade-offs:**
+- Matches the project's existing hard boundary: "Domain layer must not depend directly on Repository entities" and "EF packages only in Repository" — this pattern requires zero EF references and zero image-processing package references in Domain.
+- Removes the current 3x duplication of MIME/size-check logic sitting directly in controllers today (verified in `GuildMembersController.Create`/`.Edit` and `DungeonMasterController.EditProfile`). Fixing this existing duplication is optional scope, not required by the four backlog items, but this phase is a natural moment to do it since the validation surface is being touched anyway.
+- Controllers still do the actual `IFormFile.CopyToAsync(memoryStream)` byte-extraction (unavoidable — `IFormFile` is an ASP.NET Core Service-layer type and must not leak into Domain).
+
+**Example:**
+```csharp
+// QuestBoard.Domain/Interfaces/IImageValidationService.cs
+public interface IImageValidationService
+{
+    /// <summary>
+    /// Returns null if the image passes business rules (size cap, allowed MIME type),
+    /// or an error message describing the failure.
+    /// </summary>
+    string? ValidateImage(byte[] imageBytes, string contentType, long maxSizeBytes);
+}
+```
+
+### Pattern 3: Both file inputs are lost on server-side validation failure — same as today, now doubled
+
+**What:** When `ModelState.IsValid` is false or an inline check fails, the controller currently does `return View(viewModel)`. With two file inputs, both must be surfaced consistently — but `IFormFile` values are never round-tripped to the client on a failed POST (browsers cannot pre-populate `<input type="file">` for security reasons), and this is already true today for the single-file case in this codebase. No new problem is introduced, but the UI should tell the user their crop selection was lost and prompt them to re-select/re-crop, rather than assuming either file persists.
+
+**When to use:** Any validation-failure branch in `GuildMembersController.Create/Edit` or `DungeonMasterController.EditProfile`.
+
+## Data Flow
+
+### Upload + Crop Request Flow
+
+```
+User selects a file in <input type="file">
+    v
+image-crop.js 'change' handler -> FileReader.readAsDataURL -> shows Cropper.js modal
+    v
+User adjusts crop box, clicks "Confirm Crop" (NEW button, not the form's Save button)
+    v
+cropper.getCroppedCanvas().toBlob() -> cropped File built via DataTransfer,
+replaces ProfilePictureFile's FileList; original File placed into a new
+hidden OriginalPictureFile input via a second DataTransfer
+    v
+User clicks existing "Save Changes" button -> normal <form> POST (multipart/form-data)
+    v
+Controller (GuildMembersController.Edit / DungeonMasterController.EditProfile)
+    reads BOTH IFormFiles into byte[] (existing CopyToAsync pattern, called twice)
+    v
+Domain service (CharacterService / DungeonMasterProfileService)
+    validates via IImageValidationService, then calls repository upsert with 2 byte[]
+    v
+Repository (CharacterRepository.UpdateProfileImageAsync / DungeonMasterProfileRepository.UpsertProfileImageAsync)
+    writes CharacterImageEntity.ImageData (cropped) + .OriginalImageData (original)
+    v
+SQL Server -- EF Core SaveChangesAsync
+    v
+RedirectToAction (unchanged)
+```
+
+### Display Flow (existing thumbnail vs. new "show original")
+
+```
+Guild list / character card / DM directory
+    -> <img src="GetProfilePicture/{id}">  (unchanged -- always serves the CROPPED/display image)
+
+Character details page (the one place that must show the ORIGINAL per issue #78)
+    -> <img src="GetOriginalPicture/{id}"> (NEW action, mirrors GetProfilePicture exactly,
+       reads the new OriginalImageData column instead, falling back to ImageData if
+       OriginalImageData is NULL for pre-existing rows)
+```
+
+## Recommended Schema Shape
+
+**Decision: one entity, two `byte[]` columns — NOT two related rows.**
+
+```csharp
+// QuestBoard.Repository/Entities/CharacterImageEntity.cs — MODIFIED
+[Table("CharacterImages")]
+public class CharacterImageEntity : IEntity
+{
+    [Key]
+    [ForeignKey(nameof(Character))]
+    public int Id { get; set; }
+
+    [Required]
+    public byte[] ImageData { get; set; } = [];          // EXISTING — repurposed as "display/cropped" bytes
+
+    public byte[]? OriginalImageData { get; set; }        // NEW — nullable so existing rows migrate cleanly
+
+    public virtual CharacterEntity Character { get; set; } = null!;
+}
+```
+
+Same change mirrored on `DungeonMasterProfileImageEntity`.
+
+**Why one entity/two columns, not two related rows:**
+
+1. **Cardinality is fixed and 1:1, not 1:many.** There is exactly one "current cropped" and exactly one "current original" per character/profile at any time — never a history, never multiple originals. A second related entity (e.g. `CharacterOriginalImageEntity`) would just duplicate `CharacterImageEntity`'s existing `PK=FK` pattern a second time for no benefit: a second table, a second cascade-delete relationship to configure, and a second `Include()` everywhere the image is loaded, all to store what is fundamentally the same row's data.
+2. **They are always read/written together.** Every existing repository method (`UpdateProfileImageAsync`, `UpsertProfileImageAsync`) already loads the image row with `.Include(c => c.ProfileImage)` and treats it as a single atomic unit (null → create, exists → update in place). Splitting into two rows would only add join overhead for zero query-pattern benefit — there is no scenario in this app where you fetch the cropped image without potentially needing the original.
+3. **Matches the existing codebase convention exactly.** An earlier migration (`MoveCharacterImagesToSeparateTable`) already established the precedent that image bytes live in a dedicated 1-row-per-owner table, kept separate from the owning entity purely so image bytes aren't loaded on every non-image query of `CharacterEntity`/`DungeonMasterProfileEntity`. Adding a second nullable column to that *same* dedicated table preserves that exact isolation property (a `Characters` list query still never touches `CharacterImages` at all) while avoiding a third table.
+4. **Migration is trivially additive and reversible.** `ALTER TABLE CharacterImages ADD OriginalImageData varbinary(max) NULL` — no data loss risk, no backfill required (nullable, so all pre-existing rows simply have `OriginalImageData = NULL` until the owner next edits their photo; `GetOriginalPicture` should fall back to `ImageData` when `OriginalImageData IS NULL`, so old photos don't visually "lose" their original in the UI — they just show the same image for both).
+
+**When two related rows WOULD be justified (and why not here):** If the requirement were "keep a history of every crop ever made" (1:many) or "support multiple pending uploads before one is chosen" a related entity would be correct. Issue #78 explicitly wants exactly one original + one cropped, replaced together on every edit — a two-column single row is the minimal correct shape.
+
+## Library Choice: Cropper.js v1.6.2 (not v2)
+
+Cropper.js is the de facto standard vanilla-JS, canvas-based, touch-friendly crop library — CDN-deliverable with no build step, which fits this project's constraint exactly.
+
+**Version finding (cross-verified across the official homepage/guide and the dedicated v1 docs page — MEDIUM confidence, since both sources are web-fetched docs rather than a package registry, but the two independent fetches agree):** Cropper.js v2 (`https://unpkg.com/cropperjs`, current default distribution) is a ground-up rewrite onto a **custom-elements/Web Components API** (`<cropper-canvas>`, `<cropper-image>`, `<cropper-selection>`) — a materially different, heavier integration surface than the classic v1 API. Cropper.js v1.6.2 retains the simple, extremely well-documented `new Cropper(imageElement, options)` class with a `.getCroppedCanvas()` method that hands back a plain `<canvas>` — the pattern used in Pattern 1 above and in the vast majority of "crop before multipart upload" tutorials/integrations across server-rendered frameworks.
+
+**Recommendation: use v1.6.2, pinned, vendored — not v2.** Reasons:
+- v1's plain class API maps directly onto `getCroppedCanvas().toBlob()` with zero framework/component-model learning curve, for a team with no other web-component usage anywhere in this codebase.
+- v2's custom-elements API would be the only web component in the entire application — a one-off architectural inconsistency for a vanilla-JS, no-bundler codebase that otherwise uses plain DOM APIs (`document.getElementById`, `addEventListener`) everywhere (verified in `Edit.cshtml`'s existing inline script).
+- v1 remains distributed under its own dist-tag (cdnjs/jsdelivr/unpkg), and vendoring a specific pinned file protects against any future v2-only breaking changes regardless.
+
+**Installation (vendored, recommended):**
+```html
+<!-- In the 3 form views (desktop + mobile = 6 files) -->
+<link rel="stylesheet" href="~/lib/cropperjs/cropper.min.css" />
+<script src="~/lib/cropperjs/cropper.min.js"></script>
+<script src="~/js/image-crop.js"></script>
+```
+Download `cropper.min.js` + `cropper.min.css` from the `v1` release assets (jsdelivr `cropperjs@1.6.2/dist/cropper.min.js` and `.../cropper.min.css`) once, commit them into `wwwroot/lib/cropperjs/`, exactly as Bootstrap/FontAwesome are referenced today.
+
+## Scaling Considerations
+
+| Scale | Architecture Adjustments |
+|-------|---------------------------|
+| Current (17 members, occasional profile edits) | Exactly as described above — no queueing, no async processing; synchronous crop+upload on the request thread is trivial at this volume. |
+| Moderate growth (100s of members) | No change needed. Image upload is not a hot path; `byte[]` columns on a dedicated 1-row table remain fine. |
+| Out of scope for this milestone | Image blob storage migration to external storage — already explicitly listed in PROJECT.md's "Out of Scope": "Image blob storage migration — performance acceptable at current scale." Do not let this phase creep into that. |
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Re-introducing a server-side image-processing library to "properly" re-crop from coordinates
+
+**What people do:** Send crop rectangle (x/y/w/h) to the server and use `SkiaSharp`/`ImageSharp`/`System.Drawing` to perform the actual crop server-side, treating the client-side crop UI as "just a preview."
+
+**Why it's wrong:** This is precisely the approach that was paused in v1.0 because `SkiaSharp`'s native library availability on the `aspnet:10` Debian Bookworm deployment target was never verified (PROJECT.md Key Decisions: "Profile picture crop paused — SkiaSharp native lib availability on deployment host unverified"). Re-introducing any native-dependent image library reopens exactly the blocker this milestone should retire, and it couples business logic to platform-specific native binaries with no natural home in this project's strict layering.
+
+**Do this instead:** Crop entirely client-side with canvas (`getCroppedCanvas().toBlob()`), and post the already-cropped pixels as ordinary `byte[]`. The server only ever validates and stores bytes it's handed — this is the whole point of Pattern 1 above.
+
+### Anti-Pattern 2: AJAX/fetch-based crop-then-upload flow
+
+**What people do:** Intercept the form's `submit` event with JS, build a `FormData` object manually, and `fetch()` it to the controller, bypassing the native `<form>` POST.
+
+**Why it's wrong:** This is unnecessary complexity for this codebase. Every other form in the app (all 6 upload views) is a plain server-rendered `<form method="post">` with full-page redirect-after-post; introducing one AJAX-driven exception creates an inconsistent UX (no full-page navigation feedback, needs manual error-display JS, breaks the existing `asp-validation-summary`/`asp-validation-for` tag helpers which rely on a real postback) for zero added benefit — the `DataTransfer`-swap trick (Pattern 1) achieves an identical visual result using the existing plain-POST mechanism.
+
+**Do this instead:** Swap the `<input type="file">`'s `FileList` via `DataTransfer` before the user submits the existing form normally, as shown in Pattern 1.
+
+### Anti-Pattern 3: Storing the crop rectangle instead of the actual cropped pixels
+
+**What people do:** Store `CropX`, `CropY`, `CropWidth`, `CropHeight` as new columns alongside the original image, and compute the "cropped" view on every read.
+
+**Why it's wrong:** This reintroduces a server-side (or repeated client-side) re-crop operation on every page that shows the thumbnail, which is both slower and reopens the "does this need an image library" question this milestone is trying to avoid. It also doesn't match issue #78's explicit requirement — "both the original and cropped image are stored."
+
+**Do this instead:** Store the already-rasterized cropped bytes directly (Recommended Schema Shape above), computed once client-side at upload time.
+
+## Integration Points
+
+### Internal Boundaries (files touched, by layer)
+
+| File | Layer | Change |
+|------|-------|--------|
+| `QuestBoard.Repository/Entities/CharacterImageEntity.cs` | Repository | Add `OriginalImageData byte[]?` |
+| `QuestBoard.Repository/Entities/DungeonMasterProfileImageEntity.cs` | Repository | Add `OriginalImageData byte[]?` |
+| `QuestBoard.Repository/Migrations/{new}_AddOriginalImageColumn.cs` | Repository | New additive migration (nullable column, no backfill) |
+| `QuestBoard.Repository/CharacterRepository.cs` | Repository | `UpdateProfileImageAsync` accepts `(byte[]? cropped, byte[]? original)`; add `GetCharacterOriginalPictureAsync` |
+| `QuestBoard.Repository/DungeonMasterProfileRepository.cs` | Repository | `UpsertProfileImageAsync` accepts `(byte[]? cropped, byte[]? original)`; add `GetOriginalPictureAsync` |
+| `QuestBoard.Repository/Automapper/EntityProfile.cs` | Repository | Map new `byte[]?` properties Entity ↔ DomainModel |
+| `QuestBoard.Domain/Models/Character.cs` | Domain | Add `OriginalProfilePicture byte[]?` |
+| `QuestBoard.Domain/Models/DungeonMasterProfile.cs` | Domain | Add `OriginalProfilePicture byte[]?` |
+| `QuestBoard.Domain/Interfaces/ICharacterService.cs` | Domain | Add `GetCharacterOriginalPictureAsync`; widen picture-upsert signature |
+| `QuestBoard.Domain/Interfaces/IDungeonMasterProfileService.cs` | Domain | Same shape of change |
+| `QuestBoard.Domain/Interfaces/IImageValidationService.cs` (new, recommended) | Domain | Centralize size/type validation, remove 3x duplication |
+| `QuestBoard.Domain/Services/CharacterService.cs` | Domain | Wire validation + widened upsert call |
+| `QuestBoard.Domain/Services/DungeonMasterProfileService.cs` | Domain | Same |
+| `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs` | Service | Add `IFormFile? OriginalPictureFile` |
+| `QuestBoard.Service/ViewModels/DungeonMasterViewModels/EditDMProfileViewModel.cs` | Service | Add `IFormFile? OriginalPictureFile` |
+| `QuestBoard.Service/Controllers/Characters/GuildMembersController.cs` | Service | `Create`/`Edit` POST actions read both files; new `GetOriginalPicture` action |
+| `QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs` | Service | `EditProfile` POST reads both files; new `GetOriginalPicture` action |
+| `QuestBoard.Service/Views/GuildMembers/Create.cshtml` + `.Mobile.cshtml` | Service | Add crop modal markup, hidden original input, script includes |
+| `QuestBoard.Service/Views/GuildMembers/Edit.cshtml` + `.Mobile.cshtml` | Service | Same |
+| `QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml` + `.Mobile.cshtml` | Service | Same |
+| `QuestBoard.Service/Views/GuildMembers/Details.cshtml` | Service | Switch `<img>` src to `GetOriginalPicture` per issue #78 |
+| `QuestBoard.Service/wwwroot/lib/cropperjs/*` (new) | Service (static assets) | Vendored Cropper.js v1.6.2 files |
+| `QuestBoard.Service/wwwroot/js/image-crop.js` (new) | Service (static assets) | Shared crop-modal wiring, used by all 3 forms |
+| `QuestBoard.Service/wwwroot/css/image-crop.css` (new) | Service (static assets) | Crop modal styling |
+
+### External Services
+
+None. This feature has zero external service dependencies — it is entirely client-side JS + existing EF Core/SQL Server.
+
+## Suggested Build Order
+
+1. **Schema first (Repository layer):** Add `OriginalImageData` column to both image entities, generate and verify the EF Core migration applies cleanly (additive, nullable — low risk). Nothing else can be built/tested end-to-end until this exists, since controllers need somewhere to persist the second byte array.
+2. **Repository + Domain plumbing:** Widen `UpdateProfileImageAsync`/`UpsertProfileImageAsync` signatures, add `GetCharacterOriginalPictureAsync`/`GetOriginalPictureAsync`, update `Character`/`DungeonMasterProfile` domain models and AutoMapper profiles, update `ICharacterService`/`IDungeonMasterProfileService` and their implementations. This can be built and unit-tested independently of any UI change (pass two `byte[]` literals in a test, assert both columns are set).
+3. **ViewModel + controller wiring (still without crop UI):** Add `OriginalPictureFile` to both ViewModels, update the 3 POST actions to read and forward both files, add the two `GetOriginalPicture` actions. At this point the feature is fully functional via manual two-file-input testing (e.g. Postman) even before any JS crop UI exists — a good integration checkpoint.
+4. **Client-side crop UI (Service layer, static assets):** Vendor Cropper.js v1.6.2, build `image-crop.js`, wire it into the 3 form views (desktop + mobile = 6 view files), add the hidden `OriginalPictureFile` input and crop-modal markup.
+5. **Character details page original-image display:** Point the one view that must show the original (per issue #78) at the new `GetOriginalPicture` endpoint.
+6. **Manual UAT across all 3 forms x desktop/mobile:** Confirm crop -> save -> thumbnail (cropped) shows correctly everywhere, and the character details page specifically shows the original.
+
+This order front-loads the EF migration (step 1) because every later step depends on the column existing, and defers the riskiest/most novel piece (a brand-new client-side library integration, step 4) until the data path underneath it is already proven correct via direct testing — so if the crop UI has any integration issues, they're isolated to JS/markup, not conflated with schema or Domain logic bugs.
 
 ## Sources
 
-- Direct codebase reads (this repository, 2026-07-03): `QuestBoard.Domain/Interfaces/IUserService.cs`, `IIdentityService.cs`, `IGroupService.cs`, `IActiveGroupContext.cs`, `IBaseService.cs`, `IUserRepository.cs`; `QuestBoard.Domain/Services/UserService.cs`, `GroupService.cs`; `QuestBoard.Repository/IdentityService.cs`, `UserRepository.cs`, `GroupRepository.cs`; `QuestBoard.Service/Controllers/Admin/AdminController.cs`; `QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs`; `QuestBoard.Service/Jobs/WelcomeEmailJob.cs`, `ChangeEmailConfirmationJob.cs`; `QuestBoard.Service/Components/Emails/Welcome.razor`; `QuestBoard.Service/ViewModels/AdminViewModels/CreateUserViewModel.cs`, `QuestBoard.Service/ViewModels/PlatformViewModels/GroupMembersViewModel.cs`, `AddMemberViewModel.cs`; `QuestBoard.Domain/Models/UserGroup.cs`.
-- `.planning/PROJECT.md` (v6.1 milestone scope, Key Decisions log, Known Issues)
-- `.planning/codebase/ARCHITECTURE.md` (layer structure, dependency direction, anti-patterns, SuperAdmin scoping constraint)
+- `QuestBoard.Repository/Entities/CharacterImageEntity.cs` — verified by direct read (HIGH)
+- `QuestBoard.Repository/Entities/DungeonMasterProfileImageEntity.cs` — verified by direct read (HIGH)
+- `QuestBoard.Repository/CharacterRepository.cs` — verified by direct read (HIGH)
+- `QuestBoard.Repository/DungeonMasterProfileRepository.cs` — verified by direct read (HIGH)
+- `QuestBoard.Service/Controllers/Characters/GuildMembersController.cs` — verified by direct read (HIGH)
+- `QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs` — verified by direct read (HIGH)
+- `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs` — verified by direct read (HIGH)
+- `QuestBoard.Service/Views/GuildMembers/Edit.cshtml` — verified by direct read (HIGH), including existing inline JS validation pattern to be consolidated
+- `.planning/PROJECT.md` — verified by direct read (HIGH); source of the SkiaSharp-pause decision and issue #78 requirements
+- `.planning/milestones/v1.0-phases/07-dm-profile-page/07-RESEARCH.md` — verified by direct read (HIGH); prior research establishing the `CharacterImageEntity` PK=FK pattern this milestone extends
+- `.planning/codebase/ARCHITECTURE.md` — verified by direct read (HIGH); confirms strict Service→Domain→Repository layering and "EF packages only in Repository" rule
+- [Cropper.js homepage/guide](https://fengyuanchen.github.io/cropperjs/) — WebFetch (MEDIUM, cross-verified against v1 docs page); confirms v2 uses a custom-elements API
+- [Cropper.js v1 docs](https://fengyuanchen.github.io/cropperjs/v1/) — WebFetch (MEDIUM, cross-verified against homepage); confirms v1.6.2 retains the classic class API with `getCroppedCanvas()`
+- [Cropper.js GitHub repo](https://github.com/fengyuanchen/cropperjs) — WebSearch (LOW individually, corroborates the above)
+- General `canvas.toBlob()` + `IFormFile` crop-before-upload pattern — WebSearch results across Telerik/GemBox/community sources (LOW individually; pattern is well-established, cross-referenced against the `DataTransfer` FileList-replacement technique which is standard/documented browser API usage, not vendor-specific)
 
 ---
-*Architecture research for: D&D Quest Board v6.1 Bugfixes milestone*
-*Researched: 2026-07-03*
+*Architecture research for: D&D Quest Board — v7.0 client-side image crop-before-save*
+*Researched: 2026-07-04*
