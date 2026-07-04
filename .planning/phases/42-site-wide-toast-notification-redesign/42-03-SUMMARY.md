@@ -100,3 +100,15 @@ None - no external service configuration required.
 ---
 *Phase: 42-site-wide-toast-notification-redesign*
 *Completed: 2026-07-04*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml
+- FOUND: QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml
+- FOUND: QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml
+- FOUND: QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml
+- FOUND: QuestBoard.Service/Areas/Platform/Views/Users/Index.cshtml
+- FOUND: QuestBoard.Service/Areas/Platform/Views/Users/Index.Mobile.cshtml
+- FOUND: fd2cefa (Task 1 commit)
+- FOUND: ffdd0b8 (Task 2 commit)
+- FOUND: 36f6b61 (Summary commit)
