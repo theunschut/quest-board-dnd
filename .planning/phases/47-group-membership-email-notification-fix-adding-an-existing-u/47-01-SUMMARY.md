@@ -105,3 +105,9 @@ None - no external service configuration required.
 ---
 *Phase: 47-group-membership-email-notification-fix-adding-an-existing-u*
 *Completed: 2026-07-04*
+
+## Self-Check: PASSED
+
+All claimed files and commits verified present:
+- GroupController.cs, WebApplicationFactoryBase.cs, GroupManagementIntegrationTests.cs, 47-01-SUMMARY.md all found on disk
+- Commits 5032d04, 3e4346a, bd46603 all found in git log
