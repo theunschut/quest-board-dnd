@@ -1,5 +1,6 @@
 using System.Net;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
@@ -345,5 +346,131 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
 
         group.Should().NotBeNull();
         group!.BoardType.Should().Be((int)BoardType.OneShot);
+    }
+
+    // GetAvailableUsers excludes members and includes non-members of the given group
+    [Fact]
+    public async Task GetAvailableUsers_ShouldExcludeMembersAndIncludeNonMembers()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        // Non-member: no UserGroups row for group 1
+        var (_, nonMember) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "availnonmember", "availnonmember@test.com", roles: []);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == nonMember.Id && ug.GroupId == 1);
+            if (membership != null)
+            {
+                db.UserGroups.Remove(membership);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        // Member: has a UserGroups row for group 1
+        var (_, member) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "availmember", "availmember@test.com", roles: ["Player"]);
+
+        using var scope2 = _factory.Services.CreateScope();
+        var userService = scope2.ServiceProvider.GetRequiredService<IUserService>();
+        var result = await userService.GetAvailableUsersAsync(1, null, TestContext.Current.CancellationToken);
+
+        result.Should().Contain(u => u.Id == nonMember.Id);
+        result.Should().NotContain(u => u.Id == member.Id);
+    }
+
+    // GetAvailableUsers filters by search term matching Name
+    [Fact]
+    public async Task GetAvailableUsers_WithSearchMatchingName_ShouldReturnOnlyMatchingNonMembers()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var uniqueTag = Guid.NewGuid().ToString("N")[..8];
+        var (_, matching) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"searchname{uniqueTag}", $"searchname{uniqueTag}@test.com", name: $"Zorlan{uniqueTag}", roles: []);
+        var (_, nonMatching) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"othername{uniqueTag}", $"othername{uniqueTag}@test.com", name: $"Unrelated{uniqueTag}", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            foreach (var userId in new[] { matching.Id, nonMatching.Id })
+            {
+                var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == userId && ug.GroupId == 1);
+                if (membership != null) db.UserGroups.Remove(membership);
+            }
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var scope2 = _factory.Services.CreateScope();
+        var userService = scope2.ServiceProvider.GetRequiredService<IUserService>();
+        var result = await userService.GetAvailableUsersAsync(1, $"Zorlan{uniqueTag}", TestContext.Current.CancellationToken);
+
+        result.Should().Contain(u => u.Id == matching.Id);
+        result.Should().NotContain(u => u.Id == nonMatching.Id);
+    }
+
+    // GetAvailableUsers filters by search term matching Email
+    [Fact]
+    public async Task GetAvailableUsers_WithSearchMatchingEmail_ShouldReturnOnlyMatchingNonMembers()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var uniqueTag = Guid.NewGuid().ToString("N")[..8];
+        var matchingEmail = $"emailmatch{uniqueTag}@test.com";
+        var (_, matching) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"emailmatch{uniqueTag}", matchingEmail, roles: []);
+        var (_, nonMatching) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"emailother{uniqueTag}", $"emailother{uniqueTag}@test.com", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            foreach (var userId in new[] { matching.Id, nonMatching.Id })
+            {
+                var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == userId && ug.GroupId == 1);
+                if (membership != null) db.UserGroups.Remove(membership);
+            }
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var scope2 = _factory.Services.CreateScope();
+        var userService = scope2.ServiceProvider.GetRequiredService<IUserService>();
+        var result = await userService.GetAvailableUsersAsync(1, $"emailmatch{uniqueTag}", TestContext.Current.CancellationToken);
+
+        result.Should().Contain(u => u.Id == matching.Id);
+        result.Should().NotContain(u => u.Id == nonMatching.Id);
+    }
+
+    // GetAvailableUsers with null or empty search returns all non-members unfiltered
+    [Fact]
+    public async Task GetAvailableUsers_WithNullOrEmptySearch_ShouldReturnAllNonMembersUnfiltered()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var uniqueTag = Guid.NewGuid().ToString("N")[..8];
+        var (_, nonMember) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"unfiltered{uniqueTag}", $"unfiltered{uniqueTag}@test.com", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == nonMember.Id && ug.GroupId == 1);
+            if (membership != null)
+            {
+                db.UserGroups.Remove(membership);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        using var scope2 = _factory.Services.CreateScope();
+        var userService = scope2.ServiceProvider.GetRequiredService<IUserService>();
+
+        var resultNull = await userService.GetAvailableUsersAsync(1, null, TestContext.Current.CancellationToken);
+        var resultEmpty = await userService.GetAvailableUsersAsync(1, "", TestContext.Current.CancellationToken);
+
+        resultNull.Should().Contain(u => u.Id == nonMember.Id);
+        resultEmpty.Should().Contain(u => u.Id == nonMember.Id);
     }
 }
