@@ -248,13 +248,13 @@ public class AccountController(IUserService userService, IIdentityService identi
                     else
                     {
                         jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(model.Email, user.Name, callbackUrl, CancellationToken.None));
-                        TempData["InfoMessage"] = $"A confirmation email has been sent to {model.Email}. Click the link to complete the change.";
+                        TempData["Info"] = $"A confirmation email has been sent to {model.Email}. Click the link to complete the change.";
                         return RedirectToAction(nameof(Profile));
                     }
                 }
             }
 
-            TempData["SuccessMessage"] = "Profile updated successfully!";
+            TempData["Success"] = "Profile updated successfully!";
             return RedirectToAction(nameof(Profile));
         }
 
@@ -270,14 +270,14 @@ public class AccountController(IUserService userService, IIdentityService identi
             var result = await identityService.ChangeEmailAsync(userId, newEmail, decodedToken);
 
             if (result.Succeeded)
-                TempData["SuccessMessage"] = "Email address updated. Please sign in with your new address.";
+                TempData["Success"] = "Email address updated. Please sign in with your new address.";
             else
-                TempData["ErrorMessage"] = "Email confirmation failed. The link may have expired.";
+                TempData["Error"] = "Email confirmation failed. The link may have expired.";
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "ConfirmEmailChange failed for userId {UserId}", userId);
-            TempData["ErrorMessage"] = "Email confirmation failed. The link may have expired.";
+            TempData["Error"] = "Email confirmation failed. The link may have expired.";
         }
 
         return RedirectToAction(nameof(Login));
@@ -301,7 +301,7 @@ public class AccountController(IUserService userService, IIdentityService identi
 
             if (result.Succeeded)
             {
-                TempData["SuccessMessage"] = "Password changed successfully!";
+                TempData["Success"] = "Password changed successfully!";
                 return RedirectToAction(nameof(Profile));
             }
 
