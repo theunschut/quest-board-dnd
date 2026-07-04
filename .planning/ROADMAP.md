@@ -113,7 +113,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 - [x] Phase 39: Shared Collision-Aware User Creation & Email — Creating a user with an existing email adds them to the group instead of failing, with a distinct notification email, applied identically everywhere user creation happens (completed 2026-07-04)
 - [x] Phase 40: Platform Members Page Redesign — Two-column Members page with a searchable available-users table and a group-scoped Create New User entry point (completed 2026-07-04)
 - [x] Phase 41: Safe User Removal & Account Disable — Group-admin Delete removes from the active group only (not a hard account delete), and SuperAdmin can disable/re-enable an account via Identity's lockout mechanism (completed 2026-07-04)
-- [ ] Phase 42: Site-Wide Toast Notification Redesign — Convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern (deferred from Phase 39)
+- [x] Phase 42: Site-Wide Toast Notification Redesign — Convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern (deferred from Phase 39) (completed 2026-07-04)
 
 ### Phase 38: Group-Scoped User List
 
