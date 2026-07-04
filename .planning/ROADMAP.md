@@ -200,8 +200,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 41-01-PLAN.md — Group-scoped removal: repurpose AdminController.DeleteUser + rename "Remove from Group" (SAFE-01)
-- [ ] 41-02-PLAN.md — Disable/enable service primitives (IIdentityService) + SecurityStampValidator 5-min interval (SAFE-02, SAFE-03)
+- [x] 41-01-PLAN.md — Group-scoped removal: repurpose AdminController.DeleteUser + rename "Remove from Group" (SAFE-01)
+- [x] 41-02-PLAN.md — Disable/enable service primitives (IIdentityService) + SecurityStampValidator 5-min interval (SAFE-02, SAFE-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -260,7 +260,7 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
-| 41. Safe User Removal & Account Disable | v6.1 | 0/4 | Planned | — |
+| 41. Safe User Removal & Account Disable | v6.1 | 2/4 | In Progress|  |
 
 ### Phase 42: Site-Wide Toast Notification Redesign
 
