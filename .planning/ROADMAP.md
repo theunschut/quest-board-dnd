@@ -179,7 +179,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 40-03-PLAN.md — Members.cshtml + Members.Mobile.cshtml two-column/stacked redesign (search, per-row Add, Create New User modal) + blocking security human-verify
+- [x] 40-03-PLAN.md — Members.cshtml + Members.Mobile.cshtml two-column/stacked redesign (search, per-row Add, Create New User modal) + blocking security human-verify
 
 ### Phase 41: Safe User Removal & Account Disable
 
@@ -247,5 +247,5 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
-| 40. Platform Members Page Redesign | v6.1 | 2/3 | In Progress|  |
+| 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete   | 2026-07-04 |
 | 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |
