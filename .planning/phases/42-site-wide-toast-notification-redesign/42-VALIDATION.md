@@ -1,8 +1,8 @@
 ---
 phase: 42
 slug: site-wide-toast-notification-redesign
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-04
 ---
@@ -69,11 +69,11 @@ Existing infrastructure covers all phase requirements — no test framework exis
 
 ## Validation Sign-Off
 
-- [ ] All tasks have manual verification steps documented in PLAN.md (no automated test framework exists)
-- [ ] Sampling continuity: every task wave gets a full click-through per Sampling Rate above
-- [ ] Wave 0 covers all MISSING references — n/a, no test infrastructure to stand up
-- [ ] No watch-mode flags — n/a
-- [ ] Feedback latency — n/a (manual)
-- [ ] `nyquist_compliant: true` set in frontmatter once sign-off complete
+- [x] All tasks have manual verification steps documented in PLAN.md (no automated test framework exists) — confirmed present in all 5 plans (42-01 through 42-05) by gsd-plan-checker
+- [x] Sampling continuity: every task wave gets a full click-through per Sampling Rate above
+- [x] Wave 0 covers all MISSING references — n/a, no test infrastructure to stand up
+- [x] No watch-mode flags — n/a
+- [x] Feedback latency — n/a (manual)
+- [x] `nyquist_compliant: true` set in frontmatter once sign-off complete
 
-**Approval:** pending
+**Approval:** approved 2026-07-04
