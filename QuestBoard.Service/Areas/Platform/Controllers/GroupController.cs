@@ -112,31 +112,30 @@ public class GroupController(IGroupService groupService, IUserService userServic
 
     // Members page
     [HttpGet]
-    public async Task<IActionResult> Members(int id)
+    public async Task<IActionResult> Members(int id, string? search)
     {
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
         var members = await groupService.GetMembersAsync(id);
-        var allUsers = await userService.GetAllAsync();
-        var memberUserIds = members.Select(m => m.UserId).ToHashSet();
-        var availableUsers = allUsers.Where(u => !memberUserIds.Contains(u.Id)).ToList();
+        var availableUsers = await userService.GetAvailableUsersAsync(id, search);
         return View(new GroupMembersViewModel
         {
             Group = group,
             Members = members,
             AvailableUsers = availableUsers,
+            SearchQuery = search,
             AddMember = new AddMemberViewModel()
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddMember(int id, [Bind(Prefix = "AddMember")] AddMemberViewModel model)
+    public async Task<IActionResult> AddMember(int id, AddMemberViewModel model, string? search)
     {
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "Invalid form submission.";
-            return RedirectToAction(nameof(Members), new { id });
+            return RedirectToAction(nameof(Members), new { id, search });
         }
         try
         {
@@ -148,7 +147,7 @@ public class GroupController(IGroupService groupService, IUserService userServic
         {
             TempData["Error"] = "This user is already a member of the group.";
         }
-        return RedirectToAction(nameof(Members), new { id });
+        return RedirectToAction(nameof(Members), new { id, search });
     }
 
     [HttpPost]
