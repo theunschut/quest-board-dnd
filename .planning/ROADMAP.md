@@ -110,7 +110,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 **Requirements:** USERS-01, CREATE-01 through CREATE-04, MEMBERS-01 through MEMBERS-03, SAFE-01 through SAFE-04 (12 total, see `.planning/REQUIREMENTS.md`)
 
 - [x] Phase 38: Group-Scoped User List — Group admin's Users page shows only members of the active group, closing a cross-tenant PII leak (completed 2026-07-03)
-- [ ] Phase 39: Shared Collision-Aware User Creation & Email — Creating a user with an existing email adds them to the group instead of failing, with a distinct notification email, applied identically everywhere user creation happens
+- [x] Phase 39: Shared Collision-Aware User Creation & Email — Creating a user with an existing email adds them to the group instead of failing, with a distinct notification email, applied identically everywhere user creation happens (completed 2026-07-04)
 - [ ] Phase 40: Platform Members Page Redesign — Two-column Members page with a searchable available-users table and a group-scoped Create New User entry point
 - [ ] Phase 41: Safe User Removal & Account Disable — Group-admin Delete removes from the active group only (not a hard account delete), and SuperAdmin can disable/re-enable an account via Identity's lockout mechanism
 
@@ -234,6 +234,6 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
 | 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
-| 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete   | 2026-07-03 |
+| 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
 | 40. Platform Members Page Redesign | v6.1 | 0/TBD | Not started | — |
 | 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |
