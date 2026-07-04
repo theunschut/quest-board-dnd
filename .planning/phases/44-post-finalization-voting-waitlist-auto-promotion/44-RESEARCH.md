@@ -345,22 +345,25 @@ public enum VoteType
 | A2 | Recommended home for promotion orchestration is `QuestService` rather than `PlayerSignupService` | Summary / Don't Hand-Roll | Medium — this is an architectural judgment call based on which service already owns `IQuestEmailDispatcher`, not a hard technical constraint. If the planner disagrees, `PlayerSignupService` could instead take a new `IQuestEmailDispatcher` dependency; either is technically viable, but mixing the two half-and-half across both services would violate this project's own layering conventions. |
 | A3 | Deleting `ChangeVoteToYes`/`ChangeVoteToYesAndSelectAsync` outright (rather than keeping alongside the new generalized method) | State of the Art | Low — functionally the new method is a superset; if any external caller/test depends on the exact old method signature, a grep should confirm before deletion (none found in this research beyond `QuestController.cs` itself). |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact new controller action shape: one `ChangeVote(id, vote)` action, or three separate actions (`VoteYes`/`VoteMaybe`/`VoteNo`)?**
+1. **Exact new controller action shape: one `ChangeVote(id, vote)` action, or three separate actions (`VoteYes`/`VoteMaybe`/`VoteNo`)?** (RESOLVED)
    - What we know: D-01 specifies three distinct buttons; the existing `ChangeVoteToYes` is a single-purpose action.
    - What's unclear: Whether the planner should implement one parameterized action (cleaner, matches the "single vote+auto-promote path" integration point CONTEXT.md flags) or three thin actions that all delegate to one shared service method (slightly more RESTful/discoverable, matches the one-action-per-button convention already used for `RevokeSignup`).
    - Recommendation: One action taking a `VoteType` parameter (mirrors `UpdateSignup`'s existing pattern of accepting vote data in the request body) — three buttons POST to the same endpoint with different `vote` values, all funneling into the same `ChangeVoteAsync` service method. Keeps the "single path" property CONTEXT.md already identified as desirable.
+   - RESOLVED: Plan 44-03 implements a single `ChangeVote(id, vote)` controller action per this recommendation.
 
-2. **Should `ChangeVoteToYes`/`ChangeVoteToYesAndSelectAsync` be deleted or deprecated-in-place?**
+2. **Should `ChangeVoteToYes`/`ChangeVoteToYesAndSelectAsync` be deleted or deprecated-in-place?** (RESOLVED)
    - What we know: The new generalized method is a strict superset of the old one's Yes-only, always-select behavior would need adjusting anyway (since VOTE-01 requires it to no longer force-reject when full).
    - What's unclear: Whether any other part of the codebase calls these directly (verified: only `QuestController.ChangeVoteToYes` calls the repository method; no other call sites found).
    - Recommendation: Delete both and replace with the new generalized action/method — verified no other callers exist.
+   - RESOLVED: Plan 44-03 deletes both in favor of the new generalized `ChangeVote`/`ChangeVoteAsync` path.
 
-3. **Partial view extraction for the waitlist table (desktop vs. mobile)**
+3. **Partial view extraction for the waitlist table (desktop vs. mobile)** (RESOLVED)
    - What we know: D-05 requires mobile parity; centralizing the *ordering logic* server-side is recommended above regardless.
    - What's unclear: Whether the *rendering* (HTML/Razor markup) should also be extracted into a shared partial, given the two views use different CSS classes/layout patterns (`Manage.cshtml` vs `Manage.Mobile.cshtml` today keep entirely separate markup despite sharing data).
    - Recommendation: Keep markup separate (consistent with the existing Desktop/Mobile split convention throughout this codebase, e.g. `Manage.cshtml`/`Manage.Mobile.cshtml`, `Details.cshtml`/`Details.Mobile.cshtml` today), but centralize the *data* (ordered list, vote-eligibility flags) so both views consume identical, already-sorted data rather than independently computing it.
+   - RESOLVED: Plan 44-03 keeps desktop/mobile markup separate and has both consume the shared `WaitlistOrdering.OrderWaitlist` extension from Plan 44-01.
 
 ## Environment Availability
 

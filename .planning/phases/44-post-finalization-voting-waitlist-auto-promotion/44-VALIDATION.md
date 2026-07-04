@@ -1,9 +1,9 @@
 ---
 phase: 44
 slug: post-finalization-voting-waitlist-auto-promotion
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: planned
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-04
 ---
 
@@ -36,18 +36,17 @@ created: 2026-07-04
 
 ## Per-Task Verification Map
 
-*Task IDs are assigned by the planner (step 8) — this table maps each requirement to its test approach; the planner should align actual task IDs to these rows.*
+*Task IDs reflect the actual task order within each PLAN.md as written (task 1/2/3 per plan; Plan 03's task 4 is the human-verify checkpoint).*
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | VOTE-01 | T-44-IDOR | Voting Yes on a full quest sets `IsSelected=false` (waitlisted), never throws/rejects | unit | `dotnet test --filter FullyQualifiedName~PlayerSignupRepositoryTests` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | VOTE-02 | — | Waitlist ordering method sorts Yes > Maybe > No, then by timestamp | unit | `dotnet test --filter FullyQualifiedName~WaitlistOrdering` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | VOTE-03 | — | `LastVoteChangeTime` updates on every vote mutation | unit | `dotnet test --filter FullyQualifiedName~ChangeVoteAsync` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | VOTE-04 | T-44-IDOR | Selected player votes No or is revoked → next waitlisted candidate promoted | unit | `dotnet test --filter FullyQualifiedName~QuestServiceTests.PromoteNextWaitlisted` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | VOTE-05 | T-44-IDOR | Selected player votes Maybe → `IsSelected` stays true, no promotion call | unit | `dotnet test --filter FullyQualifiedName~ChangeVoteAsync_Maybe` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | VOTE-06 | T-44-IDOR | Waitlisted player votes No → record retained, `IsSelected` stays false | unit | `dotnet test --filter FullyQualifiedName~ChangeVoteAsync_WaitlistedVotesNo` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | VOTE-07 | T-44-EMAIL-LEAK | Promotion email dispatched to exactly one recipient (the promoted player), never the freeing player | unit | `dotnet test --filter FullyQualifiedName~EnqueueWaitlistPromotedEmail` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | Regression | — | `(int)VoteType.Yes` cast persists correctly (bug-fix regression guard for the pre-existing `Vote = 0` bug) | unit | `dotnet test --filter FullyQualifiedName~EntityProfileEnumCastTests` | ✅ exists — extend with a repository-level persisted-value assertion | ⬜ pending |
+| 44-01-01/02 | 01 | 1 | VOTE-01, VOTE-03 | T-44-VOTE-SMUGGLE | `ChangeVoteAsync` repository primitive persists vote + `LastVoteChangeTime`, never rejects on capacity | unit | `dotnet test --filter FullyQualifiedName~PlayerSignupRepositoryTests` | ✅ created by 44-01 | ⬜ pending |
+| 44-01-03 | 01 | 1 | VOTE-02 | — | `WaitlistOrdering.OrderWaitlist` sorts Yes > Maybe > No, then by `LastVoteChangeTime` | unit | `dotnet test --filter FullyQualifiedName~WaitlistOrdering` | ✅ created by 44-01 | ⬜ pending |
+| 44-01-01 | 01 | 1 | Regression | — | `(int)VoteType.Yes` cast persists correctly (bug-fix regression guard for the pre-existing `Vote = 0` bug) | unit | `dotnet test --filter FullyQualifiedName~EntityProfileEnumCastTests` | ✅ exists — extended by 44-01 with a repository-level persisted-value assertion | ⬜ pending |
+| 44-02-01/02 | 02 | 2 | VOTE-04, VOTE-05 | T-44-IDOR | Selected player votes No/revokes → next waitlisted candidate promoted via shared `PromoteNextWaitlistedPlayerIfSeatFreedAsync`; Maybe keeps seat, no promotion | unit | `dotnet test --filter FullyQualifiedName~QuestServiceTests` | ✅ created by 44-02 | ⬜ pending |
+| 44-02-02/03 | 02 | 2 | VOTE-07 | T-44-EMAIL-LEAK | `EnqueueWaitlistPromotedEmail` dispatched to exactly one recipient (the promoted player), never the freeing player | unit | `dotnet test --filter FullyQualifiedName~EnqueueWaitlistPromotedEmail` | ✅ created by 44-02 | ⬜ pending |
+| 44-03-01 | 03 | 3 | VOTE-01, VOTE-02, VOTE-04, VOTE-05, VOTE-06, VOTE-07 | T-44-IDOR, T-44-CSRF, T-44-VOTE-SMUGGLE | `ChangeVote(id, vote)` controller action: `Enum.IsDefined` guard, ownership resolution via authenticated user (not client-supplied signup id), `[ValidateAntiForgeryToken]`, no capacity reject | unit/integration | `dotnet test --filter FullyQualifiedName~QuestController` | ✅ created by 44-03 | ⬜ pending |
+| 44-03-04 | 03 | 3 | VOTE-01 through VOTE-06 (mobile parity, per CONTEXT.md D-05) | — | Desktop + mobile UI render/behave identically | manual | n/a — human-verify checkpoint | ❌ manual | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -55,10 +54,7 @@ created: 2026-07-04
 
 ## Wave 0 Requirements
 
-- [ ] `QuestBoard.UnitTests/Repository/PlayerSignupRepositoryTests.cs` (or extend `QuestServiceTests.cs`) — stubs for VOTE-01, VOTE-03, VOTE-05, VOTE-06, and the enum-cast bug-fix regression
-- [ ] Extend `QuestBoard.UnitTests/Services/QuestServiceTests.cs` — stubs for VOTE-04, VOTE-07 (promotion orchestration + single-recipient email dispatch assertion)
-- [ ] New `WaitlistOrderingTests.cs` (or wherever the centralized ordering logic lands) — stubs for VOTE-02, no existing precedent
-- [ ] No framework install needed — `xunit.v3`/`NSubstitute`/`FluentAssertions` already installed
+No separate Wave 0 — each plan creates its own tests alongside the code under test (Plan 01 creates `PlayerSignupRepositoryTests`/`WaitlistOrderingTests` and extends `EntityProfileEnumCastTests`; Plan 02 extends `QuestServiceTests`), so Waves 1/2/3 are self-contained rather than depending on a pre-existing scaffolding wave. No framework install needed — `xunit.v3`/`NSubstitute`/`FluentAssertions` already installed.
 
 ---
 
@@ -73,11 +69,11 @@ created: 2026-07-04
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (no separate Wave 0 needed — see above)
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-04 (via gsd-plan-checker VERIFICATION PASSED)
