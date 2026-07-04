@@ -29,8 +29,8 @@ internal class GroupService(IGroupRepository repository, IMapper mapper)
         => await repository.RemoveMemberAsync(groupId, userId, token);
 
     /// <inheritdoc/>
-    public async Task<IList<UserGroup>> GetMembersAsync(int groupId, CancellationToken token = default)
-        => await repository.GetMembersAsync(groupId, token);
+    public async Task<IList<UserGroup>> GetMembersAsync(int groupId, string? search = null, CancellationToken token = default)
+        => await repository.GetMembersAsync(groupId, search, token);
 
     /// <inheritdoc/>
     public override async Task AddAsync(Group model, CancellationToken token = default)

@@ -659,4 +659,149 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         resultNull.Should().Contain(u => u.Id == nonMember.Id);
         resultEmpty.Should().Contain(u => u.Id == nonMember.Id);
     }
+
+    // Members GET with a memberSearch term filters the current-members list and echoes the term back
+    [Fact]
+    public async Task MembersPage_WithMemberSearch_ShouldReturnOnlyMatchingMembersAndEchoTerm()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var uniqueTag = Guid.NewGuid().ToString("N")[..8];
+        var distinctiveName = $"Griffonhold{uniqueTag}";
+        // CreateAuthenticatedClientWithUserAsync with a Player role seeds a UserGroups row for group 1
+        var (_, matchingMember) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"membersrch{uniqueTag}", $"membersrch{uniqueTag}@test.com", name: distinctiveName, roles: ["Player"]);
+
+        // Matching memberSearch returns the member
+        var matchResponse = await client.GetAsync($"/platform/Group/Members/1?memberSearch={distinctiveName}", TestContext.Current.CancellationToken);
+        matchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var matchContent = await matchResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        matchContent.Should().Contain(distinctiveName);
+        matchContent.Should().Contain($"value=\"{distinctiveName}\"");
+
+        // Non-matching memberSearch excludes the member
+        var noMatchResponse = await client.GetAsync($"/platform/Group/Members/1?memberSearch=NoSuchMember{uniqueTag}", TestContext.Current.CancellationToken);
+        noMatchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var noMatchContent = await noMatchResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        noMatchContent.Should().NotContain(distinctiveName);
+
+        _ = matchingMember;
+    }
+
+    // GetMembersAsync filters by search term matching Email, at the service level
+    [Fact]
+    public async Task GetMembers_WithSearchMatchingEmail_ShouldReturnOnlyMatchingMembers()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var uniqueTag = Guid.NewGuid().ToString("N")[..8];
+        var matchingEmail = $"membermatch{uniqueTag}@test.com";
+        var (_, matching) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"membermatch{uniqueTag}", matchingEmail, roles: ["Player"]);
+        var (_, nonMatching) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"memberother{uniqueTag}", $"memberother{uniqueTag}@test.com", roles: ["Player"]);
+
+        using var scope = _factory.Services.CreateScope();
+        var groupService = scope.ServiceProvider.GetRequiredService<IGroupService>();
+        var result = await groupService.GetMembersAsync(1, $"membermatch{uniqueTag}", TestContext.Current.CancellationToken);
+
+        result.Should().Contain(ug => ug.UserId == matching.Id);
+        result.Should().NotContain(ug => ug.UserId == nonMatching.Id);
+    }
+
+    // AddMember redirect preserves BOTH the available-users search and the member search
+    [Fact]
+    public async Task AddMember_WithBothSearchTerms_ShouldPreserveBothOnRedirect()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var (_, newUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "bothsearchadd", "bothsearchadd@test.com", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == newUser.Id && ug.GroupId == 1);
+            if (membership != null)
+            {
+                db.UserGroups.Remove(membership);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        var availableSearchTerm = "availableterm";
+        var memberSearchTerm = "memberterm";
+        var formData = new Dictionary<string, string>
+        {
+            ["UserId"] = newUser.Id.ToString(),
+            ["Role"] = ((int)GroupRole.Player).ToString(),
+            ["search"] = availableSearchTerm,
+            ["memberSearch"] = memberSearchTerm
+        };
+        var response = await client.PostAsync("/platform/Group/AddMember/1",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain($"search={availableSearchTerm}");
+        response.Headers.Location!.ToString().Should().Contain($"memberSearch={memberSearchTerm}");
+    }
+
+    // RemoveMember redirect preserves BOTH search terms so removing a member doesn't reset either filter
+    [Fact]
+    public async Task RemoveMember_WithBothSearchTerms_ShouldPreserveBothOnRedirect()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var (_, memberUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "removeboth", "removeboth@test.com", roles: ["Player"]);
+
+        var availableSearchTerm = "keepavail";
+        var memberSearchTerm = "keepmember";
+        var formData = new Dictionary<string, string>
+        {
+            ["userId"] = memberUser.Id.ToString(),
+            ["search"] = availableSearchTerm,
+            ["memberSearch"] = memberSearchTerm
+        };
+        var response = await client.PostAsync("/platform/Group/RemoveMember/1",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        if (response.Headers.Location != null)
+        {
+            response.Headers.Location.ToString().Should().Contain($"search={availableSearchTerm}");
+            response.Headers.Location.ToString().Should().Contain($"memberSearch={memberSearchTerm}");
+        }
+    }
+
+    // CreateMember redirect preserves BOTH search terms on success
+    [Fact]
+    public async Task CreateMember_WithBothSearchTerms_ShouldPreserveBothOnRedirect()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var uniqueTag = Guid.NewGuid().ToString("N")[..8];
+        var newEmail = $"createbothsearch{uniqueTag}@test.com";
+        var availableSearchTerm = "createavail";
+        var memberSearchTerm = "createmember";
+        var formData = new Dictionary<string, string>
+        {
+            ["Email"] = newEmail,
+            ["Name"] = $"CreateBothSearch{uniqueTag}",
+            ["GroupRole"] = ((int)GroupRole.Player).ToString()
+        };
+
+        var response = await client.PostAsync($"/platform/Group/CreateMember/1?search={availableSearchTerm}&memberSearch={memberSearchTerm}",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain($"search={availableSearchTerm}");
+        response.Headers.Location!.ToString().Should().Contain($"memberSearch={memberSearchTerm}");
+    }
 }
