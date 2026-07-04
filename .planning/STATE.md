@@ -4,8 +4,8 @@ milestone: v6.1
 milestone_name: Bugfixes
 current_phase: 41
 status: executing
-stopped_at: Phase 42 context gathered
-last_updated: "2026-07-04T14:07:14.469Z"
+stopped_at: Phase 42 UI-SPEC approved
+last_updated: "2026-07-04T14:16:19.972Z"
 last_activity: 2026-07-04
 last_activity_desc: Phase 41 complete
 progress:
@@ -111,9 +111,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-04T14:07:14.455Z
-Stopped at: Phase 42 context gathered
-Resume file: .planning/phases/42-site-wide-toast-notification-redesign/42-CONTEXT.md
+Last session: 2026-07-04T14:16:19.960Z
+Stopped at: Phase 42 UI-SPEC approved
+Resume file: .planning/phases/42-site-wide-toast-notification-redesign/42-UI-SPEC.md
 Next step: Phase 39 complete — proceed to Phase 40 (Platform Members Page Redesign)
 
 ## Operator Next Steps
