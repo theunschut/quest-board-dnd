@@ -144,3 +144,51 @@
 - Sessions: 1 extended session
 - Model mix: opus (planning), sonnet (research/execution/verification/review/integration-check), haiku (codebase mapping) — consistent with the project's "balanced" model profile
 - Notable: 3 phases in ~1.4 days, continuing the accelerating pace from v5.0 (12 phases/4 days) — driven by the same short-scoped-phase + parallel-wave approach, plus the milestone-level integration checker catching cross-phase issues that no single phase's own review would surface
+
+---
+
+## Milestone: v6.1 — Bugfixes
+
+**Shipped:** 2026-07-04
+**Phases:** 5 (38–42) | **Plans:** 16 | **Tasks:** 37
+**Timeline:** ~1 day (2026-07-03 22:30 → 2026-07-04 17:51)
+
+### What Was Built
+
+1. Group-scoped Users page closing a live cross-tenant PII leak, plus a membership guard retrofitted onto four sibling actions the same phase's code review found (Phase 38)
+2. Shared `CreateOrAddToGroupAsync` collision-handling method — new account, added-to-group, stranded-account resend, or already-member — reused identically by both the group-admin and platform create-user entry points (Phase 39)
+3. Two-column Platform Members page redesign with live search and an in-page Create New User modal, extended mid-checkpoint with three user-directed scope additions (Phase 40)
+4. Safe group-only user removal (replacing an account-destroying hard delete) plus a real SuperAdmin disable/enable mechanism built on Identity's `LockoutEnd` field (Phase 41)
+5. Site-wide Bootstrap toast notification redesign — one shared `_Toasts.cshtml` partial across all 5 layouts (including a Platform-area layout pair CONTEXT.md's own file list implied but its "3 layouts" prose missed), replacing ~26 views' static alert banners (Phase 42)
+6. Bonus: fixed a standalone navbar dropdown overflow bug (found during Phase 42 verification, unrelated to the milestone's scope)
+
+### What Worked
+
+- **Reusing Phase 39's shared method in Phase 40:** `CreateOrAddToGroupAsync` was built once and consumed unchanged by the Platform Members page's Create New User entry point — no duplicate collision-handling logic, exactly as the phase-ordering decision intended
+- **Research before planning, even when CONTEXT.md looked complete:** Phase 42's CONTEXT.md was unusually thorough (13 locked decisions, exact reference implementation), and the "skip research" default reasoning was tempting — but running research anyway caught a real, material scope gap: the Platform Area resolves to its own separate layout pair, not one of the 3 layouts CONTEXT.md named. A planner working from CONTEXT.md alone would have shipped a phase with a functional regression in the Platform area.
+- **Parallel wave execution with a pre-dispatch overlap check:** Phase 42's Wave 2 ran 4 plans simultaneously in isolated worktrees (Shop / Platform / Account / Admin+Quest — confirmed disjoint `files_modified` before dispatch) with zero merge conflicts
+- **Post-merge build/test gate as a reality check on research claims:** RESEARCH.md for Phase 42 said "no test framework in this repo" (based on searching for `*.Tests` project references). Running the actual post-merge gate found 424 passing unit/integration tests — the claim was wrong, caught by running the tool instead of trusting the doc.
+- **UAT approval collapsing cleanly to a single user response:** When the user said "approve for all tests" instead of walking through each of 6 UAT items individually, that mapped directly onto the existing UAT.md "approved" pass semantics — no new mechanism needed, just applying the existing rule in bulk.
+
+### What Was Inefficient
+
+- **A Phase 42 ROADMAP.md detail section was structurally misplaced:** at some point before milestone close, Phase 42's `### Phase 42:` detail section ended up appended after the flat `## Progress` table instead of inside the v6.1 `<details>` block alongside Phases 38–41. This silently broke `roadmap.analyze`'s phase count (it found 4 phases, not 5) and went unnoticed until the milestone-close readiness check surfaced it. Nothing in the phase-42 planning or execution flow validates ROADMAP.md's own structural integrity — only a downstream tool query happened to expose the drift.
+- **4 pre-existing quick-tasks lacked the `status: complete` frontmatter field** the milestone-close audit checks for — some dating back to 2026-04-20, predating whenever that field became part of the convention. The work itself was genuinely done (all had passing Self-Check + committed changes); the gap was purely a schema-versioning issue that only surfaced at milestone-close audit time, not when the field was introduced.
+- **RESEARCH.md's "no test framework" claim was stated with unwarranted confidence:** it was based on not finding a `*.Tests` project during exploration, not on an explicit `dotnet test` run. A quick verification command would have caught the 424-test suite immediately instead of it surfacing later during the actual build/test gate.
+
+### Patterns Established
+
+- **Research is worth running even when CONTEXT.md looks complete**, specifically for phases that touch many files across a codebase's less-obvious structural seams (multiple layouts, multiple `_ViewStart.cshtml` files) — thoroughness of user-provided context doesn't substitute for verifying the codebase's actual current-state facts
+- **Post-merge build/test gates should run the project's actual verification command**, not skip based on a research doc's claim that "no tests exist" — always attempt the real command and let it fail informatively if the claim was correct
+
+### Key Lessons
+
+1. **ROADMAP.md's structural integrity (phase detail sections living inside the correct milestone's `<details>` block) needs an explicit check, not just visual review** — a misplaced section silently degraded `roadmap.analyze`'s phase count for an unknown period before milestone close caught it. Consider validating this whenever a phase is added or a milestone is closed.
+2. **When a schema field is added to a template (like `status:` on quick-task summaries), older artifacts don't automatically get it** — they'll surface as false-positive "incomplete" items at the next milestone-close audit. Backfilling at the time the schema changes (or explicitly grandfathering pre-existing artifacts) avoids the confusion of re-diagnosing genuinely-done work later.
+3. **A "no test framework" (or similar absence) claim in a research doc should be verified with the actual command, not inferred from project-file search** — this project had 424 tests that simply weren't discovered by looking for a `*.Tests` project reference in the wrong place.
+
+### Cost Observations
+
+- Sessions: 1 extended session covering Phase 42 planning through execution through milestone close
+- Model mix: opus (planning), sonnet (research/execution/verification/UI/plan-checking) — consistent with the project's "balanced" model profile
+- Notable: fastest milestone yet by wall-clock time (~1 day, 2026-07-03 22:30 → 2026-07-04 17:51) across 5 phases, 16 plans
