@@ -139,10 +139,10 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   2. The mobile Quest Log list view shows a "Session Recap Available" badge on any quest that has a recap, matching what desktop already shows
   3. Both fixes are verified against actual mobile browser behavior (not just responsive-mode screenshots), since this exact bug class has escaped desktop/emulation testing before in this codebase
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
-- [ ] 43-01-PLAN.md — Fix iOS Safari fixed-background scroll bug via body::before layer in site.css + mobile.css (MOBILE-01)
-- [ ] 43-02-PLAN.md — Add "Session Recap Available" amber/gold badge to mobile Quest Log (Index.Mobile.cshtml + quest-log.mobile.css) (MOBILE-02)
+- [x] 43-01-PLAN.md — Fix iOS Safari fixed-background scroll bug via body::before layer in site.css + mobile.css (MOBILE-01)
+- [x] 43-02-PLAN.md — Add "Session Recap Available" amber/gold badge to mobile Quest Log (Index.Mobile.cshtml + quest-log.mobile.css) (MOBILE-02)
 
 **UI hint**: yes
 
@@ -244,7 +244,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
 | 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
-| 43. Mobile Parity Fixes | v7.0 | 0/? | Not started | — |
+| 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete   | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 0/? | Not started | — |
 | 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
