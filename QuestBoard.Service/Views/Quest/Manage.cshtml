@@ -33,22 +33,8 @@ else
                     }
                 </div>
                 <div class="card-body modern-card-body">
-                    @if (TempData["Error"] != null)
-                    {
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            @TempData["Error"]
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    }
-
                     @if (TempData["Success"] != null)
                     {
-                        <div class="alert alert-success alert-dismissible fade show mb-2" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>
-                            @TempData["Success"]
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
                         <form asp-action="SendReminder" asp-route-id="@Model.Id" method="post" class="mb-2">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="forceResend" value="true" />
