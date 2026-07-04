@@ -105,3 +105,27 @@ None - no external service configuration required.
 ## Self-Check: PASSED
 
 All 3 modified files verified present on disk with the expected content (`ChangeVote`, `OrderWaitlist`, `changeVote(` JS in each view as applicable); all 3 task commit hashes (`96e2b8a`, `d31b631`, `5344801`) verified present in `git log`.
+
+## Checkpoint Feedback Round 1 (Task 4 re-verification pending)
+
+**Reported during first Task 4 human-verify pass:** The desktop waitlist table had gained an "Action" column with three per-row Vote Yes/Maybe/No buttons for the current user's own waitlist row, duplicating the identical three buttons already present in the single authoritative "Revoke and Update button section" at the bottom of the page (Revoke left, votes right per D-02).
+
+**Root cause:** Task 2's rewrite of the waitlist action cell (originally a single "Join Quest" button) replaced it with three vote buttons instead of removing the cell outright — D-02 only calls for the vote buttons in the shared Revoke row, not a second copy per-row in the waitlist table.
+
+**Fix applied:**
+- Removed the `<th>Action</th>` header from the desktop waitlist table (`Details.cshtml`)
+- Removed the entire per-row `isCurrentUser` vote-buttons `<td>` block from the waitlist `<tbody>` loop
+- Waitlist table is back to 4 columns (Player Name, Character, Role, Vote), matching the selected-participants table's column structure
+- The bottom "Revoke and Update button section" (Revoke left, Vote Yes/Maybe/No right) was NOT touched — it remains the single authoritative location for these buttons
+- The selected-participants table was NOT touched — it never had this bug
+- Verified `Details.Mobile.cshtml` needed no changes — mobile's waitlist section only renders a vote badge per row (no action buttons); the only vote/revoke buttons on mobile are in the single bottom row, exactly as intended
+
+**Verification:**
+- `dotnet build --no-incremental`: Build succeeded, 0 warnings, 0 errors
+- `git diff --stat` (relative to the prior commit): only `Details.cshtml` changed (23 deletions, 0 additions); `Details.Mobile.cshtml` untouched
+- `changeVote(` now appears exactly 3 times as button `onclick` handlers, all inside the bottom Revoke/vote row, plus once in the JS function definition — zero occurrences inside the waitlist `<tbody>` loop
+- `dotnet test` full suite: 155/155 unit tests passed, 292/292 integration tests passed (0 failed) — no regressions; the previously-flaky `AdminControllerIntegrationTests.SendConfirmationEmail_Post_WhenUserUnconfirmed_ShouldRedirectToUsersWithSuccess` test passed cleanly on this run
+
+**Commit:** `5c6e241` (fix)
+
+**Status:** Task 4 human-verify checkpoint is being re-presented for another verification pass. Not yet approved.
