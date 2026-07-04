@@ -258,8 +258,10 @@ internal class QuestService(
     {
         var seatFreed = await playerSignupRepository.ChangeVoteAsync(playerSignupId, finalizedProposedDateId, vote, token);
 
-        if (vote == VoteType.Yes)
+        if (vote == VoteType.Yes || vote == VoteType.Maybe)
         {
+            // A Yes or Maybe vote can both fill an open seat when one is available; only a No
+            // vote never grants a seat.
             // Re-fetch post-vote to avoid stale IsSelected/seat-count state; never trust a
             // client-supplied capacity signal for the selection decision.
             var quest = await repository.GetQuestWithDetailsAsync(questId, token);
