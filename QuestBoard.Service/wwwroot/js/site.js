@@ -301,4 +301,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Make date options clickable
     makeDataOptionsClickable();
+
+    // Initialize toasts
+    const toastElements = document.querySelectorAll('.toast');
+    toastElements.forEach(function(toastElement) {
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+    });
 });
