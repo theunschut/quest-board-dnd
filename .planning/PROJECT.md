@@ -1,22 +1,10 @@
 # D&D Quest Board
 
-## Current State: v6.1 In Progress
+## Current State: v6.1 Shipped
 
-**Previous milestone shipped:** v6.0 Board Types (Campaign Mode) — 2026-07-03
+**Previous milestone shipped:** v6.1 Bugfixes — 2026-07-04
 **Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
 **Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
-
----
-
-## Current Milestone: v6.1 Bugfixes (all 5 phases complete — pending `/gsd-complete-milestone`)
-
-**Goal:** Close four admin-facing user-management gaps found after v6.0 shipped.
-
-**Target features:**
-- Scope `AdminController.Users()` to the active group — it currently calls `userService.GetAllAsync()` with no group filter, leaking every platform user into a group admin's user list
-- Redesign the Platform (super-admin) group Members page (`Areas/Platform/Controllers/GroupController.cs`): two-column layout (members left, searchable non-members right), replacing the plain `<select>` dropdown, plus a "create new user" entry point scoped to that group, mirroring the existing group-admin Create User form
-- Existing-email collision handling in Create User flows: today `IdentityService.CreateUserAsync` hard-fails with a duplicate-username error if the email already belongs to a user; instead, auto-add that user to the group with the selected role and send a new "you've been added to a group" notification email (distinct from the new-account welcome email) — applied consistently in both the group-admin `AdminController.CreateUser` and the new platform create-user entry point
-- ✓ Fix `AdminController.DeleteUser`: it currently hard-deletes the `UserEntity` row (cascading their membership out of *every* group, not just the active one, and throwing an unhandled `DbUpdateException` for any user with quest/shop/transaction/trade/reminder history, since those FKs are `DeleteBehavior.NoAction`) — repurpose the group-admin "Delete" button to remove-from-group only, and add a SuperAdmin-only "disable account" action (reusing Identity's existing `LockoutEnd` mechanism) as the real way to deactivate a problem account without data loss — v6.1 (Phase 41)
 
 ---
 
@@ -91,7 +79,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 ## Context
 
-**Codebase:** ~56 450 lines added / ~6 374 removed in v5.0 (754 files touched, incl. the full EuphoriaInn→QuestBoard rename). ~13 717 lines added / ~535 removed in v6.0 (121 files touched, 28 tasks across 11 plans). Full codebase estimated 40 000–50 000 LOC C#/Razor.
+**Codebase:** ~56 450 lines added / ~6 374 removed in v5.0 (754 files touched, incl. the full EuphoriaInn→QuestBoard rename). ~13 717 lines added / ~535 removed in v6.0 (121 files touched, 28 tasks across 11 plans). ~2 720 lines added / ~597 removed in v6.1 (63 files touched, 37 tasks across 16 plans, 5 phases). Full codebase estimated 40 000–50 000 LOC C#/Razor.
 
 **Tech stack:**
 - ASP.NET Core 10 MVC with Razor views (`.cshtml`) and Razor components (`.razor`) for email templates
@@ -109,6 +97,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - BoardType lookup is implemented 3 times with near-identical logic (`QuestController.GetActiveBoardTypeAsync`, `QuestLogController.GetActiveBoardTypeAsync`, `BoardTypeResolver.GetBoardTypeAsync`) — verified safe (all three agree for every reachable request, since `GroupSessionMiddleware` guarantees a resolved `ActiveGroupId` for non-SuperAdmin users) but not consolidated onto the `IBoardTypeResolver` seam — v6.0 (Phase 37 integration audit)
 - Mobile nav (`_Layout.Mobile.cshtml`) has no Email Stats or Background Jobs link at all — pre-existing gap predating v6.0, not a regression; SuperAdmin can still reach both by direct URL on mobile, just without an in-app nav shortcut. Fix is ready-to-apply per `37-REVIEW.md` WR-01, not yet actioned — v6.0 (Phase 37)
 - Integration tests always override `IActiveGroupContext`/`IBoardTypeResolver` with a test double (`MutableGroupContext`), so no automated test exercises `Program.cs`'s real production DI graph end-to-end — a regression of the circular DI cycle fixed in Phase 37 wouldn't be caught by the current suite (mitigated once by a live `dotnet run` smoke test during verification, no permanent guard) — v6.0 (Phase 37)
+- `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` appears to be dead code — the Platform area's `_ViewStart.cshtml` unconditionally selects the desktop `_Layout.Platform`, unlike the root `_ViewStart.cshtml` which branches on `IsMobile`, so Platform `.Mobile.cshtml` view files actually render inside the desktop layout's chrome today. Two CSS file header comments (`platform-group.mobile.css`, `platform-users.mobile.css`) incorrectly claim otherwise. Discovered during Phase 42 research; deliberately left unfixed (toast partial was still wired into the unreachable layout for future-proofing) since it's a layout-selection bug unrelated to toasts — v6.1 (Phase 42 research)
 
 ## Constraints
 
@@ -180,4 +169,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-04 — Phase 42 (site-wide toast notification redesign) complete — v6.1 Bugfixes milestone's 5 phases all done*
+*Last updated: 2026-07-04 — v6.1 Bugfixes milestone shipped (5 phases, 16 plans, 37 tasks)*

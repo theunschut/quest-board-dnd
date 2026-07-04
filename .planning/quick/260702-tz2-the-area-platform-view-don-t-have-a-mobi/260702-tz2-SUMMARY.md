@@ -1,6 +1,7 @@
 ---
 phase: quick-260702-tz2
 plan: 01
+status: complete
 subsystem: ui
 tags: [razor-views, mobile-responsive, mvc-areas, bootstrap-offcanvas]
 

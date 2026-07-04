@@ -1,6 +1,7 @@
 ---
 phase: quick
 plan: 260420-bqj
+status: complete
 subsystem: planning
 tags: [planning, state-sync, roadmap]
 key-files:

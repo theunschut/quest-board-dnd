@@ -1,6 +1,7 @@
 ---
 phase: quick-260420-n5f
 plan: 01
+status: complete
 subsystem: account
 tags: [haskey, account-edit, viewmodel, user-facing]
 dependency_graph:
