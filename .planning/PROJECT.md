@@ -1,8 +1,15 @@
 # D&D Quest Board
 
-## Current State: v6.1 Shipped
+## Current Milestone: v7.0 Backlog Cleanup
 
-**Previous milestone shipped:** v6.1 Bugfixes — 2026-07-04
+**Goal:** Close out four standing backlog items — two mobile UI bugs and two long-deferred feature requests — restoring mobile parity and adding requested flexibility to post-finalization voting and character/profile image cropping.
+
+**Target features:**
+- Fix iOS Safari's `background-attachment: fixed` mobile background bug — content scrolls with the image instead of it staying fixed (#116)
+- Add the missing "Session Recap Available" badge to the mobile Quest Log list view, present on desktop (#115)
+- Post-finalization vote flexibility on One-Shot quests — no hard capacity block, waitlist promotion (Yes > Maybe > No, then signup time), and a targeted email only for players auto-promoted by someone else's action (#104)
+- Client-side crop-before-save UI applied to every image upload field (character photo, DM profile photo) — user picks the frame in-browser before the image is saved, and both the original and cropped image are stored so the character details page can keep showing the original (#78 / v1.0 Phase 8, deferred since v1.0 pending image-tooling verification)
+
 **Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
 **Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
 
@@ -63,7 +70,10 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 ### Active
 - [ ] Digest batching for session reminders — single combined email when player has multiple same-day quests (EMAIL-04/REMIND-02 — deferred; same-day quests have never occurred in one year)
-- [ ] Profile picture crop/avatar selection for guild member page (issue #78) — paused from v2.x; SkiaSharp native lib availability needs verification on deployment host
+- [ ] Mobile "fixed" background image scrolls with content on iOS Safari instead of staying fixed (issue #116)
+- [ ] Mobile Quest Log list view missing "Session Recap Available" badge present on desktop (issue #115)
+- [ ] Post-finalization vote changes and waitlist auto-promotion for One-Shot quests, with a targeted email for passively-promoted players (issue #104)
+- [ ] Client-side crop-before-save for character and DM profile photo uploads, storing both original and cropped image (issue #78 / v1.0 Phase 8) — paused since v1.0 pending image-tooling verification, now in progress
 - [ ] `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed
 
 ### Out of Scope
@@ -169,4 +179,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-04 — v6.1 Bugfixes milestone shipped (5 phases, 16 plans, 37 tasks)*
+*Last updated: 2026-07-04 — v7.0 Backlog Cleanup milestone started*
