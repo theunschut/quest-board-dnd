@@ -116,15 +116,6 @@ public class WebApplicationFactoryBase : WebApplicationFactory<Program>
 }
 
 /// <summary>
-/// No-op Hangfire client used in integration tests (Hangfire itself is not configured in Testing env).
-/// </summary>
-public class NoOpBackgroundJobClient : IBackgroundJobClient
-{
-    public string Create(Job job, IState state) => "test-job-id";
-    public bool ChangeState(string jobId, IState state, string? expectedStateName) => true;
-}
-
-/// <summary>
 /// Hangfire client used in integration tests that records every enqueued Job so tests can
 /// assert which email job (if any) was dispatched by a given action, instead of discarding it.
 /// </summary>

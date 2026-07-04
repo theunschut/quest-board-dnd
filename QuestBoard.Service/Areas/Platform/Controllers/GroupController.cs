@@ -160,7 +160,13 @@ public class GroupController(
             return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
 
-        var result = await userService.CreateOrAddToGroupAsync(user.Email!, user.Name, id, model.Role);
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            TempData["Error"] = "Selected user has no email address on file and cannot be added.";
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+        }
+
+        var result = await userService.CreateOrAddToGroupAsync(user.Email, user.Name, id, model.Role);
 
         switch (result.Outcome)
         {
