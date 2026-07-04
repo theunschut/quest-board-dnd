@@ -205,8 +205,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 41-03-PLAN.md — Platform UsersController + views + "Manage Users" entry point with self-disable guard (SAFE-02, SAFE-03)
-- [ ] 41-04-PLAN.md — Login disabled-vs-lockout message distinction (SAFE-04)
+- [x] 41-03-PLAN.md — Platform UsersController + views + "Manage Users" entry point with self-disable guard (SAFE-02, SAFE-03)
+- [x] 41-04-PLAN.md — Login disabled-vs-lockout message distinction (SAFE-04)
 
 </details>
 
@@ -260,7 +260,7 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
-| 41. Safe User Removal & Account Disable | v6.1 | 2/4 | In Progress|  |
+| 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete   | 2026-07-04 |
 
 ### Phase 42: Site-Wide Toast Notification Redesign
 
