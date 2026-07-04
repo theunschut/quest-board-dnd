@@ -267,12 +267,12 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 **Goal:** All TempData flash messages app-wide render through one shared Bootstrap toast mechanism — a single `_Toasts.cshtml` partial wired into all 5 layouts — replacing ~26 views' duplicated static alert banners and local Shop toast markup, with a new Info type and standardized TempData keys.
 **Requirements**: None (deferred-idea promotion from Phase 39; no REQ-IDs mapped)
 **Depends on:** Phase 41
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 42-01-PLAN.md — Shared `_Toasts.cshtml` partial + all 5 layouts wired + `RedirectWithInfo` + AccountController key standardization + site.js init consolidation
+- [x] 42-01-PLAN.md — Shared `_Toasts.cshtml` partial + all 5 layouts wired + `RedirectWithInfo` + AccountController key standardization + site.js init consolidation
 
 **Wave 2** *(blocked on Wave 1; all four run in parallel — disjoint files)*
 
