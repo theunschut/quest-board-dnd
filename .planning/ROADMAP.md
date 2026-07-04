@@ -195,7 +195,13 @@ Plans:
   4. A SuperAdmin can re-enable a previously disabled account, restoring login access
   5. A disabled user attempting to log in sees a message that does not falsely imply a 15-minute temporary lockout
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 41-01-PLAN.md — Group-scoped removal: repurpose AdminController.DeleteUser + rename "Remove from Group" (SAFE-01)
+- [ ] 41-02-PLAN.md — Disable/enable service primitives (IIdentityService) + SecurityStampValidator 5-min interval (SAFE-02, SAFE-03)
+- [ ] 41-03-PLAN.md — Platform UsersController + views + "Manage Users" entry point with self-disable guard (SAFE-02, SAFE-03)
+- [ ] 41-04-PLAN.md — Login disabled-vs-lockout message distinction (SAFE-04)
 
 </details>
 
@@ -249,7 +255,7 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
-| 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |
+| 41. Safe User Removal & Account Disable | v6.1 | 0/4 | Planned | — |
 
 ### Phase 42: Site-Wide Toast Notification Redesign
 
