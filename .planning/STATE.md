@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: Bugfixes
-current_phase: 42
-status: milestone_complete_pending_archive
-stopped_at: Phase 42 complete — v6.1 milestone (5 phases) fully done, pending /gsd-complete-milestone
-last_updated: "2026-07-04T15:31:23.756Z"
+current_phase: 1
+status: Awaiting next milestone
+stopped_at: Phase 42 complete — v6.1 milestone (5 phases) fully done, pending `/gsd-complete-milestone`
+last_updated: "2026-07-04T16:01:18.616Z"
 last_activity: 2026-07-04
-last_activity_desc: Phase 42 complete
+last_activity_desc: Milestone v6.1 completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-04 — Phase 42 complete, v6.1 milest
 
 ## Current Position
 
-Phase: 42 (Site-Wide Toast Notification Redesign) — COMPLETE
-Plan: 5/5 complete
-Status: v6.1 Bugfixes milestone complete — pending archive
-Last activity: 2026-07-04 — Phase 42 complete, UAT approved, all 5 v6.1 phases done
+Phase: Milestone v6.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-04 — Milestone v6.1 completed and archived
 
 ## Performance Metrics
 
@@ -122,4 +122,4 @@ Next step: Run `/gsd-complete-milestone v6.1` to archive the milestone and prepa
 
 ## Operator Next Steps
 
-- v6.1 Bugfixes milestone is fully complete — all 5 phases (38-42) executed, verified, and UAT-approved. Run `/gsd-complete-milestone v6.1` to archive the milestone and start the next one.
+- Start the next milestone with /gsd-new-milestone

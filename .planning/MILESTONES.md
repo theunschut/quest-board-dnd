@@ -1,5 +1,28 @@
 # Milestones — D&D Quest Board
 
+## v6.1 Bugfixes (Shipped: 2026-07-04)
+
+**Phases completed:** 5 phases, 16 plans, 37 tasks
+
+**Key accomplishments:**
+
+- Closed a live cross-tenant PII leak by scoping `AdminController.Users()` to the active group and hardening the four role-change POST actions against out-of-group `userId` tampering, proven by a passing regression test.
+- Domain-layer `IUserService.CreateOrAddToGroupAsync` resolving four collision outcomes (new account, added-to-group, added-to-group-stranded-account, already-member) via throw-on-collision membership add, fully unit-tested with NSubstitute.
+- New AddedToGroup.razor email component (Welcome.razor's visual shell, token-free Log In CTA) plus its GroupMembershipAddedEmailJob Hangfire dispatcher, and a RedirectWithWarning/alert-warning flash pair for the Admin Users page
+- AdminController.CreateUser now branches on CreateOrAddToGroupAsync's five-outcome result to drive new-account creation, silent collision auto-add with a token-free notification email, stranded-account SetPassword resend, and an already-member warning flash — closing CREATE-01 through CREATE-04.
+- Two-column Platform Members page (current members left, searchable non-members right) with a Create New User modal, later extended mid-checkpoint with a matching server-side search on the Current Members list, dual-search-preservation across every Add/Remove/Create action, and header restructures on both Members and Group Management pages.
+- Repurposed the group-admin "Delete" user action to a reversible group-scoped removal via `IGroupService.RemoveMemberAsync`, replacing the hard-delete that previously cascaded a user out of every group and threw an unhandled `DbUpdateException` for users with quest/shop/transaction/reminder history.
+- Three new `IIdentityService` methods (`DisableUserAsync`, `EnableUserAsync`, `GetLockoutEndAsync`) built on Identity's existing `LockoutEnd` field, plus an app-wide `SecurityStampValidatorOptions.ValidationInterval` shortened to 5 minutes to bound how fast a disabled account's active session is force-expired.
+- New SuperAdmin-only `Areas/Platform/Controllers/UsersController` (Index/Disable/Enable) with desktop + mobile cross-group user list views, a "Manage Users" entry point on the Group Index header, and integration tests proving disable sets the lockout sentinel without deleting data while self-disable is blocked and peer-SuperAdmin disable is allowed.
+- `AccountController.Login`'s `IsLockedOut` branch now composes `GetIdByEmailAsync` + `GetLockoutEndAsync` and branches on an exact `== DateTimeOffset.MaxValue` comparison to show "This account has been disabled. Contact an administrator." for a disabled account while leaving the "...Try again in 15 minutes." copy unchanged for an ordinary temporary lockout.
+- Built a single shared `_Toasts.cshtml` partial (4 generic types + bespoke GoldReceived) wired into all 5 layouts, added a `RedirectWithInfo` controller helper, and standardized AccountController's TempData keys — the foundation Wave 2 migration plans depend on.
+- Removed local Bootstrap toast markup and duplicate init scripts from all 4 Shop views (Index/Details, desktop + mobile), delegating Success/Error/GoldReceived rendering to the shared `_Toasts.cshtml` partial while leaving the Mystical Merchant novelty toast completely untouched.
+- Removed local `alert alert-dismissible` flash banners from all 6 Platform-area views (Group Index/Members, Users Index — desktop + mobile), relying on the shared `_Toasts.cshtml` partial wired into the Platform layout pair by Plan 01.
+- Removed local flash-banner markup from all 6 Account views (Login, ForgotPassword, Profile — desktop + mobile), completing the Account-area migration onto the shared toast partial, including Profile's outlier `SuccessMessage`-keyed block.
+- Removed the last 3 root-layout views' local TempData `alert-dismissible` flash markup (Admin Users, Quest Manage desktop + mobile), completing the app-wide migration to the shared toast partial from Plan 01.
+
+---
+
 ## v6.0 Board Types (Campaign Mode) (Shipped: 2026-07-03)
 
 **Phases completed:** 3 phases, 11 plans, 28 tasks
