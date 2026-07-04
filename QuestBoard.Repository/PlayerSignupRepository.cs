@@ -32,6 +32,10 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
 
         var wasSelected = entity.IsSelected;
 
+        // Only a selected Player-role signup frees a seat that counts against TotalPlayerCount;
+        // the waitlist candidate pool and seat capacity are both scoped to Player.
+        var wasSelectedPlayer = wasSelected && entity.SignupRole == (int)SignupRole.Player;
+
         var existingVote = entity.DateVotes.FirstOrDefault(dv => dv.ProposedDateId == proposedDateId);
 
         if (existingVote != null)
@@ -59,7 +63,7 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
 
         await DbContext.SaveChangesAsync(cancellationToken);
 
-        return wasSelected && vote == VoteType.No;
+        return wasSelectedPlayer && vote == VoteType.No;
     }
 
     /// <inheritdoc/>
