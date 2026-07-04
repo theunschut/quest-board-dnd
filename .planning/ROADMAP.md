@@ -136,7 +136,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   1. On an iOS Safari session (real device or real-device cloud — devtools emulation does not count), the page background stays visually fixed in place while content scrolls over it, instead of scrolling with the content
   2. The mobile Quest Log list view shows a "Session Recap Available" badge on any quest that has a recap, matching what desktop already shows
   3. Both fixes are verified against actual mobile browser behavior (not just responsive-mode screenshots), since this exact bug class has escaped desktop/emulation testing before in this codebase
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 43-01-PLAN.md — Fix iOS Safari fixed-background scroll bug via body::before layer in site.css + mobile.css (MOBILE-01)
+- [ ] 43-02-PLAN.md — Add "Session Recap Available" amber/gold badge to mobile Quest Log (Index.Mobile.cshtml + quest-log.mobile.css) (MOBILE-02)
 **UI hint**: yes
 
 ### Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion
