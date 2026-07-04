@@ -31,4 +31,20 @@ public interface IQuestEmailDispatcher
         string dmName,
         DateTime oldDate,
         DateTime newDate);
+
+    /// <summary>
+    /// Enqueues a background job to email the single player who was auto-promoted off the
+    /// waitlist into a freed seat. Deliberately takes a singular recipient/name pair (not
+    /// arrays) so this method can never broadcast to more than one player.
+    /// </summary>
+    void EnqueueWaitlistPromotedEmail(
+        int questId,
+        int groupId,
+        DateTime finalizedDate,
+        string recipientEmail,
+        string playerName,
+        string questTitle,
+        string dmName,
+        string questDescription,
+        int challengeRating);
 }

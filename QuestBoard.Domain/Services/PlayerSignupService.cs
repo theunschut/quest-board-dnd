@@ -44,10 +44,4 @@ internal class PlayerSignupService(IPlayerSignupRepository repository, IMapper m
         playerSignup.CharacterId = characterId;
         await repository.UpdateAsync(playerSignup, cancellationToken);
     }
-
-    /// <inheritdoc/>
-    public async Task ChangeVoteToYesAndSelectAsync(int playerSignupId, int proposedDateId, CancellationToken cancellationToken = default)
-    {
-        await repository.ChangeVoteAsync(playerSignupId, proposedDateId, QuestBoard.Domain.Enums.VoteType.Yes, cancellationToken);
-    }
 }
