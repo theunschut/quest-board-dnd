@@ -262,14 +262,14 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A SuperAdmin who adds an existing user to a group via the Platform Members-page available-users panel (`GroupController.AddMember`) receives a notification email — the confirmed-account "you've been added to {group}" email or, for a stranded/unconfirmed account, the welcome email with a set-password link — by rerouting `AddMember` through the same `UserService.CreateOrAddToGroupAsync` shared method that `CreateMember` and `AdminController.CreateUser` already use, so all three add-to-group entry points behave identically.
+**Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 47-CONTEXT.md decisions D-01–D-06)
 **Depends on:** Phase 46
-**Plans:** 2/2 plans complete
+**Plans:** 1 plan
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 47 to break down)
+- [ ] 47-01-PLAN.md — Reroute AddMember through CreateOrAddToGroupAsync with per-outcome email dispatch, plus regression tests asserting the correct email job is enqueued
 
 ### Phase 48: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
 
