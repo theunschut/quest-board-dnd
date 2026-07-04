@@ -262,11 +262,11 @@ Plans:
 
 ### Phase 48: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A SuperAdmin can click an "Open Board" button on any group row at `/platform/group` (desktop and mobile) to set that group active and land directly on its quest board, reusing `GroupPickerController.SelectGroup` verbatim — no `/groups/pick` detour and no new backend code.
+**Requirements**: TBD (ad-hoc phase — no REQ-IDs; source of truth is 48-CONTEXT.md decisions D-01–D-04)
 **Depends on:** Phase 47
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 48 to break down)
+- [ ] 48-01-PLAN.md — Add "Open Board" POST-form button (left of Members) to the desktop and mobile Platform Group index views, plus human verification
