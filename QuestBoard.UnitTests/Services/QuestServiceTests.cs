@@ -367,6 +367,25 @@ public class QuestServiceTests
     }
 
     [Fact]
+    public async Task ChangeVoteAsync_SelectedSpectatorVotesNo_DoesNotPromote()
+    {
+        // Arrange: a selected Spectator votes No. Spectator seats are not part of
+        // TotalPlayerCount, so the repository correctly reports no seat freed (false), and
+        // QuestService must not attempt a promotion off that signal.
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.No, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.No, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        await _playerSignupRepository.DidNotReceive().UpdateAsync(Arg.Any<PlayerSignup>(), Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
     public async Task ChangeVoteAsync_WaitlistedPlayerVotesNo_StaysWaitlistedEvenWithSeatAvailable()
     {
         // Arrange: a waitlisted player votes No while a seat is free — a No vote must never
@@ -402,6 +421,29 @@ public class QuestServiceTests
 
         // Assert
         await _playerSignupRepository.Received(1).RemoveAsync(waitlisted, Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task RevokeSignupAsync_WhenRevokedSignupWasSelectedAssistantDM_DoesNotPromote()
+    {
+        // Arrange: the revoked signup is a selected Assistant DM, not a Player — Assistant DM
+        // seats are not part of TotalPlayerCount, so no Player seat was actually freed.
+        var revoked = MakeSignup(1, "assistantdm@x.com", role: SignupRole.AssistantDM, isSelected: true);
+        var waitlistedPlayer = MakeSignup(2, "waitlisted@x.com", isSelected: false);
+        var quest = MakeFinalizedQuest(1, [revoked, waitlistedPlayer], totalPlayerCount: 4);
+
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+
+        // Act
+        await _sut.RevokeSignupAsync(1, 1, TestContext.Current.CancellationToken);
+
+        // Assert: no promotion attempted for the unrelated waitlisted Player
+        await _playerSignupRepository.Received(1).RemoveAsync(revoked, Arg.Any<CancellationToken>());
+        await _playerSignupRepository.DidNotReceive().UpdateAsync(Arg.Any<PlayerSignup>(), Arg.Any<CancellationToken>());
         _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());

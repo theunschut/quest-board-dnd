@@ -172,6 +172,49 @@ public class PlayerSignupRepositoryTests
         persisted.IsSelected.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ChangeVoteAsync_SelectedAssistantDMVotesNo_SetsIsSelectedFalseButReturnsFalse()
+    {
+        // Arrange: a selected Assistant DM signup votes No. Assistant DM seats are not part of
+        // TotalPlayerCount, so the seat-freed signal must not fire even though IsSelected still
+        // clears for the signup itself.
+        await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedAssistantDMVotesNo_SetsIsSelectedFalseButReturnsFalse));
+        var signup = MakeSignupEntity(1, questId: 1, isSelected: true, role: SignupRole.AssistantDM);
+        context.PlayerSignups.Add(signup);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var seatFreed = await repository.ChangeVoteAsync(1, proposedDateId: 5, VoteType.No, TestContext.Current.CancellationToken);
+
+        // Assert: no promotion signal for a non-Player role, even though the signup itself unselects
+        seatFreed.Should().BeFalse();
+        var persisted = await context.PlayerSignups.FirstAsync(ps => ps.Id == 1, TestContext.Current.CancellationToken);
+        persisted.IsSelected.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ChangeVoteAsync_SelectedSpectatorVotesNo_SetsIsSelectedFalseButReturnsFalse()
+    {
+        // Arrange: a selected Spectator signup votes No. Spectator seats are not part of
+        // TotalPlayerCount, so the seat-freed signal must not fire.
+        await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedSpectatorVotesNo_SetsIsSelectedFalseButReturnsFalse));
+        var signup = MakeSignupEntity(1, questId: 1, isSelected: true, role: SignupRole.Spectator);
+        context.PlayerSignups.Add(signup);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var seatFreed = await repository.ChangeVoteAsync(1, proposedDateId: 5, VoteType.No, TestContext.Current.CancellationToken);
+
+        // Assert: no promotion signal for a non-Player role, even though the signup itself unselects
+        seatFreed.Should().BeFalse();
+        var persisted = await context.PlayerSignups.FirstAsync(ps => ps.Id == 1, TestContext.Current.CancellationToken);
+        persisted.IsSelected.Should().BeFalse();
+    }
+
     // -------------------------------------------------------------------
     // GetTopWaitlistedCandidateAsync
     // -------------------------------------------------------------------
