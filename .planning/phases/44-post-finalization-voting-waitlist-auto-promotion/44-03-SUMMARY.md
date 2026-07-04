@@ -37,23 +37,24 @@ key-decisions:
 patterns-established:
   - "Vote Yes/Maybe/No buttons always render in a d-flex justify-content-between row with Revoke on the left, matching D-02 on both desktop and mobile."
 
-requirements-completed: []  # Task 4 (human-verify checkpoint) not yet resolved — see below.
+requirements-completed: [VOTE-01, VOTE-02, VOTE-04, VOTE-05, VOTE-06, VOTE-07]
 
 # Metrics
-duration: (in progress — checkpoint pending)
-completed: (pending)
-status: in_progress
+duration: ~2.5 hours (across three checkpoint rounds)
+completed: 2026-07-04
+status: complete
 ---
 
 # Phase 44 Plan 03: Post-Finalization Vote UI + Controller Wiring Summary
 
-**QuestController.ChangeVote(id, vote) replaces ChangeVoteToYes with capacity-free voting; desktop and mobile both render the waitlist via the shared OrderWaitlist extension with Vote Yes/Maybe/No buttons alongside Revoke — Task 4's human-verify checkpoint is next.**
+**QuestController.ChangeVote(id, vote) replaces ChangeVoteToYes with capacity-free voting; desktop and mobile both render the waitlist via the shared OrderWaitlist extension with Vote Yes/Maybe/No buttons alongside Revoke — human verified end to end after two rounds of fixes.**
 
 ## Performance
 
 - **Started:** 2026-07-04T22:43:00Z (approx, worktree spawn)
-- **Tasks:** 3 of 4 complete (Task 4 is a blocking human-verify checkpoint, not yet reached/resolved)
-- **Files modified:** 3
+- **Completed:** 2026-07-04T23:17:56Z
+- **Tasks:** 4 of 4 complete (Task 4 human-verify checkpoint approved after two fix rounds)
+- **Files modified:** 5 (3 original + 2 added during checkpoint fix rounds: `QuestService.cs`, `QuestServiceTests.cs`)
 
 ## Accomplishments
 - Replaced `QuestController.ChangeVoteToYes(int id)` with `ChangeVote(int id, VoteType vote)`: validates the vote enum with `Enum.IsDefined`, resolves only the caller's own signup (never a client-supplied signup id), and never rejects on capacity — delegates entirely to `questService.ChangeVoteAsync`
@@ -72,8 +73,9 @@ Each task was committed atomically:
 1. **Task 1: Replace ChangeVoteToYes with ChangeVote(id, vote); wire RevokeSignup to promotion** - `96e2b8a` (feat)
 2. **Task 2: Desktop Details.cshtml — centralized ordering + 3-button vote UI (D-01/D-02)** - `d31b631` (feat)
 3. **Task 3: Mobile Details.Mobile.cshtml — new waitlist section + 3-button vote UI (D-05)** - `5344801` (feat)
+4. **Task 4: Human verification — desktop + mobile vote/waitlist/promotion flow** - approved after two checkpoint fix rounds: `5c6e241` (fix — remove duplicate vote buttons) and `d26cf73` (fix — Maybe fills open seat)
 
-_Task 4 (human-verify checkpoint) has not been reached/resolved yet — the plan is paused pending human verification. Plan metadata / docs commit is applied by the orchestrator after all wave agents complete, per worktree execution mode._
+Plan metadata / docs commit is applied by the orchestrator after all wave agents complete, per worktree execution mode.
 
 ## Files Created/Modified
 - `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` - `ChangeVote(int id, VoteType vote)` replaces `ChangeVoteToYes`; `RevokeSignup` now calls `questService.RevokeSignupAsync`
@@ -86,7 +88,26 @@ _Task 4 (human-verify checkpoint) has not been reached/resolved yet — the plan
 
 ## Deviations from Plan
 
-None - plan executed exactly as written for Tasks 1-3.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Removed duplicate vote buttons from the desktop waitlist table**
+- **Found during:** Task 4 human-verify checkpoint, round 1
+- **Issue:** Task 2's rewrite of the waitlist action cell added a second, redundant copy of the three Vote Yes/Maybe/No buttons per-row in the waitlist table, duplicating the single authoritative Revoke/vote row at the bottom of the page (D-02 calls for one location, not two).
+- **Fix:** Removed the `<th>Action</th>` header and the per-row `isCurrentUser` vote-buttons `<td>` block from the waitlist table; verified mobile needed no equivalent change.
+- **Files modified:** `QuestBoard.Service/Views/Quest/Details.cshtml`
+- **Commit:** `5c6e241`
+
+### User-Confirmed Behavior Extension
+
+**2. [Rule 4 - Architectural, user-approved] Maybe vote can also fill an open seat**
+- **Found during:** Task 4 human-verify checkpoint, round 2
+- **Issue:** The shipped behavior (only Yes fills an open seat; Maybe never promotes) was a symmetric-but-stricter read of VOTE-05 than the user intended. Live testing showed a waitlisted player voting Maybe stayed waitlisted even with a free seat, which surprised the tester.
+- **Resolution:** Confirmed directly with the user mid-checkpoint — the user explicitly wants a waitlisted player's Maybe vote to also claim a free seat, exactly like Yes does; only No (or no free seat) should leave a player waitlisted. This is a genuine scope extension beyond the plan text, approved by the user rather than an inferred fix.
+- **Fix:** Widened `ChangeVoteAsync`'s seat-granting condition from `vote == VoteType.Yes` to `vote == VoteType.Yes || vote == VoteType.Maybe`; added two new unit tests covering the widened and still-excluded (No) paths.
+- **Files modified:** `QuestBoard.Domain/Services/QuestService.cs`, `QuestBoard.UnitTests/Services/QuestServiceTests.cs`
+- **Commit:** `d26cf73`
+
+Tasks 1-3 were executed exactly as written with no deviations.
 
 ## Issues Encountered
 - One pre-existing integration test (`AdminControllerIntegrationTests.SendConfirmationEmail_Post_WhenUserUnconfirmed_ShouldRedirectToUsersWithSuccess`) failed with `429 TooManyRequests` instead of `302 Found` on the full `dotnet test` run — a rate-limit-policy test-ordering flake in an unrelated controller, already documented as out-of-scope in Plan 02's SUMMARY.md. Not fixed here either; not caused by this plan's changes. All 155 unit tests passed cleanly.
@@ -96,17 +117,35 @@ None - plan executed exactly as written for Tasks 1-3.
 None - no external service configuration required.
 
 ## Next Phase Readiness
-- Task 4 (blocking human-verify checkpoint) is next: the human must run the app against a finalized, fully-seated One-Shot quest and exercise the Vote Yes/Maybe/No + waitlist + promotion flow on both desktop and mobile, then confirm the promotion email reaches only the promoted player.
-- Per this project's own standing note in PROJECT.md, real-device/worktree checkpoints must be tested only after this plan's worktree branch is merged back into the working branch — the running dev server otherwise sees stale (pre-fix) code.
-- No blockers for Tasks 1-3; all acceptance criteria for those tasks were verified against source before committing.
+- Task 4 (blocking human-verify checkpoint) is **complete and approved**. All four tasks in this plan are done; no further action needed on this plan.
+- Per this project's own standing note in PROJECT.md, real-device/worktree checkpoints were tested only after this plan's worktree branch was merged back into the working branch, avoiding stale (pre-fix) code in the dev server.
+- No outstanding blockers. All acceptance criteria for Tasks 1-3 were verified against source before committing, and Task 4's human verification confirmed correct end-to-end behavior after two rounds of fixes.
 
 ---
 *Phase: 44-post-finalization-voting-waitlist-auto-promotion*
-*Completed: (pending — Task 4 checkpoint outstanding)*
+*Completed: 2026-07-04*
+
+## Human Verification
+
+Task 4's blocking human-verify checkpoint is **approved**. The user ran the app against a finalized, fully-seated One-Shot quest and exercised the full vote/waitlist/promotion flow on both desktop and mobile across two rounds of fixes:
+
+- **Round 1 fix** (`5c6e241`): removed a duplicate per-row Vote Yes/Maybe/No button set from the desktop waitlist table that was redundant with the single authoritative Revoke/vote button row at the bottom of the page.
+- **Round 2 fix** (`d26cf73`): extended Maybe to also fill an open seat (not just Yes), per the user's explicit confirmation mid-checkpoint that a waitlisted player voting Maybe should be auto-selected immediately if a seat is free — a deliberate behavior extension beyond the original plan text, confirmed directly with the user rather than inferred.
+
+After re-testing both fixes, the user approved the checkpoint with no further issues reported. VOTE-01 through VOTE-07 all behave correctly on desktop and mobile, and the promotion email reaches only the promoted player.
 
 ## Self-Check: PASSED
 
-All 3 modified files verified present on disk with the expected content (`ChangeVote`, `OrderWaitlist`, `changeVote(` JS in each view as applicable); all 3 task commit hashes (`96e2b8a`, `d31b631`, `5344801`) verified present in `git log`.
+All 5 modified files verified present on disk with the expected content (`ChangeVote`, `OrderWaitlist`, `changeVote(` JS in each view as applicable, and the widened `vote == VoteType.Yes || vote == VoteType.Maybe` seat-granting condition in `QuestService.cs`). All task and fix commit hashes verified present in `git log`:
+
+- `96e2b8a` (Task 1 — ChangeVote/RevokeSignup wiring)
+- `d31b631` (Task 2 — desktop ordering + vote UI)
+- `5344801` (Task 3 — mobile waitlist + vote UI)
+- `c300aaf` (docs — in-progress summary, tasks 1-3)
+- `5c6e241` (checkpoint fix round 1 — remove duplicate vote buttons)
+- `f4c9fe6` (docs — checkpoint feedback note)
+- `d26cf73` (checkpoint fix round 2 — Maybe fills open seat)
+- `932fcea` (docs — Maybe-fills-open-seat behavior extension)
 
 ## Checkpoint Feedback Round 1 (Task 4 re-verification pending)
 
@@ -130,7 +169,7 @@ All 3 modified files verified present on disk with the expected content (`Change
 
 **Commit:** `5c6e241` (fix)
 
-**Status:** Task 4 human-verify checkpoint is being re-presented for another verification pass. Not yet approved.
+**Status:** Superseded — see round 2 below and the final "Human Verification" section above. This fix was carried forward and re-verified as part of the final approval.
 
 ## Behavior Extension — Round 2 of Task 4 Checkpoint (Maybe Can Also Fill an Open Seat)
 
@@ -148,6 +187,6 @@ The orchestrator confirmed the original design intent with the user directly: th
 - `dotnet test --filter FullyQualifiedName~QuestServiceTests` — 16/16 passed, including the two new tests and the unchanged `ChangeVoteAsync_SelectedPlayerVotesMaybe_DoesNotPromote`
 - `dotnet test --no-build` (full suite) — 291/292 passed; the only failure is the same pre-existing `AdminControllerIntegrationTests.SendConfirmationEmail_Post_WhenUserUnconfirmed_ShouldRedirectToUsersWithSuccess` rate-limit-policy flake already documented in Plan 02's and this plan's original SUMMARY sections, unrelated to this change
 
-**Task 4 checkpoint status:** Still outstanding — this fix must go through another round of human verification before the checkpoint can be marked resolved. Do not treat this SUMMARY update as closing Task 4.
+**Task 4 checkpoint status:** Resolved — this fix was re-verified by the user alongside the round 1 fix, and the checkpoint was approved with no further issues. See the "Human Verification" section above for the final approval record.
 
 **Commit:** `d26cf73` — `fix(44-03): let a Maybe vote also fill an open seat, not just Yes`
