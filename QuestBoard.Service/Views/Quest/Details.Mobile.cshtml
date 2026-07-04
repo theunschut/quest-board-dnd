@@ -1,4 +1,5 @@
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @using QuestBoard.Service.ViewModels.CalendarViewModels
@@ -25,6 +26,13 @@
     allSelectedParticipants.AddRange(selectedPlayers);
     allSelectedParticipants.AddRange(selectedAssistants);
     allSelectedParticipants.AddRange(selectedSpectators);
+
+    var finalizedProposedDate = Model.Quest?.IsFinalized == true && Model.Quest.FinalizedDate != null
+        ? Model.Quest.ProposedDates.FirstOrDefault(pd => pd.Date.Date == Model.Quest.FinalizedDate.Value.Date)
+        : null;
+    var waitlistPlayers = finalizedProposedDate != null
+        ? Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderWaitlist(finalizedProposedDate.Id).ToList() ?? []
+        : Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
 }
 @section Styles {
     <link href="~/css/quests.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -202,6 +210,49 @@
         </div>
     }
 
+    @* Waitlist (finalized quests) *@
+    @if (Model.Quest?.IsFinalized == true && waitlistPlayers.Count > 0)
+    {
+        <div class="participant-list-mobile mb-3">
+            <h6 class="text-muted text-uppercase mb-2">
+                <i class="fas fa-hourglass-half me-1"></i>Waitlist
+            </h6>
+            @foreach (var player in waitlistPlayers)
+            {
+                var isCurrentUser = player.Player.Id == currentUserId;
+                var playerVote = player.DateVotes
+                    ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDate?.Id)?.Vote;
+                <div class="participant-row d-flex justify-content-between align-items-center py-2 border-bottom @(isCurrentUser ? "bg-dark rounded px-2" : "")">
+                    <div>
+                        <span class="fw-bold">@player.Player.Name</span>
+                        @if (isCurrentUser)
+                        {
+                            <span class="badge bg-info ms-1">You</span>
+                        }
+                        <br>
+                        <small class="text-muted">@(player.Character?.Name ?? "No character")</small>
+                    </div>
+                    @if (playerVote == VoteType.Yes)
+                    {
+                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+                    }
+                    else if (playerVote == VoteType.Maybe)
+                    {
+                        <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+                    }
+                    else if (playerVote == VoteType.No)
+                    {
+                        <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>No Vote</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+
     @* DM controls link *@
     @if (canManage)
     {
@@ -211,13 +262,35 @@
         </a>
     }
 
-    @* Revoke signup *@
+    @* Revoke signup + vote change (Revoke left, votes right) *@
     @if (User.Identity?.IsAuthenticated == true && isPlayerSignedUp)
     {
-        <button type="button" class="btn btn-danger w-100 mt-2"
-                onclick="revokeSignup(@Model.Quest?.Id)">
-            <i class="fas fa-times me-2"></i>Revoke Signup
-        </button>
+        @if (Model.Quest?.IsFinalized == true)
+        {
+            <div class="d-flex justify-content-between gap-2 mt-2">
+                <button type="button" class="btn btn-danger" onclick="revokeSignup(@Model.Quest?.Id)">
+                    <i class="fas fa-times me-2"></i>Revoke
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success" onclick="changeVote(@Model.Quest?.Id, 2)">
+                        <i class="fas fa-check me-2"></i>Yes
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="changeVote(@Model.Quest?.Id, 1)">
+                        <i class="fas fa-question me-2"></i>Maybe
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="changeVote(@Model.Quest?.Id, 0)">
+                        <i class="fas fa-times me-2"></i>No
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <button type="button" class="btn btn-danger w-100 mt-2"
+                    onclick="revokeSignup(@Model.Quest?.Id)">
+                <i class="fas fa-times me-2"></i>Revoke Signup
+            </button>
+        }
     }
 
 </div>
@@ -236,6 +309,27 @@
                 else { res.text().then(text => { alert(`Failed to revoke signup: ${text}`); }); }
             }).catch(err => { alert("An error occurred while revoking signup."); });
         }
+    }
+
+    function changeVote(questId, vote) {
+        const formData = new FormData();
+        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+        formData.append('vote', vote);
+
+        fetch(`/Quest/ChangeVote/${questId}`, {
+            method: "POST",
+            body: formData
+        }).then(res => {
+            if (res.ok) {
+                location.reload();
+            } else {
+                res.text().then(text => {
+                    alert(`Failed to change vote: ${text}`);
+                });
+            }
+        }).catch(err => {
+            alert("An error occurred while changing vote.");
+        });
     }
 </script>
 }
