@@ -179,4 +179,37 @@ internal class IdentityService(UserManager<UserEntity> userManager, SignInManage
 
     /// <inheritdoc/>
     public Task SignOutAsync() => signInManager.SignOutAsync();
+
+    /// <inheritdoc/>
+    public async Task<IdentityResult> DisableUserAsync(int userId)
+    {
+        var entity = await userManager.FindByIdAsync(userId.ToString());
+        if (entity == null)
+            return IdentityResult.Failed(new IdentityError { Description = "User not found." });
+
+        await userManager.SetLockoutEndDateAsync(entity, DateTimeOffset.MaxValue);
+        // Bump the security stamp so any already-issued auth cookie for this account is invalidated on next re-validation.
+        await userManager.UpdateSecurityStampAsync(entity);
+        return IdentityResult.Success;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IdentityResult> EnableUserAsync(int userId)
+    {
+        var entity = await userManager.FindByIdAsync(userId.ToString());
+        if (entity == null)
+            return IdentityResult.Failed(new IdentityError { Description = "User not found." });
+
+        // No security stamp bump needed here — a disabled user has no active session to invalidate,
+        // since they were already blocked from signing in.
+        await userManager.SetLockoutEndDateAsync(entity, null);
+        return IdentityResult.Success;
+    }
+
+    /// <inheritdoc/>
+    public async Task<DateTimeOffset?> GetLockoutEndAsync(int userId)
+    {
+        var entity = await userManager.FindByIdAsync(userId.ToString());
+        return entity?.LockoutEnd;
+    }
 }

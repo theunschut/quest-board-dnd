@@ -104,4 +104,19 @@ public interface IIdentityService
     /// Signs the current user out of their authentication session.
     /// </summary>
     Task SignOutAsync();
+
+    /// <summary>
+    /// Disables the user's account by setting a permanent lockout end and invalidating any already-issued auth cookie.
+    /// </summary>
+    Task<IdentityResult> DisableUserAsync(int userId);
+
+    /// <summary>
+    /// Re-enables a previously disabled account by clearing its lockout end.
+    /// </summary>
+    Task<IdentityResult> EnableUserAsync(int userId);
+
+    /// <summary>
+    /// Returns the user's current lockout end value, or null if the user is not found or has none set.
+    /// </summary>
+    Task<DateTimeOffset?> GetLockoutEndAsync(int userId);
 }
