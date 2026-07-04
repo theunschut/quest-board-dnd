@@ -59,26 +59,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MOBILE-01 | TBD | Pending |
-| MOBILE-02 | TBD | Pending |
-| VOTE-01 | TBD | Pending |
-| VOTE-02 | TBD | Pending |
-| VOTE-03 | TBD | Pending |
-| VOTE-04 | TBD | Pending |
-| VOTE-05 | TBD | Pending |
-| VOTE-06 | TBD | Pending |
-| VOTE-07 | TBD | Pending |
-| IMAGE-01 | TBD | Pending |
-| IMAGE-02 | TBD | Pending |
-| IMAGE-03 | TBD | Pending |
-| IMAGE-04 | TBD | Pending |
-| IMAGE-05 | TBD | Pending |
+| MOBILE-01 | Phase 43 | Pending |
+| MOBILE-02 | Phase 43 | Pending |
+| VOTE-01 | Phase 44 | Pending |
+| VOTE-02 | Phase 44 | Pending |
+| VOTE-03 | Phase 44 | Pending |
+| VOTE-04 | Phase 44 | Pending |
+| VOTE-05 | Phase 44 | Pending |
+| VOTE-06 | Phase 44 | Pending |
+| VOTE-07 | Phase 44 | Pending |
+| IMAGE-01 | Phase 46 | Pending |
+| IMAGE-02 | Phase 45 | Pending |
+| IMAGE-03 | Phase 45 | Pending |
+| IMAGE-04 | Phase 46 | Pending |
+| IMAGE-05 | Phase 46 | Pending |
 
 **Coverage:**
 - v1 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14 ⚠️ (roadmap creation pending)
+- Mapped to phases: 14
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-04*
-*Last updated: 2026-07-04 after initial definition*
+*Last updated: 2026-07-04 after roadmap creation (v7.0 Phases 43–46)*

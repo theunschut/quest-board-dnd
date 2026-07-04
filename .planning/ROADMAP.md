@@ -9,8 +9,9 @@
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
 - ✅ **v6.1 Bugfixes** — Phases 38–42 (shipped 2026-07-04)
+- 🚧 **v7.0 Backlog Cleanup** — Phases 43–46 (in progress)
 
-_Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it is not assigned to any active milestone._
+_Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; issue #78 is now delivered by v7.0 Phases 45–46._
 
 ## Phases
 
@@ -26,7 +27,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 - [x] Phase 5: Shop Filter & Sort — 2/2 plans — completed 2026-04-21
 - [x] Phase 6: Follow-Up Quest — 2/2 plans — completed 2026-06-16
 - [x] Phase 7: DM Profile Page — 2/2 plans — completed 2026-06-17
-- [ ] Phase 8: Profile Picture Avatar Crop — deferred (SkiaSharp native lib unverified on host)
+- [ ] Phase 8: Profile Picture Avatar Crop — deferred (SkiaSharp native lib unverified on host); delivered by v7.0 Phases 45–46
 - [x] Phase 9: Shop Pagination — 2/2 plans — complete
 
 </details>
@@ -113,10 +114,72 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; it
 
 </details>
 
+<details open>
+<summary>🚧 v7.0 Backlog Cleanup (Phases 43–46) — IN PROGRESS</summary>
+
+**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0).
+
+- [ ] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log
+- [ ] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email
+- [ ] Phase 45: Dual-Image Storage Backend — Server stores both an original and a cropped image per upload, with zero server-side image processing
+- [ ] Phase 46: Client-Side Crop UI — Users crop character/DM profile photos in-browser before saving, with the crop applied everywhere a photo can be uploaded
+
+</details>
+
+## Phase Details
+
+### Phase 43: Mobile Parity Fixes
+**Goal**: Mobile users get the same visual behavior and information as desktop users on the two screens where they currently don't
+**Depends on**: Nothing (independent of all other v7.0 work)
+**Requirements**: MOBILE-01, MOBILE-02
+**Success Criteria** (what must be TRUE):
+  1. On an iOS Safari session (real device or real-device cloud — devtools emulation does not count), the page background stays visually fixed in place while content scrolls over it, instead of scrolling with the content
+  2. The mobile Quest Log list view shows a "Session Recap Available" badge on any quest that has a recap, matching what desktop already shows
+  3. Both fixes are verified against actual mobile browser behavior (not just responsive-mode screenshots), since this exact bug class has escaped desktop/emulation testing before in this codebase
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion
+**Goal**: Players can still respond after a One-Shot quest is finalized, capacity is never a hard wall, and the right — and only the right — player is notified when a seat opens up
+**Depends on**: Nothing (independent of mobile fixes and image work — different tables entirely)
+**Requirements**: VOTE-01, VOTE-02, VOTE-03, VOTE-04, VOTE-05, VOTE-06, VOTE-07
+**Success Criteria** (what must be TRUE):
+  1. A player can vote Yes on a finalized, fully-seated One-Shot quest and lands on a waitlist instead of getting rejected
+  2. The waitlist visibly orders candidates by vote (Yes above Maybe above No) and then by how recently they signed up or changed their vote
+  3. When a selected player votes No or fully revokes their signup, their seat frees up and the top waitlisted candidate is automatically promoted into it
+  4. A selected player who changes their vote to Maybe keeps their seat with no promotion triggered, and a waitlisted player who votes No stays on the waitlist (not removed), sorted to the bottom
+  5. Only the player who was passively auto-promoted receives a notification email — never the player whose action freed the seat, and never broadcast to the rest of the waitlist
+**Plans**: TBD
+
+### Phase 45: Dual-Image Storage Backend
+**Goal**: The application can accept, store, and serve two versions (original and cropped) of any uploaded character or DM profile photo, entirely without server-side image processing
+**Depends on**: Nothing (independent of Phases 43–44; must land before Phase 46)
+**Requirements**: IMAGE-02, IMAGE-03
+**Success Criteria** (what must be TRUE):
+  1. Uploading a character photo or DM profile photo persists both the original file bytes and a second image (posted from the client) as two distinct stored values, with no data loss on either
+  2. Re-uploading a new photo atomically replaces both the original and cropped values together — there is never a state where one is updated and the other still reflects a prior upload
+  3. No server-side image-decoding or image-processing library (SkiaSharp, ImageSharp, Magick.NET, etc.) is added to the project — the server only validates and stores the byte arrays it receives
+  4. The two stored images are independently retrievable (e.g. via distinct repository/service calls), ready for Phase 46 to wire into the character-details ("show original") and guild-member-list ("show cropped") pages
+**Plans**: TBD
+
+### Phase 46: Client-Side Crop UI
+**Goal**: Users see and control exactly how their character and DM profile photos are framed before saving, and the rest of the app shows the right version (cropped vs. original) in the right place
+**Depends on**: Phase 45 (needs the dual-image storage path already working)
+**Requirements**: IMAGE-01, IMAGE-04, IMAGE-05
+**Success Criteria** (what must be TRUE):
+  1. On every image-upload field in the app (character photo, DM profile photo — create and edit, desktop and mobile), the user sees an interactive crop frame (Cropper.js v2.1.1) they can drag, resize, and zoom over their photo before saving
+  2. Saving a photo submits both the original and the cropped result in one ordinary form submission, with no separate upload step or page reload
+  3. The guild-member list page displays the cropped image for each character; the character details page and DM profile details page display the original, unmodified image
+  4. On a real touchscreen device, the crop frame responds correctly to drag and pinch gestures, a real phone-camera photo crops with correct orientation (not sideways/upside-down), and a full-resolution camera photo does not crash or blank the crop canvas on iOS Safari — each verified on a real device, not devtools emulation
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46
+
+Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -165,3 +228,7 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 �
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
 | 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
+| 43. Mobile Parity Fixes | v7.0 | 0/? | Not started | — |
+| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 0/? | Not started | — |
+| 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
+| 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
