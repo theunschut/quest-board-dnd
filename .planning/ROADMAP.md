@@ -267,7 +267,7 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 **Goal:** All TempData flash messages app-wide render through one shared Bootstrap toast mechanism — a single `_Toasts.cshtml` partial wired into all 5 layouts — replacing ~26 views' duplicated static alert banners and local Shop toast markup, with a new Info type and standardized TempData keys.
 **Requirements**: None (deferred-idea promotion from Phase 39; no REQ-IDs mapped)
 **Depends on:** Phase 41
-**Plans:** 1/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -276,7 +276,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1; all four run in parallel — disjoint files)*
 
-- [ ] 42-02-PLAN.md — Shop migration: Index/Details (desktop + mobile) local toast + init removed, GoldReceived via shared partial, Mystical Merchant untouched
-- [ ] 42-03-PLAN.md — Platform-area migration: Group Index/Members + Users Index (desktop + mobile) alert banners removed
-- [ ] 42-04-PLAN.md — Account migration: Login/ForgotPassword/Profile (desktop + mobile) flash banners removed, Profile `*Message` keys retired
-- [ ] 42-05-PLAN.md — Admin Users + Quest Manage (desktop + mobile) alert banners removed
+- [x] 42-02-PLAN.md — Shop migration: Index/Details (desktop + mobile) local toast + init removed, GoldReceived via shared partial, Mystical Merchant untouched
+- [x] 42-03-PLAN.md — Platform-area migration: Group Index/Members + Users Index (desktop + mobile) alert banners removed
+- [x] 42-04-PLAN.md — Account migration: Login/ForgotPassword/Profile (desktop + mobile) flash banners removed, Profile `*Message` keys retired
+- [x] 42-05-PLAN.md — Admin Users + Quest Manage (desktop + mobile) alert banners removed
