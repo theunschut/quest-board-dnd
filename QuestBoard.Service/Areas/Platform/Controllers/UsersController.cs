@@ -37,8 +37,9 @@ public class UsersController(IUserService userService, IIdentityService identity
             return RedirectToAction(nameof(Index));
         }
 
-        await identityService.DisableUserAsync(userId);
-        TempData["Success"] = "Account disabled.";
+        var result = await identityService.DisableUserAsync(userId);
+        TempData[result.Succeeded ? "Success" : "Error"] =
+            result.Succeeded ? "Account disabled." : "Failed to disable account. The user may no longer exist.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -46,8 +47,9 @@ public class UsersController(IUserService userService, IIdentityService identity
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Enable(int userId)
     {
-        await identityService.EnableUserAsync(userId);
-        TempData["Success"] = "Account re-enabled.";
+        var result = await identityService.EnableUserAsync(userId);
+        TempData[result.Succeeded ? "Success" : "Error"] =
+            result.Succeeded ? "Account re-enabled." : "Failed to re-enable account. The user may no longer exist.";
         return RedirectToAction(nameof(Index));
     }
 }
