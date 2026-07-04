@@ -4,17 +4,17 @@ milestone: v7.0
 milestone_name: Backlog Cleanup
 current_phase: 43
 current_phase_name: Mobile Parity Fixes
-status: planning
-stopped_at: Phase 43 UI-SPEC approved
-last_updated: "2026-07-04T20:02:04.439Z"
+status: executing
+stopped_at: Phase 48 context gathered
+last_updated: "2026-07-04T20:50:30.329Z"
 last_activity: 2026-07-04
-last_activity_desc: ROADMAP.md and REQUIREMENTS.md traceability written for v7.0
+last_activity_desc: Phase 43 execution started
 progress:
-  total_phases: 1
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 3
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
+  percent: 33
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Roadmap created for v7.0 (Phases 43–46) — ready for `/gsd-plan-phase 43`
+**Current focus:** Phase 43 — Mobile Parity Fixes
 
 ## Current Position
 
-Phase: 43 (Mobile Parity Fixes) — not yet planned
-Plan: —
-Status: Roadmap approved, planning not started
-Last activity: 2026-07-04 — ROADMAP.md and REQUIREMENTS.md traceability written for v7.0
+Phase: 43 (Mobile Parity Fixes) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 43
+Last activity: 2026-07-04 — Phase 43 execution started
 
 ## Performance Metrics
 
@@ -55,6 +55,8 @@ Last activity: 2026-07-04 — ROADMAP.md and REQUIREMENTS.md traceability writte
 - v6.1 Bugfixes milestone decisions archived — see PROJECT.md Key Decisions table and `.planning/milestones/v6.1-ROADMAP.md`.
 
 ### Roadmap Evolution
+
+- Phase 48 added: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
 
 v7.0 Backlog Cleanup roadmap created 2026-07-04: 4 phases (43–46), 14/14 v1 requirements mapped, no orphans. Continues numbering from v6.1's Phase 42. Full phase detail in `.planning/ROADMAP.md`.
 
@@ -86,9 +88,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-04T20:02:04.416Z
-Stopped at: Phase 43 UI-SPEC approved
-Resume file: .planning/phases/43-mobile-parity-fixes/43-UI-SPEC.md
+Last session: 2026-07-04T20:50:30.310Z
+Stopped at: Phase 48 context gathered
+Resume file: .planning/phases/48-add-an-open-board-action-to-the-platform-group-index-table-r/48-CONTEXT.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps
