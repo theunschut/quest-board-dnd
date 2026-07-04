@@ -978,33 +978,32 @@ p, li, span, small {
         width: var(--card-width-mobile);
         /* Height calculated dynamically */
     }
-}
-    
+
     .quest-description {
         font-size: 0.8rem;
     }
-    
+
     /* Responsive wax seal sizing */
     .seal-image {
         width: 65px;
         height: 65px;
     }
-    
+
     .signup-seal-image {
         width: 65px;
         height: 65px;
     }
-    
+
     /* Responsive dice icon sizing */
     .difficulty-icon {
         font-size: 45px;
     }
-    
+
     .difficulty-dice {
         top: 4%;
         left: 6%;
     }
-
+}
 
 @media (max-width: 320px) {
     .fantasy-quest-card {
