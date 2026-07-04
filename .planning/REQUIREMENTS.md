@@ -26,10 +26,10 @@ Requirements for the Bugfixes milestone. Each maps to roadmap phases.
 
 ### Safe User Removal & Account Disable
 
-- [ ] **SAFE-01**: Group admin's "Delete" button on the Users page removes the user from the active group only — their account and any other group memberships stay intact
-- [ ] **SAFE-02**: SuperAdmin can disable a user account so it can no longer log in, without deleting any account data
-- [ ] **SAFE-03**: SuperAdmin can re-enable a previously disabled account
-- [ ] **SAFE-04**: A disabled user attempting to log in sees an accurate message, not the existing "try again in 15 minutes" failed-attempts copy
+- [x] **SAFE-01**: Group admin's "Delete" button on the Users page removes the user from the active group only — their account and any other group memberships stay intact
+- [x] **SAFE-02**: SuperAdmin can disable a user account so it can no longer log in, without deleting any account data
+- [x] **SAFE-03**: SuperAdmin can re-enable a previously disabled account
+- [x] **SAFE-04**: A disabled user attempting to log in sees an accurate message, not the existing "try again in 15 minutes" failed-attempts copy
 
 ## Out of Scope
 
@@ -56,10 +56,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEMBERS-01 | Phase 40 | Complete |
 | MEMBERS-02 | Phase 40 | Complete |
 | MEMBERS-03 | Phase 40 | Complete |
-| SAFE-01 | Phase 41 | Pending |
-| SAFE-02 | Phase 41 | Pending |
-| SAFE-03 | Phase 41 | Pending |
-| SAFE-04 | Phase 41 | Pending |
+| SAFE-01 | Phase 41 | Complete |
+| SAFE-02 | Phase 41 | Complete |
+| SAFE-03 | Phase 41 | Complete |
+| SAFE-04 | Phase 41 | Complete |
 
 **Coverage:**
 
