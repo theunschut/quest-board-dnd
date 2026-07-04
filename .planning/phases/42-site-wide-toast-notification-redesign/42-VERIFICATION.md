@@ -1,8 +1,8 @@
 ---
 phase: 42-site-wide-toast-notification-redesign
 verified: 2026-07-04T00:00:00Z
-status: human_needed
-score: 13/13 must-haves verified (code-level)
+status: passed
+score: 13/13 must-haves verified (code-level); 6/6 human verification items approved (42-UAT.md)
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
@@ -31,7 +31,7 @@ human_verification:
 **Phase Goal:** Convert all flash messages app-wide from static alert banners to Bootstrap toast notifications, matching the Shop view's existing local toast pattern (`QuestBoard.Service/Views/Shop/Index.cshtml`) — a deferred idea promoted from Phase 39's discussion.
 
 **Verified:** 2026-07-04
-**Status:** human_needed
+**Status:** passed (human verification completed and approved via 42-UAT.md)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
