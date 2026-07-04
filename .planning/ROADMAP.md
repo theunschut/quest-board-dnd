@@ -119,7 +119,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0).
 
-- [ ] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log
+- [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
 - [ ] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email
 - [ ] Phase 45: Dual-Image Storage Backend — Server stores both an original and a cropped image per upload, with zero server-side image processing
 - [ ] Phase 46: Client-Side Crop UI — Users crop character/DM profile photos in-browser before saving, with the crop applied everywhere a photo can be uploaded
@@ -244,7 +244,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
 | 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
-| 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete   | 2026-07-04 |
+| 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete    | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 0/? | Not started | — |
 | 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
@@ -254,7 +254,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 46
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 

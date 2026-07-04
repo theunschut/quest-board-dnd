@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 43
-current_phase_name: Mobile Parity Fixes
+current_phase: 47
+current_phase_name: "Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob"
 status: executing
 stopped_at: Phase 48 context gathered
-last_updated: "2026-07-04T21:05:24.623Z"
+last_updated: "2026-07-04T21:07:07.880Z"
 last_activity: 2026-07-04
-last_activity_desc: Phase 43 execution started
+last_activity_desc: Phase 43 complete, transitioned to Phase 47
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
+  total_plans: 3
   completed_plans: 2
   percent: 33
 ---
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone
 
 ## Current Position
 
-Phase: 43 (Mobile Parity Fixes) — EXECUTING
-Plan: 1 of 2
+Phase: 47 — Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
+Plan: Not started
 Status: Ready to execute
-Last activity: 2026-07-04 — Phase 43 execution started
+Last activity: 2026-07-04 — Phase 43 complete, transitioned to Phase 47
 
 ## Performance Metrics
 
