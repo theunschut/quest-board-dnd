@@ -166,8 +166,20 @@ Plans:
   3. A SuperAdmin can add a listed non-member user to the group directly from the right-hand column
   4. The right-hand column has a "Create New User" entry point that creates or adds (per the Phase 39 collision behavior) a user scoped to the group being managed, without requiring a session-level active group
 
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+Plans:
+**Wave 1**
+
+- [ ] 40-01-PLAN.md — Backend seam: GetAvailableUsers not-in-group + search query (repository/service/interfaces), CreateMemberViewModel, reshaped GroupMembersViewModel
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 40-02-PLAN.md — GroupController: Members GET search, AddMember search-preserving redirect (D-04), new route-scoped CreateMember action (D-06/D-07), integration tests
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 40-03-PLAN.md — Members.cshtml + Members.Mobile.cshtml two-column/stacked redesign (search, per-row Add, Create New User modal) + blocking security human-verify
 
 ### Phase 41: Safe User Removal & Account Disable
 
@@ -235,5 +247,5 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41
 | 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
 | 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
 | 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
-| 40. Platform Members Page Redesign | v6.1 | 0/TBD | Not started | — |
+| 40. Platform Members Page Redesign | v6.1 | 0/3 | Not started | — |
 | 41. Safe User Removal & Account Disable | v6.1 | 0/TBD | Not started | — |
