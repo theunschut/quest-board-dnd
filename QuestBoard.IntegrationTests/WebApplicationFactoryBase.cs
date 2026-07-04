@@ -6,6 +6,7 @@ using Hangfire.States;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using System.Collections.Concurrent;
 
 namespace QuestBoard.IntegrationTests;
 
@@ -13,6 +14,7 @@ public class WebApplicationFactoryBase : WebApplicationFactory<Program>
 {
     public TestDatabase Database { get; }
     public MutableGroupContext TestGroupContext { get; } = new MutableGroupContext();
+    public CapturingBackgroundJobClient JobClient { get; } = new CapturingBackgroundJobClient();
 
     public WebApplicationFactoryBase()
     {
@@ -64,8 +66,9 @@ public class WebApplicationFactoryBase : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             // Hangfire is not registered in the Testing environment, but AdminController depends on
-            // IBackgroundJobClient — register a no-op stub so the controller can be instantiated.
-            services.AddSingleton<IBackgroundJobClient>(new NoOpBackgroundJobClient());
+            // IBackgroundJobClient — register a capturing spy so tests can assert which email job
+            // was enqueued (a no-op stub would discard the enqueued Job objects).
+            services.AddSingleton<IBackgroundJobClient>(JobClient);
             services.AddSingleton<IActiveGroupContext>(TestGroupContext);
             services.AddSingleton<IBoardTypeResolver>(TestGroupContext);
 
@@ -119,6 +122,25 @@ public class NoOpBackgroundJobClient : IBackgroundJobClient
 {
     public string Create(Job job, IState state) => "test-job-id";
     public bool ChangeState(string jobId, IState state, string? expectedStateName) => true;
+}
+
+/// <summary>
+/// Hangfire client used in integration tests that records every enqueued Job so tests can
+/// assert which email job (if any) was dispatched by a given action, instead of discarding it.
+/// </summary>
+public class CapturingBackgroundJobClient : IBackgroundJobClient
+{
+    public ConcurrentBag<Job> EnqueuedJobs { get; } = new();
+
+    public string Create(Job job, IState state)
+    {
+        EnqueuedJobs.Add(job);
+        return "test-job-id";
+    }
+
+    public bool ChangeState(string jobId, IState state, string? expectedStateName) => true;
+
+    public void Clear() => EnqueuedJobs.Clear();
 }
 
 /// <summary>
