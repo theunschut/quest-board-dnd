@@ -204,7 +204,6 @@
                                             <th>Character</th>
                                             <th>Role</th>
                                             <th>Vote</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -280,28 +279,6 @@
                                                         <span class="badge bg-secondary">
                                                             <i class="fas fa-minus me-1"></i>No Vote
                                                         </span>
-                                                    }
-                                                </td>
-                                                <td>
-                                                    @if (isCurrentUser)
-                                                    {
-                                                        <div class="d-flex gap-1">
-                                                            <button type="button" class="btn btn-sm btn-success"
-                                                                    onclick="changeVote(@Model.Quest?.Id, 2)"
-                                                                    title="Vote Yes">
-                                                                <i class="fas fa-check me-1"></i>Yes
-                                                            </button>
-                                                            <button type="button" class="btn btn-sm btn-warning"
-                                                                    onclick="changeVote(@Model.Quest?.Id, 1)"
-                                                                    title="Vote Maybe">
-                                                                <i class="fas fa-question me-1"></i>Maybe
-                                                            </button>
-                                                            <button type="button" class="btn btn-sm btn-danger"
-                                                                    onclick="changeVote(@Model.Quest?.Id, 0)"
-                                                                    title="Vote No">
-                                                                <i class="fas fa-times me-1"></i>No
-                                                            </button>
-                                                        </div>
                                                     }
                                                 </td>
                                             </tr>
