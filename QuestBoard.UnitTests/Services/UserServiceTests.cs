@@ -231,4 +231,39 @@ public class UserServiceTests
         // Assert: the existing account's Name is never touched via a create call
         await _identityService.DidNotReceive().CreateUserAsync(Arg.Any<string>(), Arg.Any<string>());
     }
+
+    // ---------------------------------------------------------------------------
+    // GetAvailableUsersAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAvailableUsersAsync_DelegatesToRepositoryAndReturnsSameList()
+    {
+        // Arrange
+        var expectedList = new List<User> { new() { Id = 1, Name = "Available Player" } };
+        _repository.GetAvailableUsers(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(expectedList);
+
+        // Act
+        var result = await _sut.GetAvailableUsersAsync(1, "term");
+
+        // Assert
+        result.Should().BeSameAs(expectedList);
+        await _repository.Received(1).GetAvailableUsers(1, "term", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAvailableUsersAsync_WhenSearchIsNull_ForwardsNullToRepositoryUnchanged()
+    {
+        // Arrange
+        var expectedList = new List<User>();
+        _repository.GetAvailableUsers(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(expectedList);
+
+        // Act
+        await _sut.GetAvailableUsersAsync(1, null);
+
+        // Assert: the service must not substitute empty-string or filter itself
+        await _repository.Received(1).GetAvailableUsers(1, null, Arg.Any<CancellationToken>());
+    }
 }

@@ -49,6 +49,12 @@ public interface IUserService : IBaseService<User>
     Task<IList<User>> GetAllGroupMembersAsync(int groupId, CancellationToken token = default);
 
     /// <summary>
+    /// Returns users who are NOT members of the given group, optionally filtered by a search term
+    /// matching Name or Email (case-insensitive).
+    /// </summary>
+    Task<IList<User>> GetAvailableUsersAsync(int groupId, string? search, CancellationToken token = default);
+
+    /// <summary>
     /// Returns the effective GroupRole for the given ClaimsPrincipal in the specified group,
     /// treating SuperAdmin as an automatic Admin-equivalent bypass that requires no group membership.
     /// </summary>

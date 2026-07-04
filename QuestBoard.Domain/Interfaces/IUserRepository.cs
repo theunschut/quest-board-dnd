@@ -28,6 +28,12 @@ public interface IUserRepository : IBaseRepository<User>
     Task<IList<User>> GetAllGroupMembers(int groupId, CancellationToken token = default);
 
     /// <summary>
+    /// Returns users who are NOT members of the given group, optionally filtered by a search term
+    /// matching Name or Email (case-insensitive).
+    /// </summary>
+    Task<IList<User>> GetAvailableUsers(int groupId, string? search, CancellationToken token = default);
+
+    /// <summary>
     /// Returns the given user's group role in the specified group, or null if they are not a member.
     /// </summary>
     Task<GroupRole?> GetGroupRoleAsync(int userId, int groupId);
