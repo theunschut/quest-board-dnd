@@ -21,6 +21,10 @@ public class PlayerSignupEntity : IEntity
 
     public DateTime SignupTime { get; set; } = DateTime.UtcNow;
 
+    // Ordering timestamp reset on every post-finalization vote change; null means the vote
+    // has never changed since signup.
+    public DateTime? LastVoteChangeTime { get; set; }
+
     [Required]
     public int QuestId { get; set; }
 

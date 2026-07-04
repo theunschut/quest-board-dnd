@@ -10,6 +10,10 @@ public class PlayerSignup : IModel
 
     public DateTime SignupTime { get; set; } = DateTime.UtcNow;
 
+    // Ordering timestamp reset on every post-finalization vote change; null means the vote
+    // has never changed since signup.
+    public DateTime? LastVoteChangeTime { get; set; }
+
     public bool IsSelected { get; set; }
 
     public SignupRole Role { get; set; } = SignupRole.Player;
