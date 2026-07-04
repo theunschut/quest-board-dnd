@@ -17,18 +17,20 @@ Key risks are almost all mobile/iOS-specific and share one root cause: **desktop
 ### Recommended Stack
 
 **Core technologies:**
-- **Cropper.js v1.6.2** (vendored into `wwwroot/lib/cropperjs/`, no npm/bundler) — client-side drag/resize/zoom crop UI. See "Library Version Decision" below for why v1.6.2 is picked over the newer v2.1.1.
+- **Cropper.js v2.1.1** (vendored into `wwwroot/lib/cropperjs/`, no npm/bundler) — client-side drag/resize/zoom crop UI. See "Library Version Decision" below for why v2.1.1 is picked over the abandoned v1.6.2.
 - **No server-side image-processing library** (no SkiaSharp, no ImageSharp, no Magick.NET) — the crop is fully client-side canvas work; the server only validates and stores the two byte arrays it receives. This is the resolution to the year-old SkiaSharp blocker: it is avoided entirely rather than re-verified.
 - **Pure-CSS pseudo-element fix** for the iOS Safari `background-attachment: fixed` bug (#116) — replace the broken rule with a `position: fixed`, `100vh`/`100dvh` layered `::before`/`<div>`. No JS scroll-listener workaround needed.
 - **Existing infra reused as-is** for waitlist promotion emails — Hangfire background jobs, Razor/HtmlRenderer HTML templates, Resend SMTP relay. No new package needed.
 
-### Library Version Decision: Cropper.js v1.6.2 (not v2.1.1)
+### Library Version Decision: Cropper.js v2.1.1 (not v1.6.2) — REVISED
 
-STACK.md (researched independently via npm/package-registry lookups) recommended **v2.1.1**, reasoning that it's the actively-maintained current release. ARCHITECTURE.md (researched via direct codebase inspection plus cross-verified library docs) recommended **v1.6.2**, reasoning from integration fit with this specific codebase.
+**This decision was revised after the user pushed back on the original v1.6.2 recommendation and requested direct verification.** Direct fetches of GitHub's release/commit history (not secondhand via research agent) found:
 
-**Resolution: use Cropper.js v1.6.2, vendored, pinned.** This project has zero JS build tooling, zero bundler, zero SPA framework, and zero existing Web Components anywhere in the codebase — every existing script (`site.js`, inline view scripts) uses plain `document.getElementById`/`addEventListener` DOM APIs. Cropper.js v2 is a ground-up rewrite onto a custom-elements/Web Components API (`<cropper-canvas>`, `<cropper-image>`, `<cropper-selection>`, `.$toCanvas()`) — a materially heavier and structurally different integration surface that would introduce the only web component in the entire application for a single widget. Cropper.js v1.6.2 retains the simple `new Cropper(imageElement, options)` class API with `.getCroppedCanvas()` returning a plain `<canvas>` — this maps directly onto the existing `<script src="...">` + plain-DOM-API convention with zero component-model learning curve, and is the version used by the overwhelming majority of "crop before multipart upload" integration patterns for server-rendered (non-SPA) apps. Architecture/integration fit is the deciding factor here specifically because it was called out as the tiebreaker: pick whichever API is simplest to wire into a plain `<script>` tag against an existing `IFormFile` form without adding a bundler — that is unambiguously v1.6.2. v1 remains available via its own pinned dist-tag (jsdelivr/unpkg/cdnjs), so there is no risk of the vendored files disappearing.
+- v1.6.2 was the last v1 release (2024-04-21); the v1 branch's last commit was 2025-03-08 — over a year stale with zero activity since.
+- v2 is under active, ongoing maintenance: v2.0.0 (2025-03-01), v2.0.1 (2025-07-25), v2.1.0 (2025-10-19), v2.1.1 (2026-04-06) — a steady release cadence, most recent 3 months ago. npm's `dist-tags.latest` is `2.1.1`, confirming v2 is the actual current supported line, not v1.
+- The original architecture-research objection to v2 — "requires hand-authored Web Components markup, a materially heavier integration surface" — does not hold up. A direct fetch of the published `dist/cropper.js` UMD bundle confirms it works via a plain `<script src="...">` tag with zero bundler, registering a global `window.Cropper`, exactly like v1. And v2's own basic-usage documentation shows the same simple imperative pattern as v1 — `new Cropper('#image')` against a plain `<img>` element — not hand-written `<cropper-canvas>` markup. The Web Components exist under the hood but aren't something the integrating code has to author by hand for basic usage.
 
-If v1's maintenance-mode status becomes a real problem during implementation (e.g. a security fix only ships in v2), re-evaluate then — not preemptively.
+**Resolution: use Cropper.js v2.1.1, vendored, pinned.** Shipping a new feature in a long-lived production app against a dependency with zero commits in over a year is a worse bet than a v2 API surface that turned out to be nearly as simple to integrate as originally assumed for v1. Confirm the exact cropped-canvas/blob extraction method (likely `.getCropperSelection().$toCanvas()` per earlier STACK.md findings, since v2's `Cropper` instance exposes an underlying `CropperSelection` element) against the official v2 API docs during Phase 3 implementation — this specific method call was not independently re-verified in this correction pass and should be confirmed against source, not assumed.
 
 ### Expected Features
 
@@ -93,7 +95,7 @@ Based on research, suggested phase structure:
 
 ### Phase 3: Client-side crop UI
 **Rationale:** The riskiest, most novel piece — deferred until the data path underneath it is already proven, so any integration issues are isolated to JS/markup.
-**Delivers:** Vendored Cropper.js v1.6.2 (`wwwroot/lib/cropperjs/`), shared `image-crop.js` wiring the crop modal into all three affected forms (character create/edit, DM profile edit — desktop + `.Mobile.cshtml` = 6 view files), the `DataTransfer` FileList-swap logic, EXIF orientation correction, canvas downscale-before-crop, and the character-details page pointed at the new `GetOriginalPicture` endpoint (issue #78's explicit requirement).
+**Delivers:** Vendored Cropper.js v2.1.1 (`wwwroot/lib/cropperjs/`), shared `image-crop.js` wiring the crop modal into all three affected forms (character create/edit, DM profile edit — desktop + `.Mobile.cshtml` = 6 view files), the `DataTransfer` FileList-swap logic, EXIF orientation correction, canvas downscale-before-crop, and the character-details page pointed at the new `GetOriginalPicture` endpoint (issue #78's explicit requirement).
 **Addresses:** all crop-UX table-stakes features from FEATURES.md (draggable frame, fixed aspect ratio, live preview, zoom/pan, touch support).
 **Avoids:** Pitfalls 1-4 (EXIF orientation, canvas memory ceiling, touch-drag precision) — each must be verified on a real device as a named acceptance criterion, not inferred from devtools emulation.
 

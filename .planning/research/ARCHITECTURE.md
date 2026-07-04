@@ -4,6 +4,8 @@
 **Researched:** 2026-07-04
 **Confidence:** HIGH (codebase integration points — verified by direct file read) / MEDIUM (crop-library API choice — cross-verified across two independent sources)
 
+> **CORRECTED after publication — see `.planning/research/SUMMARY.md` "Library Version Decision" section.** This document's "Cropper.js v1.6.2, not v2" recommendation below was overturned: direct GitHub history checks showed the v1 branch has had zero commits since 2025-03-08 (effectively abandoned) while v2 has shipped steady releases through 2026-04 (most recent 3 months old), and a direct fetch of v2's published UMD bundle + docs showed it *does* work via a plain `<script>` tag with a simple `new Cropper('#image')` imperative call — contradicting this document's claim that v2 requires hand-authored Web Components markup. **Use Cropper.js v2.1.1, not v1.6.2.** The integration-pattern narrative below (vendoring into `wwwroot/lib/cropperjs/`, the `DataTransfer` FileList-swap technique, schema/repository design) is otherwise unaffected — only the version number and the "why v1" reasoning are wrong.
+
 ## Standard Architecture
 
 ### System Overview
