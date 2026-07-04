@@ -15,6 +15,9 @@
         <a asp-controller="Group" asp-action="Create" asp-area="Platform" class="btn btn-success btn-sm">
             <i class="fas fa-plus me-2"></i>Create Group
         </a>
+        <a asp-controller="Users" asp-action="Index" asp-area="Platform" class="btn btn-secondary btn-sm">
+            <i class="fas fa-users-cog me-2"></i>Manage Users
+        </a>
     </div>
 
     @if (TempData["Success"] != null)
