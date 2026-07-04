@@ -103,10 +103,10 @@ public interface IQuestService : IBaseService<Quest>
     Task<IList<Quest>> GetQuestsByDungeonMasterAsync(int dmUserId, CancellationToken token = default);
 
     /// <summary>
-    /// Records a player's vote change on a finalized quest. A Yes vote selects the player only
-    /// when a fresh server-side seat count shows room (never rejects on capacity). A selected
-    /// player voting No frees their seat and triggers promotion of the top waitlisted candidate.
-    /// A Maybe vote never changes selection state and never triggers promotion.
+    /// Records a player's vote change on a finalized quest. A Yes or Maybe vote can select a
+    /// waitlisted player into an open seat when a fresh server-side seat count shows room (never
+    /// rejects on capacity). A selected player voting No frees their seat and triggers promotion
+    /// of the top waitlisted candidate. A No vote never grants or changes selection.
     /// </summary>
     Task ChangeVoteAsync(int questId, int playerSignupId, VoteType vote, int finalizedProposedDateId, CancellationToken token = default);
 
