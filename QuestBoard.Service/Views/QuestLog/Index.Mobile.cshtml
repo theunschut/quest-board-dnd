@@ -53,6 +53,12 @@
                         <i class="fas fa-crown me-1"></i>
                         @(quest.DungeonMaster?.Name ?? "Unknown DM")
                     </small>
+                    @if (!string.IsNullOrWhiteSpace(quest.Recap))
+                    {
+                        <span class="recap-badge d-block">
+                            <i class="fas fa-scroll me-1"></i>Session Recap Available
+                        </span>
+                    }
                 </div>
             }
         </div>
