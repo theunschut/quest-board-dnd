@@ -5,11 +5,19 @@
 }
 
 <div class="card modern-card">
-    <div class="card-header modern-card-header">
+    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
         <h2 class="mb-0">
             <i class="fas fa-users text-danger me-2"></i>
             Members &mdash; @Model.Group.Name
         </h2>
+        <div class="d-flex gap-2">
+            <a asp-controller="Group" asp-action="Index" asp-area="Platform" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Groups
+            </a>
+            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#createMemberModal">
+                <i class="fas fa-user-plus me-2"></i>Create New User
+            </button>
+        </div>
     </div>
     <div class="card-body modern-card-body">
         @if (TempData["Success"] != null)
@@ -39,22 +47,19 @@
             </div>
         }
 
-        <a asp-controller="Group" asp-action="Index" asp-area="Platform" class="btn btn-secondary mb-3">
-            <i class="fas fa-arrow-left me-2"></i>Back to Groups
-        </a>
-
         <div class="row g-4">
             <div class="col-lg-6">
                 <h5><i class="fas fa-users text-danger me-2"></i>Current Members</h5>
 
-                <div class="invisible mb-3" aria-hidden="true">
+                <form method="get" asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" class="mb-3">
                     <div class="input-group">
-                        <input type="text" class="form-control" disabled tabindex="-1" />
-                        <button type="button" class="btn btn-warning" disabled tabindex="-1">
+                        <input type="text" name="memberSearch" class="form-control" value="@Model.MemberSearchQuery"
+                               placeholder="Search by name or email..." autocomplete="off" />
+                        <button type="submit" class="btn btn-warning">
                             <i class="fas fa-search me-1"></i>Search
                         </button>
                     </div>
-                </div>
+                </form>
 
                 @if (Model.Members.Any())
                 {
@@ -95,7 +100,8 @@
                                             }
                                         </td>
                                         <td class="text-end">
-                                            <form asp-action="RemoveMember" asp-route-id="@Model.Group.Id" method="post" asp-antiforgery="true" class="d-inline">
+                                            <form asp-action="RemoveMember" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" asp-route-memberSearch="@Model.MemberSearchQuery"
+                                                  method="post" asp-antiforgery="true" class="d-inline">
                                                 <input type="hidden" name="userId" value="@member.UserId" />
                                                 <button type="submit" class="btn btn-sm btn-danger">
                                                     <i class="fas fa-user-minus me-1"></i>Remove Member
@@ -108,19 +114,28 @@
                         </table>
                     </div>
                 }
-                else
+                else if (string.IsNullOrWhiteSpace(Model.MemberSearchQuery))
                 {
                     <div class="py-5 text-center">
                         <i class="fas fa-users fa-3x text-muted mb-3"></i>
                         <p class="text-muted">No members in this group yet.</p>
                     </div>
                 }
+                else
+                {
+                    <p class="text-muted fst-italic">
+                        No members match "@Model.MemberSearchQuery".
+                        <a asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery">
+                            <i class="fas fa-times me-1"></i>Clear search
+                        </a>
+                    </p>
+                }
             </div>
 
             <div class="col-lg-6">
                 <h5><i class="fas fa-user-plus text-warning me-2"></i>Available Users</h5>
 
-                <form method="get" asp-action="Members" asp-route-id="@Model.Group.Id" class="mb-3">
+                <form method="get" asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-memberSearch="@Model.MemberSearchQuery" class="mb-3">
                     <div class="input-group">
                         <input type="text" name="search" class="form-control" value="@Model.SearchQuery"
                                placeholder="Search by name or email..." autocomplete="off" />
@@ -148,7 +163,7 @@
                                         <td>@u.Name</td>
                                         <td>@u.Email</td>
                                         <td class="text-end">
-                                            <form asp-action="AddMember" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery"
+                                            <form asp-action="AddMember" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" asp-route-memberSearch="@Model.MemberSearchQuery"
                                                   method="post" asp-antiforgery="true" class="d-inline-flex align-items-center gap-2">
                                                 <input type="hidden" name="UserId" value="@u.Id" />
                                                 <select name="Role" class="form-select form-select-sm">
@@ -183,17 +198,11 @@
                 {
                     <p class="text-muted fst-italic">
                         No users match "@Model.SearchQuery".
-                        <a asp-action="Members" asp-route-id="@Model.Group.Id">
+                        <a asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-memberSearch="@Model.MemberSearchQuery">
                             <i class="fas fa-times me-1"></i>Clear search
                         </a>
                     </p>
                 }
-
-                <hr>
-
-                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#createMemberModal">
-                    <i class="fas fa-user-plus me-2"></i>Create New User
-                </button>
             </div>
         </div>
     </div>
@@ -203,7 +212,7 @@
 <div class="modal fade" id="createMemberModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content bg-dark text-light">
-            <form asp-action="CreateMember" asp-route-id="@Model.Group.Id" method="post">
+            <form asp-action="CreateMember" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" asp-route-memberSearch="@Model.MemberSearchQuery" method="post">
                 @Html.AntiForgeryToken()
                 <div class="modal-header border-secondary">
                     <h5 class="modal-title">
