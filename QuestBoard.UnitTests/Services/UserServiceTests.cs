@@ -127,7 +127,7 @@ public class UserServiceTests
         _identityService.CreateUserAsync(email, name).Returns(IdentityResult.Success);
 
         // Act
-        var result = await _sut.CreateOrAddToGroupAsync(email, name, groupId: 1, GroupRole.Player);
+        var result = await _sut.CreateOrAddToGroupAsync(email, name, groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
 
         // Assert
         result.Outcome.Should().Be(CreateOrAddToGroupOutcome.NewAccountCreated);
@@ -148,7 +148,7 @@ public class UserServiceTests
         _identityService.CreateUserAsync(email, name).Returns(IdentityResult.Success);
 
         // Act
-        var result = await _sut.CreateOrAddToGroupAsync(email, name, groupId: 1, GroupRole.Player);
+        var result = await _sut.CreateOrAddToGroupAsync(email, name, groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
 
         // Assert
         result.Outcome.Should().Be(CreateOrAddToGroupOutcome.Failed);
@@ -167,7 +167,7 @@ public class UserServiceTests
         _repository.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(existingUser);
 
         // Act
-        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player);
+        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
 
         // Assert
         result.Outcome.Should().Be(CreateOrAddToGroupOutcome.AddedToGroup);
@@ -187,7 +187,7 @@ public class UserServiceTests
         _repository.GetByIdAsync(8, Arg.Any<CancellationToken>()).Returns(existingUser);
 
         // Act
-        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player);
+        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
 
         // Assert
         result.Outcome.Should().Be(CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount);
@@ -207,7 +207,7 @@ public class UserServiceTests
             .ThrowsAsync(new InvalidOperationException("User is already a member of this group."));
 
         // Act
-        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player);
+        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
 
         // Assert
         result.Outcome.Should().Be(CreateOrAddToGroupOutcome.AlreadyMember);
@@ -226,7 +226,7 @@ public class UserServiceTests
         _repository.GetByIdAsync(10, Arg.Any<CancellationToken>()).Returns(existingUser);
 
         // Act
-        await _sut.CreateOrAddToGroupAsync(email, "Ignored Name", groupId: 1, GroupRole.Player);
+        await _sut.CreateOrAddToGroupAsync(email, "Ignored Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
 
         // Assert: the existing account's Name is never touched via a create call
         await _identityService.DidNotReceive().CreateUserAsync(Arg.Any<string>(), Arg.Any<string>());
@@ -245,7 +245,7 @@ public class UserServiceTests
             .Returns(expectedList);
 
         // Act
-        var result = await _sut.GetAvailableUsersAsync(1, "term");
+        var result = await _sut.GetAvailableUsersAsync(1, "term", TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeSameAs(expectedList);
@@ -261,7 +261,7 @@ public class UserServiceTests
             .Returns(expectedList);
 
         // Act
-        await _sut.GetAvailableUsersAsync(1, null);
+        await _sut.GetAvailableUsersAsync(1, null, TestContext.Current.CancellationToken);
 
         // Assert: the service must not substitute empty-string or filter itself
         await _repository.Received(1).GetAvailableUsers(1, null, Arg.Any<CancellationToken>());

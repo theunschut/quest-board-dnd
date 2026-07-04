@@ -33,7 +33,7 @@ public class GroupServiceTests
             .Returns(expectedList);
 
         // Act
-        var result = await _sut.GetMembersAsync(1, "term");
+        var result = await _sut.GetMembersAsync(1, "term", TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeSameAs(expectedList);
@@ -49,7 +49,7 @@ public class GroupServiceTests
             .Returns(expectedList);
 
         // Act
-        await _sut.GetMembersAsync(1, null);
+        await _sut.GetMembersAsync(1, null, TestContext.Current.CancellationToken);
 
         // Assert: the service must not substitute empty-string or filter itself
         await _repository.Received(1).GetMembersAsync(1, null, Arg.Any<CancellationToken>());
@@ -64,7 +64,7 @@ public class GroupServiceTests
             .Returns(expectedList);
 
         // Act
-        await _sut.GetMembersAsync(1);
+        await _sut.GetMembersAsync(1, token: TestContext.Current.CancellationToken);
 
         // Assert
         await _repository.Received(1).GetMembersAsync(1, null, Arg.Any<CancellationToken>());
