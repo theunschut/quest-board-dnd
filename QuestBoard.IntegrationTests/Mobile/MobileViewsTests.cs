@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 
 namespace QuestBoard.IntegrationTests.Mobile;
@@ -912,6 +913,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var targetUser = await AuthenticationHelper.CreateTestUserAsync(
             _factory.Services, "edit_target19", "edit_target19@test.com");
 
+        // Target must be a group 1 member — AdminController.EditUser rejects out-of-group targets.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            await userService.SetGroupRoleAsync(targetUser.Id, 1, GroupRole.Player);
+        }
+
         var request = new HttpRequestMessage(HttpMethod.Get, $"/Admin/EditUser?userId={targetUser.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
@@ -966,6 +974,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
             _factory, "admin_resetpw19", "admin_resetpw19@test.com");
         var targetUser = await AuthenticationHelper.CreateTestUserAsync(
             _factory.Services, "resetpw_target19", "resetpw_target19@test.com");
+
+        // Target must be a group 1 member — AdminController.ResetPassword rejects out-of-group targets.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            await userService.SetGroupRoleAsync(targetUser.Id, 1, GroupRole.Player);
+        }
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"/Admin/ResetPassword?userId={targetUser.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);

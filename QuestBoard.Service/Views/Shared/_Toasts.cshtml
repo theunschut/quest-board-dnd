@@ -1,0 +1,77 @@
+@* Shared toast-notification partial. Renders Success/Error/Warning/Info flash messages
+   plus the bespoke Shop GoldReceived toast from TempData. Rendered from every layout
+   so any view can surface a flash message without its own local toast markup. *@
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+    @if (TempData["Success"] != null)
+    {
+        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">Success</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Success"]
+            </div>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-danger text-white">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong class="me-auto">Error</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Error"]
+            </div>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-warning text-dark">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong class="me-auto">Warning</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Warning"]
+            </div>
+        </div>
+    }
+    @if (TempData["Info"] != null)
+    {
+        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header bg-info text-white">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong class="me-auto">Info</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                @TempData["Info"]
+            </div>
+        </div>
+    }
+    @if (TempData["GoldReceived"] != null)
+    {
+        <div class="toast show gold-toast" role="alert" data-bs-autohide="true" data-bs-delay="6000">
+            <div class="toast-header bg-warning text-dark">
+                <i class="fas fa-coins me-2"></i>
+                <strong class="me-auto">Gold Received!</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-coins fa-2x text-warning me-3"></i>
+                    <div>
+                        <strong class="fs-5">+@TempData["GoldReceived"] gp</strong>
+                        <br>
+                        <small class="text-muted">@TempData["Success"]</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

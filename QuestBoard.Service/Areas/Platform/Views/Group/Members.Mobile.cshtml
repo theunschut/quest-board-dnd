@@ -1,3 +1,4 @@
+@using QuestBoard.Domain.Enums
 @model GroupMembersViewModel
 @{
     ViewData["Title"] = $"Members — {Model.Group.Name}";
@@ -8,35 +9,29 @@
 }
 
 <div class="platform-group-card-mobile mb-3">
-    <div class="mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h5 class="mb-0">
             <i class="fas fa-users text-danger me-2"></i>Members &mdash; @Model.Group.Name
         </h5>
+        <div class="d-flex flex-wrap gap-2">
+            <a asp-controller="Group" asp-action="Index" asp-area="Platform" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left me-2"></i>Back to Groups
+            </a>
+            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#createMemberModal">
+                <i class="fas fa-user-plus me-2"></i>Create New User
+            </button>
+        </div>
     </div>
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i>
-            @TempData["Success"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <form method="get" asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="memberSearch" class="form-control" value="@Model.MemberSearchQuery"
+                   placeholder="Search by name or email..." autocomplete="off" />
+            <button type="submit" class="btn btn-warning">
+                <i class="fas fa-search me-1"></i>Search
+            </button>
         </div>
-    }
-
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            @TempData["Error"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-
-    <div class="mb-3">
-        <a asp-controller="Group" asp-action="Index" asp-area="Platform" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Back to Groups
-        </a>
-    </div>
+    </form>
 
     @if (Model.Members.Any())
     {
@@ -68,7 +63,7 @@
                     }
                 </div>
                 <div class="d-flex flex-wrap gap-2 mt-2">
-                    <form asp-action="RemoveMember" asp-route-id="@Model.Group.Id" method="post" asp-antiforgery="true">
+                    <form asp-action="RemoveMember" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" asp-route-memberSearch="@Model.MemberSearchQuery" method="post" asp-antiforgery="true">
                         <input type="hidden" name="userId" value="@member.UserId" />
                         <button type="submit" class="btn btn-sm btn-danger">
                             <i class="fas fa-user-minus me-1"></i>Remove Member
@@ -78,47 +73,125 @@
             </div>
         }
     }
-    else
+    else if (string.IsNullOrWhiteSpace(Model.MemberSearchQuery))
     {
         <div class="py-5 text-center">
             <i class="fas fa-users fa-3x text-muted mb-3"></i>
             <p class="text-muted">No members in this group yet.</p>
         </div>
     }
+    else
+    {
+        <p class="text-muted fst-italic">
+            No members match "@Model.MemberSearchQuery".
+            <a asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery">
+                <i class="fas fa-times me-1"></i>Clear search
+            </a>
+        </p>
+    }
 
     <hr>
 
-    <h5><i class="fas fa-user-plus text-danger me-2"></i>Add Member</h5>
+    <h5><i class="fas fa-user-plus text-warning me-2"></i>Available Users</h5>
+
+    <form method="get" asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-memberSearch="@Model.MemberSearchQuery" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control" value="@Model.SearchQuery"
+                   placeholder="Search by name or email..." autocomplete="off" />
+            <button type="submit" class="btn btn-warning">
+                <i class="fas fa-search me-1"></i>Search
+            </button>
+        </div>
+    </form>
 
     @if (Model.AvailableUsers.Any())
     {
-        <form asp-action="AddMember" asp-route-id="@Model.Group.Id" method="post" asp-antiforgery="true">
-            <div class="mb-3">
-                <label asp-for="AddMember.UserId" class="form-label">User</label>
-                <select asp-for="AddMember.UserId" class="form-select">
-                    <option value="">-- Select a user --</option>
-                    @foreach (var u in Model.AvailableUsers)
-                    {
-                        <option value="@u.Id">@u.Name (@u.Email)</option>
-                    }
-                </select>
-                <span asp-validation-for="AddMember.UserId" class="text-danger"></span>
+        @foreach (var u in Model.AvailableUsers)
+        {
+            <div class="group-card-mobile mb-3">
+                <strong class="parchment-text">@u.Name</strong>
+                <div>
+                    <small>@u.Email</small>
+                </div>
+                <form asp-action="AddMember" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" asp-route-memberSearch="@Model.MemberSearchQuery"
+                      method="post" asp-antiforgery="true" class="d-flex align-items-center gap-2 mt-2">
+                    <input type="hidden" name="UserId" value="@u.Id" />
+                    <select name="Role" class="form-select form-select-sm">
+                        @foreach (var role in Enum.GetValues<GroupRole>())
+                        {
+                            @if (role == GroupRole.Player)
+                            {
+                                <option value="@role" selected="selected">@role</option>
+                            }
+                            else
+                            {
+                                <option value="@role">@role</option>
+                            }
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i class="fas fa-user-plus me-1"></i>Add
+                    </button>
+                </form>
             </div>
-
-            <div class="mb-3">
-                <label asp-for="AddMember.Role" class="form-label">Role</label>
-                <select asp-for="AddMember.Role" class="form-select" asp-items="Html.GetEnumSelectList<GroupRole>()">
-                </select>
-                <span asp-validation-for="AddMember.Role" class="text-danger"></span>
-            </div>
-
-            <button type="submit" class="btn btn-success">
-                <i class="fas fa-user-plus me-2"></i>Add to Group
-            </button>
-        </form>
+        }
     }
-    else
+    else if (string.IsNullOrWhiteSpace(Model.SearchQuery))
     {
         <p class="text-muted fst-italic">All users are already members of this group.</p>
     }
+    else
+    {
+        <p class="text-muted fst-italic">
+            No users match "@Model.SearchQuery".
+            <a asp-action="Members" asp-route-id="@Model.Group.Id" asp-route-memberSearch="@Model.MemberSearchQuery">
+                <i class="fas fa-times me-1"></i>Clear search
+            </a>
+        </p>
+    }
+</div>
+
+<!-- Create New User Modal -->
+<div class="modal fade" id="createMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <form asp-action="CreateMember" asp-route-id="@Model.Group.Id" asp-route-search="@Model.SearchQuery" asp-route-memberSearch="@Model.MemberSearchQuery" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-plus text-warning me-2"></i>
+                        Create New User
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="CreateMember.Email" class="form-label"></label>
+                        <input asp-for="CreateMember.Email" class="form-control" type="email" />
+                        <span asp-validation-for="CreateMember.Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CreateMember.Name" class="form-label"></label>
+                        <input asp-for="CreateMember.Name" class="form-control" />
+                        <span asp-validation-for="CreateMember.Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CreateMember.GroupRole" class="form-label"></label>
+                        <select asp-for="CreateMember.GroupRole" asp-items="Html.GetEnumSelectList<GroupRole>()" class="form-select"></select>
+                        <span asp-validation-for="CreateMember.GroupRole" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-user-plus me-2"></i>Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>

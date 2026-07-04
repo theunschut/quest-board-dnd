@@ -717,4 +717,7 @@ FodyWeavers.xsd
 # Environment variables
 .env
 
+# GSD research tool-call cache (ephemeral, TTL-based, not meant to be tracked)
+.planning/research/.cache/
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,csharp,aspnetcore

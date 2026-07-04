@@ -44,6 +44,17 @@ public interface IUserService : IBaseService<User>
     Task<IList<User>> GetAllPlayersAsync(CancellationToken token = default);
 
     /// <summary>
+    /// Returns all members of the specified group, regardless of their group role.
+    /// </summary>
+    Task<IList<User>> GetAllGroupMembersAsync(int groupId, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns users who are NOT members of the given group, optionally filtered by a search term
+    /// matching Name or Email (case-insensitive).
+    /// </summary>
+    Task<IList<User>> GetAvailableUsersAsync(int groupId, string? search, CancellationToken token = default);
+
+    /// <summary>
     /// Returns the effective GroupRole for the given ClaimsPrincipal in the specified group,
     /// treating SuperAdmin as an automatic Admin-equivalent bypass that requires no group membership.
     /// </summary>
@@ -127,6 +138,19 @@ public interface IUserService : IBaseService<User>
     /// Creates or updates the user's role within the specified group. Returns the UserGroup row Id.
     /// </summary>
     Task<int?> SetGroupRoleAsync(int userId, int groupId, GroupRole role);
+
+    /// <summary>
+    /// Collision-aware user creation: creates a brand-new account when the email is unused,
+    /// or adds the existing account to the group when the email already belongs to a user.
+    /// </summary>
+    /// <remarks>
+    /// Returns one of four outcomes: a new account was created; an existing, already-confirmed
+    /// account was added to the group; an existing account that never completed its own
+    /// onboarding was added to the group; or the email already belonged to a member of the
+    /// group, in which case no membership row is created. On any collision branch the
+    /// submitted name is ignored — the existing account's name is never modified.
+    /// </remarks>
+    Task<CreateOrAddToGroupResult> CreateOrAddToGroupAsync(string email, string name, int groupId, GroupRole role, CancellationToken token = default);
 
     /// <summary>
     /// Signs the current user out of their authentication session.

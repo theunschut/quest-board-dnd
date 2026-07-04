@@ -1,16 +1,27 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Service.Extensions;
+using QuestBoard.Service.Jobs;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
+using System.Text;
 
 namespace QuestBoard.Service.Areas.Platform.Controllers;
 
 [Area("Platform")]
 [Authorize(Policy = "SuperAdminOnly")]
-public class GroupController(IGroupService groupService, IUserService userService) : Controller
+public class GroupController(
+    IGroupService groupService,
+    IUserService userService,
+    IIdentityService identityService,
+    IBackgroundJobClient jobClient,
+    ILogger<GroupController> logger) : Controller
 {
     // Groups index
     [HttpGet]
@@ -112,31 +123,31 @@ public class GroupController(IGroupService groupService, IUserService userServic
 
     // Members page
     [HttpGet]
-    public async Task<IActionResult> Members(int id)
+    public async Task<IActionResult> Members(int id, string? search, string? memberSearch)
     {
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
-        var members = await groupService.GetMembersAsync(id);
-        var allUsers = await userService.GetAllAsync();
-        var memberUserIds = members.Select(m => m.UserId).ToHashSet();
-        var availableUsers = allUsers.Where(u => !memberUserIds.Contains(u.Id)).ToList();
+        var members = await groupService.GetMembersAsync(id, memberSearch);
+        var availableUsers = await userService.GetAvailableUsersAsync(id, search);
         return View(new GroupMembersViewModel
         {
             Group = group,
             Members = members,
             AvailableUsers = availableUsers,
+            SearchQuery = search,
+            MemberSearchQuery = memberSearch,
             AddMember = new AddMemberViewModel()
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddMember(int id, [Bind(Prefix = "AddMember")] AddMemberViewModel model)
+    public async Task<IActionResult> AddMember(int id, AddMemberViewModel model, string? search, string? memberSearch)
     {
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "Invalid form submission.";
-            return RedirectToAction(nameof(Members), new { id });
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
         try
         {
@@ -148,15 +159,117 @@ public class GroupController(IGroupService groupService, IUserService userServic
         {
             TempData["Error"] = "This user is already a member of the group.";
         }
-        return RedirectToAction(nameof(Members), new { id });
+        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RemoveMember(int id, int userId)
+    public async Task<IActionResult> CreateMember(int id, CreateMemberViewModel model, string? search, string? memberSearch)
+    {
+        var group = await groupService.GetByIdAsync(id);
+        if (group == null) return RedirectToAction(nameof(Index));
+
+        if (!ModelState.IsValid)
+        {
+            var invalidMembers = await groupService.GetMembersAsync(id, memberSearch);
+            var invalidAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
+            return View(nameof(Members), new GroupMembersViewModel
+            {
+                Group = group,
+                Members = invalidMembers,
+                AvailableUsers = invalidAvailableUsers,
+                SearchQuery = search,
+                MemberSearchQuery = memberSearch,
+                CreateMember = model
+            });
+        }
+
+        var result = await userService.CreateOrAddToGroupAsync(model.Email, model.Name, id, model.GroupRole);
+
+        switch (result.Outcome)
+        {
+            case CreateOrAddToGroupOutcome.NewAccountCreated:
+                {
+                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
+                    if (rawToken != null)
+                    {
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
+                        var callbackUrl = Url.Action("SetPassword", "Account", new { userId = result.UserId.Value, token = encodedToken }, Request.Scheme);
+                        if (callbackUrl == null)
+                            logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", result.UserId.Value);
+                        else
+                            jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(model.Email, model.Name, callbackUrl, true, CancellationToken.None));
+                    }
+
+                    TempData["Success"] = $"Account created for {model.Name}. A welcome email with a set-password link has been sent.";
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                }
+
+            case CreateOrAddToGroupOutcome.AddedToGroup:
+                {
+                    var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
+                    if (loginUrl == null)
+                        logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
+                    else
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
+
+                    TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                }
+
+            case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
+                {
+                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
+                    if (rawToken != null)
+                    {
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
+                        var callbackUrl = Url.Action("SetPassword", "Account", new { userId = result.UserId.Value, token = encodedToken }, Request.Scheme);
+                        if (callbackUrl == null)
+                            logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", result.UserId.Value);
+                        else
+                        {
+                            var hasExistingPassword = await userService.HasPasswordAsync(result.UserId.Value);
+                            jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, callbackUrl, !hasExistingPassword, CancellationToken.None));
+                        }
+                    }
+
+                    TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                }
+
+            case CreateOrAddToGroupOutcome.AlreadyMember:
+                TempData["Warning"] = $"{result.Name} is already a member of this group.";
+                return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+
+            case CreateOrAddToGroupOutcome.Failed:
+            default:
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error);
+                    }
+
+                    var failedMembers = await groupService.GetMembersAsync(id, memberSearch);
+                    var failedAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
+                    return View(nameof(Members), new GroupMembersViewModel
+                    {
+                        Group = group,
+                        Members = failedMembers,
+                        AvailableUsers = failedAvailableUsers,
+                        SearchQuery = search,
+                        MemberSearchQuery = memberSearch,
+                        CreateMember = model
+                    });
+                }
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveMember(int id, int userId, string? search, string? memberSearch)
     {
         await groupService.RemoveMemberAsync(id, userId);
         TempData["Success"] = "Member removed from the group.";
-        return RedirectToAction(nameof(Members), new { id });
+        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
     }
 }

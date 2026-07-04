@@ -3,7 +3,9 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Services;
+using Microsoft.AspNetCore.Identity;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using System.Security.Claims;
 
 namespace QuestBoard.UnitTests.Services;
@@ -13,6 +15,7 @@ public class UserServiceTests
     private readonly IIdentityService _identityService;
     private readonly IUserRepository _repository;
     private readonly IMapper _mapper;
+    private readonly IGroupService _groupService;
     private readonly UserService _sut;
 
     public UserServiceTests()
@@ -20,8 +23,9 @@ public class UserServiceTests
         _identityService = Substitute.For<IIdentityService>();
         _repository = Substitute.For<IUserRepository>();
         _mapper = Substitute.For<IMapper>();
+        _groupService = Substitute.For<IGroupService>();
 
-        _sut = new UserService(_identityService, _repository, _mapper);
+        _sut = new UserService(_identityService, _repository, _mapper, _groupService);
     }
 
     private static ClaimsPrincipal MakeSuperAdminPrincipal() =>
@@ -107,5 +111,159 @@ public class UserServiceTests
         // Assert
         result.Should().BeNull();
         await _repository.DidNotReceive().GetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>());
+    }
+
+    // ---------------------------------------------------------------------------
+    // CreateOrAddToGroupAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateOrAddToGroupAsync_WhenEmailIsBrandNew_CreatesAccountAndReturnsNewAccountCreated()
+    {
+        // Arrange
+        const string email = "new@example.com";
+        const string name = "New Player";
+        _identityService.GetIdByEmailAsync(email).Returns((int?)null, 42);
+        _identityService.CreateUserAsync(email, name).Returns(IdentityResult.Success);
+
+        // Act
+        var result = await _sut.CreateOrAddToGroupAsync(email, name, groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Outcome.Should().Be(CreateOrAddToGroupOutcome.NewAccountCreated);
+        result.UserId.Should().Be(42);
+        await _repository.Received(1).SetGroupRoleAsync(42, 1, GroupRole.Player);
+        await _groupService.DidNotReceive().AddMemberAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateOrAddToGroupAsync_WhenReResolutionAfterCreateReturnsNull_ReturnsFailed()
+    {
+        // Arrange — the account was created successfully, but the follow-up lookup by
+        // email (e.g. replica lag, or the account being deleted between the two calls)
+        // fails to find it. This must return Failed, not throw.
+        const string email = "vanished@example.com";
+        const string name = "Ghost Player";
+        _identityService.GetIdByEmailAsync(email).Returns((int?)null, (int?)null);
+        _identityService.CreateUserAsync(email, name).Returns(IdentityResult.Success);
+
+        // Act
+        var result = await _sut.CreateOrAddToGroupAsync(email, name, groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Outcome.Should().Be(CreateOrAddToGroupOutcome.Failed);
+        result.UserId.Should().BeNull();
+        result.Errors.Should().NotBeEmpty();
+        await _repository.DidNotReceive().SetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>());
+    }
+
+    [Fact]
+    public async Task CreateOrAddToGroupAsync_WhenExistingConfirmedUserNotAMember_AddsMembershipAndReturnsAddedToGroup()
+    {
+        // Arrange
+        const string email = "existing@example.com";
+        var existingUser = new User { Id = 7, Name = "Existing Player", Email = email, EmailConfirmed = true };
+        _identityService.GetIdByEmailAsync(email).Returns(7);
+        _repository.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(existingUser);
+
+        // Act
+        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Outcome.Should().Be(CreateOrAddToGroupOutcome.AddedToGroup);
+        result.UserId.Should().Be(7);
+        result.Name.Should().Be("Existing Player");
+        await _groupService.Received(1).AddMemberAsync(1, 7, GroupRole.Player, Arg.Any<CancellationToken>());
+        await _identityService.DidNotReceive().CreateUserAsync(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task CreateOrAddToGroupAsync_WhenExistingUnconfirmedUserNotAMember_AddsMembershipAndReturnsAddedToGroupStrandedAccount()
+    {
+        // Arrange
+        const string email = "stranded@example.com";
+        var existingUser = new User { Id = 8, Name = "Stranded Player", Email = email, EmailConfirmed = false };
+        _identityService.GetIdByEmailAsync(email).Returns(8);
+        _repository.GetByIdAsync(8, Arg.Any<CancellationToken>()).Returns(existingUser);
+
+        // Act
+        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Outcome.Should().Be(CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount);
+        result.UserId.Should().Be(8);
+        await _groupService.Received(1).AddMemberAsync(1, 8, GroupRole.Player, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateOrAddToGroupAsync_WhenEmailAlreadyMemberOfGroup_ReturnsAlreadyMember()
+    {
+        // Arrange
+        const string email = "member@example.com";
+        var existingUser = new User { Id = 9, Name = "Member Player", Email = email, EmailConfirmed = true };
+        _identityService.GetIdByEmailAsync(email).Returns(9);
+        _repository.GetByIdAsync(9, Arg.Any<CancellationToken>()).Returns(existingUser);
+        _groupService.AddMemberAsync(1, 9, GroupRole.Player, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("User is already a member of this group."));
+
+        // Act
+        var result = await _sut.CreateOrAddToGroupAsync(email, "Submitted Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Outcome.Should().Be(CreateOrAddToGroupOutcome.AlreadyMember);
+        result.UserId.Should().Be(9);
+        result.Name.Should().Be("Member Player");
+        await _identityService.DidNotReceive().CreateUserAsync(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task CreateOrAddToGroupAsync_OnAnyCollisionBranch_NeverCreatesANewAccount()
+    {
+        // Arrange
+        const string email = "collision@example.com";
+        var existingUser = new User { Id = 10, Name = "Collision Player", Email = email, EmailConfirmed = true };
+        _identityService.GetIdByEmailAsync(email).Returns(10);
+        _repository.GetByIdAsync(10, Arg.Any<CancellationToken>()).Returns(existingUser);
+
+        // Act
+        await _sut.CreateOrAddToGroupAsync(email, "Ignored Name", groupId: 1, GroupRole.Player, TestContext.Current.CancellationToken);
+
+        // Assert: the existing account's Name is never touched via a create call
+        await _identityService.DidNotReceive().CreateUserAsync(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    // ---------------------------------------------------------------------------
+    // GetAvailableUsersAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAvailableUsersAsync_DelegatesToRepositoryAndReturnsSameList()
+    {
+        // Arrange
+        var expectedList = new List<User> { new() { Id = 1, Name = "Available Player" } };
+        _repository.GetAvailableUsers(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(expectedList);
+
+        // Act
+        var result = await _sut.GetAvailableUsersAsync(1, "term", TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().BeSameAs(expectedList);
+        await _repository.Received(1).GetAvailableUsers(1, "term", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAvailableUsersAsync_WhenSearchIsNull_ForwardsNullToRepositoryUnchanged()
+    {
+        // Arrange
+        var expectedList = new List<User>();
+        _repository.GetAvailableUsers(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(expectedList);
+
+        // Act
+        await _sut.GetAvailableUsersAsync(1, null, TestContext.Current.CancellationToken);
+
+        // Assert: the service must not substitute empty-string or filter itself
+        await _repository.Received(1).GetAvailableUsers(1, null, Arg.Any<CancellationToken>());
     }
 }

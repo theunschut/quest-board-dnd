@@ -1,0 +1,89 @@
+@model IEnumerable<PlatformUserViewModel>
+@{
+    ViewData["Title"] = "User Accounts";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
+@section Styles {
+    <link href="~/css/platform-users.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="platform-users-card-mobile mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">
+            <i class="fas fa-users-cog text-danger me-2"></i>User Accounts
+        </h5>
+    </div>
+
+    @if (Model.Any())
+    {
+        @foreach (var item in Model)
+        {
+            <div class="user-card-mobile mb-3">
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    <i class="fas fa-user text-muted"></i>
+                    <strong class="parchment-text">@item.User.Name</strong>
+                    @if (item.User.EmailConfirmed)
+                    {
+                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Confirmed</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Unconfirmed</span>
+                    }
+                    @if (item.IsDisabled)
+                    {
+                        <span class="badge bg-danger"><i class="fas fa-user-lock me-1"></i>Disabled</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Active</span>
+                    }
+                </div>
+                <div class="mb-2">
+                    @if (!string.IsNullOrEmpty(item.User.Email))
+                    {
+                        <a href="mailto:@item.User.Email" class="email-link">@item.User.Email</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted fst-italic">No email provided</span>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    @if (item.IsDisabled)
+                    {
+                        <form asp-action="Enable" method="post" class="d-inline">
+                            <input type="hidden" name="userId" value="@item.User.Id" />
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i class="fas fa-user-check me-1"></i>Enable
+                            </button>
+                        </form>
+                    }
+                    else if (currentUserId == item.User.Id.ToString())
+                    {
+                        <button type="button" class="btn btn-sm btn-danger" disabled title="You cannot disable your own account.">
+                            <i class="fas fa-user-lock me-1"></i>Disable
+                        </button>
+                    }
+                    else
+                    {
+                        <form asp-action="Disable" method="post" class="d-inline">
+                            <input type="hidden" name="userId" value="@item.User.Id" />
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Disable this account? They will be signed out and unable to log in until re-enabled. No data will be deleted.');">
+                                <i class="fas fa-user-lock me-1"></i>Disable
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="py-5 text-center">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No users found.</p>
+        </div>
+    }
+</div>

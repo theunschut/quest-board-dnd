@@ -1,271 +1,192 @@
 # Stack Research
 
-**Domain:** ASP.NET Core 10 MVC — v5.0 Multi-Tenancy additions to existing app
-**Researched:** 2026-06-29
-**Confidence:** MEDIUM (EF Core / ASP.NET Core from official Microsoft docs; rename tooling LOW from community sources)
-
----
+**Domain:** ASP.NET Core 10 MVC admin/user-management bugfixes (server-rendered Razor, EF Core 10, ASP.NET Core Identity)
+**Researched:** 2026-07-03
+**Confidence:** HIGH
 
 ## Summary: No New NuGet Packages Required
 
-Every multi-tenancy feature in v5.0 is achievable with packages already present in the project. The only "addition" is one `Program.cs` line (`AddHttpContextAccessor()`) and an optional dev-time CLI tool for the rename. No `<PackageReference>` changes to any `.csproj`.
+All three v6.1 features — group-scoped user list, searchable/filterable Members table, existing-email-collision auto-add-to-group — are achievable entirely with what's already installed and, in most cases, with patterns the codebase already implements elsewhere. This is a "zero new packages, zero new JS dependencies" milestone. No `<PackageReference>` changes to any `.csproj`, no new npm/CDN scripts, no schema changes (`UserGroups` junction and `UserEntity.Email`/`UserName` already exist), no new migrations.
 
----
+## Recommended Stack
 
-## Current Package Baseline (v4.0 — verified from csproj files)
+### Core Technologies
 
-| Package | Version | Project |
-|---------|---------|---------|
-| Microsoft.EntityFrameworkCore | 10.0.9 | Repository |
-| Microsoft.EntityFrameworkCore.SqlServer | 10.0.9 | Repository |
-| Microsoft.EntityFrameworkCore.Design | 10.0.9 | Repository |
-| Microsoft.AspNetCore.Identity.EntityFrameworkCore | 10.0.9 | Repository |
-| Microsoft.AspNetCore.Identity.UI | 10.0.9 | Service |
-| Microsoft.AspNetCore.Identity | 2.3.11 | Domain |
-| Microsoft.AspNetCore.App (FrameworkReference) | 10.0 | Domain |
-| AutoMapper | 16.1.1 | Domain |
-| Hangfire.AspNetCore + Hangfire.SqlServer | 1.8.23 | Service |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|------------------|
+| Microsoft.AspNetCore.Identity (`UserManager<UserEntity>`) | 10.0.9 (already installed) | Email-collision check via `FindByEmailAsync` before `CreateAsync` | Already wrapped by `IdentityService.GetIdByEmailAsync`; reordering existing calls avoids relying on `IdentityResult.Failed` string/code-matching |
+| Microsoft.EntityFrameworkCore(.SqlServer) | 10.0.9 (already installed) | Group-scoped user queries via `UserGroups` junction | `UserRepository.GetAllDungeonMasters`/`GetAllPlayers` already implement the exact `DbSet.Where(u => DbContext.UserGroups.Any(ug => ...))` pattern needed |
+| Bootstrap 5 (`modern-card`, `table`, `table-striped`) | already installed | Table + form styling for the redesigned Members page | `ShopController`/Shop views already use plain Bootstrap tables + `<select>`/query-string filters at comparable scale; no upgrade needed |
 
----
+### Supporting Libraries
 
-## Feature-by-Feature Stack Analysis
+None required.
 
-### 1. Namespace/Project Rename (EuphoriaInn → QuestBoard)
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| — | — | — | No supporting libraries needed for any of the three features |
 
-**What changes:** 5 folder names, 5 `.csproj` filenames, the `.slnx` project paths, all `namespace` declarations, all `using` statements, AutoMapper profile references, `appsettings` keys referencing the old name, Dockerfile/deploy script paths.
+### Development Tools
 
-**Scale:** ~200 files touched in v4.0; namespace replace will touch nearly all of them.
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| EF Core migrations (`dotnet ef migrations add`) | Not needed this milestone | All three features are query/controller/view changes only |
 
-**Tooling options:**
+## Installation
 
-| Approach | Mechanism | Effort | Risk |
-|----------|-----------|--------|------|
-| `ModernRonin.ProjectRenamer` (recommended) | `dotnet tool install -g ModernRonin.ProjectRenamer` then `renamer --old EuphoriaInn --new QuestBoard` | Lowest | Must verify `.slnx` format support (tool was built for `.sln`; manual `.slnx` fix may be needed) |
-| VS 2022 built-in | Right-click → Rename project, then right-click → Sync Namespaces | Low for namespaces; manual folder + `.slnx` path fix still needed | Sync Namespaces does not update cross-project `using` statements |
-| Manual find-and-replace | IDE global search-replace `EuphoriaInn` → `QuestBoard` | High | Easy to miss occurrences in `.cshtml`, `.csproj`, `.slnx`, and config files |
+```bash
+# No installation needed — zero new packages for this milestone.
+```
 
-**Recommendation:** Use `ModernRonin.ProjectRenamer` for the mechanical rename. Follow up with a manual grep for any remaining `EuphoriaInn` occurrences — particularly in `.cshtml` files, `appsettings.json` keys, and the `.slnx` file.
+## Question-by-Question Findings
 
-**csproj changes:** The .NET SDK infers `RootNamespace` from the `.csproj` filename; renaming the files is sufficient. Only add an explicit `<RootNamespace>` if the tool does not rename the `.csproj` file itself.
+### (a) Does UserManager have a built-in collision-check pattern before CreateAsync?
 
-**EF Core migrations:** The migration history table (`__EFMigrationsHistory`) stores string migration names, not assembly-qualified types. The existing migrations remain valid after rename. The `dotnet ef` command paths (`--project`, `--startup-project`) must be updated to the new names.
+**Yes — `FindByEmailAsync` is the idiomatic pre-check, and the codebase already has the wrapper method needed.**
 
-**Integration tests:** `WebApplicationFactory<Program>` resolves `Program` from the renamed assembly automatically — no code change needed there, but the `ProjectReference` path in the test `.csproj` files must be updated.
+`UserManager<TUser>.FindByEmailAsync(string email)` returns `null` if no user has that email, or the `TUser` entity if one exists. This is the standard Identity pattern confirmed against Microsoft's official Identity docs and the `dotnet/aspnetcore` source: call `FindByEmailAsync` first, branch on `null` vs. non-null, only call `CreateAsync` in the `null` branch. This avoids parsing `IdentityResult.Errors` for a `"DuplicateUserName"` code/description, which is brittle.
 
-**No new NuGet packages.**
-
----
-
-### 2. EF Core Global Query Filters (Group Isolation)
-
-**EF Core version in use:** 10.0.9 — supports named filters (new in EF Core 10).
-
-**Pattern:** Inject a scoped `IGroupContextService` into `QuestBoardContext` via constructor, capture the active group ID as a private field, then apply `HasQueryFilter` in `OnModelCreating` for every group-scoped entity.
+**Integration point — this codebase already has the lookup wired up. Reuse it, don't add a new one:**
 
 ```csharp
-// QuestBoardContext constructor
-private readonly int? _activeGroupId;
-
-public QuestBoardContext(
-    DbContextOptions<QuestBoardContext> options,
-    IGroupContextService groupContext)
-    : base(options)
+// IdentityService.cs:152 — already exists, already exposed through IIdentityService
+public async Task<int?> GetIdByEmailAsync(string email)
 {
-    _activeGroupId = groupContext.ActiveGroupId; // null = SuperAdmin / job scope
+    var entity = await userManager.FindByEmailAsync(email);
+    return entity?.Id;
 }
-
-// OnModelCreating — EF Core 10 named filter
-modelBuilder.Entity<QuestEntity>()
-    .HasQueryFilter("GroupFilter", q => _activeGroupId == null || q.GroupId == _activeGroupId);
 ```
 
-**Why named filters matter here:** EF Core 10's named `HasQueryFilter` enables `IgnoreQueryFilters(["GroupFilter"])` to selectively bypass only the group filter without also bypassing any soft-delete or other filters added later. This is critical for SuperAdmin queries that must see all groups.
+**Recommended flow for `AdminController.CreateUser` and the new Platform create-user entry point:**
 
-**Navigation chain caveat (critical):** Any required navigation from a group-scoped entity to a non-group-scoped entity (e.g. `QuestEntity → UserEntity`) uses an INNER JOIN and will cause parent rows to be silently dropped. Review all `.IsRequired()` configurations — set to `.IsRequired(false)` where the join target is not group-scoped, or add a matching group filter to both sides of the relationship.
+1. Controller calls `identityService.GetIdByEmailAsync(model.Email)` *before* calling `userService.CreateAsync`.
+2. If non-null (collision):
+   - Skip `CreateAsync` entirely.
+   - Call `groupService.AddMemberAsync(groupId, userId.Value, model.GroupRole)` — the same call `GroupController.AddMember` already uses. Catch `InvalidOperationException` the same way, for the edge case where the found user is already a member of *this* group.
+   - Enqueue the new "added to group" email variant (see Stack Patterns by Variant) instead of `WelcomeEmailJob` with `isNewAccount: true`.
+3. If `GetIdByEmailAsync` returns `null`, fall through to the existing `userService.CreateAsync` → `SetGroupRoleAsync` → `WelcomeEmailJob(isNewAccount: true)` path, unchanged.
 
-**Hangfire jobs:** Jobs run without an HTTP context. The `IGroupContextService` must handle `null` `HttpContext` gracefully by returning `null`, which makes `_activeGroupId == null` true and bypasses the group filter — giving jobs full visibility across all groups. This is the correct behavior for system-level jobs like the daily reminder sweep.
+This is a pure reordering of existing calls, not new capability. `AdminController` already injects `IIdentityService identityService`, `IUserService userService`, `IBackgroundJobClient jobClient` — no new constructor dependencies needed there. The new Platform create-user controller currently only injects `IGroupService groupService, IUserService userService` (see `GroupController.cs:13`) — it will need `IIdentityService` and `IBackgroundJobClient` added, following `AdminController`'s exact existing constructor shape.
 
-**No new NuGet packages.** Uses `Microsoft.EntityFrameworkCore 10.0.9` already present.
+**Do not** catch `DbUpdateException` for this. `GroupController.Create`/`Edit` already use `DbUpdateException` pattern-matching for *group name* uniqueness because that's DB-enforced with no cheap service-level pre-check. Email/username uniqueness has a pre-check available (`FindByEmailAsync`), so copying the `DbUpdateException` pattern here would be reaching for the wrong precedent.
 
----
+**Race-condition note (informational, not a blocker at this scale):** `FindByEmailAsync` then `CreateAsync` is a check-then-act with a small TOCTOU window. At 17 users and admin-only usage (not self-service registration), this is not worth mitigating further — a genuine race would surface as an unhandled `IdentityResult.Failed`/exception, an acceptable edge case at this scale. Do not add extra defensive machinery for it.
 
-### 3. Many-to-Many User↔Group Membership
+### (b) Idiomatic lightweight searchable/filterable table for this app's scale
 
-**Pattern:** Add navigation collections to both entities; EF Core infers the shadow join table automatically. Use `UsingEntity` to name the table explicitly.
+**Server-side query-string filtering — the codebase already has this exact pattern for the Shop item list, at comparable or larger scale. Copy it; do not introduce a client-side JS library.**
+
+Evidence from the codebase (`ShopController`/`ShopRepository`):
+- `ShopController.Index` already accepts `type`, `rarity`, `sort`, `search`, `page`, `pageSize` as query-string parameters.
+- `ShopRepository` composes `IQueryable<ShopItemEntity>` with conditional `.Where(...)` clauses and a search clause: `query.Where(si => si.Name.ToLower().Contains(searchLower) || si.Description.ToLower().Contains(searchLower))`, then a `sort` switch expression.
+- No JS filter/grid library exists anywhere in `wwwroot/js` (only `site.js`) or `wwwroot/lib` (no `lib` folder at all).
+
+**Apply the identical shape to the Platform group Members "available users" list:**
+
+- Controller: `GroupController.Members(int id, string? search = null)` — GET action takes an optional `search` query param; a plain `<form method="get">` search box submits back to the same action (full-page GET like Shop already does — no AJAX/fetch needed).
+- Repository/Service: add a method (e.g. `IUserService.GetAvailableForGroupAsync(int groupId, string? search, CancellationToken)`) that composes:
+  ```csharp
+  var query = DbSet.Where(u => !DbContext.UserGroups.Any(ug => ug.UserId == u.Id && ug.GroupId == groupId));
+  if (!string.IsNullOrWhiteSpace(search))
+  {
+      var s = search.ToLower();
+      query = query.Where(u => u.Name.ToLower().Contains(s) || u.Email.ToLower().Contains(s));
+  }
+  return await query.OrderBy(u => u.Name).ToListAsync(token);
+  ```
+  This replaces the current `GroupController.Members` in-memory `allUsers.Where(u => !memberUserIds.Contains(u.Id))` (line 120-122, after loading `GetAllAsync()`) with a single DB-side query, and adds search in the same pass.
+- View: replace the `<select asp-for="AddMember.UserId">` in `Members.cshtml` (lines 100-126) with a search `<input>` (GET form, `id` route value preserved) above a `<table>` of available users (Name, Email, per-row Add button/form posting `UserId` + a Role selector to the existing `AddMember` action). Reuse the `table table-striped table-hover` classes already used for the Members table directly above it in the same view.
+
+**Why not a client-side JS filter (vanilla `input` + `.filter()`/`display:none` toggling)?** At 17 rows today it would work either way, but:
+1. The milestone explicitly says "should scale reasonably" — server-side `Where`/`Contains` scales to thousands of rows with zero code change (add pagination later if needed), whereas a client-side filter ships the entire user list to the browser regardless of platform size, which gets worse exactly as the feature is meant to scale.
+2. It would introduce a second filtering *paradigm* alongside Shop's server-query approach for the same kind of problem, adding cognitive overhead for zero benefit at this scale.
+3. Zero JS to write/test/maintain; Shop already proves `[HttpGet]` re-render-on-filter works fine UX-wise for this app's admin-facing pages.
+
+**Why not a datatable/grid library (DataTables.net, Tom Select, Choices.js, Select2)?** None are installed (verified — no `wwwroot/lib`, no CDN `<script>` tags for any grid/select-enhancement library anywhere in the codebase). Introducing one for a sub-100-row admin table is exactly what the milestone's own framing warns against — it would add a new client dependency, a new install/CDN-pinning decision, and a UI paradigm inconsistent with every other admin table in the app, to solve a problem the existing `Where`/`Contains` server pattern already solves at zero marginal cost.
+
+### (c) EF Core patterns for scoping a query by GroupId through the UserGroups junction
+
+**No new pattern needed — copy `UserRepository.GetAllDungeonMasters`/`GetAllPlayers` verbatim.**
+
+The codebase already has the canonical shape for "all `UserEntity` rows that have a `UserGroups` row matching this `GroupId` (and optionally a role)":
 
 ```csharp
-// UserEntity — add:
-public ICollection<GroupEntity> Groups { get; set; } = [];
-
-// GroupEntity — new entity:
-public ICollection<UserEntity> Members { get; set; } = [];
-
-// OnModelCreating
-modelBuilder.Entity<UserEntity>()
-    .HasMany(u => u.Groups)
-    .WithMany(g => g.Members)
-    .UsingEntity("UserGroupMemberships");
+// UserRepository.cs:20-33 — existing, proven pattern
+var entities = await DbSet
+    .Where(u => DbContext.UserGroups
+        .Any(ug => ug.UserId == u.Id
+                && ug.GroupId == groupId.Value
+                && (ug.GroupRole == (int)GroupRole.DungeonMaster
+                    || ug.GroupRole == (int)GroupRole.Admin)))
+    .ToListAsync(cancellationToken: token);
 ```
 
-**No explicit join entity needed** for basic membership. If a "group-admin" role per user per group is added later, an explicit `UserGroupMembershipEntity` with a payload column would be introduced — out of scope for v5.0.
+This is a correlated `EXISTS`-subquery pattern (`.Any()` inside `.Where()`) against the explicit `UserGroupEntity` junction table (not a shadow/skip-navigation many-to-many). EF Core translates this to `WHERE EXISTS (...)` SQL, which is efficient and avoids join-explosion risk. This matters more than usual in this codebase because `QuestBoardContext` already applies EF Core Global Query Filters for multi-tenancy — sticking to the same explicit-junction-`Any()` shape used elsewhere avoids interacting with those filters via a new join path.
 
-**No new NuGet packages.**
+**For `AdminController.Users()` group-scoping specifically:**
 
----
-
-### 4. Active-Group Context Service (IGroupContextService)
-
-**Mechanism:** A scoped service reads the active group ID from ASP.NET Core Session and exposes it for injection into `QuestBoardContext` and repositories.
+Add a new method — e.g. `IUserService.GetAllForGroupAsync(int groupId, CancellationToken)` — mirroring `GetAllDungeonMasters`/`GetAllPlayers` exactly, minus the role filter:
 
 ```csharp
-// Program.cs — two new lines
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IGroupContextService, SessionGroupContextService>();
-```
-
-`IHttpContextAccessor` is part of `Microsoft.AspNetCore.App` (the shared framework FrameworkReference already in `EuphoriaInn.Domain.csproj`). Session middleware is already registered (`AddSession` / `UseSession` already in `Program.cs`).
-
-**Persistence mechanism:** Session (`IHttpContextAccessor.HttpContext.Session.GetInt32("ActiveGroupId")`). Session is server-side, tamper-proof, and already configured with a 24-hour idle timeout — ideal for "remember my selected group." The planner may also consider a per-user DB preference column as a fallback for cross-device persistence, but that is a design decision, not a stack decision.
-
-**Null safety:** When `HttpContext` is null (Hangfire job context), `ActiveGroupId` returns `null` and the group filter is skipped. This is correct and intentional — jobs must see all groups.
-
-**No new NuGet packages.** `AddHttpContextAccessor()` is a built-in framework method.
-
----
-
-### 5. SuperAdmin Role + Authorization Policy
-
-**Pattern:** Identical to the existing `AdminHandler` / `DungeonMasterHandler` pattern already in the codebase.
-
-```csharp
-// New files in EuphoriaInn.Service/Authorization/
-public class SuperAdminRequirement : IAuthorizationRequirement { }
-
-public class SuperAdminHandler : AuthorizationHandler<SuperAdminRequirement>
+public async Task<IList<User>> GetAllForGroupAsync(int groupId, CancellationToken token = default)
 {
-    protected override Task HandleRequirementAsync(
-        AuthorizationHandlerContext context, SuperAdminRequirement requirement)
-    {
-        if (context.User.IsInRole("SuperAdmin"))
-            context.Succeed(requirement);
-        return Task.CompletedTask;
-    }
+    var entities = await DbSet
+        .Where(u => DbContext.UserGroups.Any(ug => ug.UserId == u.Id && ug.GroupId == groupId))
+        .ToListAsync(cancellationToken: token);
+    return Mapper.Map<IList<User>>(entities);
 }
-
-// In Program.cs — add to existing AddAuthorizationBuilder chain
-builder.Services.AddScoped<IAuthorizationHandler, SuperAdminHandler>();
-// In .AddAuthorizationBuilder():
-.AddPolicy("SuperAdminOnly", p => p.Requirements.Add(new SuperAdminRequirement()))
 ```
 
-**Role seeding:** Add "SuperAdmin" via `RoleManager<IdentityRole<int>>` in the startup seed alongside the existing Admin/DungeonMaster/Player roles.
+Then in `AdminController.Users()` (`AdminController.cs:24-53`), replace `await userService.GetAllAsync()` (line 29 — the unscoped bug) with `await userService.GetAllForGroupAsync(groupId.Value)`. This is strictly fewer DB round-trips than today: `Users()` currently loops **every platform user** and calls `GetGroupRoleByIdAsync` per user to classify/filter client-side; scoping the initial query first means the per-user role lookup loop only runs over group members, not the whole platform.
 
-**No new NuGet packages.**
+**One thing to actively avoid:** do not add `.Include(u => u.UserGroups)` navigation-based eager loading as an alternative. `UserEntity`/`GroupEntity` have no configured navigation properties to `UserGroupEntity` in this codebase — existing code always goes through `DbContext.UserGroups` directly. Introducing an `Include`-based join would require wiring up new navigation properties and mapping profiles, a much larger change than the existing three-line `Any()` pattern.
 
----
+## Alternatives Considered
 
-### 6. Admin-Only User Creation (Remove Self-Registration)
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|--------------------------|
+| `FindByEmailAsync`/`GetIdByEmailAsync` pre-check before `CreateAsync` | Catch `IdentityResult.Errors` and match `Code == "DuplicateUserName"` | Only if you need to distinguish *which* uniqueness rule failed after the fact — not applicable here since `UserName == Email` in this app, so there's only one collision to detect and the pre-check is strictly cleaner |
+| Server-side query-string search (`?search=`) mirroring Shop | Client-side JS array filter (`input` + `.filter()`) | Only if the list needed to filter/re-render without a page reload — not a stated requirement, and would be the first client-filter pattern in the app |
+| Server-side query-string search | AJAX partial-view search (fetch + replace `<tbody>`) | Worth it later if the Members page becomes a high-frequency, no-reload workflow — premature for this milestone; adds a fetch/partial-view/JSON-fragment decision with no stated UX requirement |
+| Explicit-junction `.Any()` subquery (existing pattern) | EF Core 5+ implicit skip-navigation many-to-many (`GroupEntity.Users`, `UserEntity.Groups`) | Only if the junction table had no extra columns — it does (`GroupRole`), so the "join entity with payload" shape already in place is required |
 
-**Approach:** Remove or gate the public Register endpoint. Two options:
-
-- **Preferred:** Add `[Authorize(Policy = "AdminOnly")]` to the existing Register action, which turns registration into an admin-guarded flow.
-- **Alternative:** Remove the Register action and view entirely; admins create accounts via a new dedicated admin user-management page.
-
-`Microsoft.AspNetCore.Identity.UI` is already present; no scaffold changes needed — the existing Account controller handles this.
-
-**No new NuGet packages.**
-
----
-
-### 7. SuperAdmin Area Routing (/groups or /superadmin)
-
-**Pattern:** ASP.NET Core Areas — built-in MVC feature, zero packages.
-
-**Folder structure** (inside `EuphoriaInn.Service/`):
-```
-Areas/
-  SuperAdmin/
-    Controllers/
-      GroupsController.cs     ← [Area("SuperAdmin")] [Authorize(Policy="SuperAdminOnly")]
-    Views/
-      Groups/
-        Index.cshtml
-      Shared/
-        _ViewImports.cshtml   ← copy tag helper imports here
-```
-
-**Program.cs routing** — must be registered BEFORE the default route:
-```csharp
-app.MapControllerRoute(
-    name: "areas",
-    pattern: "{area:exists}/{controller=Groups}/{action=Index}/{id?}");
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-```
-
-**_ViewImports caveat:** The existing `/Views/_ViewImports.cshtml` is NOT auto-applied to Area views. Add a `_ViewImports.cshtml` in `Areas/SuperAdmin/Views/` with the same `@using` and tag helper directives, or move the root-level `_ViewImports.cshtml` to the application root folder (one level above `Views/`).
-
-**MobileViewLocationExpander caveat:** The existing `MobileViewLocationExpander` only populates `ViewLocationFormats`. If mobile views are ever needed in the SuperAdmin area, `AreaViewLocationFormats` must be extended separately. Not a concern for v5.0 since the SuperAdmin area is desktop-only management UI.
-
-**No new NuGet packages.**
-
----
-
-## What NOT to Add
+## What NOT to Use
 
 | Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `Finbuckle.MultiTenant` | Designed for connection-string-per-tenant or database-per-tenant scenarios; adds significant abstraction overhead; overkill for single-database group isolation | EF Core `HasQueryFilter` + scoped `IGroupContextService` |
-| `Abp.io` / Orchard Core | Full application platforms; cannot be bolted onto an existing app | Native EF Core + ASP.NET Core patterns |
-| `SaasKit` | Last release 2018; no .NET 10 support | Custom scoped service backed by `IHttpContextAccessor` |
-| `ModernRonin.ProjectRenamer` as `<PackageReference>` | Dev-time rename tool only; not a runtime dependency | Install as a global dotnet tool: `dotnet tool install -g ModernRonin.ProjectRenamer` |
-| A second schema or database per group | This app has 17 members in one group becoming N groups; shared-schema single-database is the correct tier | EF Core global query filters on `GroupId` column |
+|-------|-----|--------------|
+| DataTables.net / jQuery DataTables | Pulls in jQuery + a plugin + CSS theme for a sub-100-row admin table; would be the first jQuery dependency in an app that has none today | Server-side `?search=` query param, same as Shop |
+| Select2 / Choices.js / Tom Select (searchable `<select>` enhancement) | New CDN/npm dependency, new JS init pattern, solves a problem a plain filtered `<table>` + GET form already solves per the milestone's own explicit ask ("replace the dropdown with a table") | Plain HTML `<table>` with per-row Add button/form, filtered server-side |
+| Catching `DbUpdateException` for the email-collision case | `IdentityService.CreateUserAsync` doesn't throw on duplicate username — `UserManager.CreateAsync` returns a *failed* `IdentityResult`, it doesn't throw. Parsing `IdentityResult.Errors[].Code` is stringly-typed and only detectable *after* attempting the write | `FindByEmailAsync`/`GetIdByEmailAsync` pre-check, detects it *before* attempting the write |
+| `.Include()` navigation-based join for `UserGroups` | No navigation property currently configured between `UserEntity`/`GroupEntity` and `UserGroupEntity`; introducing one is a larger, unrelated modeling change | `DbContext.UserGroups.Any(ug => ...)` correlated subquery, consistent with `GetAllDungeonMasters`/`GetAllPlayers` |
 
----
+## Stack Patterns by Variant
 
-## Installation Summary
+**Platform "create new user, scoped to group" entry point (per PROJECT.md: "mirroring the existing group-admin Create User form"):**
+- Add `Create`/`CreateUser`-style GET+POST actions to `Areas/Platform/Controllers/GroupController.cs` (163 lines currently, room to extend) or a new small `Areas/Platform/Controllers/UserController.cs` if preferred for separation.
+- Inject `IIdentityService identityService` and `IBackgroundJobClient jobClient` into the constructor alongside the existing `IGroupService groupService, IUserService userService` — the same four dependencies `AdminController` already has.
+- Reuse `CreateUserViewModel` (`Email`, `Name`, `GroupRole`) as-is; add a `GroupId` route/hidden field since the Platform variant targets an arbitrary group (vs. `AdminController`'s implicit `activeGroupContext.ActiveGroupId`).
 
-**No `<PackageReference>` changes to any `.csproj`.**
+**New "added to group" notification email (per PROJECT.md: "distinct from the new-account welcome email"):**
+- Do **not** reuse `Welcome.razor`'s `IsNewAccount` bool for this — that toggle already distinguishes "brand-new account" vs. "existing account still needs a password set," both of which still route through the SetPassword flow. This third scenario is "existing account, already has a password, just gained access to a new group" — semantically different, no `CallbackUrl`/password-set link needed.
+- Add a new `AddedToGroupEmailJob.cs` mirroring `WelcomeEmailJob.cs` exactly (`IServiceScopeFactory`, `ILogger<T>`, `ExecuteAsync(toEmail, userName, groupName, ..., CancellationToken)`) and a new `AddedToGroup.razor` component mirroring `Welcome.razor`'s `_EmailLayout` wrapper and visual pattern, but without the password-set CTA — just a "you've been added to `{groupName}`" notice.
+- No new rendering infrastructure needed — `IEmailRenderService.RenderAsync<T>` (used identically by `WelcomeEmailJob`) already generalizes to any `[Parameter]`-decorated Razor component.
 
-**One optional dev-time CLI tool (global install, not added to project):**
-```bash
-dotnet tool install -g ModernRonin.ProjectRenamer
-```
+## Version Compatibility
 
-**One addition to `Program.cs`:**
-```csharp
-builder.Services.AddHttpContextAccessor(); // required for IGroupContextService
-```
-
----
-
-## Compatibility Notes
-
-| Concern | Detail |
-|---------|--------|
-| Named `HasQueryFilter` | Requires EF Core 10.0+. Project is on 10.0.9 — confirmed available. |
-| `IHttpContextAccessor` | Stable since .NET Core 1.x; `AddHttpContextAccessor()` is the standard registration. |
-| `AddAuthorizationBuilder()` | Available since .NET 7; already used in the project. |
-| ASP.NET Core Areas | Available since ASP.NET Core 1.0; stable across all versions. |
-| `ModernRonin.ProjectRenamer` | Built for `.sln` format; `.slnx` support is unconfirmed — verify before use or fall back to manual `.slnx` edit. |
-| EF Core migrations after rename | Migration history is unaffected; `dotnet ef` command `--project` paths must be updated. |
-| Hangfire jobs + group context | `IGroupContextService` must return `null` when `HttpContext` is absent; group filter then evaluates `_activeGroupId == null` as true and passes all rows through. |
-
----
+| Package A | Compatible With | Notes |
+|-----------|-------------------|-------|
+| Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.9 | Microsoft.EntityFrameworkCore(.SqlServer) 10.0.9 | Already matched in `QuestBoard.Repository.csproj`; no version changes needed for any of the three features |
+| .NET 10 / ASP.NET Core 10 MVC | Razor Components (`.razor`) for email rendering | Already proven via `HtmlRenderer` for `Welcome.razor`; the new `AddedToGroup.razor` component follows the identical rendering path |
 
 ## Sources
 
-- [EF Core Global Query Filters — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/querying/filters) — MEDIUM confidence (official docs, updated 2026-06-24)
-- [EF Core Multi-tenancy — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/miscellaneous/multitenancy) — MEDIUM confidence (official docs, updated 2026-06-24)
-- [EF Core Many-to-Many Relationships — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/modeling/relationships/many-to-many) — MEDIUM confidence (official docs)
-- [ASP.NET Core Areas — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/areas) — MEDIUM confidence (official docs, updated 2025-08-28)
-- [Access HttpContext in ASP.NET Core — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-context) — MEDIUM confidence (official docs)
-- [Renaming Projects in .NET — Tudor Wolff / Medium](https://medium.com/@tudor.wolff/renaming-projects-in-net-ccfb43979f46) — LOW confidence (community blog)
-- [ModernRonin.ProjectRenamer GitHub](https://github.com/ModernRonin/ProjectRenamer) — LOW confidence (community tool; `.slnx` compatibility unverified)
+- [UserManager<TUser>.FindByEmailAsync(String) Method — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.identity.usermanager-1.findbyemailasync?view=aspnetcore-7.0) — HIGH confidence, official API docs, confirms `null`-return-on-miss pre-check pattern
+- [Introduction to Identity on ASP.NET Core — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity?view=aspnetcore-10.0) — HIGH confidence, official docs (ASP.NET Core 10), general Identity usage patterns
+- [dotnet/aspnetcore UserManager.cs source — GitHub](https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Extensions.Core/src/UserManager.cs) — HIGH confidence, primary source, confirms `FindByEmailAsync`/`CreateAsync` implementation
+- [Many-to-many relationships — EF Core, Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/modeling/relationships/many-to-many) — HIGH confidence, official docs, confirms explicit join-entity-with-payload pattern is correct when the junction table has extra columns (`GroupRole`)
+- [Join with query filter causes nested subquery and poor query performance — dotnet/efcore#21082](https://github.com/dotnet/efcore/issues/21082) — MEDIUM confidence, community/issue-tracker discussion; informs the "avoid `.Include()` across Global Query Filters" caution, not a blocking concern at this app's scale
+- Direct codebase inspection (`UserRepository.cs`, `ShopRepository.cs`, `ShopController.cs`, `IdentityService.cs`, `UserService.cs`, `GroupService.cs`, `AdminController.cs`, `GroupController.cs`, `Members.cshtml`, `WelcomeEmailJob.cs`, `Welcome.razor`, `CreateUserViewModel.cs`, `AddMemberViewModel.cs`) — HIGH confidence, primary source; all recommendations above are extensions of patterns already proven and shipped in this exact codebase
 
 ---
-
-*Stack research for: D&D Quest Board v5.0 Multi-Tenancy*
-*Researched: 2026-06-29*
+*Stack research for: D&D Quest Board v6.1 Bugfixes milestone (group-scoped user list, searchable Members table, email-collision auto-add-to-group)*
+*Researched: 2026-07-03*

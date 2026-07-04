@@ -1,501 +1,183 @@
-# Architecture Research
+<!-- refreshed: 2026-07-03 -->
+# Architecture Research — v6.1 Bugfixes (Admin User-Management Gaps)
 
-**Domain:** Multi-tenancy integration — existing 3-layer clean architecture (ASP.NET Core 10 MVC)
-**Researched:** 2026-06-29
-**Confidence:** MEDIUM (EF Core and ASP.NET Core patterns from official Microsoft docs; layer-placement reasoning from architectural analysis of existing codebase)
+**Domain:** Integration architecture for 3 admin/user-management fixes into an existing ASP.NET Core 10 MVC + EF Core clean-architecture app
+**Researched:** 2026-07-03
+**Confidence:** HIGH (all findings grounded in direct reads of the actual interfaces/controllers in this repo, not external research)
 
----
+## Summary
 
-## Standard Architecture
+All three features are additive extensions of existing seams — no new architectural layer, dispatcher pattern, or cross-cutting abstraction is required. The codebase already contains most of the primitives needed:
 
-### System Overview After Multi-Tenancy
+- `IGroupService.GetMembersAsync(groupId)` already returns group-scoped `UserGroup` rows with `User` loaded — this is the join Feature 1 needs, just not yet used by `AdminController.Users()`.
+- `IIdentityService.GetIdByEmailAsync(email)` already exists (used by `AdminController.CreateUser` today, right after creation, not before). The "does this email already exist" check needed for Feature 3 is a **pre-check reuse of an existing method**, not a new one.
+- `Platform/GroupController` already has a full "existing user → add to group" flow (`Members` GET + `AddMember` POST, using `AddMemberViewModel`) that Feature 2's "create new user in this group" entry point should sit beside, reusing `groupService.AddMemberAsync` for the collision branch.
+- The email-job pattern has **no dispatcher interface for user-management emails** (unlike quest emails, which go through `IQuestEmailDispatcher`) — `AdminController` enqueues `WelcomeEmailJob`/`ChangeEmailConfirmationJob` directly via constructor-injected `IBackgroundJobClient`. A new `GroupMembershipAddedEmailJob` (or similarly named) should follow this exact same direct-enqueue pattern, not introduce a dispatcher abstraction.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  QuestBoard.Service (Presentation)                                    │
-│  ┌─────────────────┐  ┌────────────────┐  ┌──────────────────────┐  │
-│  │ Controllers/     │  │ Areas/Groups/  │  │ ActiveGroupContext   │  │
-│  │ (existing)       │  │ Controllers/   │  │ Service (NEW)        │  │
-│  │                  │  │ GroupsMgmt     │  │ implements           │  │
-│  │                  │  │ Controller     │  │ IActiveGroupContext  │  │
-│  └──────────────────┘  │ [SuperAdmin]   │  │ → reads session/    │  │
-│                        └────────────────┘  │   claim, DB lookup  │  │
-│                                            └──────────────────────┘  │
-├──────────────────────────── depends on ──────────────────────────────┤
-│  QuestBoard.Domain (Business Logic)                                   │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────────┐  │
-│  │ Interfaces/       │  │ Services/         │  │ Models/           │  │
-│  │ IActiveGroup      │  │ GroupService      │  │ Group             │  │
-│  │ Context (NEW)     │  │ (new group CRUD)  │  │ UserGroup         │  │
-│  │ IGroupService     │  │                   │  │ (new domain       │  │
-│  │ (NEW)             │  │                   │  │  models)          │  │
-│  └──────────────────┘  └──────────────────┘  └───────────────────┘  │
-├──────────────────────────── depends on ──────────────────────────────┤
-│  QuestBoard.Repository (Data)                                         │
-│  ┌─────────────────────────────────────────────────────────────┐     │
-│  │  QuestBoardContext (MODIFIED)                                │     │
-│  │  + GroupEntity, UserGroupEntity DbSets                       │     │
-│  │  + IActiveGroupContext injected via constructor              │     │
-│  │  + HasQueryFilter on Quest, ShopItem, Character,             │     │
-│  │    UserTransaction, TradeItem → e.GroupId == _groupId        │     │
-│  └─────────────────────────────────────────────────────────────┘     │
-│  ┌───────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │ GroupRepository│  │ UserGroupRepo    │  │ (existing repos,     │  │
-│  │ (NEW)          │  │ (NEW)            │  │  unchanged)          │  │
-│  └───────────────┘  └──────────────────┘  └──────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────┘
-```
+The one real architectural decision is **where the shared "existing-email-collision → add to group + notify" logic lives**. It must go in `UserService` (Domain layer), not in either controller, because both `AdminController` (group-scoped, Service layer, group-admin) and `Platform/GroupController` (SuperAdmin, Service layer, route-scoped) need to call it identically, and Domain is the only layer both controllers already depend on without depending on each other.
 
-### Component Responsibilities
+## Feature 1 — Scope `AdminController.Users()` to the Active Group
 
-| Component | Responsibility | Layer | New / Modified |
-|-----------|---------------|-------|----------------|
-| `IActiveGroupContext` | Contract: exposes `int? ActiveGroupId` and `bool IsSuperAdmin` | Domain/Interfaces | NEW |
-| `ActiveGroupContextService` | Implementation: resolves active group from session/claim; caches in scope | Service | NEW |
-| `GroupEntity` | EF entity: Id, Name, Slug, IsActive, CreatedAt | Repository/Entities | NEW |
-| `UserGroupEntity` | Junction table: UserId (int), GroupId (int), IsAdmin (bool) | Repository/Entities | NEW |
-| `QuestBoardContext` | Inject `IActiveGroupContext`; add `HasQueryFilter` on 5 entity types; add 2 new DbSets | Repository | MODIFIED |
-| `Group` / `UserGroup` | Domain models for the group concept | Domain/Models | NEW |
-| `IGroupService` | Group CRUD operations, member management | Domain/Interfaces | NEW |
-| `GroupService` | Implementation of IGroupService | Domain/Services | NEW |
-| `GroupsManagementController` | SuperAdmin-only group/user management (MVC Area) | Service/Areas | NEW |
-| `SuperAdmin` role | Identity role for cross-group administration | Service/Program.cs | NEW |
-| `GroupId` FK columns | Added to: QuestEntity, ShopItemEntity, CharacterEntity, UserTransactionEntity, TradeItemEntity | Repository/Entities | MODIFIED |
+### Current state (the bug)
 
----
+`AdminController.Users()` (`QuestBoard.Service/Controllers/Admin/AdminController.cs:24-53`) calls `userService.GetAllAsync()` — inherited from `IBaseService<User>` — which returns **every user on the platform**, then does a per-user `GetGroupRoleByIdAsync` N+1 lookup to compute each row's role in the active group. Users who are not members of the active group still appear in the list (with all three role flags `false`), leaking cross-tenant user data into a group admin's view.
 
-## Question-by-Question Answers
+### Integration point
 
-### (a) Where does IActiveGroupContext live — Domain or Service layer?
+`IGroupService.GetMembersAsync(int groupId)` (`QuestBoard.Domain/Interfaces/IGroupService.cs:37`) already does the correct join: `UserGroups.Include(ug => ug.User).Where(ug => ug.GroupId == groupId)`, returning `IList<UserGroup>` with `GroupRole` and `User` populated per row. This is **already group-scoped and already has the role on it** — no per-user N+1 lookup needed at all.
 
-**Answer: Domain layer.** Specifically `QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`.
+### New vs Modified
 
-**Rationale:** The Repository layer's `QuestBoardContext` must consume this interface to apply Global Query Filters. The Repository layer already depends on the Domain layer (it uses `IBaseRepository<T>` contracts defined there). If `IActiveGroupContext` were defined in the Service layer, Repository would need a compile-time reference to Service — violating the strict one-way dependency rule (Service → Domain → Repository) and creating a circular dependency.
+| Component | New or Modified | What |
+|---|---|---|
+| `AdminController.Users()` | **Modified** | Replace `userService.GetAllAsync()` + `GetGroupRoleByIdAsync` loop with `groupService.GetMembersAsync(groupId.Value)`, project `UserManagementViewModel` from each `UserGroup.User` + `UserGroup.GroupRole` directly |
+| `AdminController` constructor | **Modified** | Add `IGroupService groupService` to the constructor parameter list (not currently injected there) |
+| `IUserService` / `UserService` | **No change needed** | `GetGroupRoleByIdAsync` becomes dead code for this call site but should stay — still used by other flows (verify via `FindReferences`/`FindCallers` before removing anything) |
+| `UserManagementViewModel` | **No change needed** | Already holds `User` + 3 bool role flags; `UserGroup.User` supplies the same shape `userService.GetAllAsync()` did |
 
-The implementation (`ActiveGroupContextService`) lives in the Service layer and is injected via the DI container. This follows the same pattern the codebase already uses: `IIdentityService` is defined in Domain, implemented in Repository's `IdentityService.cs`. The same inversion applies here.
+### Why not add `IUserService.GetByGroupIdAsync`
 
-```
-IActiveGroupContext (Domain/Interfaces)
-    ↑ implements
-ActiveGroupContextService (Service) — reads HttpContext, session, or User claims
-    ↓ injected into
-QuestBoardContext (Repository) — captures groupId at construction time
-```
+The milestone context suggested "a new `UserService` method (e.g. `GetByGroupIdAsync`) that joins through the UserGroups junction." That method would duplicate `IGroupService.GetMembersAsync` — same join, same table, same shape (`UserGroup` already carries `User`). Adding a second method that returns the same data via a different path is exactly the kind of quiet duplication this codebase's Key Decisions log flags as a recurring source of drift (see the 3x-duplicated `GetActiveBoardTypeAsync` noted in `PROJECT.md`'s Known Issues). Reuse `IGroupService.GetMembersAsync` instead — it is already `GroupService`-side group-scoped, already returns `GroupRole`, and is already exercised by `Platform/GroupController.Members`, so both admin surfaces read group membership through the same seam.
 
-**Interface shape:**
-```csharp
-// QuestBoard.Domain/Interfaces/IActiveGroupContext.cs
-public interface IActiveGroupContext
-{
-    int? ActiveGroupId { get; }  // null = SuperAdmin cross-group view
-    bool IsSuperAdmin { get; }
-}
-```
+**Risk:** `GetMembersAsync` is currently only called from `Platform/GroupController` (SuperAdmin, no `[Authorize(Policy = "AdminOnly")]` scoping concerns there). Calling it from `AdminController` (group-admin surface) is safe because the `groupId` passed in is always `activeGroupContext.ActiveGroupId.Value` — same trust boundary as the code it replaces.
 
-**Registration:** `services.AddScoped<IActiveGroupContext, ActiveGroupContextService>()` in `QuestBoard.Service/Program.cs` — must be registered before `AddDbContext<QuestBoardContext>()` in the DI builder so the container can satisfy the constructor dependency.
+## Feature 2 — Platform `GroupController.Members`: Searchable Table + Group-Scoped "Create New User"
 
----
+### Current state
 
-### (b) How do EF Core Global Query Filters interact with the existing QuestBoardContext?
+`Members(int id)` (`Areas/Platform/Controllers/GroupController.cs:114-130`) already computes `availableUsers` (platform users minus current members) and renders them in `GroupMembersViewModel.AvailableUsers` for a `<select>` dropdown, bound via `AddMemberViewModel` (`[Bind(Prefix = "AddMember")]`) to the `AddMember` POST action. This is the existing-user path and does not need re-architecting — only the view template's dropdown-to-searchable-table change, which is presentation-layer only (no controller/service change required for that half).
 
-**Mechanism (from official EF Core documentation):** Inject `IActiveGroupContext` into the `QuestBoardContext` constructor, capture the resolved group ID into a `readonly` field at construction time, then reference that field in `HasQueryFilter` lambdas inside `OnModelCreating`.
+The new requirement is a **second entry point**: "create new user in this group," mirroring `AdminController.CreateUser` but reachable when there is no `IActiveGroupContext.ActiveGroupId` in session (SuperAdmin is deliberately unscoped — see `ARCHITECTURE.md`'s "SuperAdmin group scoping" architectural constraint). The target `groupId` must come from the route/model (`id`), never from session.
+
+### Integration point
+
+`Platform/GroupController` already takes `IUserService userService` in its constructor (used today for `GetAllAsync` in `Members` and `GetByIdAsync` in `AddMember`). It does **not** currently take `IIdentityService` or `IBackgroundJobClient`/Hangfire — both need to be added.
+
+### New vs Modified
+
+| Component | New or Modified | What |
+|---|---|---|
+| `Platform/GroupController` constructor | **Modified** | Add `IIdentityService identityService`, `IBackgroundJobClient jobClient` (mirrors `AdminController`'s constructor shape) |
+| `Platform/GroupController.CreateMember(int id)` GET | **New action** | Renders a create-user form scoped to route `id`, analogous to `AdminController.CreateUser()` GET |
+| `Platform/GroupController.CreateMember(int id, CreateGroupMemberViewModel model)` POST | **New action** | Calls the shared collision-aware creation method (see Feature 3) with `groupId = id` from the route — never `activeGroupContext.ActiveGroupId`, which is null for SuperAdmin |
+| `CreateGroupMemberViewModel` (Platform ViewModels namespace) | **New** | Same shape as `CreateUserViewModel` (`Email`, `Name`, `GroupRole`) — reuse the type directly instead of duplicating it if the two views can share a partial/model (see Build Order note below) |
+| `GroupMembersViewModel` | **Modified (optional)** | Add a `CreateMember` sub-viewmodel property if the "create new user" form renders inline on the same Members page rather than a separate view, mirroring how `AddMember` is already nested |
+| Members.cshtml view | **Modified** | Replace `<select>` dropdown with searchable/filterable table (presentation only); add "create new user" entry point button/link to the new `CreateMember` action |
+
+### Why route `id`, not `IActiveGroupContext`
+
+`IActiveGroupContext.ActiveGroupId` (`QuestBoard.Domain/Interfaces/IActiveGroupContext.cs`) is session-backed via `ActiveGroupContextService`, and is `null` by design for SuperAdmin (documented anti-pattern: "SuperAdmin group scoping... intentionally has `ActiveGroupId = null`"). The new Platform create-user action must take `groupId` as an explicit method parameter sourced from the route, exactly as `Members`/`AddMember`/`RemoveMember` already do (`int id` route parameter throughout `Platform/GroupController`). This also means the shared collision-handling service method (Feature 3) must accept `groupId` as an explicit parameter — it cannot read `IActiveGroupContext` internally, or it would silently no-op for SuperAdmin callers.
+
+## Feature 3 — Existing-Email Collision Handling in Create User Flows
+
+### Current state (the bug)
+
+`IdentityService.CreateUserAsync` (`QuestBoard.Repository/IdentityService.cs:37-55`) calls `userManager.CreateAsync(entity)` with no pre-check. ASP.NET Core Identity's `UserManager` enforces unique `UserName` (`= email` in this app's `CreateUserAsync`), so a duplicate email produces an `IdentityResult` failure (`DuplicateUserName` error) that `AdminController.CreateUser` currently surfaces as raw `ModelState` errors — a confusing/hard-fail UX instead of "add this existing user to your group."
+
+### Integration point — the collision check already exists, half-built
+
+`IIdentityService.GetIdByEmailAsync(string email)` (`QuestBoard.Domain/Interfaces/IIdentityService.cs:101`, implemented via `userManager.FindByEmailAsync` in `IdentityService.cs:152-156`) is **already in the codebase** and already called by `AdminController.CreateUser` — but only *after* a successful create, to fetch the just-created user's ID (`AdminController.cs:117`). The fix reorders this: call `GetIdByEmailAsync` (or a new `IUserService`-level wrapper) **before** attempting creation, and branch.
+
+### Where the shared logic must live: `UserService` (Domain layer), not either controller
+
+Both `AdminController.CreateUser` (group-scoped, reads `groupId` from `IActiveGroupContext`) and the new `Platform/GroupController.CreateMember` (reads `groupId` from the route) need identical branching logic:
+
+1. Look up `identityService.GetIdByEmailAsync(model.Email)`.
+2. If **no existing user** → current path: `userService.CreateAsync(...)` → `SetGroupRoleAsync` → generate reset token → enqueue `WelcomeEmailJob` (new-account variant).
+3. If **existing user found** → new path: `userService.SetGroupRoleAsync(existingUserId, groupId, model.GroupRole)` (reuses the exact same method `PromoteToAdmin`/`AddMember` already use to upsert a `UserGroupEntity` row — it is idempotent-safe, unlike `GroupService.AddMemberAsync` which throws `InvalidOperationException` on an existing row) → enqueue a new "added to group" notification email (distinct from `WelcomeEmailJob`).
+
+This branching logic is business logic with no HTTP/view concerns — it belongs in `UserService` per this codebase's established pattern ("Business logic lives in services, not controllers" — validated requirement from v1.x, `PROJECT.md` line 45). Concretely:
 
 ```csharp
-// QuestBoard.Repository/Entities/QuestBoardContext.cs  (modified)
-public class QuestBoardContext(
-    DbContextOptions<QuestBoardContext> options,
-    IActiveGroupContext groupContext)
-    : IdentityDbContext<UserEntity, IdentityRole<int>, int>(options)
-{
-    private readonly int? _groupId = groupContext.ActiveGroupId;
-    private readonly bool _isSuperAdmin = groupContext.IsSuperAdmin;
-
-    // ... existing DbSets unchanged ...
-
-    public DbSet<GroupEntity> Groups { get; set; }         // NEW
-    public DbSet<UserGroupEntity> UserGroups { get; set; } // NEW
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-
-        // ... existing FK configuration unchanged ...
-
-        // NEW: Global query filters — omitted entirely for SuperAdmin
-        if (!_isSuperAdmin)
-        {
-            modelBuilder.Entity<QuestEntity>()
-                .HasQueryFilter("GroupFilter", q => q.GroupId == _groupId);
-
-            modelBuilder.Entity<ShopItemEntity>()
-                .HasQueryFilter("GroupFilter", s => s.GroupId == _groupId);
-
-            modelBuilder.Entity<CharacterEntity>()
-                .HasQueryFilter("GroupFilter", c => c.GroupId == _groupId);
-
-            modelBuilder.Entity<UserTransactionEntity>()
-                .HasQueryFilter("GroupFilter", t => t.GroupId == _groupId);
-
-            modelBuilder.Entity<TradeItemEntity>()
-                .HasQueryFilter("GroupFilter", t => t.GroupId == _groupId);
-        }
-    }
-}
+// QuestBoard.Domain/Interfaces/IUserService.cs — new method
+/// <summary>
+/// Creates a new user and adds them to the group, or — if a user with this email
+/// already exists — adds the existing user to the group instead. Returns which
+/// branch was taken so the caller can pick the correct notification email and
+/// success message.
+/// </summary>
+Task<CreateOrAddToGroupResult> CreateOrAddToGroupAsync(string email, string name, int groupId, GroupRole role);
 ```
 
-**Key constraints and caveats from official EF Core docs:**
-
-1. EF Core 10 supports named filters via `HasQueryFilter("name", lambda)`. Named filters can be individually disabled: `query.IgnoreQueryFilters(["GroupFilter"])`. This project targets ASP.NET Core 10 / EF Core 9+ — verify named filter availability; fallback is the combined lambda approach with a single `IgnoreQueryFilters()` call.
-
-2. Calling `HasQueryFilter` twice on the same entity without naming silently overwrites the first filter. Since the codebase has no existing query filters, there is no conflict today, but adding soft-delete filters later requires named filters.
-
-3. Required navigations (INNER JOIN) on filtered entities can silently suppress parent rows when `Include()` is used. The existing schema uses `NoAction` delete behavior on most navigation properties. The critical risk is loading `Quest.PlayerSignups.Include(ps => ps.Player)` — Player/User entities are not group-filtered, so this is safe. Any future `Include` on a group-filtered entity from an un-filtered root needs review.
-
-4. `ReminderLogEntity`, `UserEntity`, `CharacterImageEntity`, `DungeonMasterProfileEntity` do NOT get group filters — these are system-wide or user-owned entities.
-
-5. Filters can only be defined on the root entity of an inheritance hierarchy. None of the existing entities use table-per-hierarchy inheritance, so this is not a current concern.
-
-**DbContext lifetime:** `QuestBoardContext` is already registered as Scoped (the `AddDbContext` default). This is correct — a new instance per request picks up a fresh `IActiveGroupContext` with the current user's active group for that request.
-
-**SuperAdmin bypass:** The `if (!_isSuperAdmin)` conditional in `OnModelCreating` means SuperAdmin DbContext instances have no group filters registered at all. This gives full cross-group visibility without needing `IgnoreQueryFilters()` calls scattered throughout repositories — cleaner and less error-prone.
-
-**EF Core model caching warning:** EF Core caches the compiled model per `DbContext` type. Because `_isSuperAdmin` and `_groupId` are instance fields captured by value, the model is rebuilt per `DbContext` instance (or EF re-evaluates the lambda per instance). This is the officially documented pattern (Microsoft EF Core multitenancy docs, `ContactContext` example). At small scale (17-50 users) this causes no performance concern. At scale, use `DbContext` pooling with caution — pooled contexts reuse the model snapshot; test this if pooling is added later.
-
----
-
-### (c) Safest build order given the namespace rename must happen first
-
-The namespace rename (`EuphoriaInn` → `QuestBoard`) must be Phase 1 because all subsequent code is written in the new namespace. Mixing rename and schema changes in one commit produces an unreadable diff and makes rollback of either change impossible independently.
-
-**Critical finding on migration compatibility (MEDIUM confidence from official EF Core docs):** EF Core tracks applied migrations in `__EFMigrationsHistory` by `MigrationId` (timestamp + name) and `ProductVersion` — NOT by C# namespace or assembly-qualified name. This is a key difference from EF6 (which used a `ContextKey` derived from the namespace). Renaming C# namespaces in migration files and the model snapshot does NOT corrupt the history table. No SQL UPDATE against `__EFMigrationsHistory` is needed. The only required work is updating the `namespace` declarations in all `.cs` and `.Designer.cs` migration files and the `QuestBoardContextModelSnapshot.cs` file.
-
-**Recommended build order:**
-
-```
-Phase 1: Namespace Rename (EuphoriaInn → QuestBoard)
-  - Rename .csproj files: EuphoriaInn.* → QuestBoard.*
-  - Update solution file (.slnx)
-  - Find-and-replace all namespace declarations and using directives in .cs files
-  - Find-and-replace model namespaces in all .cshtml files
-  - Update namespace in all existing Migration .cs and .Designer.cs files
-  - Update QuestBoardContextModelSnapshot.cs namespace
-  - Update appsettings.json keys, Dockerfile labels, CI references
-  - Rebuild + run all 191 tests — zero schema changes, zero behavior changes
-  - Commit: "chore: rename EuphoriaInn → QuestBoard (namespaces only)"
-
-Phase 2: Group Entity Schema
-  - Add GroupEntity, UserGroupEntity to Repository/Entities/
-  - Add IGroupRepository, IUserGroupRepository to Domain/Interfaces/
-  - Implement GroupRepository, UserGroupRepository in Repository/
-  - Add Group, UserGroup domain models to Domain/Models/
-  - Add GroupId FK (int, nullable initially) to the 5 content entity types
-  - Register new repositories in Repository/Extensions/ServiceExtensions.cs
-  - Migration: AddGroupEntityAndJunctionTable
-  - Migration: AddGroupIdToContentEntities
-  - Migration: SeedExistingGroupAndMembers
-    (INSERT EuphoriaInn group; UPDATE all content rows to GroupId=1;
-     INSERT all existing users into UserGroups)
-  - Migration: MakeGroupIdRequired (after seed verified)
-  - Run all tests; verify FK constraints
-
-Phase 3: IActiveGroupContext + Global Query Filters
-  - Add IActiveGroupContext to Domain/Interfaces/
-  - Implement ActiveGroupContextService in Service/
-  - Modify QuestBoardContext constructor to accept IActiveGroupContext
-  - Add HasQueryFilter calls to OnModelCreating for 5 entity types
-  - Register ActiveGroupContextService as Scoped in Program.cs (before AddDbContext)
-  - Add IGroupService, GroupService to Domain
-  - Register GroupService in Domain/Extensions/ServiceExtensions.cs
-  - Update integration test WebApplicationFactory: register a stub IActiveGroupContext
-    that returns GroupId=1, IsSuperAdmin=false (covers all existing test scenarios)
-  - Run all 191 tests; verify filter applies per group; verify SuperAdmin stub bypasses
-
-Phase 4: SuperAdmin Role + Groups MVC Area
-  - Seed SuperAdmin IdentityRole in Program.cs startup
-  - Add "SuperAdminOnly" authorization policy in Program.cs
-  - Create Areas/Groups/ folder structure in QuestBoard.Service/
-  - Create GroupsManagementController with [Area("Groups")] [Authorize(Policy="SuperAdminOnly")]
-  - Add area route in Program.cs before default route
-  - Add _ViewImports.cshtml under Areas/Groups/Views/
-  - Run tests; verify authorization rejects non-SuperAdmin; verify routes resolve
-
-Phase 5: Active Group Picker (user-facing group switching)
-  - Implement group-picker UI (mechanism TBD by planner: cookie, session, claim)
-  - Implement full ActiveGroupContextService group resolution from chosen persistence
-  - Add group membership validation (user must belong to the group they select)
-  - Run tests; verify correct data scoping per group selection
-```
-
-**Why this order:**
-- Rename first: every subsequent PR is clean — no mixed namespaces in git diff, no ambiguity about which system a file belongs to.
-- Schema before filters: `HasQueryFilter` references `GroupId`, which must exist in entities before the context compiles.
-- Filters before UI: the group picker depends on filters working correctly. Landing the picker before filters results in all queries returning unscoped data temporarily.
-- SuperAdmin area in Phase 4, not earlier: the role must be seeded, and the seed is part of the schema/startup phase.
-- Integration tests updated in Phase 3 (not Phase 2) because the test factory change (stub `IActiveGroupContext`) is only needed when the DbContext constructor changes.
-
----
-
-### (d) SuperAdmin management area — MVC Area vs regular controller
-
-**Answer: Use an MVC Area named "Groups".** Route prefix: `/groups/`.
-
-**Rationale:** The existing `AdminController` (under `Controllers/Admin/`) handles per-group administration: user listing, quest management, email stats. Adding SuperAdmin functionality to the same folder would blur the distinction between group-scoped admin actions and system-wide actions. An MVC Area provides a separate routing namespace (`/groups/...`), a separate view folder (`Areas/Groups/Views/`), and a distinct C# namespace (`QuestBoard.Service.Areas.Groups.Controllers`). This makes the security boundary explicit at the routing, namespace, and folder level.
-
-**Folder structure:**
-```
-QuestBoard.Service/
-├── Areas/
-│   └── Groups/
-│       ├── Controllers/
-│       │   └── GroupsManagementController.cs
-│       │       [Area("Groups")]
-│       │       [Authorize(Policy = "SuperAdminOnly")]
-│       └── Views/
-│           ├── _ViewImports.cshtml   (tag helpers, @using QuestBoard.Service.Areas.Groups)
-│           └── GroupsManagement/
-│               ├── Index.cshtml      (list all groups)
-│               ├── Create.cshtml
-│               ├── Edit.cshtml
-│               └── Members.cshtml    (add/remove users in a group)
-```
-
-**Route registration in Program.cs (before default route):**
-```csharp
-// Add BEFORE the default route
-app.MapControllerRoute(
-    name: "GroupsArea",
-    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-```
-
-The `{area:exists}` constraint matches only controllers decorated with `[Area("Groups")]`. No ambiguity with existing controllers.
-
-**Tag helper usage in views:**
-```cshtml
-<a asp-area="Groups" asp-controller="GroupsManagement" asp-action="Index">
-    Manage Groups
-</a>
-```
-
-**ViewImports caveat (from official docs):** The global `/Views/_ViewImports.cshtml` does NOT apply to area views. A `_ViewImports.cshtml` must be added under `Areas/Groups/Views/` to enable tag helpers and `@using` directives.
-
-**Authorization:** A `"SuperAdminOnly"` policy is added in Program.cs alongside the existing `"DungeonMasterOnly"` and `"AdminOnly"` policies:
-```csharp
-options.AddPolicy("SuperAdminOnly", policy =>
-    policy.RequireRole("SuperAdmin"));
-```
-
----
-
-## New vs Modified Components Summary
-
-### New Components (Repository layer)
-
-| File | Purpose |
-|------|---------|
-| `Entities/GroupEntity.cs` | Group table: Id, Name, Slug, IsActive, CreatedAt |
-| `Entities/UserGroupEntity.cs` | Junction: UserId (int), GroupId (int), IsAdmin (bool) |
-| `Interfaces/IGroupRepository.cs` | Group CRUD |
-| `Interfaces/IUserGroupRepository.cs` | Member management |
-| `GroupRepository.cs` | EF implementation |
-| `UserGroupRepository.cs` | EF implementation |
-| `Migrations/XXXXX_AddGroupEntityAndJunctionTable.cs` | Groups + UserGroups tables |
-| `Migrations/XXXXX_AddGroupIdToContentEntities.cs` | FK columns on 5 entities |
-| `Migrations/XXXXX_SeedExistingGroupAndMembers.cs` | Seed EuphoriaInn group + migrate all rows |
-| `Migrations/XXXXX_MakeGroupIdRequired.cs` | Make GroupId non-nullable after seed |
-
-### New Components (Domain layer)
-
-| File | Purpose |
-|------|---------|
-| `Interfaces/IActiveGroupContext.cs` | Contract for resolving current group |
-| `Interfaces/IGroupService.cs` | Group management operations |
-| `Interfaces/IGroupRepository.cs` | (also listed above — Domain defines the interface) |
-| `Models/Group.cs` | Domain model |
-| `Models/UserGroup.cs` | Domain model |
-| `Services/GroupService.cs` | Group CRUD + member queries |
-
-### New Components (Service layer)
-
-| File | Purpose |
-|------|---------|
-| `ActiveGroupContextService.cs` | Reads session/claim, resolves GroupId; implements IActiveGroupContext |
-| `Areas/Groups/Controllers/GroupsManagementController.cs` | SuperAdmin-only group management |
-| `Areas/Groups/Views/GroupsManagement/*.cshtml` | Group management views |
-| `Areas/Groups/Views/_ViewImports.cshtml` | Area-scoped view imports |
-
-### Modified Components
-
-| File | Change |
-|------|--------|
-| `Entities/QuestBoardContext.cs` | Add IActiveGroupContext ctor param, 2 DbSets, query filters in OnModelCreating |
-| `Entities/QuestEntity.cs` | Add `int GroupId` FK |
-| `Entities/ShopItemEntity.cs` | Add `int GroupId` FK |
-| `Entities/CharacterEntity.cs` | Add `int GroupId` FK |
-| `Entities/UserTransactionEntity.cs` | Add `int GroupId` FK |
-| `Entities/TradeItemEntity.cs` | Add `int GroupId` FK |
-| `Repository/Extensions/ServiceExtensions.cs` | Register IGroupRepository, IUserGroupRepository |
-| `Service/Program.cs` | Register IActiveGroupContext as Scoped, SuperAdminOnly policy, area route, SuperAdmin role seed |
-| `Domain/Extensions/ServiceExtensions.cs` | Register IGroupService |
-| `IntegrationTests/...WebApplicationFactory.cs` | Register stub IActiveGroupContext (GroupId=1, IsSuperAdmin=false) |
-
----
-
-## Data Flow Changes
-
-### Multi-Tenant Read Request (after Phase 3)
-
-```
-Browser → GET /Quest/Index
-  ↓
-ActiveGroupContextService.ActiveGroupId
-  (resolves from session key or User claim: active-group-id)
-  ↓ captured at DbContext construction
-QuestBoardContext._groupId = 1
-  ↓
-QuestRepository.GetAllAsync()
-  ↓ EF Core auto-applies filter:
-SELECT * FROM Quests WHERE GroupId = 1
-  ↓
-QuestService maps Entity → DomainModel
-  ↓
-QuestController maps DomainModel → ViewModel
-  ↓
-Razor view rendered
-```
-
-### SuperAdmin Cross-Group View (after Phase 4)
-
-```
-Browser → GET /groups/GroupsManagement/Index
-  ↓
-[Authorize(Policy="SuperAdminOnly")] passes
-  ↓
-ActiveGroupContextService.IsSuperAdmin = true
-  ↓ DbContext constructed with IsSuperAdmin=true
-QuestBoardContext: OnModelCreating skips all HasQueryFilter calls
-  ↓
-GroupsManagementController queries Groups table — no tenant filter
-  ↓
-Returns all groups unscoped
-```
-
-### Group Seed (migration)
-
-```
-Migration: SeedExistingGroupAndMembers
-  ├── INSERT INTO Groups VALUES ('EuphoriaInn', 'euphoriainn', 1, NOW())
-  ├── UPDATE Quests SET GroupId = 1
-  ├── UPDATE ShopItems SET GroupId = 1
-  ├── UPDATE Characters SET GroupId = 1
-  ├── UPDATE UserTransactions SET GroupId = 1
-  ├── UPDATE TradeItems SET GroupId = 1
-  └── INSERT INTO UserGroups (UserId, GroupId, IsAdmin)
-      SELECT Id, 1, CASE WHEN Id IN (SELECT UserId FROM AspNetUserRoles WHERE RoleId = AdminRoleId) THEN 1 ELSE 0 END
-      FROM AspNetUsers
-```
-
----
-
-## Scaling Considerations
-
-This application serves a small trusted group (17 members initially). The following is informational only:
-
-| Scale | Notes |
-|-------|-------|
-| 1-5 groups | Single-DB with query filters is fully appropriate |
-| 5-50 groups | Add composite indexes: `(GroupId, <existing PK columns>)` on the 5 filtered tables |
-| 50+ groups | Global query filters on every query add overhead; consider row-level security at the DB level or schema-per-tenant |
-
-**Recommended index additions (Phase 2 migration):**
-```csharp
-modelBuilder.Entity<QuestEntity>().HasIndex(q => q.GroupId);
-modelBuilder.Entity<ShopItemEntity>().HasIndex(s => s.GroupId);
-modelBuilder.Entity<CharacterEntity>().HasIndex(c => c.GroupId);
-modelBuilder.Entity<UserTransactionEntity>().HasIndex(t => t.GroupId);
-modelBuilder.Entity<TradeItemEntity>().HasIndex(t => t.GroupId);
-```
-
----
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Putting IActiveGroupContext in the Service layer
-
-**What people do:** Define the interface in Service since that is where the implementation lives.
-
-**Why it is wrong:** `QuestBoardContext` (in Repository) must consume this interface. If it is in Service, Repository gets a compile-time dependency on Service — violating the one-way rule and creating a circular dependency that the compiler will reject.
-
-**Do this instead:** Define the interface in Domain. Repository already depends on Domain; Service already depends on Domain. Both can see it without circular references.
-
-### Anti-Pattern 2: Lazy evaluation of tenant ID in the HasQueryFilter lambda
-
-**What people do:** `HasQueryFilter(q => q.GroupId == _groupContextService.ActiveGroupId)` — capturing the service reference and calling the property in the lambda.
-
-**Why it is wrong:** EF Core captures the lambda's closure at model build time. If you capture a service reference rather than a resolved value, EF may use a stale or wrong scope depending on how model caching interacts with the lifetime. The official Microsoft pattern captures the value at construction time.
-
-**Do this instead:** Capture the value into a `readonly` field at DbContext construction (`_groupId = groupContext.ActiveGroupId`) and reference `_groupId` in the lambda. EF Core creates a new DbContext instance per scope so the field is fresh per request.
-
-### Anti-Pattern 3: Applying group filter to UserEntity / Identity tables
-
-**What people do:** Add `GroupId` to `UserEntity` and filter it.
-
-**Why it is wrong:** Users are cross-group (many-to-many via `UserGroupEntity`). Filtering `UserEntity` by `GroupId` breaks Identity's user lookup, login, and role resolution. SuperAdmin cannot manage all users.
-
-**Do this instead:** Scope access to users through `UserGroupEntity`. Controllers needing group-member lists query `UserGroups.Where(ug => ug.GroupId == activeGroupId).Select(ug => ug.User)`.
-
-### Anti-Pattern 4: Registering the area route after the default route
-
-**What people do:** Add the area route at the end of `Program.cs` route configuration.
-
-**Why it is wrong:** ASP.NET Core conventional routing is order-dependent. The default route `{controller=Home}/{action=Index}/{id?}` matches `/groups/GroupsManagement/Index` before the area route gets a chance. Area controllers will return 404.
-
-**Do this instead:** Register the area route before the default route in `Program.cs`. The `{area:exists}` constraint ensures only area-decorated controllers match.
-
-### Anti-Pattern 5: Combining namespace rename with schema changes in one commit
-
-**What people do:** Save time by doing the rename and adding GroupId FK in the same PR.
-
-**Why it is wrong:** A rename commit touches hundreds of files. A schema commit touches entities, migrations, and tests. Mixed together the git diff is unreadable, CI failures are hard to attribute, and partial rollback of either change is impractical.
-
-**Do this instead:** The rename is a pure no-behavior-change commit with all 191 tests still green. Schema additions are separate, reviewable commits with separate EF Core migrations.
-
-### Anti-Pattern 6: Making GroupId nullable permanently
-
-**What people do:** Leave `GroupId` as `int?` (nullable) across all entities for flexibility.
-
-**Why it is wrong:** A null `GroupId` creates an implicit "ungrouped" or "global" data state that is not a real group. Every query that filters by group must add `== null` handling. The SuperAdmin bypass via `IsSuperAdmin` flag handles cross-group access cleanly without nullable FKs.
-
-**Do this instead:** Seed all existing rows to `GroupId = 1` (EuphoriaInn group) in a migration, then make `GroupId` non-nullable in the next migration. Enforce `NOT NULL` at the database level.
-
----
-
-## Integration Points
-
-### Internal Boundaries
-
-| Boundary | Communication | Change Required |
-|----------|---------------|-----------------|
-| Service → Domain | `IGroupService`, `IActiveGroupContext` interfaces | Add new interfaces |
-| Domain → Repository | `IGroupRepository`, `IUserGroupRepository` interfaces | Add new repository interfaces |
-| Repository DbContext → Domain | `IActiveGroupContext` injected by DI container | Add constructor parameter to QuestBoardContext |
-| Service DI setup | `Program.cs` `AddScoped` registrations | Register `ActiveGroupContextService` before `AddDbContext` |
-| Integration tests | `TestWebApplicationFactory` | Register stub `IActiveGroupContext` returning fixed GroupId=1, IsSuperAdmin=false |
-
----
+Both controllers then reduce to: call `userService.CreateOrAddToGroupAsync(...)`, branch only on the **result** to pick which Hangfire job to enqueue (email rendering/URL-building stays in the Service layer, since `Url.Action(...)` needs `IUrlHelper`, which is a controller/MVC concern `UserService` in Domain cannot reach — this is why the email dispatch itself stays in the controllers, only the create-or-add decision moves to Domain).
+
+### New vs Modified — Feature 3
+
+| Component | New or Modified | What |
+|---|---|---|
+| `IUserService.CreateOrAddToGroupAsync(...)` | **New method** on existing interface | Returns an enum/result distinguishing "created new" vs "added existing", plus the resolved `userId` |
+| `UserService.CreateOrAddToGroupAsync` | **New implementation** | Calls `identityService.GetIdByEmailAsync` first; branches to `CreateAsync`+`SetGroupRoleAsync` or straight to `SetGroupRoleAsync` |
+| `CreateOrAddToGroupResult` (or a simple enum `UserCreationOutcome { Created, AddedExisting }` + userId out param) | **New small model** | Lives in `QuestBoard.Domain/Models` or `Enums` |
+| `AdminController.CreateUser` POST | **Modified** | Replace direct `userService.CreateAsync` + `SetGroupRoleAsync` + welcome-email block with a call to `CreateOrAddToGroupAsync`, then branch only on which email job to enqueue |
+| `Platform/GroupController.CreateMember` POST (new, Feature 2) | **New, but calls the same method** | Identical branch, `groupId` from route instead of `activeGroupContext` |
+| New email Razor component, e.g. `QuestBoard.Service/Components/Emails/AddedToGroup.razor` | **New** | Mirrors `Welcome.razor`/`ChangeEmailConfirm.razor` structure (`_EmailLayout` wrapper, `[Parameter, EditorRequired]` fields: `UserName`, `GroupName`, `AppUrl`, and probably a link straight into the app rather than a callback token, since the user already has a password) |
+| New Hangfire job, e.g. `QuestBoard.Service/Jobs/GroupMembershipAddedEmailJob.cs` | **New** | Copy the exact shape of `ChangeEmailConfirmationJob.cs` (`IServiceScopeFactory` + `ILogger<T>` constructor, `ExecuteAsync` resolves `IEmailRenderService`/`IEmailService`/`IOptions<EmailSettings>` from a fresh scope) — **do not** introduce an `IGroupMembershipEmailDispatcher` interface; no other user-management email in this codebase uses a dispatcher abstraction, only quest-related emails do (`IQuestEmailDispatcher`) because those need the swap-for-`NullQuestEmailDispatcher`-in-tests treatment that `AdminController`'s jobs never needed (`AdminController` already takes `IBackgroundJobClient` directly per the Known Issues note in `PROJECT.md`: "AdminController takes IBackgroundJobClient directly as constructor arg (fixed 2026-06-28)") |
+| `GroupService.AddMemberAsync` | **Not touched** | Still used for the *existing-user manual add* path in `Platform/GroupController.AddMember` (throws on duplicate — correct there, since the whole point of that screen is picking a user who is definitely not yet a member). `UserService.CreateOrAddToGroupAsync`'s existing-user branch should call `userService.SetGroupRoleAsync` instead (upsert semantics), because in the collision case the target user may already belong to *other* groups but this is their first time being added to *this* group — using upsert avoids a spurious exception path for what is actually the common/expected case here |
+
+### Do not modify `IIdentityService.CreateUserAsync` or `GetIdByEmailAsync` signatures
+
+Both already have the right shape. No Repository-layer change is needed for this feature — everything new is additive at the Domain (`IUserService`) and Service (controllers, new job, new email component, new ViewModel fields) layers, consistent with the "EF packages belong only in Repository" / "Domain must not depend on Repository entities" constraints already validated in this codebase.
+
+## Build Order
+
+Recommended sequence, minimizing risk and avoiding rework:
+
+1. **`UserService.CreateOrAddToGroupAsync` (Feature 3's core, built once).** This is the shared seam both controllers will call. Build and unit-test it in isolation first — it has no HTTP/view dependencies, so it's the cheapest place to get the branching logic (existing vs new, `SetGroupRoleAsync` upsert semantics) correct before any controller touches it. Building this first also means Feature 2's new "create user" action is written against a finished interface, not a moving target.
+
+2. **New email component + Hangfire job (`AddedToGroup.razor` + `GroupMembershipAddedEmailJob`).** Independent of both controllers; can be built and manually verified (render + send) in parallel with step 1, or immediately after. Model directly off `ChangeEmailConfirmationJob`/`ChangeEmailConfirm.razor` since that's the simplest existing job (no token/callback-URL complexity like `WelcomeEmailJob`'s SetPassword link — the "added to group" notification likely just needs a plain "go to the app" link, not a token flow, since the recipient already has a password by definition of being an *existing* user).
+
+3. **Feature 1 (`AdminController.Users()` rescoping).** Fully independent of Features 2/3 — do this any time, ideally first or in parallel with step 1, since it's a pure read-path swap (`GetAllAsync` + N+1 → `groupService.GetMembersAsync`) with no email/creation logic involved and the smallest blast radius. Requires adding `IGroupService` to `AdminController`'s constructor.
+
+4. **`AdminController.CreateUser` POST — rewire onto `CreateOrAddToGroupAsync`.** Now that step 1 exists, update the existing group-admin create-user flow to call the shared method and branch on the result to pick `WelcomeEmailJob` vs the new `GroupMembershipAddedEmailJob`. This is a **modification of a working flow**, so it should ship and be manually verified before Feature 2 reuses the same seam — regressions here would otherwise surface twice (once per controller).
+
+5. **Feature 2 — `Platform/GroupController.CreateMember` (new action) + Members view searchable-table change.** Built last because it depends on: the shared `CreateOrAddToGroupAsync` method (step 1) being proven correct via step 4's real-world usage, and the new email job (step 2) already existing. The searchable/filterable table replacement for the existing-user dropdown is presentation-only and can be built independently/in parallel at any point, since it doesn't touch the create-new-user logic at all — but sequencing it last alongside the new "create user" entry point avoids two separate view-file churns on `Members.cshtml`.
+
+**Why this order avoids duplicate logic:** Steps 1–2 build the shared pieces once, with no controller depending on them yet. Step 3 is a decoy-free warm-up (touches neither shared piece). Step 4 proves the shared seam against the *existing*, already-tested group-admin flow — the lowest-risk place to catch a bug in the branching logic, since `AdminController.CreateUser` already has coverage and a known-good baseline behavior to diff against. Only after that proof does step 5 add the *second* caller (Platform), which by construction cannot duplicate the collision logic because it's calling the same `IUserService` method, not reimplementing it.
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern: Duplicating the collision check per controller
+
+**What people might do:** Write `if (existingUserId.HasValue) { ... } else { ... }` inline in both `AdminController.CreateUser` and `Platform/GroupController.CreateMember`.
+
+**Why it's wrong:** Two independent implementations of "is this an upsert or a create" will drift the moment one gets a bugfix the other doesn't — the same failure mode this codebase's own history warns about (`PROJECT.md`'s Known Issues explicitly calls out `GetActiveBoardTypeAsync` being implemented 3x as tech debt requiring a dedicated audit to confirm it was still safe).
+
+**Do this instead:** One `IUserService.CreateOrAddToGroupAsync` method; both controllers call it and only branch on the *result* to choose which email job to enqueue (since email dispatch requires `Url.Action`/`IUrlHelper`, a Service-layer/controller concern that cannot move into Domain).
+
+### Anti-Pattern: Introducing an `IUserEmailDispatcher` abstraction for the new email
+
+**What people might do:** Copy the `IQuestEmailDispatcher`/`HangfireQuestEmailDispatcher` pattern "for consistency."
+
+**Why it's wrong:** Every existing user-management email (`WelcomeEmailJob`, `ChangeEmailConfirmationJob`, `ForgotPasswordEmailJob`) is enqueued directly from controllers via constructor-injected `IBackgroundJobClient.Enqueue<T>(...)` — no dispatcher interface exists for this category, and `AdminController`'s Known Issues note explicitly documents that it deliberately takes `IBackgroundJobClient` directly (fixed away from a dispatcher-style abstraction on 2026-06-28). Introducing a dispatcher only for the new email breaks consistency with its siblings for no benefit — nothing here needs a `NullObject` test double swap the way quest-finalization emails do.
+
+**Do this instead:** `jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(...))`, identical to how `ChangeEmailConfirmationJob` is enqueued today.
+
+### Anti-Pattern: Reading `IActiveGroupContext.ActiveGroupId` inside the new Platform create-user action or inside `CreateOrAddToGroupAsync`
+
+**What people might do:** Have `UserService.CreateOrAddToGroupAsync` internally resolve `activeGroupContext.ActiveGroupId` instead of taking `groupId` as a parameter, since that's the pattern `AdminController`'s existing actions use.
+
+**Why it's wrong:** `ActiveGroupId` is `null` for SuperAdmin by design (documented architectural constraint). If the shared method reads it internally, the Platform caller — which has a concrete target group from the route — would silently fail or throw for every SuperAdmin invocation, since SuperAdmin's session never has an active group.
+
+**Do this instead:** `groupId` is always an explicit method parameter on the shared service method. `AdminController` passes `activeGroupContext.ActiveGroupId.Value` (after its existing null-guard); `Platform/GroupController.CreateMember` passes the route's `id` directly.
+
+## Integration Points Summary Table
+
+| Existing Seam | Used By (today) | New Caller | Change Needed |
+|---|---|---|---|
+| `IGroupService.GetMembersAsync(groupId)` | `Platform/GroupController.Members` | `AdminController.Users()` | None — reuse as-is |
+| `IIdentityService.GetIdByEmailAsync(email)` | `AdminController.CreateUser` (post-create, to fetch new ID) | `UserService.CreateOrAddToGroupAsync` (pre-create, as the collision check) | None — reuse as-is, just called earlier/from a new call site |
+| `IUserService.SetGroupRoleAsync(userId, groupId, role)` | `AdminController.PromoteToAdmin/DemoteFromAdmin/PromoteToDM/DemoteToPlayer/CreateUser` | `UserService.CreateOrAddToGroupAsync`'s existing-user branch | None — reuse as-is (upsert semantics already correct for this case) |
+| `IBackgroundJobClient.Enqueue<T>` | `AdminController` (constructor-injected) | `Platform/GroupController` (needs adding to constructor) | Add constructor param to `Platform/GroupController` |
+| `IIdentityService` | `AdminController` (constructor-injected) | `Platform/GroupController` (needs adding to constructor) | Add constructor param to `Platform/GroupController` |
+| N/A | N/A | `IUserService.CreateOrAddToGroupAsync` | **New method** — the one genuinely new piece of business logic |
+| N/A | N/A | `GroupMembershipAddedEmailJob` + `AddedToGroup.razor` | **New job + new email template**, modeled directly on `ChangeEmailConfirmationJob`/`ChangeEmailConfirm.razor` |
 
 ## Sources
 
-- [EF Core Global Query Filters — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/querying/filters) (MEDIUM confidence, official docs, updated 2026-06-24)
-- [EF Core Multi-tenancy — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/miscellaneous/multitenancy) (MEDIUM confidence, official docs, updated 2026-06-24)
-- [Managing EF Core Migrations — Microsoft Learn](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing) (MEDIUM confidence, official docs)
-- [ASP.NET Core MVC Areas — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/areas?view=aspnetcore-10.0) (MEDIUM confidence, official docs)
-- [Multi-Tenant Applications with EF Core — Milan Jovanovic](https://www.milanjovanovic.tech/blog/multi-tenant-applications-with-ef-core) (LOW confidence, community article)
-- [Implementing Multi-Tenancy with EF Global Query Filters — Medium](https://medium.com/@assiljanbeih/implementing-secure-multi-tenancy-with-eflobal-query-filters-net-9502ac290fb2) (LOW confidence, community article)
+- Direct codebase reads (this repository, 2026-07-03): `QuestBoard.Domain/Interfaces/IUserService.cs`, `IIdentityService.cs`, `IGroupService.cs`, `IActiveGroupContext.cs`, `IBaseService.cs`, `IUserRepository.cs`; `QuestBoard.Domain/Services/UserService.cs`, `GroupService.cs`; `QuestBoard.Repository/IdentityService.cs`, `UserRepository.cs`, `GroupRepository.cs`; `QuestBoard.Service/Controllers/Admin/AdminController.cs`; `QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs`; `QuestBoard.Service/Jobs/WelcomeEmailJob.cs`, `ChangeEmailConfirmationJob.cs`; `QuestBoard.Service/Components/Emails/Welcome.razor`; `QuestBoard.Service/ViewModels/AdminViewModels/CreateUserViewModel.cs`, `QuestBoard.Service/ViewModels/PlatformViewModels/GroupMembersViewModel.cs`, `AddMemberViewModel.cs`; `QuestBoard.Domain/Models/UserGroup.cs`.
+- `.planning/PROJECT.md` (v6.1 milestone scope, Key Decisions log, Known Issues)
+- `.planning/codebase/ARCHITECTURE.md` (layer structure, dependency direction, anti-patterns, SuperAdmin scoping constraint)
 
 ---
-*Architecture research for: Multi-tenancy integration in 3-layer ASP.NET Core MVC app*
-*Researched: 2026-06-29*
+*Architecture research for: D&D Quest Board v6.1 Bugfixes milestone*
+*Researched: 2026-07-03*

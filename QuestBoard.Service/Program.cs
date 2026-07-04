@@ -62,6 +62,13 @@ builder.Services.AddIdentity<UserEntity, IdentityRole<int>>(options =>
 .AddEntityFrameworkStores<QuestBoardContext>()
 .AddDefaultTokenProviders();
 
+// Revalidate the security stamp every 5 minutes so a disabled account's active session
+// is force-expired sooner than the 30-minute default; negligible DB load at this scale.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(5);
+});
+
 // Extend the shared "Default" token provider lifespan to 7 days.
 // This affects password-reset, email-confirmation, and change-email tokens uniformly —
 // net-new configuration block (framework default was 1 day, previously unconfigured).

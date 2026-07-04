@@ -32,7 +32,8 @@ public interface IGroupService : IBaseService<Group>
     Task RemoveMemberAsync(int groupId, int userId, CancellationToken token = default);
 
     /// <summary>
-    /// Returns all membership rows for a group, with user details loaded.
+    /// Returns all membership rows for a group, with user details loaded, optionally
+    /// filtered by a search term matching the member's Name or Email (case-insensitive).
     /// </summary>
-    Task<IList<UserGroup>> GetMembersAsync(int groupId, CancellationToken token = default);
+    Task<IList<UserGroup>> GetMembersAsync(int groupId, string? search = null, CancellationToken token = default);
 }

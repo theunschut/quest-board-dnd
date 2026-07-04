@@ -136,7 +136,19 @@ public class AccountController(IUserService userService, IIdentityService identi
 
             if (result.IsLockedOut)
             {
-                ModelState.AddModelError(string.Empty, "Account locked due to too many failed attempts. Try again in 15 minutes.");
+                // SignInResult.LockedOut carries no LockoutEnd payload, so re-resolve the user
+                // to tell a deliberately disabled account (LockoutEnd == MaxValue) apart from an
+                // ordinary temporary lockout from too many failed attempts.
+                var lockedOutUserId = await identityService.GetIdByEmailAsync(model.Email);
+                DateTimeOffset? lockoutEnd = lockedOutUserId.HasValue
+                    ? await identityService.GetLockoutEndAsync(lockedOutUserId.Value)
+                    : null;
+
+                var lockoutMessage = lockoutEnd == DateTimeOffset.MaxValue
+                    ? "This account has been disabled. Contact an administrator."
+                    : "Account locked due to too many failed attempts. Try again in 15 minutes.";
+
+                ModelState.AddModelError(string.Empty, lockoutMessage);
                 return View(model);
             }
 
@@ -236,13 +248,13 @@ public class AccountController(IUserService userService, IIdentityService identi
                     else
                     {
                         jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(model.Email, user.Name, callbackUrl, CancellationToken.None));
-                        TempData["InfoMessage"] = $"A confirmation email has been sent to {model.Email}. Click the link to complete the change.";
+                        TempData["Info"] = $"A confirmation email has been sent to {model.Email}. Click the link to complete the change.";
                         return RedirectToAction(nameof(Profile));
                     }
                 }
             }
 
-            TempData["SuccessMessage"] = "Profile updated successfully!";
+            TempData["Success"] = "Profile updated successfully!";
             return RedirectToAction(nameof(Profile));
         }
 
@@ -258,14 +270,14 @@ public class AccountController(IUserService userService, IIdentityService identi
             var result = await identityService.ChangeEmailAsync(userId, newEmail, decodedToken);
 
             if (result.Succeeded)
-                TempData["SuccessMessage"] = "Email address updated. Please sign in with your new address.";
+                TempData["Success"] = "Email address updated. Please sign in with your new address.";
             else
-                TempData["ErrorMessage"] = "Email confirmation failed. The link may have expired.";
+                TempData["Error"] = "Email confirmation failed. The link may have expired.";
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "ConfirmEmailChange failed for userId {UserId}", userId);
-            TempData["ErrorMessage"] = "Email confirmation failed. The link may have expired.";
+            TempData["Error"] = "Email confirmation failed. The link may have expired.";
         }
 
         return RedirectToAction(nameof(Login));
@@ -289,7 +301,7 @@ public class AccountController(IUserService userService, IIdentityService identi
 
             if (result.Succeeded)
             {
-                TempData["SuccessMessage"] = "Password changed successfully!";
+                TempData["Success"] = "Password changed successfully!";
                 return RedirectToAction(nameof(Profile));
             }
 

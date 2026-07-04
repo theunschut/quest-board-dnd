@@ -48,6 +48,33 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
     }
 
     /// <inheritdoc/>
+    public async Task<IList<User>> GetAllGroupMembers(int groupId, CancellationToken token = default)
+    {
+        // Membership is any UserGroups row for the group, regardless of role.
+        var entities = await DbSet
+            .Where(u => DbContext.UserGroups
+                .Any(ug => ug.UserId == u.Id && ug.GroupId == groupId))
+            .ToListAsync(cancellationToken: token);
+        return Mapper.Map<IList<User>>(entities);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<User>> GetAvailableUsers(int groupId, string? search, CancellationToken token = default)
+    {
+        var query = DbSet
+            .Where(u => !DbContext.UserGroups
+                .Any(ug => ug.UserId == u.Id && ug.GroupId == groupId));
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(u => u.Name.Contains(search) || (u.Email != null && u.Email.Contains(search)));
+        }
+
+        var entities = await query.ToListAsync(cancellationToken: token);
+        return Mapper.Map<IList<User>>(entities);
+    }
+
+    /// <inheritdoc/>
     public async Task<GroupRole?> GetGroupRoleAsync(int userId, int groupId)
     {
         var ug = await DbContext.UserGroups

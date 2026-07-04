@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace QuestBoard.Domain.Services;
 
-internal class UserService(IIdentityService identityService, IUserRepository repository, IMapper mapper) : BaseService<User>(repository, mapper), IUserService
+internal class UserService(IIdentityService identityService, IUserRepository repository, IMapper mapper, IGroupService groupService) : BaseService<User>(repository, mapper), IUserService
 {
     /// <inheritdoc/>
     public async Task<IdentityResult> AddToRoleAsync(User user, string role)
@@ -49,6 +49,18 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     public async Task<IList<User>> GetAllPlayersAsync(CancellationToken token = default)
     {
         return await repository.GetAllPlayers(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<User>> GetAllGroupMembersAsync(int groupId, CancellationToken token = default)
+    {
+        return await repository.GetAllGroupMembers(groupId, token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<User>> GetAvailableUsersAsync(int groupId, string? search, CancellationToken token = default)
+    {
+        return await repository.GetAvailableUsers(groupId, search, token);
     }
 
     /// <inheritdoc/>
@@ -143,6 +155,80 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     public async Task<int?> SetGroupRoleAsync(int userId, int groupId, GroupRole role)
     {
         return await repository.SetGroupRoleAsync(userId, groupId, role);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CreateOrAddToGroupResult> CreateOrAddToGroupAsync(string email, string name, int groupId, GroupRole role, CancellationToken token = default)
+    {
+        var userId = await identityService.GetIdByEmailAsync(email);
+
+        if (userId == null)
+        {
+            var createResult = await CreateAsync(email, name);
+            if (!createResult.Succeeded)
+            {
+                return new CreateOrAddToGroupResult
+                {
+                    Outcome = CreateOrAddToGroupOutcome.Failed,
+                    Email = email,
+                    Name = name,
+                    Errors = createResult.Errors.Select(e => e.Description).ToList()
+                };
+            }
+
+            var newUserId = await identityService.GetIdByEmailAsync(email);
+            if (newUserId == null)
+            {
+                return new CreateOrAddToGroupResult
+                {
+                    Outcome = CreateOrAddToGroupOutcome.Failed,
+                    Email = email,
+                    Name = name,
+                    Errors = ["Account was created but could not be re-resolved by email."]
+                };
+            }
+
+            await SetGroupRoleAsync(newUserId.Value, groupId, role);
+
+            return new CreateOrAddToGroupResult
+            {
+                Outcome = CreateOrAddToGroupOutcome.NewAccountCreated,
+                UserId = newUserId,
+                Email = email,
+                Name = name
+            };
+        }
+
+        // Existing account collision: the submitted name is never used to modify the
+        // existing account, so load the real name/email/confirmation state instead.
+        var existingUser = await GetByIdAsync(userId.Value, token);
+
+        try
+        {
+            await groupService.AddMemberAsync(groupId, userId.Value, role, token);
+        }
+        catch (InvalidOperationException)
+        {
+            return new CreateOrAddToGroupResult
+            {
+                Outcome = CreateOrAddToGroupOutcome.AlreadyMember,
+                UserId = userId,
+                Email = existingUser?.Email ?? email,
+                Name = existingUser?.Name ?? name
+            };
+        }
+
+        var outcome = existingUser?.EmailConfirmed == false
+            ? CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount
+            : CreateOrAddToGroupOutcome.AddedToGroup;
+
+        return new CreateOrAddToGroupResult
+        {
+            Outcome = outcome,
+            UserId = userId,
+            Email = existingUser?.Email ?? email,
+            Name = existingUser?.Name ?? name
+        };
     }
 
     /// <inheritdoc/>

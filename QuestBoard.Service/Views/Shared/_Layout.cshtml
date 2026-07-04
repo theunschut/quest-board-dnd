@@ -161,7 +161,7 @@
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-user me-1"></i>@currentUser.Name
                                 </a>
-                                <ul class="dropdown-menu">
+                                <ul class="dropdown-menu dropdown-menu-end text-wrap" style="width: max-content; max-width: 90vw;">
                                     <li>
                                         <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
                                             <i class="fas fa-user-cog me-2"></i>Profile
@@ -172,7 +172,7 @@
                                         var activeGroupName = HttpContextAccessor.HttpContext?.Session?.GetString(SessionKeys.ActiveGroupName);
                                     }
                                     <li>
-                                        <a class="dropdown-item" asp-controller="GroupPicker" asp-action="Index">
+                                        <a class="dropdown-item text-wrap" asp-controller="GroupPicker" asp-action="Index">
                                             <i class="fas fa-arrows-rotate me-2"></i>@(string.IsNullOrEmpty(activeGroupName) ? "Switch Group" : activeGroupName)
                                         </a>
                                     </li>
@@ -205,6 +205,7 @@
             @RenderBody()
         </main>
     </div>
+    <partial name="_Toasts" />
 
     <footer class="navbar navbar-dark bg-dark mt-auto">
         <div class="container">

@@ -275,8 +275,101 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         response.Headers.Location!.OriginalString.Should().Contain("Users");
     }
 
+    // A group admin whose active group is group 1 must never see a user who belongs
+    // only to a different group on the Users management page.
+    [Fact]
+    public async Task Users_WhenAdmin_DoesNotShowUsersFromOtherGroups()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var inGroupMarker = $"InGroupOne {Guid.NewGuid():N}";
+        var outOfGroupMarker = $"InGroupTwoOnly {Guid.NewGuid():N}";
+
+        var inGroupUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "ingroupuser", "ingroupuser@example.com", name: inGroupMarker);
+        var outOfGroupUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "outofgroupuser", "outofgroupuser@example.com", name: outOfGroupMarker);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = inGroupUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = outOfGroupUser.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act
+        var response = await adminClient.GetAsync("/Admin/Users", TestContext.Current.CancellationToken);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        content.Should().Contain(inGroupMarker, "in-group members must still render");
+        content.Should().NotContain(outOfGroupMarker, "a group admin must never see a user who belongs only to a different group");
+    }
+
+    // A group admin whose active group is group 1 must not be able to change the role of a
+    // user who belongs only to a different group, even with a crafted direct POST — the
+    // membership guard added to each of the four role-change actions must actually reject
+    // the request and leave the target's group membership unchanged.
+    [Theory]
+    [InlineData("/Admin/PromoteToAdmin")]
+    [InlineData("/Admin/DemoteFromAdmin")]
+    [InlineData("/Admin/PromoteToDM")]
+    [InlineData("/Admin/DemoteToPlayer")]
+    public async Task RoleChangeActions_WhenTargetUserOutOfGroup_ShouldNotChangeMembership(string endpoint)
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var outOfGroupUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "outofgrouprole", "outofgrouprole@example.com", name: "Out Of Group Role Target");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = outOfGroupUser.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var getResponse = await adminClient.GetAsync("/Admin/Users", TestContext.Current.CancellationToken);
+        var (token, cookieValue) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(getResponse);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            adminClient.DefaultRequestHeaders.Remove("Cookie");
+            adminClient.DefaultRequestHeaders.Add("Cookie", $".AspNetCore.Antiforgery={cookieValue}");
+        }
+
+        var formContent = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(
+            new Dictionary<string, string> { ["userId"] = outOfGroupUser.Id.ToString() },
+            token);
+
+        // Act — crafted POST for a user who is only a member of group 2, against group 1's admin
+        var response = await adminClient.PostAsync(endpoint, formContent, TestContext.Current.CancellationToken);
+
+        // Assert — the request is rejected (redirected without applying the change) and the
+        // target's only UserGroups row is untouched: still GroupId 2, still Player.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var assertContext = assertScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var memberships = assertContext.UserGroups.Where(ug => ug.UserId == outOfGroupUser.Id).ToList();
+        memberships.Should().ContainSingle("the guard must not create a new group-1 membership row for an out-of-group target");
+        memberships[0].GroupId.Should().Be(2, "the target's original group membership must be untouched");
+        memberships[0].GroupRole.Should().Be((int)GroupRole.Player, "the target's role must not change when the guard rejects the request");
+    }
+
     // Creates an unconfirmed target user (via IUserService.CreateAsync, which mirrors
     // AdminController.CreateUser's passwordless/unconfirmed account creation) and returns its id.
+    // Also assigns the target to group 1 (Player role), mirroring the group-membership row
+    // AdminController.CreateUser creates via SetGroupRoleAsync — the tests using this helper
+    // exercise admin actions against group 1, which now require the target to be a group 1
+    // member per the membership guard added to those actions.
     private async Task<int> CreateUnconfirmedTargetUserAsync(string email, string name)
     {
         using var scope = _factory.Services.CreateScope();
@@ -288,6 +381,9 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
 
         var resolvedUserId = await identityService.GetIdByEmailAsync(email);
         resolvedUserId.Should().NotBeNull();
+
+        await userService.SetGroupRoleAsync(resolvedUserId!.Value, 1, GroupRole.Player);
+
         return resolvedUserId!.Value;
     }
 
@@ -429,6 +525,106 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
 
         // Assert — at least one of the 4 rapid email-changing saves was rejected with 429.
         responses.Should().Contain(r => r.StatusCode == HttpStatusCode.TooManyRequests);
+    }
+
+    // DeleteUser must remove only the active-group membership row — the account itself
+    // and any other group memberships must survive (SAFE-01).
+    [Fact]
+    public async Task DeleteUser_Post_RemovesGroupMembershipOnly_AccountAndOtherMembershipsIntact()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var targetUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "removaltarget", "removaltarget@example.com", name: "Removal Target");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = targetUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = targetUser.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act — active group is group 1 (_factory.TestGroupContext.ActiveGroupId defaults to 1)
+        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{targetUser.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var userManager = assertScope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var account = await userManager.FindByIdAsync(targetUser.Id.ToString());
+        account.Should().NotBeNull("the account itself must survive a group-scoped removal");
+
+        var assertContext = assertScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var remainingMemberships = assertContext.UserGroups.Where(ug => ug.UserId == targetUser.Id).ToList();
+        remainingMemberships.Should().ContainSingle("only the active-group (1) membership should be removed");
+        remainingMemberships[0].GroupId.Should().Be(2, "the second group's membership must remain untouched");
+    }
+
+    // DeleteUser must not throw an unhandled DbUpdateException for a user with rows across
+    // all five NoAction FKs (quest DM, shop item creator, transaction, reminder log), and must
+    // not silently cascade-delete their characters/DM profile/signups (SAFE-01).
+    [Fact]
+    public async Task DeleteUser_Post_WithQuestShopTransactionReminderHistory_DoesNotThrow()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+
+        var targetUser = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "fkhistorytarget", "fkhistorytarget@example.com", name: "FK History Target");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = targetUser.Id, GroupId = 1, GroupRole = (int)GroupRole.DungeonMaster });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, targetUser.Id, "FK History Quest");
+        var shopItem = await TestDataHelper.CreateShopItemAsync(_factory.Services, targetUser.Id, "FK History Item");
+        var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, targetUser.Id, "FK History Character");
+        var signup = await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, targetUser.Id);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserTransactions.Add(new UserTransactionEntity
+            {
+                UserId = targetUser.Id,
+                ShopItemId = shopItem.Id,
+                TransactionType = 0,
+                Price = shopItem.Price,
+                Quantity = 1,
+                TransactionDate = DateTime.UtcNow
+            });
+            context.ReminderLogs.Add(new ReminderLogEntity
+            {
+                QuestId = quest.Id,
+                PlayerId = targetUser.Id,
+                SentAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act
+        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{targetUser.Id}", TestContext.Current.CancellationToken);
+
+        // Assert — no unhandled DbUpdateException (would surface as a 500)
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var userManager = assertScope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var account = await userManager.FindByIdAsync(targetUser.Id.ToString());
+        account.Should().NotBeNull("the account must survive even with rich FK history");
+
+        var assertContext = assertScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        assertContext.Characters.Any(c => c.Id == character.Id).Should().BeTrue("character rows must not be cascade-deleted");
+        assertContext.PlayerSignups.Any(s => s.Id == signup.Id).Should().BeTrue("signup rows must not be cascade-deleted");
     }
 
     // CreateUser's one-shot automated welcome email is explicitly EXEMPT
