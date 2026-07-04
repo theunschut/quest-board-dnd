@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 47
-current_phase_name: "Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob"
+current_phase: 48
+current_phase_name: Add an Open Board action to the /platform group index table
 status: executing
 stopped_at: Phase 48 context gathered
-last_updated: "2026-07-04T21:07:07.880Z"
+last_updated: "2026-07-04T21:08:07.406Z"
 last_activity: 2026-07-04
-last_activity_desc: Phase 43 complete, transitioned to Phase 47
+last_activity_desc: Phase 48 execution started
 progress:
   total_phases: 3
   completed_phases: 1
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 43 — Mobile Parity Fixes
+**Current focus:** Phase 48 — Add an Open Board action to the /platform group index table
 
 ## Current Position
 
-Phase: 47 — Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-04 — Phase 43 complete, transitioned to Phase 47
+Phase: 48 (Add an Open Board action to the /platform group index table) — EXECUTING
+Plan: 1 of 1
+Status: Executing Phase 48
+Last activity: 2026-07-04 — Phase 48 execution started
 
 ## Performance Metrics
 
