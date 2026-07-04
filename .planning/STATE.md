@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 48
-current_phase_name: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
+current_phase: 47
+current_phase_name: "Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob"
 status: executing
 stopped_at: Phase 47 context gathered
-last_updated: "2026-07-04T22:43:28.618Z"
+last_updated: "2026-07-04T23:50:18.201Z"
 last_activity: 2026-07-04
-last_activity_desc: Phase 47 complete, transitioned to Phase 48
+last_activity_desc: Phase 44 complete, transitioned to Phase 47
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 7
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone
 
 ## Current Position
 
-Phase: 48 — Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
+Phase: 47 — Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 Plan: Not started
 Status: Executing Phase 47
-Last activity: 2026-07-04 — Phase 47 complete, transitioned to Phase 48
+Last activity: 2026-07-04 — Phase 44 complete, transitioned to Phase 47
 
 ## Performance Metrics
 

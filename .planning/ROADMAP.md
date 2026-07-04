@@ -120,7 +120,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 **Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus two ad-hoc fixes folded in along the way (Phases 47–48).
 
 - [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
-- [ ] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (verification in progress)
+- [x] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (completed 2026-07-04)
 - [ ] Phase 45: Dual-Image Storage Backend — Server stores both an original and a cropped image per upload, with zero server-side image processing
 - [ ] Phase 46: Client-Side Crop UI — Users crop character/DM profile photos in-browser before saving, with the crop applied everywhere a photo can be uploaded
 - [x] Phase 47: Group Membership Email Notification Fix — Reroute `GroupController.AddMember` through the shared `CreateOrAddToGroupAsync` method so adding an existing user to a group sends the same notification email `CreateMember`/`CreateUser` already send (completed 2026-07-04)
@@ -258,7 +258,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete    | 2026-07-04 |
-| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete   | 2026-07-04 |
+| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete    | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete    | 2026-07-04 |
@@ -270,7 +270,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 **Goal:** A SuperAdmin who adds an existing user to a group via the Platform Members-page available-users panel (`GroupController.AddMember`) receives a notification email — the confirmed-account "you've been added to {group}" email or, for a stranded/unconfirmed account, the welcome email with a set-password link — by rerouting `AddMember` through the same `UserService.CreateOrAddToGroupAsync` shared method that `CreateMember` and `AdminController.CreateUser` already use, so all three add-to-group entry points behave identically.
 **Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 47-CONTEXT.md decisions D-01–D-06)
 **Depends on:** Phase 46
-**Plans:** 1/1 plans complete
+**Plans:** 3/3 plans complete
 
 Plans:
 
