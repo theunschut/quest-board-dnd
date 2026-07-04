@@ -198,8 +198,13 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 41-01-PLAN.md — Group-scoped removal: repurpose AdminController.DeleteUser + rename "Remove from Group" (SAFE-01)
 - [ ] 41-02-PLAN.md — Disable/enable service primitives (IIdentityService) + SecurityStampValidator 5-min interval (SAFE-02, SAFE-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 41-03-PLAN.md — Platform UsersController + views + "Manage Users" entry point with self-disable guard (SAFE-02, SAFE-03)
 - [ ] 41-04-PLAN.md — Login disabled-vs-lockout message distinction (SAFE-04)
 

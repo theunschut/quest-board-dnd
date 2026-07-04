@@ -5,8 +5,8 @@ milestone_name: Bugfixes
 current_phase: 41
 current_phase_name: Safe User Removal & Account Disable
 status: executing
-stopped_at: Phase 41 context gathered
-last_updated: "2026-07-04T11:04:09.968Z"
+stopped_at: Phase 41 UI-SPEC approved
+last_updated: "2026-07-04T12:26:14.515Z"
 last_activity: 2026-07-04
 last_activity_desc: Phase 40 complete, transitioned to Phase 41
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03 — v6.1 Bugfixes milestone starte
 
 Phase: 41 — Safe User Removal & Account Disable
 Plan: Not started
-Status: Executing Phase 40
+Status: Ready to execute
 Last activity: 2026-07-04 — Phase 40 complete, transitioned to Phase 41
 
 ## Performance Metrics
@@ -111,9 +111,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-04T11:04:09.957Z
-Stopped at: Phase 41 context gathered
-Resume file: .planning/phases/41-safe-user-removal-account-disable/41-CONTEXT.md
+Last session: 2026-07-04T11:45:04.358Z
+Stopped at: Phase 41 UI-SPEC approved
+Resume file: .planning/phases/41-safe-user-removal-account-disable/41-UI-SPEC.md
 Next step: Phase 39 complete — proceed to Phase 40 (Platform Members Page Redesign)
 
 ## Operator Next Steps
