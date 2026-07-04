@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: Bugfixes
-current_phase: 40
-current_phase_name: platform-members-page-redesign
+current_phase: 41
+current_phase_name: Safe User Removal & Account Disable
 status: executing
 stopped_at: Phase 40 UI-SPEC approved
-last_updated: "2026-07-04T08:48:15.024Z"
+last_updated: "2026-07-04T10:10:14.476Z"
 last_activity: 2026-07-04
-last_activity_desc: Phase 40 execution started
+last_activity_desc: Phase 40 complete, transitioned to Phase 41
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 4
-  percent: 50
+  completed_plans: 7
+  percent: 75
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-03 — v6.1 Bugfixes milestone starte
 
 ## Current Position
 
-Phase: 40 (platform-members-page-redesign) — EXECUTING
-Plan: 1 of 3
+Phase: 41 — Safe User Removal & Account Disable
+Plan: Not started
 Status: Executing Phase 40
-Last activity: 2026-07-04 — Phase 40 execution started
+Last activity: 2026-07-04 — Phase 40 complete, transitioned to Phase 41
 
 ## Performance Metrics
 

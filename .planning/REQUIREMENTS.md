@@ -20,9 +20,9 @@ Requirements for the Bugfixes milestone. Each maps to roadmap phases.
 
 ### Platform Members Page Redesign
 
-- [ ] **MEMBERS-01**: The Platform group Members page uses a two-column layout — left column shows current group members, right column shows other (non-member) users with an "Add User" action
-- [ ] **MEMBERS-02**: The right-hand "other users" list is a searchable/filterable table (filter by name or email) instead of a plain dropdown select
-- [ ] **MEMBERS-03**: The Platform group Members page has a "Create New User" entry point (in the right column) that creates (or, per CREATE-01, adds) a user scoped to the group being managed
+- [x] **MEMBERS-01**: The Platform group Members page uses a two-column layout — left column shows current group members, right column shows other (non-member) users with an "Add User" action
+- [x] **MEMBERS-02**: The right-hand "other users" list is a searchable/filterable table (filter by name or email) instead of a plain dropdown select
+- [x] **MEMBERS-03**: The Platform group Members page has a "Create New User" entry point (in the right column) that creates (or, per CREATE-01, adds) a user scoped to the group being managed
 
 ### Safe User Removal & Account Disable
 
@@ -53,9 +53,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CREATE-02 | Phase 39 | Complete |
 | CREATE-03 | Phase 39 | Complete |
 | CREATE-04 | Phase 39 | Complete |
-| MEMBERS-01 | Phase 40 | Pending |
-| MEMBERS-02 | Phase 40 | Pending |
-| MEMBERS-03 | Phase 40 | Pending |
+| MEMBERS-01 | Phase 40 | Complete |
+| MEMBERS-02 | Phase 40 | Complete |
+| MEMBERS-03 | Phase 40 | Complete |
 | SAFE-01 | Phase 41 | Pending |
 | SAFE-02 | Phase 41 | Pending |
 | SAFE-03 | Phase 41 | Pending |
