@@ -159,7 +159,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   4. A selected player who changes their vote to Maybe keeps their seat with no promotion triggered, and a waitlisted player who votes No stays on the waitlist (not removed), sorted to the bottom
   5. Only the player who was passively auto-promoted receives a notification email — never the player whose action freed the seat, and never broadcast to the rest of the waitlist
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 **Wave 1**
 
 - [x] 44-01-PLAN.md — Data foundation: LastVoteChangeTime migration, generalized ChangeVoteAsync (fixes VoteType bug) + GetTopWaitlistedCandidateAsync, centralized WaitlistOrdering (VOTE-01/02/03)
@@ -170,7 +170,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 44-03-PLAN.md — ChangeVote controller action + desktop & mobile 3-button vote UI with shared ordering (VOTE-01/02/04/05/06/07, D-01/02/03/04/05)
+- [x] 44-03-PLAN.md — ChangeVote controller action + desktop & mobile 3-button vote UI with shared ordering (VOTE-01/02/04/05/06/07, D-01/02/03/04/05)
 
 ### Phase 45: Dual-Image Storage Backend
 
@@ -256,7 +256,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete    | 2026-07-04 |
-| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 2/3 | In Progress|  |
+| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete   | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
 
