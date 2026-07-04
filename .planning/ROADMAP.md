@@ -159,7 +159,11 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   4. A selected player who changes their vote to Maybe keeps their seat with no promotion triggered, and a waitlisted player who votes No stays on the waitlist (not removed), sorted to the bottom
   5. Only the player who was passively auto-promoted receives a notification email — never the player whose action freed the seat, and never broadcast to the rest of the waitlist
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 44-01-PLAN.md — Data foundation: LastVoteChangeTime migration, generalized ChangeVoteAsync (fixes VoteType bug) + GetTopWaitlistedCandidateAsync, centralized WaitlistOrdering (VOTE-01/02/03)
+- [ ] 44-02-PLAN.md — Promotion orchestration in QuestService + single-recipient WaitlistPromoted email pipeline (VOTE-04/05/07)
+- [ ] 44-03-PLAN.md — ChangeVote controller action + desktop & mobile 3-button vote UI with shared ordering (VOTE-01/02/04/05/06/07, D-01/02/03/04/05)
 
 ### Phase 45: Dual-Image Storage Backend
 
