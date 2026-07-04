@@ -43,4 +43,22 @@ public class HangfireQuestEmailDispatcher(IBackgroundJobClient jobClient) : IQue
             questTitle, dmName, oldDate, newDate,
             CancellationToken.None));
     }
+
+    /// <inheritdoc/>
+    public void EnqueueWaitlistPromotedEmail(
+        int questId,
+        int groupId,
+        DateTime finalizedDate,
+        string recipientEmail,
+        string playerName,
+        string questTitle,
+        string dmName,
+        string questDescription,
+        int challengeRating)
+    {
+        jobClient.Enqueue<QuestWaitlistPromotedEmailJob>(j => j.ExecuteAsync(
+            questId, groupId, finalizedDate, recipientEmail, playerName,
+            questTitle, dmName, questDescription, challengeRating,
+            CancellationToken.None));
+    }
 }

@@ -35,4 +35,19 @@ public class NullQuestEmailDispatcher : IQuestEmailDispatcher
     {
         // No-op — Hangfire not available in Testing environment
     }
+
+    /// <inheritdoc/>
+    public void EnqueueWaitlistPromotedEmail(
+        int questId,
+        int groupId,
+        DateTime finalizedDate,
+        string recipientEmail,
+        string playerName,
+        string questTitle,
+        string dmName,
+        string questDescription,
+        int challengeRating)
+    {
+        // No-op — Hangfire not available in Testing environment
+    }
 }
