@@ -149,17 +149,66 @@ public class GroupController(
             TempData["Error"] = "Invalid form submission.";
             return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
-        try
+
+        var group = await groupService.GetByIdAsync(id);
+        if (group == null) return RedirectToAction(nameof(Index));
+
+        var user = await userService.GetByIdAsync(model.UserId);
+        if (user == null)
         {
-            await groupService.AddMemberAsync(id, model.UserId, model.Role);
-            var user = await userService.GetByIdAsync(model.UserId);
-            TempData["Success"] = $"{user?.Name ?? "User"} added to the group as {model.Role}.";
+            TempData["Error"] = "User not found.";
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
-        catch (InvalidOperationException)
+
+        var result = await userService.CreateOrAddToGroupAsync(user.Email!, user.Name, id, model.Role);
+
+        switch (result.Outcome)
         {
-            TempData["Error"] = "This user is already a member of the group.";
+            case CreateOrAddToGroupOutcome.AddedToGroup:
+                {
+                    // Existing user added to a group they weren't in — notify them by email.
+                    var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
+                    if (loginUrl == null)
+                        logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
+                    else
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.Role.ToString(), loginUrl, CancellationToken.None));
+
+                    TempData["Success"] = $"{result.Name} has been added to the group as {model.Role}. A notification email has been sent.";
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                }
+
+            case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
+                {
+                    // Account was never confirmed — send a welcome email with a set-password link instead.
+                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
+                    if (rawToken != null)
+                    {
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
+                        var callbackUrl = Url.Action("SetPassword", "Account", new { userId = result.UserId.Value, token = encodedToken }, Request.Scheme);
+                        if (callbackUrl == null)
+                            logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", result.UserId.Value);
+                        else
+                        {
+                            var hasExistingPassword = await userService.HasPasswordAsync(result.UserId.Value);
+                            jobClient.Enqueue<WelcomeEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, callbackUrl, !hasExistingPassword, CancellationToken.None));
+                        }
+                    }
+
+                    TempData["Success"] = $"{result.Name} has been added to the group as {model.Role}. A notification email has been sent.";
+                    return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                }
+
+            case CreateOrAddToGroupOutcome.AlreadyMember:
+                TempData["Warning"] = $"{result.Name} is already a member of this group.";
+                return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+
+            case CreateOrAddToGroupOutcome.Failed:
+            default:
+                // No dedicated form partial to redisplay with field-level errors here, so fall
+                // back to a toast + redirect (matching this action's existing error convention).
+                TempData["Error"] = result.Errors.Count > 0 ? string.Join(" ", result.Errors) : "Failed to add user to group.";
+                return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
-        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
     }
 
     [HttpPost]
