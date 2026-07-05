@@ -9,7 +9,7 @@
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
 - ✅ **v6.1 Bugfixes** — Phases 38–42 (shipped 2026-07-04)
-- 🚧 **v7.0 Backlog Cleanup** — Phases 43–50 (in progress)
+- 🚧 **v7.0 Backlog Cleanup** — Phases 43–51 (in progress)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; issue #78 is now delivered by v7.0 Phases 45–46._
 
@@ -115,9 +115,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 </details>
 
 <details open>
-<summary>🚧 v7.0 Backlog Cleanup (Phases 43–50) — IN PROGRESS</summary>
+<summary>🚧 v7.0 Backlog Cleanup (Phases 43–51) — IN PROGRESS</summary>
 
-**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–50).
+**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–51).
 
 - [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
 - [x] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (completed 2026-07-04)
@@ -127,6 +127,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] Phase 48: Open Board Action on Platform Group Index — Add an "Open Board" button to the `/platform/group` index table reusing `GroupPickerController.SelectGroup`, so a SuperAdmin can jump straight to a group's quest board (completed 2026-07-04)
 - [x] Phase 49: Fix Guild Members page missing group/tenant filtering — Close cross-group leaks on GuildMembersController (Character list/details/picture), DungeonMasterController (DM profile view/edit/picture), and QuestController.RemovePlayerSignup; CharacterEntity gets a real GroupId column + query filter; UserTransaction and PlayerSignup incidental scoping hardened (completed 2026-07-05)
 - [x] Phase 50: Fix quest edit page: show edit button for campaign quests and align field visibility with create page (completed 2026-07-05)
+- [x] Phase 51: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained (completed 2026-07-05)
 
 </details>
 
@@ -265,7 +266,9 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete    | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete    | 2026-07-04 |
-| 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
+| 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete    | 2026-07-05 |
+| 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete    | 2026-07-05 |
+| 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete    | 2026-07-05 |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
