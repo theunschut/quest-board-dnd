@@ -56,6 +56,8 @@ Last activity: 2026-07-05 — Phase 51 complete
 
 ### Roadmap Evolution
 
+- Phase 53 added: Add dedicated Edit view for Quest recap so Details page is view-only
+- Phase 52 added: Add Dead status to CharacterStatus enum
 - Phase 51 added: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained
 - Phase 50 added: Fix quest edit page: show edit button for campaign quests and align field visibility with create page
 - Phase 49 added: Fix Guild Members page missing group/tenant filtering

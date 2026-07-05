@@ -337,3 +337,25 @@ Plans:
 Plans:
 
 - [x] 51-01-PLAN.md — Remove the `row`/`col-md-6` two-column grid in `GuildMembers/Index.cshtml`, stack the two `modern-card` sections full-width (`mb-4` gap on My Characters), preserve all card markup; mobile + CSS untouched; blocking human verification
+
+### Phase 52: Add Dead status to CharacterStatus enum
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 51
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 52 to break down)
+
+### Phase 53: Add dedicated Edit view for Quest recap so Details page is view-only
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 52
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 53 to break down)
