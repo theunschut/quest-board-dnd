@@ -35,7 +35,7 @@ public class EmailService(IOptions<EmailSettings> options, ILogger<EmailService>
     {
         if (_settings.SuppressSending)
         {
-            logger.LogInformation("EmailSettings:SuppressSending is enabled — skipping send of \"{Subject}\" to {ToEmail}.", subject, toEmail);
+            logger.LogInformation("EmailSettings:SuppressSending is enabled — skipping send of \"{Subject}\".", subject);
             return;
         }
 
