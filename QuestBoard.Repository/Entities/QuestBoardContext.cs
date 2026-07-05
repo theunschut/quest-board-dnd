@@ -258,6 +258,16 @@ public class QuestBoardContext(
                 activeGroupContext.ActiveGroupId == null ||
                 e.GroupId == activeGroupContext.ActiveGroupId);
 
+        // ProposedDateEntity carries no GroupId of its own — it is scoped through its required Quest
+        // navigation instead. EF Core's model validation otherwise warns that a required relationship
+        // to a filtered entity can behave unexpectedly if the two aren't both filtered, so this mirrors
+        // QuestEntity's own filter shape (including the SuperAdmin "see all" escape hatch) rather than
+        // relying on every caller reaching this entity only through an already-filtered Quest.
+        modelBuilder.Entity<ProposedDateEntity>()
+            .HasQueryFilter(pd =>
+                activeGroupContext.ActiveGroupId == null ||
+                pd.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
         // CharacterEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
         // do above. With no active group selected, every character query returns nothing rather than
         // everyone's characters across every group. Do not "fix" this to match the Quest/ShopItem shape —
