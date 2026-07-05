@@ -263,6 +263,32 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         noMatchContent.Should().NotContain(distinctiveName);
     }
 
+    // Regression guard for CodeQL cs/web/xss alerts flagged against this view's asp-route-search /
+    // asp-route-memberSearch tag helpers. Empirically verified: the framework's tag-helper URL
+    // building percent-encodes the query value before it ever reaches the action="" attribute, so
+    // there is no raw reflection and no attribute-breakout. This test locks that guarantee in place.
+    [Fact]
+    public async Task MembersPage_WithScriptPayloadInSearch_ShouldNeverReflectRawScriptTag()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        const string payload = "\"><script>alert(1)</script>";
+        var encodedPayload = Uri.EscapeDataString(payload);
+
+        var response = await client.GetAsync(
+            $"/platform/Group/Members/1?search={encodedPayload}&memberSearch={encodedPayload}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().NotContain("<script>alert(1)</script>", "the payload must never appear unescaped in the rendered page");
+        body.Should().NotContain("\"><script>", "the payload must never break out of an HTML attribute");
+        body.Should().Contain("%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E",
+            "the tag-helper-generated action= URL must percent-encode the payload rather than reflect it raw");
+    }
+
     // AddMember redirect preserves the search term (D-04)
     [Fact]
     public async Task AddMember_WithSearch_ShouldPreserveSearchOnRedirect()
