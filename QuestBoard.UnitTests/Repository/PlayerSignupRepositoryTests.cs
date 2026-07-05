@@ -19,6 +19,15 @@ public class PlayerSignupRepositoryTests
         return new QuestBoardContext(options, new TestActiveGroupContext());
     }
 
+    private static QuestBoardContext CreateContext(string databaseName, IActiveGroupContext activeGroupContext)
+    {
+        var options = new DbContextOptionsBuilder<QuestBoardContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        return new QuestBoardContext(options, activeGroupContext);
+    }
+
     private static IMapper CreateMapper()
     {
         var configuration = new MapperConfiguration(cfg => cfg.AddProfile<QuestBoard.Repository.Automapper.EntityProfile>(), NullLoggerFactory.Instance);
@@ -27,11 +36,11 @@ public class PlayerSignupRepositoryTests
 
     // Seeds the minimal Group/User/Quest graph a PlayerSignupEntity needs so AutoMapper can
     // populate the domain model's required Player/Quest navigation properties.
-    private static async Task SeedQuestAndUserAsync(QuestBoardContext context, int questId, int playerId)
+    private static async Task SeedQuestAndUserAsync(QuestBoardContext context, int questId, int playerId, int groupId = 1)
     {
-        if (!await context.Groups.AnyAsync(g => g.Id == 1))
+        if (!await context.Groups.AnyAsync(g => g.Id == groupId))
         {
-            context.Groups.Add(new GroupEntity { Id = 1, Name = "Test Group" });
+            context.Groups.Add(new GroupEntity { Id = groupId, Name = $"Test Group {groupId}" });
         }
 
         if (!await context.UserEntities.AnyAsync(u => u.Id == playerId))
@@ -47,7 +56,7 @@ public class PlayerSignupRepositoryTests
                 Title = "Test Quest",
                 Description = "A quest",
                 DungeonMasterId = playerId,
-                GroupId = 1
+                GroupId = groupId
             });
         }
 
@@ -298,8 +307,96 @@ public class PlayerSignupRepositoryTests
         candidate.Should().BeNull();
     }
 
+    // -------------------------------------------------------------------
+    // GetByIdWithQuestAsync (cross-group regression coverage — RemovePlayerSignup's lookup)
+    // -------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetByIdWithQuestAsync_ForSignupOnOtherGroupsQuest_ReturnsNullWhenActiveGroupDiffers()
+    {
+        // Arrange: seed the group-2 quest/signup via a null-active-group context (sees all),
+        // then re-read through a context whose active group is 1.
+        var seedGroupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using (var seedContext = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupOnOtherGroupsQuest_ReturnsNullWhenActiveGroupDiffers), seedGroupContext))
+        {
+            await SeedQuestAndUserAsync(seedContext, questId: 2, playerId: 201, groupId: 2);
+            seedContext.PlayerSignups.Add(MakeSignupEntity(1, questId: 2, isSelected: false));
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupOnOtherGroupsQuest_ReturnsNullWhenActiveGroupDiffers), activeGroupContext);
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var result = await repository.GetByIdWithQuestAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert: the required Quest Include folds the Quest global query filter into the join,
+        // so a signup on an out-of-group quest is invisible through this lookup
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetByIdWithQuestAsync_ForSignupInActiveGroup_ReturnsSignupWithQuestGroupId()
+    {
+        // Arrange
+        var seedGroupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using (var seedContext = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupInActiveGroup_ReturnsSignupWithQuestGroupId), seedGroupContext))
+        {
+            await SeedQuestAndUserAsync(seedContext, questId: 1, playerId: 101, groupId: 1);
+            seedContext.PlayerSignups.Add(MakeSignupEntity(1, questId: 1, isSelected: false));
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupInActiveGroup_ReturnsSignupWithQuestGroupId), activeGroupContext);
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var result = await repository.GetByIdWithQuestAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Quest.GroupId.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ForSignupOnOtherGroupsQuest_StillReturnsRow_DocumentingCallerMustPreValidate()
+    {
+        // Arrange: seed the group-2 quest/signup via a null-active-group context (sees all).
+        var seedGroupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using (var seedContext = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_StillReturnsRow_DocumentingCallerMustPreValidate), seedGroupContext))
+        {
+            await SeedQuestAndUserAsync(seedContext, questId: 2, playerId: 201, groupId: 2);
+            seedContext.PlayerSignups.Add(MakeSignupEntity(1, questId: 2, isSelected: false));
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // The base GetByIdAsync goes through BaseRepository's DbSet.FindAsync, which has no
+        // Include on Quest — it never joins the Quest table, so the Quest query filter never
+        // applies. This means the base lookup is NOT self-scoping by group: a future refactor
+        // that swaps a Quest-including lookup for this one on a caller that trusts a raw id
+        // would silently reintroduce a cross-group leak. Callers must pre-validate the target
+        // (e.g. via a filtered quest.PlayerSignups navigation, or GetByIdWithQuestAsync) before
+        // trusting the id.
+        var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_StillReturnsRow_DocumentingCallerMustPreValidate), activeGroupContext);
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var result = await repository.GetByIdAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().NotBeNull();
+    }
+
     private sealed class TestActiveGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId => null;
+    }
+
+    private sealed class MutableTestGroupContext : IActiveGroupContext
+    {
+        public int? ActiveGroupId { get; set; }
     }
 }
