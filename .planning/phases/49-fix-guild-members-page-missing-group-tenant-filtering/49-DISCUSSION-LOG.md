@@ -114,8 +114,52 @@ Also found during this check: the `QuestBoardContext.cs:257-259` comment claimin
 | Leave as-is | Works correctly today; skip formalizing it. | |
 
 **User's choice:** Add to Phase 49 scope (recommended option).
-**Notes:** Recorded as D-10/D-11 in CONTEXT.md. No new GroupId column or migration — this is a documentation + test + one-call-site fix, not a schema change.
+**Notes:** Recorded as D-10/D-11 in CONTEXT.md. `UserTransactionEntity` itself gets no new GroupId column or migration — this is a documentation + test + one-call-site fix for that entity specifically. (A migration *does* end up happening elsewhere in this phase — see below — but for `CharacterEntity`, not `UserTransactionEntity`.)
+
+---
+
+## Migration mechanism revision — GroupId=1 default, schema change for CharacterEntity (raised mid-discussion)
+
+User volunteered the migration backfill value directly: "the default groupId to use is 1. All items in the database currently are for that group."
+
+This prompted re-examining D-02's original plan (manual `UserGroups` join, no schema change) — since the user was clearly expecting an actual migration to exist, the plan was reopened.
+
+**Verified against the original `20260630055221_AddGroupSchema.cs` migration:** its own comment confirms GroupId=1 is literally "EuphoriaInn," the original/only group before multi-tenancy — matching the user's statement exactly, and giving a concrete precedent for the migration structure (add column with temp default → `UPDATE ... SET GroupId = 1` → add FK constraint after backfill → add index).
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Add GroupId column to CharacterEntity | Switch D-02 to the Quest/ShopItem pattern: direct column + automatic global query filter, migration backfills to GroupId=1. | ✓ |
+| Also add GroupId to DungeonMasterProfileEntity | Apply the same treatment to DM profiles. | ✓ (initially — see below) |
+| No, different table | — | |
+
+**Follow-up: DungeonMasterProfileEntity wrinkle.** Checked `DungeonMasterProfileEntity`'s actual structure before implementing the "also" option — found `Id = UserId` (not auto-generated), a strict one-row-per-user table, unlike `CharacterEntity` which has its own auto-generated `Id`. Adding `GroupId` there would silently make a DM's shared bio/photo group-specific: a DM in two groups would only see their profile from whichever group got backfilled, nothing from the other. Flagged this before proceeding.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Keep DM Profile shared, no GroupId | Revert to original D-07 plan: profile stays one-per-user, access still gated by GetGroupRoleByIdAsync. No migration, no behavior change. | ✓ |
+| Make DM Profile per-group | Restructure to one profile per (UserId, GroupId) — bigger change, changes primary key structure. | |
+
+**User's choice:** Keep DM Profile shared, no GroupId (recommended option). Recorded as **D-09a**.
+
+**Follow-up: SuperAdmin null-ActiveGroupId filter shape.** Adopting Quest/ShopItem's exact filter pattern would also adopt their "null = see all" SuperAdmin behavior, silently reversing D-03 (which chose "empty for SuperAdmin"). Flagged the conflict.
+
+User asked a clarifying question first: "when I as a super admin log in and select a group, my activeGroupId is set just like a player... how is it ever null?" — verified via `ActiveGroupContextService.cs` (reads from `HttpContext.Session`) that it's only null in the narrow window right after login, before any group has been picked in that session (SuperAdmin bypasses the forced-redirect-to-picker that every other role goes through) — not a routine workflow.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Empty for SuperAdmin in that window | Keep D-03: Character's filter omits the `ActiveGroupId == null ||` escape hatch Quest/ShopItem have. | ✓ |
+| Match Quest/ShopItem: see all | Reverse D-03 for consistency with the rest of the app. | |
+
+**User's choice:** Empty for SuperAdmin (recommended option, D-03 kept, reimplemented as part of the filter shape itself).
+
+**Net effect on the phase:** D-02, D-03, and D-04 (Details/GetProfilePicture — the latter needed its own fix since `CharacterImageEntity` is a shared-PK sibling not covered by `CharacterEntity`'s filter, same lesson as D-10) were all revised in CONTEXT.md. New: D-09a (DM Profile stays unchanged, considered and rejected).
+
+---
+
+## PlayerSignupEntity claim — recorded as an Unknown, not a spawned task
+
+User asked to record the still-unverified `PlayerSignupEntity` claim (same comment block, same "reached only through Quest navigation" assertion that turned out false for CharacterEntity) directly in CONTEXT.md as an open question, rather than as a separately spawned background session — so `/gsd-plan-phase 49`'s research step can pick it up naturally. The previously-spawned background task chip for this was withdrawn/dismissed accordingly. Recorded under a new `<unknowns>` section in CONTEXT.md, explicitly out of scope for Phase 49's own execution.
 
 ## Deferred Ideas
 
-None — the DungeonMasterController leak and the UserTransaction hardening were both pulled into this phase's scope after discussion, not deferred.
+None — the DungeonMasterController leak and the UserTransaction hardening were both pulled into this phase's scope after discussion, not deferred. The PlayerSignupEntity question is recorded as an Unknown for research, not deferred.

@@ -289,8 +289,8 @@ Plans:
 
 ### Phase 49: Fix Guild Members page missing group/tenant filtering
 
-**Goal:** `GuildMembersController` (Guild Members list/details/picture) and `DungeonMasterController` (DM profile view/edit/picture) stop leaking data across groups — both currently let any authenticated user view (and, for DM profiles, an Admin overwrite) another group's characters or DM profiles by ID, with no group-membership check. Additionally, `UserTransaction`'s currently-incidental group-scoping (verified safe today via an EF Core inner-join side effect, not by design) is documented, tested, and its one unguarded call site closed.
-**Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 49-CONTEXT.md decisions D-01–D-11)
+**Goal:** `GuildMembersController` (Guild Members list/details/picture) and `DungeonMasterController` (DM profile view/edit/picture) stop leaking data across groups — both currently let any authenticated user view (and, for DM profiles, an Admin overwrite) another group's characters or DM profiles by ID, with no group-membership check. `CharacterEntity` gets a real `GroupId` column (migration, backfilled to 1) and an automatic EF Core global query filter, mirroring `QuestEntity`/`ShopItemEntity` exactly, rather than a manual join. `UserTransaction`'s currently-incidental group-scoping (verified safe today via an EF Core inner-join side effect, not by design) is documented, tested, and its one unguarded call site closed.
+**Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 49-CONTEXT.md decisions D-01–D-11, including D-09a)
 **Depends on:** Phase 48
 **Plans:** 0 plans
 
