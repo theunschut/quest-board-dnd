@@ -118,3 +118,7 @@ None - no external service configuration required. The new migration auto-applie
 ---
 *Phase: 49-fix-guild-members-page-missing-group-tenant-filtering*
 *Completed: 2026-07-05*
+
+## Self-Check: PASSED
+
+All 8 created/modified files verified present on disk; all 4 commit hashes (02e73ac, eff458c, 976c1f3, plus this SUMMARY's own commit) verified present in git log.
