@@ -312,12 +312,12 @@ Plans:
 **Goal:** Campaign quests are fully manageable on par with OneShot quests: the Manage page exposes Edit and Delete actions for Campaign quests, and the Edit page hides the four OneShot-only fields (Challenge Rating, Total Player Count, DM-Session-Only, Proposed Dates) for Campaign quests exactly as the Create page already does — with the Edit POST validation path hardened so an invalid Campaign edit re-renders instead of throwing.
 **Requirements**: Ad-hoc bug-fix phase — no formal REQ-IDs; mapped to CONTEXT decisions D-01 through D-06.
 **Depends on:** Phase 49
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 50-01-PLAN.md — Wave 0 failing integration tests: Campaign Manage Edit/Delete links, Edit page field-hide (Campaign) / field-show (OneShot regression), Edit POST invalid-ModelState returns 200 (Pitfall 3 guard), desktop + mobile (D-01–D-05)
+- [x] 50-01-PLAN.md — Wave 0 failing integration tests: Campaign Manage Edit/Delete links, Edit page field-hide (Campaign) / field-show (OneShot regression), Edit POST invalid-ModelState returns 200 (Pitfall 3 guard), desktop + mobile (D-01–D-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
