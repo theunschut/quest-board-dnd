@@ -95,3 +95,7 @@ None - no external service configuration, no new migration, no schema change.
 ---
 *Phase: 49-fix-guild-members-page-missing-group-tenant-filtering*
 *Completed: 2026-07-05*
+
+## Self-Check: PASSED
+
+Both created/modified files verified present on disk (`QuestBoard.UnitTests/Repository/UserTransactionRepositoryTests.cs`, this SUMMARY.md); all 3 commit hashes (61cbe29, 88a33ed, f73b417) verified present in git log.
