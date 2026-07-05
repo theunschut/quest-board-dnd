@@ -286,3 +286,14 @@ Plans:
 Plans:
 
 - [x] 48-01-PLAN.md — Add "Open Board" POST-form button (left of Members) to the desktop and mobile Platform Group index views, plus human verification
+
+### Phase 49: Fix Guild Members page missing group/tenant filtering
+
+**Goal:** `GuildMembersController` (Guild Members list/details/picture) and `DungeonMasterController` (DM profile view/edit/picture) stop leaking data across groups — both currently let any authenticated user view (and, for DM profiles, an Admin overwrite) another group's characters or DM profiles by ID, with no group-membership check.
+**Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 49-CONTEXT.md decisions D-01–D-09)
+**Depends on:** Phase 48
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 49 to break down)
