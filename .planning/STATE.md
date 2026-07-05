@@ -5,7 +5,7 @@ milestone_name: Backlog Cleanup
 current_phase: 50
 status: executing
 stopped_at: Phase 50 UI-SPEC approved
-last_updated: "2026-07-05T20:11:29.416Z"
+last_updated: "2026-07-05T21:29:55.981Z"
 last_activity: 2026-07-05
 last_activity_desc: Phase 50 complete
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone
 
 Phase: 50
 Plan: Not started
-Status: Executing Phase 50
+Status: Ready to execute
 Last activity: 2026-07-05 — Phase 50 complete
 
 ## Performance Metrics
@@ -56,6 +56,7 @@ Last activity: 2026-07-05 — Phase 50 complete
 
 ### Roadmap Evolution
 
+- Phase 51 added: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained
 - Phase 50 added: Fix quest edit page: show edit button for campaign quests and align field visibility with create page
 - Phase 49 added: Fix Guild Members page missing group/tenant filtering
 - Phase 48 added: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
