@@ -372,6 +372,9 @@ else
             @if (boardType == BoardType.Campaign)
             {
                 <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-secondary flex-fill">
+                        <i class="fas fa-edit me-1"></i>Edit Quest
+                    </a>
                     @if (!Model.IsClosed)
                     {
                         <form asp-action="Close" method="post" class="flex-fill">
@@ -388,6 +391,9 @@ else
                             <button type="submit" class="btn btn-warning w-100">Reopen Quest</button>
                         </form>
                     }
+                    <a href="#" class="btn btn-danger w-100" onclick="deleteQuest(@Model.Id)">
+                        <i class="fas fa-trash me-1"></i>Delete Quest
+                    </a>
                     <button type="button" class="btn btn-outline-secondary w-100"
                             onclick="window.location.reload()">
                         <i class="fas fa-sync me-1"></i>Refresh Data
