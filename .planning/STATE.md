@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 50
+current_phase: 51
 status: executing
 stopped_at: Phase 50 UI-SPEC approved
-last_updated: "2026-07-05T20:11:29.416Z"
+last_updated: "2026-07-05T21:51:52.148Z"
 last_activity: 2026-07-05
-last_activity_desc: Phase 50 complete
+last_activity_desc: Phase 51 complete
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 current_phase_name: fix-quest-edit-page-show-edit-button-for-campaign-quests-and
 ---
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone
 
 ## Current Position
 
-Phase: 50
+Phase: 51
 Plan: Not started
-Status: Executing Phase 50
-Last activity: 2026-07-05 — Phase 50 complete
+Status: Ready to execute
+Last activity: 2026-07-05 — Phase 51 complete
 
 ## Performance Metrics
 
@@ -56,6 +56,9 @@ Last activity: 2026-07-05 — Phase 50 complete
 
 ### Roadmap Evolution
 
+- Phase 53 added: Add dedicated Edit view for Quest recap so Details page is view-only
+- Phase 52 added: Add Dead status to CharacterStatus enum
+- Phase 51 added: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained
 - Phase 50 added: Fix quest edit page: show edit button for campaign quests and align field visibility with create page
 - Phase 49 added: Fix Guild Members page missing group/tenant filtering
 - Phase 48 added: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first

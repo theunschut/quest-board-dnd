@@ -188,4 +188,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-05 — Phase 50 (Fix quest edit page: show edit button for campaign quests and align field visibility with create page) complete*
+*Last updated: 2026-07-05 — Phase 51 (Change Guild Members page layout from two columns to two stacked rows) complete*
