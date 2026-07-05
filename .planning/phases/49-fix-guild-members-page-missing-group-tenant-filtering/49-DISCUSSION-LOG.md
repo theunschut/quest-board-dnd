@@ -93,6 +93,29 @@ The initial summary of the investigation above conflated two things ("Quest Hist
 
 **Notes:** Recorded as D-06 through D-09 in CONTEXT.md. Reuses the existing `IUserService.GetGroupRoleByIdAsync(userId, groupId)` primitive (returns null for non-members) — no new repository plumbing needed, simpler than the Characters fix.
 
+---
+
+## UserTransaction group-scoping (raised mid-discussion)
+
+User asked whether `UserTransaction` needs its own `GroupId`, since it's linked to `ShopItem` (which has `GroupId` + an automatic global query filter) — reasoning this might already be automatically safe.
+
+**Investigation (empirical, not just reasoning):** Wrote and ran two throwaway xUnit tests against an EF Core InMemory `QuestBoardContext` (deleted after verification, not committed):
+1. `ctx.UserTransactions.Include(t => t.ShopItem).Where(t => t.UserId == X)` for a transaction whose ShopItem is in a different group than `ActiveGroupId` → 0 rows returned.
+2. Identical query without `.Include(t => t.ShopItem)` → 1 row returned (the leaked row).
+
+Conclusion: `UserTransactionEntity.ShopItemId` is a required FK, so `.Include(t => t.ShopItem)` becomes an inner join in EF Core's translation, and `ShopItemEntity`'s query filter gets folded into that join — dropping the parent row for out-of-group items. All 5 `UserTransactionRepository` methods already include `ShopItem`, so **this is not a live bug today**. But the protection is undocumented/incidental — nothing enforces "every query must Include ShopItem" — and one call site (`ShopService.ReturnOrSellItemAsync`'s use of the base `GetByIdAsync(transactionId)`) already doesn't have it (safe today only by the accident of a subsequent ShopItem re-fetch throwing first).
+
+Also found during this check: the `QuestBoardContext.cs:257-259` comment claiming CharacterEntity is "reached only through an already-filtered navigation" is now stale/wrong once D-02 ships (Characters get an explicit repository-level filter instead).
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Add to Phase 49 scope | Make the group-scoping explicit/documented (comment fix + regression test) and fix the one unguarded GetByIdAsync(transactionId) call in ReturnOrSellItemAsync. | ✓ |
+| Log as a separate backlog item | Nothing is broken today; track as hardening for a future phase. | |
+| Leave as-is | Works correctly today; skip formalizing it. | |
+
+**User's choice:** Add to Phase 49 scope (recommended option).
+**Notes:** Recorded as D-10/D-11 in CONTEXT.md. No new GroupId column or migration — this is a documentation + test + one-call-site fix, not a schema change.
+
 ## Deferred Ideas
 
-None — the DungeonMasterController leak (Profile/EditProfile/GetDMProfilePicture) was pulled into this phase's scope after reconsideration (see above), not deferred.
+None — the DungeonMasterController leak and the UserTransaction hardening were both pulled into this phase's scope after discussion, not deferred.

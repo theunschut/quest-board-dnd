@@ -6,11 +6,13 @@
 <domain>
 ## Phase Boundary
 
-Two controllers have confirmed cross-group ("tenant") leaks; both are in scope for this phase:
+Three areas have confirmed or hardened cross-group ("tenant") leaks; all are in scope for this phase:
 
 1. **`GuildMembersController`** (nav-labeled "Guild Members", backing the character/guild-member directory) currently has **no group/tenant scoping at all** — `Index` lists every character in the entire database regardless of which group the viewer is in, and `Details`/`GetProfilePicture` can be reached for any character ID with no ownership or group check. Fix makes the character list and character detail/picture endpoints respect the viewer's active group, matching the group-scoping already correctly applied to the sibling "Players" page (`PlayersController` / `UserRepository.GetAllDungeonMasters`/`GetAllPlayers`).
 
 2. **`DungeonMasterController`** (`/DungeonMaster/Profile/{id}` and related actions) has the same class of bug, discovered while confirming the Quest History list was already correctly filtered (it is — see D-05): `Profile`, `EditProfile` (GET **and** POST), and `GetDMProfilePicture` never check that the target user ID is a member of the viewer's active group. `EditProfile`'s POST path is the more severe of the two controllers' issues — it lets an Admin of one group **overwrite** the bio/profile picture of a DM in an unrelated group, not just view it.
+
+3. **`UserTransactionEntity`/`UserTransactionRepository`** — validated via empirical testing (see D-10) that this is *currently* safe, but only by an undocumented accident of EF Core's query translation, not by design. Harden it: document the real mechanism, close the one unguarded call site, and add a regression test so a future refactor can't silently reopen the leak.
 
 </domain>
 
@@ -48,6 +50,20 @@ Two controllers have confirmed cross-group ("tenant") leaks; both are in scope f
 ### DungeonMasterController — cross-group response code
 - **D-09:** `Profile`, `EditProfile` (GET+POST), and `GetDMProfilePicture` all return **404 Not Found** (not 403 Forbidden) when the target user is outside the viewer's active group — same convention as D-04. This is distinct from `EditProfile`'s existing same-tenant `Forbid()` (a same-group non-owner, non-Admin editor) — that check is unaffected and stays as-is; the new group-membership check runs first/separately and 404s before the existing Forbid-based ownership check would even be reached for an out-of-group target.
 
+### UserTransaction — validated, not a live bug, but hardening needed
+- **D-10:** User asked whether `UserTransaction` needs its own `GroupId`, since it's linked to `ShopItem` (which has `GroupId` + an automatic EF Core global query filter). **Empirically verified with two throwaway InMemory-provider tests** (not just reasoned about — actually run against this project's real `QuestBoardContext`/EF Core 10.0.9):
+  - `ctx.UserTransactions.Include(t => t.ShopItem).Where(t => t.UserId == X)` for a transaction whose `ShopItem` is in a different group than `ActiveGroupId` → **returns 0 rows** (protected).
+  - The identical query **without** `.Include(t => t.ShopItem)` → **returns the row** (leaks).
+  - Mechanism: `UserTransactionEntity.ShopItemId` is a required (non-nullable) FK, so EF Core translates `.Include(t => t.ShopItem)` into an **inner join**, and `ShopItemEntity`'s own `HasQueryFilter` gets folded into that join condition — which drops the parent `UserTransaction` row entirely, not just the navigation property. All five methods in `UserTransactionRepository` (`GetAllAsync`, `GetTransactionsByUserAsync`, `GetTransactionsByItemAsync`, `GetTransactionsByTypeAsync`, `GetTransactionWithDetailsAsync`) already include `.Include(t => t.ShopItem)`, so **all of them are currently correctly scoped** — no explicit `GroupId` column or `.Where` clause is needed for these five.
+  - **Conclusion: no live bug today.** But this protection is incidental (nothing declares or enforces the invariant "every `UserTransaction` query must Include `ShopItem`"), unlike the deliberate, documented pattern for `CharacterEntity`/`PlayerSignupEntity` in `QuestBoardContext.cs:257-259` — and that comment is itself now stale for `CharacterEntity`, since D-02 replaces its transitive-navigation reliance with an explicit repository-level filter. `UserTransactionEntity` isn't mentioned in that comment at all.
+
+### UserTransaction — hardening scope
+- **D-11:** Fix, in this phase:
+  1. **Update the comment block in `QuestBoard.Repository/Entities/QuestBoardContext.cs:254-259`** to (a) remove the CharacterEntity claim (no longer true once D-02 ships — Characters get an explicit filter, not transitive protection), and (b) accurately document `UserTransactionEntity`'s real mechanism (protected only via the required-FK-`Include`-driven inner join on `ShopItem`, not by any filter of its own — every query touching `UserTransactionEntity` must `Include(t => t.ShopItem)` or it silently leaks).
+  2. **Add a regression test** (in `QuestBoard.UnitTests`, alongside the existing `PlayerSignupRepositoryTests.cs` InMemory-provider pattern) asserting a cross-group `UserTransaction` is excluded from `GetTransactionsByUserAsync` — so a future refactor that drops the `Include` or makes `ShopItemId` nullable fails the test loudly instead of silently reopening the leak.
+  3. **Fix the one unguarded call site:** `ShopService.ReturnOrSellItemAsync` (`QuestBoard.Domain/Services/ShopService.cs:120-175`) calls the inherited base `transactionRepository.GetByIdAsync(transactionId, token)` (no `Include`, no group scoping at all) to look up the original purchase. It's safe today only because the very next block re-fetches the `ShopItem` by ID — which *is* properly filtered — and throws if it's gone (`"Original item no longer exists."`). Replace this call with the existing `transactionRepository.GetTransactionWithDetailsAsync(transactionId, token)` (already `Include`s `ShopItem`, already transitively protected), so this call site's safety no longer depends on the accident of what happens to run afterward.
+- **Claude's Discretion:** Whether the corrected `QuestBoardContext.cs` comment additionally recommends an explicit `.Where` clause as a future-proofing measure, or documents the `Include`-required invariant as sufficient given the existing codebase convention (per the pre-existing CharacterEntity/PlayerSignupEntity pattern this mirrors) — lean toward documentation + test over introducing a second, redundant filtering mechanism, consistent with this project's existing style.
+
 </decisions>
 
 <canonical_refs>
@@ -81,6 +97,13 @@ Two controllers have confirmed cross-group ("tenant") leaks; both are in scope f
 - `QuestBoard.Domain/Interfaces/IUserService.cs:79` — `GetGroupRoleByIdAsync(int userId, int groupId)`: the existing "is this user a member of this group" primitive to reuse per D-07 (already implemented in `UserService.cs:84-87` → `repository.GetGroupRoleAsync(userId, groupId)`).
 - `QuestBoard.Domain/Interfaces/IDungeonMasterProfileService.cs` / `QuestBoard.Domain/Services/DungeonMasterProfileService.cs` — `GetProfileByUserIdAsync`, `GetProfilePictureAsync`, `UpsertProfileAsync` — these operate purely on `userId`; the group check belongs in the controller (or a thin wrapper), not in these methods, since `DungeonMasterProfileEntity` has no group concept of its own (same shape as `CharacterEntity` — see D-02's data-model reasoning, which applies equally here).
 
+### The third area (UserTransaction — hardening, not a live bug)
+- `QuestBoard.Repository/Entities/UserTransactionEntity.cs` — `ShopItemId`/`ShopItem` (required FK, no `GroupId` of its own).
+- `QuestBoard.Repository/UserTransactionRepository.cs` — all 5 methods already `.Include(t => t.ShopItem)` (lines 14-16, 25-27, 37-39, 49-51, 61-64) — the mechanism D-10 validated as currently sufficient.
+- `QuestBoard.Repository/Entities/QuestBoardContext.cs:254-259` — the comment to correct per D-11.1.
+- `QuestBoard.Domain/Services/ShopService.cs:120-175` — `ReturnOrSellItemAsync`, the one call site to fix per D-11.3 (`transactionRepository.GetByIdAsync(transactionId, token)` → `GetTransactionWithDetailsAsync`).
+- `QuestBoard.UnitTests/Repository/PlayerSignupRepositoryTests.cs` — existing InMemory-provider + `IActiveGroupContext` test pattern to mirror for D-11.2's new regression test (uses `UseInMemoryDatabase`, a test `IActiveGroupContext` implementation, and seeds `Groups`/`UserEntities`/`Quests` directly against `QuestBoardContext`).
+
 No external ADRs/specs beyond the codebase map above — requirements are fully captured in the decisions section.
 
 </canonical_refs>
@@ -109,6 +132,8 @@ No external ADRs/specs beyond the codebase map above — requirements are fully 
 User's original report: "The Guild Members page is not group filtered" — confirmed via code inspection to be `GuildMembersController.Index`, which has no scoping whatsoever (returns literally every character in the system). Discussion expanded scope to also cover the `Details`/`GetProfilePicture` direct-URL leak on the same controller, since it's the identical root cause.
 
 User then asked whether `DungeonMasterProfile`'s "Quest History" list needed the same fix. Investigation showed that specific list is already correctly filtered (D-05), but surfaced a real, separate leak on the same page (`Profile`/`EditProfile`/`GetDMProfilePicture` — D-06 through D-09), which the user chose to pull into this phase's scope given the phase's overall theme of closing tenant-filtering leaks.
+
+User then asked whether `UserTransaction` needs its own `GroupId`, reasoning that its link to the already-filtered `ShopItem` might make it automatically safe. Rather than answer from reasoning alone, this was verified empirically with throwaway EF Core InMemory-provider tests against the real `QuestBoardContext` — confirming the reasoning was directionally right (it is currently protected) but for a more specific and fragile reason than "automatic": a required-FK `Include`-driven inner join, not a query filter of its own (D-10). User chose to hardening this rather than leave it as an undocumented accident (D-11).
 
 </specifics>
 
