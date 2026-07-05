@@ -64,9 +64,35 @@ User asked whether the "Quest History" list on the DungeonMasterProfile view sho
 | Also make SuperAdmin's Quest History empty when unscoped | Override the filter's "null = see all" default to match the Guild Members empty-list convention (D-03). | |
 | Nothing further — Quest History itself is already correct | Confirms the code reading is right; no additional work needed on the Quest History list. | ✓ |
 
-**User's choice:** Nothing further — confirmed as a non-issue once the existing global query filter was explained.
-**Notes:** The adjacent profile-by-ID leak (bio/name/profile picture, not quest data) was surfaced but not selected for this phase's scope — recorded as a Deferred Idea in CONTEXT.md rather than silently dropped.
+**User's choice:** Nothing further — confirmed as a non-issue once the existing global query filter was explained (Quest History specifically).
+**Notes:** The adjacent profile-by-ID leak (bio/name/profile picture, not quest data) was surfaced during this investigation but initially not selected — see follow-up below where the user reconsidered after a clarifying summary.
+
+---
+
+## DungeonMasterController profile-by-ID leak (reconsidered)
+
+The initial summary of the investigation above conflated two things ("Quest History is fine" vs. "the surrounding page isn't") in a way that read as contradictory. Clarified: Quest History is fine; the rest of the DM Profile page (name/bio/picture) is a separate, real leak. Further investigation while restating this also surfaced that `EditProfile` (GET+POST) never checks the *target* user is in the current Admin's active group — an Admin in Group A can overwrite the bio/profile picture of a DM in unrelated Group Z. This is a write-path issue, more severe than the read-only leak on `Profile`/`GetDMProfilePicture`.
+
+**Scope question:**
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Fix all three, including EditProfile's write leak | Add the group-membership check to Profile, EditProfile (GET+POST), and GetDMProfilePicture. | ✓ |
+| Read-only leaks only (Profile, GetDMProfilePicture) | Leave EditProfile as-is; track its write-path issue as a separate, higher-priority follow-up bug. | |
+
+**User's choice:** Fix all three (recommended option).
+
+**SuperAdmin-with-no-active-group question:**
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Treat as inaccessible — 404/empty | Consistent with the Guild Members convention (D-03) — without a selected group, treat the target as not found. | ✓ |
+| Allow SuperAdmin to view/edit any DM profile | Let SuperAdmin bypass group scoping here too, as a platform-admin utility. | |
+
+**User's choice:** Treat as inaccessible — 404/empty (recommended option).
+
+**Notes:** Recorded as D-06 through D-09 in CONTEXT.md. Reuses the existing `IUserService.GetGroupRoleByIdAsync(userId, groupId)` primitive (returns null for non-members) — no new repository plumbing needed, simpler than the Characters fix.
 
 ## Deferred Ideas
 
-- `DungeonMasterController.Profile`/`GetDMProfilePicture` have no group check on which user ID can be viewed (bio/name/profile picture only — Quest History itself is unaffected, see above). Same class of leak as the Characters Details/GetProfilePicture fix in this phase, but not selected for this phase's scope.
+None — the DungeonMasterController leak (Profile/EditProfile/GetDMProfilePicture) was pulled into this phase's scope after reconsideration (see above), not deferred.
