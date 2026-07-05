@@ -329,8 +329,8 @@ Plans:
 **Goal:** The desktop Guild Members page stacks "My Characters" above "Guild Roster" as two full-width sections instead of two half-width side-by-side columns, so the growing roster uses the full page width (its existing auto-fill `character-grid` reflows to more columns) with zero change to card styling, badges, empty states, the controller/ViewModel, or the already-stacked mobile view.
 **Requirements**: None (ad-hoc backlog layout change — no REQ-IDs; pure markup change to `GuildMembers/Index.cshtml`)
 **Depends on:** Phase 50
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 51-01-PLAN.md — Remove the `row`/`col-md-6` two-column grid in `GuildMembers/Index.cshtml`, stack the two `modern-card` sections full-width (`mb-4` gap on My Characters), preserve all card markup; mobile + CSS untouched; blocking human verification
+- [x] 51-01-PLAN.md — Remove the `row`/`col-md-6` two-column grid in `GuildMembers/Index.cshtml`, stack the two `modern-card` sections full-width (`mb-4` gap on My Characters), preserve all card markup; mobile + CSS untouched; blocking human verification
