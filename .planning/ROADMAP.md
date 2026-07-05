@@ -315,7 +315,11 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 50-01-PLAN.md — Wave 0 failing integration tests: Campaign Manage Edit/Delete links, Edit page field-hide (Campaign) / field-show (OneShot regression), Edit POST invalid-ModelState returns 200 (Pitfall 3 guard), desktop + mobile (D-01–D-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 50-02-PLAN.md — Manage page Campaign action row: add Edit Quest + Delete on desktop and mobile, reusing OneShot markup and the existing deleteQuest JS (D-01/D-02/D-03; mobile Edit = btn-secondary per Pitfall 1)
 - [ ] 50-03-PLAN.md — Edit page field-hiding: @if (boardType != Campaign) wrapper on Edit.cshtml/Edit.Mobile.cshtml + ViewBag.BoardType in Edit GET and Edit POST failure path (D-04/D-05, Pitfall 3 fix; mobile HasExistingSignups banner left ungated per Pitfall 2)
