@@ -29,6 +29,9 @@
 - Exact implementation shape for the group check on `Details`/`GetProfilePicture` (e.g., whether to add a new repository method that joins through `Owner`/`UserGroups`, or fetch-then-check-then-404 in the controller/service layer). Follow whichever is more consistent with `ICharacterRepository`/`ICharacterService`'s existing method shapes (`QuestBoard.Domain/Interfaces/ICharacterRepository.cs`, `QuestBoard.Domain/Interfaces/ICharacterService.cs`).
 - Whether "MyCharacters" (the current user's own characters) needs any special-case handling — it doesn't: once the underlying list is scoped to "owners who are members of the active group," `MyCharacters`/`OtherCharacters` in `GuildMembersController.Index` (`QuestBoard.Service/Controllers/Characters/GuildMembersController.cs:29-42`) split from that already-filtered list unchanged, since a user viewing their active group is by definition a member of it.
 
+### Investigated and ruled out — DungeonMasterProfile Quest History
+- **D-05:** The user asked whether the "Quest History" list on `DungeonMasterController.Profile` (`QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs:20-46`) also needs group filtering. Investigated and confirmed **no change needed**: `GetQuestsByDungeonMasterAsync` (`QuestBoard.Repository/QuestRepository.cs:239-247`) queries `DbContext.Quests` with no `.IgnoreQueryFilters()`, so it already inherits the automatic global query filter on `QuestEntity` (`QuestBoard.Repository/Entities/QuestBoardContext.cs:244-247`: `ActiveGroupId == null || e.GroupId == ActiveGroupId`). For every non-SuperAdmin viewer, Quest History is already correctly scoped to the active group. For SuperAdmin (`ActiveGroupId == null`), the filter's "null = see all" behavior shows quests across every group that DM has run — matching the app's existing intentional design for SuperAdmin elsewhere (e.g. `/quests`, per `.planning/codebase/CONCERNS.md`), not an oversight. User confirmed this is a non-issue once the filtering was explained — out of scope for this phase.
+
 </decisions>
 
 <canonical_refs>
@@ -87,7 +90,7 @@ User's original report: "The Guild Members page is not group filtered" — confi
 <deferred>
 ## Deferred Ideas
 
-None — discussion stayed within phase scope (this controller's missing group filtering).
+- **`DungeonMasterController.Profile`/`GetDMProfilePicture` have no group check on which user ID can be viewed** — `userService.GetByIdAsync(id)`, `dmProfileService.GetProfileByUserIdAsync(id)`, and `GetDMProfilePicture(id)` (`QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs:20-46,121-134`) all resolve any user ID regardless of group membership — the same class of cross-tenant profile leak as the Characters `Details`/`GetProfilePicture` fix in this phase (D-01/D-04), just not exercised via Quest History (that part is already correctly filtered — see D-05). Raised during discussion; user did not select it for this phase's scope. Worth its own follow-up phase/bug if it matters in practice — Quest History itself already comes back empty for an out-of-group DM id, so the leak is limited to the bio/name/profile-picture fields, not quest data.
 
 </deferred>
 

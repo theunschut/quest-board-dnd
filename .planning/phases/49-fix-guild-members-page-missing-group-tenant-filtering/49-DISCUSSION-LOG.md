@@ -50,6 +50,23 @@
 - Exact implementation shape for the group check on Details/GetProfilePicture (repository join vs. fetch-then-check-then-404) — follow whichever is more consistent with existing `ICharacterRepository`/`ICharacterService` method shapes.
 - Whether "MyCharacters" needs special-case handling — it doesn't, since it's derived from the already-filtered list.
 
+---
+
+## DungeonMasterProfile Quest History (raised mid-discussion)
+
+User asked whether the "Quest History" list on the DungeonMasterProfile view should also be filtered on the active group ID, given this phase's theme of closing tenant-filtering leaks.
+
+**Investigation:** `GetQuestsByDungeonMasterAsync` queries `DbContext.Quests` directly with no `.IgnoreQueryFilters()`, so it already inherits the automatic global EF Core query filter on `QuestEntity` (`ActiveGroupId == null || GroupId == ActiveGroupId`). For every non-SuperAdmin viewer, Quest History is already correctly scoped. SuperAdmin sees all groups' quests for that DM by the filter's own "null = see all" design — consistent with how the rest of the app treats SuperAdmin elsewhere (e.g. `/quests`).
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Lock down profile-by-ID access | GetByIdAsync/GetProfileByUserIdAsync/GetDMProfilePicture have no group check — add the same group-membership + 404 pattern as Characters. | |
+| Also make SuperAdmin's Quest History empty when unscoped | Override the filter's "null = see all" default to match the Guild Members empty-list convention (D-03). | |
+| Nothing further — Quest History itself is already correct | Confirms the code reading is right; no additional work needed on the Quest History list. | ✓ |
+
+**User's choice:** Nothing further — confirmed as a non-issue once the existing global query filter was explained.
+**Notes:** The adjacent profile-by-ID leak (bio/name/profile picture, not quest data) was surfaced but not selected for this phase's scope — recorded as a Deferred Idea in CONTEXT.md rather than silently dropped.
+
 ## Deferred Ideas
 
-None — discussion stayed within phase scope.
+- `DungeonMasterController.Profile`/`GetDMProfilePicture` have no group check on which user ID can be viewed (bio/name/profile picture only — Quest History itself is unaffected, see above). Same class of leak as the Characters Details/GetProfilePicture fix in this phase, but not selected for this phase's scope.
