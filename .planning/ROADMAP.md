@@ -323,3 +323,14 @@ Plans:
 
 - [x] 50-02-PLAN.md — Manage page Campaign action row: add Edit Quest + Delete on desktop and mobile, reusing OneShot markup and the existing deleteQuest JS (D-01/D-02/D-03; mobile Edit = btn-secondary per Pitfall 1)
 - [x] 50-03-PLAN.md — Edit page field-hiding: @if (boardType != Campaign) wrapper on Edit.cshtml/Edit.Mobile.cshtml + ViewBag.BoardType in Edit GET and Edit POST failure path (D-04/D-05, Pitfall 3 fix; mobile HasExistingSignups banner left ungated per Pitfall 2)
+
+### Phase 51: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained
+
+**Goal:** The desktop Guild Members page stacks "My Characters" above "Guild Roster" as two full-width sections instead of two half-width side-by-side columns, so the growing roster uses the full page width (its existing auto-fill `character-grid` reflows to more columns) with zero change to card styling, badges, empty states, the controller/ViewModel, or the already-stacked mobile view.
+**Requirements**: None (ad-hoc backlog layout change — no REQ-IDs; pure markup change to `GuildMembers/Index.cshtml`)
+**Depends on:** Phase 50
+**Plans:** 1 plan
+
+Plans:
+
+- [ ] 51-01-PLAN.md — Remove the `row`/`col-md-6` two-column grid in `GuildMembers/Index.cshtml`, stack the two `modern-card` sections full-width (`mb-4` gap on My Characters), preserve all card markup; mobile + CSS untouched; blocking human verification
