@@ -44,4 +44,8 @@ internal class PlayerSignupService(IPlayerSignupRepository repository, IMapper m
         playerSignup.CharacterId = characterId;
         await repository.UpdateAsync(playerSignup, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default) =>
+        repository.GetByIdWithQuestAsync(id, cancellationToken);
 }

@@ -14,4 +14,9 @@ public interface IPlayerSignupService : IBaseService<PlayerSignup>
     /// Sets or clears (when characterId is null) the character attached to a player signup.
     /// </summary>
     Task UpdateSignupCharacterAsync(int playerSignupId, int? characterId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns a signup with its parent Quest loaded, or null.
+    /// </summary>
+    Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default);
 }

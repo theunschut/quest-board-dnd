@@ -20,6 +20,15 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
     }
 
     /// <inheritdoc/>
+    public async Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var entity = await DbSet
+            .Include(ps => ps.Quest)
+            .FirstOrDefaultAsync(ps => ps.Id == id, cancellationToken);
+        return entity == null ? null : Mapper.Map<PlayerSignup>(entity);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> ChangeVoteAsync(int playerSignupId, int proposedDateId, VoteType vote, CancellationToken cancellationToken = default)
     {
         var entity = await DbSet
