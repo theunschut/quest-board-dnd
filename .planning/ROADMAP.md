@@ -292,8 +292,15 @@ Plans:
 **Goal:** `GuildMembersController` (Guild Members list/details/picture), `DungeonMasterController` (DM profile view/edit/picture), and `QuestController.RemovePlayerSignup` stop leaking data/mutations across groups — all three currently let any authenticated user view (and, for DM profiles and player-signup removal, an Admin overwrite/delete) another group's characters, DM profiles, or player signups by ID, with no group-membership check on the target. `CharacterEntity` gets a real `GroupId` column (migration, backfilled to 1) and an automatic EF Core global query filter, mirroring `QuestEntity`/`ShopItemEntity` exactly, rather than a manual join. `UserTransaction`'s currently-incidental group-scoping (verified safe today via an EF Core inner-join side effect, not by design) is documented, tested, and its one unguarded call site closed. `PlayerSignupEntity`'s identical incidental-scoping gap (found during this phase's research) gets the same hardening, plus a real fix for the one independently-exploitable path (`RemovePlayerSignup`).
 **Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 49-CONTEXT.md decisions D-01–D-13, including D-09a)
 **Depends on:** Phase 48
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 49 to break down)
+- [ ] 49-01-PLAN.md — CharacterEntity GroupId column + migration (backfill to 1) + no-null-escape-hatch query filter + FK config + all QuestBoardContext transitive-filter comment corrections + GetCharacterProfilePictureAsync rewrite + Create-POST group stamp + CharacterRepositoryTests + TestDataHelper GroupId fix (D-01/D-02/D-03/D-04)
+
+**Wave 2** *(all three parallel; each depends only on Wave 1's settled QuestBoardContext.cs)*
+
+- [ ] 49-02-PLAN.md — DungeonMasterController target-group-membership check via GetGroupRoleByIdAsync on Profile/EditProfile(GET+POST)/GetDMProfilePicture, 404 for cross-group + SuperAdmin-no-group, schema unchanged, + integration tests (D-06/D-07/D-08/D-09/D-09a)
+- [ ] 49-03-PLAN.md — UserTransaction hardening: ReturnOrSellItemAsync uses Include-protected GetTransactionWithDetailsAsync + UserTransactionRepositoryTests cross-group regression (D-10/D-11)
+- [ ] 49-04-PLAN.md — PlayerSignup hardening: Quest-including lookup + RemovePlayerSignup target-Quest group check (404) + PlayerSignupRepositoryTests cross-group regression (D-12/D-13)
