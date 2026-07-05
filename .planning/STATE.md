@@ -5,16 +5,16 @@ milestone_name: Backlog Cleanup
 current_phase: 47
 current_phase_name: "Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob"
 status: executing
-stopped_at: Phase 47 context gathered
-last_updated: "2026-07-04T23:50:18.201Z"
+stopped_at: Phase 49 context gathered
+last_updated: "2026-07-05T12:30:51.756Z"
 last_activity: 2026-07-04
 last_activity_desc: Phase 44 complete, transitioned to Phase 47
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 7
   completed_plans: 7
-  percent: 100
+  percent: 80
 ---
 
 # Project State
@@ -56,6 +56,7 @@ Last activity: 2026-07-04 — Phase 44 complete, transitioned to Phase 47
 
 ### Roadmap Evolution
 
+- Phase 49 added: Fix Guild Members page missing group/tenant filtering
 - Phase 48 added: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
 
 v7.0 Backlog Cleanup roadmap created 2026-07-04: 4 phases (43–46), 14/14 v1 requirements mapped, no orphans. Continues numbering from v6.1's Phase 42. Full phase detail in `.planning/ROADMAP.md`.
@@ -88,9 +89,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-04T21:53:58.263Z
-Stopped at: Phase 47 context gathered
-Resume file: .planning/phases/47-group-membership-email-notification-fix-adding-an-existing-u/47-CONTEXT.md
+Last session: 2026-07-05T12:30:51.740Z
+Stopped at: Phase 49 context gathered
+Resume file: .planning/phases/49-fix-guild-members-page-missing-group-tenant-filtering/49-CONTEXT.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps
