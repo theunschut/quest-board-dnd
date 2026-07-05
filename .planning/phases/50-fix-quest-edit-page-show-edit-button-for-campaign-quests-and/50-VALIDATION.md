@@ -1,8 +1,8 @@
 ---
 phase: 50
 slug: fix-quest-edit-page-show-edit-button-for-campaign-quests-and
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-05
 ---
@@ -38,17 +38,16 @@ created: 2026-07-05
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 50-01-xx | TBD | TBD | D-01/D-02 | — | Campaign Manage page renders "Edit Quest" link before Close/Reopen | integration | `dotnet test --filter "FullyQualifiedName~QuestManage"` asserting `content.Should().Contain("Edit Quest")` on Campaign-board GET `/Quest/Manage/{id}` | ❌ W0 | ⬜ pending |
-| 50-01-xx | TBD | TBD | D-03 | — | Campaign Manage page renders "Delete"/"Delete Quest" link after Close/Reopen, wired to `deleteQuest(id)` | integration | same test class, assert `content.Should().Contain("deleteQuest(")` and `Contain("Delete")` | ❌ W0 | ⬜ pending |
-| 50-02-xx | TBD | TBD | D-04 | — | Edit page hides CR/PlayerCount/DMSession/ProposedDates for Campaign quests; shows them for OneShot | integration | GET `/Quest/Edit/{id}`: `NotContain(...)` for Campaign, `Contain(...)` for OneShot (regression check) | ❌ W0 | ⬜ pending |
-| 50-02-xx | TBD | TBD | D-05 | — | `Edit` GET sets `ViewBag.BoardType`; `Edit` POST validation-failure path also sets it (Pitfall 3 fix — prevents `InvalidCastException`) | integration | (a) GET Edit for Campaign quest returns 200; (b) POST Edit with invalid ModelState (e.g. empty Title) for a Campaign quest returns 200 with validation errors rendered, not an unhandled exception | ❌ W0 | ⬜ pending |
-| 50-01-xx / 50-02-xx | TBD | TBD | Mobile parity | — | Same assertions repeated with `MobileUserAgent` header per `MobileViewsTests.cs` pattern | integration | Same test class(es), mobile-user-agent variant of each case above | ❌ W0 | ⬜ pending |
+| 50-01-T1 | 01 | 1 | D-01/D-02/D-03 | — | Wave-0 failing tests: `CampaignManage_Desktop_RendersEditQuestLink`, `CampaignManage_Desktop_RendersDeleteLinkWiredToDeleteQuest` | integration | `dotnet test --filter "FullyQualifiedName~QuestCampaignUiParity"` | ✅ | ⬜ pending |
+| 50-01-T2 | 01 | 1 | D-04/D-05 | — | Wave-0 tests: `CampaignEdit_Desktop_HidesFourOneShotFields`, `OneShotEdit_Desktop_ShowsFourFields`, `CampaignEdit_InvalidModelState_Returns200_DoesNotThrow`, `CampaignEdit_Mobile_HidesFourOneShotFields` | integration | `dotnet test --filter "FullyQualifiedName~QuestCampaignUiParity"` | ✅ | ⬜ pending |
+| 50-02-T1 | 02 | 2 | D-01/D-02/D-03 | T-50-01 | Desktop Campaign Manage row renders Edit Quest (`btn-primary`) before Close/Reopen and Delete (`btn-danger`, `deleteQuest(id)`) after | integration | `dotnet test --filter "FullyQualifiedName~CampaignManage_Desktop"` | ✅ | ⬜ pending |
+| 50-02-T2 | 02 | 2 | D-01/D-03 mobile | T-50-01 | Mobile Campaign Manage row renders Edit Quest (`btn-secondary` per Pitfall 1) and Delete Quest (`deleteQuest(id)`) | integration | `dotnet test --filter "FullyQualifiedName~CampaignManage_Mobile"` | ✅ | ⬜ pending |
+| 50-03-T1 | 03 | 2 | D-05 | T-50-02, T-50-03 | `Edit` GET sets `ViewBag.BoardType`; `Edit` POST resolves `boardType` before `ModelState` check and sets `ViewBag.BoardType` on the validation-failure path (Pitfall 3 fix) | integration | `dotnet test --filter "FullyQualifiedName~CampaignEdit_InvalidModelState"` stays green | ✅ | ⬜ pending |
+| 50-03-T2 | 03 | 2 | D-04 | — | `Edit.cshtml`/`Edit.Mobile.cshtml` hide CR/PlayerCount/DMSession/ProposedDates for Campaign, show for OneShot; desktop tips sidebar unchanged (D-06); mobile `HasExistingSignups` banner deliberately left ungated (Pitfall 2) | integration | `dotnet test --filter "FullyQualifiedName~QuestCampaignUiParity"` full class green | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
-*D-06 (sidebar tips left unchanged) requires no test — explicit non-change, not a behavior to verify.*
-
-*Task IDs are TBD pending the planner's actual plan/task numbering — this table's rows map to CONTEXT.md decisions and must be reconciled with real task IDs once PLAN.md files exist.*
+*D-06 (sidebar tips left unchanged) requires no test — explicit non-change, verified as an acceptance criterion of 50-03-T2 rather than a standalone test.*
 
 ---
 
@@ -68,11 +67,11 @@ created: 2026-07-05
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (50-01 authors the full failing-test baseline)
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending — planner must finalize task IDs before sign-off
+**Approval:** approved 2026-07-05 — plan-checker VERIFICATION PASSED, all D-01 through D-06 covered
