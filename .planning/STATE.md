@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 49
-current_phase_name: fix-guild-members-page-missing-group-tenant-filtering
+current_phase: 50
+current_phase_name: "Fix quest edit page: show edit button for campaign quests and align field visibility with create page"
 status: executing
 stopped_at: Phase 50 UI-SPEC approved
-last_updated: "2026-07-05T19:07:34.351Z"
+last_updated: "2026-07-05T19:11:33.992Z"
 last_activity: 2026-07-05
-last_activity_desc: Phase 49 execution started
+last_activity_desc: Phase 49 complete, transitioned to Phase 50
 progress:
   total_phases: 6
   completed_phases: 5
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone
 
 ## Current Position
 
-Phase: 49 (fix-guild-members-page-missing-group-tenant-filtering) — EXECUTING
-Plan: 1 of 4
+Phase: 50 — Fix quest edit page: show edit button for campaign quests and align field visibility with create page
+Plan: Not started
 Status: Executing Phase 49
-Last activity: 2026-07-05 — Phase 49 execution started
+Last activity: 2026-07-05 — Phase 49 complete, transitioned to Phase 50
 
 ## Performance Metrics
 
