@@ -336,6 +336,9 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<bool>("IsSelected")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastVoteChangeTime")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("PlayerId")
                         .HasColumnType("int");
 

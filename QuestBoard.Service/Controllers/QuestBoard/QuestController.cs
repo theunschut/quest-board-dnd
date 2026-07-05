@@ -550,7 +550,7 @@ public class QuestController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize]
-    public async Task<IActionResult> ChangeVoteToYes(int id)
+    public async Task<IActionResult> ChangeVote(int id, VoteType vote)
     {
         var quest = await questService.GetQuestWithDetailsAsync(id);
         if (quest == null || !quest.IsFinalized || quest.FinalizedDate == null)
@@ -561,27 +561,16 @@ public class QuestController(
         if (user == null)
             return Challenge();
 
-        // Find the user's signup for this quest
+        // Find the user's signup for this quest — never trust a client-supplied signup id
         var playerSignup = quest.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == user.Id);
         if (playerSignup == null)
         {
             return BadRequest("You are not signed up for this quest.");
         }
 
-        // Check if already selected
-        if (playerSignup.IsSelected)
+        if (!Enum.IsDefined(typeof(VoteType), vote))
         {
-            return BadRequest("You are already selected for this quest.");
-        }
-
-        // Check if there are available spots for players
-        var selectedPlayersCount = quest.PlayerSignups
-            .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
-            .Count();
-
-        if (selectedPlayersCount >= quest.TotalPlayerCount)
-        {
-            return BadRequest("No available spots in this quest.");
+            return BadRequest("Invalid vote value.");
         }
 
         // Find the finalized date's corresponding proposed date
@@ -593,8 +582,8 @@ public class QuestController(
             return BadRequest("Could not find the finalized date information.");
         }
 
-        // Use the specialized service method to update vote and mark as selected
-        await playerSignupService.ChangeVoteToYesAndSelectAsync(playerSignup.Id, finalizedProposedDate.Id);
+        // Voting is never rejected on capacity; the service decides selection vs waitlist.
+        await questService.ChangeVoteAsync(id, playerSignup.Id, vote, finalizedProposedDate.Id);
 
         return Ok();
     }
@@ -620,8 +609,9 @@ public class QuestController(
             return BadRequest("You are not signed up for this quest.");
         }
 
-        // Remove the player signup (allow revoking at any time)
-        await playerSignupService.RemoveAsync(playerSignup);
+        // Revoke the signup; the service captures whether the seat was selected
+        // before deleting it, and promotes the top waitlisted player if it was.
+        await questService.RevokeSignupAsync(id, playerSignup.Id);
 
         return Ok();
     }

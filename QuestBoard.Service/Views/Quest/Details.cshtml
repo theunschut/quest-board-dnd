@@ -1,4 +1,5 @@
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @using QuestBoard.Service.ViewModels.CalendarViewModels
@@ -64,8 +65,14 @@
                             var selectedPlayers = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
                             var selectedAssistants = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.AssistantDM).OrderBy(ps => ps.SignupTime).ToList() ?? [];
                             var selectedSpectators = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Spectator).OrderBy(ps => ps.SignupTime).ToList() ?? [];
-                            var waitlistPlayers = Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
-                            
+
+                            var waitlistFinalizedProposedDate = Model.Quest?.IsFinalized == true && Model.Quest.FinalizedDate != null
+                                ? Model.Quest.ProposedDates.FirstOrDefault(pd => pd.Date.Date == Model.Quest.FinalizedDate.Value.Date)
+                                : null;
+                            var waitlistPlayers = waitlistFinalizedProposedDate != null
+                                ? Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderWaitlist(waitlistFinalizedProposedDate.Id).ToList() ?? []
+                                : Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
+
                             var allSelectedParticipants = new List<PlayerSignup>();
                             allSelectedParticipants.AddRange(selectedPlayers);
                             allSelectedParticipants.AddRange(selectedAssistants);
@@ -197,7 +204,6 @@
                                             <th>Character</th>
                                             <th>Role</th>
                                             <th>Vote</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -210,10 +216,6 @@
                                                 .FirstOrDefault(pd => pd.Date == Model.Quest.FinalizedDate);
                                             var playerVote = player.DateVotes
                                                 ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDate?.Id)?.Vote;
-
-                                            // Check if there are available spots
-                                            var hasAvailableSpots = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
-                                            var canChangeVote = isCurrentUser && hasAvailableSpots && playerVote != VoteType.Yes;
 
                                             <tr>
                                                 <td>@player.Player.Name</td>
@@ -276,22 +278,6 @@
                                                     {
                                                         <span class="badge bg-secondary">
                                                             <i class="fas fa-minus me-1"></i>No Vote
-                                                        </span>
-                                                    }
-                                                </td>
-                                                <td>
-                                                    @if (canChangeVote)
-                                                    {
-                                                        <button type="button" class="btn btn-sm btn-success"
-                                                                onclick="changeVoteToYes(@Model.Quest?.Id)"
-                                                                title="Change vote to Yes and join quest">
-                                                            <i class="fas fa-check me-1"></i>Join Quest
-                                                        </button>
-                                                    }
-                                                    else if (isCurrentUser && !hasAvailableSpots)
-                                                    {
-                                                        <span class="text-muted small">
-                                                            <i class="fas fa-info-circle me-1"></i>Quest Full
                                                         </span>
                                                     }
                                                 </td>
@@ -598,16 +584,32 @@
                 @* Revoke and Update button section - shown for any signed up user *@
                 @if (boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && (bool)ViewBag.IsPlayerSignedUp)
                 {
-                    <div class="d-flex gap-2">
-                        @if (Model.Quest?.IsFinalized != true)
-                        {
-                            <button type="button" class="btn btn-primary" onclick="showUpdateForm()">
-                                <i class="fas fa-edit me-2"></i>Update Signup
+                    <div class="d-flex justify-content-between">
+                        <div class="d-flex gap-2">
+                            @if (Model.Quest?.IsFinalized != true)
+                            {
+                                <button type="button" class="btn btn-primary" onclick="showUpdateForm()">
+                                    <i class="fas fa-edit me-2"></i>Update Signup
+                                </button>
+                            }
+                            <button type="button" class="btn btn-danger" onclick="revokeSignup(@ViewContext.RouteData.Values["id"])">
+                                <i class="fas fa-times me-2"></i>Revoke My Signup
                             </button>
+                        </div>
+                        @if (Model.Quest?.IsFinalized == true)
+                        {
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-success" onclick="changeVote(@Model.Quest?.Id, 2)">
+                                    <i class="fas fa-check me-2"></i>Vote Yes
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="changeVote(@Model.Quest?.Id, 1)">
+                                    <i class="fas fa-question me-2"></i>Vote Maybe
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="changeVote(@Model.Quest?.Id, 0)">
+                                    <i class="fas fa-times me-2"></i>Vote No
+                                </button>
+                            </div>
                         }
-                        <button type="button" class="btn btn-danger" onclick="revokeSignup(@ViewContext.RouteData.Values["id"])">
-                            <i class="fas fa-times me-2"></i>Revoke My Signup
-                        </button>
                     </div>
                 }
             </div>
@@ -868,26 +870,25 @@
         }
     }
 
-    function changeVoteToYes(questId) {
-        if (confirm("Change your vote to Yes and join this quest?")) {
-            const formData = new FormData();
-            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+    function changeVote(questId, vote) {
+        const formData = new FormData();
+        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+        formData.append('vote', vote);
 
-            fetch(`/Quest/ChangeVoteToYes/${questId}`, {
-                method: "POST",
-                body: formData
-            }).then(res => {
-                if (res.ok) {
-                    location.reload();
-                } else {
-                    res.text().then(text => {
-                        alert(`Failed to change vote: ${text}`);
-                    });
-                }
-            }).catch(err => {
-                alert("An error occurred while changing vote.");
-            });
-        }
+        fetch(`/Quest/ChangeVote/${questId}`, {
+            method: "POST",
+            body: formData
+        }).then(res => {
+            if (res.ok) {
+                location.reload();
+            } else {
+                res.text().then(text => {
+                    alert(`Failed to change vote: ${text}`);
+                });
+            }
+        }).catch(err => {
+            alert("An error occurred while changing vote.");
+        });
     }
     
     function showUpdateForm() {

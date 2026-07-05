@@ -1,7 +1,9 @@
 using System.Net;
+using Hangfire.Common;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
+using QuestBoard.Service.Jobs;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -259,6 +261,32 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         noMatchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var noMatchContent = await noMatchResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         noMatchContent.Should().NotContain(distinctiveName);
+    }
+
+    // Regression guard for CodeQL cs/web/xss alerts flagged against this view's asp-route-search /
+    // asp-route-memberSearch tag helpers. Empirically verified: the framework's tag-helper URL
+    // building percent-encodes the query value before it ever reaches the action="" attribute, so
+    // there is no raw reflection and no attribute-breakout. This test locks that guarantee in place.
+    [Fact]
+    public async Task MembersPage_WithScriptPayloadInSearch_ShouldNeverReflectRawScriptTag()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        const string payload = "\"><script>alert(1)</script>";
+        var encodedPayload = Uri.EscapeDataString(payload);
+
+        var response = await client.GetAsync(
+            $"/platform/Group/Members/1?search={encodedPayload}&memberSearch={encodedPayload}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().NotContain("<script>alert(1)</script>", "the payload must never appear unescaped in the rendered page");
+        body.Should().NotContain("\"><script>", "the payload must never break out of an HTML attribute");
+        body.Should().Contain("%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E",
+            "the tag-helper-generated action= URL must percent-encode the payload rather than reflect it raw");
     }
 
     // AddMember redirect preserves the search term (D-04)
@@ -803,5 +831,122 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         response.Headers.Location.Should().NotBeNull();
         response.Headers.Location!.ToString().Should().Contain($"search={availableSearchTerm}");
         response.Headers.Location!.ToString().Should().Contain($"memberSearch={memberSearchTerm}");
+    }
+
+    // AddMember on an existing confirmed user enqueues the group-membership-added notification email
+    [Fact]
+    public async Task AddMember_ExistingConfirmedUser_ShouldEnqueueGroupMembershipAddedEmailJob()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var (_, newUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "confirmedaddmember", "confirmedaddmember@test.com", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == newUser.Id && ug.GroupId == 1);
+            if (membership != null)
+            {
+                db.UserGroups.Remove(membership);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        _factory.JobClient.Clear();
+
+        var formData = new Dictionary<string, string>
+        {
+            ["UserId"] = newUser.Id.ToString(),
+            ["Role"] = ((int)GroupRole.Player).ToString()
+        };
+        var response = await client.PostAsync("/platform/Group/AddMember/1",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(GroupMembershipAddedEmailJob)).Should().Be(1);
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(0);
+    }
+
+    // AddMember on an existing stranded (never-confirmed) user enqueues a welcome/set-password email instead
+    [Fact]
+    public async Task AddMember_ExistingStrandedUser_ShouldEnqueueWelcomeEmailJob()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var (_, newUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "strandedaddmember", "strandedaddmember@test.com", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == newUser.Id && ug.GroupId == 1);
+            if (membership != null)
+            {
+                db.UserGroups.Remove(membership);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+
+            var userEntity = db.Users.First(u => u.Id == newUser.Id);
+            userEntity.EmailConfirmed = false;
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        _factory.JobClient.Clear();
+
+        var formData = new Dictionary<string, string>
+        {
+            ["UserId"] = newUser.Id.ToString(),
+            ["Role"] = ((int)GroupRole.Player).ToString()
+        };
+        var response = await client.PostAsync("/platform/Group/AddMember/1",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(1);
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(GroupMembershipAddedEmailJob)).Should().Be(0);
+    }
+
+    // AddMember on a user already in the group enqueues no email at all
+    [Fact]
+    public async Task AddMember_AlreadyMember_ShouldEnqueueNoEmail()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var (_, existingMember) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "alreadymemberaddmember", "alreadymemberaddmember@test.com", roles: ["Player"]);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == existingMember.Id && ug.GroupId == 1);
+            if (membership == null)
+            {
+                db.UserGroups.Add(new UserGroupEntity
+                {
+                    UserId = existingMember.Id,
+                    GroupId = 1,
+                    GroupRole = (int)GroupRole.Player
+                });
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        _factory.JobClient.Clear();
+
+        var formData = new Dictionary<string, string>
+        {
+            ["UserId"] = existingMember.Id.ToString(),
+            ["Role"] = ((int)GroupRole.Player).ToString()
+        };
+        var response = await client.PostAsync("/platform/Group/AddMember/1",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(GroupMembershipAddedEmailJob)).Should().Be(0);
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(0);
     }
 }

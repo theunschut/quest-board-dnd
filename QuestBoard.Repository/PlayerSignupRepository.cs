@@ -1,4 +1,6 @@
 using AutoMapper;
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Repository.Entities;
@@ -18,7 +20,7 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
     }
 
     /// <inheritdoc/>
-    public async Task ChangeVoteToYesAndSelectAsync(int playerSignupId, int proposedDateId, CancellationToken cancellationToken = default)
+    public async Task<bool> ChangeVoteAsync(int playerSignupId, int proposedDateId, VoteType vote, CancellationToken cancellationToken = default)
     {
         var entity = await DbSet
             .Include(ps => ps.DateVotes)
@@ -29,11 +31,17 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
             throw new ArgumentException("Player signup not found", nameof(playerSignupId));
         }
 
+        var wasSelected = entity.IsSelected;
+
+        // Only a selected Player-role signup frees a seat that counts against TotalPlayerCount;
+        // the waitlist candidate pool and seat capacity are both scoped to Player.
+        var wasSelectedPlayer = wasSelected && entity.SignupRole == (int)SignupRole.Player;
+
         var existingVote = entity.DateVotes.FirstOrDefault(dv => dv.ProposedDateId == proposedDateId);
 
         if (existingVote != null)
         {
-            existingVote.Vote = 0; // VoteType.Yes = 0
+            existingVote.Vote = (int)vote;
         }
         else
         {
@@ -41,12 +49,43 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
             {
                 ProposedDateId = proposedDateId,
                 PlayerSignupId = playerSignupId,
-                Vote = 0 // VoteType.Yes = 0
+                Vote = (int)vote
             });
         }
 
-        entity.IsSelected = true;
+        entity.LastVoteChangeTime = DateTime.UtcNow;
+
+        if (vote == VoteType.No && wasSelected)
+        {
+            // A seat just freed. IsSelected for a Yes vote is decided by the caller based on a
+            // freshly computed seat count — this method never rejects or auto-selects on capacity.
+            entity.IsSelected = false;
+        }
+
         await DbContext.SaveChangesAsync(cancellationToken);
+
+        return wasSelectedPlayer && vote == VoteType.No;
+    }
+
+    /// <inheritdoc/>
+    public async Task<PlayerSignup?> GetTopWaitlistedCandidateAsync(int questId, int finalizedProposedDateId, CancellationToken cancellationToken = default)
+    {
+        var candidates = await DbSet
+            .Include(ps => ps.DateVotes)
+            .Where(ps => ps.QuestId == questId && !ps.IsSelected && ps.SignupRole == (int)SignupRole.Player)
+            .ToListAsync(cancellationToken);
+
+        var entity = candidates
+            .OrderByDescending(ps => WaitlistOrdering.VotePriority(VoteForProposedDate(ps, finalizedProposedDateId)))
+            .ThenBy(ps => ps.LastVoteChangeTime ?? ps.SignupTime)
+            .FirstOrDefault();
+
+        return entity == null ? null : Mapper.Map<PlayerSignup>(entity);
+    }
+
+    private static int? VoteForProposedDate(PlayerSignupEntity entity, int proposedDateId)
+    {
+        return entity.DateVotes.FirstOrDefault(dv => dv.ProposedDateId == proposedDateId)?.Vote;
     }
 
     /// <inheritdoc/>

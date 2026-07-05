@@ -14,9 +14,4 @@ public interface IPlayerSignupService : IBaseService<PlayerSignup>
     /// Sets or clears (when characterId is null) the character attached to a player signup.
     /// </summary>
     Task UpdateSignupCharacterAsync(int playerSignupId, int? characterId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Sets a player's vote for the given proposed date to Yes and marks the signup as selected.
-    /// </summary>
-    Task ChangeVoteToYesAndSelectAsync(int playerSignupId, int proposedDateId, CancellationToken cancellationToken = default);
 }

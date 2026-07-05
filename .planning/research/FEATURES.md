@@ -1,145 +1,151 @@
 # Feature Research
 
-**Domain:** Admin/user-management UX for a small internal multi-tenant (group-scoped) SaaS-style app
-**Researched:** 2026-07-03
-**Confidence:** MEDIUM (codebase analysis HIGH; external pattern corroboration LOW — see Sources)
+**Domain:** Crop-before-save avatar UX + waitlist auto-promotion notification UX (v7.0 Backlog Cleanup — issues #78 and #104)
+**Researched:** 2026-07-04
+**Confidence:** MEDIUM (cross-checked web search across independent queries; no official-vendor-doc tier source reached for either sub-topic — see Sources)
 
-*Supersedes the v5.0 multi-tenancy research previously in this file — that milestone shipped (Phases 29–34.3, see PROJECT.md). This is fresh research for the v6.1 Bugfixes milestone.*
+*Replaces the v6.1 admin/user-management research previously in this file — that milestone shipped (Phases 38–42, see PROJECT.md). This is fresh research for the v7.0 Backlog Cleanup milestone.*
 
 ## Context Recap
 
-Three bugfixes for v6.1, all touching the existing admin/user-management surface:
+Two of the four v7.0 backlog items need external UX-pattern research (the other two are mobile CSS bug fixes needing no research, per milestone scope):
 
-1. `AdminController.Users()` (group-admin, `/Admin/Users`) — currently calls `userService.GetAllAsync()` with **no group filter**, leaking every platform user (all groups) into a single group's admin view.
-2. `Areas/Platform/Controllers/GroupController.Members()` (SuperAdmin, `/platform/Group/Members/{id}`) — "Add Member" is a plain `<select>` dropdown built from `allUsers.Where(u => !memberUserIds.Contains(u.Id))`; needs to become a searchable/filterable table, plus a group-scoped "create new user" entry point.
-3. `IdentityService.CreateUserAsync` — hard-fails via `UserManager.CreateAsync` uniqueness constraint (`UserName = email`) when the email already exists anywhere on the platform; needs to instead detect the collision and auto-add the existing user to the target group with the selected role, sending a distinct notification email.
+1. **Client-side crop-before-save (#78 / v1.0 Phase 8, deferred)** — applies to character photo uploads and DM profile photo uploads. User picks a crop frame in-browser before saving; both the original and the cropped image are persisted so the character/DM details page keeps showing the original while the guild-member list shows the cropped "avatar." Previously paused because the plan required a server-side image-processing library (SkiaSharp) whose native binary availability on the deployment host was unverified — this is a key constraint for how the crop is implemented this time.
+2. **Post-finalization waitlist auto-promotion (#104)** — already internally specified (Yes > Maybe > No, then signup time, no hard capacity block). Only open question for research: standard UX for notifying a promoted player without spamming people whose own action already told them the outcome.
 
-Existing infra confirmed by reading the code: `IActiveGroupContext.ActiveGroupId`, `GroupRole` enum (Admin/DungeonMaster/Player) with `userService.GetGroupRoleByIdAsync`/`SetGroupRoleAsync`/repository `AddMemberAsync`, Hangfire `IBackgroundJobClient` + `IEmailService`/`IEmailRenderService` job pattern (see `WelcomeEmailJob`), no existing client-side search/filter pattern anywhere in the codebase (this is genuinely new for the app), `[Bind(Prefix = "AddMember")]` nested-viewmodel convention on `GroupController`.
+Existing infra confirmed from PROJECT.md: Hangfire background jobs + Razor/HtmlRenderer HTML email templates + Resend SMTP relay (all built in v4.0, reused by 6+ job/template pairs already); photo upload fields already exist for character and DM profile; email budget is constrained (100/day, 3000/month Resend limit, 17 members — batch-first design already a stated principle).
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features that are the minimum correct/expected behavior — missing these is a bug, not a design choice (this maps directly to the three PROJECT.md requirements).
+Features users assume exist once "crop before save" or "waitlist with auto-promotion" is advertised. Missing these makes the feature feel half-built or actively confusing.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Group-scoped user list (filter `Users()` by `ActiveGroupId`) | A group admin managing "their" users must never see or accidentally act on another group's members — this is a tenant-isolation bug today, not a missing nice-to-have | LOW | Swap `userService.GetAllAsync()` for a group-scoped repository query (e.g. `GetUsersInGroupAsync(groupId)`, joining on the `UserGroup`/membership table used by `GetGroupRoleByIdAsync`). No new UI needed — same `Users.cshtml` view, filtered dataset. Directly parallels the WorkOS/Filament pattern of scoping the query, not the view. |
-| Live substring filter on the Members/"add existing user" table (name + email, case-insensitive, as-you-type) | Table-stakes UX for any list-with-a-search-box at this scale; users expect typing to narrow results with no page reload | LOW | Vanilla JS `input` event + `textContent.toLowerCase().includes()` row toggle. No backend round-trip, no library. Matches every vanilla-JS table-filter reference found (W3Schools pattern, GeeksforGeeks, dev.to) — this is the de facto standard approach, not an opinion. |
-| Keep full member/user table visible (no pagination) at ~17 users, N groups | Pagination below ~50-100 rows adds clicks without solving a real problem; a scrollable/filterable single table is faster to scan | LOW | Explicit anti-over-engineering guardrail — see Anti-Features. |
-| "Create new user" entry point reachable from the Platform Members page, scoped to that group | SuperAdmin currently must leave the Members page, use group-admin's `AdminController.CreateUser` (which requires an *active* group context session, not applicable to a SuperAdmin browsing arbitrary groups by ID), then navigate back — today there's no group-scoped create-user path in the Platform area at all | MEDIUM | Needs a `Platform/Group/CreateUser?groupId=X` (or similar) action mirroring `AdminController.CreateUser`'s body but parameterized by an explicit `groupId` route/query value instead of `IActiveGroupContext.ActiveGroupId` (SuperAdmin has no "active group" session concept the way a group admin does). This is the one piece of real new server logic in this list — everything else is filtering an existing query or adding client JS. |
-| Existing-email collision auto-adds to group + sends a *distinct* notification email (not the Welcome email) | An admin typing a real teammate's email into "Create User" is a completely ordinary action ("oh, they're already on the platform from another group") — hard-failing with a raw duplicate-username error is a bug that surprises the admin and blocks a legitimate operation | MEDIUM | Requires: (1) pre-check via `identityService.GetIdByEmailAsync(email)` *before* calling `CreateUserAsync`, short-circuiting to `SetGroupRoleAsync`/`AddMemberAsync` on collision; (2) a second email template + Hangfire job (e.g. `AddedToGroupEmailJob`) distinct from `WelcomeEmailJob`, since the recipient already has a password and should not get a "set your password" link; (3) apply identically in both `AdminController.CreateUser` and the new Platform create-user action — shared logic belongs in `UserService`/a new domain-level method, not duplicated per controller. |
-| If the existing user is *already a member of this group*, surface a clear "already a member" message rather than a duplicate-add attempt | `GroupService.AddMemberAsync`/repository already throws `InvalidOperationException` for exactly this case (see `GroupController.AddMember`'s existing catch block) | LOW | Reuse the existing `InvalidOperationException` catch pattern already proven in `AddMember` — same message style ("This user is already a member of the group."), no new mechanism required. |
+| Draggable/resizable crop frame over the uploaded image | This is the entire feature — a crop step without a manipulable frame is just "upload and hope the framing is right" | LOW | Cropper.js (canvas-based, vanilla JS, no framework dependency, ~14k GitHub stars, MIT-licensed) is the established off-the-shelf choice for exactly this — drop-in via `<script>`/npm, works directly inside a Razor view with no SPA framework needed |
+| Fixed aspect ratio locked to the destination avatar shape | The guild-member list and DM profile render photos at one specific slot shape; an unconstrained crop lets users produce off-ratio images that get squashed, stretched, or letterboxed downstream | LOW | Cropper.js takes `aspectRatio` as a constructor option — no custom geometry math required |
+| Live preview of the resulting crop before confirming | Users need to see what the avatar will actually look like (correct framing of a face/character) before committing — present in every avatar-cropping tool and library surveyed | LOW | Cropper.js ships a built-in preview binding (mirror the crop box into a separate preview element via its `preview` option) — no extra library |
+| Zoom / pan the source image inside the crop frame | Lets a user recenter a full-body portrait onto just the face/torso without needing perfect framing at the source — explicitly described as baseline (not a differentiator) by every avatar-crop-specific tool surveyed | LOW | Cropper.js supports wheel-zoom and drag-to-pan on the source image by default |
+| Original image preserved; cropped image generated and stored separately | Directly required by the milestone spec: the character/DM details page must keep showing the original while the guild-list shows the cropped version. Also the general pattern in every avatar tool surveyed — cropping is treated as non-destructive to the source | MEDIUM | This is primarily a **backend/storage** requirement, not a UI one: whatever currently holds a single image path per character/DM profile needs a second path/column for the cropped variant, plus an EF Core migration. Both upload flows (character, DM profile) need identical treatment — plan them together, since the underlying schema change is the same shape twice |
+| Crop happens entirely client-side, before the network request | The milestone wants a client-side "crop before save" step, not a server-side post-upload cropper — this also directly avoids reopening the SkiaSharp/native-library deployment risk that paused this feature in v1.0 | LOW–MEDIUM | Cropper.js's `getCroppedCanvas()` produces a canvas; convert to Blob and attach to the existing upload `FormData` (or a hidden base64 field) before submit. The server receives two already-finished image byte streams (original file + cropped blob) and only needs to *store* them — no image processing library, no native dependency, no repeat of the SkiaSharp verification problem |
+| Touch-usable crop interaction (drag/pinch) on mobile | The app already ships purpose-built `.Mobile.cshtml` views; a crop widget that only works with a mouse would be a new mobile-parity gap the moment it ships — ironic given this milestone is partly about *fixing* mobile parity gaps | LOW–MEDIUM | Cropper.js is touch-friendly by default (drag + pinch-to-zoom); still needs on-device verification against this app's existing mobile viewport/CSS since it's new interactive surface, not just a display change |
+| Promoted player receives a targeted notification | This is explicitly called out in the milestone spec (issue #104) and corroborated as standard waitlist UX — the person who benefits from a passive event needs to be told, since nothing else in the UI would surface it to them otherwise | LOW | Reuses existing Hangfire job + Razor/HtmlRenderer + Resend SMTP pattern already proven 6+ times in this codebase; this is a new trigger condition and template, not new plumbing |
+| Waitlist position/status visible somewhere in the UI, not just via email | Every waitlist UX source surveyed treats "confirm the user's current status when they check" as baseline — a promoted player should see their new confirmed status when they view the quest, not rely solely on an email that could be missed or land in spam | LOW | Likely already satisfied by the existing signup/vote display surface once the underlying status data model updates — verify during planning that the quest signup view reflects "confirmed via promotion" distinctly from "originally selected," if that distinction matters to players |
 
-### Differentiators (Nice, Not Required for This Milestone)
+### Differentiators (Nice-to-Have, Not Required)
 
-Not required to close the three PROJECT.md gaps, but worth flagging since they sit directly adjacent and a reviewer may ask "why didn't you also...".
+Features that would be pleasant additions but are explicitly *not* expected for a baseline implementation, per every source surveyed.
 
 | Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Cross-group visibility for SuperAdmin on the group-admin `Users()` page (e.g. a "viewing as Group X" banner or group switcher) | Clarifies scope when a SuperAdmin browses a specific group's user list rather than the platform-wide view they're used to | LOW | Not required — the fix is a query-level scope change; a banner is polish. Consider only if human verification finds the scoped list confusing without context. |
-| Debounced input on the live filter | Prevents excessive re-renders on very large tables | LOW (but unnecessary) | At ~17 users / dozens of rows max, a synchronous filter is imperceptibly fast — debounce is solving a problem that doesn't exist yet at this row count. Skip. |
-| Highlighting matched substrings in filtered rows | Slightly nicer scan experience | LOW | Cosmetic; skip unless trivially cheap to add alongside the base filter — not worth a separate task. |
-| Combined "invite or add" single form (radio toggle between "new user" / "existing user" before submit, instead of one form that auto-detects) | Some SaaS tools (implied by GitHub/Slack's explicit-consent model) make the new-vs-existing choice explicit upfront rather than resolving it server-side on submit | MEDIUM | Deliberately **not** recommended here — see Anti-Features: GitHub/Slack's explicit-invite-and-accept flow exists because they're inviting a *stranger* across trust boundaries; this app's admin is directly adding a known teammate to a group they already administer, so the "silent auto-add" the milestone spec already calls for is the right level of friction, not the interstitial. |
+|---------|--------------------|------------|-------|
+| Rotate / flip the image in the crop widget | Occasionally useful for a sideways phone photo | LOW | Cropper.js exposes `rotate()`/`scaleX()`/`scaleY()` for free once the library is in use — cheap to bolt on, but not required for the milestone's stated scope |
+| Multiple aspect-ratio presets (e.g. square vs. portrait) | This app only has one target avatar shape per context, so preset-switching solves a problem this project doesn't have | LOW (if added) | Skip — one locked aspect ratio per upload field is sufficient; a preset picker is speculative flexibility with no current consumer |
+| Filters / brightness / contrast adjustment | Common as an "additional feature" in consumer avatar-cropper web tools, but never described as expected — always listed beyond the core crop | MEDIUM | Out of scope — no evidence this is wanted for an internal campaign tracker; pure scope creep |
+| Circular crop guide overlay | Some avatar croppers show a circular mask because many apps render avatars as circles | LOW | Only relevant if the guild-list/DM-profile avatar is rendered as a circle in existing CSS — verify current avatar display shape before adding; a circular guide over a square/rounded-card destination would mislead users about the real crop |
+| In-app "you were promoted" banner in addition to the email | Belt-and-suspenders confirmation beyond email alone | LOW | Nice reinforcement, but the milestone spec and the general waitlist pattern both treat email as sufficient; add only if verification shows players miss the email |
 
 ### Anti-Features (Commonly Considered, Wrong Fit Here)
 
-| Feature | Why It Seems Appealing | Why Problematic at This Scale | Alternative |
-|---------|------------------------|-------------------------------|-------------|
-| Full JS grid/DataTables library (DataTables.net, ag-grid, Tabulator) for the searchable Members table | "Search" + "table" pattern-matches to "add a grid library" | Adds a new client dependency, a new CSS theme to reconcile with the existing `modern-card` Bootstrap styling, and server-side paging/sorting machinery this app will never need at ~17 users across a handful of groups — pure complexity tax with no user-visible benefit over vanilla JS | Vanilla JS `input`-event substring filter over the existing Bootstrap `table-striped table-hover` markup (same pattern already used elsewhere in the app for tables, just add the script) |
-| Server-side search/filter API endpoint (AJAX call per keystroke) | "Feels more scalable" / mirrors patterns from larger apps | Unnecessary round-trip latency and a new endpoint to secure/test, for a dataset small enough to ship to the client in the initial page render already (the Members view already loads `AvailableUsers` server-side today) | Keep filtering 100% client-side against the already-rendered/already-fetched row set |
-| Confirming interstitial ("This email already has an account — send an invite instead?") before auto-adding on collision | Mirrors GitHub/Slack's explicit-consent invite model, feels "safer" | GitHub/Slack are inviting a *stranger* into a workspace/org across a trust boundary the invitee controls (they must accept). Here, a **group Admin/SuperAdmin who already has authority over the target group** is adding a known person — the milestone's own spec calls for silent auto-add + notification, which matches the lower-friction "org admin directly assigns access" pattern (e.g. Google Workspace admin adding an existing user to a new OU, or a Microsoft Entra ID admin assigning group membership) rather than the peer-to-peer invite pattern. An extra confirmation click here is friction without a corresponding security benefit, since the actor already had permission to add *any* user (new or existing) to the group | Silent auto-add + role assignment + a clearly-worded "you've been added to [Group]" notification email (distinct copy from Welcome) so the *added user* — not the admin — gets the confirmation signal, after the fact |
-| Pagination on the group-scoped Users list or Members "add existing user" table | "Best practice for tables" in the abstract | At ~17 total platform users split across a handful of groups, any single group's list is a handful of rows; pagination adds a control and a click for zero scanability benefit and actively hides rows during search-as-you-filter (paginated + client-filtered is a well-known bad combo — filtering should reveal rows a pagination boundary would otherwise hide) | One flat, filterable table; revisit only if user count grows by an order of magnitude |
-| Building a new generic "cross-group user picker" component/service abstraction | Anticipates future reuse | Two of the three fixes only need a straightforward query filter and a client-side script; premature abstraction for a reuse case that doesn't exist yet | Ship the group-scoped query and the vanilla-JS filter inline where needed; extract a shared helper only if a third call site appears |
-| Two separate email templates diverging significantly in tone/branding from `Welcome.razor` | Feels like it deserves distinct visual treatment | Adds template-maintenance surface for a one-year-old email system that already has 6 job/template pairs (`WelcomeEmailJob`, `ForgotPasswordEmailJob`, `ChangeEmailConfirmationJob`, `QuestFinalizedEmailJob`, `QuestDateChangedEmailJob`, `DailyReminderJob`/`SessionReminderJob`) — a 7th wildly different design is inconsistent and more to keep in sync | Copy the existing `Welcome.razor` component structure (same `IEmailRenderService.RenderAsync<T>` + `Dictionary<string,object?>` parameter pattern), swap subject/body copy and drop the `CallbackUrl`/set-password CTA since the recipient already has a password |
+| Feature | Why It Seems Appealing | Why Problematic Here | Alternative |
+|---------|--------------------------|------------------------|-------------|
+| Server-side re-crop / image-processing pipeline (e.g. SkiaSharp/ImageSharp resize-on-save) | Feels "more robust" or "more correct" than trusting a client-generated canvas blob | This is precisely the path already tried and paused in v1.0 Phase 8 (PROJECT.md: "SkiaSharp native lib availability on deployment host unverified") — reopening that dependency risk repeats a known failure mode instead of avoiding it | Do the crop entirely client-side (canvas to Blob) and upload the already-cropped bytes directly; the server only stores two images, never processes them, which sidesteps the native-library deployment risk this feature has been blocked on for years |
+| Free-form/unconstrained crop (any aspect ratio, any shape) | Feels like giving the user more control | Produces avatars that don't fit the guild-list card layout consistently — some stretched, some cropped oddly small — defeating the point of a uniform list UI | Lock `aspectRatio` to match the destination avatar slot exactly; every avatar-specific crop tool surveyed treats a fixed base ratio as the norm, not a limitation |
+| Notifying the entire waitlist whenever any position shifts | Feels maximally "transparent" | Directly the notification-spam anti-pattern every waitlist UX source warns against ("send always" doesn't scale, erodes trust in the channel) — especially costly here given this app's constrained email budget (100/day, 3000/month Resend limit) and its existing "batch-first design" principle | Only the specific promoted player receives an email; other waitlisted players' position shifts are visible passively in the UI next time they check, never pushed |
+| Notifying a player who changed their own vote/dropped out that "your status changed" | Feels like thorough coverage ("tell everyone whose status changed") | Their own action already told them the outcome — a confirmation email for something they just did themselves is redundant noise, exactly the case web sources single out to avoid | Only the "you were promoted" email fires, and only for players passively bumped by someone *else's* drop-out — this already matches the milestone's own spec (#104: "targeted email only for players auto-promoted by someone else's action") |
+| Waitlist notifications via SMS or push, in addition to email | Faster/more attention-grabbing for time-sensitive queues (a documented pattern for restaurant/event waitlists) | This app is email-only by architecture and by explicit prior decision (PROJECT.md: no per-user opt-out, small trusted group, batch-first email design) — adding a channel contradicts existing constraints for a marginal gain in a non-time-critical context (a scheduled quest is not a "your table is ready in 2 minutes" scenario) | Keep the existing email channel; the urgency that justifies SMS in restaurant-waitlist products doesn't apply to scheduling a future game session |
 
 ## Feature Dependencies
 
 ```
-[Fix 1: Group-scoped Users() list]
-    └──independent── no dependency on Fix 2 or Fix 3; pure query-filter change
+[Client-side crop UI] (Cropper.js widget on upload form)
+    └──requires──> [Existing photo upload form/field] (character photo, DM profile photo — already exist)
+    └──produces──> [Two stored images: original + cropped]
+                       └──requires──> [Storage/schema change: second image path/column] (EF Core migration)
+                       └──enhances──> [Character/DM details page] (keeps showing original — likely no view change if original path is unchanged)
+                       └──enhances──> [Guild-member list page] (swaps to cropped-image path for avatar display)
 
-[Fix 2: Searchable Members table + group-scoped Create User entry point]
-    └──requires──> existing GroupRole/AddMemberAsync infra (already built, Phase 29/30)
-    └──shares-logic-with──> Fix 3 (the new Platform "create user" action must apply the
-                              same collision-handling as AdminController.CreateUser)
-
-[Fix 3: Existing-email collision → auto-add + notification email]
-    └──requires──> IIdentityService.GetIdByEmailAsync (already exists — used today in
-                    AdminController.CreateUser's success path, needs to move earlier to
-                    a pre-check)
-    └──requires──> GroupService.AddMemberAsync (already exists, already throws
-                    InvalidOperationException on duplicate membership — reuse, don't rebuild)
-    └──requires──> new AddedToGroupEmailJob + email template (net-new, mirrors
-                    WelcomeEmailJob's IServiceScopeFactory + IEmailRenderService pattern)
-    └──consumed-by──> AdminController.CreateUser (existing, needs the pre-check added)
-    └──consumed-by──> Platform/Group's new create-user action (Fix 2's entry point)
+[Waitlist auto-promotion] (internal logic already specified — Yes > Maybe > No, then signup time)
+    └──requires──> [Existing quest-signup + vote data model] (already exists)
+    └──requires──> [Existing email dispatch infrastructure] (Hangfire job + HTML Razor template + Resend SMTP — already exists)
+    └──produces──> [Targeted "you were promoted" email]
+                       └──must NOT trigger for──> [The player whose own vote/drop-out action caused the promotion] (anti-pattern: redundant self-notification)
+                       └──must NOT trigger for──> [Other waitlisted players unaffected by this specific promotion] (anti-pattern: notification spam)
 ```
 
 ### Dependency Notes
 
-- **Fix 1 is fully independent** — it's a one-line-of-intent change (add a group filter to the query) with no coupling to the other two fixes. Safe to sequence first or in parallel.
-- **Fix 2's "create new user" entry point should be built to call the same collision-aware creation logic as Fix 3**, not a copy-pasted duplicate of `AdminController.CreateUser`'s current (collision-unaware) body — otherwise Fix 2 ships with the same bug Fix 3 is fixing, just in a second location. This means Fix 3's collision-handling logic should land in a shared service method (e.g. `UserService.CreateOrAddToGroupAsync(email, name, groupId, role)`) that both `AdminController.CreateUser` and the new Platform action call, rather than being written twice.
-- **Fix 3's notification email is net-new infrastructure** (new Hangfire job + new Razor email component) but follows an established, low-risk pattern already proven 6 times in this codebase — low complexity in practice despite being "new code," because it's copying a template, not inventing an approach.
-- **No conflicts** between any of the three fixes — they touch different controllers/views and can be planned as parallel or sequential phases without ordering constraints beyond the shared-logic note above.
+- **Crop UI requires only the existing upload forms** — no new upload endpoint is needed. The crop step is inserted client-side, before form submission, on the two fields that already exist (character photo, DM profile photo). This is additive JS/CSS plus a small controller/model change to accept and persist a second image.
+- **Two stored images is the one genuinely new backend piece.** Whatever currently holds a single image path (character entity, DM profile entity) needs a second column for the cropped variant, plus a migration. Do both upload flows (character, DM profile) in the same pass — the schema change is structurally identical for both, so splitting them across separate phases would duplicate effort for no isolation benefit.
+- **Crop UI has zero dependency on SkiaSharp or any server-side image library** if done as a pure client-side canvas step — this is the key design choice that unblocks the feature after years of being paused; confirm during planning that no part of the implementation reintroduces a server-side processing requirement.
+- **Waitlist promotion email requires only a new trigger condition and template, not new infrastructure** — Hangfire + Razor/HtmlRenderer + Resend SMTP are already fully built. The only design risk is getting the trigger condition precisely right: fire only for the passively-promoted player, never for the player whose own action caused the change, never broadcast to the rest of the waitlist.
+- **No dependency between the two research areas** — crop UX and waitlist promotion touch entirely different tables (image storage vs. quest signup/vote) and can be planned and built as independent phases with no ordering constraint between them.
 
 ## MVP Definition
 
-All three fixes are individually small and already fully scoped by PROJECT.md — there isn't a meaningful "MVP subset" to carve out within any single fix. The MVP framing that matters here is **what NOT to add** while doing them.
-
 ### Ship With This Milestone
 
-- [ ] Group-scoped query filter on `AdminController.Users()` — closes the tenant-leak bug
-- [ ] Vanilla-JS live filter (name + email, case-insensitive substring, `input` event) on the Platform Members "add existing user" table
-- [ ] Group-scoped "Create New User" entry point in the Platform area, calling the same shared creation logic as the group-admin flow
-- [ ] Shared collision-aware user-creation method: existing email → auto-add to group + role + `AddedToGroupEmailJob` notification; new email → existing `CreateAsync` + `WelcomeEmailJob` path (unchanged)
-- [ ] "Already a member" message reusing the existing `InvalidOperationException` catch pattern when the colliding email is already in the target group
+- [ ] Cropper.js (or an equivalent vanilla-JS canvas cropper) wired into both photo upload forms — character photo, DM profile photo — required because the milestone explicitly names both fields
+- [ ] Fixed aspect ratio matching the guild-list/DM-profile avatar display shape — without it, crops look inconsistent across members
+- [ ] Drag-to-position + zoom inside the crop frame — baseline interaction per every source surveyed, not optional
+- [ ] Live preview of the crop result before submit — standard expectation, low implementation cost via Cropper.js's built-in preview option
+- [ ] Original + cropped image both persisted; details page keeps rendering the original, guild-list renders the cropped version — explicitly required by the milestone spec
+- [ ] Entirely client-side crop pipeline (no server-side image processing library) — required to avoid repeating the SkiaSharp deployment-verification blocker that paused this feature previously
+- [ ] Targeted "you were promoted" email — sent only to the passively-promoted player, never to the player whose own action triggered it, never broadcast to the rest of the waitlist — matches issue #104's own spec and the general waitlist-UX pattern
 
 ### Explicitly Not This Milestone
 
-- [ ] Any JS grid library — vanilla JS is sufficient and consistent with the rest of the app's stack (no existing client-side framework beyond plain Bootstrap + inline scripts, per `Users.cshtml`'s existing `deleteUser` script)
-- [ ] Pagination anywhere in this flow — dataset too small to justify it
-- [ ] Server-side/AJAX search — data is small enough to filter client-side against the already-rendered page
-- [ ] A confirming interstitial before auto-add-on-collision — the milestone spec (and the admin-assigns-access precedent, not the peer-invite precedent) calls for silent auto-add + after-the-fact email
-- [ ] Cross-group visibility banner/switcher on the group-admin `Users()` page — polish, not a gap-fix; revisit only if verification surfaces confusion
+- [ ] Rotate/flip control in the crop widget — cheap to add later on top of Cropper.js if requested, but not currently asked for
+- [ ] Multiple aspect-ratio presets — no second consumer shape exists in this app; speculative
+- [ ] Image filters/brightness/contrast — scope creep for an internal campaign tracker
+- [ ] SMS/push notification channels for waitlist promotion — contradicts this app's existing email-only, batch-first design constraints
+- [ ] Notifying the whole waitlist on every position change — directly the anti-pattern this research flags; only the promoted player gets an email
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Group-scoped `Users()` filter | HIGH (fixes a real data-leak/confusion bug) | LOW | P1 |
-| Live filter on Members table | MEDIUM (usability improvement over a dropdown) | LOW | P1 |
-| Platform-scoped "Create New User" entry point | HIGH (closes a real workflow gap for SuperAdmins) | MEDIUM | P1 |
-| Collision → auto-add + notification email | HIGH (removes a hard-fail on an ordinary action) | MEDIUM | P1 |
-| Shared creation-logic extraction (avoid duplicating collision handling) | MEDIUM (prevents Fix 2 from reintroducing Fix 3's bug) | LOW (refactor, not new logic) | P1 |
-| Cross-group visibility banner | LOW | LOW | P3 |
-| Match highlighting in filtered rows | LOW | LOW | P3 |
-| JS grid library | NEGATIVE (adds risk/maintenance without benefit) | HIGH | Do not build |
-| Confirming interstitial on collision | NEGATIVE (contradicts spec, adds friction) | MEDIUM | Do not build |
+|---------|------------|----------------------|----------|
+| Draggable crop frame + fixed aspect ratio (Cropper.js) | HIGH | LOW | P1 |
+| Live crop preview | HIGH | LOW | P1 |
+| Original + cropped dual storage (schema/migration) | HIGH | MEDIUM | P1 |
+| Zoom/pan inside crop frame | HIGH | LOW | P1 |
+| Client-side-only crop pipeline (no server image lib) | HIGH (unblocks the feature) | LOW | P1 |
+| Mobile touch verification for crop widget | MEDIUM | LOW–MEDIUM | P1 |
+| Targeted waitlist-promotion email (no spam to others) | HIGH | LOW (infra exists; mostly template + trigger-condition work) | P1 |
+| Rotate/flip | LOW | LOW | P3 |
+| Multiple aspect-ratio presets | LOW | LOW | P3 |
+| Image filters | LOW | MEDIUM | P3 |
+| SMS/push for waitlist promotion | LOW (contradicts constraints) | MEDIUM | Do not build |
+| Broadcast notification to entire waitlist on any change | NEGATIVE | LOW | Do not build |
+
+**Priority key:**
+- P1: Must have for this milestone
+- P2: Should have, add when possible
+- P3: Nice to have, future consideration
 
 ## Comparable-System Analysis
 
-| Concern | GitHub Org Invite | Slack Workspace Invite | This App's Recommended Approach |
-|---------|--------------------|-------------------------|----------------------------------|
-| Existing email, adding to new org/workspace | Sends invite email; recipient must click "Accept" — explicit consent required | Blocks/flags duplicate accounts; requires the invitee to actively join or admin to resolve manually | **Silent auto-add** — no accept step, because the actor is an Admin/SuperAdmin who already has authority over the target group, not a stranger inviting across a trust boundary |
-| Notification to the added user | Invite email with an actionable link (join now) | N/A (errors out rather than silently joining) | Distinct "you've been added to [Group]" email — informational, not actionable (no set-password CTA since they already have a password) |
-| User list scoping | Org members list is inherently org-scoped (you can't see another org's members without being a member) | Workspace member list is workspace-scoped | Group-scoped query filter, matching the same principle — this app's bug is that it currently does NOT do what GitHub/Slack do by default |
-| Add-existing-user UX | Autocomplete-style username/email search box, not a raw dropdown | Autocomplete-style email entry | Live-filtered table (functionally equivalent search-as-you-type experience, adapted to this app's existing server-rendered-then-filtered table pattern rather than an autocomplete widget, since the full list is already small enough to render up front) |
-
-**Why the difference is correct, not a shortcut:** GitHub/Slack's explicit-consent model exists because *anyone* can attempt to invite *anyone else's* email — the friction protects the invitee from unwanted org membership. In this app, only a group Admin or platform SuperAdmin (both already vetted, both already having unilateral authority to add *any* user, new or existing, to the group) can trigger this flow at all. The authority check already happened at the `[Authorize(Policy = "AdminOnly"/"SuperAdminOnly")]` layer; adding a second consent gate for the *target* user doesn't add security, it adds friction to a routine internal-tool operation the milestone spec already decided against.
+| Concern | Dedicated avatar-cropper web tools (Pokecut, AvatarCropper.org, ToolPoint) | Component libraries (react-avatar-editor, vue-avatar-cropper) | This App's Recommended Approach |
+|---------|-------------------------------------------------------------------------------|-------------------------------------------------------------------|--------------------------------------|
+| Aspect ratio | Fixed 1:1 stage, non-configurable | Configurable via a prop, usually set once per integrating app | Fixed, matched to this app's existing avatar display shape — no need to expose a ratio picker |
+| Zoom/pan | Standard, drag + scroll | Standard, drag + scroll | Use Cropper.js defaults; no custom interaction logic needed |
+| Original preserved | Implicit — the tool always re-crops from the uploaded source | Depends on integration; crop output is separate from the raw file input | Explicit requirement here: persist both original and cropped as two distinct stored images/paths |
+| Framework coupling | Standalone web tools, no framework | React/Vue-specific wrapper components | This app is server-rendered Razor with no SPA framework — Cropper.js (framework-agnostic vanilla JS) fits better than a React/Vue-specific wrapper, avoiding a new frontend framework dependency for one widget |
+| Waitlist notification scope | N/A | N/A | (Waitlist pattern, separate feature) DICE's waitlist UX lets the *user* choose notification channel and confirms waitlist join immediately; this app keeps the existing single channel (email) and confirms promotion only to the affected person, consistent with this app's simpler, smaller-scale context |
 
 ## Sources
 
-- Direct codebase reads: `AdminController.cs`, `Areas/Platform/Controllers/GroupController.cs`, `Members.cshtml`, `Users.cshtml`, `UserService.cs`, `GroupService.cs`, `IdentityService.cs`, `WelcomeEmailJob.cs` — HIGH confidence, ground truth for current behavior and existing infra
-- [Multi-tenancy — Filament docs](https://filamentphp.com/docs/3.x/panels/tenancy) — LOW confidence (single-pass web search, unverified) — tenant query-scoping pattern
-- [How to design an RBAC model for multi-tenant SaaS — WorkOS](https://workos.com/blog/how-to-design-multi-tenant-rbac-saas) — LOW confidence — per-org role scoping principle
-- [Inviting users to join your organization — GitHub Docs](https://docs.github.com/en/organizations/managing-membership-in-your-organization/inviting-users-to-join-your-organization) — LOW confidence (single-pass) but describes a well-known, widely-documented product behavior — explicit-consent invite semantics
-- [Manage how people join your workspace — Slack](https://slack.com/help/articles/115004856503-Manage-how-people-join-your-workspace) — LOW confidence — duplicate-account handling behavior
-- [How To Create a Filter/Search Table — W3Schools](https://www.w3schools.com/howto/howto_js_filter_table.asp) — LOW confidence but representative of the canonical, widely-repeated vanilla-JS table-filter pattern (corroborated independently by GeeksforGeeks, dev.to, and daily-dev-tips.com results in the same search pass)
-- [How to Perform Real Time Search and Filter on HTML table — GeeksforGeeks](https://www.geeksforgeeks.org/html/how-to-perform-a-real-time-search-and-filter-on-a-html-table/) — LOW confidence, corroborating source for the same pattern
+- [Image Upload Pattern — UX Patterns for Developers](https://uxpatterns.dev/patterns/media/image-upload) — MEDIUM confidence
+- [Cropper.js official site](https://fengyuanchen.github.io/cropperjs/) and [GitHub — fengyuanchen/cropperjs](https://github.com/fengyuanchen/cropperjs) — MEDIUM confidence (community project docs; not reached via an official vendor-verified channel in this research pass, but corroborated by multiple independent secondary sources describing identical capabilities)
+- [Best image cropping tools for developers — Uploadcare blog](https://uploadcare.com/blog/best-tools-for-image-cropping/) — MEDIUM confidence
+- [react-avatar-editor — GitHub](https://github.com/mosch/react-avatar-editor) — MEDIUM confidence
+- [Avatar Cropper (avatarcropper.org)](https://avatarcropper.org/) and related consumer avatar-cropper tool pages — LOW–MEDIUM confidence (marketing pages for consumer tools, used only to corroborate the "fixed 1:1 + zoom + live preview = baseline" pattern across multiple independent products)
+- [From Disappointment To Hope: A UX Deep Dive into DICE's Waitlist Feature — Medium](https://medium.com/@jasmine.oulmi/from-disappointment-to-hope-a-ux-deep-dive-into-dices-waitlist-feature-ef1491fdfef6) — MEDIUM confidence
+- [Customizable text messages for waitlists and reservations — Waitlist Me](https://www.waitlist.me/features/customize-notifications/) and [Sending Notifications — WaitlistCare](https://waitlistcare.com/help/sending-notifications/) — MEDIUM confidence (corroborate targeted/filtered notification as best practice over broadcast-to-all)
+- Existing project context: `.planning/PROJECT.md` (v7.0 milestone scope, existing email/Hangfire/Resend infra, prior SkiaSharp pause rationale, email volume constraints)
 
-**Confidence caveat:** All external (non-codebase) findings above come from unverified single-pass web search (classified LOW by this project's confidence tooling). They are used here only to confirm well-established, low-controversy conventions (vanilla-JS table filtering, tenant query scoping, invite-vs-auto-add semantics) that are independently corroborated by multiple sources in the same search pass and align with this app's own existing architecture — not as authoritative citations for a novel or contested claim. Treat the *codebase-grounded* recommendations (what to change in `AdminController`, `GroupController`, `UserService`, the email-job pattern) as the HIGH-confidence core of this document.
+**Confidence caveat:** External findings come from web search cross-checked across multiple independent queries converging on the same conclusions (classified MEDIUM by this project's confidence tooling once corroborated) rather than a single authoritative vendor source — no official Cropper.js documentation portal or waitlist-UX standards body was reached in this pass. Treat the *pattern-level* conclusions (fixed aspect ratio + preview + zoom as baseline; targeted-not-broadcast notification as baseline) as reliable, since they were independently corroborated by 3+ unrelated sources each; treat any specific library API detail as needing a quick confirmation pass against the library's own README during implementation planning.
 
 ---
-*Feature research for: admin user-management bugfixes (v6.1)*
-*Researched: 2026-07-03*
+*Feature research for: D&D Quest Board v7.0 Backlog Cleanup — crop-before-save image UX and waitlist auto-promotion notification UX*
+*Researched: 2026-07-04*

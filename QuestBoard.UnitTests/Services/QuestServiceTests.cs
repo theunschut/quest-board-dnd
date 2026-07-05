@@ -279,4 +279,240 @@ public class QuestServiceTests
         result[0].Id.Should().Be(2);
         result[1].Id.Should().Be(1);
     }
+
+    // ---------------------------------------------------------------------------
+    // ChangeVoteAsync / RevokeSignupAsync — waitlist auto-promotion
+    // ---------------------------------------------------------------------------
+
+    private static readonly DateTime FinalizedDate = new(2026, 7, 10);
+
+    private static Quest MakeFinalizedQuest(int id, IList<PlayerSignup> signups, int totalPlayerCount, int finalizedProposedDateId = 100) =>
+        new()
+        {
+            Id = id,
+            Title = "Test Quest",
+            Description = "A quest",
+            DungeonMaster = new User { Id = 1, Name = "DM Dave", Email = "dm@example.com" },
+            IsFinalized = true,
+            FinalizedDate = FinalizedDate,
+            TotalPlayerCount = totalPlayerCount,
+            GroupId = 1,
+            ChallengeRating = 3,
+            PlayerSignups = signups,
+            ProposedDates = [new ProposedDate { Id = finalizedProposedDateId, Date = FinalizedDate }]
+        };
+
+    [Fact]
+    public async Task ChangeVoteAsync_SelectedPlayerVotesNo_PromotesTopWaitlistedCandidate()
+    {
+        // Arrange: a seat just freed (voter's ChangeVoteAsync returns true), and a top waitlisted
+        // candidate is available with a confirmed email.
+        var candidate = MakeSignup(2, "candidate@x.com", emailConfirmed: true);
+        var quest = MakeFinalizedQuest(1, [MakeSignup(1, "voter@x.com"), candidate], totalPlayerCount: 4);
+
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.No, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+        _playerSignupRepository.GetTopWaitlistedCandidateAsync(1, 100, Arg.Any<CancellationToken>())
+            .Returns(candidate);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.No, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        candidate.IsSelected.Should().BeTrue();
+        await _playerSignupRepository.Received(1).UpdateAsync(candidate, Arg.Any<CancellationToken>());
+        _dispatcher.Received(1).EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(),
+            candidate.Player.Email!, candidate.Player.Name,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task ChangeVoteAsync_SelectedPlayerVotesMaybe_DoesNotPromote()
+    {
+        // Arrange: a Maybe vote never frees a seat — the repository's ChangeVoteAsync returns false.
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.Maybe, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.Maybe, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task ChangeVoteAsync_WaitlistedPlayerVotesMaybe_SelectsWhenSeatAvailable()
+    {
+        // Arrange: a waitlisted (not-yet-selected) player votes Maybe while a seat is free —
+        // a Maybe vote must be able to fill an open seat the same way a Yes vote does.
+        var voterSignup = MakeSignup(1, "voter@x.com", isSelected: false);
+        var quest = MakeFinalizedQuest(1, [voterSignup], totalPlayerCount: 4);
+
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.Maybe, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.Maybe, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        voterSignup.IsSelected.Should().BeTrue();
+        await _playerSignupRepository.Received(1).UpdateAsync(voterSignup, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangeVoteAsync_SelectedSpectatorVotesNo_DoesNotPromote()
+    {
+        // Arrange: a selected Spectator votes No. Spectator seats are not part of
+        // TotalPlayerCount, so the repository correctly reports no seat freed (false), and
+        // QuestService must not attempt a promotion off that signal.
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.No, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.No, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        await _playerSignupRepository.DidNotReceive().UpdateAsync(Arg.Any<PlayerSignup>(), Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task ChangeVoteAsync_WaitlistedPlayerVotesNo_StaysWaitlistedEvenWithSeatAvailable()
+    {
+        // Arrange: a waitlisted player votes No while a seat is free — a No vote must never
+        // grant a seat, regardless of available capacity.
+        var voterSignup = MakeSignup(1, "voter@x.com", isSelected: false);
+        var quest = MakeFinalizedQuest(1, [voterSignup], totalPlayerCount: 4);
+
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.No, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.No, 100, TestContext.Current.CancellationToken);
+
+        // Assert
+        voterSignup.IsSelected.Should().BeFalse();
+        await _playerSignupRepository.DidNotReceive().UpdateAsync(Arg.Any<PlayerSignup>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RevokeSignupAsync_WhenRevokedSignupWasWaitlisted_DoesNotPromote()
+    {
+        // Arrange: the signup being revoked is waitlisted (IsSelected=false) — no seat was freed.
+        var waitlisted = MakeSignup(1, "waitlisted@x.com", isSelected: false);
+        var quest = MakeFinalizedQuest(1, [waitlisted], totalPlayerCount: 4);
+
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+
+        // Act
+        await _sut.RevokeSignupAsync(1, 1, TestContext.Current.CancellationToken);
+
+        // Assert
+        await _playerSignupRepository.Received(1).RemoveAsync(waitlisted, Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task RevokeSignupAsync_WhenRevokedSignupWasSelectedAssistantDM_DoesNotPromote()
+    {
+        // Arrange: the revoked signup is a selected Assistant DM, not a Player — Assistant DM
+        // seats are not part of TotalPlayerCount, so no Player seat was actually freed.
+        var revoked = MakeSignup(1, "assistantdm@x.com", role: SignupRole.AssistantDM, isSelected: true);
+        var waitlistedPlayer = MakeSignup(2, "waitlisted@x.com", isSelected: false);
+        var quest = MakeFinalizedQuest(1, [revoked, waitlistedPlayer], totalPlayerCount: 4);
+
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+
+        // Act
+        await _sut.RevokeSignupAsync(1, 1, TestContext.Current.CancellationToken);
+
+        // Assert: no promotion attempted for the unrelated waitlisted Player
+        await _playerSignupRepository.Received(1).RemoveAsync(revoked, Arg.Any<CancellationToken>());
+        await _playerSignupRepository.DidNotReceive().UpdateAsync(Arg.Any<PlayerSignup>(), Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task RevokeSignupAsync_WhenRevokedSignupWasSelected_Promotes()
+    {
+        // Arrange: the signup being revoked was selected — a seat frees and a candidate is promoted.
+        var revoked = MakeSignup(1, "revoked@x.com", isSelected: true);
+        var candidate = MakeSignup(2, "candidate@x.com", emailConfirmed: true, isSelected: false);
+        var quest = MakeFinalizedQuest(1, [revoked, candidate], totalPlayerCount: 4);
+
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+        _playerSignupRepository.GetTopWaitlistedCandidateAsync(1, 100, Arg.Any<CancellationToken>())
+            .Returns(candidate);
+
+        // Act
+        await _sut.RevokeSignupAsync(1, 1, TestContext.Current.CancellationToken);
+
+        // Assert
+        candidate.IsSelected.Should().BeTrue();
+        _dispatcher.Received(1).EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(),
+            candidate.Player.Email!, candidate.Player.Name,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task PromoteNextWaitlisted_NeverEmailsTheFreeingPlayer()
+    {
+        // Arrange: the top waitlisted candidate happens to be the same signup that just freed
+        // the seat (edge case) — promotion must be skipped entirely, no email sent.
+        var freeingSignup = MakeSignup(1, "freeing@x.com");
+        var quest = MakeFinalizedQuest(1, [freeingSignup], totalPlayerCount: 4);
+
+        _playerSignupRepository.ChangeVoteAsync(1, 100, VoteType.No, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>())
+            .Returns(quest);
+        _playerSignupRepository.GetTopWaitlistedCandidateAsync(1, 100, Arg.Any<CancellationToken>())
+            .Returns(freeingSignup); // top candidate id == freeing signup id
+
+        // Act
+        await _sut.ChangeVoteAsync(1, 1, VoteType.No, 100, TestContext.Current.CancellationToken);
+
+        // Assert: no promotion, no email — the freeing player is never the recipient
+        await _playerSignupRepository.DidNotReceive().UpdateAsync(Arg.Any<PlayerSignup>(), Arg.Any<CancellationToken>());
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+
+        // Separately, with a distinct candidate, the promoted email must be the candidate's — never the freeing player's
+        var distinctCandidate = MakeSignup(2, "distinctcandidate@x.com", emailConfirmed: true);
+        var quest2 = MakeFinalizedQuest(1, [freeingSignup, distinctCandidate], totalPlayerCount: 4);
+        _repository.GetQuestWithDetailsAsync(1, Arg.Any<CancellationToken>()).Returns(quest2);
+        _playerSignupRepository.GetTopWaitlistedCandidateAsync(1, 100, Arg.Any<CancellationToken>())
+            .Returns(distinctCandidate);
+
+        await _sut.ChangeVoteAsync(1, 1, VoteType.No, 100, TestContext.Current.CancellationToken);
+
+        _dispatcher.Received(1).EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(),
+            distinctCandidate.Player.Email!, distinctCandidate.Player.Name,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+        _dispatcher.DidNotReceive().EnqueueWaitlistPromotedEmail(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<DateTime>(),
+            freeingSignup.Player.Email!, Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+    }
 }
