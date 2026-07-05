@@ -74,6 +74,12 @@ Three areas have confirmed or hardened cross-group ("tenant") leaks; all are in 
   3. **Fix the one unguarded call site:** `ShopService.ReturnOrSellItemAsync` (`QuestBoard.Domain/Services/ShopService.cs:120-175`) calls the inherited base `transactionRepository.GetByIdAsync(transactionId, token)` (no `Include`, no group scoping at all) to look up the original purchase. It's safe today only because the very next block re-fetches the `ShopItem` by ID — which *is* properly filtered — and throws if it's gone (`"Original item no longer exists."`). Replace this call with the existing `transactionRepository.GetTransactionWithDetailsAsync(transactionId, token)` (already `Include`s `ShopItem`, already transitively protected), so this call site's safety no longer depends on the accident of what happens to run afterward.
 - **Claude's Discretion:** Whether the corrected `QuestBoardContext.cs` comment additionally recommends an explicit `.Where` clause as a future-proofing measure, or documents the `Include`-required invariant as sufficient (the remaining transitive-navigation-reliant pattern in this codebase, now that `CharacterEntity` has moved off it per D-02) — lean toward documentation + test over introducing a second, redundant filtering mechanism, consistent with this project's existing style.
 
+### PlayerSignup group scoping — found during research, pulled into scope
+- **D-12:** `/gsd-plan-phase 49`'s research step resolved the `<unknowns>` question below empirically (throwaway InMemory-provider test, run via `dotnet test`, then deleted): `PlayerSignupEntity` has the same class of leak `CharacterEntity` had — the code comment at `QuestBoardContext.cs:257-259` claiming "reached only through an already-filtered navigation" is also false for `PlayerSignupEntity`, not just for the already-fixed `CharacterEntity`. Research further found a real, independently-exploitable vulnerability beyond the original question: `QuestController.RemovePlayerSignup` (`[Authorize(Policy = "AdminOnly")]`) checks the caller is an Admin in their own active group (via `AdminHandler.cs`), but never checks that the *target* `PlayerSignupEntity`'s parent Quest belongs to that same group — the identical "check caller's role, not target's group" root cause as D-06's `DungeonMasterController.EditProfile` finding. User confirmed (full fix, not deferred): fix both tiers in this phase:
+  1. **Fix `QuestController.RemovePlayerSignup`** — add a group-membership check on the target signup's parent Quest (compare the parent `Quest.GroupId` to `activeGroupContext.ActiveGroupId`, or equivalent) before allowing removal, mirroring D-07's "check the target, not just the caller" pattern.
+  2. **Harden the other 3 unfiltered `PlayerSignupRepository` paths** (`GetByIdAsync` via `BaseRepository<PlayerSignup, PlayerSignupEntity>`, `ChangeVoteAsync`, `GetTopWaitlistedCandidateAsync`) — not currently independently exploitable (every existing caller re-derives the target ID from an already-filtered `quest.PlayerSignups` navigation first), but as incidentally-safe as pre-D-11 `UserTransaction` was. Apply D-11's exact treatment: correct the stale `QuestBoardContext.cs:257-259` comment to accurately describe `PlayerSignupEntity`'s real mechanism (safe only when callers pre-validate via the Quest navigation — NOT a repository-level guarantee), and add a regression test proving the current callers' pre-validation pattern holds, so a future refactor that skips it fails loudly. Document + test, don't add a second redundant filtering mechanism — same preference as D-11.
+- **D-13:** `RemovePlayerSignup`'s cross-group-target response is **404 Not Found**, not 403 — same convention as D-04/D-09, hiding cross-tenant existence rather than confirming it.
+
 </decisions>
 
 <canonical_refs>
@@ -115,6 +121,14 @@ Three areas have confirmed or hardened cross-group ("tenant") leaks; all are in 
 - `QuestBoard.Domain/Services/ShopService.cs:120-175` — `ReturnOrSellItemAsync`, the one call site to fix per D-11.3 (`transactionRepository.GetByIdAsync(transactionId, token)` → `GetTransactionWithDetailsAsync`).
 - `QuestBoard.UnitTests/Repository/PlayerSignupRepositoryTests.cs` — existing InMemory-provider + `IActiveGroupContext` test pattern to mirror for D-11.2's new regression test (uses `UseInMemoryDatabase`, a test `IActiveGroupContext` implementation, and seeds `Groups`/`UserEntities`/`Quests` directly against `QuestBoardContext`).
 
+### The fourth area (PlayerSignup — found during research, D-12/D-13)
+- `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` — `RemovePlayerSignup` action, the confirmed new vulnerability: `[Authorize(Policy = "AdminOnly")]` checks caller's role only, never the target signup's parent Quest's group.
+- `QuestBoard.Domain/.../AdminHandler.cs` (the `AdminOnly` policy handler) — confirms it validates the caller's own active-group Admin role, not any target resource's group.
+- `QuestBoard.Repository/PlayerSignupRepository.cs` / `BaseRepository<PlayerSignup, PlayerSignupEntity>.GetByIdAsync` — the unfiltered repository paths (`GetByIdAsync` via base class, `ChangeVoteAsync`, `GetTopWaitlistedCandidateAsync`) that never `.Include(ps => ps.Quest)`, so `QuestEntity`'s filter never applies to them.
+- `QuestBoard.Repository/Entities/QuestBoardContext.cs:257-259` — same stale comment block as D-11, also needs correcting for `PlayerSignupEntity` (not just `UserTransactionEntity`).
+- `QuestBoard.UnitTests/Repository/PlayerSignupRepositoryTests.cs` — existing InMemory-provider test file to extend with the new regression coverage (D-12.2) and the `RemovePlayerSignup` fix's test (D-12.1).
+- Full analysis and empirical evidence: `49-RESEARCH.md` (Summary, Pattern 4, Pitfall 3/4, Open Question 1).
+
 No external ADRs/specs beyond the codebase map above — requirements are fully captured in the decisions section.
 
 </canonical_refs>
@@ -155,20 +169,14 @@ Discussing that migration also surfaced that D-02's original "manual join, no sc
 <unknowns>
 ## Unknowns — Flag for Research
 
-**PlayerSignupEntity's group-filtering claim is unverified.** The comment in `QuestBoard.Repository/Entities/QuestBoardContext.cs:257-259` claims `PlayerSignupEntity` (like `CharacterEntity` used to be claimed) is "intentionally unfiltered... reached only through an already-filtered QuestEntity... navigation, so the parent's filter scopes them transitively." The `CharacterEntity` half of that exact same claim turned out to be **false** — `GuildMembersController.Index` queried `DbContext.Characters` directly, with zero filtering, which is the whole reason this phase exists. `PlayerSignupEntity`'s half has not been independently checked.
-
-**What needs checking:** every place `PlayerSignupEntity` is queried — grep for `DbContext.PlayerSignups`, `.PlayerSignups` navigation usage, and any repository methods touching it (likely `PlayerSignupRepository` or similar; `QuestBoard.UnitTests/Repository/PlayerSignupRepositoryTests.cs` already has an InMemory-provider test harness that can be extended for this). Determine: is `PlayerSignupEntity` always reached via an already-filtered `Quest` root (safe, matches the comment), or is `DbContext.PlayerSignups` ever queried directly as the root (same class of leak as Character's, unprotected)?
-
-**Recommended verification approach** (what worked well for D-10's UserTransaction question in this same phase — don't just reason about it): write a throwaway xUnit test using the `PlayerSignupRepositoryTests.cs` InMemory pattern, seed a cross-group scenario, and check empirically whether a leak exists. Delete the throwaway test after confirming either way.
-
-**This is explicitly out of scope for Phase 49** — flagged here so `/gsd-plan-phase 49`'s research step can pick it up and decide whether it needs its own follow-up phase, not so it gets silently folded into this phase's execution.
+**RESOLVED by research (2026-07-05) — see D-12/D-13.** `PlayerSignupEntity`'s group-filtering claim in `QuestBoardContext.cs:257-259` was checked the same way D-10 checked UserTransaction (empirical InMemory-provider test, not reasoning) and found **false**, same as `CharacterEntity`'s identical claim. Research additionally found a real, independently-exploitable vulnerability (`QuestController.RemovePlayerSignup`) beyond the original question's scope. User confirmed a full fix (not deferral) — see D-12/D-13 in `<decisions>` and `49-RESEARCH.md` for full analysis and evidence. This is no longer an open unknown.
 
 </unknowns>
 
 <deferred>
 ## Deferred Ideas
 
-None — both confirmed leaks (Characters, DungeonMasterController) are in scope for this phase. Quest History was investigated and ruled out as already correct (D-05). The PlayerSignupEntity question is not deferred so much as explicitly unresolved — see `<unknowns>` above.
+None — all three confirmed leaks (Characters, DungeonMasterController, PlayerSignup/`RemovePlayerSignup`) are in scope for this phase. Quest History was investigated and ruled out as already correct (D-05). The PlayerSignupEntity question raised in `<unknowns>` was resolved by research and pulled into scope, not deferred — see D-12/D-13.
 
 </deferred>
 
