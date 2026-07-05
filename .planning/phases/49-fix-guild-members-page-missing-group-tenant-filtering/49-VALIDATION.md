@@ -1,9 +1,9 @@
 ---
 phase: 49
 slug: fix-guild-members-page-missing-group-tenant-filtering
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: final
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-05
 ---
 
@@ -19,7 +19,7 @@ created: 2026-07-05
 |----------|-------|
 | **Framework** | xunit.v3 3.2.2 + FluentAssertions 8.10.0 + NSubstitute 5.3.0 [VERIFIED: QuestBoard.UnitTests.csproj] |
 | **Config file** | `QuestBoard.UnitTests/QuestBoard.UnitTests.csproj` |
-| **Quick run command** | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~PlayerSignupRepositoryTests|FullyQualifiedName~CharacterRepositoryTests|FullyQualifiedName~UserTransactionRepositoryTests|FullyQualifiedName~DungeonMasterControllerTests"` |
+| **Quick run command** | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~PlayerSignupRepositoryTests|FullyQualifiedName~CharacterRepositoryTests|FullyQualifiedName~UserTransactionRepositoryTests" && dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~DungeonMasterControllerIntegrationTests"` |
 | **Full suite command** | `dotnet test` |
 | **Estimated runtime** | ~30-60 seconds (quick filter) / full suite varies |
 
@@ -27,7 +27,7 @@ created: 2026-07-05
 
 ## Sampling Rate
 
-- **After every task commit:** Run `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~Character|FullyQualifiedName~DungeonMaster|FullyQualifiedName~UserTransaction|FullyQualifiedName~PlayerSignup"`
+- **After every task commit:** Run the relevant filtered command from the Per-Task Verification Map below
 - **After every plan wave:** Run `dotnet test` (full suite — this project has `QuestBoard.UnitTests` and `QuestBoard.IntegrationTests`; confirm both run clean)
 - **Before `/gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 60 seconds
@@ -38,25 +38,31 @@ created: 2026-07-05
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 49-xx-xx | TBD | TBD | D-01/D-02/D-03 | IDOR (Character list/detail) | `GuildMembersController.Index`/`Details` scoped to active group; SuperAdmin-with-no-group sees empty list, not cross-group superview | unit (repository) + integration (controller) | `dotnet test --filter FullyQualifiedName~CharacterRepositoryTests` | ❌ W0 | ⬜ pending |
-| 49-xx-xx | TBD | TBD | D-04 | IDOR (Character picture) | `GetProfilePicture` returns 404 for a cross-group character ID | unit (repository) | `dotnet test --filter FullyQualifiedName~CharacterRepositoryTests` | ❌ W0 (same file as above) | ⬜ pending |
-| 49-xx-xx | TBD | TBD | D-06/D-07/D-08/D-09 | Confused deputy (DM profile view/edit/picture) | `DungeonMasterController.Profile`/`EditProfile`(GET+POST)/`GetDMProfilePicture` all 404 for a cross-group target user; SuperAdmin-no-group also 404s | integration (controller) | `dotnet test --filter FullyQualifiedName~DungeonMasterControllerTests` | ❌ W0 — no existing controller-level test file for this controller | ⬜ pending |
-| 49-xx-xx | TBD | TBD | D-10/D-11 | Fragile transitive filter (UserTransaction) | Cross-group `UserTransaction` excluded from `GetTransactionsByUserAsync`; `ReturnOrSellItemAsync` uses `GetTransactionWithDetailsAsync`, not the unguarded base `GetByIdAsync` | unit (repository) | `dotnet test --filter FullyQualifiedName~UserTransactionRepositoryTests` | ❌ W0 — no `UserTransactionRepositoryTests.cs` exists yet | ⬜ pending |
-| 49-xx-xx | TBD | TBD | D-12 | Confused deputy (RemovePlayerSignup) + fragile transitive filter (PlayerSignup repo methods) | Cross-group `PlayerSignupEntity` removal via `RemovePlayerSignup` is blocked; other 3 unfiltered repository methods documented + regression-tested for their current pre-validation-dependent safety | unit (repository) + integration (controller, `AdminOnly` policy path) | `dotnet test --filter FullyQualifiedName~PlayerSignupRepositoryTests` | ✅ existing file — extend | ⬜ pending |
-| 49-xx-xx | TBD | TBD | D-13 | Existence oracle | `RemovePlayerSignup` returns 404 (not 403) for a cross-group target signup | integration (controller) | `dotnet test --filter FullyQualifiedName~PlayerSignupRepositoryTests` (or Quest controller integration test) | ❌ W0 — new test case | ⬜ pending |
+| 49-01 Task 1 | 01 | 1 | D-02/D-03 | IDOR (Character list/detail) | `CharacterEntity` gets `GroupId` column + migration + no-null-escape-hatch `HasQueryFilter`; stale transitive-filter comments corrected for Character/UserTransaction/PlayerSignup | build | `cd QuestBoard.Service && dotnet build ../QuestBoard.Repository` | ✅ modifies existing files | ⬜ pending |
+| 49-01 Task 2 | 01 | 1 | D-01/D-04 | IDOR (Character picture) | `GetCharacterProfilePictureAsync` rewritten to root through `DbContext.Characters`; `Create` POST stamps `GroupId`; `TestDataHelper` updated | build | `cd QuestBoard.Service && dotnet build` | ✅ modifies existing files | ⬜ pending |
+| 49-01 Task 3 | 01 | 1 | D-01/D-02/D-03/D-04 | IDOR (Character list/detail/picture) | List/detail scoped to active group; SuperAdmin-with-no-group sees empty list; profile-picture 404 for cross-group ID | unit (repository) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CharacterRepositoryTests"` | ✅ new file created by this task | ⬜ pending |
+| 49-02 Task 1 | 02 | 2 | D-06/D-07/D-08/D-09 | Confused deputy (DM profile view/edit/picture) | `Profile`/`EditProfile`(GET+POST)/`GetDMProfilePicture` all 404 for cross-group target; SuperAdmin-no-group also 404s | build | `cd QuestBoard.Service && dotnet build` | ✅ modifies existing file | ⬜ pending |
+| 49-02 Task 2 | 02 | 2 | D-06/D-07/D-08/D-09/D-09a | Confused deputy (DM profile view/edit/picture) | Integration tests prove cross-group 404 and SuperAdmin-no-group 404 for all four actions | integration (controller) | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~DungeonMasterControllerIntegrationTests"` | ✅ existing file — extended | ⬜ pending |
+| 49-03 Task 1 | 03 | 2 | D-11 | Fragile transitive filter (UserTransaction) | `ReturnOrSellItemAsync` uses `GetTransactionWithDetailsAsync` (Include-protected), not the unguarded base `GetByIdAsync` | build | `cd QuestBoard.Service && dotnet build` | ✅ modifies existing file | ⬜ pending |
+| 49-03 Task 2 | 03 | 2 | D-10/D-11 | Fragile transitive filter (UserTransaction) | Cross-group `UserTransaction` excluded from `GetTransactionsByUserAsync`-style queries (Include-driven inner join regression test) | unit (repository) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~UserTransactionRepositoryTests"` | ✅ new file created by this task | ⬜ pending |
+| 49-04 Task 1 | 04 | 2 | D-12 | Fragile transitive filter (PlayerSignup) | New Quest-including PlayerSignup lookup added (repository + service) so callers can validate the parent Quest's group | build | `cd QuestBoard.Service && dotnet build` | ✅ modifies existing files | ⬜ pending |
+| 49-04 Task 2 | 04 | 2 | D-12/D-13 | Confused deputy (RemovePlayerSignup) | `RemovePlayerSignup` checks target signup's parent Quest group membership; 404 (not 403) for cross-group | build | `cd QuestBoard.Service && dotnet build` | ✅ modifies existing file | ⬜ pending |
+| 49-04 Task 3 | 04 | 2 | D-12/D-13 | Confused deputy + fragile transitive filter (PlayerSignup) | Cross-group `RemovePlayerSignup` blocked (404); other 3 unfiltered repository methods' current pre-validation-dependent safety regression-tested | unit (repository) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~PlayerSignupRepositoryTests"` | ✅ existing file — extended | ⬜ pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky — statuses flip to ✅ as each task's commit lands during `/gsd-execute-phase 49`.*
 
-*Task IDs are TBD until the planner assigns plan/wave numbers — the planner must fill these in per the actual PLAN.md task breakdown.*
+*D-05 and D-09a are investigated-and-ruled-out decisions with no code change (confirmed in 49-CONTEXT.md and 49-RESEARCH.md) — they have no row here by design.*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `QuestBoard.UnitTests/Repository/CharacterRepositoryTests.cs` — new file; covers D-01/D-02/D-03/D-04 (list scoping, SuperAdmin-empty behavior, profile-picture cross-group 404 via the rewritten query)
-- [ ] `QuestBoard.UnitTests/Repository/UserTransactionRepositoryTests.cs` — new file; covers D-11.2's regression test (cross-group transaction excluded from `GetTransactionsByUserAsync`)
-- [ ] A `DungeonMasterController` integration/unit test file — none currently exists for this controller; covers D-06 through D-09's four hardened actions. Check whether `QuestBoard.IntegrationTests/Controllers/` is the right home (that project already hosts `AdminControllerIntegrationTests.cs`/`AdminHandlerIntegrationTests.cs`, suggesting controller-level auth tests live there)
-- [ ] Extend existing `QuestBoard.UnitTests/Repository/PlayerSignupRepositoryTests.cs` with cross-group regression coverage for D-12 (RemovePlayerSignup fix + the other 3 methods' documented safety) and D-13 (404 response)
+- [x] `QuestBoard.UnitTests/Repository/CharacterRepositoryTests.cs` — new file, assigned to 49-01 Task 3; covers D-01/D-02/D-03/D-04 (list scoping, SuperAdmin-empty behavior, profile-picture cross-group 404)
+- [x] `QuestBoard.UnitTests/Repository/UserTransactionRepositoryTests.cs` — new file, assigned to 49-03 Task 2; covers D-11's regression test (cross-group transaction excluded)
+- [x] `DungeonMasterControllerIntegrationTests.cs` — already exists (contrary to this file's original research-time note); extended by 49-02 Task 2 to cover D-06 through D-09's four hardened actions
+- [x] `QuestBoard.UnitTests/Repository/PlayerSignupRepositoryTests.cs` — existing file, extended by 49-04 Task 3 with cross-group regression coverage for D-12 (RemovePlayerSignup fix + the other 3 methods' documented safety) and D-13 (404 response)
+
+All Wave 0 gaps are assigned to a specific plan task in the finalized PLAN.md files — no outstanding scaffolding work remains unassigned.
 
 ---
 
@@ -68,11 +74,11 @@ created: 2026-07-05
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-05 (via gsd-plan-checker VERIFICATION PASSED)
