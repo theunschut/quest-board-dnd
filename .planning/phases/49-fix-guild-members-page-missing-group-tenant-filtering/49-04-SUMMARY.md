@@ -107,3 +107,11 @@ None - no external service configuration required.
 ---
 *Phase: 49-fix-guild-members-page-missing-group-tenant-filtering*
 *Completed: 2026-07-05*
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/49-fix-guild-members-page-missing-group-tenant-filtering/49-04-SUMMARY.md
+- FOUND: b9988a8 (Task 1 commit)
+- FOUND: ffc3fb6 (Task 2 commit)
+- FOUND: 637bc1c (Task 3 commit)
+- FOUND: 96e6252 (SUMMARY commit)
