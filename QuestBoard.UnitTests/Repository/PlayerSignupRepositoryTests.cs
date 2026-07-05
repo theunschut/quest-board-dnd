@@ -86,6 +86,8 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_WithVoteYes_PersistsVoteAsTwo));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
+        context.Add(new ProposedDateEntity { Id = 5, QuestId = 1, Date = DateTime.UtcNow });
         var signup = MakeSignupEntity(1, questId: 1, isSelected: false);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -105,6 +107,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_AnyVote_SetsLastVoteChangeTimeToRecentNonNullValue));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: false);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -126,6 +129,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedSignupVotesMaybe_KeepsIsSelectedTrueAndReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -146,6 +150,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_WaitlistedSignupVotesNo_KeepsIsSelectedFalseAndReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: false);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -166,6 +171,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedSignupVotesNo_SetsIsSelectedFalseAndReturnsTrue));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -188,6 +194,7 @@ public class PlayerSignupRepositoryTests
         // TotalPlayerCount, so the seat-freed signal must not fire even though IsSelected still
         // clears for the signup itself.
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedAssistantDMVotesNo_SetsIsSelectedFalseButReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true, role: SignupRole.AssistantDM);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -209,6 +216,7 @@ public class PlayerSignupRepositoryTests
         // Arrange: a selected Spectator signup votes No. Spectator seats are not part of
         // TotalPlayerCount, so the seat-freed signal must not fire.
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedSpectatorVotesNo_SetsIsSelectedFalseButReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true, role: SignupRole.Spectator);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -361,33 +369,31 @@ public class PlayerSignupRepositoryTests
     }
 
     [Fact]
-    public async Task GetByIdAsync_ForSignupOnOtherGroupsQuest_StillReturnsRow_DocumentingCallerMustPreValidate()
+    public async Task GetByIdAsync_ForSignupOnOtherGroupsQuest_ReturnsNullViaPlayerSignupQueryFilter()
     {
         // Arrange: seed the group-2 quest/signup via a null-active-group context (sees all).
         var seedGroupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using (var seedContext = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_StillReturnsRow_DocumentingCallerMustPreValidate), seedGroupContext))
+        await using (var seedContext = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_ReturnsNullViaPlayerSignupQueryFilter), seedGroupContext))
         {
             await SeedQuestAndUserAsync(seedContext, questId: 2, playerId: 201, groupId: 2);
             seedContext.PlayerSignups.Add(MakeSignupEntity(1, questId: 2, isSelected: false));
             await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        // The base GetByIdAsync goes through BaseRepository's DbSet.FindAsync, which has no
-        // Include on Quest — it never joins the Quest table, so the Quest query filter never
-        // applies. This means the base lookup is NOT self-scoping by group: a future refactor
-        // that swaps a Quest-including lookup for this one on a caller that trusts a raw id
-        // would silently reintroduce a cross-group leak. Callers must pre-validate the target
-        // (e.g. via a filtered quest.PlayerSignups navigation, or GetByIdWithQuestAsync) before
-        // trusting the id.
+        // PlayerSignupEntity now carries its own HasQueryFilter (scoped through the required Quest
+        // navigation), so even the base GetByIdAsync (BaseRepository's DbSet.FindAsync, which has no
+        // explicit Include on Quest) is automatically group-scoped — EF Core applies global query
+        // filters regardless of which navigations a specific query includes. Callers no longer need
+        // to pre-validate the target via a filtered quest.PlayerSignups navigation for this to be safe.
         var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
-        await using var context = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_StillReturnsRow_DocumentingCallerMustPreValidate), activeGroupContext);
+        await using var context = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_ReturnsNullViaPlayerSignupQueryFilter), activeGroupContext);
         var repository = new PlayerSignupRepository(context, CreateMapper());
 
         // Act
         var result = await repository.GetByIdAsync(1, TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().NotBeNull();
+        result.Should().BeNull();
     }
 
     private sealed class TestActiveGroupContext : IActiveGroupContext

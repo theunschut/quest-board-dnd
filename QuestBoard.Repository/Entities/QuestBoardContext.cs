@@ -268,6 +268,30 @@ public class QuestBoardContext(
                 activeGroupContext.ActiveGroupId == null ||
                 pd.Quest.GroupId == activeGroupContext.ActiveGroupId);
 
+        // PlayerDateVoteEntity carries no GroupId of its own. It has two required FKs
+        // (ProposedDateId, PlayerSignupId); either navigation reaches the same quest, so filtering
+        // through ProposedDate is sufficient to keep it consistent with both filtered parents above.
+        modelBuilder.Entity<PlayerDateVoteEntity>()
+            .HasQueryFilter(pdv =>
+                activeGroupContext.ActiveGroupId == null ||
+                pdv.ProposedDate.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
+        // PlayerSignupEntity carries no GroupId of its own — scoped through its required Quest
+        // navigation. This also makes every PlayerSignupRepository method (including the base
+        // GetByIdAsync/FindAsync path) automatically group-scoped, not just the ones that manually
+        // re-derive the target through an already-filtered quest.PlayerSignups navigation first.
+        modelBuilder.Entity<PlayerSignupEntity>()
+            .HasQueryFilter(ps =>
+                activeGroupContext.ActiveGroupId == null ||
+                ps.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
+        // ReminderLogEntity carries no GroupId of its own — scoped through its required Quest
+        // navigation, same shape as the other Quest-dependent entities above.
+        modelBuilder.Entity<ReminderLogEntity>()
+            .HasQueryFilter(r =>
+                activeGroupContext.ActiveGroupId == null ||
+                r.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
         // CharacterEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
         // do above. With no active group selected, every character query returns nothing rather than
         // everyone's characters across every group. Do not "fix" this to match the Quest/ShopItem shape —
@@ -277,20 +301,28 @@ public class QuestBoardContext(
                 activeGroupContext.ActiveGroupId != null &&
                 e.GroupId == activeGroupContext.ActiveGroupId);
 
+        // CharacterClassEntity and CharacterImageEntity carry no GroupId of their own — both are
+        // scoped through their required Character navigation, mirroring CharacterEntity's own filter
+        // shape (no SuperAdmin escape hatch) rather than relying on every caller reaching them only
+        // through an already-filtered Character.
+        modelBuilder.Entity<CharacterClassEntity>()
+            .HasQueryFilter(cc =>
+                activeGroupContext.ActiveGroupId != null &&
+                cc.Character.GroupId == activeGroupContext.ActiveGroupId);
+
+        modelBuilder.Entity<CharacterImageEntity>()
+            .HasQueryFilter(ci =>
+                activeGroupContext.ActiveGroupId != null &&
+                ci.Character.GroupId == activeGroupContext.ActiveGroupId);
+
         // UserEntity intentionally excluded — HasQueryFilter on UserEntity breaks ASP.NET Core Identity
         // (login, password reset, and email confirmation all fail silently)
         //
-        // UserTransactionEntity carries no GroupId of its own and has no filter here. It is protected
-        // only when a query includes the required ShopItem navigation: EF Core translates that Include
-        // into an inner join, which folds ShopItemEntity's own filter into the join condition and drops
-        // any transaction whose item belongs to another group. A query against UserTransactions that
-        // omits Include(t => t.ShopItem) is NOT scoped by group at all — every caller must include that
-        // navigation for this protection to apply.
-        //
-        // PlayerSignupEntity also carries no GroupId of its own and has no filter here. Unlike
-        // UserTransactionEntity, it is NOT protected by an automatic join — most repository methods
-        // never include the parent Quest navigation. Callers are safe only when they first look up the
-        // target signup through an already-filtered quest.PlayerSignups navigation and pass that
-        // pre-validated ID onward; this is a caller-side discipline, not a guarantee this layer enforces.
+        // UserTransactionEntity carries no GroupId of its own — scoped through its required ShopItem
+        // navigation, same shape as the Quest-dependent entities above.
+        modelBuilder.Entity<UserTransactionEntity>()
+            .HasQueryFilter(t =>
+                activeGroupContext.ActiveGroupId == null ||
+                t.ShopItem.GroupId == activeGroupContext.ActiveGroupId);
     }
 }
