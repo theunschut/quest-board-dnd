@@ -22,6 +22,8 @@ public class DungeonMasterController(
         var user = await userService.GetByIdAsync(id, token);
         if (user == null) return NotFound();
 
+        if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
+
         var profile = await dmProfileService.GetProfileByUserIdAsync(id, token);
         var quests = await questService.GetQuestsByDungeonMasterAsync(id, token);
         var currentUser = await userService.GetUserAsync(User);
@@ -58,6 +60,8 @@ public class DungeonMasterController(
         var targetUser = id.HasValue ? await userService.GetByIdAsync(id.Value, token) : currentUser;
         if (targetUser == null) return NotFound();
 
+        if (!await IsTargetInActiveGroupAsync(targetUser.Id)) return NotFound();
+
         var role = await GetEffectiveRoleAsync();
         if (currentUser.Id != targetUser.Id && role != GroupRole.Admin)
         {
@@ -88,6 +92,8 @@ public class DungeonMasterController(
 
         var targetUser = id.HasValue ? await userService.GetByIdAsync(id.Value, token) : currentUser;
         if (targetUser == null) return NotFound();
+
+        if (!await IsTargetInActiveGroupAsync(targetUser.Id)) return NotFound();
 
         var role = await GetEffectiveRoleAsync();
         if (currentUser.Id != targetUser.Id && role != GroupRole.Admin)
@@ -121,6 +127,8 @@ public class DungeonMasterController(
     [HttpGet]
     public async Task<IActionResult> GetDMProfilePicture(int id, CancellationToken token = default)
     {
+        if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
+
         var bytes = await dmProfileService.GetProfilePictureAsync(id, token);
         if (bytes == null || bytes.Length == 0) return NotFound();
 
@@ -140,4 +148,16 @@ public class DungeonMasterController(
         User.IsInRole("SuperAdmin")
             ? GroupRole.Admin
             : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+    // The AdminOnly/DungeonMasterOnly policies and the caller-role checks above only validate
+    // the caller's own role in their active group - they never confirm the target user (the
+    // profile being viewed or edited) actually belongs to that same group. Without this check,
+    // an authenticated caller could view or overwrite a DM profile that belongs to a completely
+    // unrelated group just by guessing a user id. A null active group (SuperAdmin with no group
+    // picked) has no group to scope the check against, so it is treated as inaccessible too.
+    private async Task<bool> IsTargetInActiveGroupAsync(int targetUserId)
+    {
+        if (activeGroupContext.ActiveGroupId is not { } groupId) return false;
+        return await userService.GetGroupRoleByIdAsync(targetUserId, groupId) != null;
+    }
 }
