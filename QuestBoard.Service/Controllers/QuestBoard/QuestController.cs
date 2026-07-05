@@ -172,6 +172,8 @@ public class QuestController(
         var canEditProposedDates = true;
         var hasExistingSignups = quest.PlayerSignups.Any();
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
+
         return View(new EditQuestViewModel
         {
             Id = quest.Id,
@@ -224,17 +226,22 @@ public class QuestController(
         viewModel.CanEditProposedDates = canEditProposedDates;
         viewModel.HasExistingSignups = hasExistingSignups;
 
+        // BoardType is always resolved server-side from the active group, never trusted
+        // from the posted form. Resolved before the validation check so a re-rendered
+        // Edit form (on a validation failure) can hide Campaign-irrelevant fields without
+        // throwing, and reused below for the Campaign sanitization.
+        var boardType = await GetActiveBoardTypeAsync(token);
+
         if (!ModelState.IsValid)
         {
             var dms = await userService.GetAllDungeonMastersAsync(token);
             viewModel.DungeonMasters = dms;
+            ViewBag.BoardType = boardType;
             return View(viewModel);
         }
 
-        // BoardType is always resolved server-side from the active group, never trusted
-        // from the posted form. Mirror the sanitization performed in Create so a
-        // Campaign quest can never end up with DM-only-session/CR/player-count values.
-        var boardType = await GetActiveBoardTypeAsync(token);
+        // Mirror the sanitization performed in Create so a Campaign quest can never
+        // end up with DM-only-session/CR/player-count values.
         if (boardType == BoardType.Campaign)
         {
             viewModel.Quest.ChallengeRating = 1;
