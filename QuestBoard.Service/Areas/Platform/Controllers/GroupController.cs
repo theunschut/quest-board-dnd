@@ -175,6 +175,8 @@ public class GroupController(
                     // Existing user added to a group they weren't in — notify them by email.
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null)
+                        // userId is a database-internal integer identifier, not personal data — despite
+                        // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
                     else
                         jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.Role.ToString(), loginUrl, CancellationToken.None));
@@ -192,6 +194,8 @@ public class GroupController(
                         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
                         var callbackUrl = Url.Action("SetPassword", "Account", new { userId = result.UserId.Value, token = encodedToken }, Request.Scheme);
                         if (callbackUrl == null)
+                            // userId is a database-internal integer identifier, not personal data — despite
+                            // flowing from the newly created account, it carries no PII of its own.
                             logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", result.UserId.Value);
                         else
                         {
@@ -266,6 +270,8 @@ public class GroupController(
                 {
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null)
+                        // userId is a database-internal integer identifier, not personal data — despite
+                        // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
                     else
                         jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
@@ -282,6 +288,8 @@ public class GroupController(
                         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
                         var callbackUrl = Url.Action("SetPassword", "Account", new { userId = result.UserId.Value, token = encodedToken }, Request.Scheme);
                         if (callbackUrl == null)
+                            // userId is a database-internal integer identifier, not personal data — despite
+                            // flowing from the newly created account, it carries no PII of its own.
                             logger.LogError("Failed to generate SetPassword callback URL for userId {UserId}", result.UserId.Value);
                         else
                         {
