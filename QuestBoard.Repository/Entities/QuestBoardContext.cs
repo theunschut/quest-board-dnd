@@ -220,6 +220,13 @@ public class QuestBoardContext(
             .HasForeignKey(si => si.GroupId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // Character → Group: NoAction to prevent cascade cycles
+        modelBuilder.Entity<CharacterEntity>()
+            .HasOne(c => c.Group)
+            .WithMany()
+            .HasForeignKey(c => c.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         // UserGroup → User: Cascade — removing a user removes their memberships
         modelBuilder.Entity<UserGroupEntity>()
             .HasOne(ug => ug.User)
@@ -251,11 +258,29 @@ public class QuestBoardContext(
                 activeGroupContext.ActiveGroupId == null ||
                 e.GroupId == activeGroupContext.ActiveGroupId);
 
+        // CharacterEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
+        // do above. With no active group selected, every character query returns nothing rather than
+        // everyone's characters across every group. Do not "fix" this to match the Quest/ShopItem shape —
+        // an empty guild roster is the intended behavior here, not an oversight.
+        modelBuilder.Entity<CharacterEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
         // UserEntity intentionally excluded — HasQueryFilter on UserEntity breaks ASP.NET Core Identity
         // (login, password reset, and email confirmation all fail silently)
         //
-        // CharacterEntity and PlayerSignupEntity are also intentionally unfiltered: they carry no
-        // GroupId of their own and are only ever reached through an already-filtered QuestEntity or
-        // ShopItemEntity navigation, so the parent's filter scopes them transitively.
+        // UserTransactionEntity carries no GroupId of its own and has no filter here. It is protected
+        // only when a query includes the required ShopItem navigation: EF Core translates that Include
+        // into an inner join, which folds ShopItemEntity's own filter into the join condition and drops
+        // any transaction whose item belongs to another group. A query against UserTransactions that
+        // omits Include(t => t.ShopItem) is NOT scoped by group at all — every caller must include that
+        // navigation for this protection to apply.
+        //
+        // PlayerSignupEntity also carries no GroupId of its own and has no filter here. Unlike
+        // UserTransactionEntity, it is NOT protected by an automatic join — most repository methods
+        // never include the parent Quest navigation. Callers are safe only when they first look up the
+        // target signup through an already-filtered quest.PlayerSignups navigation and pass that
+        // pre-validated ID onward; this is a caller-side discipline, not a guarantee this layer enforces.
     }
 }
