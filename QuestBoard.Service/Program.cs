@@ -351,9 +351,6 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     app.Services.ConfigureDatabase();
 
-    // Seed basic shop data
-    await SeedShopDataAsync(app);
-
     // Register daily session reminder sweep — runs at 09:00 server local time (CET/CEST).
     // Placed after ConfigureDatabase to ensure migrations have run before the job can fire (RESEARCH.md Pitfall 4).
     RecurringJob.AddOrUpdate<DailyReminderJob>(
@@ -383,31 +380,3 @@ if (app.Environment.IsProduction())
 }
 
 app.Run();
-
-static async Task SeedShopDataAsync(WebApplication app)
-{
-    using var scope = app.Services.CreateScope();
-    try
-    {
-        var shopSeedService = scope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IShopSeedService>();
-        var groupService = scope.ServiceProvider.GetRequiredService<IGroupService>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
-
-        // Find first admin/DM user to attribute seed data to
-        var adminUser = await userManager.Users.FirstOrDefaultAsync();
-        if (adminUser != null)
-        {
-            var groups = await groupService.GetAllAsync();
-            foreach (var group in groups)
-            {
-                await shopSeedService.SeedBasicEquipmentAsync(adminUser.Id, group.Id);
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        // Log error but don't stop application startup
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Error seeding shop data");
-    }
-}

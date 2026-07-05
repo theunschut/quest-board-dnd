@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 47
-current_phase_name: "Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob"
+current_phase: 50
 status: executing
-stopped_at: Phase 47 context gathered
-last_updated: "2026-07-04T23:50:18.201Z"
-last_activity: 2026-07-04
-last_activity_desc: Phase 44 complete, transitioned to Phase 47
+stopped_at: Phase 50 UI-SPEC approved
+last_updated: "2026-07-05T20:11:29.416Z"
+last_activity: 2026-07-05
+last_activity_desc: Phase 50 complete
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 14
+  completed_plans: 14
   percent: 100
+current_phase_name: fix-quest-edit-page-show-edit-button-for-campaign-quests-and
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 47 — Group Membership Email Notification Fix
+**Current focus:** Phase 50 — fix-quest-edit-page-show-edit-button-for-campaign-quests-and
 
 ## Current Position
 
-Phase: 47 — Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
+Phase: 50
 Plan: Not started
-Status: Executing Phase 47
-Last activity: 2026-07-04 — Phase 44 complete, transitioned to Phase 47
+Status: Executing Phase 50
+Last activity: 2026-07-05 — Phase 50 complete
 
 ## Performance Metrics
 
@@ -56,6 +56,8 @@ Last activity: 2026-07-04 — Phase 44 complete, transitioned to Phase 47
 
 ### Roadmap Evolution
 
+- Phase 50 added: Fix quest edit page: show edit button for campaign quests and align field visibility with create page
+- Phase 49 added: Fix Guild Members page missing group/tenant filtering
 - Phase 48 added: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
 
 v7.0 Backlog Cleanup roadmap created 2026-07-04: 4 phases (43–46), 14/14 v1 requirements mapped, no orphans. Continues numbering from v6.1's Phase 42. Full phase detail in `.planning/ROADMAP.md`.
@@ -88,9 +90,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-04T21:53:58.263Z
-Stopped at: Phase 47 context gathered
-Resume file: .planning/phases/47-group-membership-email-notification-fix-adding-an-existing-u/47-CONTEXT.md
+Last session: 2026-07-05T19:07:34.338Z
+Stopped at: Phase 50 UI-SPEC approved
+Resume file: .planning/phases/50-fix-quest-edit-page-show-edit-button-for-campaign-quests-and/50-UI-SPEC.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps

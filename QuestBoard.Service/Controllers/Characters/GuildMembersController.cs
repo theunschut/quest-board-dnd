@@ -1,5 +1,6 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.ViewModels.CharacterViewModels;
@@ -12,6 +13,7 @@ namespace QuestBoard.Service.Controllers.Characters
     public class GuildMembersController(
         ICharacterService characterService,
         IUserService userService,
+        IActiveGroupContext activeGroupContext,
         IMapper mapper) : Controller
     {
         [HttpGet]
@@ -131,6 +133,11 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             var character = mapper.Map<Character>(viewModel);
+
+            // Tag the character to the active group so Guild Members scoping applies
+            // (CharacterEntity is scoped by a global query filter on GroupId).
+            character.GroupId = activeGroupContext.RequireActiveGroupId();
+
             await characterService.AddAsync(character, token);
 
             return RedirectToAction(nameof(Index));

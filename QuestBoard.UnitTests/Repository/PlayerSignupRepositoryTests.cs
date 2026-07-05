@@ -19,6 +19,15 @@ public class PlayerSignupRepositoryTests
         return new QuestBoardContext(options, new TestActiveGroupContext());
     }
 
+    private static QuestBoardContext CreateContext(string databaseName, IActiveGroupContext activeGroupContext)
+    {
+        var options = new DbContextOptionsBuilder<QuestBoardContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        return new QuestBoardContext(options, activeGroupContext);
+    }
+
     private static IMapper CreateMapper()
     {
         var configuration = new MapperConfiguration(cfg => cfg.AddProfile<QuestBoard.Repository.Automapper.EntityProfile>(), NullLoggerFactory.Instance);
@@ -27,11 +36,11 @@ public class PlayerSignupRepositoryTests
 
     // Seeds the minimal Group/User/Quest graph a PlayerSignupEntity needs so AutoMapper can
     // populate the domain model's required Player/Quest navigation properties.
-    private static async Task SeedQuestAndUserAsync(QuestBoardContext context, int questId, int playerId)
+    private static async Task SeedQuestAndUserAsync(QuestBoardContext context, int questId, int playerId, int groupId = 1)
     {
-        if (!await context.Groups.AnyAsync(g => g.Id == 1))
+        if (!await context.Groups.AnyAsync(g => g.Id == groupId))
         {
-            context.Groups.Add(new GroupEntity { Id = 1, Name = "Test Group" });
+            context.Groups.Add(new GroupEntity { Id = groupId, Name = $"Test Group {groupId}" });
         }
 
         if (!await context.UserEntities.AnyAsync(u => u.Id == playerId))
@@ -47,7 +56,7 @@ public class PlayerSignupRepositoryTests
                 Title = "Test Quest",
                 Description = "A quest",
                 DungeonMasterId = playerId,
-                GroupId = 1
+                GroupId = groupId
             });
         }
 
@@ -77,6 +86,8 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_WithVoteYes_PersistsVoteAsTwo));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
+        context.Add(new ProposedDateEntity { Id = 5, QuestId = 1, Date = DateTime.UtcNow });
         var signup = MakeSignupEntity(1, questId: 1, isSelected: false);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -96,6 +107,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_AnyVote_SetsLastVoteChangeTimeToRecentNonNullValue));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: false);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -117,6 +129,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedSignupVotesMaybe_KeepsIsSelectedTrueAndReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -137,6 +150,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_WaitlistedSignupVotesNo_KeepsIsSelectedFalseAndReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: false);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -157,6 +171,7 @@ public class PlayerSignupRepositoryTests
     {
         // Arrange
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedSignupVotesNo_SetsIsSelectedFalseAndReturnsTrue));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -179,6 +194,7 @@ public class PlayerSignupRepositoryTests
         // TotalPlayerCount, so the seat-freed signal must not fire even though IsSelected still
         // clears for the signup itself.
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedAssistantDMVotesNo_SetsIsSelectedFalseButReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true, role: SignupRole.AssistantDM);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -200,6 +216,7 @@ public class PlayerSignupRepositoryTests
         // Arrange: a selected Spectator signup votes No. Spectator seats are not part of
         // TotalPlayerCount, so the seat-freed signal must not fire.
         await using var context = CreateContext(nameof(ChangeVoteAsync_SelectedSpectatorVotesNo_SetsIsSelectedFalseButReturnsFalse));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
         var signup = MakeSignupEntity(1, questId: 1, isSelected: true, role: SignupRole.Spectator);
         context.PlayerSignups.Add(signup);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -298,8 +315,94 @@ public class PlayerSignupRepositoryTests
         candidate.Should().BeNull();
     }
 
+    // -------------------------------------------------------------------
+    // GetByIdWithQuestAsync (cross-group regression coverage — RemovePlayerSignup's lookup)
+    // -------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetByIdWithQuestAsync_ForSignupOnOtherGroupsQuest_ReturnsNullWhenActiveGroupDiffers()
+    {
+        // Arrange: seed the group-2 quest/signup via a null-active-group context (sees all),
+        // then re-read through a context whose active group is 1.
+        var seedGroupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using (var seedContext = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupOnOtherGroupsQuest_ReturnsNullWhenActiveGroupDiffers), seedGroupContext))
+        {
+            await SeedQuestAndUserAsync(seedContext, questId: 2, playerId: 201, groupId: 2);
+            seedContext.PlayerSignups.Add(MakeSignupEntity(1, questId: 2, isSelected: false));
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupOnOtherGroupsQuest_ReturnsNullWhenActiveGroupDiffers), activeGroupContext);
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var result = await repository.GetByIdWithQuestAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert: the required Quest Include folds the Quest global query filter into the join,
+        // so a signup on an out-of-group quest is invisible through this lookup
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetByIdWithQuestAsync_ForSignupInActiveGroup_ReturnsSignupWithQuestGroupId()
+    {
+        // Arrange
+        var seedGroupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using (var seedContext = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupInActiveGroup_ReturnsSignupWithQuestGroupId), seedGroupContext))
+        {
+            await SeedQuestAndUserAsync(seedContext, questId: 1, playerId: 101, groupId: 1);
+            seedContext.PlayerSignups.Add(MakeSignupEntity(1, questId: 1, isSelected: false));
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(GetByIdWithQuestAsync_ForSignupInActiveGroup_ReturnsSignupWithQuestGroupId), activeGroupContext);
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var result = await repository.GetByIdWithQuestAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Quest.GroupId.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ForSignupOnOtherGroupsQuest_ReturnsNullViaPlayerSignupQueryFilter()
+    {
+        // Arrange: seed the group-2 quest/signup via a null-active-group context (sees all).
+        var seedGroupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using (var seedContext = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_ReturnsNullViaPlayerSignupQueryFilter), seedGroupContext))
+        {
+            await SeedQuestAndUserAsync(seedContext, questId: 2, playerId: 201, groupId: 2);
+            seedContext.PlayerSignups.Add(MakeSignupEntity(1, questId: 2, isSelected: false));
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // PlayerSignupEntity now carries its own HasQueryFilter (scoped through the required Quest
+        // navigation), so even the base GetByIdAsync (BaseRepository's DbSet.FindAsync, which has no
+        // explicit Include on Quest) is automatically group-scoped — EF Core applies global query
+        // filters regardless of which navigations a specific query includes. Callers no longer need
+        // to pre-validate the target via a filtered quest.PlayerSignups navigation for this to be safe.
+        var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(GetByIdAsync_ForSignupOnOtherGroupsQuest_ReturnsNullViaPlayerSignupQueryFilter), activeGroupContext);
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var result = await repository.GetByIdAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
     private sealed class TestActiveGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId => null;
+    }
+
+    private sealed class MutableTestGroupContext : IActiveGroupContext
+    {
+        public int? ActiveGroupId { get; set; }
     }
 }

@@ -9,7 +9,7 @@
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
 - ✅ **v6.1 Bugfixes** — Phases 38–42 (shipped 2026-07-04)
-- 🚧 **v7.0 Backlog Cleanup** — Phases 43–48 (in progress)
+- 🚧 **v7.0 Backlog Cleanup** — Phases 43–50 (in progress)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; issue #78 is now delivered by v7.0 Phases 45–46._
 
@@ -115,9 +115,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 </details>
 
 <details open>
-<summary>🚧 v7.0 Backlog Cleanup (Phases 43–48) — IN PROGRESS</summary>
+<summary>🚧 v7.0 Backlog Cleanup (Phases 43–50) — IN PROGRESS</summary>
 
-**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus two ad-hoc fixes folded in along the way (Phases 47–48).
+**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–50).
 
 - [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
 - [x] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (completed 2026-07-04)
@@ -125,6 +125,8 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [ ] Phase 46: Client-Side Crop UI — Users crop character/DM profile photos in-browser before saving, with the crop applied everywhere a photo can be uploaded
 - [x] Phase 47: Group Membership Email Notification Fix — Reroute `GroupController.AddMember` through the shared `CreateOrAddToGroupAsync` method so adding an existing user to a group sends the same notification email `CreateMember`/`CreateUser` already send (completed 2026-07-04)
 - [x] Phase 48: Open Board Action on Platform Group Index — Add an "Open Board" button to the `/platform/group` index table reusing `GroupPickerController.SelectGroup`, so a SuperAdmin can jump straight to a group's quest board (completed 2026-07-04)
+- [x] Phase 49: Fix Guild Members page missing group/tenant filtering — Close cross-group leaks on GuildMembersController (Character list/details/picture), DungeonMasterController (DM profile view/edit/picture), and QuestController.RemovePlayerSignup; CharacterEntity gets a real GroupId column + query filter; UserTransaction and PlayerSignup incidental scoping hardened (completed 2026-07-05)
+- [x] Phase 50: Fix quest edit page: show edit button for campaign quests and align field visibility with create page (completed 2026-07-05)
 
 </details>
 
@@ -286,3 +288,38 @@ Plans:
 Plans:
 
 - [x] 48-01-PLAN.md — Add "Open Board" POST-form button (left of Members) to the desktop and mobile Platform Group index views, plus human verification
+
+### Phase 49: Fix Guild Members page missing group/tenant filtering
+
+**Goal:** `GuildMembersController` (Guild Members list/details/picture), `DungeonMasterController` (DM profile view/edit/picture), and `QuestController.RemovePlayerSignup` stop leaking data/mutations across groups — all three currently let any authenticated user view (and, for DM profiles and player-signup removal, an Admin overwrite/delete) another group's characters, DM profiles, or player signups by ID, with no group-membership check on the target. `CharacterEntity` gets a real `GroupId` column (migration, backfilled to 1) and an automatic EF Core global query filter, mirroring `QuestEntity`/`ShopItemEntity` exactly, rather than a manual join. `UserTransaction`'s currently-incidental group-scoping (verified safe today via an EF Core inner-join side effect, not by design) is documented, tested, and its one unguarded call site closed. `PlayerSignupEntity`'s identical incidental-scoping gap (found during this phase's research) gets the same hardening, plus a real fix for the one independently-exploitable path (`RemovePlayerSignup`).
+**Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 49-CONTEXT.md decisions D-01–D-13, including D-09a)
+**Depends on:** Phase 48
+**Plans:** 4/4 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 49-01-PLAN.md — CharacterEntity GroupId column + migration (backfill to 1) + no-null-escape-hatch query filter + FK config + all QuestBoardContext transitive-filter comment corrections + GetCharacterProfilePictureAsync rewrite + Create-POST group stamp + CharacterRepositoryTests + TestDataHelper GroupId fix (D-01/D-02/D-03/D-04)
+
+**Wave 2** *(all three parallel; each depends only on Wave 1's settled QuestBoardContext.cs)*
+
+- [x] 49-02-PLAN.md — DungeonMasterController target-group-membership check via GetGroupRoleByIdAsync on Profile/EditProfile(GET+POST)/GetDMProfilePicture, 404 for cross-group + SuperAdmin-no-group, schema unchanged, + integration tests (D-06/D-07/D-08/D-09/D-09a)
+- [x] 49-03-PLAN.md — UserTransaction hardening: ReturnOrSellItemAsync uses Include-protected GetTransactionWithDetailsAsync + UserTransactionRepositoryTests cross-group regression (D-10/D-11)
+- [x] 49-04-PLAN.md — PlayerSignup hardening: Quest-including lookup + RemovePlayerSignup target-Quest group check (404) + PlayerSignupRepositoryTests cross-group regression (D-12/D-13)
+
+### Phase 50: Fix quest edit page: show edit button for campaign quests and align field visibility with create page
+
+**Goal:** Campaign quests are fully manageable on par with OneShot quests: the Manage page exposes Edit and Delete actions for Campaign quests, and the Edit page hides the four OneShot-only fields (Challenge Rating, Total Player Count, DM-Session-Only, Proposed Dates) for Campaign quests exactly as the Create page already does — with the Edit POST validation path hardened so an invalid Campaign edit re-renders instead of throwing.
+**Requirements**: Ad-hoc bug-fix phase — no formal REQ-IDs; mapped to CONTEXT decisions D-01 through D-06.
+**Depends on:** Phase 49
+**Plans:** 3/3 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 50-01-PLAN.md — Wave 0 failing integration tests: Campaign Manage Edit/Delete links, Edit page field-hide (Campaign) / field-show (OneShot regression), Edit POST invalid-ModelState returns 200 (Pitfall 3 guard), desktop + mobile (D-01–D-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 50-02-PLAN.md — Manage page Campaign action row: add Edit Quest + Delete on desktop and mobile, reusing OneShot markup and the existing deleteQuest JS (D-01/D-02/D-03; mobile Edit = btn-secondary per Pitfall 1)
+- [x] 50-03-PLAN.md — Edit page field-hiding: @if (boardType != Campaign) wrapper on Edit.cshtml/Edit.Mobile.cshtml + ViewBag.BoardType in Edit GET and Edit POST failure path (D-04/D-05, Pitfall 3 fix; mobile HasExistingSignups banner left ungated per Pitfall 2)
