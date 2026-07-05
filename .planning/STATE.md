@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 47
-current_phase_name: "Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob"
+current_phase: 49
+current_phase_name: fix-guild-members-page-missing-group-tenant-filtering
 status: executing
 stopped_at: Phase 49 context gathered
-last_updated: "2026-07-05T18:28:39.526Z"
-last_activity: 2026-07-04
-last_activity_desc: Phase 44 complete, transitioned to Phase 47
+last_updated: "2026-07-05T18:31:32.772Z"
+last_activity: 2026-07-05
+last_activity_desc: Phase 49 execution started
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 7
+  total_plans: 11
   completed_plans: 7
-  percent: 80
+  percent: 64
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 47 — Group Membership Email Notification Fix
+**Current focus:** Phase 49 — fix-guild-members-page-missing-group-tenant-filtering
 
 ## Current Position
 
-Phase: 47 — Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-04 — Phase 44 complete, transitioned to Phase 47
+Phase: 49 (fix-guild-members-page-missing-group-tenant-filtering) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 49
+Last activity: 2026-07-05 — Phase 49 execution started
 
 ## Performance Metrics
 

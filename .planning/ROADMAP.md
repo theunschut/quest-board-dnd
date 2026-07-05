@@ -292,12 +292,12 @@ Plans:
 **Goal:** `GuildMembersController` (Guild Members list/details/picture), `DungeonMasterController` (DM profile view/edit/picture), and `QuestController.RemovePlayerSignup` stop leaking data/mutations across groups — all three currently let any authenticated user view (and, for DM profiles and player-signup removal, an Admin overwrite/delete) another group's characters, DM profiles, or player signups by ID, with no group-membership check on the target. `CharacterEntity` gets a real `GroupId` column (migration, backfilled to 1) and an automatic EF Core global query filter, mirroring `QuestEntity`/`ShopItemEntity` exactly, rather than a manual join. `UserTransaction`'s currently-incidental group-scoping (verified safe today via an EF Core inner-join side effect, not by design) is documented, tested, and its one unguarded call site closed. `PlayerSignupEntity`'s identical incidental-scoping gap (found during this phase's research) gets the same hardening, plus a real fix for the one independently-exploitable path (`RemovePlayerSignup`).
 **Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 49-CONTEXT.md decisions D-01–D-13, including D-09a)
 **Depends on:** Phase 48
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 49-01-PLAN.md — CharacterEntity GroupId column + migration (backfill to 1) + no-null-escape-hatch query filter + FK config + all QuestBoardContext transitive-filter comment corrections + GetCharacterProfilePictureAsync rewrite + Create-POST group stamp + CharacterRepositoryTests + TestDataHelper GroupId fix (D-01/D-02/D-03/D-04)
+- [x] 49-01-PLAN.md — CharacterEntity GroupId column + migration (backfill to 1) + no-null-escape-hatch query filter + FK config + all QuestBoardContext transitive-filter comment corrections + GetCharacterProfilePictureAsync rewrite + Create-POST group stamp + CharacterRepositoryTests + TestDataHelper GroupId fix (D-01/D-02/D-03/D-04)
 
 **Wave 2** *(all three parallel; each depends only on Wave 1's settled QuestBoardContext.cs)*
 
