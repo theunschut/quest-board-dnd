@@ -37,6 +37,8 @@ public class Character : IModel
 
     // Multi-class support: each character can have multiple classes with level distribution
     public IList<CharacterClass> Classes { get; set; } = [];
+
+    public int GroupId { get; set; }
 }
 
 public class CharacterClass : IModel

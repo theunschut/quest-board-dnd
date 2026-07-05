@@ -127,7 +127,8 @@ public static class TestDataHelper
         int level = 1,
         int status = 0, // Active
         int role = 1, // Backup
-        int dndClass = 5) // Fighter
+        int dndClass = 5, // Fighter
+        int groupId = 1)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -139,6 +140,7 @@ public static class TestDataHelper
             Level = level,
             Status = status,
             Role = role,
+            GroupId = groupId,
             CreatedAt = DateTime.UtcNow
         };
 
