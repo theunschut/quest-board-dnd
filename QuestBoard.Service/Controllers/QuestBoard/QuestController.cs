@@ -621,9 +621,18 @@ public class QuestController(
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> RemovePlayerSignup(int id)
     {
-        // Get the signup
-        var signup = await playerSignupService.GetByIdAsync(id);
+        // Get the signup along with its parent Quest, so we can confirm the quest belongs
+        // to the caller's active group before deleting anything.
+        var signup = await playerSignupService.GetByIdWithQuestAsync(id);
         if (signup == null)
+        {
+            return NotFound();
+        }
+
+        // An Admin caller only has authority over their own active group's signups. Without
+        // this check, an Admin in one group could delete a signup on another group's quest by
+        // guessing its id, since the AdminOnly policy alone only confirms the caller's role.
+        if (activeGroupContext.ActiveGroupId is not { } groupId || signup.Quest.GroupId != groupId)
         {
             return NotFound();
         }

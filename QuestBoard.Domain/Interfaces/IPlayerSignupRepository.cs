@@ -11,6 +11,11 @@ public interface IPlayerSignupRepository : IBaseRepository<PlayerSignup>
     Task<PlayerSignup?> GetByIdWithDateVotesAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns a signup with its parent Quest loaded, or null.
+    /// </summary>
+    Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Records a player's vote for the given proposed date, resetting the waitlist ordering
     /// timestamp on every call. Never rejects on capacity — the caller decides selection for a
     /// Yes vote based on a freshly computed seat count. Returns true when a seat was just freed
