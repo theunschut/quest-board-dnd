@@ -46,8 +46,8 @@ public class QuestWaitlistPromotedEmailJob(
             await emailService.SendAsync(recipientEmail, $"A seat opened up: {questTitle}", html);
 
             logger.LogInformation(
-                "Sent waitlist promotion email for quest {QuestId} to {RecipientEmail}.",
-                questId, recipientEmail);
+                "Sent waitlist promotion email for quest {QuestId}.",
+                questId);
         });
     }
 }
