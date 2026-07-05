@@ -87,7 +87,12 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     /// <inheritdoc/>
     public async Task<Quest?> GetQuestWithManageDetailsAsync(int id, CancellationToken token = default)
     {
+        // Two independent collection Includes (ProposedDates and PlayerSignups) in a single
+        // query force EF to cross-join both collections, multiplying row count combinatorially
+        // and triggering the MultipleCollectionIncludeWarning. AsSplitQuery() issues one query
+        // per collection instead, avoiding the row-count blowup without changing the loaded shape.
         var entity = await DbContext.Quests
+            .AsSplitQuery()
             .Include(q => q.ProposedDates)
                 .ThenInclude(pd => pd.PlayerVotes)
                     .ThenInclude(pv => pv.PlayerSignup)
