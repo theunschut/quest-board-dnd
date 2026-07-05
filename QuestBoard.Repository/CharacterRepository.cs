@@ -61,9 +61,11 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
     /// <inheritdoc/>
     public async Task<byte[]?> GetCharacterProfilePictureAsync(int id, CancellationToken token = default)
     {
-        return await DbContext.CharacterImages
+        // Rooted at the filtered Characters DbSet (not CharacterImages directly) so the
+        // CharacterEntity group filter applies — a cross-group id returns null here.
+        return await DbContext.Characters
             .Where(c => c.Id == id)
-            .Select(c => c.ImageData)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.ImageData : null)
             .FirstOrDefaultAsync(token);
     }
 

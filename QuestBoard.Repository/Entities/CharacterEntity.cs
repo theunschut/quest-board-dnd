@@ -43,4 +43,9 @@ public class CharacterEntity : IEntity
     public virtual ICollection<CharacterClassEntity> Classes { get; set; } = [];
 
     public virtual ICollection<PlayerSignupEntity> PlayerSignups { get; set; } = [];
+
+    public int GroupId { get; set; }
+
+    [ForeignKey(nameof(GroupId))]
+    public virtual GroupEntity Group { get; set; } = null!;
 }
