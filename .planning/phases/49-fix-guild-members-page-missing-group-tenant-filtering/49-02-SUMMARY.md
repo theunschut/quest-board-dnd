@@ -127,3 +127,12 @@ None - no external service configuration required.
 ---
 *Phase: 49-fix-guild-members-page-missing-group-tenant-filtering*
 *Completed: 2026-07-05*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs
+- FOUND: QuestBoard.IntegrationTests/Controllers/DungeonMasterControllerIntegrationTests.cs
+- FOUND: .planning/phases/49-fix-guild-members-page-missing-group-tenant-filtering/49-02-SUMMARY.md
+- FOUND commit: 5e2bd0d (Task 1)
+- FOUND commit: 64a53cf (Task 2)
+- FOUND commit: 1fc690c (docs: plan completion)
