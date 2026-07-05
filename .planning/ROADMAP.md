@@ -312,7 +312,7 @@ Plans:
 **Goal:** Campaign quests are fully manageable on par with OneShot quests: the Manage page exposes Edit and Delete actions for Campaign quests, and the Edit page hides the four OneShot-only fields (Challenge Rating, Total Player Count, DM-Session-Only, Proposed Dates) for Campaign quests exactly as the Create page already does — with the Edit POST validation path hardened so an invalid Campaign edit re-renders instead of throwing.
 **Requirements**: Ad-hoc bug-fix phase — no formal REQ-IDs; mapped to CONTEXT decisions D-01 through D-06.
 **Depends on:** Phase 49
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -321,5 +321,5 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 50-02-PLAN.md — Manage page Campaign action row: add Edit Quest + Delete on desktop and mobile, reusing OneShot markup and the existing deleteQuest JS (D-01/D-02/D-03; mobile Edit = btn-secondary per Pitfall 1)
-- [ ] 50-03-PLAN.md — Edit page field-hiding: @if (boardType != Campaign) wrapper on Edit.cshtml/Edit.Mobile.cshtml + ViewBag.BoardType in Edit GET and Edit POST failure path (D-04/D-05, Pitfall 3 fix; mobile HasExistingSignups banner left ungated per Pitfall 2)
+- [x] 50-02-PLAN.md — Manage page Campaign action row: add Edit Quest + Delete on desktop and mobile, reusing OneShot markup and the existing deleteQuest JS (D-01/D-02/D-03; mobile Edit = btn-secondary per Pitfall 1)
+- [x] 50-03-PLAN.md — Edit page field-hiding: @if (boardType != Campaign) wrapper on Edit.cshtml/Edit.Mobile.cshtml + ViewBag.BoardType in Edit GET and Edit POST failure path (D-04/D-05, Pitfall 3 fix; mobile HasExistingSignups banner left ungated per Pitfall 2)
