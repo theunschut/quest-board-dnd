@@ -119,7 +119,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<UserTransaction> ReturnOrSellItemAsync(int transactionId, int quantity, User user, CancellationToken token = default)
     {
-        var originalTransaction = await transactionRepository.GetByIdAsync(transactionId, token);
+        var originalTransaction = await transactionRepository.GetTransactionWithDetailsAsync(transactionId, token);
         if (originalTransaction == null || originalTransaction.UserId != user.Id || originalTransaction.TransactionType != TransactionType.Purchase)
         {
             throw new InvalidOperationException("Original purchase transaction not found or does not belong to the user.");
