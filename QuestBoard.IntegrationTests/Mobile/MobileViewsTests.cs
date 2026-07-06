@@ -734,30 +734,29 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // Guild Members index renders list rows on mobile UA
+    // Characters index renders list rows on mobile UA
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers links guild-members.mobile.css. The guild-member-row
+    /// Mobile UA on /Characters links characters.mobile.css. The character-member-row
     /// class only renders when characters exist; the CSS link renders unconditionally, so that is
     /// the stable smoke-test assertion here.
-    /// Note: guild-member-row presence with seeded characters is verified by Plan 04's own seeded test.
-    /// Test starts RED — GuildMembers/Index.Mobile.cshtml does not exist yet.
+    /// Note: character-member-row presence with seeded characters is verified by Plan 04's own seeded test.
     /// </summary>
     [Fact]
-    public async Task MobileGuildMembers_MobileUserAgent_RendersListRows()
+    public async Task MobileCharacters_MobileUserAgent_RendersListRows()
     {
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            _factory, "guild_browse16", "guild_browse16@test.com");
+            _factory, "char_browse16", "char_browse16@test.com");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/GuildMembers");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/Characters");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("guild-members.mobile.css");
+        html.Should().Contain("characters.mobile.css");
     }
 
     // -----------------------------------------------------------------------
@@ -765,8 +764,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers/Details/{id} renders character-detail-card glass card
-    /// and links character-detail.mobile.css. Test starts RED — Details.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Characters/Details/{id} renders character-detail-card glass card
+    /// and links character-detail.mobile.css.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterDetails_ReturnsSuccessAndMobileLayout()
@@ -775,7 +774,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
             _factory, "char_det17", "char_det17@test.com");
         var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, ownerUser.Id, "Aria Swiftblade");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"/GuildMembers/Details/{character.Id}");
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Characters/Details/{character.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -791,8 +790,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers/Create renders character-form-card glass card form
-    /// and links character-form.mobile.css. Test starts RED — Create.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Characters/Create renders character-form-card glass card form
+    /// and links character-form.mobile.css.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterCreate_ReturnsSuccessAndMobileLayout()
@@ -800,7 +799,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "char_cre17", "char_cre17@test.com");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/GuildMembers/Create");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/Characters/Create");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -816,8 +815,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers/Edit/{id} renders character-form-card glass card form
-    /// and links character-form.mobile.css. Test starts RED — Edit.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Characters/Edit/{id} renders character-form-card glass card form
+    /// and links character-form.mobile.css.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterEdit_ReturnsSuccessAndMobileLayout()
@@ -826,7 +825,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
             _factory, "char_edi17", "char_edi17@test.com");
         var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, ownerUser.Id, "Bram Ironfist");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"/GuildMembers/Edit/{character.Id}");
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Characters/Edit/{character.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
