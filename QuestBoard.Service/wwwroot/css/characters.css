@@ -1,21 +1,21 @@
 /* ========================================
-   GUILD MEMBERS - CHARACTER CARDS
+   CHARACTERS - CHARACTER CARDS
    ======================================== */
 
-.guild-members-page h1 {
+.characters-page h1 {
     color: #F4E4BC;
     font-family: 'Cinzel', serif;
     text-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
 }
 
-.guild-members-page .character-grid {
+.characters-page .character-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1.5rem;
     padding: 0.5rem 0;
 }
 
-.guild-members-page .character-card {
+.characters-page .character-card {
     background: linear-gradient(145deg, rgba(20, 20, 30, 0.95), rgba(30, 30, 40, 0.95));
     border: 2px solid rgba(255, 193, 7, 0.4);
     border-radius: 12px;
@@ -26,7 +26,7 @@
     cursor: pointer;
 }
 
-.guild-members-page .character-card::before {
+.characters-page .character-card::before {
     content: '';
     position: absolute;
     top: 0;
@@ -38,11 +38,11 @@
     z-index: 1;
 }
 
-.guild-members-page .character-card:hover::before {
+.characters-page .character-card:hover::before {
     left: 100%;
 }
 
-.guild-members-page .character-card::after {
+.characters-page .character-card::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -57,11 +57,11 @@
     z-index: 2;
 }
 
-.guild-members-page .character-card:hover::after {
+.characters-page .character-card:hover::after {
     opacity: 1;
 }
 
-.guild-members-page .character-card:hover {
+.characters-page .character-card:hover {
     transform: translateY(-8px) scale(1.02);
     border-color: #ffc107;
     box-shadow: 0 12px 35px rgba(255, 193, 7, 0.5),
@@ -69,47 +69,47 @@
                 inset 0 0 20px rgba(255, 193, 7, 0.1);
 }
 
-.guild-members-page .character-card:active {
+.characters-page .character-card:active {
     transform: translateY(-6px) scale(1.01);
     box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4),
                 0 0 30px rgba(255, 193, 7, 0.25);
 }
 
-.guild-members-page .character-card:focus-within {
+.characters-page .character-card:focus-within {
     outline: none;
     border-color: #ffc107;
     box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.3),
                 0 12px 35px rgba(255, 193, 7, 0.5);
 }
 
-.guild-members-page .character-card.character-retired {
+.characters-page .character-card.character-retired {
     opacity: 0.7;
     border-color: rgba(108, 117, 125, 0.5);
 }
 
-.guild-members-page .character-card.character-retired:hover {
+.characters-page .character-card.character-retired:hover {
     border-color: rgba(108, 117, 125, 0.8);
     box-shadow: 0 12px 35px rgba(108, 117, 125, 0.3);
 }
 
-.guild-members-page .character-card.character-dead {
+.characters-page .character-card.character-dead {
     opacity: 0.5;
     border-color: rgba(33, 37, 41, 0.6);
     filter: grayscale(60%);
 }
 
-.guild-members-page .character-card.character-dead:hover {
+.characters-page .character-card.character-dead:hover {
     border-color: rgba(33, 37, 41, 0.9);
     box-shadow: 0 12px 35px rgba(33, 37, 41, 0.4);
 }
 
-.guild-members-page .character-card-content {
+.characters-page .character-card-content {
     padding: 1.25rem;
     position: relative;
     z-index: 3;
 }
 
-.guild-members-page .character-image {
+.characters-page .character-image {
     position: relative;
     width: 100%;
     height: 200px;
@@ -124,12 +124,12 @@
     transition: all 0.3s ease;
 }
 
-.guild-members-page .character-card:hover .character-image {
+.characters-page .character-card:hover .character-image {
     box-shadow: 0 6px 20px rgba(255, 193, 7, 0.3);
     transform: scale(1.02);
 }
 
-.guild-members-page .character-image img {
+.characters-page .character-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -137,11 +137,11 @@
     transition: transform 0.3s ease;
 }
 
-.guild-members-page .character-card:hover .character-image img {
+.characters-page .character-card:hover .character-image img {
     transform: scale(1.05);
 }
 
-.guild-members-page .character-placeholder {
+.characters-page .character-placeholder {
     width: 100%;
     height: 100%;
     display: flex;
@@ -152,12 +152,12 @@
     transition: all 0.3s ease;
 }
 
-.guild-members-page .character-card:hover .character-placeholder {
+.characters-page .character-card:hover .character-placeholder {
     color: rgba(255, 193, 7, 0.6);
     background: linear-gradient(135deg, rgba(139, 69, 19, 0.4), rgba(160, 82, 45, 0.4));
 }
 
-.guild-members-page .retired-badge {
+.characters-page .retired-badge {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
@@ -172,7 +172,7 @@
     z-index: 10;
 }
 
-.guild-members-page .dead-badge {
+.characters-page .dead-badge {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
@@ -187,7 +187,7 @@
     z-index: 10;
 }
 
-.guild-members-page .main-badge {
+.characters-page .main-badge {
     position: absolute;
     top: 0.5rem;
     left: 0.5rem;
@@ -211,16 +211,16 @@
     }
 }
 
-.guild-members-page .character-info {
+.characters-page .character-info {
     text-align: center;
     transition: all 0.3s ease;
 }
 
-.guild-members-page .character-card:hover .character-info {
+.characters-page .character-card:hover .character-info {
     transform: translateY(-2px);
 }
 
-.guild-members-page .character-name {
+.characters-page .character-name {
     font-family: 'Cinzel', serif;
     font-size: 1.3rem;
     font-weight: 700;
@@ -230,12 +230,12 @@
     transition: all 0.3s ease;
 }
 
-.guild-members-page .character-card:hover .character-name {
+.characters-page .character-card:hover .character-name {
     color: #ffc107;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 193, 7, 0.6);
 }
 
-.guild-members-page .character-class {
+.characters-page .character-class {
     color: #ffc107;
     font-weight: 600;
     font-size: 0.95rem;
@@ -243,49 +243,49 @@
     transition: all 0.3s ease;
 }
 
-.guild-members-page .character-card:hover .character-class {
+.characters-page .character-card:hover .character-class {
     color: #ffd54f;
 }
 
-.guild-members-page .character-level {
+.characters-page .character-level {
     color: rgba(244, 228, 188, 0.9);
     font-size: 0.9rem;
     font-weight: 500;
 }
 
-.guild-members-page .character-owner {
+.characters-page .character-owner {
     color: rgba(244, 228, 188, 0.7);
     font-size: 0.85rem;
 }
 
-.guild-members-page .character-card a {
+.characters-page .character-card a {
     text-decoration: none;
 }
 
-.guild-members-page .text-center i.fa-3x {
+.characters-page .text-center i.fa-3x {
     color: rgba(255, 193, 7, 0.3);
 }
 
-.guild-members-page .text-center h4 {
+.characters-page .text-center h4 {
     color: #F4E4BC;
 }
 
-.guild-members-page .text-center p.text-muted {
+.characters-page .text-center p.text-muted {
     color: rgba(244, 228, 188, 0.6);
 }
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
-    .guild-members-page .character-grid {
+    .characters-page .character-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
     
-    .guild-members-page .character-image {
+    .characters-page .character-image {
         height: 180px;
     }
     
-    .guild-members-page .character-card:hover {
+    .characters-page .character-card:hover {
         transform: translateY(-4px) scale(1.01);
     }
 }
@@ -301,6 +301,6 @@
     }
 }
 
-.guild-members-page .character-card:active::after {
+.characters-page .character-card:active::after {
     animation: character-card-ripple 0.6s ease-out;
 }
