@@ -65,7 +65,7 @@ public interface IQuestRepository : IBaseRepository<Quest>
     /// Updates a quest's editable properties and, when requested, reconciles its proposed dates.
     /// Returns the distinct players whose date votes were removed as a result, so the caller can notify them.
     /// </summary>
-    Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default);
+    Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default);
 
     /// <summary>
     /// Sets the recap text for a finalized quest.
