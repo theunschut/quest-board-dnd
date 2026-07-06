@@ -47,19 +47,18 @@ Exceptions: none. Notes-list item spacing uses `mb-3` between note cards (see Ne
 
 ## Typography
 
-This app has no declared type scale document — it inherits Bootstrap 5 defaults with two decorative overrides. Mirror exactly:
+This app has no declared type scale document — it inherits Bootstrap 5 defaults. The wider app's Bootstrap heading scale (h1–h5) spans more sizes than a single feature should use; **for Contacts views specifically**, the active type scale used across Index/Details/Edit/Create (desktop + mobile) is capped at exactly 4 sizes:
 
 | Role | Size | Weight | Line Height | Source |
 |------|------|--------|-------------|--------|
-| Body / form text | 16px (Bootstrap `1rem` default) | 400 | 1.5 (Bootstrap default) | `.form-control`, `.form-control-plaintext` |
-| Label | 16px, `.form-label` | 700 (`fw-bold` on Details labels) | 1.5 | `Views/Characters/Details.cshtml` labels use `fw-bold` |
-| Card heading (h3/h4/h5) | Bootstrap default h-scale (h3 ≈ 1.75rem/28px, h4 ≈ 1.5rem/24px, h5 ≈ 1.25rem/20px) | 500 (Bootstrap default heading weight) | 1.2 | `modern-card-header` titles |
-| Page display (h1, decorative) | Bootstrap default h1 (2.5rem/40px) | 700, `'Cinzel', serif` | 1.2 | `.characters-page h1` — optional for Contacts Index title |
-| Note text | 16px | 400 | 1.5 | New — see Notes Card spec |
+| Card heading | 24px (Bootstrap h4, `1.5rem`) | 500 (Bootstrap default heading weight) | 1.2 | `modern-card-header` titles — every Contacts card header (Index section header, Details Description/Notes/Actions cards, Edit/Create form header) uses **h4/24px specifically**, not a range. Do not vary this per screen. |
+| Body / form text / label / note text | 16px (Bootstrap `1rem` default) | 400 (body/note text), 700 `fw-bold` (labels) | 1.5 (Bootstrap default) | `.form-control`, `.form-control-plaintext`, `Views/Characters/Details.cshtml` labels, Notes Card body text |
 | Note metadata (author + timestamp) | 14px (`small`/`text-muted`) | 400 | 1.5 | New — matches `character-owner`/`small.text-muted` precedent |
-| Badge text | 12px (`fs-6` badges resolve ~1rem in Bootstrap 5.3, but existing badges use plain `.badge` default ~0.75em relative) | 600–700 | 1 | Matches `.retired-badge`/`.dead-badge`/`.main-badge` (0.75rem, font-weight 600–700) |
+| Badge text | 12px (`.badge` default ~0.75rem) | 600–700 | 1 | Matches `.retired-badge`/`.dead-badge`/`.main-badge` (0.75rem, font-weight 600–700). Badges are a UI-convention element (status chips), not body/heading copy — counted here as the 4th size because Contacts views render it directly (Hidden badge), not omitted. |
 
-Exactly 4 sizes in practice for new UI (16px body/label, 14px metadora/small, 20–28px card headings, badge ~12px) — consistent with the existing app, which itself doesn't enforce a strict 3-4-size discipline but stays within this range everywhere. Do not introduce a 5th distinct size.
+That is the complete set: **24 / 16 / 14 / 12px — 4 sizes, no more.** Do not introduce a 5th distinct size anywhere in Contacts views.
+
+**Excluded from this phase's active scale (footnote, not a 5th size):** the wider app's `.characters-page h1` decorative treatment (Bootstrap h1, 40px, `'Cinzel', serif`, weight 700) and the h3/h5 variants of the Bootstrap heading scale (28px/20px) exist elsewhere in the app but are **not used by any Contacts view**. If a future Contacts screen wants a decorative page-level `<h1>` for visual parity with Characters, that would be an explicit, separately-reviewed exception to this contract — not an implicit 5th size. As specified, no Contacts view in this phase renders an h1, h3, or h5.
 
 ---
 
@@ -168,6 +167,8 @@ These are the 4 genuinely new interaction patterns this phase introduces. Everyt
 ---
 
 ## Mirrored Patterns (brief — see `Views/Characters/*.cshtml` for full reference)
+
+**Visual focal point:** Index — the card grid is the sole focal point; no competing hero element or banner above it. Details — the portrait card (left column) draws the eye first via its dark-gradient/hover-glow treatment, with the Notes card as the secondary reading focus below the Description card in the right column.
 
 These carry over near-verbatim from the Characters feature with only label/field substitutions — no new design decisions needed:
 
