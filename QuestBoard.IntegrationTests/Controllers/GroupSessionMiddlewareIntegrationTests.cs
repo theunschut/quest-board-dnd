@@ -39,11 +39,11 @@ public class GroupSessionMiddlewareIntegrationTests(WebApplicationFactoryBase fa
         }
     }
 
-    // SuperAdmin has no group context by design (system-wide access) — the
-    // middleware's role check must short-circuit BEFORE the null-group check so a SuperAdmin
-    // is never caught by the group-session redirect (avoids a redirect loop for that role).
+    // SuperAdmin has no special exemption from the "must have an active group" gate — a
+    // null ActiveGroupId is ambiguous (which group's data should render?), so SuperAdmin is
+    // redirected to the picker exactly like every other role, on every group-scoped route.
     [Fact]
-    public async Task SuperAdmin_NoActiveGroup_NotRedirectedByMiddleware()
+    public async Task SuperAdmin_NoActiveGroup_RedirectsToGroupPick()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
@@ -53,11 +53,9 @@ public class GroupSessionMiddlewareIntegrationTests(WebApplicationFactoryBase fa
         {
             var response = await client.GetAsync("/quests", TestContext.Current.CancellationToken);
 
-            // The key assertion: the middleware must not redirect SuperAdmin to /groups/pick.
-            // The request may still 200 (handled by [Authorize]) or redirect elsewhere entirely,
-            // but it must never be routed to the group picker by this middleware.
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
             var location = response.Headers.Location?.ToString() ?? string.Empty;
-            location.Should().NotContain("/groups/pick");
+            location.Should().Contain("/groups/pick");
         }
         finally
         {
@@ -137,6 +135,33 @@ public class GroupSessionMiddlewareIntegrationTests(WebApplicationFactoryBase fa
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "protectedareauser", "protectedarea@example.com", roles: ["DungeonMaster"]);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+            var location = response.Headers.Location?.ToString() ?? string.Empty;
+            location.Should().Contain("/groups/pick");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    // Same protected-area sweep as above, but for SuperAdmin: with no
+    // exempt-list entry covering Calendar/DungeonMaster/QuestLog, SuperAdmin must be gated on
+    // these routes exactly like any other role when no active group is selected.
+    [Theory]
+    [InlineData("/Calendar")]
+    [InlineData("/DungeonMaster/EditProfile")]
+    [InlineData("/QuestLog")]
+    public async Task SuperAdmin_NoActiveGroup_ProtectedAreaRedirectsToGroupPick(string path)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
 
         factory.TestGroupContext.ActiveGroupId = null;
         try
