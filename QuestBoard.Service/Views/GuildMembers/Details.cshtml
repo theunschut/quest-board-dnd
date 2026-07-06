@@ -3,7 +3,7 @@
 @model CharacterViewModel
 @{
     ViewData["Title"] = Model.Name;
-    var isOwner = Model.IsOwner;
+    var canEdit = Model.CanEdit;
     var isRetired = Model.Status == CharacterStatus.Retired;
 }
 
@@ -56,7 +56,7 @@
                 </div>
             </div>
 
-            @if (isOwner)
+            @if (canEdit)
             {
                 <!-- Actions -->
                 <div class="card modern-card">
