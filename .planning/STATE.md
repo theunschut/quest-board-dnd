@@ -4,16 +4,16 @@ milestone: v7.0
 milestone_name: Backlog Cleanup
 current_phase: 58
 status: executing
-stopped_at: Phase 57 context gathered
-last_updated: "2026-07-06T18:37:34.574Z"
+stopped_at: Phase 57 UI-SPEC approved
+last_updated: "2026-07-06T19:14:00.054Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 58 complete
 progress:
-  total_phases: 14
+  total_phases: 15
   completed_phases: 13
-  total_plans: 31
+  total_plans: 37
   completed_plans: 31
-  percent: 93
+  percent: 84
 current_phase_name: rename-the-guild-members-feature-to-characters-everywhere-co
 ---
 
@@ -56,6 +56,7 @@ Last activity: 2026-07-06 — Phase 58 complete
 
 ### Roadmap Evolution
 
+- Phase 59 added: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
 - Phase 58 added: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
 - Phase 57 added: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
 - Phase 56 added: Allow admins to edit characters owned by other players
@@ -98,9 +99,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-06T18:37:34.559Z
-Stopped at: Phase 57 context gathered
-Resume file: .planning/phases/57-add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na/57-CONTEXT.md
+Last session: 2026-07-06T19:14:00.041Z
+Stopped at: Phase 57 UI-SPEC approved
+Resume file: .planning/phases/57-add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na/57-UI-SPEC.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps
