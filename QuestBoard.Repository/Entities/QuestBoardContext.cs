@@ -297,7 +297,7 @@ public class QuestBoardContext(
         // CharacterEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
         // do above. With no active group selected, every character query returns nothing rather than
         // everyone's characters across every group. Do not "fix" this to match the Quest/ShopItem shape —
-        // an empty guild roster is the intended behavior here, not an oversight.
+        // an empty character roster is the intended behavior here, not an oversight.
         modelBuilder.Entity<CharacterEntity>()
             .HasQueryFilter(e =>
                 activeGroupContext.ActiveGroupId != null &&
