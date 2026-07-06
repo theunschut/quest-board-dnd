@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 59
+current_phase: 60
+current_phase_name: stop-creating-aspnetuserroles-entries-for-new-users-role-ass
 status: executing
 stopped_at: Phase 60 context gathered
-last_updated: "2026-07-06T21:11:19.297Z"
+last_updated: "2026-07-06T21:17:43.719Z"
 last_activity: 2026-07-06
-last_activity_desc: Phase 59 complete
+last_activity_desc: Phase 57 complete (Phases 58-59 already complete; Phase 60 remains the active phase)
 progress:
   total_phases: 16
   completed_phases: 15
-  total_plans: 39
+  total_plans: 40
   completed_plans: 39
   percent: 94
-current_phase_name: add-a-rewards-field-to-quests-an-open-text-field-between-des
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: add-a-rewards-field-to-quests-an-open-text-field-between-des
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 59 — add-a-rewards-field-to-quests-an-open-text-field-between-des
+**Current focus:** Phase 60 — Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
 
 ## Current Position
 
-Phase: 59
+Phase: 60 — Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-06 — Phase 59 complete
+Status: Executing Phase 60
+Last activity: 2026-07-06 — Phase 57 complete (Phases 58-59 already complete)
 
 ## Performance Metrics
 

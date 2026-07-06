@@ -133,7 +133,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] Phase 54: Fix mobile signup for finalized quests (inconsistent with desktop) (completed 2026-07-06)
 - [x] Phase 55: Fix cross-tenant quest leak on quest board — Closed a SuperAdmin null-ActiveGroupId escape hatch (root cause), hardened 7 EF Core query filters to fail-closed, fixed a SelectGroup IDOR gap, and added interval-gated stale-membership re-validation (completed 2026-07-06)
 - [x] Phase 56: Allow admins to edit characters owned by other players — Widened GuildMembersController's owner-only guard to owner-OR-admin across Edit/Delete/ToggleRetirement via a shared CanManageCharacterAsync helper (completed 2026-07-06)
-- [ ] Phase 57: Add an NPC directory — DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location) with a player-and-DM-editable notes list, plus dedicated Index/Details/Edit views mirroring the Characters pattern
+- [x] Phase 57: Add an NPC directory — DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location) with a player-and-DM-editable notes list, plus dedicated Index/Details/Edit views mirroring the Characters pattern (completed 2026-07-06)
 - [x] Phase 58: Rename the Guild Members feature to Characters everywhere — Controller, routes, views, ViewModels, CSS, integration tests, and nav copy renamed so the terminology matches the Domain/Repository layers, with zero behavior change (completed 2026-07-06)
 - [x] Phase 59: Add a rewards field to quests — Optional freeform Rewards textarea between Description and Challenge Rating on Create/Edit/Follow-Up (desktop + mobile), shown as a gold `fa-coins` boxed callout below Description on Quest Details and QuestLog Details, hidden when empty (completed 2026-07-06)
 - [ ] Phase 60: Stop creating AspNetUserRoles entries for new users — Remove the stale Player-role write in `CreateUserAsync`, delete the dead per-group Identity-role API on both service layers, and align the test auth helper to seed AspNetUserRoles only for SuperAdmin; per-group roles stay in `UserGroups.GroupRole`, SuperAdmin untouched, no migration
@@ -283,7 +283,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete    | 2026-07-06 |
 | 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
 | 56. Allow admins to edit characters owned by other players | v7.0 | 1/1 | Complete | 2026-07-06 |
-| 57. Add an NPC directory | v7.0 | 6/6 | Complete   | 2026-07-06 |
+| 57. Add an NPC directory | v7.0 | 6/6 | Complete    | 2026-07-06 |
 | 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
 | 59. Add a rewards field to quests | v7.0 | 2/2 | Complete    | 2026-07-06 |
 
