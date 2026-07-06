@@ -61,6 +61,7 @@
     color: #1a1a1a;
     border-radius: 8px;
     padding: 12px;
+    white-space: pre-wrap;
 }
 
 /* Recap textarea — high-contrast for editability */

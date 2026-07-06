@@ -74,48 +74,6 @@ public class QuestLogController(
         return View(viewModel);
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = "DungeonMasterOnly")]
-    public async Task<IActionResult> UpdateRecap(int id, string recap, CancellationToken token = default)
-    {
-        var quest = await questService.GetQuestWithDetailsAsync(id, token);
-
-        if (quest == null)
-        {
-            return NotFound();
-        }
-
-        // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
-        // admitting closed campaign quests even though they never set FinalizedDate.
-        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
-            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
-            && !quest.DungeonMasterSession;
-        if (!isCompletedOneShot && !quest.IsClosed)
-        {
-            return BadRequest("Cannot update recap for a quest that is not completed.");
-        }
-
-        var currentUser = await userService.GetUserAsync(User);
-        if (currentUser == null)
-        {
-            return Challenge();
-        }
-
-        // Check if current user is the quest's DM or an admin
-        var isQuestDm = currentUser.Id == quest.DungeonMaster?.Id;
-        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
-
-        if (!isQuestDm && !isAdmin)
-        {
-            return Forbid();
-        }
-
-        await questService.UpdateQuestRecapAsync(id, recap, token);
-
-        return RedirectToAction("Details", new { id });
-    }
-
     [HttpGet]
     [Authorize(Policy = "DungeonMasterOnly")]
     public async Task<IActionResult> EditRecap(int id, CancellationToken token = default)

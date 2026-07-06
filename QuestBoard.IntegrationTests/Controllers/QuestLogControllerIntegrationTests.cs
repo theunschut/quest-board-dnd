@@ -259,81 +259,6 @@ public class QuestLogControllerIntegrationTests(WebApplicationFactoryBase factor
         content.Should().Contain($"/QuestLog/EditRecap/{quest.Id}");
     }
 
-    // Regression: UpdateRecap must not Forbid() a non-owner Admin.
-    [Fact]
-    public async Task UpdateRecap_NonOwnerAdmin_IsNotForbidden()
-    {
-        // Arrange
-        await TestDataHelper.ClearDatabaseAsync(factory.Services);
-        var dm = await AuthenticationHelper.CreateTestUserAsync(
-            factory.Services, "recapupdatedm", "recapupdatedm@example.com");
-        var quest = await TestDataHelper.CreateTestQuestAsync(
-            factory.Services, dm.Id, "Recap Update Quest", "Desc", 5, isFinalized: true);
-
-        using (var scope = factory.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
-            var questToUpdate = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
-            if (questToUpdate != null)
-            {
-                questToUpdate.FinalizedDate = DateTime.UtcNow.AddDays(-2);
-                await context.SaveChangesAsync(TestContext.Current.CancellationToken);
-            }
-        }
-
-        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "recapupdateadmin", "recapupdateadmin@example.com", roles: ["Admin"]);
-
-        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["recap"] = "Updated by a non-owner admin."
-        });
-
-        // Act
-        var response = await adminClient.PostAsync($"/QuestLog/UpdateRecap/{quest.Id}", formContent, TestContext.Current.CancellationToken);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
-
-    // A Player who is neither the quest's DM nor an Admin stays denied on UpdateRecap
-    // (proves the fix did not over-grant).
-    [Fact]
-    public async Task UpdateRecap_Player_IsForbiddenOrRedirected()
-    {
-        // Arrange
-        await TestDataHelper.ClearDatabaseAsync(factory.Services);
-        var dm = await AuthenticationHelper.CreateTestUserAsync(
-            factory.Services, "recapplayerdm", "recapplayerdm@example.com");
-        var quest = await TestDataHelper.CreateTestQuestAsync(
-            factory.Services, dm.Id, "Recap Player Quest", "Desc", 5, isFinalized: true);
-
-        using (var scope = factory.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
-            var questToUpdate = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
-            if (questToUpdate != null)
-            {
-                questToUpdate.FinalizedDate = DateTime.UtcNow.AddDays(-2);
-                await context.SaveChangesAsync(TestContext.Current.CancellationToken);
-            }
-        }
-
-        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "recapplayeruser", "recapplayeruser@example.com", roles: ["Player"]);
-
-        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["recap"] = "Should not be allowed."
-        });
-
-        // Act
-        var response = await playerClient.PostAsync($"/QuestLog/UpdateRecap/{quest.Id}", formContent, TestContext.Current.CancellationToken);
-
-        // Assert
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
-    }
-
     // A Player who is neither the quest's DM nor an Admin must be denied direct-URL access
     // to the dedicated recap-edit page (D-04: Forbid(), not the cross-tenant 404 convention).
     [Fact]
@@ -434,5 +359,43 @@ public class QuestLogControllerIntegrationTests(WebApplicationFactoryBase factor
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+    }
+
+    // A Player who is neither the quest's DM nor an Admin stays denied on the EditRecap POST
+    // (mirrors the GET denial in EditRecap_Player_IsForbidden — same two-layer auth check).
+    [Fact]
+    public async Task EditRecap_Post_Player_IsForbidden()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "editrecappostplayerdm", "editrecappostplayerdm@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, "Edit Recap Post Player Quest", "Desc", 5, isFinalized: true);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var questToUpdate = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            if (questToUpdate != null)
+            {
+                questToUpdate.FinalizedDate = DateTime.UtcNow.AddDays(-2);
+                await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "editrecappostplayeruser", "editrecappostplayeruser@example.com", roles: ["Player"]);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["recap"] = "Should not be allowed."
+        });
+
+        // Act
+        var response = await playerClient.PostAsync($"/QuestLog/EditRecap/{quest.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert — the app's cookie DefaultForbidScheme redirects instead of returning a literal 403.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
     }
 }
