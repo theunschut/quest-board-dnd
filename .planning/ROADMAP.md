@@ -444,11 +444,11 @@ Plans:
 
 **Wave 4**
 
-- [ ] 57-05-PLAN.md — Desktop views (Index/Details/Edit/Create) with flat alphabetical list, Show Hidden toggle, Hidden badges, collaborative notes UI + Contacts nav link (all users, both board types, desktop + mobile layouts)
+- [ ] 57-05-PLAN.md — Desktop views (Index/Details/Edit/Create) + contacts.css, built to 57-UI-SPEC fidelity: flat alphabetical grid, two-state Show Hidden toggle, secondary Hidden badges, Reveal/Hide action, collaborative notes UI with inline edit-in-place + Contacts nav link (all users, both board types, desktop + mobile layouts)
 
 **Wave 5**
 
-- [ ] 57-06-PLAN.md — Mobile views (Index/Details/Edit/Create.Mobile.cshtml, full D-18 parity) + blocking human verification of the whole feature
+- [ ] 57-06-PLAN.md — Mobile views (Index/Details/Edit/Create.Mobile.cshtml) + 3 mobile stylesheets, full D-18 parity with UI-SPEC copy/style fidelity + blocking human verification of the whole feature
 
 ### Phase 58: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
 
