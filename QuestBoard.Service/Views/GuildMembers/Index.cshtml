@@ -29,7 +29,7 @@
                 <div class="character-grid">
                     @foreach (var character in Model.MyCharacters)
                     {
-                        <div class="character-card @(character.Status == CharacterStatus.Retired ? "character-retired" : "")">
+                        <div class="character-card @(character.Status == CharacterStatus.Dead ? "character-dead" : character.Status == CharacterStatus.Retired ? "character-retired" : "")">
                             <a href="@Url.Action("Details", new { id = character.Id })" class="text-decoration-none">
                                 <div class="character-card-content">
                                     <div class="character-image">
@@ -41,6 +41,12 @@
                                         {
                                             <div class="character-placeholder">
                                                 <i class="fas fa-user fa-3x"></i>
+                                            </div>
+                                        }
+                                        @if (character.Status == CharacterStatus.Dead)
+                                        {
+                                            <div class="dead-badge">
+                                                <i class="fas fa-skull"></i> Dead
                                             </div>
                                         }
                                         @if (character.Status == CharacterStatus.Retired)
@@ -98,7 +104,7 @@
                 <div class="character-grid">
                     @foreach (var character in Model.OtherCharacters)
                     {
-                        <div class="character-card @(character.Status == CharacterStatus.Retired ? "character-retired" : "")">
+                        <div class="character-card @(character.Status == CharacterStatus.Dead ? "character-dead" : character.Status == CharacterStatus.Retired ? "character-retired" : "")">
                             <a href="@Url.Action("Details", new { id = character.Id })" class="text-decoration-none">
                                 <div class="character-card-content">
                                     <div class="character-image">
@@ -110,6 +116,12 @@
                                         {
                                             <div class="character-placeholder">
                                                 <i class="fas fa-user fa-3x"></i>
+                                            </div>
+                                        }
+                                        @if (character.Status == CharacterStatus.Dead)
+                                        {
+                                            <div class="dead-badge">
+                                                <i class="fas fa-skull"></i> Dead
                                             </div>
                                         }
                                         @if (character.Status == CharacterStatus.Retired)

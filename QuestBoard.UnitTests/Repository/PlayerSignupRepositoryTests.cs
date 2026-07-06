@@ -298,6 +298,39 @@ public class PlayerSignupRepositoryTests
     }
 
     [Fact]
+    public async Task GetTopWaitlistedCandidateAsync_NewJoinerFromJoinFinalizedQuest_OrdersCorrectlyAmongExistingWaitlist()
+    {
+        // Arrange: a pre-existing waitlisted Yes-voter (signed up 2 days ago, never changed vote)
+        // vs. a brand-new JoinFinalizedQuest-created joiner (signed up just now, also Yes, never changed vote)
+        await using var context = CreateContext(nameof(GetTopWaitlistedCandidateAsync_NewJoinerFromJoinFinalizedQuest_OrdersCorrectlyAmongExistingWaitlist));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 102);
+
+        var existingWaitlisted = MakeSignupEntity(1, questId: 1, isSelected: false, signupTime: DateTime.UtcNow.AddDays(-2));
+        existingWaitlisted.LastVoteChangeTime = null;
+        existingWaitlisted.DateVotes.Add(new PlayerDateVoteEntity { ProposedDateId = 5, PlayerSignupId = 1, Vote = (int)VoteType.Yes });
+
+        // Shape of a signup JoinFinalizedQuest creates when waitlisted: IsSelected = false,
+        // LastVoteChangeTime never set, SignupTime = entity default (DateTime.UtcNow at creation)
+        var newJoiner = MakeSignupEntity(2, questId: 1, isSelected: false, signupTime: DateTime.UtcNow);
+        newJoiner.LastVoteChangeTime = null;
+        newJoiner.DateVotes.Add(new PlayerDateVoteEntity { ProposedDateId = 5, PlayerSignupId = 2, Vote = (int)VoteType.Yes });
+
+        context.PlayerSignups.AddRange(existingWaitlisted, newJoiner);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var candidate = await repository.GetTopWaitlistedCandidateAsync(1, finalizedProposedDateId: 5, TestContext.Current.CancellationToken);
+
+        // Assert: existingWaitlisted (earlier SignupTime) wins the same-vote tiebreak — the new
+        // joiner participates correctly in the existing ordering, no special-casing needed
+        candidate.Should().NotBeNull();
+        candidate!.Id.Should().Be(1);
+    }
+
+    [Fact]
     public async Task GetTopWaitlistedCandidateAsync_NoWaitlistedPlayers_ReturnsNull()
     {
         // Arrange
@@ -396,9 +429,13 @@ public class PlayerSignupRepositoryTests
         result.Should().BeNull();
     }
 
+    // Tests using the single-arg CreateContext(databaseName) overload seed and query through the
+    // same context instance, so ActiveGroupId must be a concrete value the group-scoped filters
+    // let through — matching SeedQuestAndUserAsync's own default groupId of 1 — rather than null,
+    // which now yields zero rows fail-closed instead of every row fail-open.
     private sealed class TestActiveGroupContext : IActiveGroupContext
     {
-        public int? ActiveGroupId => null;
+        public int? ActiveGroupId => 1;
     }
 
     private sealed class MutableTestGroupContext : IActiveGroupContext

@@ -9,7 +9,7 @@
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
 - ✅ **v6.1 Bugfixes** — Phases 38–42 (shipped 2026-07-04)
-- 🚧 **v7.0 Backlog Cleanup** — Phases 43–51 (in progress)
+- 🚧 **v7.0 Backlog Cleanup** — Phases 43–55 (in progress)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; issue #78 is now delivered by v7.0 Phases 45–46._
 
@@ -115,9 +115,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 </details>
 
 <details open>
-<summary>🚧 v7.0 Backlog Cleanup (Phases 43–51) — IN PROGRESS</summary>
+<summary>🚧 v7.0 Backlog Cleanup (Phases 43–55) — IN PROGRESS</summary>
 
-**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–51).
+**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–55).
 
 - [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
 - [x] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (completed 2026-07-04)
@@ -128,6 +128,10 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] Phase 49: Fix Guild Members page missing group/tenant filtering — Close cross-group leaks on GuildMembersController (Character list/details/picture), DungeonMasterController (DM profile view/edit/picture), and QuestController.RemovePlayerSignup; CharacterEntity gets a real GroupId column + query filter; UserTransaction and PlayerSignup incidental scoping hardened (completed 2026-07-05)
 - [x] Phase 50: Fix quest edit page: show edit button for campaign quests and align field visibility with create page (completed 2026-07-05)
 - [x] Phase 51: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained (completed 2026-07-05)
+- [x] Phase 52: Add Dead status to CharacterStatus enum (completed 2026-07-06)
+- [x] Phase 53: Add dedicated Edit view for Quest recap so Details page is view-only (completed 2026-07-06)
+- [ ] Phase 54: Fix mobile signup for finalized quests (inconsistent with desktop)
+- [x] Phase 55: Fix cross-tenant quest leak on quest board — Closed a SuperAdmin null-ActiveGroupId escape hatch (root cause), hardened 7 EF Core query filters to fail-closed, fixed a SelectGroup IDOR gap, and added interval-gated stale-membership re-validation (completed 2026-07-06)
 
 </details>
 
@@ -209,12 +213,12 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55
 
-Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47 and 48 are ad-hoc additions folded in after the original v7.0 roadmap was created — Phase 48 depends on Phase 47.
+Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–55 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
+| ------- | ----------- | ---------------- | -------- | ----------- |
 | 1. Layer Dependency Fix | v1.0 | 2/2 | Complete | — |
 | 2. Email & Service Consolidation | v1.0 | 3/3 | Complete | — |
 | 3. Code Quality & Dead Code | v1.0 | 2/2 | Complete | — |
@@ -252,23 +256,27 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 34.1. Security & Bugs | v5.0 | 2/2 | Complete | 2026-07-02 |
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
-| 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
-| 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
-| 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
-| 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
-| 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
-| 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
-| 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete    | 2026-07-04 |
-| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete    | 2026-07-04 |
+| 35. Board Type Configuration | v6.0 | 3/3 | Complete | 2026-07-03 |
+| 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete | 2026-07-03 |
+| 37. Navigation & Access Control | v6.0 | 3/3 | Complete | 2026-07-03 |
+| 38. Group-Scoped User List | v6.1 | 1/1 | Complete | 2026-07-03 |
+| 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete | 2026-07-03 |
+| 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete | 2026-07-04 |
+| 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete | 2026-07-04 |
+| 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete | 2026-07-04 |
+| 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
+| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
-| 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete    | 2026-07-04 |
-| 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete    | 2026-07-04 |
-| 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete    | 2026-07-05 |
-| 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete    | 2026-07-05 |
-| 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete    | 2026-07-05 |
+| 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
+| 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
+| 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
+| 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete | 2026-07-05 |
+| 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete | 2026-07-05 |
+| 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete | 2026-07-06 |
+| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 2/2 | Complete   | 2026-07-06 |
+| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete    | 2026-07-06 |
+| 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
@@ -340,22 +348,58 @@ Plans:
 
 ### Phase 52: Add Dead status to CharacterStatus enum
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A character can be marked Dead (a third CharacterStatus value) via the existing Create/Edit Status dropdown, showing a distinct dark skull badge and dimmed card/row everywhere status is displayed, with the Retire/Reactivate toggle hidden for Dead characters and Dead characters auto-excluded from quest signup.
+**Requirements**: TBD (unmapped backlog item)
 **Depends on:** Phase 51
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 52 to break down)
+- [x] 52-01-PLAN.md - Add Dead enum value + Dead CSS + Dead badge/toggle-guard across all 4 GuildMembers views
 
 ### Phase 53: Add dedicated Edit view for Quest recap so Details page is view-only
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** The Quest Log Details page shows the session recap read-only for everyone (DM/Admin included) and the recap edit form moves to a new dedicated `QuestLog/EditRecap` page (its own GET+POST action pair + desktop/mobile views), reached via an inline "Add Recap"/"Edit Recap" button on Details — with direct-URL access to the edit page by a non-DM/non-Admin returning 403 Forbidden.
+**Requirements**: None (ad-hoc restructuring phase — no REQ-IDs; source of truth is 53-CONTEXT.md decisions D-01 through D-04)
 **Depends on:** Phase 52
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 53 to break down)
+- [x] 53-01-PLAN.md — EditRecapViewModel + EditRecap GET+POST actions on QuestLogController (two-layer DM/Admin auth, 403 for non-editors per D-04) + integration tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 53-02-PLAN.md — New EditRecap desktop + mobile views (modern-card, Save/Cancel per D-03) + Details/Details.Mobile read-only recap with inline Add/Edit entry-point button (D-01/D-02) + human verification
+
+### Phase 54: Fix mobile signup for finalized quests (inconsistent with desktop)
+
+**Goal:** Mobile users can join a finalized One-Shot quest via the same 3-button "Join This Quest" card desktop already has (Join as Player / Assistant DM / Spectator with a shared character select), and — for both platforms — a new Player joining a full finalized quest is placed on the existing waitlist (`IsSelected = false`) instead of being hard-rejected, with the "quest full" copy rewritten to match.
+**Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 54-CONTEXT.md decisions D-01 through D-06)
+**Depends on:** Phase 53
+**Plans:** 2/2 plans complete
+
+Plans:
+**Wave 1** *(both parallel — disjoint files)*
+
+- [x] 54-01-PLAN.md — JoinFinalizedQuest waitlists a full Player join instead of rejecting it (D-03/D-04/D-05) + new QuestJoinFinalizedQuestTests integration coverage + PlayerSignupRepositoryTests new-joiner ordering test
+- [x] 54-02-PLAN.md — Mobile "Join This Quest" card in Details.Mobile.cshtml (D-01/D-02) + locked D-06 quest-full copy on both Details views + MobileViewsTests coverage + real-device human verification
+
+### Phase 55: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
+
+**Goal:** A SuperAdmin (and every other role) views group-scoped boards structurally as a normal user — never seeing another tenant's data merged in. The confirmed root cause (a middleware escape hatch letting a null-ActiveGroupId SuperAdmin reach every group's board, combined with fail-open query filters) is closed, plus the related SelectGroup IDOR gap and a stale-membership re-validation gap.
+**Requirements**: None — ad-hoc security bug-fix phase (no REQUIREMENTS.md mapping, same pattern as Phases 47-51). Scope defined by CONTEXT.md decisions D-01 through D-06.
+**Depends on:** Phase 54
+**Plans:** 4/4 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 55-01-PLAN.md — Harden 7 group-scoped EF Core query filters to fail-closed (D-03, defense-in-depth)
+- [x] 55-02-PLAN.md — Reorder GroupSessionMiddleware so SuperAdmin is gated on group-scoped routes (D-01/D-02, root-cause fix) + correct stale CONCERNS.md
+- [x] 55-03-PLAN.md — Add SelectGroup membership check, 404 on non-member (D-04/D-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 55-04-PLAN.md — Interval-gated stale-membership re-validation in the middleware (D-06)

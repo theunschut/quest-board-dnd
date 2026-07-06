@@ -97,41 +97,30 @@
                 <!-- Session Recap -->
                 <div class="mb-4">
                     <h5 class="text-white"><i class="fas fa-book me-2"></i>Session Recap</h5>
-                    
-                    @if ((bool)ViewBag.CanEditRecap)
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Quest.Recap))
                     {
-                        <form asp-action="UpdateRecap" asp-route-id="@Model.Quest.Id" method="post">
-                            <div class="mb-3">
-                                <label for="recap" class="form-label text-white">
-                                    Write or update the session recap:
-                                </label>
-                                <textarea class="form-control" 
-                                          id="recap" 
-                                          name="recap" 
-                                          rows="10" 
-                                          placeholder="Describe what happened during this quest..."
-                                          style="background-color: rgba(255, 255, 255, 0.95) !important; color: #1a1a1a !important; border: 2px solid #8B4513; font-weight: 500;">@Model.Quest.Recap</textarea>
-                                <small class="form-text text-white">
-                                    Share the story of this adventure with your players!
-                                </small>
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Save Recap
-                            </button>
-                        </form>
+                        <div class="recap-display-box">
+                            @Model.Quest.Recap
+                        </div>
                     }
                     else
                     {
-                        @if (!string.IsNullOrWhiteSpace(Model.Quest.Recap))
-                        {
-                            <div class="recap-display-box">
-                                @Model.Quest.Recap
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-muted">No recap has been written for this quest yet.</p>
-                        }
+                        <p class="text-muted">No recap has been written for this quest yet.</p>
+                    }
+
+                    @if ((bool)ViewBag.CanEditRecap)
+                    {
+                        <a href="@Url.Action("EditRecap", "QuestLog", new { id = Model.Quest.Id })" class="btn btn-primary mt-3">
+                            @if (!string.IsNullOrWhiteSpace(Model.Quest.Recap))
+                            {
+                                <i class="fas fa-edit me-2"></i>@:Edit Recap
+                            }
+                            else
+                            {
+                                <i class="fas fa-plus me-2"></i>@:Add Recap
+                            }
+                        </a>
                     }
                 </div>
             </div>

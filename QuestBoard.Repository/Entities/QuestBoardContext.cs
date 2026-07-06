@@ -244,28 +244,30 @@ public class QuestBoardContext(
         // Global query filters for group isolation.
         // QuestEntity and ShopItemEntity carry a GroupId and are the two entities directly scoped
         // to a tenant, so every read is automatically restricted to the caller's active group.
-        // Null = see all (SuperAdmin/seeding contexts intentionally bypass group scoping)
+        // A null ActiveGroupId (no group selected yet, or a session that never picked one) must
+        // return zero rows, never every group's rows merged together — the caller has to pick a
+        // group before any group-scoped data is servable, full stop.
         // Lambda closes over activeGroupContext instance — re-evaluated per query, not at startup
         // CRITICAL: Do NOT capture activeGroupContext.ActiveGroupId into a local var here.
         //           That captures the value once (null at model-build time). Always reference the service.
         modelBuilder.Entity<QuestEntity>()
             .HasQueryFilter(e =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 e.GroupId == activeGroupContext.ActiveGroupId);
 
         modelBuilder.Entity<ShopItemEntity>()
             .HasQueryFilter(e =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 e.GroupId == activeGroupContext.ActiveGroupId);
 
         // ProposedDateEntity carries no GroupId of its own — it is scoped through its required Quest
         // navigation instead. EF Core's model validation otherwise warns that a required relationship
         // to a filtered entity can behave unexpectedly if the two aren't both filtered, so this mirrors
-        // QuestEntity's own filter shape (including the SuperAdmin "see all" escape hatch) rather than
-        // relying on every caller reaching this entity only through an already-filtered Quest.
+        // QuestEntity's own fail-closed filter shape rather than relying on every caller reaching this
+        // entity only through an already-filtered Quest.
         modelBuilder.Entity<ProposedDateEntity>()
             .HasQueryFilter(pd =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 pd.Quest.GroupId == activeGroupContext.ActiveGroupId);
 
         // PlayerDateVoteEntity carries no GroupId of its own. It has two required FKs
@@ -273,7 +275,7 @@ public class QuestBoardContext(
         // through ProposedDate is sufficient to keep it consistent with both filtered parents above.
         modelBuilder.Entity<PlayerDateVoteEntity>()
             .HasQueryFilter(pdv =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 pdv.ProposedDate.Quest.GroupId == activeGroupContext.ActiveGroupId);
 
         // PlayerSignupEntity carries no GroupId of its own — scoped through its required Quest
@@ -282,14 +284,14 @@ public class QuestBoardContext(
         // re-derive the target through an already-filtered quest.PlayerSignups navigation first.
         modelBuilder.Entity<PlayerSignupEntity>()
             .HasQueryFilter(ps =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 ps.Quest.GroupId == activeGroupContext.ActiveGroupId);
 
         // ReminderLogEntity carries no GroupId of its own — scoped through its required Quest
         // navigation, same shape as the other Quest-dependent entities above.
         modelBuilder.Entity<ReminderLogEntity>()
             .HasQueryFilter(r =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 r.Quest.GroupId == activeGroupContext.ActiveGroupId);
 
         // CharacterEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
@@ -319,10 +321,10 @@ public class QuestBoardContext(
         // (login, password reset, and email confirmation all fail silently)
         //
         // UserTransactionEntity carries no GroupId of its own — scoped through its required ShopItem
-        // navigation, same shape as the Quest-dependent entities above.
+        // navigation, same fail-closed shape as the Quest-dependent entities above.
         modelBuilder.Entity<UserTransactionEntity>()
             .HasQueryFilter(t =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 t.ShopItem.GroupId == activeGroupContext.ActiveGroupId);
     }
 }

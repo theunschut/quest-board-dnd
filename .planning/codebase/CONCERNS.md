@@ -285,11 +285,11 @@
 - Risk: Without a fix test, the POST-body-loss bug could regress if the middleware is refactored. Integration test should verify: 1) GET request → 302 redirect to picker, 2) POST request with expired session → 409 Conflict (once implemented).
 - Priority: Medium — add test *before* implementing the fix to prevent regression
 
-**SuperAdmin-specific authorization bypass scenarios:**
-- What's not tested: All SuperAdmin short-circuit paths (RequireActiveGroupId, GetEffectiveGroupRoleAsync, Hangfire job execution) are tested for "no crash" but not for "correct behavior". A SuperAdmin should see ALL groups' data, not just one.
-- Files: Test files across `QuestBoard.IntegrationTests/Controllers/*`
-- Risk: A SuperAdmin querying `/quests` should list all quests across all groups (via `IgnoreQueryFilters`), not zero quests from a null group. Current tests verify no null-dereference, but not correctness of cross-group results.
-- Priority: High — add `[Fact] public async Task QuestController_SuperAdmin_SeesAllGroupQuests()` to verify a SuperAdmin sees quests from multiple groups in one query
+**SuperAdmin-specific authorization bypass scenarios (corrected — Phase 55):**
+- Superseded: This entry previously asserted that a SuperAdmin querying `/quests` with no active group should list all quests across all groups (via `IgnoreQueryFilters`), treating a null-group "show everything" merge as intended behavior. That expectation was the confirmed root cause of a cross-tenant quest leak — a SuperAdmin with a null active group reached `/quests` and saw every group's quests merged together, because `GroupSessionMiddleware` blanket-bypassed the "must have an active group" gate for the SuperAdmin role on every route.
+- Corrected behavior: SuperAdmin is now gated on group-scoped routes exactly like every other role — a null active group redirects to `/groups/pick` (GET/HEAD) or returns 409 Conflict (non-idempotent verbs), the same as any other authenticated user. SuperAdmin's genuine group-agnostic workflows (the group picker, account management, platform-wide administration) remain exempt via the middleware's exempt-path list, which now runs before any role check.
+- Files: `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs`, `QuestBoard.IntegrationTests/Controllers/GroupSessionMiddlewareIntegrationTests.cs`
+- Status: Closed — the fail-open bypass is removed and regression-tested (SuperAdmin redirect on `/quests`, `/Calendar`, `/DungeonMaster/EditProfile`, `/QuestLog`).
 
 **Email configuration secret logging:**
 - What's not tested: Email settings (SMTP password, Resend API token) are never logged in exception traces or debug output. Current tests mock ILogger but don't verify log content.

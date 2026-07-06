@@ -33,6 +33,10 @@
     var waitlistPlayers = finalizedProposedDate != null
         ? Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderWaitlist(finalizedProposedDate.Id).ToList() ?? []
         : Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
+
+    var selectedPlayersCount = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() ?? 0;
+    var hasSpace = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
+    var userCanJoin = boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && !isPlayerSignedUp && Model.Quest?.IsFinalized == true;
 }
 @section Styles {
     <link href="~/css/quests.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -251,6 +255,87 @@
                 </div>
             }
         </div>
+    }
+
+    @* Join This Quest (finalized quest, authenticated, not yet signed up) *@
+    @if (userCanJoin)
+    {
+        <div class="quest-section-card-mobile mb-3">
+            <h6 class="quest-section-heading mb-3">
+                <i class="fas fa-user-plus me-1"></i>Join This Quest
+            </h6>
+
+            <div class="alert alert-info">
+                <strong>Joining as:</strong> @Model.Player?.Name (@Model.Player?.Email)
+            </div>
+
+            <div class="alert alert-success">
+                <p class="mb-1"><strong>Quest Date:</strong> @Model.Quest?.FinalizedDate?.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
+                <p class="mb-1"><strong>Player Slots:</strong> @selectedPlayersCount/@Model.Quest?.TotalPlayerCount filled</p>
+                @if (hasSpace)
+                {
+                    <p class="mb-0"><i class="fas fa-check-circle text-success me-1"></i>Space available for players!</p>
+                }
+                else
+                {
+                    <p class="mb-0"><i class="fas fa-info-circle text-warning me-1"></i>Player slots full &mdash; joining as a Player will place you on the waitlist. You can also join as Assistant DM or Spectator.</p>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Select Character (Optional)</label>
+                <select id="finalizedQuestCharacterMobile" class="form-select">
+                    <option value="">-- Join without character --</option>
+                    @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
+                    {
+                        var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
+                        <option value="@character.Id">@character.Name - Level @character.Level (@classList)</option>
+                    }
+                </select>
+                <small class="form-text">Choose which character you'll be playing, or join without one.</small>
+            </div>
+
+            <div class="d-grid gap-2">
+                <form asp-action="JoinFinalizedQuest" method="post" id="joinPlayerFormMobile">
+                    <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+                    <input type="hidden" name="selectedRole" value="0" />
+                    <input type="hidden" name="characterId" id="playerCharacterIdMobile" value="" />
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-users me-2"></i>Join as Player
+                        <small class="d-block mt-1" style="font-size: 0.8em;">Participate in the quest (counts toward player limit)</small>
+                    </button>
+                </form>
+
+                <form asp-action="JoinFinalizedQuest" method="post" id="joinAssistantFormMobile">
+                    <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+                    <input type="hidden" name="selectedRole" value="2" />
+                    <input type="hidden" name="characterId" id="assistantCharacterIdMobile" value="" />
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-user-shield me-2"></i>Join as Assistant DM
+                        <small class="d-block mt-1" style="font-size: 0.8em;">Help the DM run the session</small>
+                    </button>
+                </form>
+
+                <form asp-action="JoinFinalizedQuest" method="post" id="joinSpectatorFormMobile">
+                    <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+                    <input type="hidden" name="selectedRole" value="1" />
+                    <input type="hidden" name="characterId" id="spectatorCharacterIdMobile" value="" />
+                    <button type="submit" class="btn btn-info w-100">
+                        <i class="fas fa-eye me-2"></i>Join as Spectator
+                        <small class="d-block mt-1" style="font-size: 0.8em;">Watch the session (auto-approved)</small>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('finalizedQuestCharacterMobile').addEventListener('change', function () {
+                const characterId = this.value;
+                document.getElementById('playerCharacterIdMobile').value = characterId;
+                document.getElementById('assistantCharacterIdMobile').value = characterId;
+                document.getElementById('spectatorCharacterIdMobile').value = characterId;
+            });
+        </script>
     }
 
     @* DM controls link *@

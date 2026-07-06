@@ -202,4 +202,34 @@ public class GroupPickerControllerIntegrationTests : IClassFixture<WebApplicatio
             _factory.TestGroupContext.ActiveGroupId = 1;
         }
     }
+
+    // A non-member posting an existing but foreign groupId must be rejected — the picker's own
+    // membership-scoped listing should not be bypassable by posting an arbitrary group id directly.
+    [Fact]
+    public async Task SelectGroup_WhenNotAMember_ShouldReturnNotFound()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "nonmemberuser", "nonmember@example.com", roles: ["Player"]);
+
+        // Seed a second group the user is deliberately NOT added to (no UserGroupEntity row).
+        int otherGroupId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var otherGroup = new GroupEntity { Name = "OtherGroup_" + Guid.NewGuid().ToString("N")[..8], CreatedAt = DateTime.UtcNow };
+            context.Groups.Add(otherGroup);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            otherGroupId = otherGroup.Id;
+        }
+
+        // Act
+        var formData = new Dictionary<string, string> { ["groupId"] = otherGroupId.ToString() };
+        var response = await client.PostAsync("/GroupPicker/SelectGroup",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        // Assert — hide existence, never a 403: a non-member gets 404 same as a nonexistent group.
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
