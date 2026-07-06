@@ -40,6 +40,11 @@
     opacity: 0.7;
 }
 
+.guild-member-row.dead {
+    opacity: 0.5;
+    filter: grayscale(60%);
+}
+
 /* Circular thumbnail */
 .guild-member-thumbnail {
     width: 40px;
