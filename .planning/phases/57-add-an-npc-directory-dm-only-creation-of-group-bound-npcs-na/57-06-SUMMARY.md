@@ -28,7 +28,8 @@ key-files:
     - QuestBoard.Service/wwwroot/css/contacts.mobile.css
     - QuestBoard.Service/wwwroot/css/contact-detail.mobile.css
     - QuestBoard.Service/wwwroot/css/contact-form.mobile.css
-  modified: []
+  modified:
+    - QuestBoard.Service/Automapper/ViewModelProfile.cs
 
 key-decisions:
   - "Notes card note-item blocks kept as light bordered white cards (not parchment-glass text) on mobile, mirroring the desktop note-item convention exactly, rather than applying the glass-card catch-all parchment override used elsewhere in contact-detail.mobile.css"
@@ -39,21 +40,22 @@ patterns-established: []
 requirements-completed: []
 
 # Metrics
-duration: pending (checkpoint reached, plan not yet complete)
-completed: pending
-status: in-progress
+duration: ~2 hours (incl. human-verify checkpoint wait time)
+completed: 2026-07-06
+status: complete
 ---
 
-# Phase 57 Plan 06: Mobile Contacts Views Summary (Partial — Checkpoint Reached)
+# Phase 57 Plan 06: Mobile Contacts Views Summary
 
-**Four mobile Contact views (Index/Details/Edit/Create.Mobile.cshtml) plus three mobile stylesheets, mirroring the Characters mobile CSS/Razor pattern with full desktop parity — Task 1 complete, Task 2 (human verification) awaiting user input.**
+**Four mobile Contact views (Index/Details/Edit/Create.Mobile.cshtml) plus three mobile stylesheets, mirroring the Characters mobile CSS/Razor pattern with full desktop parity. Human verification checkpoint passed after one real bug (found live, not in the original plan) was diagnosed and fixed.**
 
 ## Performance
 
 - **Started:** 2026-07-06T20:24:00Z (approx)
 - **Task 1 completed:** 2026-07-06T20:30:00Z (approx)
-- **Tasks:** 1/2 complete (Task 2 is a checkpoint:human-verify, not yet resolved)
-- **Files modified:** 7 (all new files)
+- **Task 2 (human verification) completed:** 2026-07-06 (checkpoint approved by user after mobile + image-upload re-test)
+- **Tasks:** 2/2 complete
+- **Files modified:** 8 (7 new, 1 fixed during checkpoint)
 
 ## Accomplishments
 - Created `contacts.mobile.css`, `contact-detail.mobile.css`, `contact-form.mobile.css` mirroring the Characters mobile CSS trio (glass section card, tappable list rows, mobile toggle/badge sizing, stacked-card detail/form layout), with `character-*` selectors renamed to `contact-*`.
@@ -67,8 +69,7 @@ status: in-progress
 Each task was committed atomically:
 
 1. **Task 1: Create the three mobile stylesheets and the four mobile Contact views** - `28de384` (feat)
-
-Task 2 (checkpoint:human-verify) has not yet been resolved — see "Checkpoint Reached" below.
+2. **Task 2: Human verification checkpoint** - approved by user after mobile parity + image-upload re-test. The bug found mid-checkpoint (see Deviations) was fixed in `d9ea6d3`.
 
 ## Files Created/Modified
 - `QuestBoard.Service/wwwroot/css/contacts.mobile.css` - Mobile Index list styling (glass section card, tappable rows, hidden badge, toggle row)
@@ -85,24 +86,44 @@ Task 2 (checkpoint:human-verify) has not yet been resolved — see "Checkpoint R
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Bug Found During Human Verification (not auto-fixed by an executor — diagnosed live with the user)
+
+**1. [Bug] AutoMapper silently dropped the uploaded image on Contact Create**
+- **Found during:** Task 2 human verification, step 2 (Create with image upload) — user reported "uploaded a 543 KB PNG, image not saved."
+- **Root cause:** `ContactViewModel.ContactImage` and `Contact.ContactImageData` (the domain model, from Plan 03) have different property names. `CreateMap<ContactViewModel, Contact>()`/`CreateMap<Contact, ContactViewModel>()` in `ViewModelProfile.cs` relied on AutoMapper's default convention-based member matching, which only connects properties with matching names — so the two were never wired. The `Contact`↔`ContactEntity` mapping (Entity/Domain boundary, Plan 03) was correctly configured and unaffected; only the Service-layer ViewModel↔Domain boundary had the gap. Character's equivalent (`ProfilePicture`) never hit this because both sides use the same name there.
+- **Fix:** Added explicit `.ForMember(dest => dest.ContactImage, opt => opt.MapFrom(src => src.ContactImageData))` and the reverse `.ForMember(dest => dest.ContactImageData, opt => opt.MapFrom(src => src.ContactImage))` to both `CreateMap` calls in `ViewModelProfile.cs`.
+- **Why the Wave 0 test suite didn't catch this:** `ContactRepositoryTests` exercises the repository directly against `ContactEntity`/`Contact` (bypassing the ViewModel layer entirely), and no integration test asserted an end-to-end Create-with-image round-trip through the full ViewModel→Domain→Entity chain. This is a real test-coverage gap, not a process failure — the human-verify checkpoint existed precisely to catch exactly this class of bug.
+- **Files modified:** `QuestBoard.Service/Automapper/ViewModelProfile.cs`
+- **Verification:** `dotnet build`/`dotnet test` (542/542, run after Wave 4) confirmed no regression; user manually re-tested image upload after the fix and approved.
+- **Committed in:** `d9ea6d3` (orchestrator-applied directly to `milestone/v7-backlog-cleanup`, since the app was running live under the user's debugger/IDE during the checkpoint — not inside this plan's worktree).
+
+---
+
+**Total deviations:** 1 bug (found and fixed live during human verification, not by an executor's self-check).
+**Impact on plan:** Necessary — without this fix, Create-with-image silently produced imageless Contacts. No scope creep; the fix is a 2-line explicit AutoMapper wiring addition, not a redesign.
 
 ## Issues Encountered
 
-None.
+The AutoMapper gap above. No other issues.
 
 ## Checkpoint Reached
 
 **Type:** human-verify
 **Task:** Task 2 — Human verification of the full Contacts feature (desktop + mobile)
-**Status:** Awaiting user verification. See the executor's structured checkpoint response for the full 10-step verification script and resume-signal instructions.
+**Status:** **Approved.** User verified nav visibility, create/default-hidden, three-branch hidden visibility (including as Player), per-group toggle + session reset, reveal, collaborative notes, edit/delete, mobile parity (all 4 mobile views), and — after the AutoMapper fix — image upload. UI-SPEC copy/style conformance confirmed.
 
-This SUMMARY.md is partial and will be completed (full deviations sweep, final metrics, self-check) once the checkpoint is resolved and the plan is fully closed by a continuation agent.
+Mid-checkpoint, the mobile-views worktree (`worktree-agent-a174bfb9cda7ea130`, Task 1's commits) was merged into `milestone/v7-backlog-cleanup` ahead of the normal end-of-plan merge point, specifically so the user's already-running app could serve the new mobile view files for testing — the standard workflow only merges a plan's worktree once the plan is fully complete, but the files needed to exist in the live checkout for verification to be possible at all.
 
 ## Next Phase Readiness
 
-- Blocked on Task 2 human verification. Once "approved" is received (or issues are reported and fixed), a continuation agent must re-run the self-check, finalize this SUMMARY.md, and proceed to phase closure.
+- Full Contacts feature (Phase 57) complete: entities/migration, domain/repository/service, controller, desktop + mobile views, nav integration, and the human-verified visibility/notes/toggle/image-upload behaviors.
+- Full test suite green (542/542) after the AutoMapper fix, confirmed via `dotnet build`/`dotnet test` re-run.
+- Ready for phase-level goal verification and closure.
 
 ---
 *Phase: 57-add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na*
-*Status: in-progress (checkpoint pending)*
+*Completed: 2026-07-06*
+
+## Self-Check: PASSED
+
+All created files verified present on disk (mobile views + stylesheets); `ViewModelProfile.cs` fix verified present; task/commit hashes verified in git log (`28de384`, `8b64138`, `d9ea6d3`, merge commit for the worktree).
