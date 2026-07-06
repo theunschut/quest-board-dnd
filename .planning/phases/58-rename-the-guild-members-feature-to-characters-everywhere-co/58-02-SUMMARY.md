@@ -102,6 +102,10 @@ None - no external service configuration required.
 
 `characters.css` and `characters.mobile.css` exist with all `character-*` classes and zero "guild" text anywhere under `wwwroot/css/`. Old `guild-members*.css` files are fully removed. Plans 03 (mobile `<link>` in Index.Mobile.cshtml) and 04 (desktop `<link>` in _Layout.cshtml) can now safely point at the new filenames and class names — no view currently references either the old or new names, so no intermediate broken state exists. No blockers.
 
+## Self-Check: PASSED
+
+All created files verified present on disk; all 4 task/summary commit hashes (0037458, 251da98, 96168af, b340a09) verified present in git log.
+
 ---
 *Phase: 58-rename-the-guild-members-feature-to-characters-everywhere-co*
 *Completed: 2026-07-06*
