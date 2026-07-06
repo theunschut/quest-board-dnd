@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 58
+current_phase: 57
+current_phase_name: add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na
 status: executing
 stopped_at: Phase 59 UI-SPEC approved
-last_updated: "2026-07-06T19:29:07.204Z"
+last_updated: "2026-07-06T19:34:32.805Z"
 last_activity: 2026-07-06
-last_activity_desc: Phase 58 complete
+last_activity_desc: Phase 57 execution started
 progress:
   total_phases: 15
   completed_phases: 13
-  total_plans: 37
+  total_plans: 38
   completed_plans: 31
-  percent: 84
-current_phase_name: rename-the-guild-members-feature-to-characters-everywhere-co
+  percent: 82
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: rename-the-guild-members-feature-to-characters-everywhere-co
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 58 — rename-the-guild-members-feature-to-characters-everywhere-co
+**Current focus:** Phase 57 — add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na
 
 ## Current Position
 
-Phase: 58
-Plan: Not started
+Phase: 57 (add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na) — EXECUTING
+Plan: 1 of 6
 Status: Ready to execute
-Last activity: 2026-07-06 — Phase 58 complete
+Last activity: 2026-07-06 — Phase 57 execution started
 
 ## Performance Metrics
 
