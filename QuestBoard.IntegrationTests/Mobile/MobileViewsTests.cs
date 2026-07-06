@@ -427,6 +427,100 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
+    // Finalized-quest "Join This Quest" mobile card (presence/absence/copy)
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Authenticated player who has NOT signed up for a finalized quest sees the mobile
+    /// "Join This Quest" card with all 3 role-join forms.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuest_AuthenticatedNotSignedUp_RendersJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard01", "dm_joincard01@test.com", name: "DM JoinCard01");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard01", "player_joincard01@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Join This Quest");
+        html.Should().Contain("JoinFinalizedQuest");
+    }
+
+    /// <summary>
+    /// A player who is already signed up for the finalized quest must NOT see the mobile
+    /// "Join This Quest" card.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuest_AlreadySignedUp_DoesNotRenderJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard02", "dm_joincard02@test.com", name: "DM JoinCard02");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Signed Up Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+        var (authClient, joinCardPlayer) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard02", "player_joincard02@test.com");
+        await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, joinCardPlayer.Id, signupRole: 0, isSelected: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("joinPlayerFormMobile");
+    }
+
+    /// <summary>
+    /// An unauthenticated visitor must NOT see the mobile "Join This Quest" card.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuest_Unauthenticated_DoesNotRenderJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard03", "dm_joincard03@test.com", name: "DM JoinCard03");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Unauth Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+
+        var (response, html) = await GetWithUserAgentAsync($"/Quest/Details/{quest.Id}", MobileUserAgent);
+
+        html.Should().NotContain("joinPlayerFormMobile");
+    }
+
+    /// <summary>
+    /// When a finalized quest's Player slots are full, the mobile Join card shows the locked
+    /// D-06 waitlist copy instead of implying a Player join is rejected.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuestFull_RendersWaitlistCopy()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard04", "dm_joincard04@test.com", name: "DM JoinCard04");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Full Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+
+        for (var i = 0; i < 4; i++)
+        {
+            var seatedPlayer = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, $"joincard04_seated{i}", $"joincard04_seated{i}@test.com");
+            await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, seatedPlayer.Id, signupRole: 0, isSelected: true);
+        }
+
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard04", "player_joincard04@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("joining as a Player will place you on the waitlist");
+    }
+
+    // -----------------------------------------------------------------------
     // Login page renders glass card form on mobile UA
     // -----------------------------------------------------------------------
 
