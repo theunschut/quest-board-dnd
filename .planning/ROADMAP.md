@@ -275,7 +275,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete | 2026-07-05 |
 | 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete | 2026-07-06 |
 | 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 2/2 | Complete   | 2026-07-06 |
-| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 0/? | Not started | — |
+| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 1/2 | In Progress|  |
 | 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
@@ -378,12 +378,12 @@ Plans:
 **Goal:** Mobile users can join a finalized One-Shot quest via the same 3-button "Join This Quest" card desktop already has (Join as Player / Assistant DM / Spectator with a shared character select), and — for both platforms — a new Player joining a full finalized quest is placed on the existing waitlist (`IsSelected = false`) instead of being hard-rejected, with the "quest full" copy rewritten to match.
 **Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 54-CONTEXT.md decisions D-01 through D-06)
 **Depends on:** Phase 53
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 **Wave 1** *(both parallel — disjoint files)*
 
-- [ ] 54-01-PLAN.md — JoinFinalizedQuest waitlists a full Player join instead of rejecting it (D-03/D-04/D-05) + new QuestJoinFinalizedQuestTests integration coverage + PlayerSignupRepositoryTests new-joiner ordering test
+- [x] 54-01-PLAN.md — JoinFinalizedQuest waitlists a full Player join instead of rejecting it (D-03/D-04/D-05) + new QuestJoinFinalizedQuestTests integration coverage + PlayerSignupRepositoryTests new-joiner ordering test
 - [ ] 54-02-PLAN.md — Mobile "Join This Quest" card in Details.Mobile.cshtml (D-01/D-02) + locked D-06 quest-full copy on both Details views + MobileViewsTests coverage + real-device human verification
 
 ### Phase 55: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
