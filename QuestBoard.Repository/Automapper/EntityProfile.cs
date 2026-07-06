@@ -109,6 +109,28 @@ public class EntityProfile : Profile
         CreateMap<CharacterClassEntity, CharacterClass>()
             .ForMember(dest => dest.Class, opt => opt.MapFrom(src => (DndClass)src.Class));
 
+        // Contact mapping
+        CreateMap<Contact, ContactEntity>()
+            .ForMember(dest => dest.ProfileImage, opt => opt.MapFrom(src => src.ContactImageData == null
+                ? null
+                : new ContactImageEntity
+                {
+                    ImageData = src.ContactImageData
+                }))
+            .ForMember(dest => dest.Notes, opt => opt.Ignore());
+
+        CreateMap<ContactEntity, Contact>()
+            .ForMember(dest => dest.ContactImageData, opt => opt.MapFrom(src => src.ProfileImage != null
+                ? src.ProfileImage.ImageData
+                : null));
+
+        // ContactNote mapping — AuthorName is a display-only projection from the Author navigation
+        CreateMap<ContactNote, ContactNoteEntity>()
+            .ForMember(dest => dest.Author, opt => opt.Ignore());
+
+        CreateMap<ContactNoteEntity, ContactNote>()
+            .ForMember(dest => dest.AuthorName, opt => opt.MapFrom(src => src.Author != null ? src.Author.Name : null));
+
         // DungeonMasterProfile mappings
         CreateMap<DungeonMasterProfileEntity, DungeonMasterProfile>()
             .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src =>
