@@ -382,14 +382,14 @@ Plans:
 **Goal:** A SuperAdmin (and every other role) views group-scoped boards structurally as a normal user — never seeing another tenant's data merged in. The confirmed root cause (a middleware escape hatch letting a null-ActiveGroupId SuperAdmin reach every group's board, combined with fail-open query filters) is closed, plus the related SelectGroup IDOR gap and a stale-membership re-validation gap.
 **Requirements**: None — ad-hoc security bug-fix phase (no REQUIREMENTS.md mapping, same pattern as Phases 47-51). Scope defined by CONTEXT.md decisions D-01 through D-06.
 **Depends on:** Phase 54
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 55-01-PLAN.md — Harden 7 group-scoped EF Core query filters to fail-closed (D-03, defense-in-depth)
-- [ ] 55-02-PLAN.md — Reorder GroupSessionMiddleware so SuperAdmin is gated on group-scoped routes (D-01/D-02, root-cause fix) + correct stale CONCERNS.md
-- [ ] 55-03-PLAN.md — Add SelectGroup membership check, 404 on non-member (D-04/D-05)
+- [x] 55-01-PLAN.md — Harden 7 group-scoped EF Core query filters to fail-closed (D-03, defense-in-depth)
+- [x] 55-02-PLAN.md — Reorder GroupSessionMiddleware so SuperAdmin is gated on group-scoped routes (D-01/D-02, root-cause fix) + correct stale CONCERNS.md
+- [x] 55-03-PLAN.md — Add SelectGroup membership check, 404 on non-member (D-04/D-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
