@@ -121,3 +121,7 @@ None - no external service configuration required.
 ---
 *Phase: 57-add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na*
 *Completed: 2026-07-06*
+
+## Self-Check: PASSED
+
+All created files verified present on disk; all task/commit hashes verified in git log.
