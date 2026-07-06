@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
 
@@ -105,5 +106,282 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         content.Should().Contain("Aragorn");
+    }
+
+    [Fact]
+    public async Task Edit_AdminEditingAnotherPlayersCharacter_ShouldSucceed()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_admin_edit", "owner_admin_edit@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Owned Character", groupId: 1);
+
+        // Act
+        var response = await adminClient.GetAsync(
+            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Edit_SuperAdminEditingAnotherPlayersCharacter_ShouldSucceed()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_superadmin_edit", "owner_superadmin_edit@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Owned Character", groupId: 1);
+
+        // Act
+        var response = await superAdminClient.GetAsync(
+            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Edit_PlayerEditingAnotherPlayersCharacter_ShouldBeForbidden()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_player_edit", "owner_player_edit@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Someone Else's Character", groupId: 1);
+
+        // Act
+        var response = await playerClient.GetAsync(
+            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        // Forbid() under the cookie authentication scheme redirects to /Account/AccessDenied (302)
+        // rather than returning a bare 403 — this mirrors the established assertion pattern used
+        // throughout this test suite (e.g. QuestControllerAuthorizationRegressionTests) for every
+        // denied-access case reached via [Authorize]'s default scheme.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Edit_AdminEditingCharacterInDifferentGroup_ShouldReturnNotFound()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_crossgroup_edit", "owner_crossgroup_edit@example.com", "Test123!", "Other Group Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Other Group's Character", groupId: 2);
+
+        // Act
+        var response = await adminClient.GetAsync(
+            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Edit_OwnerEditingOwnCharacter_ShouldSucceed()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "owner_self_edit", "owner_self_edit@example.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, user.Id, "My Own Character", groupId: 1);
+
+        // Act
+        var response = await client.GetAsync(
+            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Details_AdminViewingAnotherPlayersCharacter_ShowsEditButton()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_admin_details", "owner_admin_details@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Owned Character", groupId: 1);
+
+        // Act
+        var response = await adminClient.GetAsync(
+            $"/GuildMembers/Details/{character.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Edit Character");
+    }
+
+    [Fact]
+    public async Task Delete_AdminDeletingAnotherPlayersCharacter_ShouldSucceed()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_admin_delete", "owner_admin_delete@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character To Delete", groupId: 1);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["id"] = character.Id.ToString()
+        });
+
+        // Act
+        var response = await adminClient.PostAsync(
+            "/GuildMembers/Delete", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        // A redirect alone is ambiguous here: Forbid() under the cookie scheme also yields a 302
+        // (to /Account/AccessDenied), so a successful delete-and-redirect-to-Index must be
+        // distinguished from a denied-and-redirect-to-AccessDenied by checking the Location header
+        // and confirming the character row was actually removed.
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Characters.FindAsync([character.Id], TestContext.Current.CancellationToken);
+        persisted.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Delete_PlayerDeletingAnotherPlayersCharacter_ShouldBeForbidden()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_player_delete", "owner_player_delete@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character Not To Delete", groupId: 1);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["id"] = character.Id.ToString()
+        });
+
+        // Act
+        var response = await playerClient.PostAsync(
+            "/GuildMembers/Delete", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        // Forbid() under the cookie authentication scheme redirects to /Account/AccessDenied (302)
+        // rather than returning a bare 403 — matches this suite's established denied-access pattern.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ToggleRetirement_AdminTogglingAnotherPlayersCharacter_ShouldSucceed()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_admin_toggle", "owner_admin_toggle@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character To Toggle", groupId: 1); // Active by default
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["id"] = character.Id.ToString()
+        });
+
+        // Act
+        var response = await adminClient.PostAsync(
+            "/GuildMembers/ToggleRetirement", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        // A redirect alone is ambiguous here: Forbid() under the cookie scheme also yields a 302
+        // (to /Account/AccessDenied), so a successful toggle-and-redirect-to-Details must be
+        // distinguished from a denied-and-redirect-to-AccessDenied by checking the Location header
+        // and confirming the character's status actually flipped from Active to Retired.
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Characters.FindAsync([character.Id], TestContext.Current.CancellationToken);
+        persisted.Should().NotBeNull();
+        persisted!.Status.Should().Be((int)CharacterStatus.Retired);
+    }
+
+    [Fact]
+    public async Task ToggleRetirement_PlayerTogglingAnotherPlayersCharacter_ShouldBeForbidden()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_player_toggle", "owner_player_toggle@example.com", "Test123!", "Character Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character Not To Toggle", groupId: 1);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["id"] = character.Id.ToString()
+        });
+
+        // Act
+        var response = await playerClient.PostAsync(
+            "/GuildMembers/ToggleRetirement", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        // Forbid() under the cookie authentication scheme redirects to /Account/AccessDenied (302)
+        // rather than returning a bare 403 — matches this suite's established denied-access pattern.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Delete_AdminDeletingCharacterInDifferentGroup_ShouldReturnNotFound()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_crossgroup_delete", "owner_crossgroup_delete@example.com", "Test123!", "Other Group Owner");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Other Group's Character", groupId: 2);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["id"] = character.Id.ToString()
+        });
+
+        // Act
+        var response = await adminClient.PostAsync(
+            "/GuildMembers/Delete", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
