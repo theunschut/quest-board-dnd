@@ -431,13 +431,13 @@ Plans:
 **Goal:** The character-roster feature is called "Characters" everywhere in the Service project — `CharactersController` serving `/Characters/*`, `Views/Characters/`, `characters.css`/`characters.mobile.css`, nav labels, and all user-facing copy — matching the Domain/Repository layers that were already "Character"-named, with zero behavior change. The stray `GuildMembersIndexViewModel` (an unrelated Players-page view model) is renamed to `PlayersIndexViewModel` in the same pass so a repo-wide grep for "GuildMembers" returns zero hits in the Service and IntegrationTests projects.
 **Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 58-CONTEXT.md decisions D-01 through D-03)
 **Depends on:** Phase 57
-**Plans:** 6 plans
+**Plans:** 2/6 plans executed
 
 Plans:
 **Wave 1** *(two parallel — disjoint files)*
 
-- [ ] 58-01-PLAN.md — Rename GuildMembersIndexViewModel → PlayersIndexViewModel into ViewModels/PlayersViewModels/, update PlayersController + Players views + _ViewImports, reword "guild registry" copy (D-02)
-- [ ] 58-02-PLAN.md — Rename guild-members.css/.mobile.css → characters.css/.mobile.css + all guild-* classes → character-*, fix two sibling CSS header comments (D-01)
+- [x] 58-01-PLAN.md — Rename GuildMembersIndexViewModel → PlayersIndexViewModel into ViewModels/PlayersViewModels/, update PlayersController + Players views + _ViewImports, reword "guild registry" copy (D-02)
+- [x] 58-02-PLAN.md — Rename guild-members.css/.mobile.css → characters.css/.mobile.css + all guild-* classes → character-*, fix two sibling CSS header comments (D-01)
 
 **Wave 2** *(blocked on 58-02)*
 
