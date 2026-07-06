@@ -548,17 +548,19 @@ No frameworks or approaches have changed here — EF Core global query filters, 
 | A2 | `EmailPreviewController` requires no group-scoped gate because it renders only static email template previews with no `IActiveGroupContext`/group-scoped-entity dependency | Pattern 2 (route enumeration table) | Low — confirmed via constructor signature (`IEmailRenderService`, `IOptions<EmailSettings>` only, no `IActiveGroupContext`), but the controller's action bodies were not read line-by-line in this research pass; planner should do a final confirmation grep for any group-scoped entity usage before excluding it from the gated-route list |
 | A3 | 5-minute duration reuse for D-06's re-validation interval (matching `SecurityStampValidatorOptions.ValidationInterval`) is the right choice, rather than a different interval | Summary, Code Examples | Low — CONTEXT.md explicitly frames this as "the same class of correctness gap... just on the time axis," and Phase 41 already established 5 minutes as this app's accepted staleness bound for a comparable "revoked mid-session" scenario; reusing the same number is a reasonable default the user can override during plan review |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should D-06's membership re-check apply to EVERY group-scoped request, or only after the interval elapses (as sketched)?**
    - What we know: The sketch above only re-checks after `MembershipRevalidationInterval` has elapsed since the last check, mirroring `SecurityStampValidatorOptions.ValidationInterval`'s own "not on every single request" design (avoids a DB round-trip per request).
-   - What's unclear: Whether the user's stated correctness bar ("as if a normal user, no confusion") implies they'd prefer an immediate/every-request check despite the extra DB load, given this app's small scale (~17 users, per prior phase context).
-   - Recommendation: Keep the interval-gated design — it directly mirrors an already-accepted pattern (Phase 41) in this same codebase for the same class of problem, and a 5-minute worst-case staleness window is a reasonable, precedented tradeoff. Surface this as a discussion point if the planner wants explicit user sign-off before implementing.
+   - What's unclear: Whether the user's stated correctness bar ("as if a normal user, no confusion") implies they'd prefer an immediate/every-request check despite the extra DB load.
+   - Recommendation: Keep the interval-gated design — it directly mirrors an already-accepted pattern (Phase 41) in this same codebase for the same class of problem, and a 5-minute worst-case staleness window is a reasonable, precedented tradeoff.
+   - **RESOLVED:** Interval-gated design adopted as-is, implemented in Plan 55-04 (reuses Phase 41's 5-minute `SecurityStampValidatorOptions.ValidationInterval` value for consistency). Decision grounded in architectural precedent, not app scale.
 
 2. **Should `EmailPreviewController` be added to the group-scoped gate list defensively, even though it appears to need no group context today?**
    - What we know: Its constructor has no `IActiveGroupContext` dependency and its purpose (admin-only email template preview) is inherently group-agnostic.
    - What's unclear: Whether a future phase might add group-scoped data to email previews without updating this classification.
    - Recommendation: Leave it off the gated list for this phase (matches its current actual behavior), but note in the plan/PR that this classification should be re-checked if `EmailPreviewController` ever gains group-scoped data dependencies.
+   - **RESOLVED:** Left off the gated route list in Plan 55-02, matching its current group-agnostic behavior. Re-check this classification if `EmailPreviewController` ever gains a group-scoped dependency.
 
 ## Environment Availability
 

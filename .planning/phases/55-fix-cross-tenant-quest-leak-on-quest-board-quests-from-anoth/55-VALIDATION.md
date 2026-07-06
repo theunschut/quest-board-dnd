@@ -1,9 +1,9 @@
 ---
 phase: 55
 slug: fix-cross-tenant-quest-leak-on-quest-board-quests-from-anoth
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: final
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-06
 ---
 
@@ -36,14 +36,17 @@ created: 2026-07-06
 
 ## Per-Task Verification Map
 
-*Pre-planning draft — rows keyed by CONTEXT.md decision ID until PLAN.md assigns concrete task IDs. The planner/plan-checker should replace the "Decision" column with actual Task IDs once plans exist.*
-
-| Decision | Behavior | Test Type | Automated Command | File Exists | Status |
-|----------|----------|-----------|-------------------|-------------|--------|
-| D-01/D-02 | SuperAdmin with null `ActiveGroupId` is now redirected/409'd on group-scoped routes, still exempt on `/platform`/`/Error`/GroupPicker/Account | integration | `dotnet test --filter FullyQualifiedName~GroupSessionMiddlewareIntegrationTests` | Partial — existing `SuperAdmin_NoActiveGroup_NotRedirectedByMiddleware` (lines 45-66) must be REWRITTEN to assert the opposite behavior; existing `[Theory]` route list should gain a SuperAdmin-authenticated variant | ⬜ pending |
-| D-03 | Fail-closed filter on all 7 entities (Quest, ShopItem, ProposedDate, PlayerDateVote, PlayerSignup, ReminderLog, UserTransaction — expanded from CONTEXT.md's 5 per RESEARCH.md's grep) returns zero rows (not all-groups rows) when `ActiveGroupId` is null | unit | `dotnet test --filter FullyQualifiedName~QuestBoardContextFilterTests` (new) | ❌ Wave 0 — no existing test asserts the fail-closed shape for any of the 7 entities with a null `ActiveGroupId`; `TestActiveGroupContext`/`MutableTestGroupContext` pattern already exists to build these on | ⬜ pending |
-| D-04/D-05 | `SelectGroup` POST with a non-member `groupId` returns 404; member `groupId` still succeeds | integration | `dotnet test --filter FullyQualifiedName~GroupPickerControllerIntegrationTests` | ❌ Wave 0 — no existing test posts a `groupId` the caller isn't a member of; existing `SelectGroup_ShouldPersistActiveGroupInSession` test only covers the happy path | ⬜ pending |
-| D-06 | Session's `ActiveGroupId` membership re-validated after the interval elapses; removed member is gated out | unit (middleware-level) | new test method against `GroupSessionMiddleware.InvokeAsync` with a fake `HttpContext`/session | ❌ Wave 0 — new test needed; prefer a direct unit test over an integration test given the test harness's session-cookie round-trip limitation | ⬜ pending |
+| Task ID | Plan | Wave | Decision | Secure Behavior | Test Type | Automated Command | File Exists | Status |
+|---------|------|------|----------|-----------------|-----------|-------------------|-------------|--------|
+| 55-01 Task 1 | 01 | 1 | D-03 | Wave-0 RED test: queries for all 7 group-scoped entities assert zero rows when `ActiveGroupId` is null | unit | `dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj --filter FullyQualifiedName~QuestBoardContextFilterTests` | ✅ new file created by this task | ⬜ pending |
+| 55-01 Task 2 | 01 | 1 | D-03 | `HasQueryFilter` hardened to fail-closed (`ActiveGroupId != null && ...`) on Quest/ShopItem/ProposedDate/PlayerDateVote/PlayerSignup/ReminderLog/UserTransaction; `DailyReminderJob`'s `IgnoreQueryFilters` sweep unaffected | unit | `dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj --filter FullyQualifiedName~QuestBoardContextFilterTests` | ✅ modifies existing file | ⬜ pending |
+| 55-02 Task 1 | 02 | 1 | D-01/D-02 | `SuperAdmin_NoActiveGroup_NotRedirectedByMiddleware` rewritten to `SuperAdmin_NoActiveGroup_RedirectsToGroupPick` (inverted assertion); exempt-path check reordered before the SuperAdmin bypass | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter FullyQualifiedName~GroupSessionMiddlewareIntegrationTests` | ✅ existing file — rewritten | ⬜ pending |
+| 55-02 Task 2 | 02 | 1 | D-01/D-02 | `/platform`, `/Error`, GroupPicker, Account routes stay exempt for SuperAdmin; stale `CONCERNS.md` SuperAdmin-sees-all rationale corrected | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter FullyQualifiedName~GroupSessionMiddlewareIntegrationTests` | ✅ modifies existing files | ⬜ pending |
+| 55-03 Task 1 | 03 | 1 | D-04/D-05 | Wave-0 RED test: authenticated non-member posts `SelectGroup` for a foreign `groupId`, expects 404 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter FullyQualifiedName~GroupPickerControllerIntegrationTests` | ✅ existing file — extended | ⬜ pending |
+| 55-03 Task 2 | 03 | 1 | D-04/D-05 | `SelectGroup` gains `IUserService.GetGroupRoleByIdAsync` membership check; 404 for non-member, unchanged success for member, SuperAdmin bypass preserved | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter FullyQualifiedName~GroupPickerControllerIntegrationTests` | ✅ modifies existing file | ⬜ pending |
+| 55-04 Task 1 | 04 | 2 | D-06 | `SessionKeys` gains a last-verified timestamp key; build only (scaffolding) | build | `dotnet build QuestBoard.Service/QuestBoard.Service.csproj` | ✅ modifies existing file | ⬜ pending |
+| 55-04 Task 2 | 04 | 2 | D-06 | Wave-0 RED test: `GroupSessionMiddleware.InvokeAsync` re-checks membership after the interval elapses via a fake `HttpContext`/session, gates out a removed member | unit | `dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj --filter FullyQualifiedName~GroupSessionMiddlewareRevalidationTests` | ✅ new file created by this task | ⬜ pending |
+| 55-04 Task 3 | 04 | 2 | D-06 | Interval-gated re-validation wired into `GroupSessionMiddleware` and `GroupPickerController` (stamps the timestamp on selection); reuses Phase 41's 5-minute interval value | unit | `dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj --filter FullyQualifiedName~GroupSessionMiddlewareRevalidationTests` | ✅ modifies existing files | ⬜ pending |
 
 *D-00 and D-07 are investigated-and-ruled-out decisions with no code change (confirmed in 55-CONTEXT.md and 55-RESEARCH.md) — they have no row here by design.*
 
@@ -51,10 +54,12 @@ created: 2026-07-06
 
 ## Wave 0 Requirements
 
-- [ ] `QuestBoard.IntegrationTests/Controllers/GroupSessionMiddlewareIntegrationTests.cs` — rewrite `SuperAdmin_NoActiveGroup_NotRedirectedByMiddleware` to assert the new (opposite) behavior; add SuperAdmin coverage to the existing `[Theory]` protected-route list
-- [ ] `QuestBoard.UnitTests/Repository/` — new test file (e.g. `QuestBoardContextFilterTests.cs`) asserting all 7 hardened entity filters return zero rows for a null `ActiveGroupId`, mirroring `PlayerSignupRepositoryTests.cs`'s `TestActiveGroupContext`/`MutableTestGroupContext` pattern
-- [ ] `QuestBoard.IntegrationTests/Controllers/GroupPickerControllerIntegrationTests.cs` — new test: authenticated non-member user posts `SelectGroup` for a group they don't belong to, asserts 404
-- [ ] New unit test for `GroupSessionMiddleware`'s D-06 re-validation block, constructing a fake `HttpContext` with a controlled session timestamp
+- [x] `QuestBoard.IntegrationTests/Controllers/GroupSessionMiddlewareIntegrationTests.cs` — rewritten by 55-02 Task 1; asserts the new (opposite) behavior
+- [x] `QuestBoard.UnitTests/Repository/QuestBoardContextFilterTests.cs` — new file, assigned to 55-01 Task 1; covers D-03's 7 hardened entity filters
+- [x] `QuestBoard.IntegrationTests/Controllers/GroupPickerControllerIntegrationTests.cs` — extended by 55-03 Task 1; non-member `SelectGroup` posts assert 404
+- [x] `QuestBoard.UnitTests/.../GroupSessionMiddlewareRevalidationTests.cs` — new file, assigned to 55-04 Task 2; covers D-06's re-validation block
+
+All Wave 0 gaps are assigned to a specific plan task in the finalized PLAN.md files — no outstanding scaffolding work remains unassigned.
 
 ---
 
@@ -66,11 +71,11 @@ created: 2026-07-06
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-06 (via gsd-plan-checker VERIFICATION PASSED)
