@@ -287,8 +287,13 @@ namespace QuestBoard.Service.Controllers.Characters
                 return Forbid();
             }
 
-            character.Status = character.Status == CharacterStatus.Active 
-                ? CharacterStatus.Retired 
+            if (character.Status == CharacterStatus.Dead)
+            {
+                return BadRequest("Dead characters cannot be retired or reactivated.");
+            }
+
+            character.Status = character.Status == CharacterStatus.Active
+                ? CharacterStatus.Retired
                 : CharacterStatus.Active;
 
             await characterService.UpdateAsync(character, token);
