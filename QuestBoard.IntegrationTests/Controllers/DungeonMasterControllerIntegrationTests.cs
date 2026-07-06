@@ -305,13 +305,11 @@ public class DungeonMasterControllerIntegrationTests(WebApplicationFactoryBase f
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // When the viewer has no active group selected (SuperAdmin with no group picked),
-    // every DM-profile action must 404 rather than calling GetGroupRoleByIdAsync with a
-    // null group. A non-SuperAdmin authenticated user with a null ActiveGroupId never
-    // reaches the controller — GroupSessionMiddleware redirects them to the group picker
-    // first — so this scenario requires a SuperAdmin viewer, which the middleware exempts.
+    // When the viewer has no active group selected, GroupSessionMiddleware now gates
+    // SuperAdmin exactly like every other role — the request never reaches the controller at
+    // all, it is redirected to the group picker before any DM-profile action logic runs.
     [Fact]
-    public async Task Profile_SuperAdminNoActiveGroup_ReturnsNotFound()
+    public async Task Profile_SuperAdminNoActiveGroup_RedirectsToGroupPick()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var targetDm = await AuthenticationHelper.CreateTestUserAsync(
@@ -325,6 +323,8 @@ public class DungeonMasterControllerIntegrationTests(WebApplicationFactoryBase f
 
         var response = await client.GetAsync($"/DungeonMaster/Profile/{targetDm.Id}", TestContext.Current.CancellationToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var location = response.Headers.Location?.ToString() ?? string.Empty;
+        location.Should().Contain("/groups/pick");
     }
 }
