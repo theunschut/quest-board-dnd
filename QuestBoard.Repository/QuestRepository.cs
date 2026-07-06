@@ -276,38 +276,6 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Math.Abs((date1 - date2).TotalMinutes) <= DateMatchWindowMinutes;
     }
 
-    private static void UpdateProposedDatesIntelligently(QuestEntity entity, IList<DateTime> newProposedDates)
-    {
-        var existingDates = entity.ProposedDates.ToList();
-        var datesToRemove = new List<ProposedDateEntity>();
-
-        foreach (var existingDate in existingDates)
-        {
-            var matchingNewDate = newProposedDates.FirstOrDefault(nd => IsSameDateTime(existingDate.Date, nd));
-            if (matchingNewDate == default)
-            {
-                datesToRemove.Add(existingDate);
-            }
-            else
-            {
-                existingDate.Date = matchingNewDate;
-            }
-        }
-
-        foreach (var newDate in newProposedDates)
-        {
-            if (!existingDates.Any(ed => IsSameDateTime(ed.Date, newDate)))
-            {
-                entity.ProposedDates.Add(new ProposedDateEntity { Date = newDate, Quest = entity, QuestId = entity.Id });
-            }
-        }
-
-        foreach (var dateToRemove in datesToRemove)
-        {
-            entity.ProposedDates.Remove(dateToRemove);
-        }
-    }
-
     private static List<UserEntity> UpdateProposedDatesWithNotificationTracking(QuestEntity entity, IList<DateTime> newProposedDates)
     {
         var existingDates = entity.ProposedDates.ToList();
