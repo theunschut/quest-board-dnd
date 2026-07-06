@@ -18,7 +18,7 @@
     {
         @foreach (var character in Model.MyCharacters)
         {
-            <div class="guild-member-row d-flex align-items-center@(character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
+            <div class="guild-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
                 @if (character.ProfilePicture != null)
                 {
                     <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="guild-member-thumbnail me-3" alt="@character.Name" />
@@ -34,6 +34,10 @@
                         @if (character.Role == CharacterRole.Main)
                         {
                             <span class="badge bg-warning text-dark"><i class="fas fa-star me-1"></i>Main</span>
+                        }
+                        @if (character.Status == CharacterStatus.Dead)
+                        {
+                            <span class="badge bg-dark">Dead</span>
                         }
                         @if (character.Status == CharacterStatus.Retired)
                         {
@@ -63,7 +67,7 @@
     {
         @foreach (var character in Model.OtherCharacters)
         {
-            <div class="guild-member-row d-flex align-items-center@(character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
+            <div class="guild-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
                 @if (character.ProfilePicture != null)
                 {
                     <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="guild-member-thumbnail me-3" alt="@character.Name" />
@@ -77,6 +81,10 @@
                     <div class="guild-member-class">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
                     <div class="guild-member-owner"><i class="fas fa-user me-1"></i>@character.OwnerName</div>
                     <div>
+                        @if (character.Status == CharacterStatus.Dead)
+                        {
+                            <span class="badge bg-dark">Dead</span>
+                        }
                         @if (character.Status == CharacterStatus.Retired)
                         {
                             <span class="badge bg-secondary">Retired</span>
