@@ -70,6 +70,63 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
     }
 
     /// <inheritdoc/>
+    public override async Task UpdateAsync(Character model, CancellationToken token = default)
+    {
+        // AutoMapper's default mapping replaces child navigations (Classes, ProfileImage) with
+        // brand-new CLR instances rather than mutating the entities EF is already tracking —
+        // even when the new instances carry the same Id as an existing row. EF's change
+        // tracker then treats those as detached objects it never queried, which the InMemory
+        // provider rejects with a concurrency exception on save. Loading both navigations
+        // explicitly and reconciling them by Id afterward (instead of trusting whatever
+        // AutoMapper replaced them with) keeps EF's own tracked instances in place. ProfileImage
+        // itself is already persisted correctly by the prior UpdateProfileImageAsync call in
+        // CharacterService.UpdateAsync, so it is restored here rather than re-derived.
+        var entity = await DbContext.Characters
+            .Include(c => c.Classes)
+            .Include(c => c.ProfileImage)
+            .FirstOrDefaultAsync(c => c.Id == model.Id, token);
+        if (entity == null) return;
+
+        var trackedClasses = entity.Classes.ToList();
+        var trackedProfileImage = entity.ProfileImage;
+
+        Mapper.Map(model, entity);
+
+        entity.ProfileImage = trackedProfileImage;
+
+        var incomingClasses = Mapper.Map<List<CharacterClassEntity>>(model.Classes);
+        var incomingIds = incomingClasses.Where(c => c.Id != 0).Select(c => c.Id).ToHashSet();
+
+        entity.Classes.Clear();
+        foreach (var stale in trackedClasses.Where(c => !incomingIds.Contains(c.Id)))
+        {
+            DbContext.Remove(stale);
+        }
+
+        foreach (var incoming in incomingClasses)
+        {
+            var tracked = incoming.Id != 0
+                ? trackedClasses.FirstOrDefault(c => c.Id == incoming.Id)
+                : null;
+
+            if (tracked != null)
+            {
+                tracked.Class = incoming.Class;
+                tracked.ClassLevel = incoming.ClassLevel;
+                entity.Classes.Add(tracked);
+            }
+            else
+            {
+                incoming.Id = 0;
+                incoming.CharacterId = entity.Id;
+                entity.Classes.Add(incoming);
+            }
+        }
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
     public async Task UpdateProfileImageAsync(int characterId, byte[]? imageData, CancellationToken token = default)
     {
         var entity = await DbContext.Characters

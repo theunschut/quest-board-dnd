@@ -1,0 +1,99 @@
+@using QuestBoard.Service.ViewModels.ContactViewModels
+@model ContactViewModel
+@{
+    ViewData["Title"] = $"Edit {Model.Name}";
+}
+
+@section Styles {
+    <link href="~/css/contact-form.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="container-fluid px-3 py-3">
+    <div class="contact-form-card">
+        <h4><i class="fas fa-edit me-2"></i>Edit @Model.Name</h4>
+        <hr class="mb-3" style="border-color: rgba(244,228,188,0.3);" />
+
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
+                @if (Model.ContactImage != null)
+                {
+                    <div class="mb-2 text-center">
+                        <img src="@Url.Action("GetContactImage", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />
+                    </div>
+                }
+                <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" />
+                <small class="form-text">Upload a new contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
+                <span asp-validation-for="ContactImageFile" class="text-danger"></span>
+                <div id="fileSizeError" class="text-danger" style="display: none;"></div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Name <span class="text-danger">*</span></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="TownCity" class="form-label">Town/City</label>
+                <input asp-for="TownCity" class="form-control" />
+                <span asp-validation-for="TownCity" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="SubLocation" class="form-label">Sub-location</label>
+                <input asp-for="SubLocation" class="form-control" />
+                <span asp-validation-for="SubLocation" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="2000"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <hr style="border-color: rgba(244,228,188,0.3);" />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+                <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+
+        document.getElementById('contactImageInput')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const errorDiv = document.getElementById('fileSizeError');
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            if (file) {
+                if (file.size > MAX_FILE_SIZE) {
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    errorDiv.textContent = `File size (${sizeMB} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image.`;
+                    errorDiv.style.display = 'block';
+                    e.target.value = '';
+                    return;
+                }
+
+                if (!ALLOWED_TYPES.includes(file.type)) {
+                    errorDiv.textContent = 'Only image files (JPG, PNG, GIF) are allowed.';
+                    errorDiv.style.display = 'block';
+                    e.target.value = '';
+                    return;
+                }
+            }
+        });
+    </script>
+}

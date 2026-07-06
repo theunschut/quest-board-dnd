@@ -129,7 +129,7 @@ public class EmailConfirmationJobGuardTests
         };
 
         _repository.UpdateQuestPropertiesWithNotificationsAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(),
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<IList<DateTime>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(affectedPlayers);
@@ -140,7 +140,7 @@ public class EmailConfirmationJobGuardTests
 
         // Act
         var result = await _sut.UpdateQuestPropertiesWithNotificationsAsync(
-            1, "Title", "Desc", 5, 4, false, token: TestContext.Current.CancellationToken);
+            1, "Title", "Desc", null, 5, 4, false, token: TestContext.Current.CancellationToken);
 
         // Assert: only the confirmed player's email is dispatched
         result.Success.Should().BeTrue();
@@ -169,7 +169,7 @@ public class EmailConfirmationJobGuardTests
         };
 
         _repository.UpdateQuestPropertiesWithNotificationsAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(),
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<IList<DateTime>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(affectedPlayers);
@@ -180,7 +180,7 @@ public class EmailConfirmationJobGuardTests
 
         // Act
         var result = await _sut.UpdateQuestPropertiesWithNotificationsAsync(
-            1, "Title", "Desc", 5, 4, false, token: TestContext.Current.CancellationToken);
+            1, "Title", "Desc", null, 5, 4, false, token: TestContext.Current.CancellationToken);
 
         // Assert: no dispatch when all affected players are unconfirmed
         result.Success.Should().BeTrue();

@@ -2,16 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-status: ready_to_plan
-stopped_at: Phase 54 complete (2/2) — ready to discuss Phase 55
-last_updated: 2026-07-06T11:47:11.993Z
-last_activity: 2026-07-06 -- Phase 54 execution started
+current_phase: 60
+status: executing
+stopped_at: Phase 60 context gathered
+last_updated: "2026-07-06T21:35:30.729Z"
+last_activity: 2026-07-06
+last_activity_desc: Phase 60 complete
 progress:
-  total_phases: 11
-  completed_phases: 10
-  total_plans: 24
-  completed_plans: 24
-  percent: 91
+  total_phases: 16
+  completed_phases: 16
+  total_plans: 40
+  completed_plans: 40
+  percent: 100
+current_phase_name: stop-creating-aspnetuserroles-entries-for-new-users-role-ass
 ---
 
 # Project State
@@ -21,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 55 — fix cross tenant quest leak on quest board quests from anoth
+**Current focus:** Phase 60 — Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
 
 ## Current Position
 
-Phase: 55
+Phase: 60
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-06
+Status: Executing Phase 60
+Last activity: 2026-07-06 — Phase 60 complete
 
 ## Performance Metrics
 
@@ -53,6 +56,11 @@ Last activity: 2026-07-06
 
 ### Roadmap Evolution
 
+- Phase 60 added: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
+- Phase 59 added: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
+- Phase 58 added: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
+- Phase 57 added: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
+- Phase 56 added: Allow admins to edit characters owned by other players
 - Phase 55 added: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
 - Phase 54 added: Fix mobile signup for finalized quests (inconsistent with desktop)
 - Phase 53 added: Add dedicated Edit view for Quest recap so Details page is view-only
@@ -92,9 +100,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-06T09:41:38.551Z
-Stopped at: Phase 54 UI-SPEC approved
-Resume file: .planning/phases/54-fix-mobile-signup-for-finalized-quests-inconsistent-with-des/54-UI-SPEC.md
+Last session: 2026-07-06T20:53:54.543Z
+Stopped at: Phase 60 context gathered
+Resume file: .planning/phases/60-stop-creating-aspnetuserroles-entries-for-new-users-role-ass/60-CONTEXT.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps

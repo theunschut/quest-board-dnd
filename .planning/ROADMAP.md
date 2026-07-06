@@ -9,7 +9,7 @@
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
 - ✅ **v6.1 Bugfixes** — Phases 38–42 (shipped 2026-07-04)
-- 🚧 **v7.0 Backlog Cleanup** — Phases 43–55 (in progress)
+- 🚧 **v7.0 Backlog Cleanup** — Phases 43–60 (in progress)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; issue #78 is now delivered by v7.0 Phases 45–46._
 
@@ -115,9 +115,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 </details>
 
 <details open>
-<summary>🚧 v7.0 Backlog Cleanup (Phases 43–55) — IN PROGRESS</summary>
+<summary>🚧 v7.0 Backlog Cleanup (Phases 43–60) — IN PROGRESS</summary>
 
-**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–55).
+**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–59).
 
 - [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
 - [x] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (completed 2026-07-04)
@@ -130,8 +130,13 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] Phase 51: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained (completed 2026-07-05)
 - [x] Phase 52: Add Dead status to CharacterStatus enum (completed 2026-07-06)
 - [x] Phase 53: Add dedicated Edit view for Quest recap so Details page is view-only (completed 2026-07-06)
-- [ ] Phase 54: Fix mobile signup for finalized quests (inconsistent with desktop)
+- [x] Phase 54: Fix mobile signup for finalized quests (inconsistent with desktop) (completed 2026-07-06)
 - [x] Phase 55: Fix cross-tenant quest leak on quest board — Closed a SuperAdmin null-ActiveGroupId escape hatch (root cause), hardened 7 EF Core query filters to fail-closed, fixed a SelectGroup IDOR gap, and added interval-gated stale-membership re-validation (completed 2026-07-06)
+- [x] Phase 56: Allow admins to edit characters owned by other players — Widened GuildMembersController's owner-only guard to owner-OR-admin across Edit/Delete/ToggleRetirement via a shared CanManageCharacterAsync helper (completed 2026-07-06)
+- [x] Phase 57: Add an NPC directory — DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location) with a player-and-DM-editable notes list, plus dedicated Index/Details/Edit views mirroring the Characters pattern (completed 2026-07-06)
+- [x] Phase 58: Rename the Guild Members feature to Characters everywhere — Controller, routes, views, ViewModels, CSS, integration tests, and nav copy renamed so the terminology matches the Domain/Repository layers, with zero behavior change (completed 2026-07-06)
+- [x] Phase 59: Add a rewards field to quests — Optional freeform Rewards textarea between Description and Challenge Rating on Create/Edit/Follow-Up (desktop + mobile), shown as a gold `fa-coins` boxed callout below Description on Quest Details and QuestLog Details, hidden when empty (completed 2026-07-06)
+- [x] Phase 60: Stop creating AspNetUserRoles entries for new users — Remove the stale Player-role write in `CreateUserAsync`, delete the dead per-group Identity-role API on both service layers, and align the test auth helper to seed AspNetUserRoles only for SuperAdmin; per-group roles stay in `UserGroups.GroupRole`, SuperAdmin untouched, no migration (completed 2026-07-06)
 
 </details>
 
@@ -213,9 +218,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59
 
-Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–55 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase.
+Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–59 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase. Phases 57, 58, and 59 executed out of numeric order — Phase 58 (Characters rename) was planned and executed before Phase 57 (NPC directory); Phase 59 (Rewards field) was then planned and executed concurrently with Phase 57's still-in-progress execution.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | ------- | ----------- | ---------------- | -------- | ----------- |
@@ -274,9 +279,14 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete | 2026-07-05 |
 | 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete | 2026-07-05 |
 | 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete | 2026-07-06 |
-| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 2/2 | Complete   | 2026-07-06 |
-| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete    | 2026-07-06 |
+| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 2/2 | Complete | 2026-07-06 |
+| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete | 2026-07-06 |
 | 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
+| 56. Allow admins to edit characters owned by other players | v7.0 | 1/1 | Complete | 2026-07-06 |
+| 57. Add an NPC directory | v7.0 | 6/6 | Complete | 2026-07-06 |
+| 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
+| 59. Add a rewards field to quests | v7.0 | 2/2 | Complete | 2026-07-06 |
+| 60. Stop creating AspNetUserRoles entries for new users | v7.0 | 1/1 | Complete    | 2026-07-06 |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
@@ -403,3 +413,96 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 55-04-PLAN.md — Interval-gated stale-membership re-validation in the middleware (D-06)
+
+### Phase 56: Allow admins to edit characters owned by other players
+
+**Goal:** An Admin (per-group `GroupRole.Admin`) or SuperAdmin can Edit, Delete, and Retire/Reactivate a character owned by another player in their active group, while Players stay restricted to their own characters and cross-tenant access remains blocked — mirroring the shipped `DungeonMasterController.EditProfile` ownership-OR-admin pattern, with no schema change or new packages.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 56-CONTEXT.md decisions D-01 through D-04)
+**Depends on:** Phase 55
+**Plans:** 1/1 plans complete
+
+Plans:
+
+- [x] 56-01-PLAN.md — Ownership-OR-Admin guard on GuildMembersController Edit/Delete/ToggleRetirement + Details CanEdit flag, new CharacterViewModel.CanEdit, both Details views gated on CanEdit, and 11 authorization integration tests (D-01/D-02/D-03/D-04)
+
+### Phase 57: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
+
+**Goal:** A DM-tier user can create, edit, reveal/hide, and delete group-bound "Contacts" (name, image, description, town/city, optional sub-location), every group member can view revealed Contacts and collaboratively add/edit/delete freeform authored+timestamped notes on the Details page, and hidden Contacts stay invisible (list-filtered + 404) to everyone except their creator and DM-tier viewers who flip a per-group session "Show Hidden" toggle — with full desktop + mobile parity, mirroring the Characters feature.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 57-CONTEXT.md decisions D-01 through D-20)
+**Depends on:** Phase 56 (feature is built against the already-renamed Characters feature; Phase 58 executed before this phase per the execution-order note above)
+**Plans:** 6/6 plans complete
+
+Plans:
+**Wave 1** *(two parallel — disjoint files: tests vs. entities)*
+
+- [x] 57-01-PLAN.md — Wave 0 failing tests: ContactRepositoryTests (ordering/scope/image/notes) + ContactsControllerIntegrationTests (D-09b/D-12/D-13/D-14/D-15/D-15b/D-09 + cross-tenant IDOR matrix)
+- [x] 57-02-PLAN.md — Data layer: ContactEntity/ContactImageEntity/ContactNoteEntity + fail-closed group query filters (no SuperAdmin bypass) + Notes/Author relationships + AddContactsFeature migration
+
+**Wave 2**
+
+- [x] 57-03-PLAN.md — Domain + Repository: Contact/ContactNote models, interfaces, ContactService, ContactRepository (three-branch visibility as explicit params, dedicated note methods per Pitfall 4), EntityProfile + DI
+
+**Wave 3**
+
+- [x] 57-04-PLAN.md — Service HTTP surface: ContactsController (DungeonMasterOnly gating, three-branch 404, per-group Show Hidden session toggle, collaborative note actions, image serving) + ViewModels + ViewModelProfile + SessionKeys
+
+**Wave 4**
+
+- [x] 57-05-PLAN.md — Desktop views (Index/Details/Edit/Create) + contacts.css, built to 57-UI-SPEC fidelity: flat alphabetical grid, two-state Show Hidden toggle, secondary Hidden badges, Reveal/Hide action, collaborative notes UI with inline edit-in-place + Contacts nav link (all users, both board types, desktop + mobile layouts)
+
+**Wave 5**
+
+- [x] 57-06-PLAN.md — Mobile views (Index/Details/Edit/Create.Mobile.cshtml) + 3 mobile stylesheets, full D-18 parity with UI-SPEC copy/style fidelity + blocking human verification of the whole feature
+
+### Phase 58: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
+
+**Goal:** The character-roster feature is called "Characters" everywhere in the Service project — `CharactersController` serving `/Characters/*`, `Views/Characters/`, `characters.css`/`characters.mobile.css`, nav labels, and all user-facing copy — matching the Domain/Repository layers that were already "Character"-named, with zero behavior change. The stray `GuildMembersIndexViewModel` (an unrelated Players-page view model) is renamed to `PlayersIndexViewModel` in the same pass so a repo-wide grep for "GuildMembers" returns zero hits in the Service and IntegrationTests projects.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 58-CONTEXT.md decisions D-01 through D-03)
+**Depends on:** Phase 57
+**Plans:** 6/6 plans complete
+
+Plans:
+**Wave 1** *(two parallel — disjoint files)*
+
+- [x] 58-01-PLAN.md — Rename GuildMembersIndexViewModel → PlayersIndexViewModel into ViewModels/PlayersViewModels/, update PlayersController + Players views + _ViewImports, reword "guild registry" copy (D-02)
+- [x] 58-02-PLAN.md — Rename guild-members.css/.mobile.css → characters.css/.mobile.css + all guild-* classes → character-*, fix two sibling CSS header comments (D-01)
+
+**Wave 2** *(blocked on 58-02)*
+
+- [x] 58-03-PLAN.md — ATOMIC: rename GuildMembersController → CharactersController + move Views/GuildMembers/ → Views/Characters/ (Pitfall 1) + Index/Details content edits (D-01)
+
+**Wave 3** *(two parallel — blocked on 58-03; disjoint Service vs. IntegrationTests files)*
+
+- [x] 58-04-PLAN.md — Repoint 6 Url.Action("GetProfilePicture","Characters",...) cross-refs incl. _QuestCard partial (Pitfall 3) + desktop/mobile nav links + characters.css link (D-01)
+- [x] 58-05-PLAN.md — Rename GuildMembersControllerIntegrationTests → CharactersControllerIntegrationTests + all route strings, update MobileViewsTests (Pitfall 2) + LayoutNavigationTests, full suite green (D-01)
+
+**Wave 4** *(blocked on 58-01, 58-04, 58-05)*
+
+- [x] 58-06-PLAN.md — Optional QuestBoardContext comment touch-up + definitive zero-guild grep sweep + full build/test phase gate (D-01/D-02/D-03)
+
+### Phase 59: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
+
+**Goal:** A DM can record an optional, unbounded freeform Rewards value on any quest (OneShot or Campaign) via a textarea between Description and Challenge Rating on the Create/Edit/Follow-Up forms (desktop + mobile), and all group members see it as a gold-accented boxed callout below the Description on the Quest Details and completed-quest QuestLog Details pages — shown only when set, hidden when empty — with zero change to the quest board list card.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 59-CONTEXT.md decisions D-01 through D-07)
+**Depends on:** Phase 58
+**Plans:** 2/2 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 59-01-PLAN.md — Backend: add nullable `Rewards` to Entity/Domain/QuestViewModel/FollowUpQuestViewModel + AddRewardsToQuest migration + thread `rewards` param through `UpdateQuestPropertiesWithNotificationsAsync`/`CreateFollowUpQuestWithDetailsAsync` (interfaces + service + repository) + Edit/CreateFollowUp controller call sites + fix affected unit tests (D-01/D-02/D-03/D-04)
+
+**Wave 2** *(blocked on 59-01)*
+
+- [x] 59-02-PLAN.md — Views: Rewards textarea on Create/Edit/CreateFollowUp (desktop + mobile) between Description and CR + boxed `fa-coins` Rewards callout on Details/Details.Mobile/QuestLog Details (hidden when empty), reusing `.quest-description-box`/`.quest-description-mobile`; `_QuestCard` untouched + blocking human verification (D-02/D-04/D-05/D-06/D-07)
+
+### Phase 60: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
+
+**Goal:** New Identity user creation stops writing rows to `AspNetUserRoles` (the stale `Player` assignment on every account is removed), and the now-fully-dead per-group Identity-role API (`AddToRoleAsync`/`RemoveFromRoleAsync`/`IsInRoleAsync`/`GetRolesAsync` on `IUserService`/`IIdentityService`) is deleted — per-group roles remain owned solely by `UserGroups.GroupRole`, and the system-wide `SuperAdmin` Identity role is untouched. No data-cleanup migration.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 60-CONTEXT.md decisions D-01 through D-04)
+**Depends on:** Phase 59
+**Plans:** 1/1 plans complete
+
+Plans:
+
+- [x] 60-01-PLAN.md — Remove the write-time bug + dead role API from production, align the integration-test auth helper to seed AspNetUserRoles only for SuperAdmin, and verify the full build/test suite

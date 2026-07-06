@@ -1,0 +1,76 @@
+@using QuestBoard.Service.ViewModels.ContactViewModels
+@model ContactsIndexViewModel
+
+@section Styles {
+    <link href="~/css/contacts.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+@if (Model.ViewerIsDmTier)
+{
+    <div class="contact-toggle-row">
+        <form asp-action="ToggleShowHidden" method="post" class="flex-grow-1">
+            @if (Model.ShowHidden)
+            {
+                <button type="submit" class="btn btn-secondary w-100" aria-pressed="true">
+                    <i class="fas fa-eye me-2"></i>Hide Hidden
+                </button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-outline-secondary w-100" aria-pressed="false">
+                    <i class="fas fa-eye-slash me-2"></i>Show Hidden
+                </button>
+            }
+        </form>
+        <a href="@Url.Action("Create")" class="btn btn-warning flex-grow-1">
+            <i class="fas fa-plus me-2"></i>Contact
+        </a>
+    </div>
+}
+
+<div class="contact-section-card mb-4">
+    <div class="contact-section-heading mb-2">
+        <i class="fas fa-address-book me-2"></i>Contacts
+    </div>
+    @if (Model.Contacts.Any())
+    {
+        @foreach (var contact in Model.Contacts)
+        {
+            <div class="contact-member-row d-flex align-items-center" onclick="window.location.href='@Url.Action("Details", new { id = contact.Id })'">
+                @if (contact.ContactImage != null)
+                {
+                    <img src="@Url.Action("GetContactImage", new { id = contact.Id })" class="contact-member-thumbnail me-3" alt="@contact.Name" />
+                }
+                else
+                {
+                    <div class="contact-member-placeholder me-3"><i class="fas fa-user"></i></div>
+                }
+                <div class="flex-grow-1">
+                    <div class="contact-member-name">@contact.Name</div>
+                    @if (!string.IsNullOrEmpty(contact.TownCity))
+                    {
+                        <div class="contact-member-town-city"><i class="fas fa-map-marker-alt me-1"></i>@contact.TownCity</div>
+                    }
+                    @if (!string.IsNullOrEmpty(contact.SubLocation))
+                    {
+                        <div class="contact-member-sub-location">@contact.SubLocation</div>
+                    }
+                    @if (!contact.IsRevealed)
+                    {
+                        <div>
+                            <span class="hidden-badge"><i class="fas fa-eye-slash me-1"></i>Hidden</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="contact-empty-state">
+            <i class="fas fa-address-book fa-2x mb-2"></i>
+            <h5>No Contacts Yet</h5>
+            <p>No one has added a contact yet. DMs can create the first one to start building out the world.</p>
+        </div>
+    }
+</div>

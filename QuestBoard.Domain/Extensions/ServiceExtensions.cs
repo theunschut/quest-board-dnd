@@ -18,6 +18,7 @@ public static class ServiceExtensions
         services.AddScoped<IQuestService, QuestService>();
         services.AddScoped<IShopService, ShopService>();
         services.AddScoped<ICharacterService, CharacterService>();
+        services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IDungeonMasterProfileService, DungeonMasterProfileService>();
         services.AddScoped<IGroupService, GroupService>();
 

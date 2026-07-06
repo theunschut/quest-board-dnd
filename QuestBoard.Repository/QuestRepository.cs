@@ -185,7 +185,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     }
 
     /// <inheritdoc/>
-    public async Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default)
+    public async Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default)
     {
         var entity = await DbContext.Quests
             .Include(q => q.ProposedDates)
@@ -199,6 +199,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
 
         entity.Title = title;
         entity.Description = description;
+        entity.Rewards = rewards;
         entity.ChallengeRating = challengeRating;
         entity.TotalPlayerCount = totalPlayerCount;
         entity.DungeonMasterSession = dungeonMasterSession;
@@ -273,38 +274,6 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     private static bool IsSameDateTime(DateTime date1, DateTime date2)
     {
         return Math.Abs((date1 - date2).TotalMinutes) <= DateMatchWindowMinutes;
-    }
-
-    private static void UpdateProposedDatesIntelligently(QuestEntity entity, IList<DateTime> newProposedDates)
-    {
-        var existingDates = entity.ProposedDates.ToList();
-        var datesToRemove = new List<ProposedDateEntity>();
-
-        foreach (var existingDate in existingDates)
-        {
-            var matchingNewDate = newProposedDates.FirstOrDefault(nd => IsSameDateTime(existingDate.Date, nd));
-            if (matchingNewDate == default)
-            {
-                datesToRemove.Add(existingDate);
-            }
-            else
-            {
-                existingDate.Date = matchingNewDate;
-            }
-        }
-
-        foreach (var newDate in newProposedDates)
-        {
-            if (!existingDates.Any(ed => IsSameDateTime(ed.Date, newDate)))
-            {
-                entity.ProposedDates.Add(new ProposedDateEntity { Date = newDate, Quest = entity, QuestId = entity.Id });
-            }
-        }
-
-        foreach (var dateToRemove in datesToRemove)
-        {
-            entity.ProposedDates.Remove(dateToRemove);
-        }
     }
 
     private static List<UserEntity> UpdateProposedDatesWithNotificationTracking(QuestEntity entity, IList<DateTime> newProposedDates)

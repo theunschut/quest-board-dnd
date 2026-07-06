@@ -131,7 +131,7 @@ internal class QuestService(
 
     /// <inheritdoc/>
     public async Task<ServiceResult<int>> UpdateQuestPropertiesWithNotificationsAsync(
-        int questId, string title, string description, int challengeRating, int totalPlayerCount,
+        int questId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount,
         bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null,
         CancellationToken token = default)
     {
@@ -149,7 +149,7 @@ internal class QuestService(
         }
 
         var affectedPlayers = await repository.UpdateQuestPropertiesWithNotificationsAsync(
-            questId, title, description, challengeRating, totalPlayerCount, dungeonMasterSession,
+            questId, title, description, rewards, challengeRating, totalPlayerCount, dungeonMasterSession,
             updateProposedDates, proposedDates, token);
 
         if (affectedPlayers.Count == 0) return ServiceResult<int>.Ok(0);
@@ -345,7 +345,7 @@ internal class QuestService(
 
     /// <inheritdoc/>
     public async Task<int> CreateFollowUpQuestWithDetailsAsync(
-        int originalQuestId, string title, string description, int challengeRating, int totalPlayerCount,
+        int originalQuestId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount,
         bool dungeonMasterSession, IList<DateTime> proposedDates, CancellationToken token = default)
     {
         // Create the shell quest and import selected players first
@@ -356,7 +356,7 @@ internal class QuestService(
             // Apply the proposed dates and title/description edits from the form
             // (CreateFollowUpQuestAsync creates the quest shell without dates; dates come from the form)
             await UpdateQuestPropertiesWithNotificationsAsync(
-                newQuestId, title, description, challengeRating, totalPlayerCount,
+                newQuestId, title, description, rewards, challengeRating, totalPlayerCount,
                 dungeonMasterSession, updateProposedDates: true, proposedDates, token);
         }
         catch

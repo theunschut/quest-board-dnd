@@ -17,7 +17,6 @@ public static class AuthenticationHelper
     {
         using var scope = services.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
 
         // Make usernames and emails unique to avoid conflicts across tests
         var uniqueSuffix = Guid.NewGuid().ToString("N").Substring(0, 8);
@@ -38,13 +37,6 @@ public static class AuthenticationHelper
         {
             throw new Exception($"Failed to create user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
-
-        // Assign default Player role to all new users
-        if (!await roleManager.RoleExistsAsync("Player"))
-        {
-            await roleManager.CreateAsync(new IdentityRole<int>("Player"));
-        }
-        await userManager.AddToRoleAsync(user, "Player");
 
         return user;
     }
@@ -96,7 +88,10 @@ public static class AuthenticationHelper
         var user = await CreateTestUserAsync(factory.Services, userName, email, password, name);
 
         // Add ASP.NET Core Identity roles to the user in the database if specified.
-        if (roles != null && roles.Length > 0)
+        // Only SuperAdmin is a real Identity role today — Admin/DungeonMaster/Player are
+        // per-group roles stored on UserGroups.GroupRole (seeded below), so seeding them here
+        // too would recreate the stale AspNetUserRoles rows the production fix removes.
+        if (roles != null && roles.Contains("SuperAdmin"))
         {
             using var scope = factory.Services.CreateScope();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
@@ -104,15 +99,11 @@ public static class AuthenticationHelper
             var userFromDb = await userManager.FindByIdAsync(user.Id.ToString());
             if (userFromDb != null)
             {
-                foreach (var role in roles)
+                if (!await roleManager.RoleExistsAsync("SuperAdmin"))
                 {
-                    // Check if role exists, create if not
-                    if (!await roleManager.RoleExistsAsync(role))
-                    {
-                        await roleManager.CreateAsync(new IdentityRole<int>(role));
-                    }
-                    await userManager.AddToRoleAsync(userFromDb, role);
+                    await roleManager.CreateAsync(new IdentityRole<int>("SuperAdmin"));
                 }
+                await userManager.AddToRoleAsync(userFromDb, "SuperAdmin");
             }
         }
 

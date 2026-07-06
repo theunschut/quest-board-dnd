@@ -8,11 +8,6 @@ namespace QuestBoard.Domain.Interfaces;
 public interface IUserService : IBaseService<User>
 {
     /// <summary>
-    /// Adds the user to the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<IdentityResult> AddToRoleAsync(User user, string role);
-
-    /// <summary>
     /// Changes the currently signed-in user's password after verifying the old password.
     /// </summary>
     Task<IdentityResult> ChangePasswordAsync(ClaimsPrincipal user, string oldPassword, string newPassword);
@@ -23,8 +18,9 @@ public interface IUserService : IBaseService<User>
     Task<IdentityResult> ChangePasswordAsync(User user, string oldPassword, string newPassword);
 
     /// <summary>
-    /// Creates a new user account with no password set and assigns the Player role.
-    /// The user must complete the Welcome/SetPassword flow before they can sign in.
+    /// Creates a new user account with no password set and no role assigned; per-group roles
+    /// are assigned later via group membership. The user must complete the Welcome/SetPassword
+    /// flow before they can sign in.
     /// </summary>
     Task<IdentityResult> CreateAsync(string email, string name);
 
@@ -79,34 +75,14 @@ public interface IUserService : IBaseService<User>
     Task<GroupRole?> GetGroupRoleByIdAsync(int userId, int groupId);
 
     /// <summary>
-    /// Returns the ASP.NET Core Identity roles assigned to the user.
-    /// </summary>
-    Task<IList<string>> GetRolesAsync(User user);
-
-    /// <summary>
     /// Returns the domain User for the currently signed-in ClaimsPrincipal, or a new empty User if not resolvable.
     /// </summary>
     Task<User> GetUserAsync(ClaimsPrincipal user);
 
     /// <summary>
-    /// Returns whether the user holds the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<bool> IsInRoleAsync(User user, string role);
-
-    /// <summary>
-    /// Returns whether the currently signed-in ClaimsPrincipal holds the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<bool> IsInRoleAsync(ClaimsPrincipal user, string role);
-
-    /// <summary>
     /// Attempts to sign in with the given credentials, honoring lockout policy.
     /// </summary>
     Task<SignInResult> PasswordSignInAsync(string email, string password, bool rememberMe, bool lockoutOnFailure);
-
-    /// <summary>
-    /// Removes the user from the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<IdentityResult> RemoveFromRoleAsync(User user, string role);
 
     /// <summary>
     /// Resets the user's password using a previously issued reset token.

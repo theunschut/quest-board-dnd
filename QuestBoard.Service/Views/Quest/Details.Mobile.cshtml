@@ -101,6 +101,13 @@
                 @Model.Quest.Description
             </div>
         }
+        @if (!string.IsNullOrWhiteSpace(Model.Quest?.Rewards))
+        {
+            <hr class="quest-card-divider mt-2 mb-2" />
+            <div class="quest-description-mobile">
+                <i class="fas fa-coins me-1"></i>@Model.Quest.Rewards
+            </div>
+        }
     </div>
 
     @* Voting section: update vote (signed-up player, open quest) *@

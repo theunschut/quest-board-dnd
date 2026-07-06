@@ -38,6 +38,12 @@ public class QuestBoardContext(
 
     public DbSet<UserGroupEntity> UserGroups { get; set; }
 
+    public DbSet<ContactEntity> Contacts { get; set; }
+
+    public DbSet<ContactImageEntity> ContactImages { get; set; }
+
+    public DbSet<ContactNoteEntity> ContactNotes { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -136,6 +142,20 @@ public class QuestBoardContext(
             .HasForeignKey(ps => ps.CharacterId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // Contact entity relationships
+        modelBuilder.Entity<ContactEntity>()
+            .HasMany(c => c.Notes)
+            .WithOne(n => n.Contact)
+            .HasForeignKey(n => n.ContactId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Author FK uses NoAction to avoid a cascade cycle through UserEntity, same as QuestEntity.DungeonMaster
+        modelBuilder.Entity<ContactNoteEntity>()
+            .HasOne(n => n.Author)
+            .WithMany()
+            .HasForeignKey(n => n.AuthorUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         // DungeonMasterProfile — Id = UserId (no auto-generation)
         modelBuilder.Entity<DungeonMasterProfileEntity>()
             .Property(p => p.Id)
@@ -227,6 +247,13 @@ public class QuestBoardContext(
             .HasForeignKey(c => c.GroupId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // Contact → Group: NoAction to prevent cascade cycles
+        modelBuilder.Entity<ContactEntity>()
+            .HasOne(c => c.Group)
+            .WithMany()
+            .HasForeignKey(c => c.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         // UserGroup → User: Cascade — removing a user removes their memberships
         modelBuilder.Entity<UserGroupEntity>()
             .HasOne(ug => ug.User)
@@ -297,7 +324,7 @@ public class QuestBoardContext(
         // CharacterEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
         // do above. With no active group selected, every character query returns nothing rather than
         // everyone's characters across every group. Do not "fix" this to match the Quest/ShopItem shape —
-        // an empty guild roster is the intended behavior here, not an oversight.
+        // an empty character roster is the intended behavior here, not an oversight.
         modelBuilder.Entity<CharacterEntity>()
             .HasQueryFilter(e =>
                 activeGroupContext.ActiveGroupId != null &&
@@ -316,6 +343,24 @@ public class QuestBoardContext(
             .HasQueryFilter(ci =>
                 activeGroupContext.ActiveGroupId != null &&
                 ci.Character.GroupId == activeGroupContext.ActiveGroupId);
+
+        // ContactEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
+        // do above — same "per-group roster" shape as CharacterEntity. An empty Contact list when no
+        // group is selected is the intended behavior here, not an oversight.
+        modelBuilder.Entity<ContactEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
+        modelBuilder.Entity<ContactImageEntity>()
+            .HasQueryFilter(ci =>
+                activeGroupContext.ActiveGroupId != null &&
+                ci.Contact.GroupId == activeGroupContext.ActiveGroupId);
+
+        modelBuilder.Entity<ContactNoteEntity>()
+            .HasQueryFilter(cn =>
+                activeGroupContext.ActiveGroupId != null &&
+                cn.Contact.GroupId == activeGroupContext.ActiveGroupId);
 
         // UserEntity intentionally excluded — HasQueryFilter on UserEntity breaks ASP.NET Core Identity
         // (login, password reset, and email confirmation all fail silently)

@@ -161,6 +161,60 @@ public static class TestDataHelper
         return character;
     }
 
+    public static async Task<ContactEntity> CreateTestContactAsync(
+        IServiceProvider services,
+        int createdByUserId,
+        string name = "Test Contact",
+        string? townCity = null,
+        string? subLocation = null,
+        bool isRevealed = false,
+        int groupId = 1,
+        byte[]? imageData = null)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var contact = new ContactEntity
+        {
+            Name = name,
+            TownCity = townCity,
+            SubLocation = subLocation,
+            CreatedByUserId = createdByUserId,
+            IsRevealed = isRevealed,
+            GroupId = groupId,
+            CreatedAt = DateTime.UtcNow,
+            ProfileImage = imageData == null ? null : new ContactImageEntity { ImageData = imageData }
+        };
+
+        context.Contacts.Add(contact);
+        await context.SaveChangesAsync();
+
+        return contact;
+    }
+
+    public static async Task<ContactNoteEntity> CreateTestContactNoteAsync(
+        IServiceProvider services,
+        int contactId,
+        int authorUserId,
+        string text = "Test note")
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var note = new ContactNoteEntity
+        {
+            ContactId = contactId,
+            AuthorUserId = authorUserId,
+            Text = text,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.Set<ContactNoteEntity>().Add(note);
+        await context.SaveChangesAsync();
+
+        return note;
+    }
+
     public static async Task ClearDatabaseAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();

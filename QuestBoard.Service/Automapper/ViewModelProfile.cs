@@ -5,6 +5,7 @@ using QuestBoard.Domain.Models.Shop;
 using QuestBoard.Service.ViewModels.QuestViewModels;
 using QuestBoard.Service.ViewModels.ShopViewModels;
 using QuestBoard.Service.ViewModels.CharacterViewModels;
+using QuestBoard.Service.ViewModels.ContactViewModels;
 using QuestBoard.Service.ViewModels.DungeonMasterViewModels;
 
 namespace QuestBoard.Service.Automapper;
@@ -72,6 +73,26 @@ public class ViewModelProfile : Profile
         // CharacterClass mappings
         CreateMap<CharacterClass, CharacterClassViewModel>()
             .ReverseMap();
+
+        // Contact to ContactViewModel
+        CreateMap<Contact, ContactViewModel>()
+            .ForMember(dest => dest.ContactImage, opt => opt.MapFrom(src => src.ContactImageData))
+            .ForMember(dest => dest.ContactImageFile, opt => opt.Ignore())
+            .ForMember(dest => dest.CanManage, opt => opt.Ignore());
+
+        // ContactViewModel to Contact
+        CreateMap<ContactViewModel, Contact>()
+            .ForMember(dest => dest.ContactImageData, opt => opt.MapFrom(src => src.ContactImage))
+            .ForMember(dest => dest.CreatedByUser, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Notes, opt => opt.Ignore());
+
+        // ContactNote to ContactNoteViewModel
+        CreateMap<ContactNote, ContactNoteViewModel>();
+
+        // ContactNoteViewModel to ContactNote
+        CreateMap<ContactNoteViewModel, ContactNote>()
+            .ForMember(dest => dest.AuthorName, opt => opt.Ignore());
 
         // Quest to QuestSummaryViewModel (for DM profile quest history)
         CreateMap<Quest, QuestSummaryViewModel>()
