@@ -268,15 +268,17 @@ namespace QuestBoard.Service.Controllers.Characters
 
             // Update classes
             existingCharacter.Classes = mapper.Map<List<CharacterClass>>(viewModel.Classes);
-            
-            // If setting as main, update all user's characters
+
+            // Persist all edited fields first so they are saved regardless of whether this
+            // edit also promotes the character to Main below.
+            await characterService.UpdateAsync(existingCharacter, token);
+
+            // If setting as main, demote the character's owner's other characters to Backup.
+            // Must use the character's own owner id (not the acting user's id) so an Admin
+            // editing another player's character doesn't demote the Admin's own roster instead.
             if (viewModel.Role == CharacterRole.Main && existingCharacter.Role != CharacterRole.Main)
             {
-                await characterService.SetAsMainCharacterAsync(id, currentUser.Id, token);
-            }
-            else
-            {
-                await characterService.UpdateAsync(existingCharacter, token);
+                await characterService.SetAsMainCharacterAsync(id, existingCharacter.OwnerId, token);
             }
 
             return RedirectToAction(nameof(Details), new { id });
