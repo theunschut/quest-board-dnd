@@ -431,7 +431,7 @@ Plans:
 **Goal:** The character-roster feature is called "Characters" everywhere in the Service project — `CharactersController` serving `/Characters/*`, `Views/Characters/`, `characters.css`/`characters.mobile.css`, nav labels, and all user-facing copy — matching the Domain/Repository layers that were already "Character"-named, with zero behavior change. The stray `GuildMembersIndexViewModel` (an unrelated Players-page view model) is renamed to `PlayersIndexViewModel` in the same pass so a repo-wide grep for "GuildMembers" returns zero hits in the Service and IntegrationTests projects.
 **Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 58-CONTEXT.md decisions D-01 through D-03)
 **Depends on:** Phase 57
-**Plans:** 2/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 **Wave 1** *(two parallel — disjoint files)*
@@ -441,12 +441,12 @@ Plans:
 
 **Wave 2** *(blocked on 58-02)*
 
-- [ ] 58-03-PLAN.md — ATOMIC: rename GuildMembersController → CharactersController + move Views/GuildMembers/ → Views/Characters/ (Pitfall 1) + Index/Details content edits (D-01)
+- [x] 58-03-PLAN.md — ATOMIC: rename GuildMembersController → CharactersController + move Views/GuildMembers/ → Views/Characters/ (Pitfall 1) + Index/Details content edits (D-01)
 
 **Wave 3** *(two parallel — blocked on 58-03; disjoint Service vs. IntegrationTests files)*
 
-- [ ] 58-04-PLAN.md — Repoint 6 Url.Action("GetProfilePicture","Characters",...) cross-refs incl. _QuestCard partial (Pitfall 3) + desktop/mobile nav links + characters.css link (D-01)
-- [ ] 58-05-PLAN.md — Rename GuildMembersControllerIntegrationTests → CharactersControllerIntegrationTests + all route strings, update MobileViewsTests (Pitfall 2) + LayoutNavigationTests, full suite green (D-01)
+- [x] 58-04-PLAN.md — Repoint 6 Url.Action("GetProfilePicture","Characters",...) cross-refs incl. _QuestCard partial (Pitfall 3) + desktop/mobile nav links + characters.css link (D-01)
+- [x] 58-05-PLAN.md — Rename GuildMembersControllerIntegrationTests → CharactersControllerIntegrationTests + all route strings, update MobileViewsTests (Pitfall 2) + LayoutNavigationTests, full suite green (D-01)
 
 **Wave 4** *(blocked on 58-01, 58-04, 58-05)*
 
