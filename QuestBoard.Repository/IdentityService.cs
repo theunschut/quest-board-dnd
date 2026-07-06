@@ -8,14 +8,6 @@ namespace QuestBoard.Repository;
 internal class IdentityService(UserManager<UserEntity> userManager, SignInManager<UserEntity> signInManager) : IIdentityService
 {
     /// <inheritdoc/>
-    public async Task<IdentityResult> AddToRoleAsync(int userId, string role)
-    {
-        var entity = await userManager.FindByIdAsync(userId.ToString());
-        if (entity == null) return IdentityResult.Failed();
-        return await userManager.AddToRoleAsync(entity, role);
-    }
-
-    /// <inheritdoc/>
     public async Task<IdentityResult> ChangePasswordAsync(ClaimsPrincipal user, string oldPassword, string newPassword)
     {
         var entity = await userManager.GetUserAsync(user);
@@ -44,22 +36,11 @@ internal class IdentityService(UserManager<UserEntity> userManager, SignInManage
         };
         var result = await userManager.CreateAsync(entity);
 
-        if (result.Succeeded)
-        {
-            await userManager.AddToRoleAsync(entity, "Player");
-            // Account is created without a password (PasswordHash stays null) — the user
-            // must complete the Welcome/SetPassword flow before they can sign in.
-        }
+        // Account is created without a password (PasswordHash stays null) and with no role —
+        // the user must complete the Welcome/SetPassword flow before they can sign in, and
+        // per-group role assignment happens later via group membership.
 
         return result;
-    }
-
-    /// <inheritdoc/>
-    public async Task<IList<string>> GetRolesAsync(int userId)
-    {
-        var entity = await userManager.FindByIdAsync(userId.ToString());
-        if (entity == null) return [];
-        return await userManager.GetRolesAsync(entity);
     }
 
     /// <inheritdoc/>
@@ -70,32 +51,8 @@ internal class IdentityService(UserManager<UserEntity> userManager, SignInManage
     }
 
     /// <inheritdoc/>
-    public async Task<bool> IsInRoleAsync(int userId, string role)
-    {
-        var entity = await userManager.FindByIdAsync(userId.ToString());
-        if (entity == null) return false;
-        return await userManager.IsInRoleAsync(entity, role);
-    }
-
-    /// <inheritdoc/>
-    public async Task<bool> IsInRoleAsync(ClaimsPrincipal user, string role)
-    {
-        var entity = await userManager.GetUserAsync(user);
-        if (entity == null) return false;
-        return await userManager.IsInRoleAsync(entity, role);
-    }
-
-    /// <inheritdoc/>
     public Task<SignInResult> PasswordSignInAsync(string email, string password, bool rememberMe, bool lockoutOnFailure)
         => signInManager.PasswordSignInAsync(email, password, rememberMe, lockoutOnFailure);
-
-    /// <inheritdoc/>
-    public async Task<IdentityResult> RemoveFromRoleAsync(int userId, string role)
-    {
-        var entity = await userManager.FindByIdAsync(userId.ToString());
-        if (entity == null) return IdentityResult.Failed();
-        return await userManager.RemoveFromRoleAsync(entity, role);
-    }
 
     /// <inheritdoc/>
     public async Task<IdentityResult> ResetPasswordAsync(int userId, string token, string newPassword)

@@ -10,11 +10,6 @@ namespace QuestBoard.Domain.Interfaces;
 public interface IIdentityService
 {
     /// <summary>
-    /// Adds the user to the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<IdentityResult> AddToRoleAsync(int userId, string role);
-
-    /// <summary>
     /// Changes the currently signed-in user's password after verifying the old password.
     /// </summary>
     Task<IdentityResult> ChangePasswordAsync(ClaimsPrincipal user, string oldPassword, string newPassword);
@@ -25,14 +20,10 @@ public interface IIdentityService
     Task<IdentityResult> ChangePasswordAsync(int userId, string oldPassword, string newPassword);
 
     /// <summary>
-    /// Creates a new Identity user with no password set and assigns the Player role.
+    /// Creates a new Identity user with no password set and no role assigned; per-group roles
+    /// are assigned later via group membership.
     /// </summary>
     Task<IdentityResult> CreateUserAsync(string email, string name);
-
-    /// <summary>
-    /// Returns the ASP.NET Core Identity roles assigned to the user.
-    /// </summary>
-    Task<IList<string>> GetRolesAsync(int userId);
 
     /// <summary>
     /// Returns the numeric user Id for the given ClaimsPrincipal, or null if not resolvable.
@@ -40,24 +31,9 @@ public interface IIdentityService
     Task<int?> GetUserIdAsync(ClaimsPrincipal user);
 
     /// <summary>
-    /// Returns whether the user holds the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<bool> IsInRoleAsync(int userId, string role);
-
-    /// <summary>
-    /// Returns whether the currently signed-in ClaimsPrincipal holds the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<bool> IsInRoleAsync(ClaimsPrincipal user, string role);
-
-    /// <summary>
     /// Attempts to sign in with the given credentials, honoring lockout policy.
     /// </summary>
     Task<SignInResult> PasswordSignInAsync(string email, string password, bool rememberMe, bool lockoutOnFailure);
-
-    /// <summary>
-    /// Removes the user from the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<IdentityResult> RemoveFromRoleAsync(int userId, string role);
 
     /// <summary>
     /// Resets the user's password using a previously issued reset token.
