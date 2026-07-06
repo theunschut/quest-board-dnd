@@ -9,7 +9,7 @@
 - ✅ **v5.0 Multi-Tenancy** — Phases 26–34.3 (shipped 2026-07-02)
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
 - ✅ **v6.1 Bugfixes** — Phases 38–42 (shipped 2026-07-04)
-- 🚧 **v7.0 Backlog Cleanup** — Phases 43–58 (in progress)
+- 🚧 **v7.0 Backlog Cleanup** — Phases 43–60 (in progress)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; issue #78 is now delivered by v7.0 Phases 45–46._
 
@@ -136,6 +136,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [ ] Phase 57: Add an NPC directory — DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location) with a player-and-DM-editable notes list, plus dedicated Index/Details/Edit views mirroring the Characters pattern
 - [x] Phase 58: Rename the Guild Members feature to Characters everywhere — Controller, routes, views, ViewModels, CSS, integration tests, and nav copy renamed so the terminology matches the Domain/Repository layers, with zero behavior change (completed 2026-07-06)
 - [x] Phase 59: Add a rewards field to quests — Optional freeform Rewards textarea between Description and Challenge Rating on Create/Edit/Follow-Up (desktop + mobile), shown as a gold `fa-coins` boxed callout below Description on Quest Details and QuestLog Details, hidden when empty (completed 2026-07-06)
+- [ ] Phase 60: Stop creating AspNetUserRoles entries for new users — Remove the stale Player-role write in `CreateUserAsync`, delete the dead per-group Identity-role API on both service layers, and align the test auth helper to seed AspNetUserRoles only for SuperAdmin; per-group roles stay in `UserGroups.GroupRole`, SuperAdmin untouched, no migration
 
 </details>
 
@@ -493,3 +494,14 @@ Plans:
 **Wave 2** *(blocked on 59-01)*
 
 - [x] 59-02-PLAN.md — Views: Rewards textarea on Create/Edit/CreateFollowUp (desktop + mobile) between Description and CR + boxed `fa-coins` Rewards callout on Details/Details.Mobile/QuestLog Details (hidden when empty), reusing `.quest-description-box`/`.quest-description-mobile`; `_QuestCard` untouched + blocking human verification (D-02/D-04/D-05/D-06/D-07)
+
+### Phase 60: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
+
+**Goal:** New Identity user creation stops writing rows to `AspNetUserRoles` (the stale `Player` assignment on every account is removed), and the now-fully-dead per-group Identity-role API (`AddToRoleAsync`/`RemoveFromRoleAsync`/`IsInRoleAsync`/`GetRolesAsync` on `IUserService`/`IIdentityService`) is deleted — per-group roles remain owned solely by `UserGroups.GroupRole`, and the system-wide `SuperAdmin` Identity role is untouched. No data-cleanup migration.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 60-CONTEXT.md decisions D-01 through D-04)
+**Depends on:** Phase 59
+**Plans:** 1 plan
+
+Plans:
+
+- [ ] 60-01-PLAN.md — Remove the write-time bug + dead role API from production, align the integration-test auth helper to seed AspNetUserRoles only for SuperAdmin, and verify the full build/test suite
