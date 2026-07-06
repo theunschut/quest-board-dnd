@@ -80,7 +80,7 @@ Accent reserved for: the recap entry-point button on Details ("Add Recap" / "Edi
 | Primary CTA (Details entry point, empty) | **"Add Recap"** — `<i class="fas fa-plus me-2"></i>Add Recap` (D-02) |
 | Primary CTA (Details entry point, has content) | **"Edit Recap"** — `<i class="fas fa-edit me-2"></i>Edit Recap` (D-02) |
 | Primary CTA (Edit Recap page submit) | **"Save Recap"** — `<i class="fas fa-save me-2"></i>Save Recap` (unchanged from today's inline form button copy — do not rename) |
-| Secondary CTA (Edit Recap page cancel) | **"Cancel"** — `<i class="fas fa-times me-2"></i>Cancel` (D-03; matches `Quest/Edit.cshtml` desktop's Cancel copy/icon exactly) |
+| Secondary CTA (Edit Recap page cancel) | **"Cancel"** — `<i class="fas fa-times me-2"></i>Cancel` (D-03; matches `Quest/Edit.cshtml` desktop's Cancel copy/icon exactly). "Cancel" is intentionally exempt from generic-label CTA guidance here: it is a locked secondary/exit action (D-03) always paired with an unambiguous primary CTA ("Save Recap"), per CLAUDE.md's locked secondary-left/primary-right button convention — not an unlabeled catch-all button. |
 | Edit Recap page label | "Write or update the session recap:" (verbatim carry-over, unchanged) |
 | Edit Recap page help text | "Share the story of this adventure with your players!" (verbatim carry-over per CONTEXT.md Claude's Discretion — keep unless it looks wrong once built) |
 | Edit Recap page placeholder | "Describe what happened during this quest..." (verbatim carry-over, unchanged) |
@@ -88,6 +88,13 @@ Accent reserved for: the recap entry-point button on Details ("Add Recap" / "Edi
 | Empty state body (Details, read-only, no recap yet) | "No recap has been written for this quest yet." (verbatim carry-over, unchanged — `text-muted`, followed immediately by the "Add Recap" button per D-01) |
 | Error state (403 direct-URL access, D-04) | Standard ASP.NET Core `Forbid()` result — no custom view/copy required for this phase. The framework's default 403 handling applies (same as `UpdateRecap` POST today, which has no custom 403 view either). Do not build a custom "Access Denied" page as part of this phase — out of scope, matches sibling action's existing behavior exactly. |
 | Destructive confirmation | Not applicable — no destructive action in this phase. Cancel is a plain navigation link (`<a>` to Details), not a data-destroying action, so no confirmation dialog is needed — exactly as `Quest/Edit.cshtml`'s Cancel link has none. |
+
+---
+
+## Focal Points
+
+- **Details page (read-only Session Recap section):** the recap text (or empty-state message) is the focal point; the "Add Recap"/"Edit Recap" button is the secondary anchor beneath it — the only accent-colored element in an otherwise read-only section.
+- **Edit Recap page:** the textarea is the focal point; "Save Recap" is the secondary anchor (primary CTA, accent-colored) alongside "Cancel" (neutral, `.btn-secondary`).
 
 ---
 
