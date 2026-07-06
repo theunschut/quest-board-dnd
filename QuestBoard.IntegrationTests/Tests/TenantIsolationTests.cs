@@ -182,9 +182,12 @@ public class TenantIsolationTests(WebApplicationFactoryBase factory)
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act — request the quest board (authenticated) with the singleton stub scoped to a
-        // group that does not exist in the database
+        // group that does not exist in the database. Authenticated as SuperAdmin so this test
+        // exercises only the query filter's own null/non-existent-group behavior, not
+        // GroupSessionMiddleware's membership re-validation (SuperAdmin is exempt from that check
+        // since its group selection was never membership-gated in the first place).
         factory.TestGroupContext.ActiveGroupId = 999;
-        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
             factory, "isolationviewer4", "isolationviewer4@example.com");
         var response = await client.GetAsync("/quests", TestContext.Current.CancellationToken);
 
