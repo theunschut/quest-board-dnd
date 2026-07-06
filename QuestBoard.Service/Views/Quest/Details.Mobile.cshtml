@@ -36,7 +36,7 @@
 
     var selectedPlayersCount = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() ?? 0;
     var hasSpace = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
-    var userCanJoin = User.Identity?.IsAuthenticated == true && !isPlayerSignedUp;
+    var userCanJoin = boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && !isPlayerSignedUp && Model.Quest?.IsFinalized == true;
 }
 @section Styles {
     <link href="~/css/quests.mobile.css" asp-append-version="true" rel="stylesheet" />

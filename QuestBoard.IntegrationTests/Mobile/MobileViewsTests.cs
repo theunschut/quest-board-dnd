@@ -492,8 +492,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// When a finalized quest's Player slots are full, the mobile Join card shows the locked
-    /// D-06 waitlist copy instead of implying a Player join is rejected.
+    /// When a finalized quest's Player slots are full, the mobile Join card shows waitlist
+    /// copy instead of implying a Player join is rejected.
     /// </summary>
     [Fact]
     public async Task MobileQuestDetails_FinalizedQuestFull_RendersWaitlistCopy()
@@ -518,6 +518,30 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("joining as a Player will place you on the waitlist");
+    }
+
+    /// <summary>
+    /// Regression guard: the "Join This Quest" card is finalized-quest-only. An authenticated,
+    /// not-yet-signed-up player viewing an OPEN (non-finalized) quest must NOT see it — only the
+    /// pre-finalization "Choose a Date" signup card should render.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_OpenQuest_AuthenticatedNotSignedUp_DoesNotRenderJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard05", "dm_joincard05@test.com", name: "DM JoinCard05");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Open Join Card Quest");
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, DateTime.UtcNow.AddDays(7));
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard05", "player_joincard05@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("joinPlayerFormMobile");
+        html.Should().Contain("Choose a Date");
     }
 
     // -----------------------------------------------------------------------
