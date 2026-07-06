@@ -282,7 +282,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete    | 2026-07-06 |
 | 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
 | 56. Allow admins to edit characters owned by other players | v7.0 | 1/1 | Complete | 2026-07-06 |
-| 57. Add an NPC directory | v7.0 | 5/6 | In Progress|  |
+| 57. Add an NPC directory | v7.0 | 6/6 | Complete   | 2026-07-06 |
 | 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
 | 59. Add a rewards field to quests | v7.0 | 2/2 | Complete    | 2026-07-06 |
 
@@ -428,7 +428,7 @@ Plans:
 **Goal:** A DM-tier user can create, edit, reveal/hide, and delete group-bound "Contacts" (name, image, description, town/city, optional sub-location), every group member can view revealed Contacts and collaboratively add/edit/delete freeform authored+timestamped notes on the Details page, and hidden Contacts stay invisible (list-filtered + 404) to everyone except their creator and DM-tier viewers who flip a per-group session "Show Hidden" toggle — with full desktop + mobile parity, mirroring the Characters feature.
 **Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 57-CONTEXT.md decisions D-01 through D-20)
 **Depends on:** Phase 56 (feature is built against the already-renamed Characters feature; Phase 58 executed before this phase per the execution-order note above)
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1** *(two parallel — disjoint files: tests vs. entities)*
@@ -450,7 +450,7 @@ Plans:
 
 **Wave 5**
 
-- [ ] 57-06-PLAN.md — Mobile views (Index/Details/Edit/Create.Mobile.cshtml) + 3 mobile stylesheets, full D-18 parity with UI-SPEC copy/style fidelity + blocking human verification of the whole feature
+- [x] 57-06-PLAN.md — Mobile views (Index/Details/Edit/Create.Mobile.cshtml) + 3 mobile stylesheets, full D-18 parity with UI-SPEC copy/style fidelity + blocking human verification of the whole feature
 
 ### Phase 58: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
 
