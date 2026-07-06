@@ -403,3 +403,13 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 55-04-PLAN.md — Interval-gated stale-membership re-validation in the middleware (D-06)
+
+### Phase 56: Allow admins to edit characters owned by other players
+
+**Goal:** An Admin (per-group `GroupRole.Admin`) or SuperAdmin can Edit, Delete, and Retire/Reactivate a character owned by another player in their active group, while Players stay restricted to their own characters and cross-tenant access remains blocked — mirroring the shipped `DungeonMasterController.EditProfile` ownership-OR-admin pattern, with no schema change or new packages.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 56-CONTEXT.md decisions D-01 through D-04)
+**Depends on:** Phase 55
+**Plans:** 1 plan
+
+Plans:
+- [ ] 56-01-PLAN.md — Ownership-OR-Admin guard on GuildMembersController Edit/Delete/ToggleRetirement + Details CanEdit flag, new CharacterViewModel.CanEdit, both Details views gated on CanEdit, and 11 authorization integration tests (D-01/D-02/D-03/D-04)
