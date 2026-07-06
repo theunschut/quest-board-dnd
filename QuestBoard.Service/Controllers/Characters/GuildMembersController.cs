@@ -57,9 +57,12 @@ namespace QuestBoard.Service.Controllers.Characters
 
             var currentUser = await userService.GetUserAsync(User);
             var viewModel = mapper.Map<CharacterViewModel>(character);
-            var isOwner = currentUser != null && character.OwnerId == currentUser.Id;
+            // GetUserAsync never returns null - an unresolvable identity comes back as a User
+            // with Id == 0. Checking Id != 0 (rather than a null check, which is always true)
+            // is what actually distinguishes a resolved identity from an unresolvable one.
+            var isOwner = currentUser.Id != 0 && character.OwnerId == currentUser.Id;
             GroupRole? role = null;
-            if (currentUser != null)
+            if (currentUser.Id != 0)
             {
                 role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
             }
