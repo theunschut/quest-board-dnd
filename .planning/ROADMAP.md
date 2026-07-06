@@ -346,14 +346,14 @@ Plans:
 
 ### Phase 52: Add Dead status to CharacterStatus enum
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A character can be marked Dead (a third CharacterStatus value) via the existing Create/Edit Status dropdown, showing a distinct dark skull badge and dimmed card/row everywhere status is displayed, with the Retire/Reactivate toggle hidden for Dead characters and Dead characters auto-excluded from quest signup.
+**Requirements**: TBD (unmapped backlog item)
 **Depends on:** Phase 51
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 52 to break down)
+- [ ] 52-01-PLAN.md - Add Dead enum value + Dead CSS + Dead badge/toggle-guard across all 4 GuildMembers views
 
 ### Phase 53: Add dedicated Edit view for Quest recap so Details page is view-only
 
@@ -375,3 +375,13 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 54 to break down)
+
+### Phase 55: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 54
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 55 to break down)
