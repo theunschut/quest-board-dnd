@@ -232,6 +232,11 @@ namespace QuestBoard.Service.Controllers.Characters
                 return View(viewModel);
             }
 
+            // Capture the character's role before it gets overwritten below, so the
+            // Main-promotion check further down compares against the pre-edit state
+            // instead of the just-assigned value (which would always match).
+            var wasMain = existingCharacter.Role == CharacterRole.Main;
+
             // Update the existing character properties manually instead of mapping
             existingCharacter.Name = viewModel.Name;
             existingCharacter.Level = viewModel.Level;
@@ -277,7 +282,7 @@ namespace QuestBoard.Service.Controllers.Characters
             // If setting as main, demote the character's owner's other characters to Backup.
             // Must use the character's own owner id (not the acting user's id) so an Admin
             // editing another player's character doesn't demote the Admin's own roster instead.
-            if (viewModel.Role == CharacterRole.Main && existingCharacter.Role != CharacterRole.Main)
+            if (viewModel.Role == CharacterRole.Main && !wasMain)
             {
                 await characterService.SetAsMainCharacterAsync(id, existingCharacter.OwnerId, token);
             }

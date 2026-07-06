@@ -275,6 +275,61 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
     }
 
     [Fact]
+    public async Task Edit_PromotingCharacterToMain_ShouldDemoteOwnersOtherCharacterToBackup()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+
+        // The owner already has a Main character - promoting a different one of their own
+        // characters to Main must demote this one to Backup.
+        var currentMainCharacter = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Current Main Character", role: 0, groupId: 1); // Main
+
+        // The character being edited starts as Backup and belongs to the same owner (self-edit).
+        var targetCharacter = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Backup Character", role: 1, groupId: 1); // Backup
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = targetCharacter.Id.ToString(),
+            ["OwnerId"] = owner.Id.ToString(),
+            ["Name"] = "Backup Character",
+            ["Level"] = "5",
+            ["Status"] = ((int)CharacterStatus.Active).ToString(),
+            ["Role"] = ((int)CharacterRole.Main).ToString(),
+            ["SheetLink"] = "",
+            ["Description"] = "",
+            ["Backstory"] = "",
+            ["Classes[0].Class"] = "5", // Fighter
+            ["Classes[0].ClassLevel"] = "5"
+        });
+
+        // Act
+        var response = await ownerClient.PostAsync(
+            $"/GuildMembers/Edit/{targetCharacter.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        // The edited character was promoted to Main.
+        var persistedTarget = await context.Characters.FindAsync(
+            [targetCharacter.Id], TestContext.Current.CancellationToken);
+        persistedTarget.Should().NotBeNull();
+        persistedTarget!.Role.Should().Be((int)CharacterRole.Main);
+
+        // The owner's previously-Main character was demoted to Backup.
+        var persistedPreviousMain = await context.Characters.FindAsync(
+            [currentMainCharacter.Id], TestContext.Current.CancellationToken);
+        persistedPreviousMain.Should().NotBeNull();
+        persistedPreviousMain!.Role.Should().Be((int)CharacterRole.Backup);
+    }
+
+    [Fact]
     public async Task Details_AdminViewingAnotherPlayersCharacter_ShowsEditButton()
     {
         // Arrange
