@@ -185,7 +185,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     }
 
     /// <inheritdoc/>
-    public async Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default)
+    public async Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default)
     {
         var entity = await DbContext.Quests
             .Include(q => q.ProposedDates)
@@ -199,6 +199,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
 
         entity.Title = title;
         entity.Description = description;
+        entity.Rewards = rewards;
         entity.ChallengeRating = challengeRating;
         entity.TotalPlayerCount = totalPlayerCount;
         entity.DungeonMasterSession = dungeonMasterSession;

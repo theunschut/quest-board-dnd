@@ -114,13 +114,13 @@ public class QuestServiceTests
     {
         // Arrange
         _repository.UpdateQuestPropertiesWithNotificationsAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(),
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<IList<DateTime>?>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
 
         // Act
-        var result = await _sut.UpdateQuestPropertiesWithNotificationsAsync(1, "Title", "Desc", 5, 4, false, token: TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateQuestPropertiesWithNotificationsAsync(1, "Title", "Desc", null, 5, 4, false, token: TestContext.Current.CancellationToken);
 
         // Assert
         result.Success.Should().BeTrue();
@@ -142,7 +142,7 @@ public class QuestServiceTests
         };
 
         _repository.UpdateQuestPropertiesWithNotificationsAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(),
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<IList<DateTime>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(affectedPlayers);
@@ -152,7 +152,7 @@ public class QuestServiceTests
             .Returns(quest);
 
         // Act
-        var result = await _sut.UpdateQuestPropertiesWithNotificationsAsync(1, "Title", "Desc", 5, 4, false, token: TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateQuestPropertiesWithNotificationsAsync(1, "Title", "Desc", null, 5, 4, false, token: TestContext.Current.CancellationToken);
 
         // Assert: only players with non-empty email are included in the dispatch
         result.Success.Should().BeTrue();
@@ -166,6 +166,28 @@ public class QuestServiceTests
             Arg.Any<string>(),
             Arg.Any<DateTime>(),
             Arg.Any<DateTime>());
+    }
+
+    [Fact]
+    public async Task UpdateQuestPropertiesWithNotificationsAsync_WithRewards_ForwardsExactRewardsValueToRepository()
+    {
+        // Arrange
+        _repository.UpdateQuestPropertiesWithNotificationsAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(),
+                Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<IList<DateTime>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        // Act
+        await _sut.UpdateQuestPropertiesWithNotificationsAsync(
+            1, "Title", "Desc", "500 gold and a magic sword", 5, 4, false, token: TestContext.Current.CancellationToken);
+
+        // Assert: the exact rewards string reaches the repository call
+        await _repository.Received(1).UpdateQuestPropertiesWithNotificationsAsync(
+            Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Is<string?>(r => r == "500 gold and a magic sword"),
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<IList<DateTime>?>(),
+            Arg.Any<CancellationToken>());
     }
 
     // ---------------------------------------------------------------------------

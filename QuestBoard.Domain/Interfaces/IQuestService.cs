@@ -45,7 +45,7 @@ public interface IQuestService : IBaseService<Quest>
     /// Updates a quest's editable properties and, when requested, reconciles its proposed dates.
     /// If any players' date votes were removed, enqueues a date-changed email to those players.
     /// </summary>
-    Task<ServiceResult<int>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default);
+    Task<ServiceResult<int>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default);
 
     /// <summary>
     /// Finalizes a quest for the given date and selected player signups, then enqueues a finalized-quest email to the selected players.
@@ -88,13 +88,13 @@ public interface IQuestService : IBaseService<Quest>
 
     /// <summary>
     /// Creates a follow-up quest from a finalized original quest, then applies the given
-    /// title, description, challenge rating, player count, DM-session flag, and proposed dates.
+    /// title, description, rewards, challenge rating, player count, DM-session flag, and proposed dates.
     /// Imports IsSelected=true signups from the original quest as SignupRole.Player.
     /// If applying the details fails, the newly created follow-up shell is removed before the
     /// original exception is re-thrown, so no orphaned quest is left behind.
     /// Returns the Id of the newly created follow-up quest.
     /// </summary>
-    Task<int> CreateFollowUpQuestWithDetailsAsync(int originalQuestId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, IList<DateTime> proposedDates, CancellationToken token = default);
+    Task<int> CreateFollowUpQuestWithDetailsAsync(int originalQuestId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, IList<DateTime> proposedDates, CancellationToken token = default);
 
     /// <summary>
     /// Returns all quests where DungeonMasterId == dmUserId, ordered by most recent first.
