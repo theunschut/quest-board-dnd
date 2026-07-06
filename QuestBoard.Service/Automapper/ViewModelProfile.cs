@@ -76,11 +76,13 @@ public class ViewModelProfile : Profile
 
         // Contact to ContactViewModel
         CreateMap<Contact, ContactViewModel>()
+            .ForMember(dest => dest.ContactImage, opt => opt.MapFrom(src => src.ContactImageData))
             .ForMember(dest => dest.ContactImageFile, opt => opt.Ignore())
             .ForMember(dest => dest.CanManage, opt => opt.Ignore());
 
         // ContactViewModel to Contact
         CreateMap<ContactViewModel, Contact>()
+            .ForMember(dest => dest.ContactImageData, opt => opt.MapFrom(src => src.ContactImage))
             .ForMember(dest => dest.CreatedByUser, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Notes, opt => opt.Ignore());
