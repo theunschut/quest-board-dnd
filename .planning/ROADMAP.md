@@ -115,7 +115,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 </details>
 
 <details open>
-<summary>🚧 v7.0 Backlog Cleanup (Phases 43–59) — IN PROGRESS</summary>
+<summary>🚧 v7.0 Backlog Cleanup (Phases 43–60) — IN PROGRESS</summary>
 
 **Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–59).
 
@@ -136,7 +136,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] Phase 57: Add an NPC directory — DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location) with a player-and-DM-editable notes list, plus dedicated Index/Details/Edit views mirroring the Characters pattern (completed 2026-07-06)
 - [x] Phase 58: Rename the Guild Members feature to Characters everywhere — Controller, routes, views, ViewModels, CSS, integration tests, and nav copy renamed so the terminology matches the Domain/Repository layers, with zero behavior change (completed 2026-07-06)
 - [x] Phase 59: Add a rewards field to quests — Optional freeform Rewards textarea between Description and Challenge Rating on Create/Edit/Follow-Up (desktop + mobile), shown as a gold `fa-coins` boxed callout below Description on Quest Details and QuestLog Details, hidden when empty (completed 2026-07-06)
-- [ ] Phase 60: Stop creating AspNetUserRoles entries for new users — Remove the stale Player-role write in `CreateUserAsync`, delete the dead per-group Identity-role API on both service layers, and align the test auth helper to seed AspNetUserRoles only for SuperAdmin; per-group roles stay in `UserGroups.GroupRole`, SuperAdmin untouched, no migration
+- [x] Phase 60: Stop creating AspNetUserRoles entries for new users — Remove the stale Player-role write in `CreateUserAsync`, delete the dead per-group Identity-role API on both service layers, and align the test auth helper to seed AspNetUserRoles only for SuperAdmin; per-group roles stay in `UserGroups.GroupRole`, SuperAdmin untouched, no migration (completed 2026-07-06)
 
 </details>
 
@@ -279,13 +279,14 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete | 2026-07-05 |
 | 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete | 2026-07-05 |
 | 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete | 2026-07-06 |
-| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 2/2 | Complete   | 2026-07-06 |
-| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete    | 2026-07-06 |
+| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 2/2 | Complete | 2026-07-06 |
+| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete | 2026-07-06 |
 | 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
 | 56. Allow admins to edit characters owned by other players | v7.0 | 1/1 | Complete | 2026-07-06 |
-| 57. Add an NPC directory | v7.0 | 6/6 | Complete    | 2026-07-06 |
+| 57. Add an NPC directory | v7.0 | 6/6 | Complete | 2026-07-06 |
 | 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
-| 59. Add a rewards field to quests | v7.0 | 2/2 | Complete    | 2026-07-06 |
+| 59. Add a rewards field to quests | v7.0 | 2/2 | Complete | 2026-07-06 |
+| 60. Stop creating AspNetUserRoles entries for new users | v7.0 | 1/1 | Complete    | 2026-07-06 |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
