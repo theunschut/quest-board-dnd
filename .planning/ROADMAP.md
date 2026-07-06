@@ -423,14 +423,32 @@ Plans:
 
 ### Phase 57: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
 
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 56
-**Plans:** 0 plans
+**Goal:** A DM-tier user can create, edit, reveal/hide, and delete group-bound "Contacts" (name, image, description, town/city, optional sub-location), every group member can view revealed Contacts and collaboratively add/edit/delete freeform authored+timestamped notes on the Details page, and hidden Contacts stay invisible (list-filtered + 404) to everyone except their creator and DM-tier viewers who flip a per-group session "Show Hidden" toggle — with full desktop + mobile parity, mirroring the Characters feature.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 57-CONTEXT.md decisions D-01 through D-20)
+**Depends on:** Phase 56 (feature is built against the already-renamed Characters feature; Phase 58 executed before this phase per the execution-order note above)
+**Plans:** 6 plans
 
 Plans:
+**Wave 1** *(two parallel — disjoint files: tests vs. entities)*
 
-- [ ] TBD (run /gsd-plan-phase 57 to break down)
+- [ ] 57-01-PLAN.md — Wave 0 failing tests: ContactRepositoryTests (ordering/scope/image/notes) + ContactsControllerIntegrationTests (D-09b/D-12/D-13/D-14/D-15/D-15b/D-09 + cross-tenant IDOR matrix)
+- [ ] 57-02-PLAN.md — Data layer: ContactEntity/ContactImageEntity/ContactNoteEntity + fail-closed group query filters (no SuperAdmin bypass) + Notes/Author relationships + AddContactsFeature migration
+
+**Wave 2**
+
+- [ ] 57-03-PLAN.md — Domain + Repository: Contact/ContactNote models, interfaces, ContactService, ContactRepository (three-branch visibility as explicit params, dedicated note methods per Pitfall 4), EntityProfile + DI
+
+**Wave 3**
+
+- [ ] 57-04-PLAN.md — Service HTTP surface: ContactsController (DungeonMasterOnly gating, three-branch 404, per-group Show Hidden session toggle, collaborative note actions, image serving) + ViewModels + ViewModelProfile + SessionKeys
+
+**Wave 4**
+
+- [ ] 57-05-PLAN.md — Desktop views (Index/Details/Edit/Create) with flat alphabetical list, Show Hidden toggle, Hidden badges, collaborative notes UI + Contacts nav link (all users, both board types, desktop + mobile layouts)
+
+**Wave 5**
+
+- [ ] 57-06-PLAN.md — Mobile views (Index/Details/Edit/Create.Mobile.cshtml, full D-18 parity) + blocking human verification of the whole feature
 
 ### Phase 58: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
 
@@ -457,3 +475,14 @@ Plans:
 **Wave 4** *(blocked on 58-01, 58-04, 58-05)*
 
 - [x] 58-06-PLAN.md — Optional QuestBoardContext comment touch-up + definitive zero-guild grep sweep + full build/test phase gate (D-01/D-02/D-03)
+
+### Phase 59: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 58
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 59 to break down)
