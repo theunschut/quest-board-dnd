@@ -382,7 +382,7 @@ Plans:
 **Goal:** A SuperAdmin (and every other role) views group-scoped boards structurally as a normal user — never seeing another tenant's data merged in. The confirmed root cause (a middleware escape hatch letting a null-ActiveGroupId SuperAdmin reach every group's board, combined with fail-open query filters) is closed, plus the related SelectGroup IDOR gap and a stale-membership re-validation gap.
 **Requirements**: None — ad-hoc security bug-fix phase (no REQUIREMENTS.md mapping, same pattern as Phases 47-51). Scope defined by CONTEXT.md decisions D-01 through D-06.
 **Depends on:** Phase 54
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -393,4 +393,4 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 55-04-PLAN.md — Interval-gated stale-membership re-validation in the middleware (D-06)
+- [x] 55-04-PLAN.md — Interval-gated stale-membership re-validation in the middleware (D-06)
