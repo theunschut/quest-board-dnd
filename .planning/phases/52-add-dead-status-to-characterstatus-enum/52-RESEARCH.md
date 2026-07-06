@@ -314,17 +314,19 @@ Not applicable — this is a small additive change to an existing, actively-main
 
 **All other claims in this research were verified against current source code via direct file reads and grep, or confirmed via WebSearch cross-referenced with official-style documentation (Font Awesome icon library, ASP.NET Core enum-to-select-list behavior).** No user confirmation is needed for the core technical claims (no migration needed, touchpoint list, enum-cast test coverage) — these are code facts, not judgment calls.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should `.character-dead` reuse `.character-retired`'s CSS structure or be written fresh?**
+1. **Should `.character-dead` reuse `.character-retired`'s CSS structure or be written fresh? (RESOLVED)**
    - What we know: CONTEXT.md explicitly marks this as Claude's Discretion — "Whether `character-dead` reuses the existing `.character-retired` selector's structure/specificity or is written fresh."
    - What's unclear: No further constraint given.
    - Recommendation: Write a fresh, parallel `.character-dead` rule block (as shown in Code Examples) rather than trying to compose/extend `.character-retired` via multiple classes on the same element — this avoids specificity conflicts if a character is ever in an ambiguous transitional state during a template refactor, and keeps the two states independently tunable.
+   - **RESOLVED:** 52-01-PLAN.md implements this recommendation verbatim — a fresh `.character-dead` rule block in `guild-members.css`, independently tunable from `.character-retired`.
 
-2. **Does `Index.Mobile.cshtml` need a `.guild-member-row.dead` CSS class parallel to `.guild-member-row.retired`?**
+2. **Does `Index.Mobile.cshtml` need a `.guild-member-row.dead` CSS class parallel to `.guild-member-row.retired`? (RESOLVED)**
    - What we know: `guild-members.mobile.css:39` has `.guild-member-row.retired { opacity: 0.7; }`. The Razor markup builds the class string inline: `class="guild-member-row d-flex align-items-center@(character.Status == CharacterStatus.Retired ? " retired" : "")"`.
    - What's unclear: CONTEXT.md's D-04 says the `character-dead` CSS class is specifically for "Card/row class: new `character-dead` CSS class (parallel to the existing `character-retired` class)" but only names `character-retired`/`character-dead` (the desktop Index.cshtml naming), not the mobile-specific `.guild-member-row.retired` naming convention.
    - Recommendation: Follow the same naming convention already established per-file rather than forcing a single global class name — i.e., add `.guild-member-row.dead` in `guild-members.mobile.css` (parallel to the existing `.retired` modifier class there), while using `.character-dead` in `guild-members.css` (parallel to `.character-retired` there). This is the naming pattern precedent already set by how Retired is styled differently per view file today.
+   - **RESOLVED:** 52-01-PLAN.md implements this recommendation verbatim — `.guild-member-row.dead` in `guild-members.mobile.css`, `.character-dead` in `guild-members.css`.
 
 ## Environment Availability
 
