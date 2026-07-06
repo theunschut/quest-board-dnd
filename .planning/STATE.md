@@ -4,16 +4,16 @@ milestone: v7.0
 milestone_name: Backlog Cleanup
 current_phase: 59
 status: executing
-stopped_at: Phase 59 UI-SPEC approved
-last_updated: "2026-07-06T20:23:58.090Z"
+stopped_at: Phase 60 context gathered
+last_updated: "2026-07-06T20:53:54.554Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 59 complete
 progress:
-  total_phases: 15
-  completed_phases: 14
+  total_phases: 16
+  completed_phases: 15
   total_plans: 39
-  completed_plans: 38
-  percent: 93
+  completed_plans: 39
+  percent: 94
 current_phase_name: add-a-rewards-field-to-quests-an-open-text-field-between-des
 ---
 
@@ -56,6 +56,7 @@ Last activity: 2026-07-06 — Phase 59 complete
 
 ### Roadmap Evolution
 
+- Phase 60 added: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
 - Phase 59 added: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
 - Phase 58 added: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
 - Phase 57 added: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
@@ -99,9 +100,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-06T19:20:30.445Z
-Stopped at: Phase 59 UI-SPEC approved
-Resume file: .planning/phases/59-add-a-rewards-field-to-quests-an-open-text-field-between-des/59-UI-SPEC.md
+Last session: 2026-07-06T20:53:54.543Z
+Stopped at: Phase 60 context gathered
+Resume file: .planning/phases/60-stop-creating-aspnetuserroles-entries-for-new-users-role-ass/60-CONTEXT.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps
