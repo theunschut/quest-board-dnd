@@ -396,9 +396,13 @@ public class PlayerSignupRepositoryTests
         result.Should().BeNull();
     }
 
+    // Tests using the single-arg CreateContext(databaseName) overload seed and query through the
+    // same context instance, so ActiveGroupId must be a concrete value the group-scoped filters
+    // let through — matching SeedQuestAndUserAsync's own default groupId of 1 — rather than null,
+    // which now yields zero rows fail-closed instead of every row fail-open.
     private sealed class TestActiveGroupContext : IActiveGroupContext
     {
-        public int? ActiveGroupId => null;
+        public int? ActiveGroupId => 1;
     }
 
     private sealed class MutableTestGroupContext : IActiveGroupContext
