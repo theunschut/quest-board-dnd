@@ -240,7 +240,9 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        content.Should().Contain("Creator's Own Hidden In Index");
+        // Razor HTML-encodes the apostrophe (XSS-safe rendering), so the rendered markup contains
+        // "Creator&#x27;s..." rather than the raw literal.
+        content.Should().Contain("Creator&#x27;s Own Hidden In Index");
     }
 
     // (5) D-15 branch 2 — a different DM-tier user does NOT see the hidden Contact with toggle
