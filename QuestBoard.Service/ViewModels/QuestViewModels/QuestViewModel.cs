@@ -11,6 +11,8 @@ public class QuestViewModel
     [Required]
     public string Description { get; set; } = string.Empty;
 
+    public string? Rewards { get; set; }
+
     [Required]
     [Range(1, 20, ErrorMessage = "Challenge Rating must be between 1 and 20.")]
     public int ChallengeRating { get; set; } = 1;

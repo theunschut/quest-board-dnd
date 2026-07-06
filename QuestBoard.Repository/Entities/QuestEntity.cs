@@ -40,6 +40,8 @@ public class QuestEntity : IEntity
 
     public string? Recap { get; set; }
 
+    public string? Rewards { get; set; }
+
     public int? OriginalQuestId { get; set; }
 
     [ForeignKey(nameof(OriginalQuestId))]

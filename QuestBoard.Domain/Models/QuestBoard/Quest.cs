@@ -39,6 +39,8 @@ public class Quest : IModel
 
     public string? Recap { get; set; }
 
+    public string? Rewards { get; set; }
+
     public int? OriginalQuestId { get; set; }
 
     public Quest? OriginalQuest { get; set; }
