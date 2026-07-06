@@ -103,11 +103,12 @@ public class TenantIsolationTests(WebApplicationFactoryBase factory)
     }
 
     /// <summary>
-    /// When ActiveGroupId is null on the TestDatabase context (see-all semantics),
-    /// DbContext.Quests.ToList() returns quests from all groups.
+    /// When ActiveGroupId is null on the TestDatabase context, the fail-closed query filter
+    /// returns zero rows rather than every group's rows — a null ActiveGroupId must never
+    /// leak cross-tenant data, even from a direct DbContext query.
     /// </summary>
     [Fact]
-    public async Task GroupFilter_NullGroupIdShowsAllGroups()
+    public async Task GroupFilter_NullGroupIdShowsNoGroups()
     {
         // Arrange — clean slate with roles and default Group 1 seeded
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
@@ -142,15 +143,15 @@ public class TenantIsolationTests(WebApplicationFactoryBase factory)
         }
 
         // Act — query via TestDatabase.CreateContext() which uses MutableGroupContext { ActiveGroupId = null }
-        // This exercises the "null = see all" predicate in HasQueryFilter directly.
+        // This exercises the fail-closed predicate in HasQueryFilter directly.
         await using var readCtx = factory.Database.CreateContext();
         var allQuests = readCtx.Quests.ToList();
 
-        // Assert — both groups' quests are visible when ActiveGroupId is null
-        allQuests.Should().Contain(q => q.Title == "GroupOneVisible",
-            because: "null ActiveGroupId should return Group 1 quests");
-        allQuests.Should().Contain(q => q.Title == "GroupTwoVisible",
-            because: "null ActiveGroupId should return Group 2 quests");
+        // Assert — neither group's quests are visible when ActiveGroupId is null (fail-closed)
+        allQuests.Should().NotContain(q => q.Title == "GroupOneVisible",
+            because: "null ActiveGroupId must not leak Group 1 quests");
+        allQuests.Should().NotContain(q => q.Title == "GroupTwoVisible",
+            because: "null ActiveGroupId must not leak Group 2 quests");
     }
 
     /// <summary>
