@@ -4,16 +4,16 @@ milestone: v7.0
 milestone_name: Backlog Cleanup
 current_phase: 56
 status: executing
-stopped_at: Phase 54 UI-SPEC approved
-last_updated: "2026-07-06T16:43:26.280Z"
+stopped_at: Phase 58 context gathered
+last_updated: "2026-07-06T16:57:44.768Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 56 complete
 progress:
-  total_phases: 12
+  total_phases: 14
   completed_phases: 12
   total_plans: 25
   completed_plans: 25
-  percent: 100
+  percent: 86
 current_phase_name: allow-admins-to-edit-characters-owned-by-other-players
 ---
 
@@ -56,6 +56,8 @@ Last activity: 2026-07-06 — Phase 56 complete
 
 ### Roadmap Evolution
 
+- Phase 58 added: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
+- Phase 57 added: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
 - Phase 56 added: Allow admins to edit characters owned by other players
 - Phase 55 added: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
 - Phase 54 added: Fix mobile signup for finalized quests (inconsistent with desktop)
@@ -96,9 +98,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-06T09:41:38.551Z
-Stopped at: Phase 54 UI-SPEC approved
-Resume file: .planning/phases/54-fix-mobile-signup-for-finalized-quests-inconsistent-with-des/54-UI-SPEC.md
+Last session: 2026-07-06T16:57:44.758Z
+Stopped at: Phase 58 context gathered
+Resume file: .planning/phases/58-rename-the-guild-members-feature-to-characters-everywhere-co/58-CONTEXT.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps
