@@ -41,6 +41,8 @@ public class CharacterViewModel
     public List<CharacterClassViewModel> Classes { get; set; } = [];
 
     public bool IsOwner { get; set; }
+
+    public bool CanEdit { get; set; }
 }
 
 public class CharacterClassViewModel
