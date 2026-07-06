@@ -95,3 +95,13 @@ None - no external service configuration required.
 ---
 *Phase: 58-rename-the-guild-members-feature-to-characters-everywhere-co*
 *Completed: 2026-07-06*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.IntegrationTests/Controllers/CharactersControllerIntegrationTests.cs
+- CONFIRMED REMOVED: QuestBoard.IntegrationTests/Controllers/GuildMembersControllerIntegrationTests.cs
+- FOUND: .planning/phases/58-rename-the-guild-members-feature-to-characters-everywhere-co/58-05-SUMMARY.md
+- FOUND commit: 752953f (Task 1)
+- FOUND commit: b8096ca (Task 2)
+- FOUND commit: 5bcc0dc (Task 3)
+- FOUND commit: 7129b2d (docs: complete plan)
