@@ -378,10 +378,13 @@ Plans:
 
 ### Phase 55: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A SuperAdmin (and every other role) views group-scoped boards structurally as a normal user — never seeing another tenant's data merged in. The confirmed root cause (a middleware escape hatch letting a null-ActiveGroupId SuperAdmin reach every group's board, combined with fail-open query filters) is closed, plus the related SelectGroup IDOR gap and a stale-membership re-validation gap.
+**Requirements**: None — ad-hoc security bug-fix phase (no REQUIREMENTS.md mapping, same pattern as Phases 47-51). Scope defined by CONTEXT.md decisions D-01 through D-06.
 **Depends on:** Phase 54
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 55 to break down)
+- [ ] 55-01-PLAN.md — Harden 7 group-scoped EF Core query filters to fail-closed (D-03, defense-in-depth)
+- [ ] 55-02-PLAN.md — Reorder GroupSessionMiddleware so SuperAdmin is gated on group-scoped routes (D-01/D-02, root-cause fix) + correct stale CONCERNS.md
+- [ ] 55-03-PLAN.md — Add SelectGroup membership check, 404 on non-member (D-04/D-05)
+- [ ] 55-04-PLAN.md — Interval-gated stale-membership re-validation in the middleware (D-06)
