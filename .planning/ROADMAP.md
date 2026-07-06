@@ -414,3 +414,25 @@ Plans:
 Plans:
 
 - [x] 56-01-PLAN.md — Ownership-OR-Admin guard on GuildMembersController Edit/Delete/ToggleRetirement + Details CanEdit flag, new CharacterViewModel.CanEdit, both Details views gated on CanEdit, and 11 authorization integration tests (D-01/D-02/D-03/D-04)
+
+### Phase 57: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 56
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 57 to break down)
+
+### Phase 58: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 57
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 58 to break down)
