@@ -273,7 +273,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete | 2026-07-05 |
 | 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete | 2026-07-05 |
 | 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete | 2026-07-06 |
-| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 0/2 | Not started | — |
+| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 1/2 | In Progress|  |
 | 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 0/? | Not started | — |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
@@ -360,12 +360,12 @@ Plans:
 **Goal:** The Quest Log Details page shows the session recap read-only for everyone (DM/Admin included) and the recap edit form moves to a new dedicated `QuestLog/EditRecap` page (its own GET+POST action pair + desktop/mobile views), reached via an inline "Add Recap"/"Edit Recap" button on Details — with direct-URL access to the edit page by a non-DM/non-Admin returning 403 Forbidden.
 **Requirements**: None (ad-hoc restructuring phase — no REQ-IDs; source of truth is 53-CONTEXT.md decisions D-01 through D-04)
 **Depends on:** Phase 52
-**Plans:** 2/2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 53-01-PLAN.md — EditRecapViewModel + EditRecap GET+POST actions on QuestLogController (two-layer DM/Admin auth, 403 for non-editors per D-04) + integration tests
+- [x] 53-01-PLAN.md — EditRecapViewModel + EditRecap GET+POST actions on QuestLogController (two-layer DM/Admin auth, 403 for non-editors per D-04) + integration tests
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
