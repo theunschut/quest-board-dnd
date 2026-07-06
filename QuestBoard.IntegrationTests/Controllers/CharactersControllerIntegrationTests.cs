@@ -4,23 +4,23 @@ using System.Net;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
-public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase factory) : IClassFixture<WebApplicationFactoryBase>
+public class CharactersControllerIntegrationTests(WebApplicationFactoryBase factory) : IClassFixture<WebApplicationFactoryBase>
 {
     private readonly HttpClient _client = factory.CreateNonRedirectingClient();
 
     [Fact]
-    public async Task Index_ShouldReturnGuildMembersPage()
+    public async Task Index_ShouldReturnCharactersPage()
     {
-        // Arrange - GuildMembers requires authentication
+        // Arrange - Characters requires authentication
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
 
         // Act
-        var response = await client.GetAsync("/GuildMembers", TestContext.Current.CancellationToken);
+        var response = await client.GetAsync("/Characters", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        content.Should().ContainAny("Guild", "Members");
+        content.Should().ContainAny("Character", "Characters");
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
         // Create authenticated client first (this also creates a user in the database)
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
 
-        // Create additional users to display in guild members (with unique names)
+        // Create additional users to display in the character roster (with unique names)
         var warrior = await AuthenticationHelper.CreateTestUserAsync(
             factory.Services, "warrior1", "warrior1@example.com", "Test123!", "Warrior One");
         var mage = await AuthenticationHelper.CreateTestUserAsync(
@@ -46,7 +46,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
         await TestDataHelper.CreateTestCharacterAsync(factory.Services, dm.Id, "DM One", level: 10, dndClass: 3); // Cleric
 
         // Act
-        var response = await client.GetAsync("/GuildMembers", TestContext.Current.CancellationToken);
+        var response = await client.GetAsync("/Characters", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -74,7 +74,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
         await TestDataHelper.CreateTestCharacterAsync(factory.Services, dmUser.Id, "Special DM", level: 10, dndClass: 7); // Paladin
 
         // Act
-        var response = await client.GetAsync("/GuildMembers", TestContext.Current.CancellationToken);
+        var response = await client.GetAsync("/Characters", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -100,7 +100,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
         await TestDataHelper.CreateTestCharacterAsync(factory.Services, user.Id, "Aragorn", level: 8, dndClass: 8); // Ranger
 
         // Act
-        var response = await client.GetAsync("/GuildMembers", TestContext.Current.CancellationToken);
+        var response = await client.GetAsync("/Characters", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -122,7 +122,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await adminClient.GetAsync(
-            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+            $"/Characters/Edit/{character.Id}", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -142,7 +142,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await superAdminClient.GetAsync(
-            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+            $"/Characters/Edit/{character.Id}", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -162,7 +162,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await playerClient.GetAsync(
-            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+            $"/Characters/Edit/{character.Id}", TestContext.Current.CancellationToken);
 
         // Assert
         // Forbid() under the cookie authentication scheme redirects to /Account/AccessDenied (302)
@@ -187,7 +187,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await adminClient.GetAsync(
-            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+            $"/Characters/Edit/{character.Id}", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -206,7 +206,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await client.GetAsync(
-            $"/GuildMembers/Edit/{character.Id}", TestContext.Current.CancellationToken);
+            $"/Characters/Edit/{character.Id}", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -248,7 +248,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await adminClient.PostAsync(
-            $"/GuildMembers/Edit/{targetCharacter.Id}", formContent, TestContext.Current.CancellationToken);
+            $"/Characters/Edit/{targetCharacter.Id}", formContent, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
@@ -308,7 +308,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await ownerClient.PostAsync(
-            $"/GuildMembers/Edit/{targetCharacter.Id}", formContent, TestContext.Current.CancellationToken);
+            $"/Characters/Edit/{targetCharacter.Id}", formContent, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
@@ -343,7 +343,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await adminClient.GetAsync(
-            $"/GuildMembers/Details/{character.Id}", TestContext.Current.CancellationToken);
+            $"/Characters/Details/{character.Id}", TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -370,7 +370,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await adminClient.PostAsync(
-            "/GuildMembers/Delete", formContent, TestContext.Current.CancellationToken);
+            "/Characters/Delete", formContent, TestContext.Current.CancellationToken);
 
         // Assert
         // A redirect alone is ambiguous here: Forbid() under the cookie scheme also yields a 302
@@ -405,7 +405,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await playerClient.PostAsync(
-            "/GuildMembers/Delete", formContent, TestContext.Current.CancellationToken);
+            "/Characters/Delete", formContent, TestContext.Current.CancellationToken);
 
         // Assert
         // Forbid() under the cookie authentication scheme redirects to /Account/AccessDenied (302)
@@ -432,7 +432,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await adminClient.PostAsync(
-            "/GuildMembers/ToggleRetirement", formContent, TestContext.Current.CancellationToken);
+            "/Characters/ToggleRetirement", formContent, TestContext.Current.CancellationToken);
 
         // Assert
         // A redirect alone is ambiguous here: Forbid() under the cookie scheme also yields a 302
@@ -468,7 +468,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await playerClient.PostAsync(
-            "/GuildMembers/ToggleRetirement", formContent, TestContext.Current.CancellationToken);
+            "/Characters/ToggleRetirement", formContent, TestContext.Current.CancellationToken);
 
         // Assert
         // Forbid() under the cookie authentication scheme redirects to /Account/AccessDenied (302)
@@ -496,7 +496,7 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
 
         // Act
         var response = await adminClient.PostAsync(
-            "/GuildMembers/Delete", formContent, TestContext.Current.CancellationToken);
+            "/Characters/Delete", formContent, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
