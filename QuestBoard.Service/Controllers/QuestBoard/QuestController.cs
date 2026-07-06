@@ -910,7 +910,6 @@ public class QuestController(
             OriginalQuestId = original.Id,
             Title = $"{original.Title} - Part 2",
             Description = original.Description,
-            Rewards = original.Rewards,
             ChallengeRating = original.ChallengeRating,
             TotalPlayerCount = original.TotalPlayerCount,
             DungeonMasterId = original.DungeonMasterId,
