@@ -1,7 +1,7 @@
-/* guild-members.mobile.css — loaded exclusively by GuildMembers/Index.Mobile.cshtml via _Layout.Mobile.cshtml; no media queries */
+/* characters.mobile.css — loaded exclusively by Characters/Index.Mobile.cshtml via _Layout.Mobile.cshtml; no media queries */
 
 /* Section glass card */
-.guild-section-card {
+.character-section-card {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -11,7 +11,7 @@
 }
 
 /* Section heading — parchment uppercase */
-.guild-section-heading {
+.character-section-heading {
     color: #F4E4BC !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
     text-transform: uppercase;
@@ -20,33 +20,33 @@
 }
 
 /* List row — tappable with divider */
-.guild-member-row {
+.character-member-row {
     padding: 12px 0;
     border-bottom: 1px solid rgba(139, 69, 19, 0.3);
     cursor: pointer;
 }
 
-.guild-member-row:last-child {
+.character-member-row:last-child {
     border-bottom: none;
     padding-bottom: 0;
 }
 
-.guild-member-row:active {
+.character-member-row:active {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 4px;
 }
 
-.guild-member-row.retired {
+.character-member-row.retired {
     opacity: 0.7;
 }
 
-.guild-member-row.dead {
+.character-member-row.dead {
     opacity: 0.5;
     filter: grayscale(60%);
 }
 
 /* Circular thumbnail */
-.guild-member-thumbnail {
+.character-member-thumbnail {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -55,7 +55,7 @@
 }
 
 /* Placeholder avatar */
-.guild-member-placeholder {
+.character-member-placeholder {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -68,7 +68,7 @@
 }
 
 /* Character name — parchment */
-.guild-member-name {
+.character-member-name {
     color: #F4E4BC !important;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
     font-size: 1rem;
@@ -76,39 +76,39 @@
 }
 
 /* Class/level and owner lines — faded parchment */
-.guild-member-class,
-.guild-member-owner {
+.character-member-class,
+.character-member-owner {
     color: rgba(244, 228, 188, 0.7) !important;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
     font-size: 0.875rem;
 }
 
 /* Empty state */
-.guild-empty-state {
+.character-empty-state {
     text-align: center;
     padding: 16px;
 }
 
-.guild-empty-state i {
+.character-empty-state i {
     color: rgba(244, 228, 188, 0.7);
 }
 
-.guild-empty-state h5 {
+.character-empty-state h5 {
     color: #F4E4BC !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
 }
 
-.guild-empty-state p {
+.character-empty-state p {
     color: rgba(244, 228, 188, 0.7) !important;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
 }
 
 /* text-muted override inside section cards */
-.guild-section-card .text-muted {
+.character-section-card .text-muted {
     color: rgba(244, 228, 188, 0.7) !important;
 }
 
 /* Badges inside section cards — no text-shadow */
-.guild-section-card .badge {
+.character-section-card .badge {
     text-shadow: none !important;
 }
