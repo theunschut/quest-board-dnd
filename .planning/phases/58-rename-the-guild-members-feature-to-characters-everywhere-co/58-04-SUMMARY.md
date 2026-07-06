@@ -98,3 +98,7 @@ None - no external service configuration required.
 ---
 *Phase: 58-rename-the-guild-members-feature-to-characters-everywhere-co*
 *Completed: 2026-07-06*
+
+## Self-Check: PASSED
+
+All 7 modified files verified present on disk; all 3 commit hashes (`aa59f01`, `6b9cec9`, `cc54ddc`) verified present in git log.
