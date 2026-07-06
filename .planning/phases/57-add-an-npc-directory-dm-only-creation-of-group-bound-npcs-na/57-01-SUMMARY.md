@@ -102,3 +102,12 @@ None - no external service configuration required.
 ---
 *Phase: 57-add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na*
 *Completed: 2026-07-06*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.UnitTests/Repository/ContactRepositoryTests.cs
+- FOUND: QuestBoard.IntegrationTests/Controllers/ContactsControllerIntegrationTests.cs
+- FOUND: .planning/phases/57-add-an-npc-directory-dm-only-creation-of-group-bound-npcs-na/57-01-SUMMARY.md
+- FOUND commit: 9f97488
+- FOUND commit: 77a187b
+- FOUND commit: 38b88d4
