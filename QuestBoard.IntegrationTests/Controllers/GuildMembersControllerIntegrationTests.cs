@@ -213,6 +213,68 @@ public class GuildMembersControllerIntegrationTests(WebApplicationFactoryBase fa
     }
 
     [Fact]
+    public async Task Edit_AdminEditingAnotherPlayersCharacterSetAsMain_ShouldPersistChangesAndPromoteCorrectOwner()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (adminClient, adminUser) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "owner_admin_setmain", "owner_admin_setmain@example.com", "Test123!", "Character Owner");
+
+        // The admin has their own Main character - this must NOT be touched by editing
+        // someone else's character.
+        var adminsOwnCharacter = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, adminUser.Id, "Admin's Own Character", role: 0, groupId: 1); // Main
+
+        // The target character starts as Backup and belongs to a different owner.
+        var targetCharacter = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Owned Character", role: 1, groupId: 1); // Backup
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = targetCharacter.Id.ToString(),
+            ["OwnerId"] = owner.Id.ToString(),
+            ["Name"] = "Renamed By Admin",
+            ["Level"] = "7",
+            ["Status"] = ((int)CharacterStatus.Active).ToString(),
+            ["Role"] = ((int)CharacterRole.Main).ToString(),
+            ["SheetLink"] = "",
+            ["Description"] = "Updated by admin edit",
+            ["Backstory"] = "Updated backstory",
+            ["Classes[0].Class"] = "5", // Fighter
+            ["Classes[0].ClassLevel"] = "7"
+        });
+
+        // Act
+        var response = await adminClient.PostAsync(
+            $"/GuildMembers/Edit/{targetCharacter.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        // The target character's edited fields were persisted and it was promoted to Main.
+        var persistedTarget = await context.Characters.FindAsync(
+            [targetCharacter.Id], TestContext.Current.CancellationToken);
+        persistedTarget.Should().NotBeNull();
+        persistedTarget!.Name.Should().Be("Renamed By Admin");
+        persistedTarget.Level.Should().Be(7);
+        persistedTarget.Description.Should().Be("Updated by admin edit");
+        persistedTarget.Backstory.Should().Be("Updated backstory");
+        persistedTarget.Role.Should().Be((int)CharacterRole.Main);
+
+        // The admin's own character was left untouched - it must still be Main, not demoted.
+        var persistedAdminCharacter = await context.Characters.FindAsync(
+            [adminsOwnCharacter.Id], TestContext.Current.CancellationToken);
+        persistedAdminCharacter.Should().NotBeNull();
+        persistedAdminCharacter!.Role.Should().Be((int)CharacterRole.Main);
+    }
+
+    [Fact]
     public async Task Details_AdminViewingAnotherPlayersCharacter_ShowsEditButton()
     {
         // Arrange
