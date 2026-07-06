@@ -283,6 +283,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 56. Allow admins to edit characters owned by other players | v7.0 | 1/1 | Complete | 2026-07-06 |
 | 57. Add an NPC directory | v7.0 | 0/? | Not started | — |
 | 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
+| 59. Add a rewards field to quests | v7.0 | 0/2 | Not started | — |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
@@ -478,11 +479,16 @@ Plans:
 
 ### Phase 59: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A DM can record an optional, unbounded freeform Rewards value on any quest (OneShot or Campaign) via a textarea between Description and Challenge Rating on the Create/Edit/Follow-Up forms (desktop + mobile), and all group members see it as a gold-accented boxed callout below the Description on the Quest Details and completed-quest QuestLog Details pages — shown only when set, hidden when empty — with zero change to the quest board list card.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 59-CONTEXT.md decisions D-01 through D-07)
 **Depends on:** Phase 58
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 59 to break down)
+- [ ] 59-01-PLAN.md — Backend: add nullable `Rewards` to Entity/Domain/QuestViewModel/FollowUpQuestViewModel + AddRewardsToQuest migration + thread `rewards` param through `UpdateQuestPropertiesWithNotificationsAsync`/`CreateFollowUpQuestWithDetailsAsync` (interfaces + service + repository) + Edit/CreateFollowUp controller call sites + fix affected unit tests (D-01/D-02/D-03/D-04)
+
+**Wave 2** *(blocked on 59-01)*
+
+- [ ] 59-02-PLAN.md — Views: Rewards textarea on Create/Edit/CreateFollowUp (desktop + mobile) between Description and CR + boxed `fa-coins` Rewards callout on Details/Details.Mobile/QuestLog Details (hidden when empty), reusing `.quest-description-box`/`.quest-description-mobile`; `_QuestCard` untouched + blocking human verification (D-02/D-04/D-05/D-06/D-07)
