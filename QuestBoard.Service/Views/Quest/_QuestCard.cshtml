@@ -58,7 +58,7 @@
                                     @if (player.Character != null)
                                     {
                                         <td class="character-avatar-cell">
-                                            <img src="@Url.Action("GetProfilePicture", "GuildMembers", new { id = player.Character.Id })"
+                                            <img src="@Url.Action("GetProfilePicture", "Characters", new { id = player.Character.Id })"
                                                  alt="@player.Character.Name"
                                                  class="character-table-avatar"
                                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
