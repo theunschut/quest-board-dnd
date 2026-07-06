@@ -500,8 +500,8 @@ Plans:
 **Goal:** New Identity user creation stops writing rows to `AspNetUserRoles` (the stale `Player` assignment on every account is removed), and the now-fully-dead per-group Identity-role API (`AddToRoleAsync`/`RemoveFromRoleAsync`/`IsInRoleAsync`/`GetRolesAsync` on `IUserService`/`IIdentityService`) is deleted — per-group roles remain owned solely by `UserGroups.GroupRole`, and the system-wide `SuperAdmin` Identity role is untouched. No data-cleanup migration.
 **Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 60-CONTEXT.md decisions D-01 through D-04)
 **Depends on:** Phase 59
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 60-01-PLAN.md — Remove the write-time bug + dead role API from production, align the integration-test auth helper to seed AspNetUserRoles only for SuperAdmin, and verify the full build/test suite
+- [x] 60-01-PLAN.md — Remove the write-time bug + dead role API from production, align the integration-test auth helper to seed AspNetUserRoles only for SuperAdmin, and verify the full build/test suite
