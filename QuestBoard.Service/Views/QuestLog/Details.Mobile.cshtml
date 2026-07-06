@@ -67,9 +67,9 @@
                                 {
                                     <span>
                                         (<img src="@Url.Action("GetProfilePicture", "Characters", new { id = player.Character.Id })"
-                                             alt="@player.Character.Name"
-                                             class="character-mini-avatar"
-                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                              alt="@player.Character.Name"
+                                              class="character-mini-avatar"
+                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
                                         <span class="character-mini-avatar-placeholder" style="display: none;">
                                             <i class="fas fa-user"></i>
                                         </span>
@@ -133,36 +133,37 @@
             </a>
         }
     </div>
-
-    <!-- Card 3: Quest Statistics -->
-    <div class="quest-log-detail-stats-card mb-3">
-        <h6 class="mb-3"><i class="fas fa-chart-bar text-warning me-2"></i>Quest Statistics</h6>
-        <p class="mb-1"><strong>Total Signups:</strong> @Model.Quest.PlayerSignups.Count</p>
-        <p class="mb-1"><strong>Participants:</strong> @selectedPlayers.Count / @Model.Quest.TotalPlayerCount</p>
-        <p class="mb-1">
-            <strong>Building Access:</strong>
-            @{
-                var dmHasKey = Model.Quest.DungeonMaster?.HasKey == true;
-                var playersHaveKey = Model.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
-                var anyoneHasKey = dmHasKey || playersHaveKey;
-            }
-            <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
-                @if (anyoneHasKey)
-                {
-                    <i class="fas fa-key me-1"></i>@:Available
+    @if (boardType != BoardType.Campaign)
+    {
+        <!-- Card 3: Quest Statistics -->
+        <div class="quest-log-detail-stats-card mb-3">
+            <h6 class="mb-3"><i class="fas fa-chart-bar text-warning me-2"></i>Quest Statistics</h6>
+            <p class="mb-1"><strong>Total Signups:</strong> @Model.Quest.PlayerSignups.Count</p>
+            <p class="mb-1"><strong>Participants:</strong> @selectedPlayers.Count / @Model.Quest.TotalPlayerCount</p>
+            <p class="mb-1">
+                <strong>Building Access:</strong>
+                @{
+                    var dmHasKey = Model.Quest.DungeonMaster?.HasKey == true;
+                    var playersHaveKey = Model.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
+                    var anyoneHasKey = dmHasKey || playersHaveKey;
                 }
-                else
-                {
-                    <i class="fas fa-lock me-1"></i>@:No Key
-                }
-            </span>
-        </p>
-        <p class="mb-0">
-            <strong>Status:</strong>
-            <span class="badge bg-dark">
-                <i class="fas fa-flag-checkered me-1"></i>Completed
-            </span>
-        </p>
-    </div>
-
+                <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
+                    @if (anyoneHasKey)
+                    {
+                        <i class="fas fa-key me-1"></i>@:Available
+                    }
+                    else
+                    {
+                        <i class="fas fa-lock me-1"></i>@:No Key
+                    }
+                </span>
+            </p>
+            <p class="mb-0">
+                <strong>Status:</strong>
+                <span class="badge bg-dark">
+                    <i class="fas fa-flag-checkered me-1"></i>Completed
+                </span>
+            </p>
+        </div>
+    }
 </div>

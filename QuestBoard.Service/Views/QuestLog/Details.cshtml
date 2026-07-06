@@ -158,39 +158,42 @@
             </div>
         </div>
 
-        <div class="card modern-card">
-            <div class="card-header modern-card-header">
-                <h5 class="text-white mb-0">Quest Statistics</h5>
-            </div>
-            <div class="card-body modern-card-body">
-                <p class="text-white"><strong>Total Signups:</strong> @Model.Quest.PlayerSignups.Count</p>
-                <p class="text-white"><strong>Participants:</strong> @selectedPlayers.Count / @Model.Quest.TotalPlayerCount</p>
-                <p class="text-white">
-                    <strong>Building Access:</strong>
-                    @{
-                        var dmHasKey = Model.Quest.DungeonMaster?.HasKey == true;
-                        var playersHaveKey = Model.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
-                        var anyoneHasKey = dmHasKey || playersHaveKey;
-                    }
-                    <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
-                        @if (anyoneHasKey)
-                        {
-                            <i class="fas fa-key me-1"></i>@:Available
+        @if (boardType != BoardType.Campaign)
+        {
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="text-white mb-0">Quest Statistics</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <p class="text-white"><strong>Total Signups:</strong> @Model.Quest.PlayerSignups.Count</p>
+                    <p class="text-white"><strong>Participants:</strong> @selectedPlayers.Count / @Model.Quest.TotalPlayerCount</p>
+                    <p class="text-white">
+                        <strong>Building Access:</strong>
+                        @{
+                            var dmHasKey = Model.Quest.DungeonMaster?.HasKey == true;
+                            var playersHaveKey = Model.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
+                            var anyoneHasKey = dmHasKey || playersHaveKey;
                         }
-                        else
-                        {
-                            <i class="fas fa-lock me-1"></i>@:No Key
-                        }
-                    </span>
-                </p>
-                <p class="text-white">
-                    <strong>Status:</strong>
-                    <span class="badge bg-dark">
-                        <i class="fas fa-flag-checkered me-1"></i>
-                        Completed
-                    </span>
-                </p>
+                        <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
+                            @if (anyoneHasKey)
+                            {
+                                <i class="fas fa-key me-1"></i>@:Available
+                            }
+                            else
+                            {
+                                <i class="fas fa-lock me-1"></i>@:No Key
+                            }
+                        </span>
+                    </p>
+                    <p class="text-white">
+                        <strong>Status:</strong>
+                        <span class="badge bg-dark">
+                            <i class="fas fa-flag-checkered me-1"></i>
+                            Completed
+                        </span>
+                    </p>
+                </div>
             </div>
-        </div>
+        }
     </div>
 </div>
