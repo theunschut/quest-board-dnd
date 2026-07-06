@@ -53,6 +53,8 @@ Test coverage for the new field is thin: exactly one test (`UpdateQuestPropertie
 
 ### WR-01: CreateFollowUp GET does not pre-fill Rewards from the original quest
 
+> **CORRECTION (post-fix, 2026-07-06):** This finding is a false positive. `59-CONTEXT.md` decision D-04 explicitly locks Rewards to start blank on the Follow-Up form (not copied from the original quest) — a deliberate choice, already implemented correctly and confirmed by the phase verifier. A fix based on this finding was briefly applied (commit `89e3abc`) then reverted (`6cf9626`) once the contradiction with D-04 was caught. See `59-REVIEW-FIX.md` for the full account. Left here for audit-trail purposes — do not re-apply this fix.
+
 **File:** `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs:907-918`
 **Issue:** The `CreateFollowUp` GET action builds the `FollowUpQuestViewModel` by copying `Title`, `Description`, `ChallengeRating`, `TotalPlayerCount`, and `DungeonMasterId` from the original quest, but omits `Rewards`. The view's info banner ("This form is pre-filled from the original quest...") and the fact every sibling field is copied strongly implies this was meant to carry over too — as written, a DM creating a follow-up quest for, e.g., a multi-part campaign arc loses the previous rewards text and has to retype it (or it silently stays blank if they don't notice). This is inconsistent with the rest of the pre-fill behavior added in this same view model.
 **Fix:**
