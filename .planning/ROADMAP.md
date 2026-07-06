@@ -217,7 +217,7 @@ Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 �
 Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–54 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
+| ------- | ----------- | ---------------- | -------- | ----------- |
 | 1. Layer Dependency Fix | v1.0 | 2/2 | Complete | — |
 | 2. Email & Service Consolidation | v1.0 | 3/3 | Complete | — |
 | 3. Code Quality & Dead Code | v1.0 | 2/2 | Complete | — |
@@ -255,25 +255,25 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 34.1. Security & Bugs | v5.0 | 2/2 | Complete | 2026-07-02 |
 | 34.2. Performance & Architecture | v5.0 | 5/5 | Complete | 2026-07-02 |
 | 34.3. Group Role Authorization Regression Fix | v5.0 | 6/6 | Complete | 2026-07-02 |
-| 35. Board Type Configuration | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete    | 2026-07-03 |
-| 37. Navigation & Access Control | v6.0 | 3/3 | Complete    | 2026-07-03 |
-| 38. Group-Scoped User List | v6.1 | 1/1 | Complete    | 2026-07-03 |
-| 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete    | 2026-07-03 |
-| 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete    | 2026-07-04 |
-| 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete    | 2026-07-04 |
-| 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete    | 2026-07-04 |
-| 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete    | 2026-07-04 |
-| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete    | 2026-07-04 |
+| 35. Board Type Configuration | v6.0 | 3/3 | Complete | 2026-07-03 |
+| 36. Campaign Quest Posting & Closing | v6.0 | 5/5 | Complete | 2026-07-03 |
+| 37. Navigation & Access Control | v6.0 | 3/3 | Complete | 2026-07-03 |
+| 38. Group-Scoped User List | v6.1 | 1/1 | Complete | 2026-07-03 |
+| 39. Shared Collision-Aware User Creation & Email | v6.1 | 3/3 | Complete | 2026-07-03 |
+| 40. Platform Members Page Redesign | v6.1 | 3/3 | Complete | 2026-07-04 |
+| 41. Safe User Removal & Account Disable | v6.1 | 4/4 | Complete | 2026-07-04 |
+| 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete | 2026-07-04 |
+| 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
+| 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
-| 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete    | 2026-07-04 |
-| 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete    | 2026-07-04 |
-| 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete    | 2026-07-05 |
-| 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete    | 2026-07-05 |
-| 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete    | 2026-07-05 |
-| 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete    | 2026-07-06 |
-| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 0/? | Not started | — |
+| 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
+| 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
+| 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
+| 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete | 2026-07-05 |
+| 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete | 2026-07-05 |
+| 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete | 2026-07-06 |
+| 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 0/2 | Not started | — |
 | 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 0/? | Not started | — |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
@@ -357,14 +357,19 @@ Plans:
 
 ### Phase 53: Add dedicated Edit view for Quest recap so Details page is view-only
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** The Quest Log Details page shows the session recap read-only for everyone (DM/Admin included) and the recap edit form moves to a new dedicated `QuestLog/EditRecap` page (its own GET+POST action pair + desktop/mobile views), reached via an inline "Add Recap"/"Edit Recap" button on Details — with direct-URL access to the edit page by a non-DM/non-Admin returning 403 Forbidden.
+**Requirements**: None (ad-hoc restructuring phase — no REQ-IDs; source of truth is 53-CONTEXT.md decisions D-01 through D-04)
 **Depends on:** Phase 52
-**Plans:** 0 plans
+**Plans:** 2/2 plans
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 53 to break down)
+- [ ] 53-01-PLAN.md — EditRecapViewModel + EditRecap GET+POST actions on QuestLogController (two-layer DM/Admin auth, 403 for non-editors per D-04) + integration tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 53-02-PLAN.md — New EditRecap desktop + mobile views (modern-card, Save/Cancel per D-03) + Details/Details.Mobile read-only recap with inline Add/Edit entry-point button (D-01/D-02) + human verification
 
 ### Phase 54: Fix mobile signup for finalized quests (inconsistent with desktop)
 
