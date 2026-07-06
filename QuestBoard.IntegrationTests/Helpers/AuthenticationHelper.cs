@@ -95,13 +95,12 @@ public static class AuthenticationHelper
     {
         var user = await CreateTestUserAsync(factory.Services, userName, email, password, name);
 
-        // Add roles to the user in the database if specified
+        // Add ASP.NET Core Identity roles to the user in the database if specified.
         if (roles != null && roles.Length > 0)
         {
             using var scope = factory.Services.CreateScope();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
-            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
             var userFromDb = await userManager.FindByIdAsync(user.Id.ToString());
             if (userFromDb != null)
             {
@@ -114,28 +113,40 @@ public static class AuthenticationHelper
                     }
                     await userManager.AddToRoleAsync(userFromDb, role);
                 }
+            }
+        }
 
-                // Seed UserGroups membership for group 1 so the new auth handlers
-                // (which read UserGroups.GroupRole instead of AspNetUserRoles) can authorize
-                // test users. Map identity roles to GroupRole enum values.
-                GroupRole groupRole = GroupRole.Player;
-                if (roles.Contains("Admin"))
-                    groupRole = GroupRole.Admin;
-                else if (roles.Contains("DungeonMaster"))
-                    groupRole = GroupRole.DungeonMaster;
+        // Seed UserGroups membership for group 1 whenever roles is left at its default (null),
+        // not just when specific roles are requested, so an authenticated test client with no
+        // roles argument is still an actual member of the active group the test factory's
+        // MutableGroupContext defaults to. Without this, GroupSessionMiddleware's periodic
+        // membership re-validation would gate out a "no roles given" caller even though the
+        // test's ActiveGroupId=1 stub made it look like a valid, resolvable group session.
+        // Passing an explicit empty array (roles: []) opts OUT of this seeding entirely — the
+        // one existing caller that does so relies on ending up with zero group memberships.
+        // Identity roles map to GroupRole enum values; default to Player when no roles were given.
+        if (roles == null || roles.Length > 0)
+        {
+            using var scope = factory.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
 
-                var existingMembership = context.UserGroups
-                    .FirstOrDefault(ug => ug.UserId == user.Id && ug.GroupId == 1);
-                if (existingMembership == null)
+            GroupRole groupRole = GroupRole.Player;
+            if (roles != null && roles.Contains("Admin"))
+                groupRole = GroupRole.Admin;
+            else if (roles != null && roles.Contains("DungeonMaster"))
+                groupRole = GroupRole.DungeonMaster;
+
+            var existingMembership = context.UserGroups
+                .FirstOrDefault(ug => ug.UserId == user.Id && ug.GroupId == 1);
+            if (existingMembership == null)
+            {
+                context.UserGroups.Add(new UserGroupEntity
                 {
-                    context.UserGroups.Add(new UserGroupEntity
-                    {
-                        UserId = user.Id,
-                        GroupId = 1,
-                        GroupRole = (int)groupRole
-                    });
-                    await context.SaveChangesAsync();
-                }
+                    UserId = user.Id,
+                    GroupId = 1,
+                    GroupRole = (int)groupRole
+                });
+                await context.SaveChangesAsync();
             }
         }
 

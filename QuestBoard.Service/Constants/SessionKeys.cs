@@ -7,4 +7,5 @@ public static class SessionKeys
 {
     public const string ActiveGroupId = "ActiveGroupId";
     public const string ActiveGroupName = "ActiveGroupName";
+    public const string ActiveGroupValidatedAtUtc = "ActiveGroupValidatedAtUtc";
 }

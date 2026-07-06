@@ -32,6 +32,7 @@ public class GroupPickerController(IGroupService groupService, IUserService user
         {
             HttpContext.Session.SetInt32(SessionKeys.ActiveGroupId, groups[0].Id);
             HttpContext.Session.SetString(SessionKeys.ActiveGroupName, groups[0].Name);
+            HttpContext.Session.SetString(SessionKeys.ActiveGroupValidatedAtUtc, DateTime.UtcNow.ToString("O"));
             return RedirectToLocal(returnUrl);
         }
 
@@ -55,6 +56,7 @@ public class GroupPickerController(IGroupService groupService, IUserService user
 
         HttpContext.Session.SetInt32(SessionKeys.ActiveGroupId, group.Id);
         HttpContext.Session.SetString(SessionKeys.ActiveGroupName, group.Name);
+        HttpContext.Session.SetString(SessionKeys.ActiveGroupValidatedAtUtc, DateTime.UtcNow.ToString("O"));
         return RedirectToLocal(returnUrl);
     }
 
