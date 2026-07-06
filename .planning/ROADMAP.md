@@ -431,7 +431,7 @@ Plans:
 **Goal:** The character-roster feature is called "Characters" everywhere in the Service project — `CharactersController` serving `/Characters/*`, `Views/Characters/`, `characters.css`/`characters.mobile.css`, nav labels, and all user-facing copy — matching the Domain/Repository layers that were already "Character"-named, with zero behavior change. The stray `GuildMembersIndexViewModel` (an unrelated Players-page view model) is renamed to `PlayersIndexViewModel` in the same pass so a repo-wide grep for "GuildMembers" returns zero hits in the Service and IntegrationTests projects.
 **Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 58-CONTEXT.md decisions D-01 through D-03)
 **Depends on:** Phase 57
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1** *(two parallel — disjoint files)*
@@ -450,4 +450,4 @@ Plans:
 
 **Wave 4** *(blocked on 58-01, 58-04, 58-05)*
 
-- [ ] 58-06-PLAN.md — Optional QuestBoardContext comment touch-up + definitive zero-guild grep sweep + full build/test phase gate (D-01/D-02/D-03)
+- [x] 58-06-PLAN.md — Optional QuestBoardContext comment touch-up + definitive zero-guild grep sweep + full build/test phase gate (D-01/D-02/D-03)
