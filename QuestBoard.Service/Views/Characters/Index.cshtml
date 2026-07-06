@@ -2,14 +2,14 @@
 @using QuestBoard.Service.ViewModels.CharacterViewModels
 @model CharactersIndexViewModel
 @{
-    ViewData["Title"] = "Guild Members";
+    ViewData["Title"] = "Characters";
 }
 
-<div class="guild-members-page">
+<div class="characters-page">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>
             <i class="fas fa-people-group me-2 text-warning"></i>
-            Guild Members
+            Characters
         </h1>
         <a href="@Url.Action("Create")" class="btn btn-warning">
             <i class="fas fa-plus me-2"></i>Create New Character
@@ -82,7 +82,7 @@
                 <div class="text-center py-5">
                     <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
                     <h4>No Characters Yet</h4>
-                    <p class="text-muted">Create your first character to join the guild!</p>
+                    <p class="text-muted">Create your first character to get started!</p>
                     <a href="@Url.Action("Create")" class="btn btn-warning">
                         <i class="fas fa-plus me-2"></i>Create Character
                     </a>
@@ -95,7 +95,7 @@
         <div class="card-header modern-card-header">
             <h3 class="mb-0">
                 <i class="fas fa-users me-2 text-primary"></i>
-                Guild Roster
+                Character Roster
             </h3>
         </div>
         <div class="card-body modern-card-body">
@@ -156,7 +156,7 @@
                 <div class="text-center py-5">
                     <i class="fas fa-dungeon fa-3x text-muted mb-3"></i>
                     <h4>No Other Characters</h4>
-                    <p class="text-muted">The guild awaits other adventurers!</p>
+                    <p class="text-muted">No other adventurers have created characters yet!</p>
                 </div>
             }
         </div>

@@ -3,33 +3,33 @@
 @model CharactersIndexViewModel
 
 @section Styles {
-    <link href="~/css/guild-members.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link href="~/css/characters.mobile.css" asp-append-version="true" rel="stylesheet" />
 }
 
 <a href="@Url.Action("Create")" class="btn btn-warning w-100 mb-3">
     <i class="fas fa-plus me-2"></i>Create New Character
 </a>
 
-<div class="guild-section-card mb-4">
-    <div class="guild-section-heading mb-2">
+<div class="character-section-card mb-4">
+    <div class="character-section-heading mb-2">
         <i class="fas fa-user-circle text-success me-2"></i>My Characters
     </div>
     @if (Model.MyCharacters.Any())
     {
         @foreach (var character in Model.MyCharacters)
         {
-            <div class="guild-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
+            <div class="character-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
                 @if (character.ProfilePicture != null)
                 {
-                    <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="guild-member-thumbnail me-3" alt="@character.Name" />
+                    <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
                 }
                 else
                 {
-                    <div class="guild-member-placeholder me-3"><i class="fas fa-user"></i></div>
+                    <div class="character-member-placeholder me-3"><i class="fas fa-user"></i></div>
                 }
                 <div class="flex-grow-1">
-                    <div class="guild-member-name">@character.Name</div>
-                    <div class="guild-member-class">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
+                    <div class="character-member-name">@character.Name</div>
+                    <div class="character-member-class">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
                     <div>
                         @if (character.Role == CharacterRole.Main)
                         {
@@ -50,36 +50,36 @@
     }
     else
     {
-        <div class="guild-empty-state">
+        <div class="character-empty-state">
             <i class="fas fa-users-slash fa-2x mb-2"></i>
             <h5>No Characters Yet</h5>
-            <p>Create your first character to join the guild!</p>
+            <p>Create your first character to get started!</p>
             <a href="@Url.Action("Create")" class="btn btn-warning"><i class="fas fa-plus me-2"></i>Create Character</a>
         </div>
     }
 </div>
 
-<div class="guild-section-card mb-4">
-    <div class="guild-section-heading mb-2">
-        <i class="fas fa-users text-primary me-2"></i>Guild Roster
+<div class="character-section-card mb-4">
+    <div class="character-section-heading mb-2">
+        <i class="fas fa-users text-primary me-2"></i>Character Roster
     </div>
     @if (Model.OtherCharacters.Any())
     {
         @foreach (var character in Model.OtherCharacters)
         {
-            <div class="guild-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
+            <div class="character-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
                 @if (character.ProfilePicture != null)
                 {
-                    <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="guild-member-thumbnail me-3" alt="@character.Name" />
+                    <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
                 }
                 else
                 {
-                    <div class="guild-member-placeholder me-3"><i class="fas fa-user"></i></div>
+                    <div class="character-member-placeholder me-3"><i class="fas fa-user"></i></div>
                 }
                 <div class="flex-grow-1">
-                    <div class="guild-member-name">@character.Name</div>
-                    <div class="guild-member-class">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
-                    <div class="guild-member-owner"><i class="fas fa-user me-1"></i>@character.OwnerName</div>
+                    <div class="character-member-name">@character.Name</div>
+                    <div class="character-member-class">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
+                    <div class="character-member-owner"><i class="fas fa-user me-1"></i>@character.OwnerName</div>
                     <div>
                         @if (character.Status == CharacterStatus.Dead)
                         {
@@ -96,10 +96,10 @@
     }
     else
     {
-        <div class="guild-empty-state">
+        <div class="character-empty-state">
             <i class="fas fa-dungeon fa-2x mb-2"></i>
             <h5>No Other Characters</h5>
-            <p>The guild awaits other adventurers!</p>
+            <p>No other adventurers have created characters yet!</p>
         </div>
     }
 </div>

@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.Characters
 {
     [Authorize]
-    public class GuildMembersController(
+    public class CharactersController(
         ICharacterService characterService,
         IUserService userService,
         IActiveGroupContext activeGroupContext,
@@ -112,10 +112,10 @@ namespace QuestBoard.Service.Controllers.Characters
             viewModel.OwnerId = currentUser.Id;
 
             // Validate class levels
-            if (!await characterService.ValidateCharacterClassLevelsAsync(viewModel.Level, 
+            if (!await characterService.ValidateCharacterClassLevelsAsync(viewModel.Level,
                 mapper.Map<List<CharacterClass>>(viewModel.Classes)))
             {
-                ModelState.AddModelError(string.Empty, 
+                ModelState.AddModelError(string.Empty,
                     "The sum of all class levels must equal the character's total level.");
             }
 
@@ -149,7 +149,7 @@ namespace QuestBoard.Service.Controllers.Characters
 
             var character = mapper.Map<Character>(viewModel);
 
-            // Tag the character to the active group so Guild Members scoping applies
+            // Tag the character to the active group so the character-roster scoping applies
             // (CharacterEntity is scoped by a global query filter on GroupId).
             character.GroupId = activeGroupContext.RequireActiveGroupId();
 
@@ -245,7 +245,7 @@ namespace QuestBoard.Service.Controllers.Characters
             existingCharacter.SheetLink = viewModel.SheetLink;
             existingCharacter.Description = viewModel.Description;
             existingCharacter.Backstory = viewModel.Backstory;
-            
+
             // Handle profile picture upload - clear old picture first if new one is being uploaded
             if (viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0)
             {
