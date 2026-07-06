@@ -272,7 +272,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete    | 2026-07-05 |
 | 50. Fix quest edit page: show edit button for campaign quests and align field visibility with create page | v7.0 | 3/3 | Complete    | 2026-07-05 |
 | 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete    | 2026-07-05 |
-| 52. Add Dead status to CharacterStatus enum | v7.0 | 0/? | Not started | — |
+| 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete   | 2026-07-06 |
 | 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 0/? | Not started | — |
 | 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 0/? | Not started | — |
 
@@ -349,11 +349,11 @@ Plans:
 **Goal:** A character can be marked Dead (a third CharacterStatus value) via the existing Create/Edit Status dropdown, showing a distinct dark skull badge and dimmed card/row everywhere status is displayed, with the Retire/Reactivate toggle hidden for Dead characters and Dead characters auto-excluded from quest signup.
 **Requirements**: TBD (unmapped backlog item)
 **Depends on:** Phase 51
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 52-01-PLAN.md - Add Dead enum value + Dead CSS + Dead badge/toggle-guard across all 4 GuildMembers views
+- [x] 52-01-PLAN.md - Add Dead enum value + Dead CSS + Dead badge/toggle-guard across all 4 GuildMembers views
 
 ### Phase 53: Add dedicated Edit view for Quest recap so Details page is view-only
 
