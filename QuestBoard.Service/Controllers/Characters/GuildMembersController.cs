@@ -57,7 +57,19 @@ namespace QuestBoard.Service.Controllers.Characters
 
             var currentUser = await userService.GetUserAsync(User);
             var viewModel = mapper.Map<CharacterViewModel>(character);
-            viewModel.IsOwner = currentUser != null && character.OwnerId == currentUser.Id;
+            var isOwner = currentUser != null && character.OwnerId == currentUser.Id;
+            GroupRole? role = null;
+            if (currentUser != null)
+            {
+                role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            }
+
+            viewModel.IsOwner = isOwner;
+            // Admins/SuperAdmins can manage any character in their active group, not just their
+            // own, so they should see the same Edit/Retire/Delete controls the owner sees. The
+            // controller-side guards on Edit/Delete/ToggleRetirement remain the actual security
+            // boundary — this flag only controls whether the buttons are shown.
+            viewModel.CanEdit = isOwner || role == GroupRole.Admin;
 
             return View(viewModel);
         }
@@ -153,13 +165,23 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             var currentUser = await userService.GetUserAsync(User);
-            if (currentUser == null || character.OwnerId != currentUser.Id)
+            if (currentUser == null)
+            {
+                return Forbid();
+            }
+
+            // An Admin (per-group role, or the global SuperAdmin role, both resolved by
+            // GetEffectiveGroupRoleAsync) may edit any character in their active group, not just
+            // their own, so a broken/stranded character sheet can be corrected without needing
+            // the player's own login.
+            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            if (character.OwnerId != currentUser.Id && role != GroupRole.Admin)
             {
                 return Forbid();
             }
 
             var viewModel = mapper.Map<CharacterViewModel>(character);
-            viewModel.IsOwner = true;
+            viewModel.IsOwner = character.OwnerId == currentUser.Id;
 
             return View(viewModel);
         }
@@ -180,7 +202,17 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             var currentUser = await userService.GetUserAsync(User);
-            if (currentUser == null || existingCharacter.OwnerId != currentUser.Id)
+            if (currentUser == null)
+            {
+                return Forbid();
+            }
+
+            // An Admin (per-group role, or the global SuperAdmin role, both resolved by
+            // GetEffectiveGroupRoleAsync) may edit any character in their active group, not just
+            // their own, so a broken/stranded character sheet can be corrected without needing
+            // the player's own login.
+            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            if (existingCharacter.OwnerId != currentUser.Id && role != GroupRole.Admin)
             {
                 return Forbid();
             }
@@ -195,7 +227,7 @@ namespace QuestBoard.Service.Controllers.Characters
 
             if (!ModelState.IsValid)
             {
-                viewModel.IsOwner = true;
+                viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
                 return View(viewModel);
             }
 
@@ -217,7 +249,7 @@ namespace QuestBoard.Service.Controllers.Characters
                 {
                     ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
                         "Only JPG, PNG, or GIF images are accepted.");
-                    viewModel.IsOwner = true;
+                    viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
                     return View(viewModel);
                 }
                 const long maxFileSizeBytes = 5 * 1024 * 1024;
@@ -225,7 +257,7 @@ namespace QuestBoard.Service.Controllers.Characters
                 {
                     ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
                         "Profile picture cannot exceed 5 MB.");
-                    viewModel.IsOwner = true;
+                    viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
                     return View(viewModel);
                 }
                 using var memoryStream = new MemoryStream();
@@ -261,7 +293,16 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             var currentUser = await userService.GetUserAsync(User);
-            if (currentUser == null || character.OwnerId != currentUser.Id)
+            if (currentUser == null)
+            {
+                return Forbid();
+            }
+
+            // An Admin (per-group role, or the global SuperAdmin role, both resolved by
+            // GetEffectiveGroupRoleAsync) may delete any character in their active group, not
+            // just their own, matching the same bypass granted to Edit.
+            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            if (character.OwnerId != currentUser.Id && role != GroupRole.Admin)
             {
                 return Forbid();
             }
@@ -282,7 +323,16 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             var currentUser = await userService.GetUserAsync(User);
-            if (currentUser == null || character.OwnerId != currentUser.Id)
+            if (currentUser == null)
+            {
+                return Forbid();
+            }
+
+            // An Admin (per-group role, or the global SuperAdmin role, both resolved by
+            // GetEffectiveGroupRoleAsync) may retire/reactivate any character in their active
+            // group, not just their own, matching the same bypass granted to Edit and Delete.
+            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            if (character.OwnerId != currentUser.Id && role != GroupRole.Admin)
             {
                 return Forbid();
             }

@@ -3,7 +3,7 @@
 @model CharacterViewModel
 @{
     ViewData["Title"] = Model.Name;
-    var isOwner = Model.IsOwner;
+    var canEdit = Model.CanEdit;
     var isRetired = Model.Status == CharacterStatus.Retired;
 }
 
@@ -94,7 +94,7 @@
     </div>
 
     <!-- Owner Actions Card -->
-    @if (isOwner)
+    @if (canEdit)
     {
         <div class="character-detail-card mb-3">
             <div class="character-section-heading mb-3"><i class="fas fa-cog me-2"></i>Owner Actions</div>
