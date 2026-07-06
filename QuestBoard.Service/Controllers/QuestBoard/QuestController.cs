@@ -434,19 +434,11 @@ public class QuestController(
 
         var role = (SignupRole)selectedRole;
 
-        // Check if quest has space - only count Player roles
-        if (role == SignupRole.Player)
-        {
-            var selectedPlayersCount = quest.PlayerSignups
-                .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
-                .Count();
-
-            if (selectedPlayersCount >= quest.TotalPlayerCount)
-            {
-                ModelState.AddModelError("", $"This quest is full ({selectedPlayersCount}/{quest.TotalPlayerCount} players).");
-                return RedirectToAction("Details", new { id = questId });
-            }
-        }
+        // Recompute space server-side - never trust client state. Player joins go to the
+        // waitlist when full; AssistantDM/Spectator are always auto-approved, since no
+        // capacity limit applies to those roles.
+        var isPlayerRoleWithSpace = role != SignupRole.Player
+            || quest.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() < quest.TotalPlayerCount;
 
         // Validate character if selected
         if (characterId.HasValue)
@@ -476,7 +468,7 @@ public class QuestController(
             Quest = quest,
             CharacterId = characterId,
             Role = role,
-            IsSelected = true, // Auto-approve all roles when joining finalized quest
+            IsSelected = isPlayerRoleWithSpace, // Player joins the waitlist when full; AssistantDM/Spectator always auto-approved
             DateVotes = role == SignupRole.Spectator ? [] : // Spectators don't vote
                 [new PlayerDateVote
                 {
