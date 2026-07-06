@@ -10,12 +10,6 @@ namespace QuestBoard.Domain.Services;
 internal class UserService(IIdentityService identityService, IUserRepository repository, IMapper mapper, IGroupService groupService) : BaseService<User>(repository, mapper), IUserService
 {
     /// <inheritdoc/>
-    public async Task<IdentityResult> AddToRoleAsync(User user, string role)
-    {
-        return await identityService.AddToRoleAsync(user.Id, role);
-    }
-
-    /// <inheritdoc/>
     public async Task<IdentityResult> ChangePasswordAsync(ClaimsPrincipal user, string oldPassword, string newPassword)
     {
         return await identityService.ChangePasswordAsync(user, oldPassword, newPassword);
@@ -87,12 +81,6 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     }
 
     /// <inheritdoc/>
-    public async Task<IList<string>> GetRolesAsync(User user)
-    {
-        return await identityService.GetRolesAsync(user.Id);
-    }
-
-    /// <inheritdoc/>
     public async Task<User> GetUserAsync(ClaimsPrincipal user)
     {
         var userId = await identityService.GetUserIdAsync(user);
@@ -101,25 +89,7 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     }
 
     /// <inheritdoc/>
-    public async Task<bool> IsInRoleAsync(User user, string role)
-    {
-        return await identityService.IsInRoleAsync(user.Id, role);
-    }
-
-    /// <inheritdoc/>
-    public async Task<bool> IsInRoleAsync(ClaimsPrincipal user, string role)
-    {
-        return await identityService.IsInRoleAsync(user, role);
-    }
-
-    /// <inheritdoc/>
     public Task<SignInResult> PasswordSignInAsync(string email, string password, bool rememberMe, bool lockoutOnFailure) => identityService.PasswordSignInAsync(email, password, rememberMe, lockoutOnFailure);
-
-    /// <inheritdoc/>
-    public async Task<IdentityResult> RemoveFromRoleAsync(User user, string role)
-    {
-        return await identityService.RemoveFromRoleAsync(user.Id, role);
-    }
 
     /// <inheritdoc/>
     public async Task<IdentityResult> ResetPasswordAsync(User user, string token, string newPassword)
