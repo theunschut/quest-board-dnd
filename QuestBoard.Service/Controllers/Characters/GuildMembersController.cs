@@ -177,8 +177,7 @@ namespace QuestBoard.Service.Controllers.Characters
             // GetEffectiveGroupRoleAsync) may edit any character in their active group, not just
             // their own, so a broken/stranded character sheet can be corrected without needing
             // the player's own login.
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
-            if (character.OwnerId != currentUser.Id && role != GroupRole.Admin)
+            if (!await CanManageCharacterAsync(currentUser, character))
             {
                 return Forbid();
             }
@@ -214,8 +213,7 @@ namespace QuestBoard.Service.Controllers.Characters
             // GetEffectiveGroupRoleAsync) may edit any character in their active group, not just
             // their own, so a broken/stranded character sheet can be corrected without needing
             // the player's own login.
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
-            if (existingCharacter.OwnerId != currentUser.Id && role != GroupRole.Admin)
+            if (!await CanManageCharacterAsync(currentUser, existingCharacter))
             {
                 return Forbid();
             }
@@ -306,8 +304,7 @@ namespace QuestBoard.Service.Controllers.Characters
             // An Admin (per-group role, or the global SuperAdmin role, both resolved by
             // GetEffectiveGroupRoleAsync) may delete any character in their active group, not
             // just their own, matching the same bypass granted to Edit.
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
-            if (character.OwnerId != currentUser.Id && role != GroupRole.Admin)
+            if (!await CanManageCharacterAsync(currentUser, character))
             {
                 return Forbid();
             }
@@ -336,8 +333,7 @@ namespace QuestBoard.Service.Controllers.Characters
             // An Admin (per-group role, or the global SuperAdmin role, both resolved by
             // GetEffectiveGroupRoleAsync) may retire/reactivate any character in their active
             // group, not just their own, matching the same bypass granted to Edit and Delete.
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
-            if (character.OwnerId != currentUser.Id && role != GroupRole.Admin)
+            if (!await CanManageCharacterAsync(currentUser, character))
             {
                 return Forbid();
             }
@@ -372,5 +368,18 @@ namespace QuestBoard.Service.Controllers.Characters
             data.Length >= 4 && data[0] == 0x89 && data[1] == 0x50 ? "image/png" :
             data.Length >= 6 && data[0] == 0x47 && data[1] == 0x49 ? "image/gif" :
             "image/jpeg";
+
+        // Shared owner-or-admin guard used by Edit, Delete, and ToggleRetirement so the
+        // authorization rule only needs to be updated in one place.
+        private async Task<bool> CanManageCharacterAsync(User currentUser, Character character)
+        {
+            if (character.OwnerId == currentUser.Id)
+            {
+                return true;
+            }
+
+            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            return role == GroupRole.Admin;
+        }
     }
 }
