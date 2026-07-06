@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-status: milestone_complete
-stopped_at: Milestone complete (Phase 55 was final phase)
-last_updated: 2026-07-06T08:54:57.318Z
+status: ready_to_plan
+stopped_at: Phase 53 UI-SPEC approved
+last_updated: 2026-07-06T08:56:00.000Z
 last_activity: 2026-07-06
 progress:
   total_phases: 11
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Milestone complete
+**Current focus:** Phase 53 — add dedicated edit view for quest recap so details page is view-only (UI-SPEC approved; Phase 54 still pending)
 
 ## Current Position
 
-Phase: 55
+Phase: 53
 Plan: Not started
-Status: Milestone complete
+Status: Ready to plan (UI-SPEC approved)
 Last activity: 2026-07-06
 
 ## Performance Metrics
