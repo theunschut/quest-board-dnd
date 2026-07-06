@@ -49,6 +49,17 @@
                     </div>
                 </div>
 
+                @if (!string.IsNullOrWhiteSpace(Model.Quest.Rewards))
+                {
+                    <hr />
+
+                    <!-- Rewards -->
+                    <div class="mb-4">
+                        <h5 class="text-white"><i class="fas fa-coins text-warning me-2"></i>Rewards</h5>
+                        <div class="quest-description-box" style="white-space: pre-wrap;">@Model.Quest.Rewards</div>
+                    </div>
+                }
+
                 @{
                     var selectedPlayers = Model.Quest.PlayerSignups.Where(ps => ps.IsSelected).OrderBy(ps => ps.SignupTime).ToList();
                 }
