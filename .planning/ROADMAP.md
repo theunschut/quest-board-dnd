@@ -374,6 +374,7 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
+
 - [ ] TBD (run /gsd-plan-phase 54 to break down)
 
 ### Phase 55: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
@@ -384,7 +385,12 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 55-01-PLAN.md — Harden 7 group-scoped EF Core query filters to fail-closed (D-03, defense-in-depth)
 - [ ] 55-02-PLAN.md — Reorder GroupSessionMiddleware so SuperAdmin is gated on group-scoped routes (D-01/D-02, root-cause fix) + correct stale CONCERNS.md
 - [ ] 55-03-PLAN.md — Add SelectGroup membership check, 404 on non-member (D-04/D-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 55-04-PLAN.md — Interval-gated stale-membership re-validation in the middleware (D-06)

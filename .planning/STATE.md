@@ -4,14 +4,14 @@ milestone: v7.0
 milestone_name: Backlog Cleanup
 status: executing
 stopped_at: Phase 55 context gathered
-last_updated: "2026-07-06T07:21:19.372Z"
-last_activity: 2026-07-06 -- Phase 52 planning complete
+last_updated: "2026-07-06T07:45:12.238Z"
+last_activity: 2026-07-06 -- Phase 55 planning complete
 progress:
   total_phases: 11
-  completed_phases: 7
-  total_plans: 16
-  completed_plans: 15
-  percent: 64
+  completed_phases: 8
+  total_plans: 20
+  completed_plans: 16
+  percent: 73
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 50 — fix-quest-edit-page-show-edit-button-for-campaign-quests-and
+**Current focus:** Phase 52 — add-dead-status-to-characterstatus-enum
 
 ## Current Position
 
-Phase: 51
-Plan: Not started
+Phase: 52 (add-dead-status-to-characterstatus-enum) — EXECUTING
+Plan: 1 of 1
 Status: Ready to execute
-Last activity: 2026-07-06 -- Phase 52 planning complete
+Last activity: 2026-07-06 -- Phase 55 planning complete
 
 ## Performance Metrics
 
