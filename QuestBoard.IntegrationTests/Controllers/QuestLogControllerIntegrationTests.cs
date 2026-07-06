@@ -222,8 +222,10 @@ public class QuestLogControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // Regression: a real Admin who is not the quest's DM must see the recap-edit form
+    // Regression: a real Admin who is not the quest's DM must see the recap-edit entry point
     // (ViewBag.CanEditRecap driven by GetEffectiveGroupRoleAsync, not the empty AspNetUserRoles).
+    // Details is now read-only for everyone; the edit affordance is the Add/Edit Recap button
+    // linking to the dedicated EditRecap page, not an inline form.
     [Fact]
     public async Task Details_NonOwnerAdmin_SeesRecapEditMarker()
     {
@@ -254,7 +256,7 @@ public class QuestLogControllerIntegrationTests(WebApplicationFactoryBase factor
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        content.Should().Contain("Save Recap");
+        content.Should().Contain($"/QuestLog/EditRecap/{quest.Id}");
     }
 
     // Regression: UpdateRecap must not Forbid() a non-owner Admin.
