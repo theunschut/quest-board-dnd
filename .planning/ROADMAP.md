@@ -281,7 +281,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete    | 2026-07-06 |
 | 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
 | 56. Allow admins to edit characters owned by other players | v7.0 | 1/1 | Complete | 2026-07-06 |
-| 57. Add an NPC directory | v7.0 | 0/? | Not started | — |
+| 57. Add an NPC directory | v7.0 | 5/6 | In Progress|  |
 | 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
 | 59. Add a rewards field to quests | v7.0 | 2/2 | Complete    | 2026-07-06 |
 
@@ -427,25 +427,25 @@ Plans:
 **Goal:** A DM-tier user can create, edit, reveal/hide, and delete group-bound "Contacts" (name, image, description, town/city, optional sub-location), every group member can view revealed Contacts and collaboratively add/edit/delete freeform authored+timestamped notes on the Details page, and hidden Contacts stay invisible (list-filtered + 404) to everyone except their creator and DM-tier viewers who flip a per-group session "Show Hidden" toggle — with full desktop + mobile parity, mirroring the Characters feature.
 **Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 57-CONTEXT.md decisions D-01 through D-20)
 **Depends on:** Phase 56 (feature is built against the already-renamed Characters feature; Phase 58 executed before this phase per the execution-order note above)
-**Plans:** 6 plans
+**Plans:** 5/6 plans executed
 
 Plans:
 **Wave 1** *(two parallel — disjoint files: tests vs. entities)*
 
-- [ ] 57-01-PLAN.md — Wave 0 failing tests: ContactRepositoryTests (ordering/scope/image/notes) + ContactsControllerIntegrationTests (D-09b/D-12/D-13/D-14/D-15/D-15b/D-09 + cross-tenant IDOR matrix)
-- [ ] 57-02-PLAN.md — Data layer: ContactEntity/ContactImageEntity/ContactNoteEntity + fail-closed group query filters (no SuperAdmin bypass) + Notes/Author relationships + AddContactsFeature migration
+- [x] 57-01-PLAN.md — Wave 0 failing tests: ContactRepositoryTests (ordering/scope/image/notes) + ContactsControllerIntegrationTests (D-09b/D-12/D-13/D-14/D-15/D-15b/D-09 + cross-tenant IDOR matrix)
+- [x] 57-02-PLAN.md — Data layer: ContactEntity/ContactImageEntity/ContactNoteEntity + fail-closed group query filters (no SuperAdmin bypass) + Notes/Author relationships + AddContactsFeature migration
 
 **Wave 2**
 
-- [ ] 57-03-PLAN.md — Domain + Repository: Contact/ContactNote models, interfaces, ContactService, ContactRepository (three-branch visibility as explicit params, dedicated note methods per Pitfall 4), EntityProfile + DI
+- [x] 57-03-PLAN.md — Domain + Repository: Contact/ContactNote models, interfaces, ContactService, ContactRepository (three-branch visibility as explicit params, dedicated note methods per Pitfall 4), EntityProfile + DI
 
 **Wave 3**
 
-- [ ] 57-04-PLAN.md — Service HTTP surface: ContactsController (DungeonMasterOnly gating, three-branch 404, per-group Show Hidden session toggle, collaborative note actions, image serving) + ViewModels + ViewModelProfile + SessionKeys
+- [x] 57-04-PLAN.md — Service HTTP surface: ContactsController (DungeonMasterOnly gating, three-branch 404, per-group Show Hidden session toggle, collaborative note actions, image serving) + ViewModels + ViewModelProfile + SessionKeys
 
 **Wave 4**
 
-- [ ] 57-05-PLAN.md — Desktop views (Index/Details/Edit/Create) + contacts.css, built to 57-UI-SPEC fidelity: flat alphabetical grid, two-state Show Hidden toggle, secondary Hidden badges, Reveal/Hide action, collaborative notes UI with inline edit-in-place + Contacts nav link (all users, both board types, desktop + mobile layouts)
+- [x] 57-05-PLAN.md — Desktop views (Index/Details/Edit/Create) + contacts.css, built to 57-UI-SPEC fidelity: flat alphabetical grid, two-state Show Hidden toggle, secondary Hidden badges, Reveal/Hide action, collaborative notes UI with inline edit-in-place + Contacts nav link (all users, both board types, desktop + mobile layouts)
 
 **Wave 5**
 
