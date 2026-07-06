@@ -283,7 +283,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 56. Allow admins to edit characters owned by other players | v7.0 | 1/1 | Complete | 2026-07-06 |
 | 57. Add an NPC directory | v7.0 | 0/? | Not started | — |
 | 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
-| 59. Add a rewards field to quests | v7.0 | 2/2 | Complete   | 2026-07-06 |
+| 59. Add a rewards field to quests | v7.0 | 2/2 | Complete    | 2026-07-06 |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
