@@ -275,7 +275,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 51. Change Guild Members page layout from two columns to two stacked rows | v7.0 | 1/1 | Complete | 2026-07-05 |
 | 52. Add Dead status to CharacterStatus enum | v7.0 | 1/1 | Complete | 2026-07-06 |
 | 53. Add dedicated Edit view for Quest recap so Details page is view-only | v7.0 | 2/2 | Complete   | 2026-07-06 |
-| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete   | 2026-07-06 |
+| 54. Fix mobile signup for finalized quests (inconsistent with desktop) | v7.0 | 2/2 | Complete    | 2026-07-06 |
 | 55. Fix cross-tenant quest leak on quest board | v7.0 | 4/4 | Complete | 2026-07-06 |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
