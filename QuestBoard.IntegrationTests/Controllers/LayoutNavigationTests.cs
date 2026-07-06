@@ -89,13 +89,13 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // NAV-03: Campaign+authenticated — Guild Members link PRESENT (regression guard)
+    // Campaign+authenticated — Characters link PRESENT (regression guard)
     // -----------------------------------------------------------------------
 
     [Theory]
     [InlineData(DesktopUserAgent)]
     [InlineData(MobileUserAgent)]
-    public async Task Nav_CampaignAuthenticated_GuildMembersLinkPresent(string userAgent)
+    public async Task Nav_CampaignAuthenticated_CharactersLinkPresent(string userAgent)
     {
         _factory.TestGroupContext.BoardType = BoardType.Campaign;
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
@@ -104,7 +104,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
         var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("Guild Members");
+        html.Should().Contain("Characters");
     }
 
     // -----------------------------------------------------------------------
