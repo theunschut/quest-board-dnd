@@ -1,8 +1,8 @@
 using QuestBoard.Domain.Models;
 
-namespace QuestBoard.Service.ViewModels.GuildMembersViewModels;
+namespace QuestBoard.Service.ViewModels.PlayersViewModels;
 
-public class GuildMembersIndexViewModel
+public class PlayersIndexViewModel
 {
     public IEnumerable<User> DungeonMasters { get; set; } = [];
     public IEnumerable<User> Players { get; set; } = [];
