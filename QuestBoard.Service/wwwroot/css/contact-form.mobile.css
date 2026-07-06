@@ -1,0 +1,51 @@
+/* contact-form.mobile.css — loaded exclusively by Contacts/Create.Mobile.cshtml and Edit.Mobile.cshtml via _Layout.Mobile.cshtml; no media queries */
+
+/* Glass card container */
+.contact-form-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 16px;
+}
+
+/* Parchment headings and form labels inside card */
+.contact-form-card h4,
+.contact-form-card h5,
+.contact-form-card h6,
+.contact-form-card .form-label {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+}
+
+/* Parchment for all card text (catch-all) */
+.contact-form-card p,
+.contact-form-card span:not(.badge),
+.contact-form-card legend {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+}
+
+/* Faded parchment for form hints */
+.contact-form-card .form-text,
+.contact-form-card small {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* text-muted scoped override */
+.contact-form-card .text-muted {
+    color: rgba(244, 228, 188, 0.7) !important;
+}
+
+/* Badge text-shadow suppression */
+.contact-form-card .badge {
+    text-shadow: none !important;
+}
+
+/* Contact image file input — full-width block */
+.contact-form-card input[type="file"] {
+    display: block;
+    width: 100%;
+}
