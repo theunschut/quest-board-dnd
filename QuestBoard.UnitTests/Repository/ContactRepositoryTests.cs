@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
 using QuestBoard.Repository;
 using QuestBoard.Repository.Entities;
 
