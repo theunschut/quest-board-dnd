@@ -115,9 +115,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 </details>
 
 <details open>
-<summary>🚧 v7.0 Backlog Cleanup (Phases 43–58) — IN PROGRESS</summary>
+<summary>🚧 v7.0 Backlog Cleanup (Phases 43–59) — IN PROGRESS</summary>
 
-**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–58).
+**Overview:** Close out four standing backlog items — two mobile UI bugs (#115, #116), post-finalization vote flexibility with waitlist auto-promotion for One-Shot quests (#104), and client-side crop-before-save for character/DM profile photos with dual original+cropped storage (#78, deferred since v1.0) — plus ad-hoc fixes folded in along the way (Phases 47–59).
 
 - [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
 - [x] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (completed 2026-07-04)
@@ -135,6 +135,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] Phase 56: Allow admins to edit characters owned by other players — Widened GuildMembersController's owner-only guard to owner-OR-admin across Edit/Delete/ToggleRetirement via a shared CanManageCharacterAsync helper (completed 2026-07-06)
 - [ ] Phase 57: Add an NPC directory — DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location) with a player-and-DM-editable notes list, plus dedicated Index/Details/Edit views mirroring the Characters pattern
 - [x] Phase 58: Rename the Guild Members feature to Characters everywhere — Controller, routes, views, ViewModels, CSS, integration tests, and nav copy renamed so the terminology matches the Domain/Repository layers, with zero behavior change (completed 2026-07-06)
+- [x] Phase 59: Add a rewards field to quests — Optional freeform Rewards textarea between Description and Challenge Rating on Create/Edit/Follow-Up (desktop + mobile), shown as a gold `fa-coins` boxed callout below Description on Quest Details and QuestLog Details, hidden when empty (completed 2026-07-06)
 
 </details>
 
@@ -216,9 +217,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55 → 56 → 57 → 58
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59
 
-Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–58 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase. Phases 57 and 58 executed out of numeric order — Phase 58 (Characters rename) was planned and executed before Phase 57 (NPC directory), which remains unplanned.
+Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–59 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase. Phases 57, 58, and 59 executed out of numeric order — Phase 58 (Characters rename) was planned and executed before Phase 57 (NPC directory); Phase 59 (Rewards field) was then planned and executed concurrently with Phase 57's still-in-progress execution.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | ------- | ----------- | ---------------- | -------- | ----------- |
