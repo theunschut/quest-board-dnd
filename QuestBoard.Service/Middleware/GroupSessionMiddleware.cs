@@ -13,10 +13,14 @@ namespace QuestBoard.Service.Middleware;
 ///
 /// Guard order matters:
 ///   1. Anonymous requests pass through — [Authorize] handles the login redirect.
-///   2. SuperAdmin passes through — a null ActiveGroupId is correct by design and must be
-///      checked BEFORE the group check to avoid a redirect loop.
-///   3. Exempt paths (the picker itself, auth, platform, error routes) pass through.
-///   4. Otherwise, resolve IActiveGroupContext; if ActiveGroupId is null:
+///   2. Exempt paths (the picker itself, auth, platform, error routes) pass through for
+///      every authenticated role, including SuperAdmin — these are the genuine
+///      group-agnostic workflows (picking a group, managing the account, platform-wide
+///      administration) that must never be gated on having an active group.
+///   3. Otherwise, resolve IActiveGroupContext; if ActiveGroupId is null, the request is
+///      gated exactly the same way regardless of role — a null active group is ambiguous
+///      (which group's data should render?) and must never be silently treated as "show
+///      everything" or "show nothing":
 ///        - GET/HEAD requests are redirected to the hardcoded literal "/groups/pick"
 ///          (never a user-supplied URL — open-redirect mitigation), preserving the original
 ///          path+query as ?returnUrl= so GroupPickerController can send the user back
@@ -26,6 +30,7 @@ namespace QuestBoard.Service.Middleware;
 ///          silently dropping the submitted body with no user-facing error. Instead we
 ///          short-circuit with 409 Conflict so the caller gets a distinguishable failure
 ///          signal rather than a silent data loss.
+///   4. Otherwise, the request proceeds with a resolved active group.
 /// </summary>
 public class GroupSessionMiddleware(RequestDelegate next)
 {
@@ -57,12 +62,6 @@ public class GroupSessionMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext context)
     {
         if (context.User.Identity?.IsAuthenticated != true)
-        {
-            await next(context);
-            return;
-        }
-
-        if (context.User.IsInRole("SuperAdmin"))
         {
             await next(context);
             return;
