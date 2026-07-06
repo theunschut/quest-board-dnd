@@ -168,7 +168,8 @@ public static class TestDataHelper
         string? townCity = null,
         string? subLocation = null,
         bool isRevealed = false,
-        int groupId = 1)
+        int groupId = 1,
+        byte[]? imageData = null)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -181,7 +182,8 @@ public static class TestDataHelper
             CreatedByUserId = createdByUserId,
             IsRevealed = isRevealed,
             GroupId = groupId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            ProfileImage = imageData == null ? null : new ContactImageEntity { ImageData = imageData }
         };
 
         context.Contacts.Add(contact);

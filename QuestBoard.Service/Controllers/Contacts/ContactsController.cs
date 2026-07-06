@@ -265,6 +265,12 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return Challenge();
             }
 
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Note text is required and cannot exceed 2000 characters.";
+                return RedirectToAction(nameof(Details), new { id = contactId });
+            }
+
             var note = new ContactNote
             {
                 ContactId = contactId,
@@ -281,6 +287,12 @@ namespace QuestBoard.Service.Controllers.Contacts
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditNote(int id, int contactId, ContactNoteViewModel viewModel, CancellationToken token = default)
         {
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Note text is required and cannot exceed 2000 characters.";
+                return RedirectToAction(nameof(Details), new { id = contactId });
+            }
+
             var note = new ContactNote
             {
                 Id = id,
@@ -305,6 +317,21 @@ namespace QuestBoard.Service.Controllers.Contacts
         [HttpGet]
         public async Task<IActionResult> GetContactImage(int id, CancellationToken token = default)
         {
+            var contact = await contactService.GetContactWithDetailsAsync(id, token);
+            if (contact == null)
+            {
+                return NotFound();
+            }
+
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = currentUser.Id != 0 && await IsDmTierAsync();
+            var includeHidden = viewerIsDmTier && ReadShowHiddenToggle();
+
+            if (!IsVisibleTo(contact, currentUser.Id, includeHidden))
+            {
+                return NotFound();
+            }
+
             var image = await contactService.GetContactImageAsync(id, token);
             if (image == null)
             {

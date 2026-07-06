@@ -209,6 +209,44 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    // CR-01 regression (code review) — GetContactImage must apply the same hidden-Contact
+    // visibility check as Details/Index, not just the group-scoped query filter. Otherwise any
+    // authenticated group member can fetch a hidden Contact's portrait by guessing/enumerating
+    // its id, bypassing the hidden/reveal model entirely.
+
+    [Fact]
+    public async Task GetContactImage_HiddenContact_PlayerGetsNotFound()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_dm_hiddenimage", "contact_dm_hiddenimage@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Image Contact", groupId: 1, isRevealed: false,
+            imageData: [1, 2, 3, 4]);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_player_hiddenimage", "contact_player_hiddenimage@example.com", roles: ["Player"]);
+
+        var response = await playerClient.GetAsync($"/Contacts/GetContactImage/{contact.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetContactImage_HiddenContact_CreatorCanFetchOwnImage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (creatorClient, creator) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_creator_hiddenimage", "contact_creator_hiddenimage@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, creator.Id, "Creator's Hidden Image Contact", groupId: 1, isRevealed: false,
+            imageData: [1, 2, 3, 4]);
+
+        var response = await creatorClient.GetAsync($"/Contacts/GetContactImage/{contact.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     // (4) D-15 branch 1 — the creator exception: the DM-tier user who created a hidden Contact
     // sees it on their own Index and Details regardless of toggle state.
 

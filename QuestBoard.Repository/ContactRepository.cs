@@ -120,7 +120,10 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     {
         var entity = await DbContext.Set<ContactNoteEntity>()
             .FirstOrDefaultAsync(n => n.Id == note.Id, token);
-        if (entity == null) return;
+        // Guard against a caller passing a ContactId that doesn't match the note's actual
+        // owning Contact (e.g. a stale form) — no-op rather than silently editing the note
+        // and redirecting to an unrelated Contact's page.
+        if (entity == null || entity.ContactId != note.ContactId) return;
 
         entity.Text = note.Text;
         entity.UpdatedAt = DateTime.UtcNow;
