@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/quests.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/guild-members.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/characters.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/dm-profile.css" asp-append-version="true" />
 </head>
 <body class="d-flex flex-column min-vh-100 @ViewData["BodyClass"]">
@@ -128,8 +128,8 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" asp-controller="GuildMembers" asp-action="Index">
-                                    <i class="fas fa-people-group me-1"></i>Guild Members
+                                <a class="nav-link" asp-controller="Characters" asp-action="Index">
+                                    <i class="fas fa-people-group me-1"></i>Characters
                                 </a>
                             </li>
                             @if (activeBoardType == BoardType.OneShot)
