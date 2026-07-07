@@ -161,6 +161,74 @@ public class ContactServiceTests
         cropped.Should().Equal([9, 9, 9]);
     }
 
+    [Fact]
+    public async Task AddAsync_NewCropSupplied_PersistsCrop()
+    {
+        // Arrange: a fresh group/creator, no contact yet
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactServiceTests." + nameof(AddAsync_NewCropSupplied_PersistsCrop), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var mapper = CreateMapper();
+        var repository = new ContactRepository(context, mapper);
+        var service = new ContactService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var contact = new QuestBoard.Domain.Models.Contact
+        {
+            Name = "Newly Created Contact",
+            GroupId = 1,
+            CreatedByUserId = 1,
+            ContactImageData = [1, 2, 3],
+        };
+
+        // Act: Create with a crop submitted alongside the original -- mirrors the real
+        // controller flow, where the AutoMapper-built Contact never has CreatedByUser
+        // populated (only CreatedByUserId), since ViewModels never carry that navigation.
+        await service.AddAsync(contact, newCroppedImageData: [200, 201, 202], TestContext.Current.CancellationToken);
+
+        // Assert: the supplied crop is persisted, not the original and not null
+        var original = await repository.GetContactOriginalImageAsync(contact.Id, TestContext.Current.CancellationToken);
+        var cropped = await repository.GetContactCroppedImageAsync(contact.Id, TestContext.Current.CancellationToken);
+        original.Should().Equal([1, 2, 3]);
+        cropped.Should().Equal([200, 201, 202]);
+    }
+
+    [Fact]
+    public async Task AddAsync_NoCropSupplied_FallsBackToOriginal()
+    {
+        // Arrange: a fresh group/creator, no contact yet
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactServiceTests." + nameof(AddAsync_NoCropSupplied_FallsBackToOriginal), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var mapper = CreateMapper();
+        var repository = new ContactRepository(context, mapper);
+        var service = new ContactService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var contact = new QuestBoard.Domain.Models.Contact
+        {
+            Name = "Newly Created Contact",
+            GroupId = 1,
+            CreatedByUserId = 1,
+            ContactImageData = [1, 2, 3],
+        };
+
+        // Act: Create with no crop submitted -- identical to today's plain Create
+        await service.AddAsync(contact, newCroppedImageData: null, TestContext.Current.CancellationToken);
+
+        // Assert: the cropped read-back falls back to the original, no spurious second write
+        var cropped = await repository.GetContactCroppedImageAsync(contact.Id, TestContext.Current.CancellationToken);
+        cropped.Should().Equal([1, 2, 3]);
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }

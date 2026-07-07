@@ -58,4 +58,11 @@ public interface ICharacterService : IBaseService<Character>
     /// to the same hasNewOriginalUpload-driven clear-or-preserve resolution as the 3-arg overload.
     /// </summary>
     Task UpdateAsync(Character model, bool hasNewOriginalUpload, byte[]? newCroppedImageData, CancellationToken token = default);
+
+    /// <summary>
+    /// Creates a character, then persists a caller-supplied cropped image immediately after,
+    /// so a crop chosen at creation time isn't silently dropped. A null newCroppedImageData
+    /// behaves identically to the plain AddAsync.
+    /// </summary>
+    Task AddAsync(Character model, byte[]? newCroppedImageData, CancellationToken token = default);
 }

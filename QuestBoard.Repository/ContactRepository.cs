@@ -81,10 +81,19 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         if (entity == null) return;
 
         var trackedProfileImage = entity.ProfileImage;
+        var trackedCreatedByUser = entity.CreatedByUser;
+        var trackedGroup = entity.Group;
 
         Mapper.Map(model, entity);
 
+        // The domain model's CreatedByUser/Group navigations are frequently left unset by
+        // callers that only ever populate CreatedByUserId/GroupId (e.g. a freshly-constructed
+        // Contact with no prior fetch) -- restoring EF's own tracked reference-navigation
+        // instances instead of trusting whatever AutoMapper produced from the (possibly null)
+        // model navigations avoids nulling out a required FK the tracked entity depends on.
         entity.ProfileImage = trackedProfileImage;
+        entity.CreatedByUser = trackedCreatedByUser;
+        entity.Group = trackedGroup;
 
         await DbContext.SaveChangesAsync(token);
     }
@@ -114,10 +123,18 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         if (entity == null) return;
 
         var trackedProfileImage = entity.ProfileImage;
+        var trackedCreatedByUser = entity.CreatedByUser;
+        var trackedGroup = entity.Group;
 
         Mapper.Map(model, entity);
 
+        // See UpdateAsync above for why CreatedByUser/Group must be restored: the
+        // caller-supplied model frequently has no CreatedByUser/Group populated (only
+        // CreatedByUserId/GroupId), and trusting AutoMapper's mapping of those null
+        // references would null out a required FK the tracked entity depends on.
         entity.ProfileImage = trackedProfileImage;
+        entity.CreatedByUser = trackedCreatedByUser;
+        entity.Group = trackedGroup;
 
         ApplyProfileImage(entity, originalImageData, croppedImageData);
 

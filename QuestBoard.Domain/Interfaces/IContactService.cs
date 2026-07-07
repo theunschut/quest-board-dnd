@@ -42,6 +42,13 @@ public interface IContactService : IBaseService<Contact>
     Task UpdateAsync(Contact model, bool hasNewOriginalUpload, byte[]? newCroppedImageData, CancellationToken token = default);
 
     /// <summary>
+    /// Creates a contact, then persists a caller-supplied cropped image immediately after,
+    /// so a crop chosen at creation time isn't silently dropped. A null newCroppedImageData
+    /// behaves identically to the plain AddAsync.
+    /// </summary>
+    Task AddAsync(Contact model, byte[]? newCroppedImageData, CancellationToken token = default);
+
+    /// <summary>
     /// Adds a new note to a contact and propagates the DB-generated Id back onto the model.
     /// </summary>
     Task AddNoteAsync(ContactNote note, CancellationToken token = default);

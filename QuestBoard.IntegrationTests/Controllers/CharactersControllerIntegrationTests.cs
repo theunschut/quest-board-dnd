@@ -683,6 +683,64 @@ public class CharactersControllerIntegrationTests(WebApplicationFactoryBase fact
         persistedImage.OriginalImageData.Should().Equal(newOriginalBytes);
     }
 
+    // Proves the Create POST action -- not just Edit -- persists a crop submitted alongside
+    // the original at creation time, closing the gap where a brand-new character's crop was
+    // silently discarded.
+    [Fact]
+    public async Task Create_WithCroppedPhoto_PersistsCroppedImage()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "owner_create_with_crop", "owner_create_with_crop@example.com");
+
+        byte[] originalBytes = [5, 6, 7, 8];
+        byte[] submittedCropBytes = [10, 20, 30, 40, 50];
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(owner.Id.ToString()), "OwnerId" },
+            { new StringContent("Brand New Character With A Crop"), "Name" },
+            { new StringContent("5"), "Level" },
+            { new StringContent(((int)CharacterStatus.Active).ToString()), "Status" },
+            { new StringContent(((int)CharacterRole.Backup).ToString()), "Role" },
+            { new StringContent(""), "SheetLink" },
+            { new StringContent(""), "Description" },
+            { new StringContent(""), "Backstory" },
+            { new StringContent("5"), "Classes[0].Class" }, // Fighter
+            { new StringContent("5"), "Classes[0].ClassLevel" }
+        };
+        var originalFileContent = new ByteArrayContent(originalBytes);
+        originalFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(originalFileContent, "ProfilePictureFile", "new.png");
+
+        var croppedFileContent = new ByteArrayContent(submittedCropBytes);
+        croppedFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(croppedFileContent, "CroppedPictureFile", "new-cropped.png");
+
+        // Act
+        var response = await ownerClient.PostAsync(
+            "/Characters/Create", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedCharacter = context.Characters.IgnoreQueryFilters()
+            .FirstOrDefault(c => c.Name == "Brand New Character With A Crop");
+        persistedCharacter.Should().NotBeNull();
+
+        var persistedImage = await context.Set<CharacterImageEntity>().FindAsync(
+            [persistedCharacter!.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().NotBeNull();
+        persistedImage.CroppedImageData.Should().Equal(submittedCropBytes);
+        persistedImage.OriginalImageData.Should().Equal(originalBytes);
+    }
+
     // Proves the new GetCroppedPicture read action serves the stored crop.
     [Fact]
     public async Task GetCroppedPicture_CropStored_ReturnsOkWithContent()
