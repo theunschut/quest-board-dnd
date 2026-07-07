@@ -44,7 +44,7 @@ public class CharacterRepositoryTests
             GroupId = 1,
             Level = 1,
             CreatedAt = DateTime.UtcNow,
-            ProfileImage = new CharacterImageEntity { Id = 1, ImageData = [1, 2, 3] }
+            ProfileImage = new CharacterImageEntity { Id = 1, OriginalImageData = [1, 2, 3] }
         };
 
         var characterInGroup2 = new CharacterEntity
@@ -55,7 +55,7 @@ public class CharacterRepositoryTests
             GroupId = 2,
             Level = 1,
             CreatedAt = DateTime.UtcNow,
-            ProfileImage = new CharacterImageEntity { Id = 2, ImageData = [4, 5, 6] }
+            ProfileImage = new CharacterImageEntity { Id = 2, OriginalImageData = [4, 5, 6] }
         };
 
         context.Characters.Add(characterInGroup1);

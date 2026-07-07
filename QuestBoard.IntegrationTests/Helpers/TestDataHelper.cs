@@ -183,7 +183,7 @@ public static class TestDataHelper
             IsRevealed = isRevealed,
             GroupId = groupId,
             CreatedAt = DateTime.UtcNow,
-            ProfileImage = imageData == null ? null : new ContactImageEntity { ImageData = imageData }
+            ProfileImage = imageData == null ? null : new ContactImageEntity { OriginalImageData = imageData }
         };
 
         context.Contacts.Add(contact);
