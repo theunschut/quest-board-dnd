@@ -263,6 +263,66 @@ public class CharacterRepositoryTests
         cropped.Should().Equal([60, 61, 62]);
     }
 
+    [Fact]
+    public async Task GetAllCharactersWithDetailsAsync_ReflectsHasProfilePicture_TrueWithImage_FalseWithout()
+    {
+        // Arrange: two characters in the same group, one with a stored image and one without.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetAllCharactersWithDetailsAsync_ReflectsHasProfilePicture_TrueWithImage_FalseWithout), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Owner One", Email = "owner1@test.com" });
+        context.Characters.Add(new CharacterEntity
+        {
+            Id = 1,
+            Name = "Has Picture",
+            OwnerId = 1,
+            GroupId = 1,
+            Level = 1,
+            CreatedAt = DateTime.UtcNow,
+            ProfileImage = new CharacterImageEntity { Id = 1, OriginalImageData = [1, 2, 3] }
+        });
+        context.Characters.Add(new CharacterEntity
+        {
+            Id = 2,
+            Name = "No Picture",
+            OwnerId = 1,
+            GroupId = 1,
+            Level = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new CharacterRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var characters = await repository.GetAllCharactersWithDetailsAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        characters.Single(c => c.Name == "Has Picture").HasProfilePicture.Should().BeTrue();
+        characters.Single(c => c.Name == "No Picture").HasProfilePicture.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetCharacterWithDetailsAsync_ReflectsHasProfilePicture_TrueWithImage()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetCharacterWithDetailsAsync_ReflectsHasProfilePicture_TrueWithImage), groupContext);
+        await SeedTwoGroupCharactersAsync(context, groupContext);
+
+        var repository = new CharacterRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var character = await repository.GetCharacterWithDetailsAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        character.Should().NotBeNull();
+        character!.HasProfilePicture.Should().BeTrue();
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }

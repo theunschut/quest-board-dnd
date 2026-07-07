@@ -12,6 +12,9 @@ public class Contact : IModel
 
     public byte[]? ContactImageData { get; set; }
 
+    // Lets list/detail views show a placeholder-or-photo state without pulling the image bytes.
+    public bool HasContactImage { get; set; }
+
     [StringLength(2000)]
     public string? Description { get; set; }
 

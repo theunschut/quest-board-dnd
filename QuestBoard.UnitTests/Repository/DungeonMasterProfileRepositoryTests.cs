@@ -155,6 +155,49 @@ public class DungeonMasterProfileRepositoryTests
         cropped.Should().Equal([60, 61, 62]);
     }
 
+    [Fact]
+    public async Task GetProfileByUserIdAsync_ForProfileWithImage_HasProfilePictureIsTrue()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(GetProfileByUserIdAsync_ForProfileWithImage_HasProfilePictureIsTrue), groupContext);
+        await SeedDungeonMasterProfileAsync(context, 1, [1, 2, 3]);
+
+        var repository = new DungeonMasterProfileRepository(context, CreateMapper());
+
+        // Act
+        var profile = await repository.GetProfileByUserIdAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        profile.Should().NotBeNull();
+        profile!.HasProfilePicture.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetProfileByUserIdAsync_ForProfileWithoutImage_HasProfilePictureIsFalse()
+    {
+        // Arrange: profile with no ProfileImage navigation set at all.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(GetProfileByUserIdAsync_ForProfileWithoutImage_HasProfilePictureIsFalse), groupContext);
+
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "DM One", Email = "dm1@test.com" });
+        context.DungeonMasterProfiles.Add(new DungeonMasterProfileEntity
+        {
+            Id = 1,
+            Bio = "An experienced Dungeon Master."
+        });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new DungeonMasterProfileRepository(context, CreateMapper());
+
+        // Act
+        var profile = await repository.GetProfileByUserIdAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        profile.Should().NotBeNull();
+        profile!.HasProfilePicture.Should().BeFalse();
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }
