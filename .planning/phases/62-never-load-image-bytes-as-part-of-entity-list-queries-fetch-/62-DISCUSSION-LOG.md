@@ -77,3 +77,23 @@ Investigation revealed Phase 45 (Dual-Image Storage Backend) is partially execut
 
 - Removing `CharacterRepository.GetMainCharacterForUserAsync` (confirmed dead code, zero production callers) — noticed during investigation, explicitly left alone as out-of-scope dead-code cleanup, not deferred to any specific future phase.
 
+---
+
+## Sanity check — 2026-07-07 (post Phase 45/46 completion)
+
+User re-ran `/gsd-discuss-phase 62` and asked for a validity check of the original decisions now that Phase 45 (45-02, 45-03) and Phase 46 have both finished executing, rather than a fresh discussion.
+
+Dispatched an Explore agent plus direct verification against current source to re-check every claim in CONTEXT.md. Findings:
+
+| Area | Result |
+|---|---|
+| D-01 write-path fix (`hasNewOriginalUpload`) | **Confirmed shipped** — `CharacterService.UpdateAsync`/`ContactService.UpdateAsync` now have the 3-overload signal pattern; picture-read methods renamed (`GetCharacterOriginalPictureAsync` etc.); controllers repointed. No longer a Phase 62 concern. |
+| D-02 Contact single-entity scope | Unaffected, still valid as originally decided. |
+| D-03/D-04 write-path hazard background | **Resolved** by Phase 45-02; DM's `UpsertProfileAsync` remains the correct reference pattern, unchanged. |
+| D-05 ViewModel byte[]→bool | Still valid and still needed (Character/Contact/EditDMProfileViewModel still carry byte[]; DM's `DMProfileViewModel.HasProfilePicture` still the correct precedent). New finding: Phase 46 already repointed all affected views to render via the cropped-image endpoints, so the byte[] properties are now used *only* for existence checks — lower-risk conversion than originally assessed. |
+| Six read-side eager-loads (the actual bug) | **Confirmed still present** in all six methods — this is exactly what Phase 62 needs to fix. |
+| Canonical refs / line numbers | Repository and service line numbers re-verified and corrected in CONTEXT.md. View file line numbers flagged as needing re-verification at plan time (Phase 46 touched all of them). |
+| Dead code (`GetMainCharacterForUserAsync`) | Reconfirmed still dead, still out of scope. |
+
+**Outcome:** CONTEXT.md rewritten in place to remove the "blocked" status, mark D-01/D-03/D-04 as resolved background rather than open risk, and correct all canonical-reference line numbers/method names to their current, post-Phase-45/46 state. No new gray areas were opened; this was a validation pass, not a new discussion.
+
