@@ -220,7 +220,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
   1. On every image-upload field in the app (character photo, DM profile photo — create and edit, desktop and mobile), the user sees an interactive crop frame (Cropper.js v2.1.1) they can drag, resize, and zoom over their photo before saving
   2. Saving a photo submits both the original and the cropped result in one ordinary form submission, with no separate upload step or page reload
-  3. The guild-member list page displays the cropped image for each character; the character details page and DM profile details page display the original, unmodified image
+  3. The guild-member list page displays the cropped image for each character; the character details page and contact details page display the original, unmodified image. The DM profile page displays the cropped image (D-03: no DM-facing page needs the original, and DM's existing circular-crop presentation is unaffected either way)
   4. On a real touchscreen device, the crop frame responds correctly to drag and pinch gestures, a real phone-camera photo crops with correct orientation (not sideways/upside-down), and a full-resolution camera photo does not crash or blank the crop canvas on iOS Safari — each verified on a real device, not devtools emulation
 
 **Plans**: 8/8 plans complete
@@ -565,3 +565,25 @@ Plans:
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 62 to break down)
+
+### Phase 63: Allow any player to edit quest recaps, not just the assigned DM or admin
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 62
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 63 to break down)
+
+### Phase 64: Preserve line breaks in description text on mobile views to match desktop rendering
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 63
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 64 to break down)
