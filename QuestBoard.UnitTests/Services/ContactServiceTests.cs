@@ -84,6 +84,38 @@ public class ContactServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_NoNewUpload_PreservesExistingOriginalImage()
+    {
+        // Arrange: seed a contact with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactServiceTests." + nameof(UpdateAsync_NoNewUpload_PreservesExistingOriginalImage), groupContext);
+        await SeedContactWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new ContactRepository(context, mapper);
+        var service = new ContactService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        contact.Should().NotBeNull();
+        contact!.Description = "Yet another unrelated edit"; // unrelated-field edit
+        // Simulate the post-list-projection-change read path: GetContactWithDetailsAsync no
+        // longer loads the original image bytes, so the round-tripped model has a null original.
+        contact.ContactImageData = null;
+
+        // Act: no new photo uploaded this request
+        await service.UpdateAsync(contact, hasNewOriginalUpload: false, TestContext.Current.CancellationToken);
+
+        // Assert: the stored original survives -- it must NOT have been wiped by the null
+        // round-tripped value
+        var original = await repository.GetContactOriginalImageAsync(1, TestContext.Current.CancellationToken);
+        original.Should().Equal([1, 2, 3]);
+
+        var updated = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        updated!.Description.Should().Be("Yet another unrelated edit");
+    }
+
+    [Fact]
     public async Task UpdateAsync_NewOriginalUpload_ClearsStaleCroppedImage()
     {
         // Arrange: seed a contact with original A + crop A
@@ -103,8 +135,12 @@ public class ContactServiceTests
         // Act
         await service.UpdateAsync(contact, hasNewOriginalUpload: true, TestContext.Current.CancellationToken);
 
-        // Assert: cropped read falls back to B's original, NOT A's stale crop -- proven
-        // through the real service call path, not a direct repository call.
+        // Assert: the stored original is replaced with the newly-uploaded bytes, and the
+        // cropped read falls back to B's original, NOT A's stale crop -- proven through the
+        // real service call path, not a direct repository call.
+        var original = await repository.GetContactOriginalImageAsync(1, TestContext.Current.CancellationToken);
+        original.Should().Equal([70, 71, 72]);
+
         var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
         cropped.Should().Equal([70, 71, 72]);
     }
