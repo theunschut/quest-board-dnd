@@ -15,16 +15,22 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         // no manual GroupId .Where is needed or added. Ordering is flat alphabetical by name
         // (no owner-based grouping, since Contacts have no ownership/edit-restriction concept).
         var entities = await DbContext.Contacts
-            .Include(c => c.ProfileImage)
             .Include(c => c.CreatedByUser)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
             .OrderBy(c => c.Name)
             .ToListAsync(token);
 
         var contacts = Mapper.Map<IList<Contact>>(entities);
+
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        var imageFlags = await DbContext.Contacts
+            .Select(c => new { c.Id, HasImage = c.ProfileImage != null })
+            .ToDictionaryAsync(x => x.Id, x => x.HasImage, token);
         foreach (var contact in contacts)
         {
             contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+            contact.HasContactImage = imageFlags.GetValueOrDefault(contact.Id);
         }
         return contacts;
     }
@@ -33,7 +39,6 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     public async Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await DbContext.Contacts
-            .Include(c => c.ProfileImage)
             .Include(c => c.CreatedByUser)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
             .FirstOrDefaultAsync(c => c.Id == id, token);
@@ -41,6 +46,12 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
 
         var contact = Mapper.Map<Contact>(entity);
         contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        contact.HasContactImage = await DbContext.Contacts
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null)
+            .FirstOrDefaultAsync(token);
         return contact;
     }
 

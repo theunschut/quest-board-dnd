@@ -13,13 +13,24 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
     {
         var entities = await DbContext.Characters
             .Include(c => c.Owner)
-            .Include(c => c.ProfileImage)
             .Include(c => c.Classes)
             .OrderByDescending(c => c.Status == 0) // 0 = Active
             .ThenBy(c => c.Owner.Name)
             .ThenBy(c => c.Name)
             .ToListAsync(token);
-        return Mapper.Map<IList<Character>>(entities);
+        var characters = Mapper.Map<IList<Character>>(entities);
+
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        var imageFlags = await DbContext.Characters
+            .Select(c => new { c.Id, HasImage = c.ProfileImage != null })
+            .ToDictionaryAsync(x => x.Id, x => x.HasImage, token);
+        foreach (var character in characters)
+        {
+            character.HasProfilePicture = imageFlags.GetValueOrDefault(character.Id);
+        }
+
+        return characters;
     }
 
     /// <inheritdoc/>
@@ -27,14 +38,26 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
     {
         var entities = await DbContext.Characters
             .Include(c => c.Owner)
-            .Include(c => c.ProfileImage)
             .Include(c => c.Classes)
             .Where(c => c.OwnerId == ownerId)
             .OrderByDescending(c => c.Role == 0) // 0 = Main
             .ThenByDescending(c => c.Status == 0) // 0 = Active
             .ThenBy(c => c.Name)
             .ToListAsync(token);
-        return Mapper.Map<IList<Character>>(entities);
+        var characters = Mapper.Map<IList<Character>>(entities);
+
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        var imageFlags = await DbContext.Characters
+            .Where(c => c.OwnerId == ownerId)
+            .Select(c => new { c.Id, HasImage = c.ProfileImage != null })
+            .ToDictionaryAsync(x => x.Id, x => x.HasImage, token);
+        foreach (var character in characters)
+        {
+            character.HasProfilePicture = imageFlags.GetValueOrDefault(character.Id);
+        }
+
+        return characters;
     }
 
     /// <inheritdoc/>
@@ -42,10 +65,18 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
     {
         var entity = await DbContext.Characters
             .Include(c => c.Owner)
-            .Include(c => c.ProfileImage)
             .Include(c => c.Classes)
             .FirstOrDefaultAsync(c => c.Id == id, token);
-        return entity == null ? null : Mapper.Map<Character>(entity);
+        if (entity == null) return null;
+
+        var character = Mapper.Map<Character>(entity);
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        character.HasProfilePicture = await DbContext.Characters
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null)
+            .FirstOrDefaultAsync(token);
+        return character;
     }
 
     /// <inheritdoc/>
