@@ -146,3 +146,9 @@ None - no external service configuration required.
 - Plan 03 can now update `CharactersController`/`ContactsController`/`DungeonMasterController` to: (a) derive `hasNewOriginalUpload` from the existing `IFormFile != null && .Length > 0` check and call the new `UpdateAsync(model, hasNewOriginalUpload, token)` overload; (b) call `DungeonMasterProfileService.UpsertProfileAsync` unchanged (its signal was already correct); (c) add new GET actions serving the cropped image alongside the existing original-image actions, reusing each controller's existing auth-check sequence.
 - No `.cshtml` view files were touched this plan (D-04 honored) -- visual behavior is unchanged until Plan 03/Phase 46 wire up the crop UI and consume the cropped column.
 - No blockers for 45-03.
+
+## Self-Check: PASSED
+
+- All 4 new files confirmed present on disk (DungeonMasterProfileRepositoryTests.cs, CharacterServiceTests.cs, ContactServiceTests.cs, DungeonMasterProfileServiceTests.cs)
+- SUMMARY.md itself confirmed present on disk
+- All 3 task commit hashes (de9d20f, 7588d90, db8e314) confirmed present in git history
