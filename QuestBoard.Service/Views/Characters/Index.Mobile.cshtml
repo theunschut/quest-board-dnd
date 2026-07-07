@@ -21,7 +21,7 @@
             <div class="character-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
                 @if (character.ProfilePicture != null)
                 {
-                    <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
+                    <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
                 }
                 else
                 {
@@ -70,7 +70,7 @@
             <div class="character-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
                 @if (character.ProfilePicture != null)
                 {
-                    <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
+                    <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
                 }
                 else
                 {

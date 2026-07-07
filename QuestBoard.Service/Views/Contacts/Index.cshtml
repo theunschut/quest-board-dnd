@@ -47,7 +47,7 @@
                                     <div class="contact-image">
                                         @if (contact.ContactImage != null)
                                         {
-                                            <img src="@Url.Action("GetContactImage", new { id = contact.Id })" alt="@contact.Name" />
+                                            <img src="@Url.Action("GetCroppedContactImage", new { id = contact.Id })" alt="@contact.Name" />
                                         }
                                         else
                                         {
