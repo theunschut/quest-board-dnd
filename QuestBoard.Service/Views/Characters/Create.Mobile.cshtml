@@ -7,6 +7,7 @@
 
 @section Styles {
     <link href="~/css/character-form.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/image-crop.css" />
 }
 
 <div class="container-fluid px-3 py-3">
@@ -21,6 +22,7 @@
             <div class="mb-3">
                 <label asp-for="ProfilePictureFile" class="form-label">Profile Picture</label>
                 <input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" />
+                <input type="file" name="CroppedPictureFile" id="croppedPictureFileInput" style="display:none" />
                 <small class="form-text">Upload a character portrait (JPG, PNG, GIF - Max 5 MB)</small>
                 <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
                 <div id="fileSizeError" class="text-danger" style="display: none;"></div>
@@ -119,6 +121,54 @@
     </div>
 </div>
 
+<div class="modal fade" id="cropPhotoModal" tabindex="-1" aria-labelledby="cropPhotoModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="cropPhotoModalLabel">
+                    <i class="fas fa-crop-alt me-2"></i>Crop Your Photo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="crop-stage">
+                    <cropper-canvas background style="width:100%;height:320px;">
+                        <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
+                        <cropper-shade hidden></cropper-shade>
+                        <cropper-handle action="select" plain></cropper-handle>
+                        <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
+                            <cropper-grid role="grid" bordered covered></cropper-grid>
+                            <cropper-crosshair centered></cropper-crosshair>
+                            <cropper-handle action="move" theme-color="rgba(255,193,7,0.35)"></cropper-handle>
+                            <cropper-handle action="n-resize"></cropper-handle>
+                            <cropper-handle action="e-resize"></cropper-handle>
+                            <cropper-handle action="s-resize"></cropper-handle>
+                            <cropper-handle action="w-resize"></cropper-handle>
+                            <cropper-handle action="ne-resize"></cropper-handle>
+                            <cropper-handle action="nw-resize"></cropper-handle>
+                            <cropper-handle action="se-resize"></cropper-handle>
+                            <cropper-handle action="sw-resize"></cropper-handle>
+                        </cropper-selection>
+                    </cropper-canvas>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Drag to reposition, use the corner handles to resize. We'll use a square crop —
+                    if you skip this, we'll center one automatically.
+                </p>
+            </div>
+            <div class="modal-footer border-secondary d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
+                    <i class="fas fa-times me-2"></i>Discard Photo
+                </button>
+                <button type="button" class="btn btn-warning" id="cropConfirmBtn">
+                    <i class="fas fa-check me-2"></i>Use This Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         let classIndex = @(Model.Classes.Any() ? Model.Classes.Count : 1);
@@ -184,5 +234,12 @@
                 entry.remove();
             }
         });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
+            integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
+            crossorigin="anonymous"></script>
+    <script src="~/js/image-crop.js"></script>
+    <script>
+        initImageCrop({ fileInputId: 'profilePictureInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
     </script>
 }
