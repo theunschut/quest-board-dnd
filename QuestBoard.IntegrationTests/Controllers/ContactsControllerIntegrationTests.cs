@@ -602,6 +602,54 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         persistedImage.OriginalImageData.Should().Equal(newOriginalBytes);
     }
 
+    // Proves the Create POST action -- not just Edit -- persists a crop submitted alongside
+    // the original at creation time, closing the gap where a brand-new contact's crop was
+    // silently discarded.
+    [Fact]
+    public async Task Create_WithCroppedPhoto_PersistsCroppedImage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_create_with_crop", "contact_create_with_crop@example.com", roles: ["DungeonMaster"]);
+
+        byte[] originalBytes = [5, 6, 7, 8];
+        byte[] submittedCropBytes = [10, 20, 30, 40, 50];
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent("Brand New Contact With A Crop"), "Name" },
+            { new StringContent("Waterdeep"), "TownCity" },
+            { new StringContent(""), "SubLocation" },
+            { new StringContent(""), "Description" }
+        };
+        var originalFileContent = new ByteArrayContent(originalBytes);
+        originalFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(originalFileContent, "ContactImageFile", "new.png");
+
+        var croppedFileContent = new ByteArrayContent(submittedCropBytes);
+        croppedFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(croppedFileContent, "CroppedPictureFile", "new-cropped.png");
+
+        var response = await dmClient.PostAsync(
+            "/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedContact = context.Contacts.IgnoreQueryFilters()
+            .FirstOrDefault(c => c.Name == "Brand New Contact With A Crop");
+        persistedContact.Should().NotBeNull();
+
+        var persistedImage = await context.Set<ContactImageEntity>().FindAsync(
+            [persistedContact!.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().NotBeNull();
+        persistedImage.CroppedImageData.Should().Equal(submittedCropBytes);
+        persistedImage.OriginalImageData.Should().Equal(originalBytes);
+    }
+
     // Visibility parity: the new GetCroppedContactImage read action must apply the identical
     // IsVisibleTo gate as GetContactImage — a hidden contact returns NotFound even though a
     // crop is stored.

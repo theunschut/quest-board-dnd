@@ -100,10 +100,19 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
 
         var trackedClasses = entity.Classes.ToList();
         var trackedProfileImage = entity.ProfileImage;
+        var trackedOwner = entity.Owner;
+        var trackedGroup = entity.Group;
 
         Mapper.Map(model, entity);
 
+        // The domain model's Owner/Group navigations are frequently left unset by callers that
+        // only ever populate OwnerId/GroupId (e.g. a freshly-constructed Character with no prior
+        // fetch) -- restoring EF's own tracked reference-navigation instances instead of trusting
+        // whatever AutoMapper produced from the (possibly null) model.Owner/model.Group avoids
+        // nulling out a required FK relationship the tracked entity depends on.
         entity.ProfileImage = trackedProfileImage;
+        entity.Owner = trackedOwner;
+        entity.Group = trackedGroup;
 
         var incomingClasses = Mapper.Map<List<CharacterClassEntity>>(model.Classes);
         var incomingIds = incomingClasses.Where(c => c.Id != 0).Select(c => c.Id).ToHashSet();
@@ -164,10 +173,18 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
 
         var trackedClasses = entity.Classes.ToList();
         var trackedProfileImage = entity.ProfileImage;
+        var trackedOwner = entity.Owner;
+        var trackedGroup = entity.Group;
 
         Mapper.Map(model, entity);
 
+        // See UpdateAsync above for why Owner/Group must be restored: the caller-supplied
+        // model frequently has no Owner/Group populated (only OwnerId/GroupId), and trusting
+        // AutoMapper's mapping of those null references would null out a required FK the
+        // tracked entity depends on.
         entity.ProfileImage = trackedProfileImage;
+        entity.Owner = trackedOwner;
+        entity.Group = trackedGroup;
 
         var incomingClasses = Mapper.Map<List<CharacterClassEntity>>(model.Classes);
         var incomingIds = incomingClasses.Where(c => c.Id != 0).Select(c => c.Id).ToHashSet();

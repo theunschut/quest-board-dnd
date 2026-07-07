@@ -164,6 +164,76 @@ public class CharacterServiceTests
         cropped.Should().Equal([9, 9, 9]);
     }
 
+    [Fact]
+    public async Task AddAsync_NewCropSupplied_PersistsCrop()
+    {
+        // Arrange: a fresh group/owner, no character yet
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterServiceTests." + nameof(AddAsync_NewCropSupplied_PersistsCrop), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Owner One", Email = "owner1@test.com" });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var mapper = CreateMapper();
+        var repository = new CharacterRepository(context, mapper);
+        var service = new CharacterService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var character = new Character
+        {
+            Name = "Newly Created Character",
+            OwnerId = 1,
+            GroupId = 1,
+            Level = 1,
+            ProfilePicture = [1, 2, 3],
+        };
+
+        // Act: Create with a crop submitted alongside the original -- mirrors the real
+        // controller flow, where the AutoMapper-built Character never has Owner populated
+        // (only OwnerId), since ViewModels never carry the Owner navigation.
+        await service.AddAsync(character, newCroppedImageData: [200, 201, 202], TestContext.Current.CancellationToken);
+
+        // Assert: the supplied crop is persisted, not the original and not null
+        var original = await repository.GetCharacterOriginalPictureAsync(character.Id, TestContext.Current.CancellationToken);
+        var cropped = await repository.GetCharacterCroppedPictureAsync(character.Id, TestContext.Current.CancellationToken);
+        original.Should().Equal([1, 2, 3]);
+        cropped.Should().Equal([200, 201, 202]);
+    }
+
+    [Fact]
+    public async Task AddAsync_NoCropSupplied_FallsBackToOriginal()
+    {
+        // Arrange: a fresh group/owner, no character yet
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterServiceTests." + nameof(AddAsync_NoCropSupplied_FallsBackToOriginal), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Owner One", Email = "owner1@test.com" });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var mapper = CreateMapper();
+        var repository = new CharacterRepository(context, mapper);
+        var service = new CharacterService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var character = new Character
+        {
+            Name = "Newly Created Character",
+            OwnerId = 1,
+            GroupId = 1,
+            Level = 1,
+            ProfilePicture = [1, 2, 3],
+        };
+
+        // Act: Create with no crop submitted -- identical to today's plain Create
+        await service.AddAsync(character, newCroppedImageData: null, TestContext.Current.CancellationToken);
+
+        // Assert: the cropped read-back falls back to the original, no spurious second write
+        var cropped = await repository.GetCharacterCroppedPictureAsync(character.Id, TestContext.Current.CancellationToken);
+        cropped.Should().Equal([1, 2, 3]);
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }
