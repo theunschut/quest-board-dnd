@@ -2,19 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 60
 status: executing
-stopped_at: Phase 60 context gathered
-last_updated: "2026-07-06T21:35:30.729Z"
-last_activity: 2026-07-06
-last_activity_desc: Phase 60 complete
+stopped_at: Phase 61 context gathered
+last_updated: "2026-07-07T06:16:29.132Z"
+last_activity: 2026-07-06 — Phase 60 complete
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 16
   total_plans: 40
   completed_plans: 40
-  percent: 100
-current_phase_name: stop-creating-aspnetuserroles-entries-for-new-users-role-ass
+  percent: 94
 ---
 
 # Project State
@@ -56,6 +53,7 @@ Last activity: 2026-07-06 — Phase 60 complete
 
 ### Roadmap Evolution
 
+- Phase 61 added: Allow DMs to edit finalized quest details (excluding proposed and selected dates)
 - Phase 60 added: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
 - Phase 59 added: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
 - Phase 58 added: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
@@ -100,9 +98,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-06T20:53:54.543Z
-Stopped at: Phase 60 context gathered
-Resume file: .planning/phases/60-stop-creating-aspnetuserroles-entries-for-new-users-role-ass/60-CONTEXT.md
+Last session: 2026-07-07T06:16:29.116Z
+Stopped at: Phase 61 context gathered
+Resume file: .planning/phases/61-allow-dms-to-edit-finalized-quest-details-excluding-proposed/61-CONTEXT.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps
