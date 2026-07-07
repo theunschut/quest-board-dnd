@@ -89,9 +89,9 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
         // tracker then treats those as detached objects it never queried, which the InMemory
         // provider rejects with a concurrency exception on save. Loading both navigations
         // explicitly and reconciling them by Id afterward (instead of trusting whatever
-        // AutoMapper replaced them with) keeps EF's own tracked instances in place. ProfileImage
-        // itself is already persisted correctly by the prior UpdateProfileImageAsync call in
-        // CharacterService.UpdateAsync, so it is restored here rather than re-derived.
+        // AutoMapper replaced them with) keeps EF's own tracked instances in place. This plain
+        // UpdateAsync leaves ProfileImage as whatever is currently tracked/persisted, since image
+        // changes for Characters go through UpdateWithProfileImageAsync instead.
         var entity = await DbContext.Characters
             .Include(c => c.Classes)
             .Include(c => c.ProfileImage)
@@ -145,6 +145,66 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
             .FirstOrDefaultAsync(c => c.Id == characterId, token);
         if (entity == null) return;
 
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateWithProfileImageAsync(Character model, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
+    {
+        // Same tracked-entity reconciliation as UpdateAsync, plus the profile image mutation from
+        // UpdateProfileImageAsync, saved together in one SaveChangesAsync so a failure partway
+        // through cannot durably commit the image while leaving the rest of the entity stale.
+        var entity = await DbContext.Characters
+            .Include(c => c.Classes)
+            .Include(c => c.ProfileImage)
+            .FirstOrDefaultAsync(c => c.Id == model.Id, token);
+        if (entity == null) return;
+
+        var trackedClasses = entity.Classes.ToList();
+        var trackedProfileImage = entity.ProfileImage;
+
+        Mapper.Map(model, entity);
+
+        entity.ProfileImage = trackedProfileImage;
+
+        var incomingClasses = Mapper.Map<List<CharacterClassEntity>>(model.Classes);
+        var incomingIds = incomingClasses.Where(c => c.Id != 0).Select(c => c.Id).ToHashSet();
+
+        entity.Classes.Clear();
+        foreach (var stale in trackedClasses.Where(c => !incomingIds.Contains(c.Id)))
+        {
+            DbContext.Remove(stale);
+        }
+
+        foreach (var incoming in incomingClasses)
+        {
+            var tracked = incoming.Id != 0
+                ? trackedClasses.FirstOrDefault(c => c.Id == incoming.Id)
+                : null;
+
+            if (tracked != null)
+            {
+                tracked.Class = incoming.Class;
+                tracked.ClassLevel = incoming.ClassLevel;
+                entity.Classes.Add(tracked);
+            }
+            else
+            {
+                incoming.Id = 0;
+                incoming.CharacterId = entity.Id;
+                entity.Classes.Add(incoming);
+            }
+        }
+
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    private static void ApplyProfileImage(CharacterEntity entity, byte[]? originalImageData, byte[]? croppedImageData)
+    {
         if (originalImageData == null)
         {
             entity.ProfileImage = null;
@@ -163,7 +223,5 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
             entity.ProfileImage.OriginalImageData = originalImageData;
             entity.ProfileImage.CroppedImageData = croppedImageData;
         }
-
-        await DbContext.SaveChangesAsync(token);
     }
 }

@@ -97,6 +97,35 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
             .FirstOrDefaultAsync(c => c.Id == contactId, token);
         if (entity == null) return;
 
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateWithProfileImageAsync(Contact model, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
+    {
+        // Same tracked-entity handling as UpdateAsync, plus the profile image mutation from
+        // UpdateProfileImageAsync, saved together in one SaveChangesAsync so a failure partway
+        // through cannot durably commit the image while leaving the rest of the entity stale.
+        var entity = await DbContext.Contacts
+            .Include(c => c.ProfileImage)
+            .FirstOrDefaultAsync(c => c.Id == model.Id, token);
+        if (entity == null) return;
+
+        var trackedProfileImage = entity.ProfileImage;
+
+        Mapper.Map(model, entity);
+
+        entity.ProfileImage = trackedProfileImage;
+
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    private static void ApplyProfileImage(ContactEntity entity, byte[]? originalImageData, byte[]? croppedImageData)
+    {
         if (originalImageData == null)
         {
             entity.ProfileImage = null;
@@ -115,8 +144,6 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
             entity.ProfileImage.OriginalImageData = originalImageData;
             entity.ProfileImage.CroppedImageData = croppedImageData;
         }
-
-        await DbContext.SaveChangesAsync(token);
     }
 
     /// <inheritdoc/>

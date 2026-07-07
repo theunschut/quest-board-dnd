@@ -17,27 +17,33 @@ internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repos
     public async Task UpsertProfileAsync(int userId, string? bio, byte[]? imageBytes, bool removeImage = false, CancellationToken token = default)
     {
         // imageBytes != null  → replace stored image with new bytes; also clears any stale
-        //                        cropped image from a prior upload (Pitfall 5), since imageBytes
-        //                        being non-null here already means a genuinely new original arrived.
+        //                        cropped image from a prior upload, since imageBytes being
+        //                        non-null here already means a genuinely new original arrived.
         // removeImage == true  → explicitly clear the stored image (e.g. "remove photo" button)
         // both false/null     → keep existing image unchanged (bio-only edit) -- the crop is
-        //                        preserved by construction, since UpsertProfileImageAsync is
-        //                        never called on this path (Pitfall 4).
+        //                        preserved by construction, since the image is never touched on
+        //                        this path.
+        //
+        // Bio and the image mutation (when one is needed) are saved together in a single
+        // repository call so a failure in either half cannot leave the profile in a
+        // half-updated state (new photo, stale bio, or vice versa).
         var profile = await repository.GetProfileByUserIdAsync(userId, token);
+        var updateImage = imageBytes != null || removeImage;
         if (profile == null)
         {
-            // Lazy create — profile entity does not exist until DM first saves
+            // Lazy create — profile entity does not exist until DM first saves. AddAsync must
+            // run first (DatabaseGeneratedOption.None means Id = userId has to exist as a row
+            // before the image FK can be attached), but the bio it writes is identical to the
+            // bio written by the follow-up call below, so a failure of the second call still
+            // leaves the profile in a valid (bio-only) state rather than a half-updated one.
             var newProfile = new DungeonMasterProfile { Id = userId, Bio = bio };
             await repository.AddAsync(newProfile, token);
-            if (imageBytes != null)
-                await repository.UpsertProfileImageAsync(userId, imageBytes, croppedImageData: null, token);
+            if (updateImage)
+                await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage: true, removeImage ? null : imageBytes, croppedImageData: null, token);
         }
         else
         {
-            profile.Bio = bio;
-            await repository.UpdateAsync(profile, token);
-            if (imageBytes != null || removeImage)
-                await repository.UpsertProfileImageAsync(userId, removeImage ? null : imageBytes, croppedImageData: null, token);
+            await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage, removeImage ? null : imageBytes, croppedImageData: null, token);
         }
     }
 

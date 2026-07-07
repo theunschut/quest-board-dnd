@@ -65,6 +65,37 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
             .FirstOrDefaultAsync(p => p.Id == userId, token);
         if (entity == null) return;
 
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateBioWithProfileImageAsync(int userId, string? bio, bool updateImage, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
+    {
+        // Bio and the profile image mutation are saved together in one SaveChangesAsync so a
+        // failure partway through cannot durably commit the image while leaving the bio stale.
+        // updateImage distinguishes a bio-only edit (image left untouched) from an edit that
+        // also sets/replaces/clears the image -- originalImageData alone can't carry that
+        // distinction, since "clear the image" and "leave it unchanged" are both represented by
+        // a null originalImageData at the call site.
+        var entity = await DbContext.DungeonMasterProfiles
+            .Include(p => p.ProfileImage)
+            .FirstOrDefaultAsync(p => p.Id == userId, token);
+        if (entity == null) return;
+
+        entity.Bio = bio;
+
+        if (updateImage)
+        {
+            ApplyProfileImage(entity, originalImageData, croppedImageData);
+        }
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    private static void ApplyProfileImage(DungeonMasterProfileEntity entity, byte[]? originalImageData, byte[]? croppedImageData)
+    {
         if (originalImageData == null)
         {
             entity.ProfileImage = null;
@@ -83,7 +114,5 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
             entity.ProfileImage.OriginalImageData = originalImageData;
             entity.ProfileImage.CroppedImageData = croppedImageData;
         }
-
-        await DbContext.SaveChangesAsync(token);
     }
 }

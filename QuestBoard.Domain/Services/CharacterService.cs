@@ -74,22 +74,25 @@ internal class CharacterService(ICharacterRepository repository, IMapper mapper)
     /// <inheritdoc/>
     public async Task UpdateAsync(Character model, bool hasNewOriginalUpload, CancellationToken token = default)
     {
+        // The image write and the rest of the entity's fields are saved together in a single
+        // repository call so a failure in either half cannot leave the character in a
+        // half-updated state (new photo, stale metadata, or vice versa).
+        byte[]? croppedImageData;
         if (hasNewOriginalUpload)
         {
             // A genuinely new original arrived this request -- clear any stale crop of the
-            // superseded photo (Pitfall 5).
-            await repository.UpdateProfileImageAsync(model.Id, model.ProfilePicture, croppedImageData: null, token);
+            // superseded photo, since it belonged to the photo that's being replaced.
+            croppedImageData = null;
         }
         else
         {
             // No new file; model.ProfilePicture is the round-tripped existing original. Fetch
             // the currently-stored crop and pass it through unchanged so it survives an
-            // unrelated-field edit (Pitfall 4).
-            var existingCropped = await repository.GetCharacterCroppedPictureAsync(model.Id, token);
-            await repository.UpdateProfileImageAsync(model.Id, model.ProfilePicture, existingCropped, token);
+            // unrelated-field edit.
+            croppedImageData = await repository.GetCharacterCroppedPictureAsync(model.Id, token);
         }
 
-        await repository.UpdateAsync(model, token);
+        await repository.UpdateWithProfileImageAsync(model, model.ProfilePicture, croppedImageData, token);
     }
 
     /// <inheritdoc/>

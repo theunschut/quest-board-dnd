@@ -37,6 +37,13 @@ public interface IContactRepository : IBaseRepository<Contact>
     Task UpdateProfileImageAsync(int contactId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
 
     /// <summary>
+    /// Updates a contact's scalar fields and its profile image in a single save, so a failure in
+    /// either half (e.g. a concurrency conflict on the entity update) cannot leave the image durably
+    /// committed while the rest of the contact's fields are left stale, or vice versa.
+    /// </summary>
+    Task UpdateWithProfileImageAsync(Contact model, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
+
+    /// <summary>
     /// Adds a new note to a contact and propagates the DB-generated Id back onto the model.
     /// </summary>
     Task AddNoteAsync(ContactNote note, CancellationToken token = default);

@@ -40,4 +40,11 @@ public interface ICharacterRepository : IBaseRepository<Character>
     /// writes NULL to the cropped column, clearing any stale crop from a prior upload.
     /// </summary>
     Task UpdateProfileImageAsync(int characterId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
+
+    /// <summary>
+    /// Updates a character's scalar fields and its profile image in a single save, so a failure in
+    /// either half (e.g. a concurrency conflict on the entity update) cannot leave the image durably
+    /// committed while the rest of the character's fields are left stale, or vice versa.
+    /// </summary>
+    Task UpdateWithProfileImageAsync(Character model, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
 }
