@@ -563,8 +563,12 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 62-01-PLAN.md — Backend read-projection foundation: add HasProfilePicture/HasContactImage bools to the 3 Domain models, remove .Include(ProfileImage) from the 6 read methods and project the boolean via a !=null scalar query, add AutoMapper Ignore() entries, extend repository unit tests (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 62-02-PLAN.md — Write-path data-loss fix (RESEARCH.md Pitfall 1): CharacterService/ContactService UpdateAsync no-upload branch re-fetches original bytes fresh via GetCharacterOriginalPictureAsync/GetContactOriginalImageAsync so an unrelated-field edit never wipes the stored image; preserve-original regression tests (wave 2)
 - [ ] 62-03-PLAN.md — Display-path conversion (D-05, Pitfalls 2/4): ViewModel byte[]->bool rename, ViewModelProfile map updates, Create-POST local-variable staging, DM controller bool source fix, 15 Razor view gate updates, controller integration tests (wave 2)
 
@@ -573,11 +577,11 @@ Plans:
 **Goal:** Any authenticated member of a quest's group can open and save a completed quest's Session Recap — not just that quest's assigned DM or an Admin — by removing the `DungeonMasterOnly` policy and in-action ownership check from `QuestLogController.EditRecap` (GET+POST); the unrelated "Manage Quest" Quick-Actions link stays gated to the quest's DM/Admin by splitting the shared `ViewBag.CanEditRecap` flag into a broadened `CanEditRecap` (recap button) plus a new DM/Admin-only `CanManageQuest` (Manage link), applied identically on desktop and mobile Details views. No schema change, no editor attribution, no notifications.
 **Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 63-CONTEXT.md decisions D-01 through D-04)
 **Depends on:** Phase 62
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 63-01-PLAN.md — Remove recap-edit DM/Admin gate from EditRecap GET+POST, split CanEditRecap/CanManageQuest on both Details views, flip Player-denial tests to Player-allowed + add Manage-link gating coverage, human verification (D-01/D-02/D-03/D-04)
+- [x] 63-01-PLAN.md — Remove recap-edit DM/Admin gate from EditRecap GET+POST, split CanEditRecap/CanManageQuest on both Details views, flip Player-denial tests to Player-allowed + add Manage-link gating coverage, human verification (D-01/D-02/D-03/D-04)
 
 ### Phase 64: Preserve line breaks in description text on mobile views to match desktop rendering
 
