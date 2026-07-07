@@ -223,7 +223,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. The guild-member list page displays the cropped image for each character; the character details page and DM profile details page display the original, unmodified image
   4. On a real touchscreen device, the crop frame responds correctly to drag and pinch gestures, a real phone-camera photo crops with correct orientation (not sideways/upside-down), and a full-resolution camera photo does not crash or blank the crop canvas on iOS Safari — each verified on a real device, not devtools emulation
 
-**Plans**: 7/8 plans executed
+**Plans**: 8/8 plans complete
 **UI hint**: yes
 
 **Wave 1** *(no dependencies — run in parallel)*
@@ -244,7 +244,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Wave 4** *(blocked on Wave 3: verification checkpoint)*
 
-- [ ] 46-07-PLAN.md — Real-device verification, gated on an explicit device-access confirmation decision (Pre-Execution Blocker): desktop end-to-end crop/dual-file/D-03 flow, then iOS Safari EXIF orientation, 12MP canvas-memory ceiling, and touch-drag precision on a real device
+- [x] 46-07-PLAN.md — Real-device verification, gated on an explicit device-access confirmation decision (Pre-Execution Blocker): desktop end-to-end crop/dual-file/D-03 flow, then iOS Safari EXIF orientation, 12MP canvas-memory ceiling, and touch-drag precision on a real device
 
 ## Progress
 
@@ -303,7 +303,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 3/3 | Complete    | 2026-07-07 |
-| 46. Client-Side Crop UI | v7.0 | 7/8 | In Progress|  |
+| 46. Client-Side Crop UI | v7.0 | 8/8 | Complete   | 2026-07-07 |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
