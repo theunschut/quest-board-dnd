@@ -112,6 +112,58 @@ public class CharacterServiceTests
         cropped.Should().Equal([70, 71, 72]);
     }
 
+    [Fact]
+    public async Task UpdateAsync_NewCropSupplied_PersistsCrop()
+    {
+        // Arrange: seed a character with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterServiceTests." + nameof(UpdateAsync_NewCropSupplied_PersistsCrop), groupContext);
+        await SeedCharacterWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new CharacterRepository(context, mapper);
+        var service = new CharacterService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var character = await repository.GetCharacterWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        character.Should().NotBeNull();
+        character!.ProfilePicture = [70, 71, 72]; // a genuinely new original (B) uploaded this request
+
+        // Act: caller supplies a real crop of the new original alongside the upload
+        await service.UpdateAsync(character, hasNewOriginalUpload: true, newCroppedImageData: [200, 201, 202], TestContext.Current.CancellationToken);
+
+        // Assert: the supplied crop is persisted directly, not cleared and not re-derived
+        var cropped = await repository.GetCharacterCroppedPictureAsync(1, TestContext.Current.CancellationToken);
+        cropped.Should().Equal([200, 201, 202]);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_NoNewFile_RefetchesAndPassesThroughExistingCrop()
+    {
+        // Arrange: seed a character with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterServiceTests." + nameof(UpdateAsync_NoNewFile_RefetchesAndPassesThroughExistingCrop), groupContext);
+        await SeedCharacterWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new CharacterRepository(context, mapper);
+        var service = new CharacterService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var character = await repository.GetCharacterWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        character.Should().NotBeNull();
+        character!.Level = 7; // unrelated-field edit
+        character.ProfilePicture = [1, 2, 3]; // round-tripped existing original, never null on a no-photo-change edit
+
+        // Act: no new file, no new crop supplied -- 4-arg overload with null crop
+        await service.UpdateAsync(character, hasNewOriginalUpload: false, newCroppedImageData: null, TestContext.Current.CancellationToken);
+
+        // Assert: the previously-stored crop (fetched via GetCharacterCroppedPictureAsync) is
+        // passed through unchanged
+        var cropped = await repository.GetCharacterCroppedPictureAsync(1, TestContext.Current.CancellationToken);
+        cropped.Should().Equal([9, 9, 9]);
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }

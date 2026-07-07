@@ -109,6 +109,58 @@ public class ContactServiceTests
         cropped.Should().Equal([70, 71, 72]);
     }
 
+    [Fact]
+    public async Task UpdateAsync_NewCropSupplied_PersistsCrop()
+    {
+        // Arrange: seed a contact with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactServiceTests." + nameof(UpdateAsync_NewCropSupplied_PersistsCrop), groupContext);
+        await SeedContactWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new ContactRepository(context, mapper);
+        var service = new ContactService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        contact.Should().NotBeNull();
+        contact!.ContactImageData = [70, 71, 72]; // a genuinely new original (B) uploaded this request
+
+        // Act: caller supplies a real crop of the new original alongside the upload
+        await service.UpdateAsync(contact, hasNewOriginalUpload: true, newCroppedImageData: [200, 201, 202], TestContext.Current.CancellationToken);
+
+        // Assert: the supplied crop is persisted directly, not cleared and not re-derived
+        var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
+        cropped.Should().Equal([200, 201, 202]);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_NoNewFile_RefetchesAndPassesThroughExistingCrop()
+    {
+        // Arrange: seed a contact with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactServiceTests." + nameof(UpdateAsync_NoNewFile_RefetchesAndPassesThroughExistingCrop), groupContext);
+        await SeedContactWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new ContactRepository(context, mapper);
+        var service = new ContactService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        contact.Should().NotBeNull();
+        contact!.Description = "Another unrelated edit"; // unrelated-field edit
+        contact.ContactImageData = [1, 2, 3]; // round-tripped existing original, never null on a no-photo-change edit
+
+        // Act: no new file, no new crop supplied -- 4-arg overload with null crop
+        await service.UpdateAsync(contact, hasNewOriginalUpload: false, newCroppedImageData: null, TestContext.Current.CancellationToken);
+
+        // Assert: the previously-stored crop (fetched via GetContactCroppedImageAsync) is
+        // passed through unchanged
+        var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
+        cropped.Should().Equal([9, 9, 9]);
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }

@@ -14,11 +14,12 @@ internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repos
     }
 
     /// <inheritdoc/>
-    public async Task UpsertProfileAsync(int userId, string? bio, byte[]? imageBytes, bool removeImage = false, CancellationToken token = default)
+    public async Task UpsertProfileAsync(int userId, string? bio, byte[]? imageBytes, bool removeImage = false, byte[]? newCroppedImageData = null, CancellationToken token = default)
     {
         // imageBytes != null  → replace stored image with new bytes; also clears any stale
         //                        cropped image from a prior upload, since imageBytes being
-        //                        non-null here already means a genuinely new original arrived.
+        //                        non-null here already means a genuinely new original arrived --
+        //                        unless newCroppedImageData supplies a real replacement crop.
         // removeImage == true  → explicitly clear the stored image (e.g. "remove photo" button)
         // both false/null     → keep existing image unchanged (bio-only edit) -- the crop is
         //                        preserved by construction, since the image is never touched on
@@ -39,11 +40,11 @@ internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repos
             var newProfile = new DungeonMasterProfile { Id = userId, Bio = bio };
             await repository.AddAsync(newProfile, token);
             if (updateImage)
-                await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage: true, removeImage ? null : imageBytes, croppedImageData: null, token);
+                await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage: true, removeImage ? null : imageBytes, croppedImageData: newCroppedImageData, token);
         }
         else
         {
-            await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage, removeImage ? null : imageBytes, croppedImageData: null, token);
+            await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage, removeImage ? null : imageBytes, croppedImageData: newCroppedImageData, token);
         }
     }
 

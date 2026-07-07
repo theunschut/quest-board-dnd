@@ -35,6 +35,13 @@ public interface IContactService : IBaseService<Contact>
     Task UpdateAsync(Contact model, bool hasNewOriginalUpload, CancellationToken token = default);
 
     /// <summary>
+    /// Updates a contact, threading both the new-original-upload signal and a caller-supplied
+    /// cropped image. A non-null newCroppedImageData is persisted directly; when null, falls back
+    /// to the same hasNewOriginalUpload-driven clear-or-preserve resolution as the 3-arg overload.
+    /// </summary>
+    Task UpdateAsync(Contact model, bool hasNewOriginalUpload, byte[]? newCroppedImageData, CancellationToken token = default);
+
+    /// <summary>
     /// Adds a new note to a contact and propagates the DB-generated Id back onto the model.
     /// </summary>
     Task AddNoteAsync(ContactNote note, CancellationToken token = default);
