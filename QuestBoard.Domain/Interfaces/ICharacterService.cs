@@ -51,4 +51,11 @@ public interface ICharacterService : IBaseService<Character>
     /// unchanged, since model.ProfilePicture is never null on a no-photo-change edit.
     /// </summary>
     Task UpdateAsync(Character model, bool hasNewOriginalUpload, CancellationToken token = default);
+
+    /// <summary>
+    /// Updates a character, threading both the new-original-upload signal and a caller-supplied
+    /// cropped image. A non-null newCroppedImageData is persisted directly; when null, falls back
+    /// to the same hasNewOriginalUpload-driven clear-or-preserve resolution as the 3-arg overload.
+    /// </summary>
+    Task UpdateAsync(Character model, bool hasNewOriginalUpload, byte[]? newCroppedImageData, CancellationToken token = default);
 }

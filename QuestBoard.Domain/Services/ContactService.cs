@@ -27,16 +27,26 @@ internal class ContactService(IContactRepository repository, IMapper mapper) : B
     }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(Contact model, bool hasNewOriginalUpload, CancellationToken token = default)
+    public Task UpdateAsync(Contact model, bool hasNewOriginalUpload, CancellationToken token = default) =>
+        UpdateAsync(model, hasNewOriginalUpload, newCroppedImageData: null, token);
+
+    /// <inheritdoc/>
+    public async Task UpdateAsync(Contact model, bool hasNewOriginalUpload, byte[]? newCroppedImageData, CancellationToken token = default)
     {
         // The image write and the rest of the entity's fields are saved together in a single
         // repository call so a failure in either half cannot leave the contact in a
         // half-updated state (new photo, stale metadata, or vice versa).
         byte[]? croppedImageData;
-        if (hasNewOriginalUpload)
+        if (newCroppedImageData != null)
         {
-            // A genuinely new original arrived this request -- clear any stale crop of the
-            // superseded photo, since it belonged to the photo that's being replaced.
+            // The caller submitted a genuinely new crop this request -- persist it directly.
+            croppedImageData = newCroppedImageData;
+        }
+        else if (hasNewOriginalUpload)
+        {
+            // A genuinely new original arrived this request with no accompanying crop -- clear
+            // any stale crop of the superseded photo, since it belonged to the photo that's
+            // being replaced.
             croppedImageData = null;
         }
         else
