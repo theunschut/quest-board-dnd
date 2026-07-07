@@ -205,7 +205,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 45-02-PLAN.md — Widen the three repositories/services to store both columns atomically + distinct original/cropped reads with query-level fallback; Pitfall 4 (fetch-and-preserve) + Pitfall 5 (clear stale crop) regression tests; new DungeonMasterProfileRepositoryTests (IMAGE-03, success criteria #2/#4)
+- [x] 45-02-PLAN.md — Widen the three repositories/services to store both columns atomically + distinct original/cropped reads with query-level fallback; Pitfall 4 (fetch-and-preserve) + Pitfall 5 (clear stale crop) regression tests; new DungeonMasterProfileRepositoryTests (IMAGE-03, success criteria #2/#4)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -282,7 +282,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete | 2026-07-04 |
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
-| 45. Dual-Image Storage Backend | v7.0 | 1/3 | In Progress|  |
+| 45. Dual-Image Storage Backend | v7.0 | 2/3 | In Progress|  |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
