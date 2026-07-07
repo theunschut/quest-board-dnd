@@ -97,8 +97,7 @@ public class QuestLogController(
             return NotFound();
         }
 
-        var currentUser = await userService.GetUserAsync(User);
-        if (currentUser == null)
+        if (User.Identity?.IsAuthenticated != true)
         {
             return Challenge();
         }
@@ -127,8 +126,7 @@ public class QuestLogController(
             return BadRequest("Cannot update recap for a quest that is not completed.");
         }
 
-        var currentUser = await userService.GetUserAsync(User);
-        if (currentUser == null)
+        if (User.Identity?.IsAuthenticated != true)
         {
             return Challenge();
         }
