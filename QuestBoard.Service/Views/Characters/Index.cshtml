@@ -35,7 +35,7 @@
                                     <div class="character-image">
                                         @if (character.ProfilePicture != null)
                                         {
-                                            <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" alt="@character.Name" />
+                                            <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="@character.Name" />
                                         }
                                         else
                                         {
@@ -110,7 +110,7 @@
                                     <div class="character-image">
                                         @if (character.ProfilePicture != null)
                                         {
-                                            <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" alt="@character.Name" />
+                                            <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="@character.Name" />
                                         }
                                         else
                                         {

@@ -39,7 +39,7 @@
             <div class="contact-member-row d-flex align-items-center" onclick="window.location.href='@Url.Action("Details", new { id = contact.Id })'">
                 @if (contact.ContactImage != null)
                 {
-                    <img src="@Url.Action("GetContactImage", new { id = contact.Id })" class="contact-member-thumbnail me-3" alt="@contact.Name" />
+                    <img src="@Url.Action("GetCroppedContactImage", new { id = contact.Id })" class="contact-member-thumbnail me-3" alt="@contact.Name" />
                 }
                 else
                 {
