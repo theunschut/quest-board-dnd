@@ -6,7 +6,7 @@ current_phase: 64
 current_phase_name: Preserve line breaks in description text on mobile views to match desktop rendering
 status: executing
 stopped_at: Phase 64 context gathered
-last_updated: "2026-07-07T21:11:49.317Z"
+last_updated: "2026-07-07T21:12:49.257Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 64 execution started
 progress:
@@ -44,6 +44,10 @@ Last activity: 2026-07-07 — Phase 64 execution started
 
 - v6.1 shipped in ~1 day across 5 phases (38–42), 16 plans, 37 tasks — fastest pace yet, edging out v6.0's ~1.4 days/3 phases. See `.planning/RETROSPECTIVE.md` for details.
 
+| Phase/Plan | Duration | Tasks | Files |
+|---|---|---|---|
+| Phase 63 P01 | 35min | 3 tasks | 4 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -53,6 +57,7 @@ Last activity: 2026-07-07 — Phase 64 execution started
 - Waitlist promotion (Phase 44) and mobile fixes (Phase 43) confirmed independent of each other and of the image work (different tables/files) — may be executed in either order; Phase 46 depends on Phase 45.
 - Cropper.js version corrected to v2.1.1 (not v1.6.2) per research SUMMARY.md revision — v1 branch is stale (no commits in over a year), v2 has an active release cadence and a comparably simple `<script>`-tag integration.
 - v6.1 Bugfixes milestone decisions archived — see PROJECT.md Key Decisions table and `.planning/milestones/v6.1-ROADMAP.md`.
+- Phase 63-01: recap editing opened to any authenticated group member; Manage Quest link kept DM/Admin-only via new separate ViewBag.CanManageQuest flag to avoid permission escalation
 
 ### Roadmap Evolution
 
