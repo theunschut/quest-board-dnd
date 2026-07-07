@@ -568,14 +568,14 @@ Plans:
 
 ### Phase 63: Allow any player to edit quest recaps, not just the assigned DM or admin
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Any authenticated member of a quest's group can open and save a completed quest's Session Recap — not just that quest's assigned DM or an Admin — by removing the `DungeonMasterOnly` policy and in-action ownership check from `QuestLogController.EditRecap` (GET+POST); the unrelated "Manage Quest" Quick-Actions link stays gated to the quest's DM/Admin by splitting the shared `ViewBag.CanEditRecap` flag into a broadened `CanEditRecap` (recap button) plus a new DM/Admin-only `CanManageQuest` (Manage link), applied identically on desktop and mobile Details views. No schema change, no editor attribution, no notifications.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 63-CONTEXT.md decisions D-01 through D-04)
 **Depends on:** Phase 62
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 63 to break down)
+- [ ] 63-01-PLAN.md — Remove recap-edit DM/Admin gate from EditRecap GET+POST, split CanEditRecap/CanManageQuest on both Details views, flip Player-denial tests to Player-allowed + add Manage-link gating coverage, human verification (D-01/D-02/D-03/D-04)
 
 ### Phase 64: Preserve line breaks in description text on mobile views to match desktop rendering
 
