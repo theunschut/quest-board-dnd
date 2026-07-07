@@ -127,6 +127,7 @@ namespace QuestBoard.Service.Controllers.Characters
 
             // Handle profile picture upload
             byte[]? croppedImageData = null;
+            byte[]? uploadedOriginalImageData = null;
             var newProfilePictureFile = viewModel.ProfilePictureFile;
             if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
             {
@@ -152,7 +153,7 @@ namespace QuestBoard.Service.Controllers.Characters
 
                 using var memoryStream = new MemoryStream();
                 await newProfilePictureFile.CopyToAsync(memoryStream, token);
-                viewModel.ProfilePicture = memoryStream.ToArray();
+                uploadedOriginalImageData = memoryStream.ToArray();
 
                 if (viewModel.CroppedPictureFile is { Length: > 0 } submittedCrop)
                 {
@@ -163,6 +164,7 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             var character = mapper.Map<Character>(viewModel);
+            character.ProfilePicture = uploadedOriginalImageData;
 
             // Tag the character to the active group so the character-roster scoping applies
             // (CharacterEntity is scoped by a global query filter on GroupId).

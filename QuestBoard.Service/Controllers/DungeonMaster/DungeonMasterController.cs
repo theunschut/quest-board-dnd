@@ -40,7 +40,7 @@ public class DungeonMasterController(
             UserId = id,
             Name = user.Name ?? string.Empty,
             Bio = profile?.Bio,
-            HasProfilePicture = profile?.ProfilePicture?.Length > 0,
+            HasProfilePicture = profile?.HasProfilePicture ?? false,
             CanEdit = currentUser != null && (currentUser.Id == user.Id || role == GroupRole.Admin),
             Quests = mapper.Map<List<QuestSummaryViewModel>>(quests)
         };
@@ -74,7 +74,7 @@ public class DungeonMasterController(
         {
             DungeonMasterId = targetUser.Id,
             Bio = profile?.Bio,
-            ProfilePicture = profile?.ProfilePicture
+            HasProfilePicture = profile?.HasProfilePicture ?? false
         };
 
         return View(viewModel);
