@@ -106,6 +106,20 @@ internal class CharacterService(ICharacterRepository repository, IMapper mapper)
     }
 
     /// <inheritdoc/>
+    public async Task AddAsync(Character model, byte[]? newCroppedImageData, CancellationToken token = default)
+    {
+        // The base Add call creates the character and its profile image row (original only).
+        await repository.AddAsync(model, token);
+
+        // Only make a second write when the caller actually submitted a crop this request --
+        // otherwise the freshly-created row is left exactly as the base Add produced it.
+        if (newCroppedImageData != null)
+        {
+            await repository.UpdateWithProfileImageAsync(model, model.ProfilePicture, newCroppedImageData, token);
+        }
+    }
+
+    /// <inheritdoc/>
     public Task<byte[]?> GetCharacterOriginalPictureAsync(int id, CancellationToken token = default)
     {
         return repository.GetCharacterOriginalPictureAsync(id, token);

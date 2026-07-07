@@ -61,6 +61,20 @@ internal class ContactService(IContactRepository repository, IMapper mapper) : B
     }
 
     /// <inheritdoc/>
+    public async Task AddAsync(Contact model, byte[]? newCroppedImageData, CancellationToken token = default)
+    {
+        // The base Add call creates the contact and its profile image row (original only).
+        await repository.AddAsync(model, token);
+
+        // Only make a second write when the caller actually submitted a crop this request --
+        // otherwise the freshly-created row is left exactly as the base Add produced it.
+        if (newCroppedImageData != null)
+        {
+            await repository.UpdateWithProfileImageAsync(model, model.ContactImageData, newCroppedImageData, token);
+        }
+    }
+
+    /// <inheritdoc/>
     public Task<byte[]?> GetContactOriginalImageAsync(int id, CancellationToken token = default)
     {
         return repository.GetContactOriginalImageAsync(id, token);
