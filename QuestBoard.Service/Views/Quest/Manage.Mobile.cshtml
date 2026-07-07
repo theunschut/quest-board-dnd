@@ -118,6 +118,9 @@ else
                 <hr>
 
                 <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary flex-fill">
+                        <i class="fas fa-edit me-1"></i>Edit Quest
+                    </a>
                     <form asp-action="Open" method="post" class="flex-fill">
                         <input type="hidden" name="id" value="@Model.Id" />
                         <button type="submit" class="btn btn-warning w-100"
