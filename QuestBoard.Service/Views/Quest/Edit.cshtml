@@ -65,41 +65,44 @@
                             <div class="form-text text-muted">Check this box to make this quest visible only to Dungeon Masters and Admins. Regular players will not be able to see or sign up for this quest.</div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Proposed Dates &amp; Times <span class="text-danger">*</span></label>
-                            @if (Model.HasExistingSignups)
-                            {
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    <strong>Note:</strong> Players have already signed up for this quest.
-                                    Removing or significantly changing dates will notify affected players via email and remove their votes for those dates.
-                                </div>
-                            }
-                            <div id="proposed-dates">
-                                @{
-                                    var sortedProposedDates = Model.Quest.ProposedDates.OrderBy(pd => pd).ToList();
-                                }
-                                @for (int i = 0; i < sortedProposedDates.Count; i++)
+                        @if (!Model.IsFinalized)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Proposed Dates &amp; Times <span class="text-danger">*</span></label>
+                                @if (Model.HasExistingSignups)
                                 {
-                                    <div class="mb-3 proposed-date-item">
-                                        <label class="form-label">Proposed Date @(i + 1)</label>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control" readonly value="@sortedProposedDates[i].ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")" />
-                                            <input type="hidden" name="Quest.ProposedDates[@i]" value="@sortedProposedDates[i].ToString("yyyy-MM-ddTHH:mm")" />
-                                            <button type="button" class="btn btn-danger" onclick="removeProposedDate(this)">
-                                                <i class="fas fa-trash me-1"></i>Remove
-                                            </button>
-                                        </div>
-                                        <span asp-validation-for="Quest.ProposedDates[i]" class="text-danger"></span>
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>Note:</strong> Players have already signed up for this quest.
+                                        Removing or significantly changing dates will notify affected players via email and remove their votes for those dates.
                                     </div>
                                 }
+                                <div id="proposed-dates">
+                                    @{
+                                        var sortedProposedDates = Model.Quest.ProposedDates.OrderBy(pd => pd).ToList();
+                                    }
+                                    @for (int i = 0; i < sortedProposedDates.Count; i++)
+                                    {
+                                        <div class="mb-3 proposed-date-item">
+                                            <label class="form-label">Proposed Date @(i + 1)</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" readonly value="@sortedProposedDates[i].ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")" />
+                                                <input type="hidden" name="Quest.ProposedDates[@i]" value="@sortedProposedDates[i].ToString("yyyy-MM-ddTHH:mm")" />
+                                                <button type="button" class="btn btn-danger" onclick="removeProposedDate(this)">
+                                                    <i class="fas fa-trash me-1"></i>Remove
+                                                </button>
+                                            </div>
+                                            <span asp-validation-for="Quest.ProposedDates[i]" class="text-danger"></span>
+                                        </div>
+                                    }
+                                </div>
+                                <button type="button" class="btn btn-warning btn-sm" onclick="addProposedDate()">
+                                    <i class="fas fa-plus me-1"></i>Add Another Date Option
+                                </button>
+                                <div class="form-text text-muted">Provide multiple date/time options for players to vote on. At least one date is required.</div>
+                                <span asp-validation-for="Quest.ProposedDates" class="text-danger"></span>
                             </div>
-                            <button type="button" class="btn btn-warning btn-sm" onclick="addProposedDate()">
-                                <i class="fas fa-plus me-1"></i>Add Another Date Option
-                            </button>
-                            <div class="form-text text-muted">Provide multiple date/time options for players to vote on. At least one date is required.</div>
-                            <span asp-validation-for="Quest.ProposedDates" class="text-danger"></span>
-                        </div>
+                        }
                     }
 
                     <div class="mb-3">
@@ -124,24 +127,36 @@
                 </h4>
             </div>
             <div class="card-body modern-card-body">
-                <ul class="list-unstyled">
-                    <li class="mb-2">
-                        <i class="fas fa-check text-warning me-2"></i>
-                        Existing dates cannot be edited, only removed
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check text-warning me-2"></i>
-                        Add new dates if you need different times
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check text-warning me-2"></i>
-                        Removed dates clear associated player votes
-                    </li>
-                    <li>
-                        <i class="fas fa-check text-warning me-2"></i>
-                        Players can vote on new dates after changes
-                    </li>
-                </ul>
+                @if (!Model.IsFinalized)
+                {
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-warning me-2"></i>
+                            Existing dates cannot be edited, only removed
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-warning me-2"></i>
+                            Add new dates if you need different times
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-warning me-2"></i>
+                            Removed dates clear associated player votes
+                        </li>
+                        <li>
+                            <i class="fas fa-check text-warning me-2"></i>
+                            Players can vote on new dates after changes
+                        </li>
+                    </ul>
+                }
+                else
+                {
+                    <ul class="list-unstyled">
+                        <li>
+                            <i class="fas fa-check text-warning me-2"></i>
+                            The proposed and selected dates for a finalized quest cannot be changed here — use Open Quest if you need to change the dates or re-run signups.
+                        </li>
+                    </ul>
+                }
             </div>
         </div>
     </div>
