@@ -588,9 +588,9 @@ Plans:
 **Goal:** Every free-text description field that currently collapses typed line breaks renders them correctly by applying `white-space: pre-wrap` — closing all 4 confirmed instances (mobile Characters Description/Backstory, desktop QuestLog Original Quest Description, Shop item Description on both platforms, and the shared quest-board list-card preview).
 **Requirements**: None (ad-hoc backlog phase)
 **Depends on:** Phase 63
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 
-- [ ] 64-01-PLAN.md — Quest-domain fixes: pre-wrap on .quest-description-box (D-02) and .modern-card .card-text (D-04)
-- [ ] 64-02-PLAN.md — Character + Shop fixes: pre-wrap on .character-info-value (D-01) and inline pre-wrap on Shop Description desktop + mobile (D-03)
+- [x] 64-01-PLAN.md — Quest-domain fixes: pre-wrap on .quest-description-box (D-02) and .modern-card .card-text (D-04)
+- [x] 64-02-PLAN.md — Character + Shop fixes: pre-wrap on .character-info-value (D-01) and inline pre-wrap on Shop Description desktop + mobile (D-03)
