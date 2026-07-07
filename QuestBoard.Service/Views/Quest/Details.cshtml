@@ -116,7 +116,7 @@
                                                             @if (participant.Character != null)
                                                             {
                                                                 <div class="d-flex align-items-center">
-                                                                    <img src="@Url.Action("GetProfilePicture", "Characters", new { id = participant.Character.Id })"
+                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = participant.Character.Id })"
                                                                          alt="@participant.Character.Name"
                                                                          class="character-mini-avatar me-2"
                                                                          style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
@@ -232,7 +232,7 @@
                                                             @if (player.Character != null)
                                                             {
                                                                 <div class="d-flex align-items-center">
-                                                                    <img src="@Url.Action("GetProfilePicture", "Characters", new { id = player.Character.Id })"
+                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
                                                                          alt="@player.Character.Name"
                                                                          class="character-mini-avatar me-2"
                                                                          style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
