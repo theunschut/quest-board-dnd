@@ -228,9 +228,9 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Wave 1** *(no dependencies — run in parallel)*
 
-- [ ] 46-01-PLAN.md — Widen the three Domain image-update methods (CharacterService/ContactService UpdateAsync, DungeonMasterProfileService UpsertProfileAsync) to accept a caller-supplied cropped byte[] + add CroppedPictureFile to the three ViewModels + service unit tests (IMAGE-01/05)
-- [ ] 46-02-PLAN.md — Convert .character-image / .contact-image list-card boxes to a 1:1 square aspect-ratio and remove the fixed-height mobile overrides (D-02, IMAGE-04)
-- [ ] 46-05-PLAN.md — Create the shared client crop pipeline: image-crop.js (EXIF/downscale via createImageBitmap, Cropper.js v2 1:1 init, $toCanvas extraction, DataTransfer dual-file population) + image-crop.css (IMAGE-01)
+- [x] 46-01-PLAN.md — Widen the three Domain image-update methods (CharacterService/ContactService UpdateAsync, DungeonMasterProfileService UpsertProfileAsync) to accept a caller-supplied cropped byte[] + add CroppedPictureFile to the three ViewModels + service unit tests (IMAGE-01/05)
+- [x] 46-02-PLAN.md — Convert .character-image / .contact-image list-card boxes to a 1:1 square aspect-ratio and remove the fixed-height mobile overrides (D-02, IMAGE-04)
+- [x] 46-05-PLAN.md — Create the shared client crop pipeline: image-crop.js (EXIF/downscale via createImageBitmap, Cropper.js v2 1:1 init, $toCanvas extraction, DataTransfer dual-file population) + image-crop.css (IMAGE-01)
 
 **Wave 2** *(blocked on Wave 1: needs the widened signatures + ViewModel property)*
 
@@ -302,7 +302,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 3/3 | Complete    | 2026-07-07 |
-| 46. Client-Side Crop UI | v7.0 | 0/7 | Not started | — |
+| 46. Client-Side Crop UI | v7.0 | 3/7 | In Progress|  |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
