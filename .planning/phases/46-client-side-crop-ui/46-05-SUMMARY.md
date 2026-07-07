@@ -97,3 +97,13 @@ None - no external service configuration required. The Cropper.js v2.1.1 CDN `<s
 ---
 *Phase: 46-client-side-crop-ui*
 *Completed: 2026-07-07*
+
+## Self-Check: PASSED
+
+All claimed files and commits verified present:
+- FOUND: QuestBoard.Service/wwwroot/js/image-crop.js
+- FOUND: QuestBoard.Service/wwwroot/css/image-crop.css
+- FOUND: .planning/phases/46-client-side-crop-ui/46-05-SUMMARY.md
+- FOUND: c27ab47 (Task 1 commit)
+- FOUND: 12a3710 (Task 2 commit)
+- FOUND: e0b40a4 (docs/SUMMARY commit)
