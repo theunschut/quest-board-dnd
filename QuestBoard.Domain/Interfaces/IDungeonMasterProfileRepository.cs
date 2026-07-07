@@ -10,12 +10,19 @@ public interface IDungeonMasterProfileRepository : IBaseRepository<DungeonMaster
     Task<DungeonMasterProfile?> GetProfileByUserIdAsync(int userId, CancellationToken token = default);
 
     /// <summary>
-    /// Returns the raw profile image bytes for a DM, or null if none is set.
+    /// Returns the DM's original (unmodified) profile image bytes, or null if none is set.
     /// </summary>
-    Task<byte[]?> GetProfilePictureAsync(int userId, CancellationToken token = default);
+    Task<byte[]?> GetOriginalPictureAsync(int userId, CancellationToken token = default);
 
     /// <summary>
-    /// Sets, replaces, or clears (when imageData is null) the DM profile's image.
+    /// Returns the cropped/display image, falling back to the original when no crop was ever saved. Null if neither set.
     /// </summary>
-    Task UpsertProfileImageAsync(int userId, byte[]? imageData, CancellationToken token = default);
+    Task<byte[]?> GetCroppedPictureAsync(int userId, CancellationToken token = default);
+
+    /// <summary>
+    /// Atomically sets, replaces, or clears (when originalImageData is null) both the original and
+    /// cropped profile image columns. A null croppedImageData with a non-null originalImageData
+    /// writes NULL to the cropped column, clearing any stale crop from a prior upload.
+    /// </summary>
+    Task UpsertProfileImageAsync(int userId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
 }
