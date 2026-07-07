@@ -560,12 +560,12 @@ Plans:
 **Goal:** No repository query for Characters, Contacts, or DungeonMaster profiles pulls the associated image byte[] into memory as part of returning list or single-entity data for display -- every page that renders a portrait/photo fetches that image only via its existing dedicated per-entity endpoint (GetProfilePicture / GetContactImage / GetDMProfilePicture), matching the pattern QuestRepository's ProjectWithoutCharacterImages already uses for Quest and QuestLog pages. CharacterRepository.GetAllCharactersWithDetailsAsync, GetCharactersByOwnerIdAsync, and GetCharacterWithDetailsAsync; ContactRepository.GetAllContactsWithDetailsAsync; and DungeonMasterProfileRepository.GetProfileByUserIdAsync stop using .Include(x => x.ProfileImage) and instead project a lightweight HasProfilePicture/HasContactImage boolean, with the corresponding ViewModels and AutoMapper profiles updated to match.
 **Requirements**: None (ad-hoc backlog phase -- no REQUIREMENTS.md mapping; source of truth is this session's codebase investigation)
 **Depends on:** Phase 46 (corrected from Phase 61 during discuss-phase 62 -- Phase 45/46 already touch these exact repositories/services: 45-02/45-03 add an explicit new-upload signal to CharacterService.UpdateAsync/ContactService.UpdateAsync to fix the same "unrelated-field edit wipes the image" hazard this phase would otherwise have to solve itself, and rename the per-entity read methods this phase's goal text references. Sequencing after 45/46 avoids duplicating that fix and building on stale method names. Not sequential with Phase 61 in practice -- 47-61 already executed independently of 45/46's completion.)
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 62-01-PLAN.md — Backend read-projection foundation: add HasProfilePicture/HasContactImage bools to the 3 Domain models, remove .Include(ProfileImage) from the 6 read methods and project the boolean via a !=null scalar query, add AutoMapper Ignore() entries, extend repository unit tests (wave 1)
+- [x] 62-01-PLAN.md — Backend read-projection foundation: add HasProfilePicture/HasContactImage bools to the 3 Domain models, remove .Include(ProfileImage) from the 6 read methods and project the boolean via a !=null scalar query, add AutoMapper Ignore() entries, extend repository unit tests (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
