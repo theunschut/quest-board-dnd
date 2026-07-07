@@ -287,6 +287,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 58. Rename the Guild Members feature to Characters everywhere | v7.0 | 6/6 | Complete | 2026-07-06 |
 | 59. Add a rewards field to quests | v7.0 | 2/2 | Complete | 2026-07-06 |
 | 60. Stop creating AspNetUserRoles entries for new users | v7.0 | 1/1 | Complete    | 2026-07-06 |
+| 61. Allow DMs to edit finalized quest details | v7.0 | 0/2 | Not started | — |
 
 ### Phase 47: Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
 
@@ -506,3 +507,19 @@ Plans:
 Plans:
 
 - [x] 60-01-PLAN.md — Remove the write-time bug + dead role API from production, align the integration-test auth helper to seed AspNetUserRoles only for SuperAdmin, and verify the full build/test suite
+
+### Phase 61: Allow DMs to edit finalized quest details (excluding proposed and selected dates)
+
+**Goal:** A DM (or Admin) can edit a finalized OneShot quest's Title, Description, Rewards, Challenge Rating, Total Player Count, and DM-Session-Only flag via the existing Edit form — reached from a new Edit Quest button on Manage (desktop + mobile) — without going through the destructive Open action, so the already-locked-in Proposed Dates, chosen FinalizedDate, and player selections survive untouched; lowering Total Player Count below the number of already-selected players is rejected with a validation error.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 61-CONTEXT.md decisions D-01 through D-04)
+**Depends on:** Phase 60
+**Plans:** 2/2 plans planned
+
+Plans:
+**Wave 1**
+
+- [ ] 61-01-PLAN.md — Wave-0 failing integration tests (QuestFinalizedEditTests): finalized Edit GET returns 200, Proposed Dates hidden desktop+mobile, non-finalized regression guard, D-01 player-count floor guard, no-roster-wipe on valid edit, Edit Quest link on Manage desktop+mobile
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 61-02-PLAN.md — Implementation: relax finalized-edit block + IsFinalized plumbing + D-01 guard + conditional updateProposedDates in QuestController/EditQuestViewModel; hide Proposed Dates on Edit.cshtml/Edit.Mobile.cshtml; add Edit Quest entry point to Manage.cshtml/Manage.Mobile.cshtml (D-01/D-02/D-03/D-04)
