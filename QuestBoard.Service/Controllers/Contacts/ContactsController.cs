@@ -15,6 +15,7 @@ namespace QuestBoard.Service.Controllers.Contacts
         IContactService contactService,
         IUserService userService,
         IActiveGroupContext activeGroupContext,
+        IImageValidationService imageValidationService,
         IMapper mapper) : Controller
     {
         [HttpGet]
@@ -97,25 +98,23 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return View(viewModel);
             }
 
-            if (viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0)
+            var newContactImageFile = viewModel.ContactImageFile;
+            if (newContactImageFile != null && newContactImageFile.Length > 0)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ContactImageFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var original = new ImageFileInput(newContactImageFile.Length, newContactImageFile.ContentType,
+                    newContactImageFile.FileName, nameof(viewModel.ContactImageFile));
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+                foreach (var error in validationErrors)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ContactImageFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Image cannot exceed 5 MB.");
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ContactImageFile.CopyToAsync(memoryStream, token);
+                await newContactImageFile.CopyToAsync(memoryStream, token);
                 viewModel.ContactImage = memoryStream.ToArray();
             }
 
@@ -177,32 +176,37 @@ namespace QuestBoard.Service.Controllers.Contacts
             existingContact.TownCity = viewModel.TownCity;
             existingContact.SubLocation = viewModel.SubLocation;
 
-            if (viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0)
+            // A genuinely new original photo was uploaded this request. Hoisted into a single
+            // local reused both to gate the byte-copy below and to signal the service, so the
+            // two checks can never drift apart.
+            var hasNewOriginalUpload = viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0;
+
+            if (hasNewOriginalUpload)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ContactImageFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var newContactImageFile = viewModel.ContactImageFile!;
+                var original = new ImageFileInput(newContactImageFile.Length, newContactImageFile.ContentType,
+                    newContactImageFile.FileName, nameof(viewModel.ContactImageFile));
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+                foreach (var error in validationErrors)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     viewModel.CanManage = true;
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ContactImageFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Image cannot exceed 5 MB.");
-                    viewModel.CanManage = true;
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ContactImageFile.CopyToAsync(memoryStream, token);
+                await newContactImageFile.CopyToAsync(memoryStream, token);
                 existingContact.ContactImageData = memoryStream.ToArray();
             }
             // Otherwise, the contact image remains unchanged.
 
-            await contactService.UpdateAsync(existingContact, token);
+            // Passing hasNewOriginalUpload lets the service clear any stale cropped image when a
+            // genuinely new original arrives, while preserving it on an edit that doesn't touch
+            // the photo.
+            await contactService.UpdateAsync(existingContact, hasNewOriginalUpload, token);
 
             return RedirectToAction(nameof(Details), new { id });
         }

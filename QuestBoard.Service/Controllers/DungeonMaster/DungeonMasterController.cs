@@ -14,7 +14,8 @@ public class DungeonMasterController(
     IUserService userService,
     IQuestService questService,
     IMapper mapper,
-    IActiveGroupContext activeGroupContext) : Controller
+    IActiveGroupContext activeGroupContext,
+    IImageValidationService imageValidationService) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Profile(int id, CancellationToken token = default)
@@ -105,17 +106,23 @@ public class DungeonMasterController(
             return View(viewModel);
 
         byte[]? imageBytes = null;
-        if (viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0)
+        var newProfilePictureFile = viewModel.ProfilePictureFile;
+        if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
         {
-            const long maxFileSizeBytes = 5 * 1024 * 1024;
-            if (viewModel.ProfilePictureFile.Length > maxFileSizeBytes)
+            var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
+                newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+            var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+            foreach (var error in validationErrors)
             {
-                ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                    "Profile picture cannot exceed 5 MB.");
+                ModelState.AddModelError(error.FieldName, error.Message);
+            }
+            if (!ModelState.IsValid)
+            {
                 return View(viewModel);
             }
+
             using var memoryStream = new MemoryStream();
-            await viewModel.ProfilePictureFile.CopyToAsync(memoryStream, token);
+            await newProfilePictureFile.CopyToAsync(memoryStream, token);
             imageBytes = memoryStream.ToArray();
         }
 

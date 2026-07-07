@@ -1,5 +1,7 @@
 using QuestBoard.IntegrationTests.Helpers;
+using QuestBoard.Repository.Entities;
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -498,5 +500,59 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var response = await adminClient.GetAsync($"/Contacts/Details/{contact.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // Proves the checker's required Plan 02 -> Plan 03 wiring is actually reachable through the
+    // real Edit POST action, not only through Plan 02's isolated service-level unit test.
+    [Fact]
+    public async Task Edit_NewOriginalImageUpload_ClearsStaleCroppedImage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_new_original_clears_crop", "contact_new_original_clears_crop@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact With Stale Crop", groupId: 1);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] staleCroppedBytes = [9, 9, 9, 9];
+        byte[] newOriginalBytes = [5, 6, 7, 8];
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<ContactImageEntity>().Add(new ContactImageEntity
+            {
+                Id = contact.Id,
+                OriginalImageData = originalBytes,
+                CroppedImageData = staleCroppedBytes
+            });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(contact.Id.ToString()), "Id" },
+            { new StringContent("Contact With Stale Crop"), "Name" },
+            { new StringContent("Waterdeep"), "TownCity" },
+            { new StringContent(""), "SubLocation" },
+            { new StringContent(""), "Description" }
+        };
+        var fileContent = new ByteArrayContent(newOriginalBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(fileContent, "ContactImageFile", "new.png");
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<ContactImageEntity>().FindAsync(
+            [contact.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().BeNull();
+        persistedImage.OriginalImageData.Should().Equal(newOriginalBytes);
     }
 }

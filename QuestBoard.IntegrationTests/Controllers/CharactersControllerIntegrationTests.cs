@@ -1,6 +1,8 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
+using QuestBoard.Repository.Entities;
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -500,5 +502,128 @@ public class CharactersControllerIntegrationTests(WebApplicationFactoryBase fact
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // Proves the checker's required Plan 02 -> Plan 03 wiring is actually reachable through the
+    // real Edit POST action, not only through Plan 02's isolated service-level unit test.
+    [Fact]
+    public async Task Edit_NewOriginalPhotoUpload_ClearsStaleCroppedImage()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "owner_new_original_clears_crop", "owner_new_original_clears_crop@example.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character With Stale Crop", groupId: 1);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] staleCroppedBytes = [9, 9, 9, 9];
+        byte[] newOriginalBytes = [5, 6, 7, 8];
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<CharacterImageEntity>().Add(new CharacterImageEntity
+            {
+                Id = character.Id,
+                OriginalImageData = originalBytes,
+                CroppedImageData = staleCroppedBytes
+            });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(character.Id.ToString()), "Id" },
+            { new StringContent(owner.Id.ToString()), "OwnerId" },
+            { new StringContent("Character With Stale Crop"), "Name" },
+            { new StringContent("5"), "Level" },
+            { new StringContent(((int)CharacterStatus.Active).ToString()), "Status" },
+            { new StringContent(((int)CharacterRole.Backup).ToString()), "Role" },
+            { new StringContent(""), "SheetLink" },
+            { new StringContent(""), "Description" },
+            { new StringContent(""), "Backstory" },
+            { new StringContent("5"), "Classes[0].Class" }, // Fighter
+            { new StringContent("5"), "Classes[0].ClassLevel" }
+        };
+        var fileContent = new ByteArrayContent(newOriginalBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(fileContent, "ProfilePictureFile", "new.png");
+
+        // Act
+        var response = await ownerClient.PostAsync(
+            $"/Characters/Edit/{character.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<CharacterImageEntity>().FindAsync(
+            [character.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().BeNull();
+        persistedImage.OriginalImageData.Should().Equal(newOriginalBytes);
+    }
+
+    // Companion guard proving the wiring passes hasNewOriginalUpload: false (not always true) --
+    // an edit with no file part must leave the stored crop untouched.
+    [Fact]
+    public async Task Edit_NoNewPhoto_PreservesStoredCroppedImage()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "owner_no_new_photo_preserves_crop", "owner_no_new_photo_preserves_crop@example.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character Keeping Its Crop", groupId: 1);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] storedCroppedBytes = [9, 9, 9, 9];
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<CharacterImageEntity>().Add(new CharacterImageEntity
+            {
+                Id = character.Id,
+                OriginalImageData = originalBytes,
+                CroppedImageData = storedCroppedBytes
+            });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = character.Id.ToString(),
+            ["OwnerId"] = owner.Id.ToString(),
+            ["Name"] = "Character Keeping Its Crop",
+            ["Level"] = "5",
+            ["Status"] = ((int)CharacterStatus.Active).ToString(),
+            ["Role"] = ((int)CharacterRole.Backup).ToString(),
+            ["SheetLink"] = "",
+            ["Description"] = "",
+            ["Backstory"] = "",
+            ["Classes[0].Class"] = "5", // Fighter
+            ["Classes[0].ClassLevel"] = "5"
+        });
+
+        // Act
+        var response = await ownerClient.PostAsync(
+            $"/Characters/Edit/{character.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<CharacterImageEntity>().FindAsync(
+            [character.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().Equal(storedCroppedBytes);
     }
 }
