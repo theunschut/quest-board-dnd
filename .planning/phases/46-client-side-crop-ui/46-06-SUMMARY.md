@@ -121,3 +121,7 @@ None — no external service configuration required. The Cropper.js CDN script i
 ---
 *Phase: 46-client-side-crop-ui*
 *Completed: 2026-07-07*
+
+## Self-Check: PASSED
+
+All 10 claimed modified view files found on disk, plus this summary file. All 4 commit hashes (`a9a8147`, `94ae4fd`, `cb38834`, `c83a051`) found in git history.
