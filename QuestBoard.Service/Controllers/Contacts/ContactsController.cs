@@ -332,7 +332,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return NotFound();
             }
 
-            var image = await contactService.GetContactImageAsync(id, token);
+            var image = await contactService.GetContactOriginalImageAsync(id, token);
             if (image == null)
             {
                 return NotFound();

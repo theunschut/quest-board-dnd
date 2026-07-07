@@ -18,15 +18,23 @@ public interface IContactRepository : IBaseRepository<Contact>
     Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default);
 
     /// <summary>
-    /// Returns the raw profile image bytes for a contact, or null if none is set or the contact
-    /// is outside the active group.
+    /// Returns the contact's original (unmodified) profile image bytes, or null if none is set or
+    /// the contact is outside the active group.
     /// </summary>
-    Task<byte[]?> GetContactImageAsync(int id, CancellationToken token = default);
+    Task<byte[]?> GetContactOriginalImageAsync(int id, CancellationToken token = default);
 
     /// <summary>
-    /// Sets, replaces, or clears (when imageData is null) the contact's profile image.
+    /// Returns the cropped/display image, falling back to the original when no crop was ever saved.
+    /// Null if neither set or the contact is outside the active group.
     /// </summary>
-    Task UpdateProfileImageAsync(int contactId, byte[]? imageData, CancellationToken token = default);
+    Task<byte[]?> GetContactCroppedImageAsync(int id, CancellationToken token = default);
+
+    /// <summary>
+    /// Atomically sets, replaces, or clears (when originalImageData is null) both the original and
+    /// cropped profile image columns. A null croppedImageData with a non-null originalImageData
+    /// writes NULL to the cropped column, clearing any stale crop from a prior upload.
+    /// </summary>
+    Task UpdateProfileImageAsync(int contactId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
 
     /// <summary>
     /// Adds a new note to a contact and propagates the DB-generated Id back onto the model.

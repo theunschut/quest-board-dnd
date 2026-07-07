@@ -360,7 +360,7 @@ namespace QuestBoard.Service.Controllers.Characters
         [HttpGet]
         public async Task<IActionResult> GetProfilePicture(int id, CancellationToken token = default)
         {
-            var profilePicture = await characterService.GetCharacterProfilePictureAsync(id, token);
+            var profilePicture = await characterService.GetCharacterOriginalPictureAsync(id, token);
             if (profilePicture == null)
             {
                 return NotFound();

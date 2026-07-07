@@ -45,13 +45,24 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     }
 
     /// <inheritdoc/>
-    public async Task<byte[]?> GetContactImageAsync(int id, CancellationToken token = default)
+    public async Task<byte[]?> GetContactOriginalImageAsync(int id, CancellationToken token = default)
     {
         // Rooted at the filtered Contacts DbSet (not ContactImages directly) so the
         // ContactEntity group filter applies -- a cross-group id returns null here.
         return await DbContext.Contacts
             .Where(c => c.Id == id)
             .Select(c => c.ProfileImage != null ? c.ProfileImage.OriginalImageData : null)
+            .FirstOrDefaultAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<byte[]?> GetContactCroppedImageAsync(int id, CancellationToken token = default)
+    {
+        // Same group-filtered rooting as the original read; falls back to the original bytes
+        // at the query level when no crop has ever been saved for this contact.
+        return await DbContext.Contacts
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.CroppedImageData ?? c.ProfileImage.OriginalImageData : null)
             .FirstOrDefaultAsync(token);
     }
 
@@ -79,14 +90,14 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     }
 
     /// <inheritdoc/>
-    public async Task UpdateProfileImageAsync(int contactId, byte[]? imageData, CancellationToken token = default)
+    public async Task UpdateProfileImageAsync(int contactId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
     {
         var entity = await DbContext.Contacts
             .Include(c => c.ProfileImage)
             .FirstOrDefaultAsync(c => c.Id == contactId, token);
         if (entity == null) return;
 
-        if (imageData == null)
+        if (originalImageData == null)
         {
             entity.ProfileImage = null;
         }
@@ -95,12 +106,14 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
             entity.ProfileImage = new ContactImageEntity
             {
                 Id = entity.Id,
-                OriginalImageData = imageData
+                OriginalImageData = originalImageData,
+                CroppedImageData = croppedImageData
             };
         }
         else
         {
-            entity.ProfileImage.OriginalImageData = imageData;
+            entity.ProfileImage.OriginalImageData = originalImageData;
+            entity.ProfileImage.CroppedImageData = croppedImageData;
         }
 
         await DbContext.SaveChangesAsync(token);

@@ -37,8 +37,10 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
     }
 
     /// <inheritdoc/>
-    public async Task<byte[]?> GetProfilePictureAsync(int userId, CancellationToken token = default)
+    public async Task<byte[]?> GetOriginalPictureAsync(int userId, CancellationToken token = default)
     {
+        // DM profile images are not group-scoped, so this reads directly from the image
+        // DbSet rather than rooting at an owner DbSet (unlike Character/Contact).
         return await DbContext.DungeonMasterProfileImages
             .Where(p => p.Id == userId)
             .Select(p => p.OriginalImageData)
@@ -46,14 +48,24 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
     }
 
     /// <inheritdoc/>
-    public async Task UpsertProfileImageAsync(int userId, byte[]? imageData, CancellationToken token = default)
+    public async Task<byte[]?> GetCroppedPictureAsync(int userId, CancellationToken token = default)
+    {
+        // Falls back to the original bytes at the query level when no crop has ever been saved.
+        return await DbContext.DungeonMasterProfileImages
+            .Where(p => p.Id == userId)
+            .Select(p => p.CroppedImageData ?? p.OriginalImageData)
+            .FirstOrDefaultAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpsertProfileImageAsync(int userId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
     {
         var entity = await DbContext.DungeonMasterProfiles
             .Include(p => p.ProfileImage)
             .FirstOrDefaultAsync(p => p.Id == userId, token);
         if (entity == null) return;
 
-        if (imageData == null)
+        if (originalImageData == null)
         {
             entity.ProfileImage = null;
         }
@@ -62,12 +74,14 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
             entity.ProfileImage = new DungeonMasterProfileImageEntity
             {
                 Id = entity.Id,
-                OriginalImageData = imageData
+                OriginalImageData = originalImageData,
+                CroppedImageData = croppedImageData
             };
         }
         else
         {
-            entity.ProfileImage.OriginalImageData = imageData;
+            entity.ProfileImage.OriginalImageData = originalImageData;
+            entity.ProfileImage.CroppedImageData = croppedImageData;
         }
 
         await DbContext.SaveChangesAsync(token);
