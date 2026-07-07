@@ -183,7 +183,7 @@ QuestBoard.Service/
 
 ### Pattern 1: Shared crop-modal script, included per view (not merged into site.js)
 
-**What:** A single `wwwroot/js/image-crop.js` exposes one initializer function (e.g. `initImageCrop(fileInputId, hiddenCroppedInputId, previewImgSelector)`) that each of the 6 upload views calls from their own `@section Scripts` block, passing their specific element IDs.
+**What:** A single `wwwroot/js/image-crop.js` exposes one initializer function (e.g. `initImageCrop({ fileInputId, hiddenCroppedInputName, aspectRatio })`) that each of the 6 upload views calls from their own `@section Scripts` block, passing their specific element IDs.
 **When to use:** Any of the 3 Create views + 3 Edit views (desktop and mobile variants share the same script file, called with the same IDs since the mobile views reuse the same `id` attributes per the existing pattern seen in `Edit.cshtml`/`Edit.Mobile.cshtml` both using `profilePictureInput`).
 **Why not merge into site.js:** PITFALLS.md's own Integration Gotchas table already flags this exact risk — `site.js` centralizes only cross-cutting helpers (masonry layout, toast init, datetime helpers); a large feature-specific script belongs in its own file, loaded only on the 6 pages that need it, exactly like this project already keeps `site.js` as the only global file and puts everything else inline per-view.
 **Example:**
@@ -195,8 +195,7 @@ QuestBoard.Service/
         initImageCrop({
             fileInputId: 'profilePictureInput',
             hiddenCroppedInputName: 'CroppedPictureFile',
-            aspectRatio: 1,
-            previewImgSelector: '#current-photo-preview'
+            aspectRatio: 1
         });
     </script>
 }
@@ -446,17 +445,17 @@ public Task UpdateAsync(Character model, bool hasNewOriginalUpload, Cancellation
 | A2 | `createImageBitmap`'s `imageOrientation: 'from-image'` support on the specific iOS Safari version(s) available for this project's real-device verification is actually ≥16 (not an older cached/enterprise-managed iOS version) | Common Pitfalls (Pitfall 1), Standard Stack | MEDIUM — if the verification device runs iOS 15 or older, EXIF correction would silently fail (image displays uncorrected); must be checked as part of device-access confirmation, not assumed. A vendored fallback parser should be kept as a documented contingency, not written speculatively, unless this check fails. |
 | A3 | A pinned-version CDN `<script>` tag with Subresource Integrity is an acceptable substitute for STACK.md's original "vendor into `wwwroot/lib/`" recommendation, given no such folder/convention exists in this codebase today | Standard Stack, Alternatives Considered | LOW — this is a judgment call about matching existing codebase convention (CDN-only, confirmed by direct inspection of `_Layout.cshtml`) rather than introducing a new one; if the team prefers vendoring anyway for offline-resilience reasons, it's a straightforward alternative with no architectural blocker either way |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact Cropper.js v2 CSS custom-property/theming needed to match this app's dark fantasy visual style inside the modal**
    - What we know: Cropper.js v2's Web Components ship with sensible default styling and expose `theme-color` attributes on `cropper-handle`/`cropper-grid` elements for basic customization.
    - What's unclear: Whether default styling looks acceptable against this app's existing dark-themed `modern-card` design language, or needs additional CSS overrides.
-   - Recommendation: Treat as an implementation-time visual-polish detail, not a planning blocker — the `image-crop.css` file already scoped in the Recommended Project Structure is the right place to iterate on this.
+   - **Q1 RESOLVED:** treated as implementation-time visual-polish (CSS) detail, not a planning blocker — the `image-crop.css` file already scoped in the Recommended Project Structure is the right place to iterate on this. No plan structure or task ordering depends on the answer.
 
 2. **Whether the real-device verification access gap (flagged as a Pre-Execution Blocker in 46-CONTEXT.md) will be resolved before this phase's implementation waves begin**
    - What we know: CONTEXT.md explicitly flags this as NOT YET CONFIRMED and instructs downstream agents not to schedule the verification checkpoint until resolved.
    - What's unclear: Timeline for confirming device access; whether it's the same iPhone from Phase 43, a different device, or a real-device-cloud service.
-   - Recommendation: This research treats all device-dependent pitfalls (EXIF, canvas memory, touch-drag) as code-complete-but-unverified; the plan should structure the phase so all non-device-dependent work (backend signature changes, endpoint additions, CSS, crop-UI wiring) can complete and be reviewed independently of the verification checkpoint, which should be its own late-sequenced task/checkpoint per CONTEXT.md's explicit instruction.
+   - **Q2 RESOLVED:** gated behind Plan 07 Task 1's blocking device-access decision checkpoint, matching CONTEXT.md's Pre-Execution Blocker. This research treats all device-dependent pitfalls (EXIF, canvas memory, touch-drag) as code-complete-but-unverified; the phase is structured so all non-device-dependent work (backend signature changes, endpoint additions, CSS, crop-UI wiring) completes and is reviewed independently of the verification checkpoint, which is its own late-sequenced blocking task/checkpoint per CONTEXT.md's explicit instruction. No planning ambiguity remains — the Plan 07 gate handles the timing.
 
 ## Environment Availability
 
