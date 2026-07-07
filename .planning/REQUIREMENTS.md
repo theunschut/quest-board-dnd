@@ -26,7 +26,7 @@ Requirements for milestone v7.0 (Backlog Cleanup). Each maps to roadmap phases.
 
 - [ ] **IMAGE-01**: User can interactively drag/resize/zoom a crop frame (Cropper.js v2.1.1) over an uploaded photo before saving
 - [ ] **IMAGE-02**: The crop happens entirely client-side — no server-side image-processing library
-- [ ] **IMAGE-03**: Both the original uploaded image and the cropped result are saved
+- [x] **IMAGE-03**: Both the original uploaded image and the cropped result are saved
 - [ ] **IMAGE-04**: Guild-member list page displays the cropped image; character/DM details pages display the original
 - [ ] **IMAGE-05**: Crop UI applies to every image-upload field in the app (character photo, DM profile photo)
 
@@ -70,7 +70,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOTE-07 | Phase 44 | Pending |
 | IMAGE-01 | Phase 46 | Pending |
 | IMAGE-02 | Phase 45 | Pending |
-| IMAGE-03 | Phase 45 | Pending |
+| IMAGE-03 | Phase 45 | Complete |
 | IMAGE-04 | Phase 46 | Pending |
 | IMAGE-05 | Phase 46 | Pending |
 
