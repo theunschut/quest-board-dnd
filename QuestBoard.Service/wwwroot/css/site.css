@@ -1316,6 +1316,7 @@ p, li, span, small {
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: rgba(244, 228, 188, 0.7) rgba(255, 255, 255, 0.1);
+    white-space: pre-wrap;
 }
 
 .modern-card .card-text::-webkit-scrollbar {
