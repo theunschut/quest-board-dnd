@@ -65,7 +65,7 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
         // CharacterEntity group filter applies — a cross-group id returns null here.
         return await DbContext.Characters
             .Where(c => c.Id == id)
-            .Select(c => c.ProfileImage != null ? c.ProfileImage.ImageData : null)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.OriginalImageData : null)
             .FirstOrDefaultAsync(token);
     }
 
@@ -143,12 +143,12 @@ internal class CharacterRepository(QuestBoardContext dbContext, IMapper mapper) 
             entity.ProfileImage = new CharacterImageEntity
             {
                 Id = entity.Id,
-                ImageData = imageData
+                OriginalImageData = imageData
             };
         }
         else
         {
-            entity.ProfileImage.ImageData = imageData;
+            entity.ProfileImage.OriginalImageData = imageData;
         }
 
         await DbContext.SaveChangesAsync(token);

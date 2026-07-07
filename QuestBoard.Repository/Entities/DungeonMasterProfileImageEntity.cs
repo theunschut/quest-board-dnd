@@ -11,7 +11,9 @@ public class DungeonMasterProfileImageEntity : IEntity
     public int Id { get; set; }
 
     [Required]
-    public byte[] ImageData { get; set; } = [];
+    public byte[] OriginalImageData { get; set; } = [];
+
+    public byte[]? CroppedImageData { get; set; }
 
     public virtual DungeonMasterProfileEntity DungeonMasterProfile { get; set; } = null!;
 }

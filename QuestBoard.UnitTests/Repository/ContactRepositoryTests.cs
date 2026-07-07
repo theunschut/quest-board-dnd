@@ -50,7 +50,7 @@ public class ContactRepositoryTests
             CreatedByUserId = 1,
             IsRevealed = true,
             CreatedAt = DateTime.UtcNow,
-            ProfileImage = new ContactImageEntity { Id = 1, ImageData = [1, 2, 3] }
+            ProfileImage = new ContactImageEntity { Id = 1, OriginalImageData = [1, 2, 3] }
         };
 
         var contactInGroup2 = new ContactEntity
@@ -61,7 +61,7 @@ public class ContactRepositoryTests
             CreatedByUserId = 2,
             IsRevealed = true,
             CreatedAt = DateTime.UtcNow,
-            ProfileImage = new ContactImageEntity { Id = 2, ImageData = [4, 5, 6] }
+            ProfileImage = new ContactImageEntity { Id = 2, OriginalImageData = [4, 5, 6] }
         };
 
         context.Contacts.Add(contactInGroup1);

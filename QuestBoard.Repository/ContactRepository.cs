@@ -51,7 +51,7 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         // ContactEntity group filter applies -- a cross-group id returns null here.
         return await DbContext.Contacts
             .Where(c => c.Id == id)
-            .Select(c => c.ProfileImage != null ? c.ProfileImage.ImageData : null)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.OriginalImageData : null)
             .FirstOrDefaultAsync(token);
     }
 
@@ -95,12 +95,12 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
             entity.ProfileImage = new ContactImageEntity
             {
                 Id = entity.Id,
-                ImageData = imageData
+                OriginalImageData = imageData
             };
         }
         else
         {
-            entity.ProfileImage.ImageData = imageData;
+            entity.ProfileImage.OriginalImageData = imageData;
         }
 
         await DbContext.SaveChangesAsync(token);

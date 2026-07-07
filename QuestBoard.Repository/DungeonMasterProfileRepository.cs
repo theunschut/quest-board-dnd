@@ -41,7 +41,7 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
     {
         return await DbContext.DungeonMasterProfileImages
             .Where(p => p.Id == userId)
-            .Select(p => p.ImageData)
+            .Select(p => p.OriginalImageData)
             .FirstOrDefaultAsync(token);
     }
 
@@ -62,12 +62,12 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
             entity.ProfileImage = new DungeonMasterProfileImageEntity
             {
                 Id = entity.Id,
-                ImageData = imageData
+                OriginalImageData = imageData
             };
         }
         else
         {
-            entity.ProfileImage.ImageData = imageData;
+            entity.ProfileImage.OriginalImageData = imageData;
         }
 
         await DbContext.SaveChangesAsync(token);
