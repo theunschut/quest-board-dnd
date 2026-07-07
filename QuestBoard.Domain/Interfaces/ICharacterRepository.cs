@@ -25,12 +25,26 @@ public interface ICharacterRepository : IBaseRepository<Character>
     Task<Character?> GetMainCharacterForUserAsync(int userId, CancellationToken token = default);
 
     /// <summary>
-    /// Returns the raw profile image bytes for a character, or null if none is set.
+    /// Returns the character's original (unmodified) profile image bytes, or null if none is set.
     /// </summary>
-    Task<byte[]?> GetCharacterProfilePictureAsync(int id, CancellationToken token = default);
+    Task<byte[]?> GetCharacterOriginalPictureAsync(int id, CancellationToken token = default);
 
     /// <summary>
-    /// Sets, replaces, or clears (when imageData is null) the character's profile image.
+    /// Returns the cropped/display image, falling back to the original when no crop was ever saved. Null if neither set.
     /// </summary>
-    Task UpdateProfileImageAsync(int characterId, byte[]? imageData, CancellationToken token = default);
+    Task<byte[]?> GetCharacterCroppedPictureAsync(int id, CancellationToken token = default);
+
+    /// <summary>
+    /// Atomically sets, replaces, or clears (when originalImageData is null) both the original and
+    /// cropped profile image columns. A null croppedImageData with a non-null originalImageData
+    /// writes NULL to the cropped column, clearing any stale crop from a prior upload.
+    /// </summary>
+    Task UpdateProfileImageAsync(int characterId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
+
+    /// <summary>
+    /// Updates a character's scalar fields and its profile image in a single save, so a failure in
+    /// either half (e.g. a concurrency conflict on the entity update) cannot leave the image durably
+    /// committed while the rest of the character's fields are left stale, or vice versa.
+    /// </summary>
+    Task UpdateWithProfileImageAsync(Character model, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default);
 }

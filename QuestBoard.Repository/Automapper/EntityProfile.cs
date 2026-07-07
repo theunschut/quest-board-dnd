@@ -92,15 +92,17 @@ public class EntityProfile : Profile
                 ? null
                 : new CharacterImageEntity
                 {
-                    ImageData = src.ProfilePicture
+                    OriginalImageData = src.ProfilePicture
                 }));
 
         CreateMap<CharacterEntity, Character>()
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (CharacterStatus)src.Status))
             .ForMember(dest => dest.Role, opt => opt.MapFrom(src => (CharacterRole)src.Role))
             .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src => src.ProfileImage != null
-                ? src.ProfileImage.ImageData
-                : null));
+                ? src.ProfileImage.OriginalImageData
+                : null))
+            // Computed separately by a scalar query in the repository, not derivable from a single entity field.
+            .ForMember(dest => dest.HasProfilePicture, opt => opt.Ignore());
 
         // CharacterClass mapping with enum conversions
         CreateMap<CharacterClass, CharacterClassEntity>()
@@ -115,14 +117,16 @@ public class EntityProfile : Profile
                 ? null
                 : new ContactImageEntity
                 {
-                    ImageData = src.ContactImageData
+                    OriginalImageData = src.ContactImageData
                 }))
             .ForMember(dest => dest.Notes, opt => opt.Ignore());
 
         CreateMap<ContactEntity, Contact>()
             .ForMember(dest => dest.ContactImageData, opt => opt.MapFrom(src => src.ProfileImage != null
-                ? src.ProfileImage.ImageData
-                : null));
+                ? src.ProfileImage.OriginalImageData
+                : null))
+            // Computed separately by a scalar query in the repository, not derivable from a single entity field.
+            .ForMember(dest => dest.HasContactImage, opt => opt.Ignore());
 
         // ContactNote mapping — AuthorName is a display-only projection from the Author navigation
         CreateMap<ContactNote, ContactNoteEntity>()
@@ -134,7 +138,9 @@ public class EntityProfile : Profile
         // DungeonMasterProfile mappings
         CreateMap<DungeonMasterProfileEntity, DungeonMasterProfile>()
             .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src =>
-                src.ProfileImage != null ? src.ProfileImage.ImageData : null));
+                src.ProfileImage != null ? src.ProfileImage.OriginalImageData : null))
+            // Computed separately by a scalar query in the repository, not derivable from a single entity field.
+            .ForMember(dest => dest.HasProfilePicture, opt => opt.Ignore());
 
         CreateMap<DungeonMasterProfile, DungeonMasterProfileEntity>()
             .ForMember(dest => dest.ProfileImage, opt => opt.Ignore());

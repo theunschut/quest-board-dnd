@@ -68,7 +68,8 @@ public class ViewModelProfile : Profile
         // CharacterViewModel to Character
         CreateMap<CharacterViewModel, Character>()
             .ForMember(dest => dest.Owner, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.ProfilePicture, opt => opt.Ignore());
 
         // CharacterClass mappings
         CreateMap<CharacterClass, CharacterClassViewModel>()
@@ -76,13 +77,13 @@ public class ViewModelProfile : Profile
 
         // Contact to ContactViewModel
         CreateMap<Contact, ContactViewModel>()
-            .ForMember(dest => dest.ContactImage, opt => opt.MapFrom(src => src.ContactImageData))
+            .ForMember(dest => dest.HasContactImage, opt => opt.MapFrom(src => src.HasContactImage))
             .ForMember(dest => dest.ContactImageFile, opt => opt.Ignore())
             .ForMember(dest => dest.CanManage, opt => opt.Ignore());
 
         // ContactViewModel to Contact
         CreateMap<ContactViewModel, Contact>()
-            .ForMember(dest => dest.ContactImageData, opt => opt.MapFrom(src => src.ContactImage))
+            .ForMember(dest => dest.ContactImageData, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedByUser, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Notes, opt => opt.Ignore());

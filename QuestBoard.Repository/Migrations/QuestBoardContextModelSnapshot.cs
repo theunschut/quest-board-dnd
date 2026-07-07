@@ -236,7 +236,10 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<byte[]>("CroppedImageData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<byte[]>("OriginalImageData")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
@@ -296,7 +299,10 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<byte[]>("CroppedImageData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<byte[]>("OriginalImageData")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
@@ -358,7 +364,10 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<byte[]>("CroppedImageData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<byte[]>("OriginalImageData")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 

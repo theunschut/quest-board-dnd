@@ -121,8 +121,8 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 - [x] Phase 43: Mobile Parity Fixes — Fix the iOS Safari fixed-background scroll bug and add the missing Session Recap badge to the mobile Quest Log (completed 2026-07-04)
 - [x] Phase 44: Post-Finalization Voting & Waitlist Auto-Promotion — Players can vote after finalization, join a waitlist, and get auto-promoted with a targeted email (completed 2026-07-04)
-- [ ] Phase 45: Dual-Image Storage Backend — Server stores both an original and a cropped image per upload, with zero server-side image processing
-- [ ] Phase 46: Client-Side Crop UI — Users crop character/DM profile photos in-browser before saving, with the crop applied everywhere a photo can be uploaded
+- [x] Phase 45: Dual-Image Storage Backend — Server stores both an original and a cropped image per upload, with zero server-side image processing (completed 2026-07-07)
+- [x] Phase 46: Client-Side Crop UI — Users crop character/DM profile photos in-browser before saving, with the crop applied everywhere a photo can be uploaded (completed 2026-07-07)
 - [x] Phase 47: Group Membership Email Notification Fix — Reroute `GroupController.AddMember` through the shared `CreateOrAddToGroupAsync` method so adding an existing user to a group sends the same notification email `CreateMember`/`CreateUser` already send (completed 2026-07-04)
 - [x] Phase 48: Open Board Action on Platform Group Index — Add an "Open Board" button to the `/platform/group` index table reusing `GroupPickerController.SelectGroup`, so a SuperAdmin can jump straight to a group's quest board (completed 2026-07-04)
 - [x] Phase 49: Fix Guild Members page missing group/tenant filtering — Close cross-group leaks on GuildMembersController (Character list/details/picture), DungeonMasterController (DM profile view/edit/picture), and QuestController.RemovePlayerSignup; CharacterEntity gets a real GroupId column + query filter; UserTransaction and PlayerSignup incidental scoping hardened (completed 2026-07-05)
@@ -198,7 +198,18 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. No server-side image-decoding or image-processing library (SkiaSharp, ImageSharp, Magick.NET, etc.) is added to the project — the server only validates and stores the byte arrays it receives
   4. The two stored images are independently retrievable (e.g. via distinct repository/service calls), ready for Phase 46 to wire into the character-details ("show original") and guild-member-list ("show cropped") pages
 
-**Plans**: TBD
+**Plans**: 3 plans
+**Wave 1**
+
+- [x] 45-01-PLAN.md — Rename ImageData -> OriginalImageData + add nullable CroppedImageData on all three image tables (Character/DM/Contact) via a hand-edited RenameColumn migration + AutoMapper update; human data-preservation dry-run (D-01/D-02/D-02a, IMAGE-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 45-02-PLAN.md — Widen the three repositories/services to store both columns atomically + distinct original/cropped reads with query-level fallback; Pitfall 4 (fetch-and-preserve) + Pitfall 5 (clear stale crop) regression tests; new DungeonMasterProfileRepositoryTests (IMAGE-03, success criteria #2/#4)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 45-03-PLAN.md — Shared IImageValidationService (Domain) replacing 5 inline validation blocks across all 3 controllers + closing the DM MIME/extension gap + repoint serving actions to the renamed reads (D-03, IMAGE-02/IMAGE-03, ASVS V5)
 
 ### Phase 46: Client-Side Crop UI
 
@@ -209,11 +220,31 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
   1. On every image-upload field in the app (character photo, DM profile photo — create and edit, desktop and mobile), the user sees an interactive crop frame (Cropper.js v2.1.1) they can drag, resize, and zoom over their photo before saving
   2. Saving a photo submits both the original and the cropped result in one ordinary form submission, with no separate upload step or page reload
-  3. The guild-member list page displays the cropped image for each character; the character details page and DM profile details page display the original, unmodified image
+  3. The guild-member list page displays the cropped image for each character; the character details page and contact details page display the original, unmodified image. The DM profile page displays the cropped image (D-03: no DM-facing page needs the original, and DM's existing circular-crop presentation is unaffected either way)
   4. On a real touchscreen device, the crop frame responds correctly to drag and pinch gestures, a real phone-camera photo crops with correct orientation (not sideways/upside-down), and a full-resolution camera photo does not crash or blank the crop canvas on iOS Safari — each verified on a real device, not devtools emulation
 
-**Plans**: TBD
+**Plans**: 8/8 plans complete
 **UI hint**: yes
+
+**Wave 1** *(no dependencies — run in parallel)*
+
+- [x] 46-01-PLAN.md — Widen the three Domain image-update methods (CharacterService/ContactService UpdateAsync, DungeonMasterProfileService UpsertProfileAsync) to accept a caller-supplied cropped byte[] + add CroppedPictureFile to the three ViewModels + service unit tests (IMAGE-01/05)
+- [x] 46-02-PLAN.md — Convert .character-image / .contact-image list-card boxes to a 1:1 square aspect-ratio and remove the fixed-height mobile overrides (D-02, IMAGE-04)
+- [x] 46-05-PLAN.md — Create the shared client crop pipeline: image-crop.js (EXIF/downscale via createImageBitmap, Cropper.js v2 1:1 init, $toCanvas extraction, DataTransfer dual-file population) + image-crop.css (IMAGE-01)
+
+**Wave 2** *(blocked on Wave 1: needs the widened signatures + ViewModel property)*
+
+- [x] 46-03-PLAN.md — Controller wiring: new GetCroppedPicture / GetCroppedContactImage read actions (Contact with IsVisibleTo parity), DM GetDMProfilePicture repoint, dual-file ValidateImagePair + widened persistence in all Create/Edit/EditProfile POSTs + integration tests (IMAGE-04/05, ASVS V4/V5)
+
+**Wave 3** *(blocked on Wave 2: needs the cropped-read endpoints)*
+
+- [x] 46-08-PLAN.md — Gap-closure plan (inserted mid-execution): a new 3-arg AddAsync overload on ICharacterService/IContactService reusing Phase 45's UpdateWithProfileImageAsync so a crop submitted at Create time is genuinely persisted, not silently discarded; also fixed a latent bug where Mapper.Map(model, entity) nulled tracked Owner/Group/CreatedByUser navigations on a fresh Create-time model (IMAGE-01/05)
+- [x] 46-04-PLAN.md — Repoint every read-only avatar/thumbnail src to the cropped-read endpoints across Characters/Contacts index, Quest Details/Manage/_QuestCard, QuestLog Details (desktop+mobile); Details views left on original per D-03 (IMAGE-04)
+- [x] 46-06-PLAN.md — Wire the crop modal + Cropper.js CDN(SRI) + image-crop.js/initImageCrop + hidden CroppedPictureFile input + cropped preview repoint into all 10 upload views (Character/Contact Create+Edit + Mobile, DM EditProfile + Mobile) (IMAGE-01/05)
+
+**Wave 4** *(blocked on Wave 3: verification checkpoint)*
+
+- [x] 46-07-PLAN.md — Real-device verification, gated on an explicit device-access confirmation decision (Pre-Execution Blocker): desktop end-to-end crop/dual-file/D-03 flow, then iOS Safari EXIF orientation, 12MP canvas-memory ceiling, and touch-drag precision on a real device
 
 ## Progress
 
@@ -271,8 +302,8 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete | 2026-07-04 |
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
-| 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
-| 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
+| 45. Dual-Image Storage Backend | v7.0 | 3/3 | Complete    | 2026-07-07 |
+| 46. Client-Side Crop UI | v7.0 | 8/8 | Complete    | 2026-07-07 |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
@@ -294,7 +325,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 **Goal:** A SuperAdmin who adds an existing user to a group via the Platform Members-page available-users panel (`GroupController.AddMember`) receives a notification email — the confirmed-account "you've been added to {group}" email or, for a stranded/unconfirmed account, the welcome email with a set-password link — by rerouting `AddMember` through the same `UserService.CreateOrAddToGroupAsync` shared method that `CreateMember` and `AdminController.CreateUser` already use, so all three add-to-group entry points behave identically.
 **Requirements**: None (ad-hoc bug-fix phase — no REQ-IDs; source of truth is 47-CONTEXT.md decisions D-01–D-06)
 **Depends on:** Phase 46
-**Plans:** 3/3 plans complete
+**Plans:** 8/8 plans complete
 
 Plans:
 
@@ -523,3 +554,43 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 61-02-PLAN.md — Implementation: relax finalized-edit block + IsFinalized plumbing + D-01 guard + conditional updateProposedDates in QuestController/EditQuestViewModel; hide Proposed Dates on Edit.cshtml/Edit.Mobile.cshtml; add Edit Quest entry point to Manage.cshtml/Manage.Mobile.cshtml (D-01/D-02/D-03/D-04)
+
+### Phase 62: Stop eagerly loading image bytes in list/entity queries
+
+**Goal:** No repository query for Characters, Contacts, or DungeonMaster profiles pulls the associated image byte[] into memory as part of returning list or single-entity data for display -- every page that renders a portrait/photo fetches that image only via its existing dedicated per-entity endpoint (GetProfilePicture / GetContactImage / GetDMProfilePicture), matching the pattern QuestRepository's ProjectWithoutCharacterImages already uses for Quest and QuestLog pages. CharacterRepository.GetAllCharactersWithDetailsAsync, GetCharactersByOwnerIdAsync, and GetCharacterWithDetailsAsync; ContactRepository.GetAllContactsWithDetailsAsync; and DungeonMasterProfileRepository.GetProfileByUserIdAsync stop using .Include(x => x.ProfileImage) and instead project a lightweight HasProfilePicture/HasContactImage boolean, with the corresponding ViewModels and AutoMapper profiles updated to match.
+**Requirements**: None (ad-hoc backlog phase -- no REQUIREMENTS.md mapping; source of truth is this session's codebase investigation)
+**Depends on:** Phase 46 (corrected from Phase 61 during discuss-phase 62 -- Phase 45/46 already touch these exact repositories/services: 45-02/45-03 add an explicit new-upload signal to CharacterService.UpdateAsync/ContactService.UpdateAsync to fix the same "unrelated-field edit wipes the image" hazard this phase would otherwise have to solve itself, and rename the per-entity read methods this phase's goal text references. Sequencing after 45/46 avoids duplicating that fix and building on stale method names. Not sequential with Phase 61 in practice -- 47-61 already executed independently of 45/46's completion.)
+**Plans:** 3/3 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 62-01-PLAN.md — Backend read-projection foundation: add HasProfilePicture/HasContactImage bools to the 3 Domain models, remove .Include(ProfileImage) from the 6 read methods and project the boolean via a !=null scalar query, add AutoMapper Ignore() entries, extend repository unit tests (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 62-02-PLAN.md — Write-path data-loss fix (RESEARCH.md Pitfall 1): CharacterService/ContactService UpdateAsync no-upload branch re-fetches original bytes fresh via GetCharacterOriginalPictureAsync/GetContactOriginalImageAsync so an unrelated-field edit never wipes the stored image; preserve-original regression tests (wave 2)
+- [x] 62-03-PLAN.md — Display-path conversion (D-05, Pitfalls 2/4): ViewModel byte[]->bool rename, ViewModelProfile map updates, Create-POST local-variable staging, DM controller bool source fix, 15 Razor view gate updates, controller integration tests (wave 2)
+
+### Phase 63: Allow any player to edit quest recaps, not just the assigned DM or admin
+
+**Goal:** Any authenticated member of a quest's group can open and save a completed quest's Session Recap — not just that quest's assigned DM or an Admin — by removing the `DungeonMasterOnly` policy and in-action ownership check from `QuestLogController.EditRecap` (GET+POST); the unrelated "Manage Quest" Quick-Actions link stays gated to the quest's DM/Admin by splitting the shared `ViewBag.CanEditRecap` flag into a broadened `CanEditRecap` (recap button) plus a new DM/Admin-only `CanManageQuest` (Manage link), applied identically on desktop and mobile Details views. No schema change, no editor attribution, no notifications.
+**Requirements**: None (ad-hoc backlog phase — no REQUIREMENTS.md mapping; source of truth is 63-CONTEXT.md decisions D-01 through D-04)
+**Depends on:** Phase 62
+**Plans:** 1/1 plans complete
+
+Plans:
+
+- [x] 63-01-PLAN.md — Remove recap-edit DM/Admin gate from EditRecap GET+POST, split CanEditRecap/CanManageQuest on both Details views, flip Player-denial tests to Player-allowed + add Manage-link gating coverage, human verification (D-01/D-02/D-03/D-04)
+
+### Phase 64: Preserve line breaks in description text on mobile views to match desktop rendering
+
+**Goal:** Every free-text description field that currently collapses typed line breaks renders them correctly by applying `white-space: pre-wrap` — closing all 4 confirmed instances (mobile Characters Description/Backstory, desktop QuestLog Original Quest Description, Shop item Description on both platforms, and the shared quest-board list-card preview).
+**Requirements**: None (ad-hoc backlog phase)
+**Depends on:** Phase 63
+**Plans:** 2/2 plans complete
+
+Plans:
+
+- [x] 64-01-PLAN.md — Quest-domain fixes: pre-wrap on .quest-description-box (D-02) and .modern-card .card-text (D-04)
+- [x] 64-02-PLAN.md — Character + Shop fixes: pre-wrap on .character-info-value (D-01) and inline pre-wrap on Shop Description desktop + mobile (D-03)

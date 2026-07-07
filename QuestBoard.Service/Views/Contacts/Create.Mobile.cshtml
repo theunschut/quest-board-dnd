@@ -19,6 +19,7 @@
             <div class="mb-3">
                 <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
                 <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" />
+                <input type="file" name="CroppedPictureFile" style="display:none" />
                 <small class="form-text">Upload a contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
                 <span asp-validation-for="ContactImageFile" class="text-danger"></span>
                 <div id="fileSizeError" class="text-danger" style="display: none;"></div>
@@ -61,32 +62,60 @@
     </div>
 </div>
 
+<div class="modal fade" id="cropPhotoModal" tabindex="-1" aria-labelledby="cropPhotoModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="cropPhotoModalLabel">
+                    <i class="fas fa-crop-alt me-2"></i>Crop Your Photo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="crop-stage">
+                    <cropper-canvas background style="width:100%;height:320px;">
+                        <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
+                        <cropper-shade hidden></cropper-shade>
+                        <cropper-handle action="move" plain></cropper-handle>
+                        <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
+                            <cropper-grid role="grid" bordered covered></cropper-grid>
+                            <cropper-crosshair centered></cropper-crosshair>
+                            <cropper-handle action="move" theme-color="rgba(255,193,7,0.35)"></cropper-handle>
+                            <cropper-handle action="n-resize"></cropper-handle>
+                            <cropper-handle action="e-resize"></cropper-handle>
+                            <cropper-handle action="s-resize"></cropper-handle>
+                            <cropper-handle action="w-resize"></cropper-handle>
+                            <cropper-handle action="ne-resize"></cropper-handle>
+                            <cropper-handle action="nw-resize"></cropper-handle>
+                            <cropper-handle action="se-resize"></cropper-handle>
+                            <cropper-handle action="sw-resize"></cropper-handle>
+                        </cropper-selection>
+                    </cropper-canvas>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Drag to reposition, use the corner handles to resize. We'll use a square crop —
+                    if you skip this, we'll center one automatically.
+                </p>
+            </div>
+            <div class="modal-footer border-secondary d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
+                    <i class="fas fa-times me-2"></i>Discard Photo
+                </button>
+                <button type="button" class="btn btn-warning" id="cropConfirmBtn">
+                    <i class="fas fa-check me-2"></i>Use This Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
+            integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
+            crossorigin="anonymous"></script>
+    <script src="~/js/image-crop.js" asp-append-version="true"></script>
     <script>
-        const MAX_FILE_SIZE = 5 * 1024 * 1024;
-        const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-
-        document.getElementById('contactImageInput')?.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const errorDiv = document.getElementById('fileSizeError');
-            errorDiv.style.display = 'none';
-            errorDiv.textContent = '';
-            if (file) {
-                if (file.size > MAX_FILE_SIZE) {
-                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                    errorDiv.textContent = `File size (${sizeMB} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image.`;
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-
-                if (!ALLOWED_TYPES.includes(file.type)) {
-                    errorDiv.textContent = 'Only image files (JPG, PNG, GIF) are allowed.';
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-            }
-        });
+        initImageCrop({ fileInputId: 'contactImageInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
     </script>
 }

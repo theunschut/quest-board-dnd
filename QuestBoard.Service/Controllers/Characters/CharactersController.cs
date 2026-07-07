@@ -14,6 +14,7 @@ namespace QuestBoard.Service.Controllers.Characters
         ICharacterService characterService,
         IUserService userService,
         IActiveGroupContext activeGroupContext,
+        IImageValidationService imageValidationService,
         IMapper mapper) : Controller
     {
         [HttpGet]
@@ -125,35 +126,51 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             // Handle profile picture upload
-            if (viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0)
+            byte[]? croppedImageData = null;
+            byte[]? uploadedOriginalImageData = null;
+            var newProfilePictureFile = viewModel.ProfilePictureFile;
+            if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ProfilePictureFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
+                    newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+
+                ImageFileInput? cropped = null;
+                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+                }
+
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
+                foreach (var error in validationErrors)
+                {
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ProfilePictureFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Profile picture cannot exceed 5 MB.");
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ProfilePictureFile.CopyToAsync(memoryStream, token);
-                viewModel.ProfilePicture = memoryStream.ToArray();
+                await newProfilePictureFile.CopyToAsync(memoryStream, token);
+                uploadedOriginalImageData = memoryStream.ToArray();
+
+                if (viewModel.CroppedPictureFile is { Length: > 0 } submittedCrop)
+                {
+                    using var croppedMemoryStream = new MemoryStream();
+                    await submittedCrop.CopyToAsync(croppedMemoryStream, token);
+                    croppedImageData = croppedMemoryStream.ToArray();
+                }
             }
 
             var character = mapper.Map<Character>(viewModel);
+            character.ProfilePicture = uploadedOriginalImageData;
 
             // Tag the character to the active group so the character-roster scoping applies
             // (CharacterEntity is scoped by a global query filter on GroupId).
             character.GroupId = activeGroupContext.RequireActiveGroupId();
 
-            await characterService.AddAsync(character, token);
+            await characterService.AddAsync(character, croppedImageData, token);
 
             return RedirectToAction(nameof(Index));
         }
@@ -246,29 +263,47 @@ namespace QuestBoard.Service.Controllers.Characters
             existingCharacter.Description = viewModel.Description;
             existingCharacter.Backstory = viewModel.Backstory;
 
+            // A genuinely new original photo was uploaded this request. Hoisted into a single
+            // local reused both to gate the byte-copy below and to signal the service, so the
+            // two checks can never drift apart.
+            var hasNewOriginalUpload = viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0;
+
             // Handle profile picture upload - clear old picture first if new one is being uploaded
-            if (viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0)
+            byte[]? newCroppedImageData = null;
+            if (hasNewOriginalUpload)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ProfilePictureFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var newProfilePictureFile = viewModel.ProfilePictureFile!;
+                var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
+                    newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+
+                ImageFileInput? cropped = null;
+                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+                }
+
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
+                foreach (var error in validationErrors)
+                {
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ProfilePictureFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Profile picture cannot exceed 5 MB.");
-                    viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ProfilePictureFile.CopyToAsync(memoryStream, token);
+                await newProfilePictureFile.CopyToAsync(memoryStream, token);
                 existingCharacter.ProfilePicture = memoryStream.ToArray();
+
+                if (cropped != null)
+                {
+                    using var croppedStream = new MemoryStream();
+                    await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+                    newCroppedImageData = croppedStream.ToArray();
+                }
             }
             // Otherwise, profile picture remains unchanged
 
@@ -276,8 +311,11 @@ namespace QuestBoard.Service.Controllers.Characters
             existingCharacter.Classes = mapper.Map<List<CharacterClass>>(viewModel.Classes);
 
             // Persist all edited fields first so they are saved regardless of whether this
-            // edit also promotes the character to Main below.
-            await characterService.UpdateAsync(existingCharacter, token);
+            // edit also promotes the character to Main below. Passing hasNewOriginalUpload lets
+            // the service clear any stale cropped image when a genuinely new original arrives,
+            // while preserving it on an edit that doesn't touch the photo. newCroppedImageData
+            // carries a real submitted crop through so it persists instead of being cleared.
+            await characterService.UpdateAsync(existingCharacter, hasNewOriginalUpload, newCroppedImageData, token);
 
             // If setting as main, demote the character's owner's other characters to Backup.
             // Must use the character's own owner id (not the acting user's id) so an Admin
@@ -360,13 +398,25 @@ namespace QuestBoard.Service.Controllers.Characters
         [HttpGet]
         public async Task<IActionResult> GetProfilePicture(int id, CancellationToken token = default)
         {
-            var profilePicture = await characterService.GetCharacterProfilePictureAsync(id, token);
+            var profilePicture = await characterService.GetCharacterOriginalPictureAsync(id, token);
             if (profilePicture == null)
             {
                 return NotFound();
             }
 
             return File(profilePicture, DetectImageMimeType(profilePicture));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCroppedPicture(int id, CancellationToken token = default)
+        {
+            var croppedPicture = await characterService.GetCharacterCroppedPictureAsync(id, token);
+            if (croppedPicture == null)
+            {
+                return NotFound();
+            }
+
+            return File(croppedPicture, DetectImageMimeType(croppedPicture));
         }
 
         private static string DetectImageMimeType(byte[] data) =>

@@ -26,7 +26,7 @@
             <!-- Photo section at top -->
             <div class="dm-editprofile-photo-section mb-3">
                 <label asp-for="ProfilePictureFile" class="form-label d-block">Profile Photo</label>
-                @if (Model.ProfilePicture?.Length > 0)
+                @if (Model.HasProfilePicture)
                 {
                     <div class="mb-2">
                         <img src="@Url.Action("GetDMProfilePicture", new { id = Model.DungeonMasterId })"
@@ -37,9 +37,10 @@
                 <input type="file" asp-for="ProfilePictureFile"
                        class="form-control" accept="image/*"
                        id="dmProfilePictureInput" />
+                <input type="file" name="CroppedPictureFile" style="display:none" />
                 <small class="form-text">JPG, PNG or GIF — max 5 MB</small>
                 <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
-                <div id="dmFileSizeError" class="text-danger" style="display: none;"></div>
+                <div id="fileSizeError" class="text-danger" style="display: none;"></div>
             </div>
 
             <!-- Bio textarea below photo section -->
@@ -64,30 +65,60 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        const DM_MAX_FILE_SIZE = 5 * 1024 * 1024;
-        const DM_ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+<div class="modal fade" id="cropPhotoModal" tabindex="-1" aria-labelledby="cropPhotoModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="cropPhotoModalLabel">
+                    <i class="fas fa-crop-alt me-2"></i>Crop Your Photo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="crop-stage">
+                    <cropper-canvas background style="width:100%;height:320px;">
+                        <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
+                        <cropper-shade hidden></cropper-shade>
+                        <cropper-handle action="move" plain></cropper-handle>
+                        <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
+                            <cropper-grid role="grid" bordered covered></cropper-grid>
+                            <cropper-crosshair centered></cropper-crosshair>
+                            <cropper-handle action="move" theme-color="rgba(255,193,7,0.35)"></cropper-handle>
+                            <cropper-handle action="n-resize"></cropper-handle>
+                            <cropper-handle action="e-resize"></cropper-handle>
+                            <cropper-handle action="s-resize"></cropper-handle>
+                            <cropper-handle action="w-resize"></cropper-handle>
+                            <cropper-handle action="ne-resize"></cropper-handle>
+                            <cropper-handle action="nw-resize"></cropper-handle>
+                            <cropper-handle action="se-resize"></cropper-handle>
+                            <cropper-handle action="sw-resize"></cropper-handle>
+                        </cropper-selection>
+                    </cropper-canvas>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Drag to reposition, use the corner handles to resize. We'll use a square crop —
+                    if you skip this, we'll center one automatically.
+                </p>
+            </div>
+            <div class="modal-footer border-secondary d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
+                    <i class="fas fa-times me-2"></i>Discard Photo
+                </button>
+                <button type="button" class="btn btn-warning" id="cropConfirmBtn">
+                    <i class="fas fa-check me-2"></i>Use This Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-        document.getElementById('dmProfilePictureInput')?.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            const errorDiv = document.getElementById('dmFileSizeError');
-            if (file) {
-                if (file.size > DM_MAX_FILE_SIZE) {
-                    errorDiv.textContent = `File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image.`;
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-                if (!DM_ALLOWED_TYPES.includes(file.type)) {
-                    errorDiv.textContent = 'Only image files (JPG, PNG, GIF) are allowed.';
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-                errorDiv.style.display = 'none';
-                errorDiv.textContent = '';
-            }
-        });
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
+            integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
+            crossorigin="anonymous"></script>
+    <script src="~/js/image-crop.js" asp-append-version="true"></script>
+    <script>
+        initImageCrop({ fileInputId: 'dmProfilePictureInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
     </script>
 }

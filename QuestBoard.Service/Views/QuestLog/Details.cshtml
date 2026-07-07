@@ -56,7 +56,7 @@
                     <!-- Rewards -->
                     <div class="mb-4">
                         <h5 class="text-white"><i class="fas fa-coins text-warning me-2"></i>Rewards</h5>
-                        <div class="quest-description-box" style="white-space: pre-wrap;">@Model.Quest.Rewards</div>
+                        <div class="quest-description-box">@Model.Quest.Rewards</div>
                     </div>
                 }
 
@@ -81,14 +81,21 @@
                                         {
                                             <span class="character-info">
                                                 <span class="character-divider">(</span>
-                                                <img src="@Url.Action("GetProfilePicture", "Characters", new { id = player.Character.Id })"
+                                                <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
                                                      alt="@player.Character.Name"
                                                      class="character-mini-avatar"
                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                                <span class="character-name">@player.Character.Name</span>
+                                                <span class="character-divider">)</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="character-info">
+                                                <span class="character-divider">(</span>
                                                 <span class="character-mini-avatar-placeholder" style="display: none;">
                                                     <i class="fas fa-user"></i>
                                                 </span>
-                                                <span class="character-name">@player.Character.Name</span>
                                                 <span class="character-divider">)</span>
                                             </span>
                                         }
@@ -148,7 +155,7 @@
                     <i class="fas fa-arrow-left me-2"></i>
                     Back to Quest Log
                 </a>
-                @if ((bool)ViewBag.CanEditRecap)
+                @if ((bool)ViewBag.CanManageQuest)
                 {
                     <a href="@Url.Action("Manage", "Quest", new { id = Model.Quest.Id })" class="btn btn-info w-100">
                         <i class="fas fa-cog me-2"></i>

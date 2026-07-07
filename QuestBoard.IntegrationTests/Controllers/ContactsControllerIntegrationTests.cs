@@ -1,5 +1,7 @@
 using QuestBoard.IntegrationTests.Helpers;
+using QuestBoard.Repository.Entities;
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -498,5 +500,292 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var response = await adminClient.GetAsync($"/Contacts/Details/{contact.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // Proves the checker's required Plan 02 -> Plan 03 wiring is actually reachable through the
+    // real Edit POST action, not only through Plan 02's isolated service-level unit test.
+    [Fact]
+    public async Task Edit_NewOriginalImageUpload_ClearsStaleCroppedImage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_new_original_clears_crop", "contact_new_original_clears_crop@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact With Stale Crop", groupId: 1);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] staleCroppedBytes = [9, 9, 9, 9];
+        byte[] newOriginalBytes = [5, 6, 7, 8];
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<ContactImageEntity>().Add(new ContactImageEntity
+            {
+                Id = contact.Id,
+                OriginalImageData = originalBytes,
+                CroppedImageData = staleCroppedBytes
+            });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(contact.Id.ToString()), "Id" },
+            { new StringContent("Contact With Stale Crop"), "Name" },
+            { new StringContent("Waterdeep"), "TownCity" },
+            { new StringContent(""), "SubLocation" },
+            { new StringContent(""), "Description" }
+        };
+        var fileContent = new ByteArrayContent(newOriginalBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(fileContent, "ContactImageFile", "new.png");
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<ContactImageEntity>().FindAsync(
+            [contact.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().BeNull();
+        persistedImage.OriginalImageData.Should().Equal(newOriginalBytes);
+    }
+
+    // Proves a real posted CroppedPictureFile is validated and persisted through the widened
+    // 4-arg UpdateAsync call, not just cleared/ignored like the single-file path.
+    [Fact]
+    public async Task Edit_NewOriginalAndCroppedImageUpload_PersistsSubmittedCrop()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_crop_persists", "contact_crop_persists@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact Getting A Real Crop", groupId: 1);
+
+        byte[] newOriginalBytes = [5, 6, 7, 8];
+        byte[] submittedCropBytes = [10, 20, 30, 40, 50];
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(contact.Id.ToString()), "Id" },
+            { new StringContent("Contact Getting A Real Crop"), "Name" },
+            { new StringContent("Waterdeep"), "TownCity" },
+            { new StringContent(""), "SubLocation" },
+            { new StringContent(""), "Description" }
+        };
+        var originalFileContent = new ByteArrayContent(newOriginalBytes);
+        originalFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(originalFileContent, "ContactImageFile", "new.png");
+
+        var croppedFileContent = new ByteArrayContent(submittedCropBytes);
+        croppedFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(croppedFileContent, "CroppedPictureFile", "new-cropped.png");
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<ContactImageEntity>().FindAsync(
+            [contact.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().NotBeNull();
+        persistedImage.CroppedImageData.Should().Equal(submittedCropBytes);
+        persistedImage.OriginalImageData.Should().Equal(newOriginalBytes);
+    }
+
+    // Proves the Create POST action -- not just Edit -- persists a crop submitted alongside
+    // the original at creation time, closing the gap where a brand-new contact's crop was
+    // silently discarded.
+    [Fact]
+    public async Task Create_WithCroppedPhoto_PersistsCroppedImage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_create_with_crop", "contact_create_with_crop@example.com", roles: ["DungeonMaster"]);
+
+        byte[] originalBytes = [5, 6, 7, 8];
+        byte[] submittedCropBytes = [10, 20, 30, 40, 50];
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent("Brand New Contact With A Crop"), "Name" },
+            { new StringContent("Waterdeep"), "TownCity" },
+            { new StringContent(""), "SubLocation" },
+            { new StringContent(""), "Description" }
+        };
+        var originalFileContent = new ByteArrayContent(originalBytes);
+        originalFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(originalFileContent, "ContactImageFile", "new.png");
+
+        var croppedFileContent = new ByteArrayContent(submittedCropBytes);
+        croppedFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(croppedFileContent, "CroppedPictureFile", "new-cropped.png");
+
+        var response = await dmClient.PostAsync(
+            "/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedContact = context.Contacts.IgnoreQueryFilters()
+            .FirstOrDefault(c => c.Name == "Brand New Contact With A Crop");
+        persistedContact.Should().NotBeNull();
+
+        var persistedImage = await context.Set<ContactImageEntity>().FindAsync(
+            [persistedContact!.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().NotBeNull();
+        persistedImage.CroppedImageData.Should().Equal(submittedCropBytes);
+        persistedImage.OriginalImageData.Should().Equal(originalBytes);
+    }
+
+    // Proves the boolean has-image gate (HasContactImage, projected without eager-loading the
+    // byte[] columns) actually drives the Index list rendering end-to-end.
+    [Fact]
+    public async Task Index_ContactWithImage_RendersPortraitEndpoint()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_dm_indeximage", "contact_dm_indeximage@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact With Portrait", groupId: 1, isRevealed: true,
+            imageData: [1, 2, 3, 4]);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain($"GetCroppedContactImage/{contact.Id}");
+    }
+
+    [Fact]
+    public async Task Index_ContactWithoutImage_DoesNotRenderPortraitEndpoint()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_dm_indexnoimage", "contact_dm_indexnoimage@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact Without Portrait", groupId: 1, isRevealed: true);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain($"GetCroppedContactImage/{contact.Id}");
+    }
+
+    // Companion to Create_WithCroppedPhoto_PersistsCroppedImage — proves the original bytes
+    // land on the Domain model via the Task 2 local-variable staging fix, not just the crop.
+    [Fact]
+    public async Task Create_WithPhoto_PersistsOriginalImage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_create_original_persists", "contact_create_original_persists@example.com", roles: ["DungeonMaster"]);
+
+        byte[] originalBytes = [11, 22, 33, 44];
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent("Brand New Contact With Original Photo"), "Name" },
+            { new StringContent("Waterdeep"), "TownCity" },
+            { new StringContent(""), "SubLocation" },
+            { new StringContent(""), "Description" }
+        };
+        var originalFileContent = new ByteArrayContent(originalBytes);
+        originalFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(originalFileContent, "ContactImageFile", "new.png");
+
+        var response = await dmClient.PostAsync(
+            "/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedContact = context.Contacts.IgnoreQueryFilters()
+            .FirstOrDefault(c => c.Name == "Brand New Contact With Original Photo");
+        persistedContact.Should().NotBeNull();
+
+        var persistedImage = await context.Set<ContactImageEntity>().FindAsync(
+            [persistedContact!.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.OriginalImageData.Should().Equal(originalBytes);
+    }
+
+    // Visibility parity: the new GetCroppedContactImage read action must apply the identical
+    // IsVisibleTo gate as GetContactImage — a hidden contact returns NotFound even though a
+    // crop is stored.
+    [Fact]
+    public async Task GetCroppedContactImage_HiddenContact_PlayerGetsNotFound()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_dm_hiddencropped", "contact_dm_hiddencropped@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Cropped Contact", groupId: 1, isRevealed: false,
+            imageData: [1, 2, 3, 4]);
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var image = await seedContext.Set<ContactImageEntity>().FindAsync(
+                [contact.Id], TestContext.Current.CancellationToken);
+            image!.CroppedImageData = [9, 9, 9, 9];
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_player_hiddencropped", "contact_player_hiddencropped@example.com", roles: ["Player"]);
+
+        var response = await playerClient.GetAsync(
+            $"/Contacts/GetCroppedContactImage/{contact.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // Visibility parity: a revealed contact's cropped image is fetchable (200 with content).
+    [Fact]
+    public async Task GetCroppedContactImage_VisibleContact_ReturnsOkWithContent()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_dm_visiblecropped", "contact_dm_visiblecropped@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Visible Cropped Contact", groupId: 1, isRevealed: true,
+            imageData: [1, 2, 3, 4]);
+
+        byte[] croppedBytes = [9, 9, 9, 9, 9];
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var image = await seedContext.Set<ContactImageEntity>().FindAsync(
+                [contact.Id], TestContext.Current.CancellationToken);
+            image!.CroppedImageData = croppedBytes;
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_player_visiblecropped", "contact_player_visiblecropped@example.com", roles: ["Player"]);
+
+        var response = await playerClient.GetAsync(
+            $"/Contacts/GetCroppedContactImage/{contact.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        content.Should().NotBeEmpty();
+        content.Should().Equal(croppedBytes);
     }
 }

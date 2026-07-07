@@ -50,7 +50,7 @@ public class ContactRepositoryTests
             CreatedByUserId = 1,
             IsRevealed = true,
             CreatedAt = DateTime.UtcNow,
-            ProfileImage = new ContactImageEntity { Id = 1, ImageData = [1, 2, 3] }
+            ProfileImage = new ContactImageEntity { Id = 1, OriginalImageData = [1, 2, 3] }
         };
 
         var contactInGroup2 = new ContactEntity
@@ -61,7 +61,7 @@ public class ContactRepositoryTests
             CreatedByUserId = 2,
             IsRevealed = true,
             CreatedAt = DateTime.UtcNow,
-            ProfileImage = new ContactImageEntity { Id = 2, ImageData = [4, 5, 6] }
+            ProfileImage = new ContactImageEntity { Id = 2, OriginalImageData = [4, 5, 6] }
         };
 
         context.Contacts.Add(contactInGroup1);
@@ -77,7 +77,7 @@ public class ContactRepositoryTests
     {
         // Arrange: seed names deliberately out of alphabetical order (D-17: flat list, alphabetical by Name)
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetAllContactsWithDetailsAsync_MultipleContacts_ReturnsOrderedAlphabeticallyByName), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_MultipleContacts_ReturnsOrderedAlphabeticallyByName), groupContext);
 
         context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
         context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
@@ -105,7 +105,7 @@ public class ContactRepositoryTests
         // Arrange: Id order and CreatedAt order deliberately disagree, proving the sort key is
         // CreatedAt (D-10: newest first), not Id.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactWithDetailsAsync_Notes_ReturnedNewestFirstByCreatedAt), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactWithDetailsAsync_Notes_ReturnedNewestFirstByCreatedAt), groupContext);
 
         context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
         context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
@@ -139,7 +139,7 @@ public class ContactRepositoryTests
         // Arrange: group scoping (fail-closed) — a contact in group 2 is not visible when the
         // active group context resolves to group 1.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactWithDetailsAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactWithDetailsAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -157,7 +157,7 @@ public class ContactRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetAllContactsWithDetailsAsync_ActiveGroupOne_ExcludesGroupTwoContact), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_ActiveGroupOne_ExcludesGroupTwoContact), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -172,18 +172,18 @@ public class ContactRepositoryTests
     }
 
     [Fact]
-    public async Task GetContactImageAsync_ForContactInActiveGroup_ReturnsImageData()
+    public async Task GetContactOriginalImageAsync_ForContactInActiveGroup_ReturnsImageData()
     {
         // Arrange: image round-trip — bytes stored on create are returned exactly.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactImageAsync_ForContactInActiveGroup_ReturnsImageData), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactOriginalImageAsync_ForContactInActiveGroup_ReturnsImageData), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
         groupContext.ActiveGroupId = 1;
 
         // Act
-        var image = await repository.GetContactImageAsync(1, TestContext.Current.CancellationToken);
+        var image = await repository.GetContactOriginalImageAsync(1, TestContext.Current.CancellationToken);
 
         // Assert
         image.Should().NotBeNull();
@@ -191,22 +191,124 @@ public class ContactRepositoryTests
     }
 
     [Fact]
-    public async Task GetContactImageAsync_ForContactInDifferentGroup_ReturnsNull()
+    public async Task GetContactOriginalImageAsync_ForContactInDifferentGroup_ReturnsNull()
     {
         // Arrange: image lookup must also respect the group filter (rooted at Contacts, not
-        // ContactImages directly), mirroring GetCharacterProfilePictureAsync's cross-group test.
+        // ContactImages directly), mirroring the Character repository's cross-group test.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactImageAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactOriginalImageAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
         groupContext.ActiveGroupId = 1;
 
         // Act: contact Id=2 belongs to group 2, viewer's active group is 1
-        var image = await repository.GetContactImageAsync(2, TestContext.Current.CancellationToken);
+        var image = await repository.GetContactOriginalImageAsync(2, TestContext.Current.CancellationToken);
 
         // Assert
         image.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateProfileImageAsync_SetsOriginalImageData()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(UpdateProfileImageAsync_SetsOriginalImageData), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        await repository.UpdateProfileImageAsync(1, [10, 11, 12], null, TestContext.Current.CancellationToken);
+        var original = await repository.GetContactOriginalImageAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        original.Should().NotBeNull();
+        original.Should().Equal([10, 11, 12]);
+    }
+
+    [Fact]
+    public async Task GetContactCroppedImageAsync_FallsBackToOriginal_WhenCroppedIsNull()
+    {
+        // Arrange: seeded contact has only OriginalImageData set, CroppedImageData is null
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactCroppedImageAsync_FallsBackToOriginal_WhenCroppedIsNull), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert: falls back to the original bytes since no crop was ever saved
+        cropped.Should().NotBeNull();
+        cropped.Should().Equal([1, 2, 3]);
+    }
+
+    [Fact]
+    public async Task GetContactOriginalAndCroppedImageAsync_ReturnDistinctValues()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactOriginalAndCroppedImageAsync_ReturnDistinctValues), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act: set both an original and a distinct crop
+        await repository.UpdateProfileImageAsync(1, [20, 21, 22], [30, 31, 32], TestContext.Current.CancellationToken);
+        var original = await repository.GetContactOriginalImageAsync(1, TestContext.Current.CancellationToken);
+        var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert: original and cropped are independently retrievable and distinct
+        original.Should().Equal([20, 21, 22]);
+        cropped.Should().Equal([30, 31, 32]);
+    }
+
+    [Fact]
+    public async Task UpdateProfileImageAsync_ReplacesBothColumnsAtomically()
+    {
+        // Arrange: seed with an original+crop already set
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(UpdateProfileImageAsync_ReplacesBothColumnsAtomically), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+        await repository.UpdateProfileImageAsync(1, [1, 1, 1], [2, 2, 2], TestContext.Current.CancellationToken);
+
+        // Act: re-upload with a brand-new original+crop pair
+        await repository.UpdateProfileImageAsync(1, [40, 41, 42], [50, 51, 52], TestContext.Current.CancellationToken);
+        var original = await repository.GetContactOriginalImageAsync(1, TestContext.Current.CancellationToken);
+        var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert: both columns fully replaced, no trace of either prior upload
+        original.Should().Equal([40, 41, 42]);
+        cropped.Should().Equal([50, 51, 52]);
+    }
+
+    [Fact]
+    public async Task UpdateProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped()
+    {
+        // Arrange: seed with an original+crop already set (upload A)
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(UpdateProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+        await repository.UpdateProfileImageAsync(1, [1, 1, 1], [2, 2, 2], TestContext.Current.CancellationToken);
+
+        // Act: re-upload a new original only (upload B), crop param null (Pitfall 5)
+        await repository.UpdateProfileImageAsync(1, [60, 61, 62], null, TestContext.Current.CancellationToken);
+        var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert: cropped-read falls back to B's original, NOT A's stale crop
+        cropped.Should().Equal([60, 61, 62]);
     }
 
     [Fact]
@@ -214,7 +316,7 @@ public class ContactRepositoryTests
     {
         // Arrange: D-08/D-09 — dedicated note methods, not folded into the generic UpdateAsync path.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(AddNoteAsync_ThenDeleteNoteAsync_RoundTripsCorrectly), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(AddNoteAsync_ThenDeleteNoteAsync_RoundTripsCorrectly), groupContext);
 
         context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
         context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
@@ -250,6 +352,66 @@ public class ContactRepositoryTests
         // Assert: gone after delete
         afterDelete.Should().NotBeNull();
         afterDelete!.Notes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetAllContactsWithDetailsAsync_ReflectsHasContactImage_TrueWithImage_FalseWithout()
+    {
+        // Arrange: two contacts in the same group, one with a stored image and one without.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_ReflectsHasContactImage_TrueWithImage_FalseWithout), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.Contacts.Add(new ContactEntity
+        {
+            Id = 1,
+            Name = "Has Picture",
+            GroupId = 1,
+            CreatedByUserId = 1,
+            IsRevealed = true,
+            CreatedAt = DateTime.UtcNow,
+            ProfileImage = new ContactImageEntity { Id = 1, OriginalImageData = [1, 2, 3] }
+        });
+        context.Contacts.Add(new ContactEntity
+        {
+            Id = 2,
+            Name = "No Picture",
+            GroupId = 1,
+            CreatedByUserId = 1,
+            IsRevealed = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contacts = await repository.GetAllContactsWithDetailsAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        contacts.Single(c => c.Name == "Has Picture").HasContactImage.Should().BeTrue();
+        contacts.Single(c => c.Name == "No Picture").HasContactImage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetContactWithDetailsAsync_ReflectsHasContactImage_TrueWithImage()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactWithDetailsAsync_ReflectsHasContactImage_TrueWithImage), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        contact.Should().NotBeNull();
+        contact!.HasContactImage.Should().BeTrue();
     }
 
     private sealed class MutableTestGroupContext : IActiveGroupContext

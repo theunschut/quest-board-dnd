@@ -13,6 +13,9 @@ public class Character : IModel
 
     public byte[]? ProfilePicture { get; set; }
 
+    // Lets list/detail views show a placeholder-or-photo state without pulling the image bytes.
+    public bool HasProfilePicture { get; set; }
+
     [Range(1, 20)]
     public int Level { get; set; } = 1;
 

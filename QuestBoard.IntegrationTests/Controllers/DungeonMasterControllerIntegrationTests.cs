@@ -305,6 +305,113 @@ public class DungeonMasterControllerIntegrationTests(WebApplicationFactoryBase f
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    // GetDMProfilePicture must serve the cropped-or-fallback bytes after the repoint to
+    // GetCroppedPictureAsync — asserts 200 with the stored crop's content, not the original.
+    [Fact]
+    public async Task GetDMProfilePicture_CroppedImageStored_ReturnsOkWithCroppedContent()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dmprofilepicturecropped", "dmprofilepicturecropped@example.com", roles: ["DungeonMaster"]);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] croppedBytes = [9, 9, 9, 9, 9];
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dmProfileService = scope.ServiceProvider.GetRequiredService<IDungeonMasterProfileService>();
+            await dmProfileService.UpsertProfileAsync(
+                dmUser.Id, bio: null, imageBytes: originalBytes, newCroppedImageData: croppedBytes,
+                token: TestContext.Current.CancellationToken);
+        }
+
+        var response = await dmClient.GetAsync(
+            $"/DungeonMaster/GetDMProfilePicture/{dmUser.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        content.Should().NotBeEmpty();
+        content.Should().Equal(croppedBytes);
+    }
+
+    // Regression guard for the boolean has-image gate (HasProfilePicture, now sourced from the
+    // projected Domain flag instead of the eager-loaded byte[]): the Profile page's portrait
+    // renders when a photo exists and does not when it doesn't.
+    [Fact]
+    public async Task Profile_DmWithPhoto_RendersPortraitEndpoint()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dmprofilewithphoto", "dmprofilewithphoto@example.com", roles: ["DungeonMaster"]);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dmProfileService = scope.ServiceProvider.GetRequiredService<IDungeonMasterProfileService>();
+            await dmProfileService.UpsertProfileAsync(
+                dmUser.Id, bio: null, imageBytes: [1, 2, 3, 4], newCroppedImageData: null,
+                token: TestContext.Current.CancellationToken);
+        }
+
+        var response = await dmClient.GetAsync($"/DungeonMaster/Profile/{dmUser.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain($"GetDMProfilePicture/{dmUser.Id}");
+    }
+
+    [Fact]
+    public async Task Profile_DmWithoutPhoto_DoesNotRenderPortraitEndpoint()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dmprofilewithoutphoto", "dmprofilewithoutphoto@example.com", roles: ["DungeonMaster"]);
+
+        var response = await dmClient.GetAsync($"/DungeonMaster/Profile/{dmUser.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain($"GetDMProfilePicture/{dmUser.Id}");
+    }
+
+    // Pitfall 2 regression guard: the EditProfile form's "current image" thumbnail must still
+    // render for a DM with an existing photo now that GetProfileByUserIdAsync no longer eagerly
+    // loads the byte[] — HasProfilePicture must be sourced from the projected Domain bool.
+    [Fact]
+    public async Task EditProfile_DmWithPhoto_RendersCurrentImageThumbnail()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dmeditprofilewithphoto", "dmeditprofilewithphoto@example.com", roles: ["DungeonMaster"]);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dmProfileService = scope.ServiceProvider.GetRequiredService<IDungeonMasterProfileService>();
+            await dmProfileService.UpsertProfileAsync(
+                dmUser.Id, bio: null, imageBytes: [1, 2, 3, 4], newCroppedImageData: null,
+                token: TestContext.Current.CancellationToken);
+        }
+
+        var response = await dmClient.GetAsync($"/DungeonMaster/EditProfile/{dmUser.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain($"GetDMProfilePicture/{dmUser.Id}");
+    }
+
+    [Fact]
+    public async Task EditProfile_DmWithoutPhoto_DoesNotRenderCurrentImageThumbnail()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dmeditprofilewithoutphoto", "dmeditprofilewithoutphoto@example.com", roles: ["DungeonMaster"]);
+
+        var response = await dmClient.GetAsync($"/DungeonMaster/EditProfile/{dmUser.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain($"GetDMProfilePicture/{dmUser.Id}");
+    }
+
     // When the viewer has no active group selected, GroupSessionMiddleware now gates
     // SuperAdmin exactly like every other role — the request never reaches the controller at
     // all, it is redirected to the group picker before any DM-profile action logic runs.

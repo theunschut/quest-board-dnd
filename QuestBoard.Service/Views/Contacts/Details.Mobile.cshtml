@@ -12,7 +12,7 @@
 
     <!-- Portrait Card -->
     <div class="contact-detail-card mb-3 text-center">
-        @if (Model.ContactImage != null)
+        @if (Model.HasContactImage)
         {
             <img src="@Url.Action("GetContactImage", new { id = Model.Id })" alt="@Model.Name" class="contact-portrait-mobile img-fluid mb-3" />
         }

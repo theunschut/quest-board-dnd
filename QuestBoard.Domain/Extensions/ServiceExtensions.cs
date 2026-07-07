@@ -21,6 +21,7 @@ public static class ServiceExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IDungeonMasterProfileService, DungeonMasterProfileService>();
         services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<IImageValidationService, ImageValidationService>();
 
         return services;
     }

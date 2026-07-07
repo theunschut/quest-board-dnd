@@ -15,16 +15,22 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         // no manual GroupId .Where is needed or added. Ordering is flat alphabetical by name
         // (no owner-based grouping, since Contacts have no ownership/edit-restriction concept).
         var entities = await DbContext.Contacts
-            .Include(c => c.ProfileImage)
             .Include(c => c.CreatedByUser)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
             .OrderBy(c => c.Name)
             .ToListAsync(token);
 
         var contacts = Mapper.Map<IList<Contact>>(entities);
+
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        var imageFlags = await DbContext.Contacts
+            .Select(c => new { c.Id, HasImage = c.ProfileImage != null })
+            .ToDictionaryAsync(x => x.Id, x => x.HasImage, token);
         foreach (var contact in contacts)
         {
             contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+            contact.HasContactImage = imageFlags.GetValueOrDefault(contact.Id);
         }
         return contacts;
     }
@@ -33,7 +39,6 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     public async Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default)
     {
         var entity = await DbContext.Contacts
-            .Include(c => c.ProfileImage)
             .Include(c => c.CreatedByUser)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
             .FirstOrDefaultAsync(c => c.Id == id, token);
@@ -41,17 +46,34 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
 
         var contact = Mapper.Map<Contact>(entity);
         contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        contact.HasContactImage = await DbContext.Contacts
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null)
+            .FirstOrDefaultAsync(token);
         return contact;
     }
 
     /// <inheritdoc/>
-    public async Task<byte[]?> GetContactImageAsync(int id, CancellationToken token = default)
+    public async Task<byte[]?> GetContactOriginalImageAsync(int id, CancellationToken token = default)
     {
         // Rooted at the filtered Contacts DbSet (not ContactImages directly) so the
         // ContactEntity group filter applies -- a cross-group id returns null here.
         return await DbContext.Contacts
             .Where(c => c.Id == id)
-            .Select(c => c.ProfileImage != null ? c.ProfileImage.ImageData : null)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.OriginalImageData : null)
+            .FirstOrDefaultAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<byte[]?> GetContactCroppedImageAsync(int id, CancellationToken token = default)
+    {
+        // Same group-filtered rooting as the original read; falls back to the original bytes
+        // at the query level when no crop has ever been saved for this contact.
+        return await DbContext.Contacts
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.CroppedImageData ?? c.ProfileImage.OriginalImageData : null)
             .FirstOrDefaultAsync(token);
     }
 
@@ -70,23 +92,69 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         if (entity == null) return;
 
         var trackedProfileImage = entity.ProfileImage;
+        var trackedCreatedByUser = entity.CreatedByUser;
+        var trackedGroup = entity.Group;
 
         Mapper.Map(model, entity);
 
+        // The domain model's CreatedByUser/Group navigations are frequently left unset by
+        // callers that only ever populate CreatedByUserId/GroupId (e.g. a freshly-constructed
+        // Contact with no prior fetch) -- restoring EF's own tracked reference-navigation
+        // instances instead of trusting whatever AutoMapper produced from the (possibly null)
+        // model navigations avoids nulling out a required FK the tracked entity depends on.
         entity.ProfileImage = trackedProfileImage;
+        entity.CreatedByUser = trackedCreatedByUser;
+        entity.Group = trackedGroup;
 
         await DbContext.SaveChangesAsync(token);
     }
 
     /// <inheritdoc/>
-    public async Task UpdateProfileImageAsync(int contactId, byte[]? imageData, CancellationToken token = default)
+    public async Task UpdateProfileImageAsync(int contactId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
     {
         var entity = await DbContext.Contacts
             .Include(c => c.ProfileImage)
             .FirstOrDefaultAsync(c => c.Id == contactId, token);
         if (entity == null) return;
 
-        if (imageData == null)
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateWithProfileImageAsync(Contact model, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
+    {
+        // Same tracked-entity handling as UpdateAsync, plus the profile image mutation from
+        // UpdateProfileImageAsync, saved together in one SaveChangesAsync so a failure partway
+        // through cannot durably commit the image while leaving the rest of the entity stale.
+        var entity = await DbContext.Contacts
+            .Include(c => c.ProfileImage)
+            .FirstOrDefaultAsync(c => c.Id == model.Id, token);
+        if (entity == null) return;
+
+        var trackedProfileImage = entity.ProfileImage;
+        var trackedCreatedByUser = entity.CreatedByUser;
+        var trackedGroup = entity.Group;
+
+        Mapper.Map(model, entity);
+
+        // See UpdateAsync above for why CreatedByUser/Group must be restored: the
+        // caller-supplied model frequently has no CreatedByUser/Group populated (only
+        // CreatedByUserId/GroupId), and trusting AutoMapper's mapping of those null
+        // references would null out a required FK the tracked entity depends on.
+        entity.ProfileImage = trackedProfileImage;
+        entity.CreatedByUser = trackedCreatedByUser;
+        entity.Group = trackedGroup;
+
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    private static void ApplyProfileImage(ContactEntity entity, byte[]? originalImageData, byte[]? croppedImageData)
+    {
+        if (originalImageData == null)
         {
             entity.ProfileImage = null;
         }
@@ -95,15 +163,15 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
             entity.ProfileImage = new ContactImageEntity
             {
                 Id = entity.Id,
-                ImageData = imageData
+                OriginalImageData = originalImageData,
+                CroppedImageData = croppedImageData
             };
         }
         else
         {
-            entity.ProfileImage.ImageData = imageData;
+            entity.ProfileImage.OriginalImageData = originalImageData;
+            entity.ProfileImage.CroppedImageData = croppedImageData;
         }
-
-        await DbContext.SaveChangesAsync(token);
     }
 
     /// <inheritdoc/>

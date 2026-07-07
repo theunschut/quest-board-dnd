@@ -2,16 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-status: milestone_complete
-stopped_at: Milestone complete (Phase 61 was final phase)
-last_updated: 2026-07-07T07:34:22.187Z
-last_activity: 2026-07-07 -- Phase 61 execution started
+current_phase: 63
+current_phase_name: Allow any player to edit quest recaps, not just the assigned DM or admin
+status: executing
+stopped_at: Phase 64 context gathered
+last_updated: "2026-07-07T22:14:09.102Z"
+last_activity: 2026-07-07
+last_activity_desc: Phase 62 complete, transitioned to Phase 63
 progress:
-  total_phases: 17
-  completed_phases: 16
-  total_plans: 42
-  completed_plans: 42
-  percent: 94
+  total_phases: 22
+  completed_phases: 22
+  total_plans: 59
+  completed_plans: 59
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Milestone complete
+**Current focus:** Phase 62 — Stop eagerly loading image bytes in list/entity queries
 
 ## Current Position
 
-Phase: 61
+Phase: 63 — Allow any player to edit quest recaps, not just the assigned DM or admin
 Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-07
+Status: Executing Phase 62
+Last activity: 2026-07-07 — Phase 62 complete, transitioned to Phase 63
 
 ## Performance Metrics
 
@@ -41,6 +44,10 @@ Last activity: 2026-07-07
 
 - v6.1 shipped in ~1 day across 5 phases (38–42), 16 plans, 37 tasks — fastest pace yet, edging out v6.0's ~1.4 days/3 phases. See `.planning/RETROSPECTIVE.md` for details.
 
+| Phase/Plan | Duration | Tasks | Files |
+|---|---|---|---|
+| Phase 63 P01 | 35min | 3 tasks | 4 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -50,9 +57,12 @@ Last activity: 2026-07-07
 - Waitlist promotion (Phase 44) and mobile fixes (Phase 43) confirmed independent of each other and of the image work (different tables/files) — may be executed in either order; Phase 46 depends on Phase 45.
 - Cropper.js version corrected to v2.1.1 (not v1.6.2) per research SUMMARY.md revision — v1 branch is stale (no commits in over a year), v2 has an active release cadence and a comparably simple `<script>`-tag integration.
 - v6.1 Bugfixes milestone decisions archived — see PROJECT.md Key Decisions table and `.planning/milestones/v6.1-ROADMAP.md`.
+- Phase 63-01: recap editing opened to any authenticated group member; Manage Quest link kept DM/Admin-only via new separate ViewBag.CanManageQuest flag to avoid permission escalation
 
 ### Roadmap Evolution
 
+- Phase 64 added: Preserve line breaks in description text on mobile views to match desktop rendering
+- Phase 63 added: Allow any player to edit quest recaps, not just the assigned DM or admin
 - Phase 61 added: Allow DMs to edit finalized quest details (excluding proposed and selected dates)
 - Phase 60 added: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
 - Phase 59 added: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
@@ -71,6 +81,9 @@ Last activity: 2026-07-07
 v7.0 Backlog Cleanup roadmap created 2026-07-04: 4 phases (43–46), 14/14 v1 requirements mapped, no orphans. Continues numbering from v6.1's Phase 42. Full phase detail in `.planning/ROADMAP.md`.
 
 v6.1 Bugfixes milestone shipped 2026-07-04 (5 phases: 38–42) and archived to `.planning/milestones/v6.1-ROADMAP.md` / `v6.1-REQUIREMENTS.md`.
+
+- Phase 62 edited: edited fields: title, goal (cleaned up auto-generated title/goal from phase.add)
+- Phase 62 added: Stop eagerly loading image bytes in list/entity queries
 
 ### Pending Todos
 
@@ -98,9 +111,9 @@ Items acknowledged and carried forward from previous milestone close (2026-07-02
 
 ## Session Continuity
 
-Last session: 2026-07-07T06:16:29.116Z
-Stopped at: Phase 61 context gathered
-Resume file: .planning/phases/61-allow-dms-to-edit-finalized-quest-details-excluding-proposed/61-CONTEXT.md
+Last session: 2026-07-07T21:11:35.141Z
+Stopped at: Phase 64 context gathered
+Resume file: .planning/phases/64-preserve-line-breaks-in-description-text-on-mobile-views-to-/64-CONTEXT.md
 Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
 
 ## Operator Next Steps

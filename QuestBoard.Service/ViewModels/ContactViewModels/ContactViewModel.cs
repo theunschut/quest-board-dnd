@@ -19,11 +19,15 @@ public class ContactViewModel
     [StringLength(200, ErrorMessage = "Sub-location cannot exceed 200 characters")]
     public string? SubLocation { get; set; }
 
-    public byte[]? ContactImage { get; set; }
+    public bool HasContactImage { get; set; }
 
     [MaxFileSize(5 * 1024 * 1024, ErrorMessage = "Image cannot exceed 5 MB")]
     [AllowedExtensions(new[] { ".jpg", ".jpeg", ".png", ".gif" }, ErrorMessage = "Only image files (JPG, PNG, GIF) are allowed")]
     public IFormFile? ContactImageFile { get; set; }
+
+    [MaxFileSize(5 * 1024 * 1024, ErrorMessage = "Cropped image cannot exceed 5 MB")]
+    [AllowedExtensions(new[] { ".jpg", ".jpeg", ".png", ".gif" }, ErrorMessage = "Only image files (JPG, PNG, GIF) are allowed")]
+    public IFormFile? CroppedPictureFile { get; set; }
 
     public bool IsRevealed { get; set; }
 

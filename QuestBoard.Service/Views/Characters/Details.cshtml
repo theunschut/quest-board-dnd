@@ -13,7 +13,7 @@
             <!-- Character Portrait -->
             <div class="card modern-card mb-3">
                 <div class="card-body modern-card-body text-center">
-                    @if (Model.ProfilePicture != null)
+                    @if (Model.HasProfilePicture)
                     {
                         <img src="@Url.Action("GetProfilePicture", new { id = Model.Id })" alt="@Model.Name" class="character-portrait img-fluid mb-3" />
                     }

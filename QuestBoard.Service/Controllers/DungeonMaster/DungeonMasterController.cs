@@ -14,7 +14,8 @@ public class DungeonMasterController(
     IUserService userService,
     IQuestService questService,
     IMapper mapper,
-    IActiveGroupContext activeGroupContext) : Controller
+    IActiveGroupContext activeGroupContext,
+    IImageValidationService imageValidationService) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Profile(int id, CancellationToken token = default)
@@ -39,7 +40,7 @@ public class DungeonMasterController(
             UserId = id,
             Name = user.Name ?? string.Empty,
             Bio = profile?.Bio,
-            HasProfilePicture = profile?.ProfilePicture?.Length > 0,
+            HasProfilePicture = profile?.HasProfilePicture ?? false,
             CanEdit = currentUser != null && (currentUser.Id == user.Id || role == GroupRole.Admin),
             Quests = mapper.Map<List<QuestSummaryViewModel>>(quests)
         };
@@ -73,7 +74,7 @@ public class DungeonMasterController(
         {
             DungeonMasterId = targetUser.Id,
             Bio = profile?.Bio,
-            ProfilePicture = profile?.ProfilePicture
+            HasProfilePicture = profile?.HasProfilePicture ?? false
         };
 
         return View(viewModel);
@@ -105,21 +106,43 @@ public class DungeonMasterController(
             return View(viewModel);
 
         byte[]? imageBytes = null;
-        if (viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0)
+        byte[]? newCroppedImageData = null;
+        var newProfilePictureFile = viewModel.ProfilePictureFile;
+        if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
         {
-            const long maxFileSizeBytes = 5 * 1024 * 1024;
-            if (viewModel.ProfilePictureFile.Length > maxFileSizeBytes)
+            var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
+                newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+
+            ImageFileInput? cropped = null;
+            if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
             {
-                ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                    "Profile picture cannot exceed 5 MB.");
+                cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                    croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+            }
+
+            var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
+            foreach (var error in validationErrors)
+            {
+                ModelState.AddModelError(error.FieldName, error.Message);
+            }
+            if (!ModelState.IsValid)
+            {
                 return View(viewModel);
             }
+
             using var memoryStream = new MemoryStream();
-            await viewModel.ProfilePictureFile.CopyToAsync(memoryStream, token);
+            await newProfilePictureFile.CopyToAsync(memoryStream, token);
             imageBytes = memoryStream.ToArray();
+
+            if (cropped != null)
+            {
+                using var croppedStream = new MemoryStream();
+                await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+                newCroppedImageData = croppedStream.ToArray();
+            }
         }
 
-        await dmProfileService.UpsertProfileAsync(targetUser.Id, viewModel.Bio, imageBytes, token: token);
+        await dmProfileService.UpsertProfileAsync(targetUser.Id, viewModel.Bio, imageBytes, newCroppedImageData: newCroppedImageData, token: token);
 
         return RedirectToAction(nameof(Profile), new { id = targetUser.Id });
     }
@@ -129,7 +152,7 @@ public class DungeonMasterController(
     {
         if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
 
-        var bytes = await dmProfileService.GetProfilePictureAsync(id, token);
+        var bytes = await dmProfileService.GetCroppedPictureAsync(id, token);
         if (bytes == null || bytes.Length == 0) return NotFound();
 
         var contentType = bytes.Length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50

@@ -112,7 +112,8 @@
 .characters-page .character-image {
     position: relative;
     width: 100%;
-    height: 200px;
+    aspect-ratio: 1 / 1;
+    height: auto;
     margin-bottom: 1rem;
     border-radius: 8px;
     overflow: hidden;
@@ -280,11 +281,7 @@
         grid-template-columns: 1fr;
         gap: 1rem;
     }
-    
-    .characters-page .character-image {
-        height: 180px;
-    }
-    
+
     .characters-page .character-card:hover {
         transform: translateY(-4px) scale(1.01);
     }

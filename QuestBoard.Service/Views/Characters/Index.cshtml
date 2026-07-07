@@ -33,9 +33,9 @@
                             <a href="@Url.Action("Details", new { id = character.Id })" class="text-decoration-none">
                                 <div class="character-card-content">
                                     <div class="character-image">
-                                        @if (character.ProfilePicture != null)
+                                        @if (character.HasProfilePicture)
                                         {
-                                            <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" alt="@character.Name" />
+                                            <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="@character.Name" />
                                         }
                                         else
                                         {
@@ -108,9 +108,9 @@
                             <a href="@Url.Action("Details", new { id = character.Id })" class="text-decoration-none">
                                 <div class="character-card-content">
                                     <div class="character-image">
-                                        @if (character.ProfilePicture != null)
+                                        @if (character.HasProfilePicture)
                                         {
-                                            <img src="@Url.Action("GetProfilePicture", new { id = character.Id })" alt="@character.Name" />
+                                            <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="@character.Name" />
                                         }
                                         else
                                         {

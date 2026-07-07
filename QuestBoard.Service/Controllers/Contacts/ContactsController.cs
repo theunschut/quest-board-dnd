@@ -15,6 +15,7 @@ namespace QuestBoard.Service.Controllers.Contacts
         IContactService contactService,
         IUserService userService,
         IActiveGroupContext activeGroupContext,
+        IImageValidationService imageValidationService,
         IMapper mapper) : Controller
     {
         [HttpGet]
@@ -97,29 +98,45 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return View(viewModel);
             }
 
-            if (viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0)
+            byte[]? croppedImageData = null;
+            byte[]? uploadedOriginalImageData = null;
+            var newContactImageFile = viewModel.ContactImageFile;
+            if (newContactImageFile != null && newContactImageFile.Length > 0)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ContactImageFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var original = new ImageFileInput(newContactImageFile.Length, newContactImageFile.ContentType,
+                    newContactImageFile.FileName, nameof(viewModel.ContactImageFile));
+
+                ImageFileInput? cropped = null;
+                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+                }
+
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
+                foreach (var error in validationErrors)
+                {
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ContactImageFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Image cannot exceed 5 MB.");
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ContactImageFile.CopyToAsync(memoryStream, token);
-                viewModel.ContactImage = memoryStream.ToArray();
+                await newContactImageFile.CopyToAsync(memoryStream, token);
+                uploadedOriginalImageData = memoryStream.ToArray();
+
+                if (viewModel.CroppedPictureFile is { Length: > 0 } submittedCrop)
+                {
+                    using var croppedMemoryStream = new MemoryStream();
+                    await submittedCrop.CopyToAsync(croppedMemoryStream, token);
+                    croppedImageData = croppedMemoryStream.ToArray();
+                }
             }
 
             var contact = mapper.Map<Contact>(viewModel);
+            contact.ContactImageData = uploadedOriginalImageData;
 
             // Tag the contact to the active group so the group-scoped roster query filter
             // applies (ContactEntity is scoped by a global query filter on GroupId).
@@ -127,7 +144,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             contact.CreatedByUserId = currentUser.Id;
             contact.IsRevealed = false;
 
-            await contactService.AddAsync(contact, token);
+            await contactService.AddAsync(contact, croppedImageData, token);
 
             return RedirectToAction(nameof(Index));
         }
@@ -177,32 +194,54 @@ namespace QuestBoard.Service.Controllers.Contacts
             existingContact.TownCity = viewModel.TownCity;
             existingContact.SubLocation = viewModel.SubLocation;
 
-            if (viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0)
+            // A genuinely new original photo was uploaded this request. Hoisted into a single
+            // local reused both to gate the byte-copy below and to signal the service, so the
+            // two checks can never drift apart.
+            var hasNewOriginalUpload = viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0;
+
+            byte[]? newCroppedImageData = null;
+            if (hasNewOriginalUpload)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ContactImageFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var newContactImageFile = viewModel.ContactImageFile!;
+                var original = new ImageFileInput(newContactImageFile.Length, newContactImageFile.ContentType,
+                    newContactImageFile.FileName, nameof(viewModel.ContactImageFile));
+
+                ImageFileInput? cropped = null;
+                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+                }
+
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
+                foreach (var error in validationErrors)
+                {
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     viewModel.CanManage = true;
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ContactImageFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ContactImageFile),
-                        "Image cannot exceed 5 MB.");
-                    viewModel.CanManage = true;
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ContactImageFile.CopyToAsync(memoryStream, token);
+                await newContactImageFile.CopyToAsync(memoryStream, token);
                 existingContact.ContactImageData = memoryStream.ToArray();
+
+                if (cropped != null)
+                {
+                    using var croppedStream = new MemoryStream();
+                    await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+                    newCroppedImageData = croppedStream.ToArray();
+                }
             }
             // Otherwise, the contact image remains unchanged.
 
-            await contactService.UpdateAsync(existingContact, token);
+            // Passing hasNewOriginalUpload lets the service clear any stale cropped image when a
+            // genuinely new original arrives, while preserving it on an edit that doesn't touch
+            // the photo. newCroppedImageData carries a real submitted crop through so it persists
+            // instead of being cleared.
+            await contactService.UpdateAsync(existingContact, hasNewOriginalUpload, newCroppedImageData, token);
 
             return RedirectToAction(nameof(Details), new { id });
         }
@@ -332,7 +371,34 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return NotFound();
             }
 
-            var image = await contactService.GetContactImageAsync(id, token);
+            var image = await contactService.GetContactOriginalImageAsync(id, token);
+            if (image == null)
+            {
+                return NotFound();
+            }
+
+            return File(image, DetectImageMimeType(image));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCroppedContactImage(int id, CancellationToken token = default)
+        {
+            var contact = await contactService.GetContactWithDetailsAsync(id, token);
+            if (contact == null)
+            {
+                return NotFound();
+            }
+
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = currentUser.Id != 0 && await IsDmTierAsync();
+            var includeHidden = viewerIsDmTier && ReadShowHiddenToggle();
+
+            if (!IsVisibleTo(contact, currentUser.Id, includeHidden))
+            {
+                return NotFound();
+            }
+
+            var image = await contactService.GetContactCroppedImageAsync(id, token);
             if (image == null)
             {
                 return NotFound();

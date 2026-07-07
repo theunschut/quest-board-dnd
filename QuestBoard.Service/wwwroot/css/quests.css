@@ -819,6 +819,7 @@
     color: #F4E4BC;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
     line-height: 1.6;
+    white-space: pre-wrap;
 }
 
 /* Recap Display Box */

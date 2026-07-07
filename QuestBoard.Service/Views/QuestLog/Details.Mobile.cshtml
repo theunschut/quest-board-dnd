@@ -66,7 +66,7 @@
                                 @if (player.Character != null)
                                 {
                                     <span>
-                                        (<img src="@Url.Action("GetProfilePicture", "Characters", new { id = player.Character.Id })"
+                                        (<img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
                                               alt="@player.Character.Name"
                                               class="character-mini-avatar"
                                               onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
@@ -126,7 +126,7 @@
         <a href="@Url.Action("Index", "QuestLog")" class="btn btn-secondary w-100 mb-2">
             <i class="fas fa-arrow-left me-2"></i>Back to Quest Log
         </a>
-        @if ((bool)ViewBag.CanEditRecap)
+        @if ((bool)ViewBag.CanManageQuest)
         {
             <a href="@Url.Action("Manage", "Quest", new { id = Model.Quest.Id })" class="btn btn-info w-100">
                 <i class="fas fa-cog me-2"></i>Manage Quest

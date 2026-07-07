@@ -31,29 +31,82 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
     public async Task<DungeonMasterProfile?> GetProfileByUserIdAsync(int userId, CancellationToken token = default)
     {
         var entity = await DbContext.DungeonMasterProfiles
-            .Include(p => p.ProfileImage)
             .FirstOrDefaultAsync(p => p.Id == userId, token);
-        return entity == null ? null : Mapper.Map<DungeonMasterProfile>(entity);
+        if (entity == null) return null;
+
+        var profile = Mapper.Map<DungeonMasterProfile>(entity);
+        // DM profile images are not group-scoped, so this reads directly from the image
+        // DbSet rather than rooting at DungeonMasterProfiles (unlike Character/Contact), matching
+        // the sibling read methods in this file. Image bytes are never selected here -- only a
+        // presence flag, via a scalar query that EF Core translates to an EXISTS/JOIN check.
+        profile.HasProfilePicture = await DbContext.DungeonMasterProfileImages
+            .Where(p => p.Id == userId)
+            .Select(p => p.OriginalImageData != null)
+            .FirstOrDefaultAsync(token);
+        return profile;
     }
 
     /// <inheritdoc/>
-    public async Task<byte[]?> GetProfilePictureAsync(int userId, CancellationToken token = default)
+    public async Task<byte[]?> GetOriginalPictureAsync(int userId, CancellationToken token = default)
     {
+        // DM profile images are not group-scoped, so this reads directly from the image
+        // DbSet rather than rooting at an owner DbSet (unlike Character/Contact).
         return await DbContext.DungeonMasterProfileImages
             .Where(p => p.Id == userId)
-            .Select(p => p.ImageData)
+            .Select(p => p.OriginalImageData)
             .FirstOrDefaultAsync(token);
     }
 
     /// <inheritdoc/>
-    public async Task UpsertProfileImageAsync(int userId, byte[]? imageData, CancellationToken token = default)
+    public async Task<byte[]?> GetCroppedPictureAsync(int userId, CancellationToken token = default)
+    {
+        // Falls back to the original bytes at the query level when no crop has ever been saved.
+        return await DbContext.DungeonMasterProfileImages
+            .Where(p => p.Id == userId)
+            .Select(p => p.CroppedImageData ?? p.OriginalImageData)
+            .FirstOrDefaultAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpsertProfileImageAsync(int userId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
     {
         var entity = await DbContext.DungeonMasterProfiles
             .Include(p => p.ProfileImage)
             .FirstOrDefaultAsync(p => p.Id == userId, token);
         if (entity == null) return;
 
-        if (imageData == null)
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateBioWithProfileImageAsync(int userId, string? bio, bool updateImage, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
+    {
+        // Bio and the profile image mutation are saved together in one SaveChangesAsync so a
+        // failure partway through cannot durably commit the image while leaving the bio stale.
+        // updateImage distinguishes a bio-only edit (image left untouched) from an edit that
+        // also sets/replaces/clears the image -- originalImageData alone can't carry that
+        // distinction, since "clear the image" and "leave it unchanged" are both represented by
+        // a null originalImageData at the call site.
+        var entity = await DbContext.DungeonMasterProfiles
+            .Include(p => p.ProfileImage)
+            .FirstOrDefaultAsync(p => p.Id == userId, token);
+        if (entity == null) return;
+
+        entity.Bio = bio;
+
+        if (updateImage)
+        {
+            ApplyProfileImage(entity, originalImageData, croppedImageData);
+        }
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    private static void ApplyProfileImage(DungeonMasterProfileEntity entity, byte[]? originalImageData, byte[]? croppedImageData)
+    {
+        if (originalImageData == null)
         {
             entity.ProfileImage = null;
         }
@@ -62,14 +115,14 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
             entity.ProfileImage = new DungeonMasterProfileImageEntity
             {
                 Id = entity.Id,
-                ImageData = imageData
+                OriginalImageData = originalImageData,
+                CroppedImageData = croppedImageData
             };
         }
         else
         {
-            entity.ProfileImage.ImageData = imageData;
+            entity.ProfileImage.OriginalImageData = originalImageData;
+            entity.ProfileImage.CroppedImageData = croppedImageData;
         }
-
-        await DbContext.SaveChangesAsync(token);
     }
 }
