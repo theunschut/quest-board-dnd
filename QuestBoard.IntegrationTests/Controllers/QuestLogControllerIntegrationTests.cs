@@ -468,4 +468,27 @@ public class QuestLogControllerIntegrationTests(WebApplicationFactoryBase factor
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         content.Should().Contain($"/Quest/Manage/{quest.Id}");
     }
+
+    // Recap editing is now reachable by any authenticated group member, so the completed-quest
+    // eligibility guard (isCompletedOneShot / IsClosed) is the primary remaining defense against
+    // editing recaps on quests that are still active. Pin that guard explicitly.
+    [Fact]
+    public async Task EditRecap_NotCompletedQuest_ReturnsNotFound()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "editrecapactivedm", "editrecapactivedm@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, "Active Quest", "Desc", 5, isFinalized: false);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "editrecapactiveplayer", "editrecapactiveplayer@example.com", roles: ["Player"]);
+
+        // Act
+        var response = await playerClient.GetAsync($"/QuestLog/EditRecap/{quest.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
