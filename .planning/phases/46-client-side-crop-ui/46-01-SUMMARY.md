@@ -130,3 +130,7 @@ None - no external service configuration required.
 ---
 *Phase: 46-client-side-crop-ui*
 *Completed: 2026-07-07*
+
+## Self-Check: PASSED
+
+All 13 claimed files found on disk; all 3 task commit hashes (`e3923c7`, `329d0b9`, `f737645`) found in git history.
