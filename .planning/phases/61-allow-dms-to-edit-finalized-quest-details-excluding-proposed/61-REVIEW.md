@@ -25,7 +25,7 @@ status: issues_found
 **Verified/updated:** 2026-07-07 (orchestrator follow-up — see "Verification Update" below)
 **Depth:** standard
 **Files Reviewed:** 7
-**Status:** issues_found (1 warning fixed, 1 critical reclassified as info after live verification, 1 info note unchanged)
+**Status:** issues_found (1 warning fixed, 1 critical reclassified as info and then fixed after live verification, 1 info note unchanged)
 
 ## Summary
 
@@ -158,15 +158,15 @@ if (existingQuest.IsFinalized && boardType != BoardType.Campaign)
 
 **Fix:** No action required; noting only because a future edit to the icon/styling would need to be applied in two places instead of one. Could be flattened with a single loop over a `List<string>` of tip strings if this pattern grows further.
 
-### IN-02: `_QuestFormScripts.cshtml`'s submit-validation script binds to the navbar's Logout form instead of the Quest form (pre-existing, out of phase scope)
+### IN-02 (fixed, commit `88c9a8f`): `_QuestFormScripts.cshtml`'s submit-validation script binds to the navbar's Logout form instead of the Quest form (pre-existing, out of phase scope)
 
 **File:** `QuestBoard.Service/Views/Quest/_QuestFormScripts.cshtml:10` (`document.querySelector('form')`), root-caused via `QuestBoard.Service/Views/Shared/_Layout.cshtml:187,211` and `_Layout.Mobile.cshtml:158,179`
 
 **Issue:** `document.querySelector('form')` returns the first `<form>` in document order. Both the desktop and mobile layouts render an authenticated-user Logout form in the navbar *before* `@RenderBody()`, so on any Quest Create/Edit/CreateFollowUp page the script's submit listener attaches to the Logout form, not the Quest form. Practical effect: the "at least one proposed date" client-side check has never actually gated the real Quest form (server-side `ModelState` validation on Create already enforces this independently, so the feature still works today) — but it does mean clicking **Logout** from a Quest Create/Edit page can incorrectly trigger `e.preventDefault()` plus the "Please provide at least one proposed date and time" alert, silently blocking logout, whenever `#proposed-dates` has no filled `datetime-local` input (e.g. a finalized-quest Edit page where the container doesn't render at all, or a Create page before any date is added).
 
-This is **not introduced by Phase 61** — the misattached `querySelector('form')` and the layout's form ordering both predate this phase and are unmodified by it. It was investigated only because it was the root cause behind the CR-01 filing above. Not fixed here (touching `_QuestFormScripts.cshtml`/`_Layout.cshtml` is outside this phase's file scope); flagged separately for a dedicated follow-up.
+This is **not introduced by Phase 61** — the misattached `querySelector('form')` and the layout's form ordering both predate this phase and are unmodified by it. It was investigated only because it was the root cause behind the CR-01 filing above. Initially flagged as a separate follow-up task (outside this phase's file scope), then fixed directly in the same session at the user's request rather than left pending — see commit `88c9a8f`.
 
-**Fix (for the follow-up task, not applied here):** Scope the form lookup in `_QuestFormScripts.cshtml` to the actual quest form, e.g. `document.querySelector('form[action*="/Quest/"]')` or give the quest form itself an id/class the script can target directly, rather than relying on `document.querySelector('form')`'s first-match behavior.
+**Fix applied:** `_QuestFormScripts.cshtml` now selects `document.querySelector('form[action*="/Quest/"]')` instead of the bare `document.querySelector('form')`. Fixing that exposed a second, previously-masked bug: the date-input check only counted `input[type="datetime-local"]`, missing the `input[type="hidden"][name*="ProposedDates"]` inputs `Edit.cshtml` uses for already-existing dates — once the listener attached to the real form, that would have newly blocked submission of any non-finalized edit that didn't add a brand-new date. Fixed to count both input types, and to skip the requirement entirely when `#proposed-dates` isn't rendered at all (finalized quests, Campaign board). Verified via DOM eval against all four scenarios (Create/empty, non-finalized edit with only pre-existing dates, non-finalized edit with a newly-added date, finalized edit with no dates section) plus a full `dotnet test` re-run (191 unit + 361 integration, all passing).
 
 ---
 
