@@ -201,7 +201,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 **Plans**: 3 plans
 **Wave 1**
 
-- [ ] 45-01-PLAN.md — Rename ImageData -> OriginalImageData + add nullable CroppedImageData on all three image tables (Character/DM/Contact) via a hand-edited RenameColumn migration + AutoMapper update; human data-preservation dry-run (D-01/D-02/D-02a, IMAGE-03)
+- [x] 45-01-PLAN.md — Rename ImageData -> OriginalImageData + add nullable CroppedImageData on all three image tables (Character/DM/Contact) via a hand-edited RenameColumn migration + AutoMapper update; human data-preservation dry-run (D-01/D-02/D-02a, IMAGE-03)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -282,7 +282,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 42. Site-Wide Toast Notification Redesign | v6.1 | 5/5 | Complete | 2026-07-04 |
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
-| 45. Dual-Image Storage Backend | v7.0 | 0/? | Not started | — |
+| 45. Dual-Image Storage Backend | v7.0 | 1/3 | In Progress|  |
 | 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
