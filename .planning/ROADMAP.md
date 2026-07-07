@@ -234,7 +234,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Wave 2** *(blocked on Wave 1: needs the widened signatures + ViewModel property)*
 
-- [ ] 46-03-PLAN.md — Controller wiring: new GetCroppedPicture / GetCroppedContactImage read actions (Contact with IsVisibleTo parity), DM GetDMProfilePicture repoint, dual-file ValidateImagePair + widened persistence in all Create/Edit/EditProfile POSTs + integration tests (IMAGE-04/05, ASVS V4/V5)
+- [x] 46-03-PLAN.md — Controller wiring: new GetCroppedPicture / GetCroppedContactImage read actions (Contact with IsVisibleTo parity), DM GetDMProfilePicture repoint, dual-file ValidateImagePair + widened persistence in all Create/Edit/EditProfile POSTs + integration tests (IMAGE-04/05, ASVS V4/V5)
 
 **Wave 3** *(blocked on Wave 2: needs the cropped-read endpoints)*
 
@@ -302,7 +302,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 3/3 | Complete    | 2026-07-07 |
-| 46. Client-Side Crop UI | v7.0 | 3/7 | In Progress|  |
+| 46. Client-Side Crop UI | v7.0 | 4/7 | In Progress|  |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
