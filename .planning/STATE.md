@@ -4,12 +4,12 @@ milestone: v7.0
 milestone_name: Backlog Cleanup
 status: executing
 stopped_at: Phase 61 context gathered
-last_updated: "2026-07-07T06:16:29.132Z"
-last_activity: 2026-07-06 — Phase 60 complete
+last_updated: "2026-07-07T06:56:04.729Z"
+last_activity: 2026-07-07 -- Phase 61 execution started
 progress:
   total_phases: 17
   completed_phases: 16
-  total_plans: 40
+  total_plans: 42
   completed_plans: 40
   percent: 94
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 60 — Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
+**Current focus:** Phase 61 — allow-dms-to-edit-finalized-quest-details-excluding-proposed
 
 ## Current Position
 
-Phase: 60
-Plan: Not started
-Status: Executing Phase 60
-Last activity: 2026-07-06 — Phase 60 complete
+Phase: 61 (allow-dms-to-edit-finalized-quest-details-excluding-proposed) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 61
+Last activity: 2026-07-07 -- Phase 61 execution started
 
 ## Performance Metrics
 
