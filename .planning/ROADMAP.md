@@ -223,7 +223,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. The guild-member list page displays the cropped image for each character; the character details page and DM profile details page display the original, unmodified image
   4. On a real touchscreen device, the crop frame responds correctly to drag and pinch gestures, a real phone-camera photo crops with correct orientation (not sideways/upside-down), and a full-resolution camera photo does not crash or blank the crop canvas on iOS Safari — each verified on a real device, not devtools emulation
 
-**Plans**: 8 plans
+**Plans**: 7/8 plans executed
 **UI hint**: yes
 
 **Wave 1** *(no dependencies — run in parallel)*
@@ -239,8 +239,8 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 **Wave 3** *(blocked on Wave 2: needs the cropped-read endpoints)*
 
 - [x] 46-08-PLAN.md — Gap-closure plan (inserted mid-execution): a new 3-arg AddAsync overload on ICharacterService/IContactService reusing Phase 45's UpdateWithProfileImageAsync so a crop submitted at Create time is genuinely persisted, not silently discarded; also fixed a latent bug where Mapper.Map(model, entity) nulled tracked Owner/Group/CreatedByUser navigations on a fresh Create-time model (IMAGE-01/05)
-- [ ] 46-04-PLAN.md — Repoint every read-only avatar/thumbnail src to the cropped-read endpoints across Characters/Contacts index, Quest Details/Manage/_QuestCard, QuestLog Details (desktop+mobile); Details views left on original per D-03 (IMAGE-04)
-- [ ] 46-06-PLAN.md — Wire the crop modal + Cropper.js CDN(SRI) + image-crop.js/initImageCrop + hidden CroppedPictureFile input + cropped preview repoint into all 10 upload views (Character/Contact Create+Edit + Mobile, DM EditProfile + Mobile) (IMAGE-01/05)
+- [x] 46-04-PLAN.md — Repoint every read-only avatar/thumbnail src to the cropped-read endpoints across Characters/Contacts index, Quest Details/Manage/_QuestCard, QuestLog Details (desktop+mobile); Details views left on original per D-03 (IMAGE-04)
+- [x] 46-06-PLAN.md — Wire the crop modal + Cropper.js CDN(SRI) + image-crop.js/initImageCrop + hidden CroppedPictureFile input + cropped preview repoint into all 10 upload views (Character/Contact Create+Edit + Mobile, DM EditProfile + Mobile) (IMAGE-01/05)
 
 **Wave 4** *(blocked on Wave 3: verification checkpoint)*
 
@@ -303,7 +303,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 3/3 | Complete    | 2026-07-07 |
-| 46. Client-Side Crop UI | v7.0 | 5/8 | In Progress|  |
+| 46. Client-Side Crop UI | v7.0 | 7/8 | In Progress|  |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
@@ -563,4 +563,5 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
+
 - [ ] TBD (run /gsd-plan-phase 62 to break down)
