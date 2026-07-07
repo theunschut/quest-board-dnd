@@ -87,6 +87,38 @@ public class CharacterServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_NoNewUpload_PreservesExistingOriginalImage()
+    {
+        // Arrange: seed a character with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterServiceTests." + nameof(UpdateAsync_NoNewUpload_PreservesExistingOriginalImage), groupContext);
+        await SeedCharacterWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new CharacterRepository(context, mapper);
+        var service = new CharacterService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var character = await repository.GetCharacterWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        character.Should().NotBeNull();
+        character!.Level = 6; // unrelated-field edit
+        // Simulate the post-list-projection-change read path: GetCharacterWithDetailsAsync no
+        // longer loads the original image bytes, so the round-tripped model has a null original.
+        character.ProfilePicture = null;
+
+        // Act: no new photo uploaded this request
+        await service.UpdateAsync(character, hasNewOriginalUpload: false, TestContext.Current.CancellationToken);
+
+        // Assert: the stored original survives -- it must NOT have been wiped by the null
+        // round-tripped value
+        var original = await repository.GetCharacterOriginalPictureAsync(1, TestContext.Current.CancellationToken);
+        original.Should().Equal([1, 2, 3]);
+
+        var updated = await repository.GetCharacterWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        updated!.Level.Should().Be(6);
+    }
+
+    [Fact]
     public async Task UpdateAsync_NewOriginalUpload_ClearsStaleCroppedImage()
     {
         // Arrange: seed a character with original A + crop A
@@ -106,8 +138,12 @@ public class CharacterServiceTests
         // Act
         await service.UpdateAsync(character, hasNewOriginalUpload: true, TestContext.Current.CancellationToken);
 
-        // Assert: cropped read falls back to B's original, NOT A's stale crop -- proven
-        // through the real service call path, not a direct repository call.
+        // Assert: the stored original is replaced with the newly-uploaded bytes, and the
+        // cropped read falls back to B's original, NOT A's stale crop -- proven through the
+        // real service call path, not a direct repository call.
+        var original = await repository.GetCharacterOriginalPictureAsync(1, TestContext.Current.CancellationToken);
+        original.Should().Equal([70, 71, 72]);
+
         var cropped = await repository.GetCharacterCroppedPictureAsync(1, TestContext.Current.CancellationToken);
         cropped.Should().Equal([70, 71, 72]);
     }

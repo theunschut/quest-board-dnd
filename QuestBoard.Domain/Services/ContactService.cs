@@ -57,7 +57,16 @@ internal class ContactService(IContactRepository repository, IMapper mapper) : B
             croppedImageData = await repository.GetContactCroppedImageAsync(model.Id, token);
         }
 
-        await repository.UpdateWithProfileImageAsync(model, model.ContactImageData, croppedImageData, token);
+        // The original follows the same "don't trust the round-tripped value" rule as the
+        // crop above: the read path that populates model.ContactImageData no longer loads the
+        // original's bytes, so on a no-upload edit it must be re-fetched fresh here rather
+        // than passed straight through -- otherwise an unrelated-field edit would wipe the
+        // stored original image.
+        var originalImageData = hasNewOriginalUpload
+            ? model.ContactImageData
+            : await repository.GetContactOriginalImageAsync(model.Id, token);
+
+        await repository.UpdateWithProfileImageAsync(model, originalImageData, croppedImageData, token);
     }
 
     /// <inheritdoc/>

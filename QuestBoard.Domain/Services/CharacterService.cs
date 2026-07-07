@@ -102,7 +102,16 @@ internal class CharacterService(ICharacterRepository repository, IMapper mapper)
             croppedImageData = await repository.GetCharacterCroppedPictureAsync(model.Id, token);
         }
 
-        await repository.UpdateWithProfileImageAsync(model, model.ProfilePicture, croppedImageData, token);
+        // The original follows the same "don't trust the round-tripped value" rule as the
+        // crop above: the read path that populates model.ProfilePicture no longer loads the
+        // original's bytes, so on a no-upload edit it must be re-fetched fresh here rather
+        // than passed straight through -- otherwise an unrelated-field edit would wipe the
+        // stored original image.
+        var originalImageData = hasNewOriginalUpload
+            ? model.ProfilePicture
+            : await repository.GetCharacterOriginalPictureAsync(model.Id, token);
+
+        await repository.UpdateWithProfileImageAsync(model, originalImageData, croppedImageData, token);
     }
 
     /// <inheritdoc/>
