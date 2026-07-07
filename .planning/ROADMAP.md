@@ -223,8 +223,27 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. The guild-member list page displays the cropped image for each character; the character details page and DM profile details page display the original, unmodified image
   4. On a real touchscreen device, the crop frame responds correctly to drag and pinch gestures, a real phone-camera photo crops with correct orientation (not sideways/upside-down), and a full-resolution camera photo does not crash or blank the crop canvas on iOS Safari — each verified on a real device, not devtools emulation
 
-**Plans**: TBD
+**Plans**: 7 plans
 **UI hint**: yes
+
+**Wave 1** *(no dependencies — run in parallel)*
+
+- [ ] 46-01-PLAN.md — Widen the three Domain image-update methods (CharacterService/ContactService UpdateAsync, DungeonMasterProfileService UpsertProfileAsync) to accept a caller-supplied cropped byte[] + add CroppedPictureFile to the three ViewModels + service unit tests (IMAGE-01/05)
+- [ ] 46-02-PLAN.md — Convert .character-image / .contact-image list-card boxes to a 1:1 square aspect-ratio and remove the fixed-height mobile overrides (D-02, IMAGE-04)
+- [ ] 46-05-PLAN.md — Create the shared client crop pipeline: image-crop.js (EXIF/downscale via createImageBitmap, Cropper.js v2 1:1 init, $toCanvas extraction, DataTransfer dual-file population) + image-crop.css (IMAGE-01)
+
+**Wave 2** *(blocked on Wave 1: needs the widened signatures + ViewModel property)*
+
+- [ ] 46-03-PLAN.md — Controller wiring: new GetCroppedPicture / GetCroppedContactImage read actions (Contact with IsVisibleTo parity), DM GetDMProfilePicture repoint, dual-file ValidateImagePair + widened persistence in all Create/Edit/EditProfile POSTs + integration tests (IMAGE-04/05, ASVS V4/V5)
+
+**Wave 3** *(blocked on Wave 2: needs the cropped-read endpoints)*
+
+- [ ] 46-04-PLAN.md — Repoint every read-only avatar/thumbnail src to the cropped-read endpoints across Characters/Contacts index, Quest Details/Manage/_QuestCard, QuestLog Details (desktop+mobile); Details views left on original per D-03 (IMAGE-04)
+- [ ] 46-06-PLAN.md — Wire the crop modal + Cropper.js CDN(SRI) + image-crop.js/initImageCrop + hidden CroppedPictureFile input + cropped preview repoint into all 10 upload views (Character/Contact Create+Edit + Mobile, DM EditProfile + Mobile) (IMAGE-01/05)
+
+**Wave 4** *(blocked on Wave 3: verification checkpoint)*
+
+- [ ] 46-07-PLAN.md — Real-device verification, gated on an explicit device-access confirmation decision (Pre-Execution Blocker): desktop end-to-end crop/dual-file/D-03 flow, then iOS Safari EXIF orientation, 12MP canvas-memory ceiling, and touch-drag precision on a real device
 
 ## Progress
 
@@ -283,7 +302,7 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 43. Mobile Parity Fixes | v7.0 | 2/2 | Complete | 2026-07-04 |
 | 44. Post-Finalization Voting & Waitlist Auto-Promotion | v7.0 | 3/3 | Complete | 2026-07-04 |
 | 45. Dual-Image Storage Backend | v7.0 | 3/3 | Complete    | 2026-07-07 |
-| 46. Client-Side Crop UI | v7.0 | 0/? | Not started | — |
+| 46. Client-Side Crop UI | v7.0 | 0/7 | Not started | — |
 | 47. Group Membership Email Notification Fix | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 48. Open Board Action on Platform Group Index | v7.0 | 1/1 | Complete | 2026-07-04 |
 | 49. Fix Guild Members page missing group/tenant filtering | v7.0 | 4/4 | Complete | 2026-07-05 |
