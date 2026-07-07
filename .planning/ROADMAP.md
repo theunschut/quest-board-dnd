@@ -534,3 +534,13 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 61-02-PLAN.md — Implementation: relax finalized-edit block + IsFinalized plumbing + D-01 guard + conditional updateProposedDates in QuestController/EditQuestViewModel; hide Proposed Dates on Edit.cshtml/Edit.Mobile.cshtml; add Edit Quest entry point to Manage.cshtml/Manage.Mobile.cshtml (D-01/D-02/D-03/D-04)
+
+### Phase 62: Stop eagerly loading image bytes in list/entity queries
+
+**Goal:** No repository query for Characters, Contacts, or DungeonMaster profiles pulls the associated image byte[] into memory as part of returning list or single-entity data for display -- every page that renders a portrait/photo fetches that image only via its existing dedicated per-entity endpoint (GetProfilePicture / GetContactImage / GetDMProfilePicture), matching the pattern QuestRepository's ProjectWithoutCharacterImages already uses for Quest and QuestLog pages. CharacterRepository.GetAllCharactersWithDetailsAsync, GetCharactersByOwnerIdAsync, and GetCharacterWithDetailsAsync; ContactRepository.GetAllContactsWithDetailsAsync; and DungeonMasterProfileRepository.GetProfileByUserIdAsync stop using .Include(x => x.ProfileImage) and instead project a lightweight HasProfilePicture/HasContactImage boolean, with the corresponding ViewModels and AutoMapper profiles updated to match.
+**Requirements**: None (ad-hoc backlog phase -- no REQUIREMENTS.md mapping; source of truth is this session's codebase investigation)
+**Depends on:** Phase 46 (corrected from Phase 61 during discuss-phase 62 -- Phase 45/46 already touch these exact repositories/services: 45-02/45-03 add an explicit new-upload signal to CharacterService.UpdateAsync/ContactService.UpdateAsync to fix the same "unrelated-field edit wipes the image" hazard this phase would otherwise have to solve itself, and rename the per-entity read methods this phase's goal text references. Sequencing after 45/46 avoids duplicating that fix and building on stale method names. Not sequential with Phase 61 in practice -- 47-61 already executed independently of 45/46's completion.)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 62 to break down)
