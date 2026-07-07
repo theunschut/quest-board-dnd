@@ -354,6 +354,66 @@ public class ContactRepositoryTests
         afterDelete!.Notes.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task GetAllContactsWithDetailsAsync_ReflectsHasContactImage_TrueWithImage_FalseWithout()
+    {
+        // Arrange: two contacts in the same group, one with a stored image and one without.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_ReflectsHasContactImage_TrueWithImage_FalseWithout), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.Contacts.Add(new ContactEntity
+        {
+            Id = 1,
+            Name = "Has Picture",
+            GroupId = 1,
+            CreatedByUserId = 1,
+            IsRevealed = true,
+            CreatedAt = DateTime.UtcNow,
+            ProfileImage = new ContactImageEntity { Id = 1, OriginalImageData = [1, 2, 3] }
+        });
+        context.Contacts.Add(new ContactEntity
+        {
+            Id = 2,
+            Name = "No Picture",
+            GroupId = 1,
+            CreatedByUserId = 1,
+            IsRevealed = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contacts = await repository.GetAllContactsWithDetailsAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        contacts.Single(c => c.Name == "Has Picture").HasContactImage.Should().BeTrue();
+        contacts.Single(c => c.Name == "No Picture").HasContactImage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetContactWithDetailsAsync_ReflectsHasContactImage_TrueWithImage()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactWithDetailsAsync_ReflectsHasContactImage_TrueWithImage), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+
+        // Assert
+        contact.Should().NotBeNull();
+        contact!.HasContactImage.Should().BeTrue();
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }

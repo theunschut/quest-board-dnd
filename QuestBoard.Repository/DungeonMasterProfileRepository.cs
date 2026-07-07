@@ -31,9 +31,19 @@ internal class DungeonMasterProfileRepository(QuestBoardContext dbContext, IMapp
     public async Task<DungeonMasterProfile?> GetProfileByUserIdAsync(int userId, CancellationToken token = default)
     {
         var entity = await DbContext.DungeonMasterProfiles
-            .Include(p => p.ProfileImage)
             .FirstOrDefaultAsync(p => p.Id == userId, token);
-        return entity == null ? null : Mapper.Map<DungeonMasterProfile>(entity);
+        if (entity == null) return null;
+
+        var profile = Mapper.Map<DungeonMasterProfile>(entity);
+        // DM profile images are not group-scoped, so this reads directly from the image
+        // DbSet rather than rooting at DungeonMasterProfiles (unlike Character/Contact), matching
+        // the sibling read methods in this file. Image bytes are never selected here -- only a
+        // presence flag, via a scalar query that EF Core translates to an EXISTS/JOIN check.
+        profile.HasProfilePicture = await DbContext.DungeonMasterProfileImages
+            .Where(p => p.Id == userId)
+            .Select(p => p.OriginalImageData != null)
+            .FirstOrDefaultAsync(token);
+        return profile;
     }
 
     /// <inheritdoc/>
