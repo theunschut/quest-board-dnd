@@ -216,10 +216,19 @@ public class QuestController(
         viewModel.HasExistingSignups = hasExistingSignups;
         viewModel.IsFinalized = existingQuest.IsFinalized;
 
+        // BoardType is always resolved server-side from the active group, never trusted
+        // from the posted form. Resolved before the validation check so a re-rendered
+        // Edit form (on a validation failure) can hide Campaign-irrelevant fields without
+        // throwing, and reused below for the Campaign sanitization.
+        var boardType = await GetActiveBoardTypeAsync(token);
+
         // A finalized quest already has a locked-in roster; lowering the seat count below
         // the number of players already selected would leave the quest over capacity with
         // no mechanism to reconcile it, so reject the edit instead of silently dropping anyone.
-        if (existingQuest.IsFinalized)
+        // Scoped to non-Campaign boards: TotalPlayerCount is hidden from the Campaign Edit form
+        // and always model-binds to 0, which would otherwise always trip this guard for a quest
+        // that is (abnormally) both IsFinalized and on a Campaign board.
+        if (existingQuest.IsFinalized && boardType != BoardType.Campaign)
         {
             var selectedPlayerCount = existingQuest.PlayerSignups.Count(ps => ps.IsSelected && ps.Role == SignupRole.Player);
             if (viewModel.Quest.TotalPlayerCount < selectedPlayerCount)
@@ -229,12 +238,6 @@ public class QuestController(
                     $"Total Player Count cannot be less than the {selectedPlayerCount} players already selected for this quest.");
             }
         }
-
-        // BoardType is always resolved server-side from the active group, never trusted
-        // from the posted form. Resolved before the validation check so a re-rendered
-        // Edit form (on a validation failure) can hide Campaign-irrelevant fields without
-        // throwing, and reused below for the Campaign sanitization.
-        var boardType = await GetActiveBoardTypeAsync(token);
 
         if (!ModelState.IsValid)
         {
