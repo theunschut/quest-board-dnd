@@ -159,12 +159,6 @@ public class QuestController(
             return Forbid();
         }
 
-        // Don't allow editing of finalized quests
-        if (quest.IsFinalized)
-        {
-            return BadRequest("Cannot edit a finalized quest. Open the quest first to make changes.");
-        }
-
         var dms = await userService.GetAllDungeonMastersAsync(token);
         var questViewModel = mapper.Map<QuestViewModel>(quest);
 
@@ -180,7 +174,8 @@ public class QuestController(
             Quest = questViewModel,
             DungeonMasters = dms,
             CanEditProposedDates = canEditProposedDates,
-            HasExistingSignups = hasExistingSignups
+            HasExistingSignups = hasExistingSignups,
+            IsFinalized = quest.IsFinalized
         });
     }
 
@@ -214,17 +209,26 @@ public class QuestController(
             return Forbid();
         }
 
-        // Don't allow editing of finalized quests
-        if (existingQuest.IsFinalized)
-        {
-            return BadRequest("Cannot edit a finalized quest. Open the quest first to make changes.");
-        }
-
         // Allow editing of proposed dates even with signups (service will handle it intelligently)
         var canEditProposedDates = true;
         var hasExistingSignups = existingQuest.PlayerSignups.Any();
         viewModel.CanEditProposedDates = canEditProposedDates;
         viewModel.HasExistingSignups = hasExistingSignups;
+        viewModel.IsFinalized = existingQuest.IsFinalized;
+
+        // A finalized quest already has a locked-in roster; lowering the seat count below
+        // the number of players already selected would leave the quest over capacity with
+        // no mechanism to reconcile it, so reject the edit instead of silently dropping anyone.
+        if (existingQuest.IsFinalized)
+        {
+            var selectedPlayerCount = existingQuest.PlayerSignups.Count(ps => ps.IsSelected && ps.Role == SignupRole.Player);
+            if (viewModel.Quest.TotalPlayerCount < selectedPlayerCount)
+            {
+                ModelState.AddModelError(
+                    "Quest.TotalPlayerCount",
+                    $"Total Player Count cannot be less than the {selectedPlayerCount} players already selected for this quest.");
+            }
+        }
 
         // BoardType is always resolved server-side from the active group, never trusted
         // from the posted form. Resolved before the validation check so a re-rendered
@@ -258,8 +262,8 @@ public class QuestController(
             viewModel.Quest.ChallengeRating,
             viewModel.Quest.TotalPlayerCount,
             viewModel.Quest.DungeonMasterSession,
-            true,
-            viewModel.Quest.ProposedDates,
+            !existingQuest.IsFinalized,
+            existingQuest.IsFinalized ? null : viewModel.Quest.ProposedDates,
             token
         );
 
