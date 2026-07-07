@@ -12,8 +12,9 @@ public interface IDungeonMasterProfileService : IBaseService<DungeonMasterProfil
     /// <summary>
     /// Creates the DM's profile on first save, or updates bio/image on subsequent saves.
     /// imageBytes replaces the stored image; removeImage clears it; both absent leaves the existing image unchanged.
+    /// newCroppedImageData, when supplied, is persisted as the new cropped image alongside the original.
     /// </summary>
-    Task UpsertProfileAsync(int userId, string? bio, byte[]? imageBytes, bool removeImage = false, CancellationToken token = default);
+    Task UpsertProfileAsync(int userId, string? bio, byte[]? imageBytes, bool removeImage = false, byte[]? newCroppedImageData = null, CancellationToken token = default);
 
     /// <summary>
     /// Returns the DM's original (unmodified) profile image bytes, or null if none is set.
