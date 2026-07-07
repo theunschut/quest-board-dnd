@@ -198,7 +198,18 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. No server-side image-decoding or image-processing library (SkiaSharp, ImageSharp, Magick.NET, etc.) is added to the project — the server only validates and stores the byte arrays it receives
   4. The two stored images are independently retrievable (e.g. via distinct repository/service calls), ready for Phase 46 to wire into the character-details ("show original") and guild-member-list ("show cropped") pages
 
-**Plans**: TBD
+**Plans**: 3 plans
+**Wave 1**
+
+- [ ] 45-01-PLAN.md — Rename ImageData -> OriginalImageData + add nullable CroppedImageData on all three image tables (Character/DM/Contact) via a hand-edited RenameColumn migration + AutoMapper update; human data-preservation dry-run (D-01/D-02/D-02a, IMAGE-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 45-02-PLAN.md — Widen the three repositories/services to store both columns atomically + distinct original/cropped reads with query-level fallback; Pitfall 4 (fetch-and-preserve) + Pitfall 5 (clear stale crop) regression tests; new DungeonMasterProfileRepositoryTests (IMAGE-03, success criteria #2/#4)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 45-03-PLAN.md — Shared IImageValidationService (Domain) replacing 5 inline validation blocks across all 3 controllers + closing the DM MIME/extension gap + repoint serving actions to the renamed reads (D-03, IMAGE-02/IMAGE-03, ASVS V5)
 
 ### Phase 46: Client-Side Crop UI
 
