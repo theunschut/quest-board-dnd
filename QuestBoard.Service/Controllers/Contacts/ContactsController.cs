@@ -98,6 +98,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return View(viewModel);
             }
 
+            byte[]? croppedImageData = null;
             var newContactImageFile = viewModel.ContactImageFile;
             if (newContactImageFile != null && newContactImageFile.Length > 0)
             {
@@ -124,6 +125,13 @@ namespace QuestBoard.Service.Controllers.Contacts
                 using var memoryStream = new MemoryStream();
                 await newContactImageFile.CopyToAsync(memoryStream, token);
                 viewModel.ContactImage = memoryStream.ToArray();
+
+                if (viewModel.CroppedPictureFile is { Length: > 0 } submittedCrop)
+                {
+                    using var croppedMemoryStream = new MemoryStream();
+                    await submittedCrop.CopyToAsync(croppedMemoryStream, token);
+                    croppedImageData = croppedMemoryStream.ToArray();
+                }
             }
 
             var contact = mapper.Map<Contact>(viewModel);
@@ -134,7 +142,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             contact.CreatedByUserId = currentUser.Id;
             contact.IsRevealed = false;
 
-            await contactService.AddAsync(contact, token);
+            await contactService.AddAsync(contact, croppedImageData, token);
 
             return RedirectToAction(nameof(Index));
         }

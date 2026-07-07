@@ -126,6 +126,7 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             // Handle profile picture upload
+            byte[]? croppedImageData = null;
             var newProfilePictureFile = viewModel.ProfilePictureFile;
             if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
             {
@@ -152,6 +153,13 @@ namespace QuestBoard.Service.Controllers.Characters
                 using var memoryStream = new MemoryStream();
                 await newProfilePictureFile.CopyToAsync(memoryStream, token);
                 viewModel.ProfilePicture = memoryStream.ToArray();
+
+                if (viewModel.CroppedPictureFile is { Length: > 0 } submittedCrop)
+                {
+                    using var croppedMemoryStream = new MemoryStream();
+                    await submittedCrop.CopyToAsync(croppedMemoryStream, token);
+                    croppedImageData = croppedMemoryStream.ToArray();
+                }
             }
 
             var character = mapper.Map<Character>(viewModel);
@@ -160,7 +168,7 @@ namespace QuestBoard.Service.Controllers.Characters
             // (CharacterEntity is scoped by a global query filter on GroupId).
             character.GroupId = activeGroupContext.RequireActiveGroupId();
 
-            await characterService.AddAsync(character, token);
+            await characterService.AddAsync(character, croppedImageData, token);
 
             return RedirectToAction(nameof(Index));
         }
