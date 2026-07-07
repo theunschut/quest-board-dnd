@@ -91,7 +91,8 @@
 .contacts-page .contact-image {
     position: relative;
     width: 100%;
-    height: 200px;
+    aspect-ratio: 1 / 1;
+    height: auto;
     margin-bottom: 1rem;
     border-radius: 8px;
     overflow: hidden;
@@ -219,10 +220,6 @@
     .contacts-page .contact-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
-    }
-
-    .contacts-page .contact-image {
-        height: 180px;
     }
 
     .contacts-page .contact-card:hover {
