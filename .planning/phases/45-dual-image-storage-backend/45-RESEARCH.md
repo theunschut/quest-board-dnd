@@ -524,22 +524,25 @@ CreateMap<CharacterEntity, Character>()
 
 **If this table is empty:** N/A — see rows above. Both assumptions are low-risk and independently verifiable in under a minute during planning (re-run a test, or read one `.csproj` file); neither blocks planning from proceeding on the stated recommendation.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **What does a widened `UpdateProfileImageAsync` call pass for the "other" column on an edit that doesn't touch it?**
+1. **RESOLVED — What does a widened `UpdateProfileImageAsync` call pass for the "other" column on an edit that doesn't touch it?**
    - What we know: Today's single-column call always round-trips the existing value from the ViewModel (see Pitfall 4), so the same pattern must extend to two columns without introducing a silent-wipe bug.
    - What's unclear: Whether to solve this via a 3-state parameter (not-provided vs. explicit-null vs. new-bytes) on the repository method, or via the Service layer always fetching-then-passing-through both existing values explicitly before calling the repository.
    - Recommendation: Service layer explicitly fetches and passes through the existing value for whichever column isn't being replaced in this call (mirrors the existing `model.ProfilePicture` round-trip pattern exactly, requires no new repository-method complexity). Plan this as an explicit task with its own verification step (Pitfall 4's suggested test).
+   - **Resolution:** Plan 45-02 introduced an explicit `UpdateAsync(model, hasNewOriginalUpload, token)` overload on `CharacterService`/`ContactService` (DM's existing `imageBytes != null` signal was already sufficient). Plan 45-03 wires the Character/Contact controllers' Edit POST actions to call this overload with the same `IFormFile != null && .Length > 0` boolean that already gates `CopyToAsync`, closing the gap a first plan-checker pass caught (the overload existed but nothing called it with the real signal). Verified end-to-end via controller-level integration tests, not just service/repository unit tests.
 
-2. **Should uploading a new original (no crop UI yet) clear a stale `CroppedImageData`?**
+2. **RESOLVED — Should uploading a new original (no crop UI yet) clear a stale `CroppedImageData`?**
    - What we know: CONTEXT.md doesn't explicitly decide this; it's implied by D-02a's fallback rationale but not stated as a rule for the re-upload case.
    - What's unclear: Whether this is truly in-scope for Phase 45 (which has no crop UI to make the distinction observable yet) or something Phase 46 should own instead, since Phase 45+46 ship together per D-04.
    - Recommendation: Decide and implement in Phase 45 regardless (it's a one-line addition to the same widened repository method already being built), since it's cheap now and closes Pitfall 5 before it can ever manifest, rather than leaving a latent bug for Phase 46 to discover.
+   - **Resolution:** Yes — implemented in Phase 45. A genuinely new original upload passes `croppedImageData: null` through to the repository, clearing any stale crop. Verified via both a repository-level test and a controller-level integration test (see Open Question 1's resolution).
 
-3. **Exact `IImageValidationService` parameter type — `IFormFile` vs. primitives?**
+3. **RESOLVED — Exact `IImageValidationService` parameter type — `IFormFile` vs. primitives?**
    - What we know: `QuestBoard.Domain` today has no `IFormFile` usage anywhere; `IFormFile` only appears on Service-layer ViewModels.
    - What's unclear: Whether adding `Microsoft.AspNetCore.Http.Abstractions` as a Domain package reference is acceptable under this codebase's layering conventions (CLAUDE.md is explicit about EF packages being Repository-only, but is silent on ASP.NET Core abstractions in Domain).
    - Recommendation: Default to primitive parameters (`byte[] bytes, string contentType, string fileName`) unless the planner finds an existing precedent of `Microsoft.AspNetCore.*` types already referenced in `QuestBoard.Domain` — check the `.csproj` directly (trivial, see Assumption A2).
+   - **Resolution:** The pattern-mapper found `QuestBoard.Domain.csproj` already has `<FrameworkReference Include="Microsoft.AspNetCore.App" />`, making `IFormFile` viable with zero new package cost — correcting this document's Assumption A2. Plan 45-03 made an explicit, documented choice of primitive parameters anyway (for testability), noting the `IFormFile` option was available but not required.
 
 ## Environment Availability
 
