@@ -60,10 +60,13 @@ public class QuestLogController(
             }
         }
 
-        // Check if current user can edit recap (DM or admin)
+        // Recap editing is open to any authenticated viewer of this quest, while managing the
+        // quest itself (Open/Close, edit details, remove signups) stays limited to this quest's
+        // DM or an admin.
         var isQuestDm = currentUser != null && currentUser.Id == quest.DungeonMaster?.Id;
         var isAdmin = currentUser != null && await GetEffectiveRoleAsync() == GroupRole.Admin;
-        ViewBag.CanEditRecap = isQuestDm || isAdmin;
+        ViewBag.CanEditRecap = currentUser != null;
+        ViewBag.CanManageQuest = isQuestDm || isAdmin;
 
         var viewModel = new QuestLogDetailsViewModel
         {
@@ -75,7 +78,6 @@ public class QuestLogController(
     }
 
     [HttpGet]
-    [Authorize(Policy = "DungeonMasterOnly")]
     public async Task<IActionResult> EditRecap(int id, CancellationToken token = default)
     {
         var quest = await questService.GetQuestWithDetailsAsync(id, token);
@@ -101,21 +103,11 @@ public class QuestLogController(
             return Challenge();
         }
 
-        // Check if current user is the quest's DM or an admin
-        var isQuestDm = currentUser.Id == quest.DungeonMaster?.Id;
-        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
-
-        if (!isQuestDm && !isAdmin)
-        {
-            return Forbid();
-        }
-
         return View(new EditRecapViewModel { Id = quest.Id, Recap = quest.Recap, Quest = quest });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = "DungeonMasterOnly")]
     public async Task<IActionResult> EditRecap(int id, string recap, CancellationToken token = default)
     {
         var quest = await questService.GetQuestWithDetailsAsync(id, token);
@@ -139,15 +131,6 @@ public class QuestLogController(
         if (currentUser == null)
         {
             return Challenge();
-        }
-
-        // Check if current user is the quest's DM or an admin
-        var isQuestDm = currentUser.Id == quest.DungeonMaster?.Id;
-        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
-
-        if (!isQuestDm && !isAdmin)
-        {
-            return Forbid();
         }
 
         await questService.UpdateQuestRecapAsync(id, recap, token);
