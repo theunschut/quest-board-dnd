@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 46
-current_phase_name: Client-Side Crop UI
+current_phase: 47
+current_phase_name: "Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob"
 status: executing
 stopped_at: Phase 46 UI-SPEC approved
-last_updated: "2026-07-07T16:02:48.123Z"
+last_updated: "2026-07-07T20:37:01.103Z"
 last_activity: 2026-07-07
-last_activity_desc: Phase 46 execution resumed (wave continue)
+last_activity_desc: Phase 46 complete, transitioned to Phase 47
 progress:
-  total_phases: 20
-  completed_phases: 18
+  total_phases: 22
+  completed_phases: 19
   total_plans: 53
-  completed_plans: 50
-  percent: 90
+  completed_plans: 53
+  percent: 86
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone
 
 ## Current Position
 
-Phase: 46 (Client-Side Crop UI) — EXECUTING
-Plan: 1 of 7
+Phase: 47 — Group Membership Email Notification Fix: adding an existing user to a group via the Platform area's GroupController.AddMember action sends no email notification, unlike the CreateMember action in the same controller and AdminController.CreateUser, which both already enqueue GroupMembershipAddedEmailJob
+Plan: Not started
 Status: Executing Phase 46
-Last activity: 2026-07-07 — Phase 46 execution resumed (wave continue)
+Last activity: 2026-07-07 — Phase 46 complete, transitioned to Phase 47
 
 ## Performance Metrics
 
@@ -56,6 +56,8 @@ Last activity: 2026-07-07 — Phase 46 execution resumed (wave continue)
 
 ### Roadmap Evolution
 
+- Phase 64 added: Preserve line breaks in description text on mobile views to match desktop rendering
+- Phase 63 added: Allow any player to edit quest recaps, not just the assigned DM or admin
 - Phase 61 added: Allow DMs to edit finalized quest details (excluding proposed and selected dates)
 - Phase 60 added: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
 - Phase 59 added: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
