@@ -128,3 +128,7 @@ None — no external service configuration required.
 ---
 *Phase: 46-client-side-crop-ui*
 *Completed: 2026-07-07*
+
+## Self-Check: PASSED
+
+All 12 claimed modified/created files found on disk (4 Domain interface/service files, 2 controller files, 2 repository files, 2 unit test files, 2 integration test files). All 4 commit hashes (`f15aeb2`, `bc646b2`, `7c842b2`, `c3d5e45`) found in git history.
