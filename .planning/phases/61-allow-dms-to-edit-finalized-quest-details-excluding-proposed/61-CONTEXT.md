@@ -12,6 +12,8 @@ This phase removes that block for the non-date fields: a DM (or Admin) can edit 
 
 Scoped to OneShot-board quests only — Campaign-board quests never use `IsFinalized`/`Finalize` (no proposed dates, no per-quest signup capacity; they use `Close`/`Reopen` instead) and are already always editable via the existing Campaign section on Manage, unchanged by this phase.
 
+**Mobile parity is mandatory, not a follow-up.** Every view change this phase makes (hiding Proposed Dates on Edit, adding the Edit Quest button on Manage) must ship identically on `Edit.Mobile.cshtml` and `Manage.Mobile.cshtml` in the same plan/commit as the desktop change — not as a separate pass. This project has twice shipped a desktop-only fix and had to backfill mobile in its own phase (Phase 43 "Mobile Parity Fixes", Phase 54 "Fix mobile signup for finalized quests (inconsistent with desktop)" — the same finalized-quest area this phase touches). Do not repeat that pattern here.
+
 **Not in scope:** changing who is selected (`PlayerSignup.IsSelected`) — that stays governed by `Finalize`, `ChangeVoteAsync`'s auto-promotion, `RevokeSignupAsync`, and the Admin-only `RemovePlayerSignup` action, none of which this phase touches. The existing `Open` action/button is untouched and remains available for DMs who genuinely want to reset dates and selections.
 
 </domain>
@@ -29,11 +31,13 @@ Scoped to OneShot-board quests only — Campaign-board quests never use `IsFinal
 - **D-03:** Editing works on any finalized quest regardless of how long ago the session happened — no cutoff at the "Done" status (`IsFinalized && FinalizedDate <= yesterday`, shown as a dark "Done" badge on Manage). Same latitude as Phase 53's Recap editing, which also has no time cutoff. `IsFinalized` alone is the only gate that matters; `IsClosed`/`Done` state is irrelevant to whether Edit is reachable.
 
 ### Entry point & form reuse
-- **D-04:** Reuse the existing `EditQuestViewModel` / `Quest/Edit.cshtml` (+ `.Mobile.cshtml`) and the existing `QuestController.Edit` GET/POST actions — no new controller action, no new view. Changes needed:
+- **D-04:** Reuse the existing `EditQuestViewModel` / `Quest/Edit.cshtml` and the existing `QuestController.Edit` GET/POST actions — no new controller action, no new view (controller-level changes are shared by both desktop and mobile automatically, since both views bind to the same `EditQuestViewModel`). Changes needed:
   - Remove the `if (quest.IsFinalized) return BadRequest(...)` block from both `Edit` GET and POST (`QuestController.cs`).
-  - In the view, wrap the "Proposed Dates & Times" block (`Edit.cshtml:68-102`, `Edit.Mobile.cshtml`'s equivalent block) so it only renders `@if (boardType != BoardType.Campaign && !quest.IsFinalized)` — needs `IsFinalized` passed to the view (via `EditQuestViewModel` or `ViewBag`, since `QuestViewModel` itself has no `IsFinalized` property today).
   - In the POST action, when `existingQuest.IsFinalized`, call `UpdateQuestPropertiesWithNotificationsAsync` with `updateProposedDates: false` (omit `viewModel.Quest.ProposedDates` entirely) instead of today's hardcoded `true`.
-  - Add an "Edit Quest" button on the finalized-OneShot branch of Manage, next to the existing "Open Quest" button: desktop `Manage.cshtml` around line 500-512 (inside the `<div class="d-flex gap-2">` alongside `Open`/`CreateFollowUp`/`SendReminder`), mobile `Manage.Mobile.cshtml` around line 120-139 (same `d-flex flex-wrap gap-2` group).
+  - **Desktop view** `Edit.cshtml:68-102` — wrap the "Proposed Dates & Times" block so it only renders `@if (boardType != BoardType.Campaign && !quest.IsFinalized)` — needs `IsFinalized` passed to the view (via `EditQuestViewModel` or `ViewBag`, since `QuestViewModel` itself has no `IsFinalized` property today).
+  - **Mobile view** `Edit.Mobile.cshtml` — apply the exact same `!IsFinalized` condition to its own Proposed Dates block. This is not optional/deferred — both files change together in the same plan.
+  - **Desktop entry point** — add an "Edit Quest" button on the finalized-OneShot branch of `Manage.cshtml` around line 500-512, next to `Open`/`CreateFollowUp`/`SendReminder` (inside the `<div class="d-flex gap-2">` group).
+  - **Mobile entry point** — add the matching "Edit Quest" button to `Manage.Mobile.cshtml` around line 120-139 (same `d-flex flex-wrap gap-2` group), same visual position relative to `Open Quest` as desktop.
 
 ### Claude's Discretion
 - Exact wording of the Total Player Count validation error message (D-01) — just needs to state the current selected-player count and that it can't be lowered below it.
@@ -63,14 +67,14 @@ No external ADRs/specs — this is an ad-hoc backlog phase (no REQUIREMENTS.md m
 - `QuestBoard.Repository/QuestRepository.cs` — `UpdateQuestPropertiesWithNotificationsAsync` (repository impl) — only touches `entity.ProposedDates` when `updateProposedDates && proposedDates != null`; already safe to call with `false` for finalized-quest edits, no repository change needed for that part.
 - `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` — `Finalize` action (~line 646) — reference for how `quest.PlayerSignups.Where(ps => selectedPlayerIds.Contains(ps.Id) && ps.Role == SignupRole.Player).Count()` computes the player-role selected count; D-01's validation needs the equivalent `quest.PlayerSignups.Count(ps => ps.IsSelected && ps.Role == SignupRole.Player)` against the *existing* selection (not a posted list) since Edit doesn't touch signups.
 
-### Views — hide Proposed Dates when finalized
+### Views — hide Proposed Dates when finalized (desktop AND mobile, same plan)
 - `QuestBoard.Service/Views/Quest/Edit.cshtml:42-103` — the `@if (boardType != BoardType.Campaign)` block wrapping Challenge Rating/Total Player Count/DM Session/Proposed Dates; only the inner Proposed Dates sub-block (lines 68-102) needs the added `&& !IsFinalized` condition — CR/TotalPlayerCount/DMSession stay visible and editable per this phase's goal.
-- `QuestBoard.Service/Views/Quest/Edit.Mobile.cshtml` — same structural mirror, its own Proposed Dates block (grep-confirmed around the `Model.Quest.ProposedDates` references).
-- `QuestBoard.Service/Views/Quest/Edit.cshtml:118-146` — "Quest Editing Tips" sidebar — currently all tips are about dates; see Claude's Discretion for finalized-state handling.
+- `QuestBoard.Service/Views/Quest/Edit.Mobile.cshtml` — same structural mirror, its own Proposed Dates block (grep-confirmed around the `Model.Quest.ProposedDates` references) — apply the identical `&& !IsFinalized` condition. Required in the same plan as the desktop change, not a follow-up phase.
+- `QuestBoard.Service/Views/Quest/Edit.cshtml:118-146` — "Quest Editing Tips" sidebar — currently all tips are about dates; see Claude's Discretion for finalized-state handling. Check whether `Edit.Mobile.cshtml` has an equivalent tips block and apply the same treatment if so.
 
-### Manage page — new Edit Quest entry point for finalized quests
+### Manage page — new Edit Quest entry point for finalized quests (desktop AND mobile, same plan)
 - `QuestBoard.Service/Views/Quest/Manage.cshtml:500-521` — finalized-OneShot button row (`Open Quest` / `Create Follow-Up Quest` / `Send Reminder`) — add `Edit Quest` here per D-04.
-- `QuestBoard.Service/Views/Quest/Manage.Mobile.cshtml:120-139` — same row, mobile variant.
+- `QuestBoard.Service/Views/Quest/Manage.Mobile.cshtml:120-139` — same row, mobile variant. Required in the same plan as the desktop button, not a follow-up phase — this exact gap (desktop-only fix in the finalized-quest area) is what Phase 54 had to backfill.
 - `QuestBoard.Service/Views/Quest/Manage.cshtml:100-116` / `Manage.Mobile.cshtml:144-158` — the pre-finalize "No Proposed Dates" empty-state `Edit Quest` link — unaffected, already works today, listed only for contrast (this is the *unfinalized* Edit entry point, not the one this phase adds).
 
 ### Untouched — confirm no regressions
@@ -92,9 +96,8 @@ No external ADRs/specs — this is an ad-hoc backlog phase (no REQUIREMENTS.md m
 - Authorization for Edit is already correct for this phase's needs: `[Authorize(Policy = "DungeonMasterOnly")]` + in-action `IsQuestOwner(currentUser, quest.DungeonMaster) || role == GroupRole.Admin` check — identical to `Finalize`/`Open`/`Close` — no authorization changes needed.
 
 ### Integration Points
-- Two controller actions (`Edit` GET, `Edit` POST) — remove/relax the `IsFinalized` block, add D-01's validation, pass `IsFinalized` to the view, call `UpdateQuestPropertiesWithNotificationsAsync` with `updateProposedDates: false` for finalized quests.
-- Two views (`Edit.cshtml`, `Edit.Mobile.cshtml`) — condition the Proposed Dates sub-section on `!IsFinalized`.
-- Two views (`Manage.cshtml`, `Manage.Mobile.cshtml`) — add the new `Edit Quest` button to the finalized-OneShot button row.
+- Two controller actions (`Edit` GET, `Edit` POST) — remove/relax the `IsFinalized` block, add D-01's validation, pass `IsFinalized` to the view, call `UpdateQuestPropertiesWithNotificationsAsync` with `updateProposedDates: false` for finalized quests. Controller changes are shared by desktop and mobile automatically.
+- Four view files, always touched in pairs, never one without the other: `Edit.cshtml` + `Edit.Mobile.cshtml` (condition Proposed Dates on `!IsFinalized`), `Manage.cshtml` + `Manage.Mobile.cshtml` (add the new `Edit Quest` button to the finalized-OneShot button row).
 - No new migration, no new ViewModel class, no new service/repository method — every touched file already exists.
 
 </code_context>
