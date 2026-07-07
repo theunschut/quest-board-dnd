@@ -153,6 +153,7 @@
                     <cropper-canvas background style="width:100%;height:400px;">
                         <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
                         <cropper-shade hidden></cropper-shade>
+                        <cropper-handle action="move" plain></cropper-handle>
                         <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
                             <cropper-grid role="grid" bordered covered></cropper-grid>
                             <cropper-crosshair centered></cropper-crosshair>
@@ -262,7 +263,7 @@
     <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
             integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
             crossorigin="anonymous"></script>
-    <script src="~/js/image-crop.js"></script>
+    <script src="~/js/image-crop.js" asp-append-version="true"></script>
     <script>
         initImageCrop({ fileInputId: 'profilePictureInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
     </script>

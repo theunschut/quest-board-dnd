@@ -174,17 +174,37 @@ function initImageCrop(config) {
         cropperImageEl.src = currentObjectUrl;
 
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
 
-        // Populate the hidden input from the default centered selection immediately, before any
-        // user interaction, so the surrounding form never blocks on an explicit "confirm crop"
-        // click -- a value already exists even if the modal is dismissed untouched.
-        try {
-            await populateHiddenInputFromCurrentSelection();
-        } catch (err) {
-            // The default-selection extraction can only fail if the Cropper.js element hasn't
-            // finished initializing yet; "Use This Crop" below re-extracts regardless.
+        // Bootstrap defers the modal's actual display:block until after the backdrop's fade
+        // transition finishes, so modal.show() returning does NOT mean the canvas has real
+        // layout dimensions yet. Cropper.js v2's own auto-fit (CropperImage.$handleLoad's
+        // $center('contain'), fired from the <img>'s load event) and the selection's one-time
+        // initial-coverage sizing (CropperSelection.connectedCallback's $initSelection) both
+        // run against a still-hidden (0x0) canvas -- the image ends up unscaled at native
+        // pixel size and the selection collapses to a zero-size box pinned at (0,0). Re-running
+        // both once the modal is confirmed visible fixes both with the canvas's real size.
+        // Populate the hidden input from the (currently default, centered) selection immediately,
+        // before any user interaction, so the surrounding form never blocks on an explicit
+        // "confirm crop" click -- a value already exists even if the modal is dismissed untouched.
+        async function fitImageAndSelectionToVisibleCanvas() {
+            cropperImageEl.$center('contain');
+            cropperSelectionEl.$initSelection(true, true);
+            try {
+                await populateHiddenInputFromCurrentSelection();
+            } catch (err) {
+                // Can only fail if the Cropper.js element hasn't finished initializing yet;
+                // "Use This Crop" below re-extracts regardless.
+            }
         }
+        if (modalEl.classList.contains('show')) {
+            await fitImageAndSelectionToVisibleCanvas();
+        } else {
+            modalEl.addEventListener('shown.bs.modal', function onShown() {
+                modalEl.removeEventListener('shown.bs.modal', onShown);
+                fitImageAndSelectionToVisibleCanvas();
+            });
+        }
+        modal.show();
     });
 
     if (confirmBtn) {
