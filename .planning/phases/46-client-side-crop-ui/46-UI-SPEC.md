@@ -81,7 +81,7 @@ Accent reserved for: the modal's primary action button, the crop-selection handl
 | Modal title | "Crop Your Photo" |
 | Modal helper text (below the crop stage, above the footer buttons) | "Drag to reposition, use the corner handles to resize. We'll use a square crop — if you skip this, we'll center one automatically." |
 | Primary CTA (modal footer, right-aligned per CLAUDE.md button-layout convention) | "Use This Crop" (confirms the current frame position/size and closes the modal) |
-| Secondary/cancel (modal footer, left-aligned) | "Cancel" (closes modal, clears the selected file from the input entirely — does not silently fall back to an uncropped submission, since there is nothing to submit without a file) |
+| Secondary/dismiss (modal footer, left-aligned) | "Discard Photo" (closes modal, clears the selected file from the input entirely — does not silently fall back to an uncropped submission, since there is nothing to submit without a file) |
 | Empty state — no photo uploaded yet (Character/Contact/DM forms, "current photo" preview area) | No heading needed; existing placeholder icon + no copy (matches current behavior — the `@if (Model.ProfilePicture != null)` block simply doesn't render). No change from today's behavior. |
 | Error state — file rejected (existing client-side file-size/type check, unchanged copy, now also covers the pre-processing step) | Existing: "File size ({X} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image." / "Only image files (JPG, PNG, GIF) are allowed." New addition for a corrupt/undecodable file: "This image couldn't be read. Please choose a different photo." (shown in the same `#fileSizeError`-style div, triggered when `createImageBitmap()` rejects) |
 | Destructive confirmation | None in this phase's scope — selecting a new file simply replaces the pending crop; there is no separate "delete photo" action inside the crop modal (that existing capability, if any, lives outside this phase's scope on the surrounding form) |
@@ -148,7 +148,7 @@ Use a **standard Bootstrap 5 modal** (`modal fade`), matching the existing dark-
       </div>
       <div class="modal-footer border-secondary d-flex justify-content-between">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
-          <i class="fas fa-times me-2"></i>Cancel
+          <i class="fas fa-times me-2"></i>Discard Photo
         </button>
         <button type="button" class="btn btn-warning" id="cropConfirmBtn">
           <i class="fas fa-check me-2"></i>Use This Crop
@@ -172,7 +172,7 @@ On the file input's `change` event:
 4. Cropper.js auto-applies its `initial-coverage="0.8"` centered selection at `aspect-ratio="1"` — this **is** the D-04 default crop; no additional JS needed to "center" it, since Cropper.js v2's own default selection behavior already satisfies the requirement.
 5. Populate the hidden `CroppedPictureFile` input immediately from that default selection (do not wait for the user to touch anything) — this guarantees a value exists even if the user closes the modal via "×", backdrop click is disabled (`data-bs-backdrop="static"` per the markup above — backdrop click and Esc are both disabled so the only way out is an explicit button, preventing an accidental miss-click from silently discarding the pending crop), or clicks "Use This Crop" without dragging anything.
 6. If the user drags/resizes, re-run step 5's extraction only on "Use This Crop" click (avoid re-extracting the canvas on every pointermove — expensive and unnecessary).
-7. "Cancel" clears the original file input's `.value` entirely (per the Copywriting Contract above) and destroys the Cropper.js instance so the next file selection starts fresh.
+7. "Discard Photo" clears the original file input's `.value` entirely (per the Copywriting Contract above) and destroys the Cropper.js instance so the next file selection starts fresh.
 
 **Why static backdrop instead of the default dismissible backdrop:** D-04 says the modal "never blocks form submission," which is about *not requiring an explicit confirm click before the surrounding form can be submitted* — it does not mean the modal itself should be dismissible by accidental outside-click while mid-drag on a touch device (a stray tap outside the crop stage on mobile is a likely accidental gesture, not intentional dismissal). Disabling backdrop/Esc dismissal removes that accidental-loss risk while still fully satisfying D-04, since the default crop is already populated into the hidden input regardless of how the modal closes.
 
