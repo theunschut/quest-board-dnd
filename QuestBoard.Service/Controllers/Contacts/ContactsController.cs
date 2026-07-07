@@ -345,6 +345,33 @@ namespace QuestBoard.Service.Controllers.Contacts
             return File(image, DetectImageMimeType(image));
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetCroppedContactImage(int id, CancellationToken token = default)
+        {
+            var contact = await contactService.GetContactWithDetailsAsync(id, token);
+            if (contact == null)
+            {
+                return NotFound();
+            }
+
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = currentUser.Id != 0 && await IsDmTierAsync();
+            var includeHidden = viewerIsDmTier && ReadShowHiddenToggle();
+
+            if (!IsVisibleTo(contact, currentUser.Id, includeHidden))
+            {
+                return NotFound();
+            }
+
+            var image = await contactService.GetContactCroppedImageAsync(id, token);
+            if (image == null)
+            {
+                return NotFound();
+            }
+
+            return File(image, DetectImageMimeType(image));
+        }
+
         private static string DetectImageMimeType(byte[] data) =>
             data.Length >= 4 && data[0] == 0x89 && data[1] == 0x50 ? "image/png" :
             data.Length >= 6 && data[0] == 0x47 && data[1] == 0x49 ? "image/gif" :

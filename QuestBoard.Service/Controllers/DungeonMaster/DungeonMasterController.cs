@@ -136,7 +136,7 @@ public class DungeonMasterController(
     {
         if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
 
-        var bytes = await dmProfileService.GetProfilePictureAsync(id, token);
+        var bytes = await dmProfileService.GetCroppedPictureAsync(id, token);
         if (bytes == null || bytes.Length == 0) return NotFound();
 
         var contentType = bytes.Length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50

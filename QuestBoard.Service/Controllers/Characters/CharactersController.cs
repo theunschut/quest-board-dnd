@@ -372,6 +372,18 @@ namespace QuestBoard.Service.Controllers.Characters
             return File(profilePicture, DetectImageMimeType(profilePicture));
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetCroppedPicture(int id, CancellationToken token = default)
+        {
+            var croppedPicture = await characterService.GetCharacterCroppedPictureAsync(id, token);
+            if (croppedPicture == null)
+            {
+                return NotFound();
+            }
+
+            return File(croppedPicture, DetectImageMimeType(croppedPicture));
+        }
+
         private static string DetectImageMimeType(byte[] data) =>
             data.Length >= 4 && data[0] == 0x89 && data[1] == 0x50 ? "image/png" :
             data.Length >= 6 && data[0] == 0x47 && data[1] == 0x49 ? "image/gif" :
