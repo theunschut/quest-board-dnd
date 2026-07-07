@@ -103,7 +103,15 @@ namespace QuestBoard.Service.Controllers.Contacts
             {
                 var original = new ImageFileInput(newContactImageFile.Length, newContactImageFile.ContentType,
                     newContactImageFile.FileName, nameof(viewModel.ContactImageFile));
-                var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+
+                ImageFileInput? cropped = null;
+                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
+                {
+                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+                }
+
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
                 foreach (var error in validationErrors)
                 {
                     ModelState.AddModelError(error.FieldName, error.Message);
@@ -181,12 +189,21 @@ namespace QuestBoard.Service.Controllers.Contacts
             // two checks can never drift apart.
             var hasNewOriginalUpload = viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0;
 
+            byte[]? newCroppedImageData = null;
             if (hasNewOriginalUpload)
             {
                 var newContactImageFile = viewModel.ContactImageFile!;
                 var original = new ImageFileInput(newContactImageFile.Length, newContactImageFile.ContentType,
                     newContactImageFile.FileName, nameof(viewModel.ContactImageFile));
-                var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+
+                ImageFileInput? cropped = null;
+                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
+                {
+                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+                }
+
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
                 foreach (var error in validationErrors)
                 {
                     ModelState.AddModelError(error.FieldName, error.Message);
@@ -200,13 +217,21 @@ namespace QuestBoard.Service.Controllers.Contacts
                 using var memoryStream = new MemoryStream();
                 await newContactImageFile.CopyToAsync(memoryStream, token);
                 existingContact.ContactImageData = memoryStream.ToArray();
+
+                if (cropped != null)
+                {
+                    using var croppedStream = new MemoryStream();
+                    await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+                    newCroppedImageData = croppedStream.ToArray();
+                }
             }
             // Otherwise, the contact image remains unchanged.
 
             // Passing hasNewOriginalUpload lets the service clear any stale cropped image when a
             // genuinely new original arrives, while preserving it on an edit that doesn't touch
-            // the photo.
-            await contactService.UpdateAsync(existingContact, hasNewOriginalUpload, token);
+            // the photo. newCroppedImageData carries a real submitted crop through so it persists
+            // instead of being cleared.
+            await contactService.UpdateAsync(existingContact, hasNewOriginalUpload, newCroppedImageData, token);
 
             return RedirectToAction(nameof(Details), new { id });
         }
@@ -337,6 +362,33 @@ namespace QuestBoard.Service.Controllers.Contacts
             }
 
             var image = await contactService.GetContactOriginalImageAsync(id, token);
+            if (image == null)
+            {
+                return NotFound();
+            }
+
+            return File(image, DetectImageMimeType(image));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCroppedContactImage(int id, CancellationToken token = default)
+        {
+            var contact = await contactService.GetContactWithDetailsAsync(id, token);
+            if (contact == null)
+            {
+                return NotFound();
+            }
+
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = currentUser.Id != 0 && await IsDmTierAsync();
+            var includeHidden = viewerIsDmTier && ReadShowHiddenToggle();
+
+            if (!IsVisibleTo(contact, currentUser.Id, includeHidden))
+            {
+                return NotFound();
+            }
+
+            var image = await contactService.GetContactCroppedImageAsync(id, token);
             if (image == null)
             {
                 return NotFound();
