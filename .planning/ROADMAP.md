@@ -560,7 +560,7 @@ Plans:
 **Goal:** No repository query for Characters, Contacts, or DungeonMaster profiles pulls the associated image byte[] into memory as part of returning list or single-entity data for display -- every page that renders a portrait/photo fetches that image only via its existing dedicated per-entity endpoint (GetProfilePicture / GetContactImage / GetDMProfilePicture), matching the pattern QuestRepository's ProjectWithoutCharacterImages already uses for Quest and QuestLog pages. CharacterRepository.GetAllCharactersWithDetailsAsync, GetCharactersByOwnerIdAsync, and GetCharacterWithDetailsAsync; ContactRepository.GetAllContactsWithDetailsAsync; and DungeonMasterProfileRepository.GetProfileByUserIdAsync stop using .Include(x => x.ProfileImage) and instead project a lightweight HasProfilePicture/HasContactImage boolean, with the corresponding ViewModels and AutoMapper profiles updated to match.
 **Requirements**: None (ad-hoc backlog phase -- no REQUIREMENTS.md mapping; source of truth is this session's codebase investigation)
 **Depends on:** Phase 46 (corrected from Phase 61 during discuss-phase 62 -- Phase 45/46 already touch these exact repositories/services: 45-02/45-03 add an explicit new-upload signal to CharacterService.UpdateAsync/ContactService.UpdateAsync to fix the same "unrelated-field edit wipes the image" hazard this phase would otherwise have to solve itself, and rename the per-entity read methods this phase's goal text references. Sequencing after 45/46 avoids duplicating that fix and building on stale method names. Not sequential with Phase 61 in practice -- 47-61 already executed independently of 45/46's completion.)
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -569,8 +569,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 62-02-PLAN.md — Write-path data-loss fix (RESEARCH.md Pitfall 1): CharacterService/ContactService UpdateAsync no-upload branch re-fetches original bytes fresh via GetCharacterOriginalPictureAsync/GetContactOriginalImageAsync so an unrelated-field edit never wipes the stored image; preserve-original regression tests (wave 2)
-- [ ] 62-03-PLAN.md — Display-path conversion (D-05, Pitfalls 2/4): ViewModel byte[]->bool rename, ViewModelProfile map updates, Create-POST local-variable staging, DM controller bool source fix, 15 Razor view gate updates, controller integration tests (wave 2)
+- [x] 62-02-PLAN.md — Write-path data-loss fix (RESEARCH.md Pitfall 1): CharacterService/ContactService UpdateAsync no-upload branch re-fetches original bytes fresh via GetCharacterOriginalPictureAsync/GetContactOriginalImageAsync so an unrelated-field edit never wipes the stored image; preserve-original regression tests (wave 2)
+- [x] 62-03-PLAN.md — Display-path conversion (D-05, Pitfalls 2/4): ViewModel byte[]->bool rename, ViewModelProfile map updates, Create-POST local-variable staging, DM controller bool source fix, 15 Razor view gate updates, controller integration tests (wave 2)
 
 ### Phase 63: Allow any player to edit quest recaps, not just the assigned DM or admin
 
