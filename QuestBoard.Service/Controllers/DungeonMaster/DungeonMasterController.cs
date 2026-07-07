@@ -106,12 +106,21 @@ public class DungeonMasterController(
             return View(viewModel);
 
         byte[]? imageBytes = null;
+        byte[]? newCroppedImageData = null;
         var newProfilePictureFile = viewModel.ProfilePictureFile;
         if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
         {
             var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
                 newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
-            var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+
+            ImageFileInput? cropped = null;
+            if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
+            {
+                cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                    croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+            }
+
+            var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
             foreach (var error in validationErrors)
             {
                 ModelState.AddModelError(error.FieldName, error.Message);
@@ -124,9 +133,16 @@ public class DungeonMasterController(
             using var memoryStream = new MemoryStream();
             await newProfilePictureFile.CopyToAsync(memoryStream, token);
             imageBytes = memoryStream.ToArray();
+
+            if (cropped != null)
+            {
+                using var croppedStream = new MemoryStream();
+                await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+                newCroppedImageData = croppedStream.ToArray();
+            }
         }
 
-        await dmProfileService.UpsertProfileAsync(targetUser.Id, viewModel.Bio, imageBytes, token: token);
+        await dmProfileService.UpsertProfileAsync(targetUser.Id, viewModel.Bio, imageBytes, newCroppedImageData: newCroppedImageData, token: token);
 
         return RedirectToAction(nameof(Profile), new { id = targetUser.Id });
     }
