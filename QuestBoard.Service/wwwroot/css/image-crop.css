@@ -1,0 +1,22 @@
+/* Crop modal stage layout. Cropper.js v2's Web Components carry their own internal styling,
+   so this file only handles the stage wrapper's layout and a touch-drag fix -- it does not
+   restyle any Cropper.js internal component. */
+
+.crop-stage {
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Prevent page/modal scroll from fighting the crop-frame drag/pinch gesture on touch devices --
+   without this, a finger-drag on the crop handles can also trigger the browser's own scroll. */
+.crop-stage cropper-canvas {
+    touch-action: none;
+}
+
+/* Reduce the crop stage's effective height on small viewports so the modal fits above the
+   on-screen keyboard/safe-area on a typical phone in portrait. */
+@media (max-width: 768px) {
+    .crop-stage cropper-canvas {
+        height: 320px !important;
+    }
+}
