@@ -19,7 +19,7 @@
 
             <div class="mb-3">
                 <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
-                @if (Model.ContactImage != null)
+                @if (Model.HasContactImage)
                 {
                     <div class="mb-2 text-center">
                         <img src="@Url.Action("GetCroppedContactImage", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />

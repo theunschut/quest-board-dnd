@@ -99,6 +99,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             }
 
             byte[]? croppedImageData = null;
+            byte[]? uploadedOriginalImageData = null;
             var newContactImageFile = viewModel.ContactImageFile;
             if (newContactImageFile != null && newContactImageFile.Length > 0)
             {
@@ -124,7 +125,7 @@ namespace QuestBoard.Service.Controllers.Contacts
 
                 using var memoryStream = new MemoryStream();
                 await newContactImageFile.CopyToAsync(memoryStream, token);
-                viewModel.ContactImage = memoryStream.ToArray();
+                uploadedOriginalImageData = memoryStream.ToArray();
 
                 if (viewModel.CroppedPictureFile is { Length: > 0 } submittedCrop)
                 {
@@ -135,6 +136,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             }
 
             var contact = mapper.Map<Contact>(viewModel);
+            contact.ContactImageData = uploadedOriginalImageData;
 
             // Tag the contact to the active group so the group-scoped roster query filter
             // applies (ContactEntity is scoped by a global query filter on GroupId).
