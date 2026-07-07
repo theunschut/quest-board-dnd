@@ -741,6 +741,105 @@ public class CharactersControllerIntegrationTests(WebApplicationFactoryBase fact
         persistedImage.OriginalImageData.Should().Equal(originalBytes);
     }
 
+    // Proves the boolean has-image gate (HasProfilePicture, projected without eager-loading
+    // the byte[] columns) actually drives the Index list rendering end-to-end: a character with
+    // a stored image renders the portrait endpoint, one without renders the placeholder instead.
+    [Fact]
+    public async Task Index_CharacterWithImage_RendersPortraitEndpoint()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, user.Id, "Character With Portrait", groupId: 1);
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<CharacterImageEntity>().Add(new CharacterImageEntity
+            {
+                Id = character.Id,
+                OriginalImageData = [1, 2, 3, 4]
+            });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act
+        var response = await client.GetAsync("/Characters", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain($"GetCroppedPicture/{character.Id}");
+    }
+
+    [Fact]
+    public async Task Index_CharacterWithoutImage_DoesNotRenderPortraitEndpoint()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, user.Id, "Character Without Portrait", groupId: 1);
+
+        // Act
+        var response = await client.GetAsync("/Characters", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain($"GetCroppedPicture/{character.Id}");
+    }
+
+    // Companion to Create_WithCroppedPhoto_PersistsCroppedImage — proves the original bytes
+    // land on the Domain model via the Task 2 local-variable staging fix, not just the crop.
+    [Fact]
+    public async Task Create_WithPhoto_PersistsOriginalImage()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "owner_create_original_persists", "owner_create_original_persists@example.com");
+
+        byte[] originalBytes = [11, 22, 33, 44];
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(owner.Id.ToString()), "OwnerId" },
+            { new StringContent("Brand New Character With Original Photo"), "Name" },
+            { new StringContent("5"), "Level" },
+            { new StringContent(((int)CharacterStatus.Active).ToString()), "Status" },
+            { new StringContent(((int)CharacterRole.Backup).ToString()), "Role" },
+            { new StringContent(""), "SheetLink" },
+            { new StringContent(""), "Description" },
+            { new StringContent(""), "Backstory" },
+            { new StringContent("5"), "Classes[0].Class" }, // Fighter
+            { new StringContent("5"), "Classes[0].ClassLevel" }
+        };
+        var originalFileContent = new ByteArrayContent(originalBytes);
+        originalFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(originalFileContent, "ProfilePictureFile", "new.png");
+
+        // Act
+        var response = await ownerClient.PostAsync(
+            "/Characters/Create", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedCharacter = context.Characters.IgnoreQueryFilters()
+            .FirstOrDefault(c => c.Name == "Brand New Character With Original Photo");
+        persistedCharacter.Should().NotBeNull();
+
+        var persistedImage = await context.Set<CharacterImageEntity>().FindAsync(
+            [persistedCharacter!.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.OriginalImageData.Should().Equal(originalBytes);
+    }
+
     // Proves the new GetCroppedPicture read action serves the stored crop.
     [Fact]
     public async Task GetCroppedPicture_CropStored_ReturnsOkWithContent()

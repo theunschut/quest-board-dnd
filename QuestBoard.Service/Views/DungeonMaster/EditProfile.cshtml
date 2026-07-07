@@ -23,7 +23,7 @@
                             <!-- Photo column -->
                             <div class="col-md-4 mb-3">
                                 <label asp-for="ProfilePictureFile" class="form-label">Profile Photo</label>
-                                @if (Model.ProfilePicture?.Length > 0)
+                                @if (Model.HasProfilePicture)
                                 {
                                     <div class="mb-2 text-center">
                                         <img src="@Url.Action("GetDMProfilePicture", new { id = Model.DungeonMasterId })"

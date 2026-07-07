@@ -26,7 +26,7 @@
             <!-- Photo section at top -->
             <div class="dm-editprofile-photo-section mb-3">
                 <label asp-for="ProfilePictureFile" class="form-label d-block">Profile Photo</label>
-                @if (Model.ProfilePicture?.Length > 0)
+                @if (Model.HasProfilePicture)
                 {
                     <div class="mb-2">
                         <img src="@Url.Action("GetDMProfilePicture", new { id = Model.DungeonMasterId })"

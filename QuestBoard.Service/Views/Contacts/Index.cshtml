@@ -45,7 +45,7 @@
                             <a href="@Url.Action("Details", new { id = contact.Id })" class="text-decoration-none">
                                 <div class="contact-card-content">
                                     <div class="contact-image">
-                                        @if (contact.ContactImage != null)
+                                        @if (contact.HasContactImage)
                                         {
                                             <img src="@Url.Action("GetCroppedContactImage", new { id = contact.Id })" alt="@contact.Name" />
                                         }

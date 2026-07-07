@@ -24,7 +24,7 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label asp-for="ProfilePictureFile" class="form-label">Profile Picture</label>
-                        @if (Model.ProfilePicture != null)
+                        @if (Model.HasProfilePicture)
                         {
                             <div class="mb-2">
                                 <img src="@Url.Action("GetCroppedPicture", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />
