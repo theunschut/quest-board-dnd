@@ -41,6 +41,9 @@ async function prepareImageForCropper(file, maxDimension) {
 }
 
 // Extract the current crop-selection as a JPEG blob via Cropper.js v2's $toCanvas() API.
+// Always JPEG regardless of the source format -- callers must not route an animated GIF
+// through this (see the 'image/gif' skip in initImageCrop's change handler), since a GIF's
+// animation would otherwise be silently collapsed to a single static frame.
 async function extractCroppedBlob(cropperSelectionEl) {
     const canvas = await cropperSelectionEl.$toCanvas();
     return new Promise(function (resolve) {
@@ -57,7 +60,11 @@ function setCroppedFileInput(hiddenInputEl, blob, originalFileName) {
         return;
     }
 
-    const croppedFile = new File([blob], 'cropped-' + originalFileName, {
+    // extractCroppedBlob always outputs JPEG -- name the file with a matching .jpg extension
+    // rather than reusing the original's (e.g. cropped-photo.gif with image/jpeg bytes would
+    // be a declared-vs-actual-format mismatch).
+    const baseName = (originalFileName || 'photo').replace(/\.[^.]+$/, '');
+    const croppedFile = new File([blob], 'cropped-' + baseName + '.jpg', {
         type: blob.type,
         lastModified: Date.now()
     });
@@ -75,6 +82,10 @@ function initImageCrop(config) {
     const fileInputId = config.fileInputId;
     const hiddenCroppedInputName = config.hiddenCroppedInputName;
     const aspectRatio = config.aspectRatio || 1;
+    // Single source of truth for the client-side size/type pre-check, previously hand-duplicated
+    // (and already drifted) across every upload view's own inline <script>.
+    const maxFileSizeBytes = config.maxFileSizeBytes || (5 * 1024 * 1024);
+    const allowedTypes = config.allowedTypes || ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
 
     const fileInput = fileInputId ? document.getElementById(fileInputId) : null;
     if (!fileInput) {
@@ -119,12 +130,16 @@ function initImageCrop(config) {
         return document.getElementById('fileSizeError');
     }
 
-    function showReadError() {
+    function showError(message) {
         const errorDiv = getErrorDiv();
         if (errorDiv) {
-            errorDiv.textContent = "This image couldn't be read. Please choose a different photo.";
+            errorDiv.textContent = message;
             errorDiv.style.display = 'block';
         }
+    }
+
+    function showReadError() {
+        showError("This image couldn't be read. Please choose a different photo.");
     }
 
     function clearReadError() {
@@ -158,6 +173,31 @@ function initImageCrop(config) {
         }
 
         clearReadError();
+
+        if (file.size > maxFileSizeBytes) {
+            const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+            const maxMB = (maxFileSizeBytes / 1024 / 1024).toFixed(0);
+            showError('File size (' + sizeMB + ' MB) exceeds the maximum allowed size of ' + maxMB + ' MB. Please choose a smaller image.');
+            fileInput.value = '';
+            return;
+        }
+
+        if (!allowedTypes.includes(file.type)) {
+            showError('Only image files (JPG, PNG, GIF) are allowed.');
+            fileInput.value = '';
+            return;
+        }
+
+        if (file.type === 'image/gif') {
+            // Cropper.js always re-encodes the crop selection as a static JPEG (extractCroppedBlob),
+            // which would silently strip an animated GIF's animation everywhere the cropped image is
+            // displayed. Skip the crop flow entirely for GIFs -- the original file submits as-is via
+            // the visible file input, and the server-side dual-image fallback (CroppedImageData ??
+            // OriginalImageData) displays the original animated GIF everywhere since no crop is saved.
+            resetCropState();
+            return;
+        }
+
         currentOriginalFileName = file.name || 'photo';
 
         let correctedBlob;

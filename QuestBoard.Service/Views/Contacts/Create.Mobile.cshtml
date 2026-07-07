@@ -6,7 +6,6 @@
 
 @section Styles {
     <link href="~/css/contact-form.mobile.css" asp-append-version="true" rel="stylesheet" />
-    <link rel="stylesheet" href="~/css/image-crop.css" />
 }
 
 <div class="container-fluid px-3 py-3">
@@ -20,7 +19,7 @@
             <div class="mb-3">
                 <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
                 <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" />
-                <input type="file" name="CroppedPictureFile" id="croppedPictureFileInput" style="display:none" />
+                <input type="file" name="CroppedPictureFile" style="display:none" />
                 <small class="form-text">Upload a contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
                 <span asp-validation-for="ContactImageFile" class="text-danger"></span>
                 <div id="fileSizeError" class="text-danger" style="display: none;"></div>
@@ -112,33 +111,6 @@
 </div>
 
 @section Scripts {
-    <script>
-        const MAX_FILE_SIZE = 5 * 1024 * 1024;
-        const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-
-        document.getElementById('contactImageInput')?.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const errorDiv = document.getElementById('fileSizeError');
-            errorDiv.style.display = 'none';
-            errorDiv.textContent = '';
-            if (file) {
-                if (file.size > MAX_FILE_SIZE) {
-                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                    errorDiv.textContent = `File size (${sizeMB} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image.`;
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-
-                if (!ALLOWED_TYPES.includes(file.type)) {
-                    errorDiv.textContent = 'Only image files (JPG, PNG, GIF) are allowed.';
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-            }
-        });
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
             integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
             crossorigin="anonymous"></script>

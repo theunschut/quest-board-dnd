@@ -6,7 +6,6 @@
 
 @section Styles {
     <link href="~/css/dm-editprofile.mobile.css" asp-append-version="true" rel="stylesheet" />
-    <link rel="stylesheet" href="~/css/image-crop.css" />
 }
 
 <div class="container-fluid px-2 mt-2">
@@ -38,7 +37,7 @@
                 <input type="file" asp-for="ProfilePictureFile"
                        class="form-control" accept="image/*"
                        id="dmProfilePictureInput" />
-                <input type="file" name="CroppedPictureFile" id="croppedPictureFileInput" style="display:none" />
+                <input type="file" name="CroppedPictureFile" style="display:none" />
                 <small class="form-text">JPG, PNG or GIF — max 5 MB</small>
                 <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
                 <div id="fileSizeError" class="text-danger" style="display: none;"></div>
@@ -115,31 +114,6 @@
 </div>
 
 @section Scripts {
-    <script>
-        const DM_MAX_FILE_SIZE = 5 * 1024 * 1024;
-        const DM_ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-
-        document.getElementById('dmProfilePictureInput')?.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            const errorDiv = document.getElementById('fileSizeError');
-            if (file) {
-                if (file.size > DM_MAX_FILE_SIZE) {
-                    errorDiv.textContent = `File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum allowed size of 5 MB. Please choose a smaller image.`;
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-                if (!DM_ALLOWED_TYPES.includes(file.type)) {
-                    errorDiv.textContent = 'Only image files (JPG, PNG, GIF) are allowed.';
-                    errorDiv.style.display = 'block';
-                    e.target.value = '';
-                    return;
-                }
-                errorDiv.style.display = 'none';
-                errorDiv.textContent = '';
-            }
-        });
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
             integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
             crossorigin="anonymous"></script>
