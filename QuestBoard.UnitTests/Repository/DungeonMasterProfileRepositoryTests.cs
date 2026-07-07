@@ -45,7 +45,7 @@ public class DungeonMasterProfileRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
-        await using var context = CreateContext(nameof(GetOriginalPictureAsync_ForExistingProfile_ReturnsImageData), groupContext);
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(GetOriginalPictureAsync_ForExistingProfile_ReturnsImageData), groupContext);
         await SeedDungeonMasterProfileAsync(context, 1, [1, 2, 3]);
 
         var repository = new DungeonMasterProfileRepository(context, CreateMapper());
@@ -63,7 +63,7 @@ public class DungeonMasterProfileRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
-        await using var context = CreateContext(nameof(UpsertProfileImageAsync_SetsOriginalImageData), groupContext);
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(UpsertProfileImageAsync_SetsOriginalImageData), groupContext);
         await SeedDungeonMasterProfileAsync(context, 1, [1, 2, 3]);
 
         var repository = new DungeonMasterProfileRepository(context, CreateMapper());
@@ -82,7 +82,7 @@ public class DungeonMasterProfileRepositoryTests
     {
         // Arrange: seeded profile has only OriginalImageData set, CroppedImageData is null
         var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
-        await using var context = CreateContext(nameof(GetCroppedPictureAsync_FallsBackToOriginal_WhenCroppedIsNull), groupContext);
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(GetCroppedPictureAsync_FallsBackToOriginal_WhenCroppedIsNull), groupContext);
         await SeedDungeonMasterProfileAsync(context, 1, [1, 2, 3]);
 
         var repository = new DungeonMasterProfileRepository(context, CreateMapper());
@@ -100,7 +100,7 @@ public class DungeonMasterProfileRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
-        await using var context = CreateContext(nameof(GetOriginalAndCroppedPictureAsync_ReturnDistinctValues), groupContext);
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(GetOriginalAndCroppedPictureAsync_ReturnDistinctValues), groupContext);
         await SeedDungeonMasterProfileAsync(context, 1, [1, 2, 3]);
 
         var repository = new DungeonMasterProfileRepository(context, CreateMapper());
@@ -120,7 +120,7 @@ public class DungeonMasterProfileRepositoryTests
     {
         // Arrange: seed with an original+crop already set
         var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
-        await using var context = CreateContext(nameof(UpsertProfileImageAsync_ReplacesBothColumnsAtomically), groupContext);
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(UpsertProfileImageAsync_ReplacesBothColumnsAtomically), groupContext);
         await SeedDungeonMasterProfileAsync(context, 1, [1, 2, 3]);
 
         var repository = new DungeonMasterProfileRepository(context, CreateMapper());
@@ -141,7 +141,7 @@ public class DungeonMasterProfileRepositoryTests
     {
         // Arrange: seed with an original+crop already set (upload A)
         var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
-        await using var context = CreateContext(nameof(UpsertProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped), groupContext);
+        await using var context = CreateContext("DungeonMasterProfileRepositoryTests." + nameof(UpsertProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped), groupContext);
         await SeedDungeonMasterProfileAsync(context, 1, [1, 2, 3]);
 
         var repository = new DungeonMasterProfileRepository(context, CreateMapper());

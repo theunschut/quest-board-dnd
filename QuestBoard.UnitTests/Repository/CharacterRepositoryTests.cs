@@ -74,7 +74,7 @@ public class CharacterRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetAllCharactersWithDetailsAsync_ActiveGroupOne_ExcludesGroupTwoCharacter), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetAllCharactersWithDetailsAsync_ActiveGroupOne_ExcludesGroupTwoCharacter), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -93,7 +93,7 @@ public class CharacterRepositoryTests
     {
         // Arrange: SuperAdmin-empty behavior — no cross-group superview for Characters
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetAllCharactersWithDetailsAsync_NoActiveGroup_ReturnsEmpty), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetAllCharactersWithDetailsAsync_NoActiveGroup_ReturnsEmpty), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -111,7 +111,7 @@ public class CharacterRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetCharacterWithDetailsAsync_ForCharacterInDifferentGroup_ReturnsNull), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetCharacterWithDetailsAsync_ForCharacterInDifferentGroup_ReturnsNull), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -129,7 +129,7 @@ public class CharacterRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetCharacterOriginalPictureAsync_ForCharacterInDifferentGroup_ReturnsNull), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetCharacterOriginalPictureAsync_ForCharacterInDifferentGroup_ReturnsNull), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -147,7 +147,7 @@ public class CharacterRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetCharacterOriginalPictureAsync_ForCharacterInActiveGroup_ReturnsImageData), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetCharacterOriginalPictureAsync_ForCharacterInActiveGroup_ReturnsImageData), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -166,7 +166,7 @@ public class CharacterRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateProfileImageAsync_SetsOriginalImageData), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(UpdateProfileImageAsync_SetsOriginalImageData), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -186,7 +186,7 @@ public class CharacterRepositoryTests
     {
         // Arrange: seeded character has only OriginalImageData set, CroppedImageData is null
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetCharacterCroppedPictureAsync_FallsBackToOriginal_WhenCroppedIsNull), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetCharacterCroppedPictureAsync_FallsBackToOriginal_WhenCroppedIsNull), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -205,7 +205,7 @@ public class CharacterRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetCharacterOriginalAndCroppedPictureAsync_ReturnDistinctValues), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(GetCharacterOriginalAndCroppedPictureAsync_ReturnDistinctValues), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -226,7 +226,7 @@ public class CharacterRepositoryTests
     {
         // Arrange: seed with an original+crop already set
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateProfileImageAsync_ReplacesBothColumnsAtomically), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(UpdateProfileImageAsync_ReplacesBothColumnsAtomically), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());
@@ -248,7 +248,7 @@ public class CharacterRepositoryTests
     {
         // Arrange: seed with an original+crop already set (upload A)
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped), groupContext);
+        await using var context = CreateContext("CharacterRepositoryTests." + nameof(UpdateProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped), groupContext);
         await SeedTwoGroupCharactersAsync(context, groupContext);
 
         var repository = new CharacterRepository(context, CreateMapper());

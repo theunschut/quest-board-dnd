@@ -77,7 +77,7 @@ public class ContactRepositoryTests
     {
         // Arrange: seed names deliberately out of alphabetical order (D-17: flat list, alphabetical by Name)
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetAllContactsWithDetailsAsync_MultipleContacts_ReturnsOrderedAlphabeticallyByName), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_MultipleContacts_ReturnsOrderedAlphabeticallyByName), groupContext);
 
         context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
         context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
@@ -105,7 +105,7 @@ public class ContactRepositoryTests
         // Arrange: Id order and CreatedAt order deliberately disagree, proving the sort key is
         // CreatedAt (D-10: newest first), not Id.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactWithDetailsAsync_Notes_ReturnedNewestFirstByCreatedAt), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactWithDetailsAsync_Notes_ReturnedNewestFirstByCreatedAt), groupContext);
 
         context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
         context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
@@ -139,7 +139,7 @@ public class ContactRepositoryTests
         // Arrange: group scoping (fail-closed) — a contact in group 2 is not visible when the
         // active group context resolves to group 1.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactWithDetailsAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactWithDetailsAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -157,7 +157,7 @@ public class ContactRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetAllContactsWithDetailsAsync_ActiveGroupOne_ExcludesGroupTwoContact), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_ActiveGroupOne_ExcludesGroupTwoContact), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -176,7 +176,7 @@ public class ContactRepositoryTests
     {
         // Arrange: image round-trip — bytes stored on create are returned exactly.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactOriginalImageAsync_ForContactInActiveGroup_ReturnsImageData), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactOriginalImageAsync_ForContactInActiveGroup_ReturnsImageData), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -196,7 +196,7 @@ public class ContactRepositoryTests
         // Arrange: image lookup must also respect the group filter (rooted at Contacts, not
         // ContactImages directly), mirroring the Character repository's cross-group test.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactOriginalImageAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactOriginalImageAsync_ForContactInDifferentGroup_ReturnsNull), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -214,7 +214,7 @@ public class ContactRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateProfileImageAsync_SetsOriginalImageData), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(UpdateProfileImageAsync_SetsOriginalImageData), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -234,7 +234,7 @@ public class ContactRepositoryTests
     {
         // Arrange: seeded contact has only OriginalImageData set, CroppedImageData is null
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactCroppedImageAsync_FallsBackToOriginal_WhenCroppedIsNull), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactCroppedImageAsync_FallsBackToOriginal_WhenCroppedIsNull), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -253,7 +253,7 @@ public class ContactRepositoryTests
     {
         // Arrange
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(GetContactOriginalAndCroppedImageAsync_ReturnDistinctValues), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactOriginalAndCroppedImageAsync_ReturnDistinctValues), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -274,7 +274,7 @@ public class ContactRepositoryTests
     {
         // Arrange: seed with an original+crop already set
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateProfileImageAsync_ReplacesBothColumnsAtomically), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(UpdateProfileImageAsync_ReplacesBothColumnsAtomically), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -296,7 +296,7 @@ public class ContactRepositoryTests
     {
         // Arrange: seed with an original+crop already set (upload A)
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(UpdateProfileImageAsync_NewOriginalWithoutCrop_ClearsStaleCropped), groupContext);
         await SeedTwoGroupContactsAsync(context, groupContext);
 
         var repository = new ContactRepository(context, CreateMapper());
@@ -316,7 +316,7 @@ public class ContactRepositoryTests
     {
         // Arrange: D-08/D-09 — dedicated note methods, not folded into the generic UpdateAsync path.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(AddNoteAsync_ThenDeleteNoteAsync_RoundTripsCorrectly), groupContext);
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(AddNoteAsync_ThenDeleteNoteAsync_RoundTripsCorrectly), groupContext);
 
         context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
         context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });

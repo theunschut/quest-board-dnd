@@ -60,7 +60,7 @@ public class CharacterServiceTests
     {
         // Arrange: seed a character with original A + crop A
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateAsync_NoNewUpload_PreservesExistingCroppedImage), groupContext);
+        await using var context = CreateContext("CharacterServiceTests." + nameof(UpdateAsync_NoNewUpload_PreservesExistingCroppedImage), groupContext);
         await SeedCharacterWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
 
         var mapper = CreateMapper();
@@ -91,7 +91,7 @@ public class CharacterServiceTests
     {
         // Arrange: seed a character with original A + crop A
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
-        await using var context = CreateContext(nameof(UpdateAsync_NewOriginalUpload_ClearsStaleCroppedImage), groupContext);
+        await using var context = CreateContext("CharacterServiceTests." + nameof(UpdateAsync_NewOriginalUpload_ClearsStaleCroppedImage), groupContext);
         await SeedCharacterWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
 
         var mapper = CreateMapper();

@@ -17,9 +17,22 @@ public interface IContactService : IBaseService<Contact>
     Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default);
 
     /// <summary>
-    /// Returns the raw profile image bytes for a contact, or null if none is set.
+    /// Returns the contact's original (unmodified) profile image bytes, or null if none is set.
     /// </summary>
-    Task<byte[]?> GetContactImageAsync(int id, CancellationToken token = default);
+    Task<byte[]?> GetContactOriginalImageAsync(int id, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns the cropped/display image, falling back to the original when no crop was ever saved. Null if neither set.
+    /// </summary>
+    Task<byte[]?> GetContactCroppedImageAsync(int id, CancellationToken token = default);
+
+    /// <summary>
+    /// Updates a contact, threading an explicit signal for whether a genuinely new original
+    /// image was uploaded this request. hasNewOriginalUpload == true clears any stale cropped
+    /// image (a new original supersedes the old crop); false preserves the existing crop
+    /// unchanged, since model.ContactImageData is never null on a no-photo-change edit.
+    /// </summary>
+    Task UpdateAsync(Contact model, bool hasNewOriginalUpload, CancellationToken token = default);
 
     /// <summary>
     /// Adds a new note to a contact and propagates the DB-generated Id back onto the model.
