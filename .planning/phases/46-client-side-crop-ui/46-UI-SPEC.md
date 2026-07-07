@@ -125,7 +125,6 @@ Use a **standard Bootstrap 5 modal** (`modal fade`), matching the existing dark-
           <cropper-canvas background style="width:100%;height:400px;">
             <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
             <cropper-shade hidden></cropper-shade>
-            <cropper-handle action="select" plain></cropper-handle>
             <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
               <cropper-grid role="grid" bordered covered></cropper-grid>
               <cropper-crosshair centered></cropper-crosshair>
@@ -160,6 +159,8 @@ Use a **standard Bootstrap 5 modal** (`modal fade`), matching the existing dark-
 ```
 
 **Handle theme color:** `rgba(255,193,7,0.35)` (translucent amber) on the move handle — matches this app's `#ffc107` accent used everywhere else for active/selected state, applied at reduced opacity so it doesn't visually compete with the photo underneath.
+
+**No canvas-level `cropper-handle[action="select"]`:** Cropper.js v2's own source shows this handle captures every canvas drag and always moves/resizes the existing selection (`$selection.$change(...)`), which prevents `cropper-image[translatable]`'s pan-drag from ever firing — after zooming with the wheel (unbounded; the library enforces no min/max scale or bounds-checking), the image could go out of view with no way to drag it back. Omitting this handle lets a drag that starts outside the selection fall through to `CropperImage.$handleAction`'s pan branch instead, restoring image panning. Found live during Phase 46's Task 2 desktop verification (46-07).
 
 **Mobile variant:** Same markup, `cropper-canvas` height `320px` instead of `400px` (fits above the keyboard/safe-area on a phone in portrait), and drop `modal-lg` (use the modal's default width so it doesn't overflow a narrow viewport). Button labels/icons unchanged — do not shrink to icon-only, since D-04's "never blocks submission" framing depends on the user clearly reading which button does what.
 
