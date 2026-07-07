@@ -14,6 +14,7 @@ namespace QuestBoard.Service.Controllers.Characters
         ICharacterService characterService,
         IUserService userService,
         IActiveGroupContext activeGroupContext,
+        IImageValidationService imageValidationService,
         IMapper mapper) : Controller
     {
         [HttpGet]
@@ -125,25 +126,23 @@ namespace QuestBoard.Service.Controllers.Characters
             }
 
             // Handle profile picture upload
-            if (viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0)
+            var newProfilePictureFile = viewModel.ProfilePictureFile;
+            if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ProfilePictureFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
+                    newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+                foreach (var error in validationErrors)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ProfilePictureFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Profile picture cannot exceed 5 MB.");
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ProfilePictureFile.CopyToAsync(memoryStream, token);
+                await newProfilePictureFile.CopyToAsync(memoryStream, token);
                 viewModel.ProfilePicture = memoryStream.ToArray();
             }
 
@@ -246,28 +245,30 @@ namespace QuestBoard.Service.Controllers.Characters
             existingCharacter.Description = viewModel.Description;
             existingCharacter.Backstory = viewModel.Backstory;
 
+            // A genuinely new original photo was uploaded this request. Hoisted into a single
+            // local reused both to gate the byte-copy below and to signal the service, so the
+            // two checks can never drift apart.
+            var hasNewOriginalUpload = viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0;
+
             // Handle profile picture upload - clear old picture first if new one is being uploaded
-            if (viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0)
+            if (hasNewOriginalUpload)
             {
-                var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-                if (!allowedMimeTypes.Contains(viewModel.ProfilePictureFile.ContentType,
-                    StringComparer.OrdinalIgnoreCase))
+                var newProfilePictureFile = viewModel.ProfilePictureFile!;
+                var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
+                    newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+                var validationErrors = imageValidationService.ValidateImagePair(original, cropped: null);
+                foreach (var error in validationErrors)
                 {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Only JPG, PNG, or GIF images are accepted.");
+                    ModelState.AddModelError(error.FieldName, error.Message);
+                }
+                if (!ModelState.IsValid)
+                {
                     viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
                     return View(viewModel);
                 }
-                const long maxFileSizeBytes = 5 * 1024 * 1024;
-                if (viewModel.ProfilePictureFile.Length > maxFileSizeBytes)
-                {
-                    ModelState.AddModelError(nameof(viewModel.ProfilePictureFile),
-                        "Profile picture cannot exceed 5 MB.");
-                    viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
-                    return View(viewModel);
-                }
+
                 using var memoryStream = new MemoryStream();
-                await viewModel.ProfilePictureFile.CopyToAsync(memoryStream, token);
+                await newProfilePictureFile.CopyToAsync(memoryStream, token);
                 existingCharacter.ProfilePicture = memoryStream.ToArray();
             }
             // Otherwise, profile picture remains unchanged
@@ -276,8 +277,10 @@ namespace QuestBoard.Service.Controllers.Characters
             existingCharacter.Classes = mapper.Map<List<CharacterClass>>(viewModel.Classes);
 
             // Persist all edited fields first so they are saved regardless of whether this
-            // edit also promotes the character to Main below.
-            await characterService.UpdateAsync(existingCharacter, token);
+            // edit also promotes the character to Main below. Passing hasNewOriginalUpload lets
+            // the service clear any stale cropped image when a genuinely new original arrives,
+            // while preserving it on an edit that doesn't touch the photo.
+            await characterService.UpdateAsync(existingCharacter, hasNewOriginalUpload, token);
 
             // If setting as main, demote the character's owner's other characters to Backup.
             // Must use the character's own owner id (not the acting user's id) so an Admin
