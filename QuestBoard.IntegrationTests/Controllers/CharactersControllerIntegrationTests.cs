@@ -626,4 +626,98 @@ public class CharactersControllerIntegrationTests(WebApplicationFactoryBase fact
         persistedImage.Should().NotBeNull();
         persistedImage!.CroppedImageData.Should().Equal(storedCroppedBytes);
     }
+
+    // Proves a real posted CroppedPictureFile is validated and persisted through the widened
+    // 4-arg UpdateAsync call, not just cleared/ignored like the single-file path.
+    [Fact]
+    public async Task Edit_NewOriginalAndCroppedPhotoUpload_PersistsSubmittedCrop()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "owner_crop_persists", "owner_crop_persists@example.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character Getting A Real Crop", groupId: 1);
+
+        byte[] newOriginalBytes = [5, 6, 7, 8];
+        byte[] submittedCropBytes = [10, 20, 30, 40, 50];
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(character.Id.ToString()), "Id" },
+            { new StringContent(owner.Id.ToString()), "OwnerId" },
+            { new StringContent("Character Getting A Real Crop"), "Name" },
+            { new StringContent("5"), "Level" },
+            { new StringContent(((int)CharacterStatus.Active).ToString()), "Status" },
+            { new StringContent(((int)CharacterRole.Backup).ToString()), "Role" },
+            { new StringContent(""), "SheetLink" },
+            { new StringContent(""), "Description" },
+            { new StringContent(""), "Backstory" },
+            { new StringContent("5"), "Classes[0].Class" }, // Fighter
+            { new StringContent("5"), "Classes[0].ClassLevel" }
+        };
+        var originalFileContent = new ByteArrayContent(newOriginalBytes);
+        originalFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(originalFileContent, "ProfilePictureFile", "new.png");
+
+        var croppedFileContent = new ByteArrayContent(submittedCropBytes);
+        croppedFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(croppedFileContent, "CroppedPictureFile", "new-cropped.png");
+
+        // Act
+        var response = await ownerClient.PostAsync(
+            $"/Characters/Edit/{character.Id}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<CharacterImageEntity>().FindAsync(
+            [character.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().NotBeNull();
+        persistedImage.CroppedImageData.Should().Equal(submittedCropBytes);
+        persistedImage.OriginalImageData.Should().Equal(newOriginalBytes);
+    }
+
+    // Proves the new GetCroppedPicture read action serves the stored crop.
+    [Fact]
+    public async Task GetCroppedPicture_CropStored_ReturnsOkWithContent()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "owner_get_cropped", "owner_get_cropped@example.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(
+            factory.Services, owner.Id, "Character With A Crop To Fetch", groupId: 1);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] croppedBytes = [9, 9, 9, 9, 9];
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<CharacterImageEntity>().Add(new CharacterImageEntity
+            {
+                Id = character.Id,
+                OriginalImageData = originalBytes,
+                CroppedImageData = croppedBytes
+            });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act
+        var response = await ownerClient.GetAsync(
+            $"/Characters/GetCroppedPicture/{character.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        content.Should().NotBeEmpty();
+        content.Should().Equal(croppedBytes);
+    }
 }

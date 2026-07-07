@@ -305,6 +305,35 @@ public class DungeonMasterControllerIntegrationTests(WebApplicationFactoryBase f
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    // GetDMProfilePicture must serve the cropped-or-fallback bytes after the repoint to
+    // GetCroppedPictureAsync — asserts 200 with the stored crop's content, not the original.
+    [Fact]
+    public async Task GetDMProfilePicture_CroppedImageStored_ReturnsOkWithCroppedContent()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dmprofilepicturecropped", "dmprofilepicturecropped@example.com", roles: ["DungeonMaster"]);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] croppedBytes = [9, 9, 9, 9, 9];
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dmProfileService = scope.ServiceProvider.GetRequiredService<IDungeonMasterProfileService>();
+            await dmProfileService.UpsertProfileAsync(
+                dmUser.Id, bio: null, imageBytes: originalBytes, newCroppedImageData: croppedBytes,
+                token: TestContext.Current.CancellationToken);
+        }
+
+        var response = await dmClient.GetAsync(
+            $"/DungeonMaster/GetDMProfilePicture/{dmUser.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        content.Should().NotBeEmpty();
+        content.Should().Equal(croppedBytes);
+    }
+
     // When the viewer has no active group selected, GroupSessionMiddleware now gates
     // SuperAdmin exactly like every other role — the request never reaches the controller at
     // all, it is redirected to the group picker before any DM-profile action logic runs.
