@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Backlog Cleanup
-current_phase: 63
-current_phase_name: Allow any player to edit quest recaps, not just the assigned DM or admin
-status: executing
-stopped_at: Phase 64 context gathered
-last_updated: "2026-07-07T22:14:09.102Z"
-last_activity: 2026-07-07
-last_activity_desc: Phase 62 complete, transitioned to Phase 63
+current_phase: null
+current_phase_name: null
+status: milestone_complete
+stopped_at: v7.0 milestone archived
+last_updated: "2026-07-08T00:30:00.000Z"
+last_activity: 2026-07-08
+last_activity_desc: v7.0 Backlog Cleanup milestone shipped and archived
 progress:
   total_phases: 22
   completed_phases: 22
@@ -21,102 +21,71 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-04 — v7.0 Backlog Cleanup milestone started)
+See: .planning/PROJECT.md (updated 2026-07-08 — v7.0 milestone close)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 62 — Stop eagerly loading image bytes in list/entity queries
+**Current focus:** Planning next milestone — run `/gsd:new-milestone`
 
 ## Current Position
 
-Phase: 63 — Allow any player to edit quest recaps, not just the assigned DM or admin
-Plan: Not started
-Status: Executing Phase 62
-Last activity: 2026-07-07 — Phase 62 complete, transitioned to Phase 63
+Phase: None — v7.0 complete, no phase in progress
+Plan: N/A
+Status: Milestone shipped and archived
+Last activity: 2026-07-08 — v7.0 Backlog Cleanup archived to `.planning/milestones/v7.0-ROADMAP.md` / `v7.0-REQUIREMENTS.md`
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v6.1): 16/16
-- Timeline: ~1 day (2026-07-03 22:30 → 2026-07-04 17:51)
+- Total plans completed (v7.0): 59/59 across 22 phases (43–64)
+- Timeline: ~3.1 days (2026-07-04 22:30 → 2026-07-08 00:21)
 
 **Recent Trend:**
 
-- v6.1 shipped in ~1 day across 5 phases (38–42), 16 plans, 37 tasks — fastest pace yet, edging out v6.0's ~1.4 days/3 phases. See `.planning/RETROSPECTIVE.md` for details.
-
-| Phase/Plan | Duration | Tasks | Files |
-|---|---|---|---|
-| Phase 63 P01 | 35min | 3 tasks | 4 files |
+- v7.0 shipped in ~3.1 days across 22 phases, 59 plans — largest milestone by phase count yet, driven by a long tail of ad-hoc backlog phases (47–64) folded in during execution. See `.planning/RETROSPECTIVE.md` for details.
 
 ## Accumulated Context
 
 ### Decisions
 
-- Roadmap derives 4 phases from 14 v7.0 requirements at "standard" granularity: Phase 43 (Mobile Parity Fixes — MOBILE-01/02), Phase 44 (Post-Finalization Voting & Waitlist Auto-Promotion — VOTE-01–07), Phase 45 (Dual-Image Storage Backend — IMAGE-02/03), Phase 46 (Client-Side Crop UI — IMAGE-01/04/05).
-- Research's suggested 5-phase image split (schema plumbing / controller-ViewModel wiring / crop UI) was compressed to 2 phases (45, 46): the first two research phases have no independent user-observable behavior and were merged into one backend-plumbing phase, with the client-side crop UI kept as its own phase since it carries the real, device-verification-only risk (EXIF orientation, iOS Safari canvas memory ceiling, touch-drag precision).
-- Waitlist promotion (Phase 44) and mobile fixes (Phase 43) confirmed independent of each other and of the image work (different tables/files) — may be executed in either order; Phase 46 depends on Phase 45.
-- Cropper.js version corrected to v2.1.1 (not v1.6.2) per research SUMMARY.md revision — v1 branch is stale (no commits in over a year), v2 has an active release cadence and a comparably simple `<script>`-tag integration.
-- v6.1 Bugfixes milestone decisions archived — see PROJECT.md Key Decisions table and `.planning/milestones/v6.1-ROADMAP.md`.
-- Phase 63-01: recap editing opened to any authenticated group member; Manage Quest link kept DM/Admin-only via new separate ViewBag.CanManageQuest flag to avoid permission escalation
+v7.0's full decision log (55+ entries across Phases 43–64) has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v7.0-ROADMAP.md` Milestone Summary for the consolidated view.
+
+- v7.0 Backlog Cleanup milestone shipped 2026-07-08 (22 phases: 43–64, 59 plans) and archived to `.planning/milestones/v7.0-ROADMAP.md` / `v7.0-REQUIREMENTS.md`.
+- Phase 46's real-device crop-UI verification (touch/EXIF/canvas-memory), deferred at phase close for lack of device access, was completed by the user on a real iPhone before milestone close — all checks passed, no longer an open gap.
 
 ### Roadmap Evolution
 
-- Phase 64 added: Preserve line breaks in description text on mobile views to match desktop rendering
-- Phase 63 added: Allow any player to edit quest recaps, not just the assigned DM or admin
-- Phase 61 added: Allow DMs to edit finalized quest details (excluding proposed and selected dates)
-- Phase 60 added: Stop creating AspNetUserRoles entries for new users; role assignment has moved to UserGroups
-- Phase 59 added: Add a rewards field to quests: an open text field between Description and Challenge Rating on the create/edit form, displayed in its own block below the Description on the Quest Details page
-- Phase 58 added: Rename the Guild Members feature to Characters everywhere (controller, routes, views, nav labels, CSS files, ViewModels, and UI copy) so the terminology is tenant-generic instead of D&D-specific, with zero behavior change
-- Phase 57 added: Add an NPC directory: DM-only creation of group-bound NPCs (name, image, description, town/city, optional sub-location like a shop or smithy name) with a player-and-DM-editable list of freeform notes, plus dedicated Index/Details/Edit views mirroring the Characters pattern
-- Phase 56 added: Allow admins to edit characters owned by other players
-- Phase 55 added: Fix cross-tenant quest leak on quest board — quests from another tenant (tenant 2) appeared on the active tenant's (tenant 1) board; suspected related to ActiveGroupId/session-cache (AspNetSessionState) expiration falling back to the wrong or missing group scope
-- Phase 54 added: Fix mobile signup for finalized quests (inconsistent with desktop)
-- Phase 53 added: Add dedicated Edit view for Quest recap so Details page is view-only
-- Phase 52 added: Add Dead status to CharacterStatus enum
-- Phase 51 added: Change Guild Members page layout from two columns to two stacked rows so the growing Guild Roster section isn't width-constrained
-- Phase 50 added: Fix quest edit page: show edit button for campaign quests and align field visibility with create page
-- Phase 49 added: Fix Guild Members page missing group/tenant filtering
-- Phase 48 added: Add an Open Board action to the /platform group index table, reusing GroupPicker functionality so DMs can jump straight to a group's quest board without navigating through Members/Edit first
-
-v7.0 Backlog Cleanup roadmap created 2026-07-04: 4 phases (43–46), 14/14 v1 requirements mapped, no orphans. Continues numbering from v6.1's Phase 42. Full phase detail in `.planning/ROADMAP.md`.
-
-v6.1 Bugfixes milestone shipped 2026-07-04 (5 phases: 38–42) and archived to `.planning/milestones/v6.1-ROADMAP.md` / `v6.1-REQUIREMENTS.md`.
-
-- Phase 62 edited: edited fields: title, goal (cleaned up auto-generated title/goal from phase.add)
-- Phase 62 added: Stop eagerly loading image bytes in list/entity queries
+v7.0's roadmap grew from its original 4 phases (43–46) to 22 phases (43–64) via 18 ad-hoc additions folded in through `/gsd-phase` during execution. Full evolution history archived in `.planning/milestones/v7.0-ROADMAP.md`.
 
 ### Pending Todos
 
-- Run `/gsd-plan-phase 43` (or 44) to begin detailed planning — Phase 43 and 44 have no dependency ordering between them.
-- Phase 46 (Client-Side Crop UI) needs a `--research-phase` pass during planning for the EXIF-orientation-correction snippet and canvas-downscale-before-crop implementation, per research SUMMARY.md flags.
-- Confirm real-device or real-device-cloud (e.g. BrowserStack) access is available before scheduling Phase 43's iOS Safari verification and Phase 46's touch/EXIF/canvas-memory verification — both require a real device, not devtools emulation.
+None — v7.0 fully shipped. Next: run `/gsd:new-milestone` to scope the next milestone.
 
 ### Blockers/Concerns
 
-None open for v7.0 yet. Carried forward, still unresolved, not addressed by any milestone yet:
+None open for a specific milestone. Carried forward, still unresolved:
 
 - `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
 - `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` appears to be dead code (Platform area's `_ViewStart.cshtml` never selects it) — discovered during Phase 42 research, deliberately left unfixed as out-of-scope for that phase. See PROJECT.md Known Issues.
+- `GuildMembersController.Edit` POST's `SetAsMainCharacterAsync` demotion guard can never be true (dead code, predates Phase 56) — found during Phase 56 verification, flagged as a separate follow-up task, not yet actioned. See PROJECT.md Known Issues.
 
 ## Deferred Items
 
-Items acknowledged and carried forward from previous milestone close (2026-07-02), now in progress under v7.0:
+Items acknowledged and carried forward across milestone closes. Issue #78 (profile picture crop) was delivered by v7.0 and is no longer deferred.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| requirement | EMAIL-04 — digest session reminder (multiple same-day quests → one email) | Still deferred — same-day quests have never occurred in one year of operation | v4.0 close |
+| requirement | EMAIL-04 — digest session reminder (multiple same-day quests → one email) | Still deferred — same-day quests have never occurred in over a year of operation | v4.0 close |
 | requirement | REMIND-02 — combined reminder for multi-quest days | Still deferred — same as EMAIL-04 | v4.0 close |
 | tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Still deferred — flagged by code review in Phase 31, not yet fixed | v5.0 close |
-| requirement | Profile picture crop/avatar selection (issue #78) | Now in progress — v7.0 Phases 45–46 | v5.0 close |
 
 ## Session Continuity
 
-Last session: 2026-07-07T21:11:35.141Z
-Stopped at: Phase 64 context gathered
-Resume file: .planning/phases/64-preserve-line-breaks-in-description-text-on-mobile-views-to-/64-CONTEXT.md
-Next step: Run `/gsd-plan-phase 43` to begin detailed planning for the first phase
+Last session: 2026-07-08T00:30:00.000Z
+Stopped at: v7.0 milestone archived
+Next step: Run `/gsd:new-milestone` to scope the next milestone
 
 ## Operator Next Steps
 
-- Review `.planning/ROADMAP.md` Phase Details for 43–46
-- Run `/gsd-plan-phase 43` (or `/gsd-plan-phase 44`) to start planning
+- Review `.planning/PROJECT.md` "Next Milestone Goals" for carried-forward candidates
+- Run `/gsd:new-milestone` to start requirements gathering for the next milestone
