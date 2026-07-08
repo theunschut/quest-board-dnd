@@ -166,7 +166,13 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. A non-SuperAdmin (Admin, DungeonMaster, Player) cannot reach the settings page
   4. Settings persist across app restarts in a single-row `IntegrationSetting` table created by an EF Core migration
   5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document copied into both repos' planning docs
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 65-01-PLAN.md — Persistence foundation: IntegrationSettingEntity, DbContext config, domain model + interfaces, AddIntegrationSettings migration (SETT-06, SETT-08)
+- [ ] 65-02-PLAN.md — Repository + domain service (blank-preserve secret guard, singleton bootstrap) + DI + unit tests (SETT-04, SETT-05, SETT-06)
+- [ ] 65-03-PLAN.md — IntegrationsController + ViewModel + desktop/mobile Integrations views + mobile CSS (SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-07)
+- [ ] 65-04-PLAN.md — Group/Index nav button (desktop+mobile) + integration-test authorization matrix (SETT-01, SETT-07)
+- [ ] 65-05-PLAN.md — Written .planning/TOKEN-CONTRACT.md HMAC token-format contract (TOKEN-02, written portion)
 **UI hint**: yes
 
 ### Phase 66: Navigation + Token Generation
@@ -273,6 +279,6 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 62. Stop eagerly loading image bytes in list/entity queries | v7.0 | 3/3 | Complete    | 2026-07-07 |
 | 63. Allow any player to edit quest recaps | v7.0 | 1/1 | Complete    | 2026-07-07 |
 | 64. Preserve line breaks in description text on mobile views | v7.0 | 2/2 | Complete    | 2026-07-07 |
-| 65. Platform Settings + Token Contract | v2.0 (redo) | 0/? | Not started | - |
+| 65. Platform Settings + Token Contract | v2.0 (redo) | 0/5 | Not started | - |
 | 66. Navigation + Token Generation | v2.0 (redo) | 0/? | Not started | - |
 | 67. Omphalos SSO Endpoint + Session Linking | v2.0 (redo) | 0/? | Not started | - |
