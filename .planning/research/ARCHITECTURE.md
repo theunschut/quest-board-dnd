@@ -1,425 +1,513 @@
-# Architecture Research
+# Architecture Patterns — Omphalos SSO Integration
 
-**Domain:** Client-side image crop-before-upload for a server-rendered ASP.NET Core 10 MVC app (no SPA, no bundler)
-**Researched:** 2026-07-04
-**Confidence:** HIGH (codebase integration points — verified by direct file read) / MEDIUM (crop-library API choice — cross-verified across two independent sources)
+**Domain:** Cross-app signed-token SSO bridge between two independently-deployed .NET apps
+**Researched:** 2026-07-02
+**Confidence:** HIGH (all findings from direct source inspection of both repos, no speculation)
 
-> **CORRECTED after publication — see `.planning/research/SUMMARY.md` "Library Version Decision" section.** This document's "Cropper.js v1.6.2, not v2" recommendation below was overturned: direct GitHub history checks showed the v1 branch has had zero commits since 2025-03-08 (effectively abandoned) while v2 has shipped steady releases through 2026-04 (most recent 3 months old), and a direct fetch of v2's published UMD bundle + docs showed it *does* work via a plain `<script>` tag with a simple `new Cropper('#image')` imperative call — contradicting this document's claim that v2 requires hand-authored Web Components markup. **Use Cropper.js v2.1.1, not v1.6.2.** The integration-pattern narrative below (vendoring into `wwwroot/lib/cropperjs/`, the `DataTransfer` FileList-swap technique, schema/repository design) is otherwise unaffected — only the version number and the "why v1" reasoning are wrong.
+## Recommended Architecture
 
-## Standard Architecture
-
-### System Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Browser (no build step — plain <script> tags)                      │
-│  ┌───────────────────────┐   ┌──────────────────────────────────┐  │
-│  │ <input type="file">   │──▶│ Cropper.js v1.6.2 (CDN, vendored) │  │
-│  │ (existing form field) │   │ new Cropper(imgEl, opts)          │  │
-│  └───────────────────────┘   │ .getCroppedCanvas()               │  │
-│                                └──────────────┬───────────────────┘  │
-│                                               │ canvas.toBlob()      │
-│                                               ▼                      │
-│                                ┌──────────────────────────────────┐ │
-│                                │ DataTransfer trick: replace the   │ │
-│                                │ <input type="file">'s FileList    │ │
-│                                │ with the cropped Blob → File      │ │
-│                                └──────────────┬───────────────────┘ │
-│                                               │ normal <form> POST   │
-│                                               │ (multipart/form-data)│
-├───────────────────────────────────────────────┼──────────────────────┤
-│  QuestBoard.Service (MVC)                    ▼                      │
-│  GuildMembersController / DungeonMasterController                   │
-│  Edit/Create POST actions — model-bind IFormFile (unchanged shape)  │
-│  + read ORIGINAL bytes from a second posted IFormFile               │
-├───────────────────────────────────────────────────────────────────────┤
-│  QuestBoard.Domain (business logic — no EF, no System.Drawing IO)   │
-│  ICharacterService / IDungeonMasterProfileService                   │
-│  + new: ImageUploadValidator (size/type/dimension checks)           │
-├───────────────────────────────────────────────────────────────────────┤
-│  QuestBoard.Repository (EF Core — byte[] I/O only)                   │
-│  CharacterImageEntity / DungeonMasterProfileImageEntity              │
-│  + ADD: OriginalImageData byte[] column (existing ImageData column   │
-│    is repurposed to mean "cropped/display" bytes — see Recommended   │
-│    Schema Shape below)                                               │
-│  SQL Server — migration auto-applied on startup                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Key point:** No server-side image-processing library is required. Cropping happens entirely client-side (canvas). The server's job is unchanged in kind — it still just reads an `IFormFile` into a `byte[]` — the only new work is reading a *second* `IFormFile` (for the original) and validating that the crop a client claims to have applied is sane. No `System.Drawing`, `ImageSharp`, or `SkiaSharp` needs to enter the Domain or Repository layer for this milestone. This directly avoids the exact problem — `SkiaSharp` native-library availability on the deployment host — that caused this feature to be paused since v1.0 (see PROJECT.md Key Decisions: "Profile picture crop paused... SkiaSharp native lib availability on deployment host unverified").
-
-### Component Responsibilities
-
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|-------------------------|
-| Cropper.js v1.6.2 (vendored JS+CSS in `wwwroot/lib/cropperjs/`) | Renders the crop UI over the just-selected image, exposes `getCroppedCanvas()` | Plain `<script>`/`<link>` tags, no npm — see Library Choice below |
-| Crop-init JS (new `wwwroot/js/image-crop.js`) | Wires `<input type="file">` `change` event → shows a crop modal → on "Confirm crop" rewrites the form's file input(s) via `DataTransfer` so a normal POST carries the cropped bytes | Vanilla JS, follows existing `site.js` script-tag convention (no module bundler) |
-| `CharacterViewModel` / `EditDMProfileViewModel` (Service layer) | Model-binds the posted file(s); unchanged `[MaxFileSize]`/`[AllowedExtensions]` attributes still apply to whichever file is now "the" `ProfilePictureFile` | Add a second nullable `IFormFile? OriginalPictureFile` property |
-| `GuildMembersController` / `DungeonMasterController` (Service layer) | Reads both `IFormFile`s into `byte[]`, delegates size/type/dimension validation to Domain, calls the (widened) upsert service method with both byte arrays | Same `CopyToAsync(memoryStream)` pattern already used 3x in the codebase — just called twice |
-| New `IImageValidationService` (Domain layer, recommended) | Centralizes size/MIME validation that today is duplicated inline in 3 controller call sites (`GuildMembersController.Create`, `.Edit`, `DungeonMasterController.EditProfile`) | Plain C# — no image-processing dependency needed for a size/MIME check |
-| `CharacterService` / `DungeonMasterProfileService` (Domain layer) | Orchestrates the upsert call, unchanged responsibility, wider signature (`byte[] cropped, byte[] original`) | Extend existing `UpsertProfileAsync`/character-picture methods |
-| `CharacterRepository` / `DungeonMasterProfileRepository` (Repository layer) | Persists both byte arrays into the (modified) image entity; pure EF Core I/O, no processing | Extend existing `UpdateProfileImageAsync`/`UpsertProfileImageAsync` to accept and set two `byte[]` properties on the same row |
-| `CharacterImageEntity` / `DungeonMasterProfileImageEntity` (Repository layer) | Adds `OriginalImageData byte[]?` column alongside existing `ImageData` (kept as the display/cropped column — see schema section) | EF Core migration, `dotnet ef migrations add` |
-| `GetProfilePicture` / `GetDMProfilePicture` actions (Service layer) | Unchanged for the character-card/DM-list "cropped" thumbnail use. New action added to serve the **original** for the one place that needs it — the character details page | `return File(bytes, contentType)`, same pattern, new repository method `GetCharacterOriginalPictureAsync` |
-
-## Recommended Project Structure
+Two apps, no compile-time coupling, one documented contract: a short-lived signed token
+Quest Board mints and Omphalos verifies. Everything else is each app extending its own
+existing layering.
 
 ```
-QuestBoard.Service/
-├── wwwroot/
-│   ├── lib/
-│   │   └── cropperjs/                # NEW — vendored (not CDN-only; see rationale)
-│   │       ├── cropper.min.js        # v1.6.2, pinned
-│   │       └── cropper.min.css
-│   ├── js/
-│   │   ├── site.js                   # existing — untouched
-│   │   └── image-crop.js             # NEW — shared crop-modal wiring, reused by all 3 forms
-│   └── css/
-│       └── image-crop.css            # NEW — crop modal chrome, follows modern-card conventions
-├── ViewModels/
-│   ├── CharacterViewModels/
-│   │   └── CharacterViewModel.cs     # MODIFIED — add OriginalPictureFile IFormFile?
-│   └── DungeonMasterViewModels/
-│       └── EditDMProfileViewModel.cs # MODIFIED — add OriginalPictureFile IFormFile?
-├── Controllers/
-│   ├── Characters/
-│   │   └── GuildMembersController.cs # MODIFIED — Create/Edit POST actions; new GetOriginalPicture action
-│   └── DungeonMaster/
-│       └── DungeonMasterController.cs # MODIFIED — EditProfile POST; new GetOriginalPicture action
-└── Views/
-    ├── GuildMembers/
-    │   ├── Create.cshtml / .Mobile.cshtml   # MODIFIED — crop modal markup + script include
-    │   ├── Edit.cshtml / .Mobile.cshtml     # MODIFIED — same
-    │   └── Details.cshtml                   # MODIFIED — switch <img> src to GetOriginalPicture (issue #78)
-    └── DungeonMaster/
-        └── EditProfile.cshtml / .Mobile.cshtml # MODIFIED — crop modal markup + script include
-
-QuestBoard.Domain/
-├── Interfaces/
-│   ├── ICharacterService.cs                    # MODIFIED — widen picture-upsert signature; add GetCharacterOriginalPictureAsync
-│   ├── IDungeonMasterProfileService.cs         # MODIFIED — same
-│   └── IImageValidationService.cs              # NEW — optional but recommended (see Patterns)
-├── Services/
-│   ├── CharacterService.cs                     # MODIFIED
-│   ├── DungeonMasterProfileService.cs          # MODIFIED
-│   └── ImageValidationService.cs               # NEW
-└── Models/
-    ├── Character.cs                            # MODIFIED — add OriginalProfilePicture byte[]?
-    └── DungeonMasterProfile.cs                 # MODIFIED — same
-
-QuestBoard.Repository/
-├── Entities/
-│   ├── CharacterImageEntity.cs                 # MODIFIED — add OriginalImageData byte[]?
-│   └── DungeonMasterProfileImageEntity.cs      # MODIFIED — same
-├── CharacterRepository.cs                      # MODIFIED — UpdateProfileImageAsync takes 2 byte[]?; add GetCharacterOriginalPictureAsync
-├── DungeonMasterProfileRepository.cs            # MODIFIED — UpsertProfileImageAsync takes 2 byte[]?; add GetOriginalPictureAsync
-├── Automapper/EntityProfile.cs                 # MODIFIED — map new byte[]? properties
-└── Migrations/
-    └── {timestamp}_AddOriginalImageColumn.cs    # NEW — single additive migration
+Quest Board (issuer)                          Omphalos (verifier)
+─────────────────────                         ─────────────────────
+DM clicks "Open DM Tool" / "Open Session Notes"
+        │
+        ▼
+QuestController / a new nav partial
+        │  calls
+        ▼
+ISsoTokenService.GenerateToken(user, questId?)   [QuestBoard.Domain — NEW]
+        │  reads secret via
+        ▼
+IIntegrationSettingsService (Platform-scoped)     [QuestBoard.Domain — NEW]
+        │  persisted by
+        ▼
+IntegrationSettingRepository → IntegrationSettingEntity (EF Core, SQL Server)  [NEW]
+        │
+        ▼
+302 redirect to  {OmphalosBaseUrl}/sso?token={signedToken}&questId={id?}
+                                                        │
+                                                        ▼
+                                          SsoEndpoints.cs — MapSsoEndpoints()  [Omphalos.Web — NEW]
+                                                        │  AllowAnonymous, validates HMAC + exp
+                                                        ▼
+                                          SsoService.HandleLoginAsync(...)     [Omphalos.Services — NEW]
+                                                        │  find-or-create User by external key
+                                                        ▼
+                                          IUserRepository (extended)          [Omphalos — MODIFIED]
+                                                        │  find-or-create GameSession by QuestId link
+                                                        ▼
+                                          ISessionRepository (extended)       [Omphalos — MODIFIED]
+                                                        │
+                                                        ▼
+                                          Sets omphalos_token cookie, 302 → SPA root (?session=id)
+                                                        │
+                                                        ▼
+                                          React AppContext reads ?session= on INIT, sets activeSessionId
 ```
 
-### Structure Rationale
+### Component Boundaries
 
-- **Vendor the JS/CSS instead of pure CDN `<script src="https://...">`:** Bootstrap/FontAwesome are loaded via CDN in `_Layout.cshtml` today, so a CDN reference would be *consistent* with existing convention — but Cropper.js is load-bearing for a core upload flow, not decorative chrome. Vendor the two files into `wwwroot/lib/cropperjs/` so the crop feature does not silently break if the CDN is unreachable from the small self-hosted LXC deployment's network path. This mirrors how the project already treats `site.js` (self-hosted, not CDN).
-- **One shared `image-crop.js`, not three duplicated inline scripts:** All 3 upload forms (`GuildMembers/Create`, `GuildMembers/Edit`, `DungeonMaster/EditProfile`) currently duplicate an inline file-size/type-validation `<script>` block per view (verified: `Edit.cshtml` lines 144-174 and equivalents in `Create.cshtml`/`EditProfile.cshtml`). Adding crop-modal wiring is the right moment to extract a shared script, matching this project's own precedent of consolidating duplicated JS (Phase 42 collapsed 4 duplicated toast-init scripts into `site.js`).
-- **`IImageValidationService` in Domain, not inline in controllers:** Today, MIME/size validation is duplicated 3× directly in controller methods (`GuildMembersController.Create`, `.Edit`, `DungeonMasterController.EditProfile`) — a known duplication pattern in this codebase already (PROJECT.md's Known Issues separately calls out a 3× duplication of `GetActiveBoardTypeAsync` as tech debt). Adding a second file input is a natural moment to centralize this in one Domain-layer service rather than adding a 4th inline copy.
+| Component | Repo / Layer | Responsibility | Talks To |
+|-----------|--------------|-----------------|----------|
+| `IIntegrationSettingsService` / `IntegrationSettingsService` | Quest Board `Domain` | Read/write instance-wide Omphalos URL + shared secret | `IIntegrationSettingRepository` |
+| `IIntegrationSettingRepository` / `IntegrationSettingRepository` | Quest Board `Repository` | EF Core persistence for the single settings row | `QuestBoardContext` |
+| `IntegrationSettingEntity` | Quest Board `Repository` | EF entity, one row holding `OmphalosBaseUrl`, `OmphalosSharedSecret` | — |
+| `ISsoTokenService` / `SsoTokenService` | Quest Board `Domain` | Builds the signed payload (user identity claims + optional questId + exp), HMAC-signs it, base64url-encodes | `IIntegrationSettingsService` |
+| `Areas/Platform/Controllers/SettingsController` | Quest Board `Service` (Platform Area) | SuperAdmin CRUD for the Omphalos URL/secret | `IIntegrationSettingsService` |
+| `SsoController` (new, standalone) | Quest Board `Service` | Builds redirect URL, issues `302` | `ISsoTokenService`, `IIntegrationSettingsService` |
+| `_Layout.cshtml` DM dropdown + `Details.cshtml` button | Quest Board `Service` Views | Entry points into the redirect action | `SsoController` action |
+| `SsoEndpoints.cs` (`MapSsoEndpoints`) | Omphalos `Web/Endpoints` | Anonymous HTTP entry point, validates token, delegates | `ISsoService` |
+| `ISsoService` / `SsoService` | Omphalos `Services/Implementations` | Validates signature/expiry, find-or-create user, find-or-create session, issues Omphalos's own JWT cookie | `IUserRepository`, `ISessionRepository`, reuses `AuthService`'s token-issuing logic |
+| `IUserRepository` (extended) | Omphalos `Domain`/`Repository` | Add lookup by external (Quest Board) user id | `OmphalosDbContext` |
+| `GameSession` entity (extended) | Omphalos `Domain`/`Repository` | New nullable `QuestBoardQuestId` column for session linking | `OmphalosDbContext` |
+| React `AppContext.jsx` (extended) | Omphalos `client` | Read `?session=` query param on load, override `activeSessionId` after `INIT` | `db.getAllSessions()` |
 
-## Architectural Patterns
+### Data Flow
 
-### Pattern 1: Client posts TWO files, not crop coordinates
+1. DM is authenticated in Quest Board, viewing a quest (or just wants the general DM tool).
+2. DM clicks "Open DM Tool" (navbar) or "Open Session Notes" (quest `Details.cshtml`, only rendered when `ViewBag.CanManage` is true — the same flag already gating the existing Manage button).
+3. Quest Board action (`GET`) resolves the SuperAdmin-configured Omphalos base URL + shared secret via `IIntegrationSettingsService`, builds a signed token via `ISsoTokenService.GenerateToken(currentUser, questId: id?)`, and issues an HTTP **302 redirect** — there is no shared cookie domain between the two apps (different hosts/ports), so a redirect with the token in the URL is the only viable transport. No form POST, no iframe: a straight anchor link works because the action itself performs the redirect server-side.
+4. Browser follows the redirect to `{OmphalosBaseUrl}/api/sso/login?token=...&questId=...`.
+5. Omphalos's `SsoEndpoints.MapSsoEndpoints()` group (registered `AllowAnonymous()`, same pattern as `/api/auth/login`) receives the request, hands off to `ISsoService`.
+6. `SsoService` validates the HMAC signature and expiry (short-lived — minutes, not the 30-day `omphalos_token` lifetime) against the same shared secret configured on both sides.
+7. Find-or-create the `User`: Omphalos's `User` entity has a **unique index on `Username`**, no `Email` field at all. The token payload must carry a stable external identifier from Quest Board (its `UserEntity.Id` int) that `SsoService` maps to/creates an Omphalos `Username`. This needs a decision recorded before implementation (see Gaps below) — a new nullable `ExternalId` (Quest Board's numeric user Id) column on Omphalos's `User` entity so re-logins don't collide on display-name changes.
+8. Find-or-create the `GameSession`: if the token carries a `questId`, `ISsoService` looks up (or creates) a `GameSession` row linked to that Quest Board quest ID via a new nullable column, scoped to the just-resolved `UserId` (Omphalos sessions are `UserId`-scoped, not shared across users — so "the DM's session for quest N" is naturally per-DM already).
+9. `SsoService` calls the same token-generation path `AuthService` already uses (currently a **private** `GenerateToken(User)` method) to mint Omphalos's own 30-day JWT, sets it as the `omphalos_token` httpOnly cookie exactly as `/api/auth/login` does.
+10. Final redirect to the SPA root, `?session={gameSessionId}` in the query string.
+11. React `AppContext.jsx`'s existing `INIT` effect (currently defaults `activeSessionId: sessions?.[0]?.id ?? null`) needs a small change to prefer a session ID read from `window.location.search` if present and found in the loaded list, overriding the "first session" default. This is the one required **client-side** code change, small and additive.
 
-**What:** On crop-confirm, the browser produces a cropped `Blob` via `canvas.toBlob()`. Rather than sending crop coordinates (x/y/w/h) to the server and asking it to re-crop the original — which would require a server-side image-processing library, exactly what caused this feature's original pause — the browser sends **both** the original file bytes (unmodified, from the original `File` object still held in memory) and the cropped blob as two separate `IFormFile` entries in the same `multipart/form-data` POST.
+## Patterns to Follow
 
-**When to use:** Any time "keep both variants" is a hard requirement (it is here — the character details page must keep showing the original per issue #78) and a server-side image pipeline is explicitly undesirable (it is — SkiaSharp was paused for exactly this).
+### Pattern 1: Quest Board — instance-wide settings need a new DB-backed entity, not `appsettings.json`
 
-**Trade-offs:**
-- Zero new server dependencies; Domain/Repository layering stays exactly as strict as it is today (no image-processing package needed in any project).
-- Sidesteps the SkiaSharp-on-Linux-host verification blocker entirely — this is the single most important architectural consequence of this choice.
-- Server-side validation is still meaningful: it can check both files are valid image MIME types and within the existing 5 MB cap without ever decoding pixels.
-- Slightly larger request payload (transmits original bytes even though the server already effectively "has" them from a prior upload on Edit) — acceptable at this app's scale (17 members, occasional profile edits, not a hot path).
-- Server cannot mathematically re-verify that the "cropped" blob is actually a crop of the "original" blob without decoding both — accepted risk; this is a trusted internal tool for a friend group, not a public upload surface.
+**What:** `EmailSettings` (`QuestBoard.Domain/Models/EmailSettings.cs`) is the only existing
+"settings" precedent, and it is 100% `appsettings.json` + env-var driven via
+`services.AddOptions<EmailSettings>().BindConfiguration("EmailSettings")` in
+`QuestBoard.Domain/Extensions/ServiceExtensions.cs`. **This pattern does not fit the requirement.**
+The milestone spec explicitly requires a SuperAdmin-editable **Platform Settings page** — i.e.
+runtime-editable, not deploy-time config. There is no existing key-value settings entity anywhere
+in `QuestBoard.Repository/Entities/` (verified: 18 entity files, none settings-shaped). This is
+genuinely new: a small `IntegrationSettingEntity` (single row) plus migration, following the exact
+same `Entity → Repository → Domain Service → Controller` chain as
+`GroupEntity → GroupRepository → GroupService → GroupController`.
 
-**Example (client-side, vanilla JS, no bundler):**
-```javascript
-// wwwroot/js/image-crop.js
-function wireCropInput(inputId, previewImgId, cropperOptions) {
-    const input = document.getElementById(inputId);
-    input.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+**When:** Any config a SuperAdmin needs to change without a redeploy.
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const img = document.getElementById(previewImgId);
-            img.src = evt.target.result;
-            openCropModal(img, file, input, cropperOptions);
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
-function openCropModal(imgEl, originalFile, fileInputEl, options) {
-    const cropper = new Cropper(imgEl, { aspectRatio: 1, viewMode: 1, ...options });
-
-    document.getElementById('confirmCropBtn').onclick = () => {
-        cropper.getCroppedCanvas({ width: 512, height: 512 }).toBlob((croppedBlob) => {
-            const croppedFile = new File([croppedBlob], originalFile.name, { type: 'image/jpeg' });
-
-            // Replace the visible file input's FileList with the cropped result
-            // so the existing <form> posts the cropped bytes as ProfilePictureFile —
-            // no JS-driven fetch/AJAX needed, the form submits normally.
-            const croppedDT = new DataTransfer();
-            croppedDT.items.add(croppedFile);
-            fileInputEl.files = croppedDT.files;
-
-            // Also stash the untouched original into a second hidden file input
-            // so both ride along in the same multipart/form-data POST.
-            const originalInput = document.getElementById('originalPictureInput');
-            const originalDT = new DataTransfer();
-            originalDT.items.add(originalFile);
-            originalInput.files = originalDT.files;
-
-            cropper.destroy();
-            closeCropModal();
-        }, 'image/jpeg', 0.92);
-    };
-}
-```
-
-```html
-<!-- Existing field, now populated with the CROPPED result before submit -->
-<input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" />
-
-<!-- New hidden field carrying the untouched ORIGINAL -->
-<input type="file" asp-for="OriginalPictureFile" class="d-none" id="originalPictureInput" />
-```
-
-This is the cleanest way to wire a vanilla-JS/CDN-delivered crop library into an existing upload `<form>` so the cropped result — not the raw file — is what gets posted: **no AJAX, no fetch, no JS-driven `FormData` submit.** The existing Razor `<form method="post" enctype="multipart/form-data">` and `asp-for` model binding continue to work completely unchanged; only the *contents* of the `FileList` on two `<input type="file">` elements are swapped via `DataTransfer` immediately before the user clicks the existing "Save" submit button.
-
-### Pattern 2: Validation lives in Domain, byte[] I/O stays in Repository
-
-**What:** The Domain layer's `IImageValidationService` (or inline checks in `CharacterService`/`DungeonMasterProfileService`) validates business rules purely from the `byte[]` payloads it's handed — file size and allowed MIME type (logic that already exists 3× in controllers today, just needs de-duplicating). The Repository layer never validates anything; it only reads/writes the two `byte[]` columns.
-
-**When to use:** Any validation that depends on business meaning (file size limits, allowed formats) belongs in Domain because it's a business rule, not a storage concern — consistent with this codebase's existing rule that "business logic lives in services, not controllers" (validated requirement in PROJECT.md, Phase 02).
-
-**Trade-offs:**
-- Matches the project's existing hard boundary: "Domain layer must not depend directly on Repository entities" and "EF packages only in Repository" — this pattern requires zero EF references and zero image-processing package references in Domain.
-- Removes the current 3x duplication of MIME/size-check logic sitting directly in controllers today (verified in `GuildMembersController.Create`/`.Edit` and `DungeonMasterController.EditProfile`). Fixing this existing duplication is optional scope, not required by the four backlog items, but this phase is a natural moment to do it since the validation surface is being touched anyway.
-- Controllers still do the actual `IFormFile.CopyToAsync(memoryStream)` byte-extraction (unavoidable — `IFormFile` is an ASP.NET Core Service-layer type and must not leak into Domain).
-
-**Example:**
+**Example (entity, following `GroupEntity`'s shape):**
 ```csharp
-// QuestBoard.Domain/Interfaces/IImageValidationService.cs
-public interface IImageValidationService
-{
-    /// <summary>
-    /// Returns null if the image passes business rules (size cap, allowed MIME type),
-    /// or an error message describing the failure.
-    /// </summary>
-    string? ValidateImage(byte[] imageBytes, string contentType, long maxSizeBytes);
-}
-```
+namespace QuestBoard.Repository.Entities;
 
-### Pattern 3: Both file inputs are lost on server-side validation failure — same as today, now doubled
-
-**What:** When `ModelState.IsValid` is false or an inline check fails, the controller currently does `return View(viewModel)`. With two file inputs, both must be surfaced consistently — but `IFormFile` values are never round-tripped to the client on a failed POST (browsers cannot pre-populate `<input type="file">` for security reasons), and this is already true today for the single-file case in this codebase. No new problem is introduced, but the UI should tell the user their crop selection was lost and prompt them to re-select/re-crop, rather than assuming either file persists.
-
-**When to use:** Any validation-failure branch in `GuildMembersController.Create/Edit` or `DungeonMasterController.EditProfile`.
-
-## Data Flow
-
-### Upload + Crop Request Flow
-
-```
-User selects a file in <input type="file">
-    v
-image-crop.js 'change' handler -> FileReader.readAsDataURL -> shows Cropper.js modal
-    v
-User adjusts crop box, clicks "Confirm Crop" (NEW button, not the form's Save button)
-    v
-cropper.getCroppedCanvas().toBlob() -> cropped File built via DataTransfer,
-replaces ProfilePictureFile's FileList; original File placed into a new
-hidden OriginalPictureFile input via a second DataTransfer
-    v
-User clicks existing "Save Changes" button -> normal <form> POST (multipart/form-data)
-    v
-Controller (GuildMembersController.Edit / DungeonMasterController.EditProfile)
-    reads BOTH IFormFiles into byte[] (existing CopyToAsync pattern, called twice)
-    v
-Domain service (CharacterService / DungeonMasterProfileService)
-    validates via IImageValidationService, then calls repository upsert with 2 byte[]
-    v
-Repository (CharacterRepository.UpdateProfileImageAsync / DungeonMasterProfileRepository.UpsertProfileImageAsync)
-    writes CharacterImageEntity.ImageData (cropped) + .OriginalImageData (original)
-    v
-SQL Server -- EF Core SaveChangesAsync
-    v
-RedirectToAction (unchanged)
-```
-
-### Display Flow (existing thumbnail vs. new "show original")
-
-```
-Guild list / character card / DM directory
-    -> <img src="GetProfilePicture/{id}">  (unchanged -- always serves the CROPPED/display image)
-
-Character details page (the one place that must show the ORIGINAL per issue #78)
-    -> <img src="GetOriginalPicture/{id}"> (NEW action, mirrors GetProfilePicture exactly,
-       reads the new OriginalImageData column instead, falling back to ImageData if
-       OriginalImageData is NULL for pre-existing rows)
-```
-
-## Recommended Schema Shape
-
-**Decision: one entity, two `byte[]` columns — NOT two related rows.**
-
-```csharp
-// QuestBoard.Repository/Entities/CharacterImageEntity.cs — MODIFIED
-[Table("CharacterImages")]
-public class CharacterImageEntity : IEntity
+[Table("IntegrationSettings")]
+public class IntegrationSettingEntity : IEntity
 {
     [Key]
-    [ForeignKey(nameof(Character))]
     public int Id { get; set; }
 
-    [Required]
-    public byte[] ImageData { get; set; } = [];          // EXISTING — repurposed as "display/cropped" bytes
+    [Required, StringLength(500)]
+    public string OmphalosBaseUrl { get; set; } = string.Empty;
 
-    public byte[]? OriginalImageData { get; set; }        // NEW — nullable so existing rows migrate cleanly
+    [Required, StringLength(200)]
+    public string OmphalosSharedSecret { get; set; } = string.Empty;
 
-    public virtual CharacterEntity Character { get; set; } = null!;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+```
+A single-row table (`Id = 1` always) is simplest given "instance-wide, not per-group" was already
+decided — no need for a generic key-value schema unless a second unrelated integration setting
+shows up later.
+
+### Pattern 2: Quest Board — Repository classes are flat, `internal`, and extend `BaseRepository<TDomain, TEntity>`
+
+**What:** `QuestBoard.Repository/GroupRepository.cs` (confirmed via direct read) lives at the
+project **root**, not in a `Repositories/` subfolder — despite `IGroupRepository` implying that
+folder name. Every repository is `internal class XRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<TDomain, TEntity>(dbContext, mapper), IXRepository`.
+
+**When:** Any new Quest Board repository — `IntegrationSettingRepository` should follow this exact
+shape and location (flat file at `QuestBoard.Repository/IntegrationSettingRepository.cs`, not a
+new subfolder — don't introduce a folder convention the rest of the codebase doesn't use).
+
+### Pattern 3: Quest Board — DI registration is two parallel extension methods, one per layer
+
+**What:** `QuestBoard.Repository/Extensions/ServiceExtensions.cs` → `AddRepositoryServices(IConfiguration)`
+registers `DbContext` + all `IXRepository → XRepository`. `QuestBoard.Domain/Extensions/ServiceExtensions.cs`
+→ `AddDomainServices(IConfiguration)` registers all `IXService → XService` plus any `AddOptions<T>()`
+bindings. `Program.cs` calls both in sequence: `builder.Services.AddRepositoryServices(...).AddDomainServices(...)`.
+
+**When:** Registering `IIntegrationSettingRepository`/`IIntegrationSettingService`/`ISsoTokenService` —
+add one line to each extension method, no new registration pattern needed.
+
+### Pattern 4: Quest Board — Platform Area controllers are `[Area("Platform")]` + `[Authorize(Policy = "SuperAdminOnly")]`, constructor-injected services only
+
+**What:** `GroupController` (the only existing Platform controller) is a thin MVC controller:
+validate → call `IGroupService` → `TempData` message → `RedirectToAction`. No business logic in
+the controller itself. Views live under `Areas/Platform/Views/{ControllerName}/`, sharing
+`Areas/Platform/Views/Shared/_Layout.Platform.cshtml`.
+
+**When:** The new Settings page — `Areas/Platform/Controllers/SettingsController.cs`, same
+`[Area("Platform")] [Authorize(Policy = "SuperAdminOnly")]` header, `Index`/`Edit` GET+POST pair
+(this is a single-row settings form, closer to `AccountController.Edit` shape than `GroupController`'s
+full CRUD — no Create/Delete needed since the row always exists after first save).
+
+### Pattern 5: Quest Board — nav links are gated by `AuthorizationService.AuthorizeAsync(User, "PolicyName")` inline in `_Layout.cshtml`
+
+**What:** The DM dropdown in `_Layout.cshtml` (lines 74–100) is rendered only if
+`(await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded`. "Open DM Tool"
+belongs as a new `<li>` inside that same existing dropdown block — not a new top-level nav item —
+matching "Create Quest" / "Manage Shop" / "Edit My Profile" siblings already there.
+
+**When:** Adding the navbar entry point. No new authorization policy needed; `DungeonMasterOnly`
+already covers DM+Admin.
+
+### Pattern 6: Quest Board — quest-page action buttons are conditionally rendered via `ViewBag.CanManage`
+
+**What:** `QuestController.Details` (line 288–290) computes
+`ViewBag.CanManage = isQuestDm || isAdmin` and `Details.cshtml` (line 611) gates the entire
+"Manage Quest" card on `@if ((bool)ViewBag.CanManage)`. "Open Session Notes" belongs inside or
+adjacent to that same existing card, reusing the same `CanManage` computation — don't duplicate
+the DM/Admin check.
+
+### Pattern 7: Omphalos — every feature is `IXRepository` (Domain interface) → `XRepository` (Repository impl) → `IXService` (Domain interface) → `XService` (Services impl) → `MapXEndpoints()` (Web static extension), registered flat in `Program.cs`
+
+**What:** Confirmed identical 4-file shape for every existing Omphalos feature (`Session`, `User`,
+`GlobalLocation`, `GlobalCharacter`, `Auth`). `Program.cs` registers repositories first, then
+services, in two flat blocks — no per-feature extension-method grouping like Quest Board has (all
+`AddScoped<>` calls sit directly in `Program.cs`, not in a `ServiceExtensions.cs`).
+
+**When:** The new SSO feature — create `ISsoService`/`SsoService` (no new repository needed; it
+composes `IUserRepository` + `ISessionRepository`), and `SsoEndpoints.cs` with `MapSsoEndpoints()`,
+registered the same flat way: `builder.Services.AddScoped<ISsoService, SsoService>();` next to the
+other service registrations, `app.MapSsoEndpoints();` next to the other endpoint maps.
+
+### Pattern 8: Omphalos — endpoints are `MapGroup("/api/x")`, auth via `.RequireAuthorization()` or `.AllowAnonymous()` at the group or per-route level
+
+**What:** `AuthEndpoints` mixes both on one group: `/login` and `/logout` are `.AllowAnonymous()`,
+`/me` is `.RequireAuthorization()` — set per-route, not group-wide, because the group itself
+carries no blanket policy. `AdminEndpoints`/`SessionEndpoints`/`SettingsEndpoints` set
+`.RequireAuthorization()` (or `.RequireAuthorization("AdminOnly")`) at the **group** level since
+every route inside needs it uniformly.
+
+**When:** `SsoEndpoints` — the token-validation route must be `.AllowAnonymous()` (the whole point
+is the caller isn't yet authenticated to Omphalos), following the exact `AuthEndpoints` shape:
+```csharp
+public static class SsoEndpoints
+{
+    public static IEndpointRouteBuilder MapSsoEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/sso");
+
+        group.MapGet("/login", async (string token, string? questId, ISsoService sso, HttpContext http, CancellationToken ct) =>
+        {
+            var result = await sso.HandleLoginAsync(token, questId, ct);
+            if (result is null) return Results.Unauthorized();
+
+            http.Response.Cookies.Append("omphalos_token", result.Token, TokenCookieOptions);
+            return Results.Redirect($"/?session={result.SessionId}");
+        }).AllowAnonymous();
+
+        return app;
+    }
 }
 ```
 
-Same change mirrored on `DungeonMasterProfileImageEntity`.
+### Pattern 9: Omphalos — `AuthService.GenerateToken` needs to move onto `IAuthService` (or a shared internal helper) rather than being duplicated
 
-**Why one entity/two columns, not two related rows:**
+**What:** `AuthService.GenerateToken(User)` is currently `private`. `SsoService` needs to issue the
+exact same Omphalos-native JWT (same claims shape: `sub`=userId, `unique_name`=username,
+`role`=role) so the resulting cookie behaves identically to a normal login. PROJECT.md already
+flags this ("not yet on IAuthService") as a known gap.
 
-1. **Cardinality is fixed and 1:1, not 1:many.** There is exactly one "current cropped" and exactly one "current original" per character/profile at any time — never a history, never multiple originals. A second related entity (e.g. `CharacterOriginalImageEntity`) would just duplicate `CharacterImageEntity`'s existing `PK=FK` pattern a second time for no benefit: a second table, a second cascade-delete relationship to configure, and a second `Include()` everywhere the image is loaded, all to store what is fundamentally the same row's data.
-2. **They are always read/written together.** Every existing repository method (`UpdateProfileImageAsync`, `UpsertProfileImageAsync`) already loads the image row with `.Include(c => c.ProfileImage)` and treats it as a single atomic unit (null → create, exists → update in place). Splitting into two rows would only add join overhead for zero query-pattern benefit — there is no scenario in this app where you fetch the cropped image without potentially needing the original.
-3. **Matches the existing codebase convention exactly.** An earlier migration (`MoveCharacterImagesToSeparateTable`) already established the precedent that image bytes live in a dedicated 1-row-per-owner table, kept separate from the owning entity purely so image bytes aren't loaded on every non-image query of `CharacterEntity`/`DungeonMasterProfileEntity`. Adding a second nullable column to that *same* dedicated table preserves that exact isolation property (a `Characters` list query still never touches `CharacterImages` at all) while avoiding a third table.
-4. **Migration is trivially additive and reversible.** `ALTER TABLE CharacterImages ADD OriginalImageData varbinary(max) NULL` — no data loss risk, no backfill required (nullable, so all pre-existing rows simply have `OriginalImageData = NULL` until the owner next edits their photo; `GetOriginalPicture` should fall back to `ImageData` when `OriginalImageData IS NULL`, so old photos don't visually "lose" their original in the UI — they just show the same image for both).
+**When:** Implementing `SsoService`. Two viable approaches, in order of preference:
+1. **Add `Task<string> GenerateTokenAsync(User user)` (or keep sync) to `IAuthService`**, make the
+   existing `AuthService.GenerateToken` public/interface-exposed, inject `IAuthService` into
+   `SsoService` and call it directly. Minimal surface change, single source of truth for token
+   shape. (Preferred — smallest diff, no duplicated JWT-building code.)
+2. Extract a small internal `ITokenIssuer`/`JwtTokenFactory` used by both `AuthService` and
+   `SsoService`. Only worth it if `AuthService` picks up more responsibilities later; over-engineered
+   for this milestone.
 
-**When two related rows WOULD be justified (and why not here):** If the requirement were "keep a history of every crop ever made" (1:many) or "support multiple pending uploads before one is chosen" a related entity would be correct. Issue #78 explicitly wants exactly one original + one cropped, replaced together on every edit — a two-column single row is the minimal correct shape.
+### Pattern 10: Omphalos — `GameSession.Id` is a client-generated string, not a DB identity column
 
-## Library Choice: Cropper.js v1.6.2 (not v2)
+**What:** `GameSession.Id` is `string`, populated client-side as `` `session-${Date.now()}` `` (see
+`App.jsx` `createSession()`), not DB-generated. `SessionRepository.UpsertAsync` keys off
+`(Id, UserId)` composite match. This matters for "find or create the matching quest session":
+the **server-side** SSO flow is the first place in Omphalos that will ever create a `GameSession`
+row without a client-generated ID — a new server-side ID scheme is needed (e.g.
+`$"qb-quest-{questId}-{userId}"` deterministic string, so repeat SSO hits for the same quest+DM
+resolve to the same row instead of creating duplicates every click).
 
-Cropper.js is the de facto standard vanilla-JS, canvas-based, touch-friendly crop library — CDN-deliverable with no build step, which fits this project's constraint exactly.
+**When:** `SsoService`'s session find-or-create step — must NOT reuse the client's
+`session-${timestamp}` convention (collides with nothing, but is non-deterministic and defeats
+"find" semantics). Use a deterministic, prefixed ID derived from the Quest Board quest ID so a
+second click on "Open Session Notes" for the same quest reopens the same session instead of
+spawning a new one.
 
-**Version finding (cross-verified across the official homepage/guide and the dedicated v1 docs page — MEDIUM confidence, since both sources are web-fetched docs rather than a package registry, but the two independent fetches agree):** Cropper.js v2 (`https://unpkg.com/cropperjs`, current default distribution) is a ground-up rewrite onto a **custom-elements/Web Components API** (`<cropper-canvas>`, `<cropper-image>`, `<cropper-selection>`) — a materially different, heavier integration surface than the classic v1 API. Cropper.js v1.6.2 retains the simple, extremely well-documented `new Cropper(imageElement, options)` class with a `.getCroppedCanvas()` method that hands back a plain `<canvas>` — the pattern used in Pattern 1 above and in the vast majority of "crop before multipart upload" tutorials/integrations across server-rendered frameworks.
+## Anti-Patterns to Avoid
 
-**Recommendation: use v1.6.2, pinned, vendored — not v2.** Reasons:
-- v1's plain class API maps directly onto `getCroppedCanvas().toBlob()` with zero framework/component-model learning curve, for a team with no other web-component usage anywhere in this codebase.
-- v2's custom-elements API would be the only web component in the entire application — a one-off architectural inconsistency for a vanilla-JS, no-bundler codebase that otherwise uses plain DOM APIs (`document.getElementById`, `addEventListener`) everywhere (verified in `Edit.cshtml`'s existing inline script).
-- v1 remains distributed under its own dist-tag (cdnjs/jsdelivr/unpkg), and vendoring a specific pinned file protects against any future v2-only breaking changes regardless.
+### Anti-Pattern 1: Reusing Omphalos's `Jwt:Secret` as the SSO shared secret
 
-**Installation (vendored, recommended):**
-```html
-<!-- In the 3 form views (desktop + mobile = 6 files) -->
-<link rel="stylesheet" href="~/lib/cropperjs/cropper.min.css" />
-<script src="~/lib/cropperjs/cropper.min.js"></script>
-<script src="~/js/image-crop.js"></script>
-```
-Download `cropper.min.js` + `cropper.min.css` from the `v1` release assets (jsdelivr `cropperjs@1.6.2/dist/cropper.min.js` and `.../cropper.min.css`) once, commit them into `wwwroot/lib/cropperjs/`, exactly as Bootstrap/FontAwesome are referenced today.
+**What:** It's tempting to make "the shared secret" the same value as Omphalos's existing
+`Jwt:Secret` config key, since both are HMAC-signing secrets living in Omphalos's config.
 
-## Scaling Considerations
+**Why bad:** Conflates two different trust boundaries. `Jwt:Secret` signs Omphalos's own
+long-lived (30-day) session tokens — if that leaks, every active Omphalos session is
+forgeable. The SSO shared secret only needs to be valid for the handshake (short-lived, single
+use for login), and is also configured on the **Quest Board** side (in the SuperAdmin Platform
+Settings UI) — a genuinely different value with a different blast radius and different owner.
+Reusing `Jwt:Secret` means Quest Board's SuperAdmin settings page now holds a credential that,
+if compromised, lets an attacker forge arbitrary Omphalos session cookies directly, not just
+SSO handshakes.
 
-| Scale | Architecture Adjustments |
-|-------|---------------------------|
-| Current (17 members, occasional profile edits) | Exactly as described above — no queueing, no async processing; synchronous crop+upload on the request thread is trivial at this volume. |
-| Moderate growth (100s of members) | No change needed. Image upload is not a hot path; `byte[]` columns on a dedicated 1-row table remain fine. |
-| Out of scope for this milestone | Image blob storage migration to external storage — already explicitly listed in PROJECT.md's "Out of Scope": "Image blob storage migration — performance acceptable at current scale." Do not let this phase creep into that. |
+**Instead:** A distinct `Sso:SharedSecret` config key on the Omphalos side, matched by the value
+SuperAdmin enters in Quest Board's Platform Settings page. Keep `Jwt:Secret` scoped to what it
+already does.
 
-## Anti-Patterns
+### Anti-Pattern 2: Making the SSO token long-lived like `omphalos_token`
 
-### Anti-Pattern 1: Re-introducing a server-side image-processing library to "properly" re-crop from coordinates
+**What:** Reusing the 30-day expiry pattern from `AuthEndpoints.TokenCookieOptions` for the
+SSO handshake token itself (the one in the redirect URL).
 
-**What people do:** Send crop rectangle (x/y/w/h) to the server and use `SkiaSharp`/`ImageSharp`/`System.Drawing` to perform the actual crop server-side, treating the client-side crop UI as "just a preview."
+**Why bad:** The handshake token travels in a URL (browser history, server access logs, referrer
+headers if any downstream redirect leaks it) — a 30-day-valid credential sitting in a log file is
+a real exposure. It only needs to survive the few seconds between Quest Board issuing the
+redirect and Omphalos consuming it.
 
-**Why it's wrong:** This is precisely the approach that was paused in v1.0 because `SkiaSharp`'s native library availability on the `aspnet:10` Debian Bookworm deployment target was never verified (PROJECT.md Key Decisions: "Profile picture crop paused — SkiaSharp native lib availability on deployment host unverified"). Re-introducing any native-dependent image library reopens exactly the blocker this milestone should retire, and it couples business logic to platform-specific native binaries with no natural home in this project's strict layering.
+**Instead:** 1–5 minute expiry on the handshake token specifically (separate from the 30-day
+`omphalos_token` cookie minted *after* validation, which is fine to keep at its current lifetime).
 
-**Do this instead:** Crop entirely client-side with canvas (`getCroppedCanvas().toBlob()`), and post the already-cropped pixels as ordinary `byte[]`. The server only ever validates and stores bytes it's handed — this is the whole point of Pattern 1 above.
+### Anti-Pattern 3: Matching Omphalos users by `Username` collision with Quest Board's `Name`
 
-### Anti-Pattern 2: AJAX/fetch-based crop-then-upload flow
+**What:** Naively creating/matching an Omphalos `User` by `Username == questBoardUser.Name`.
 
-**What people do:** Intercept the form's `submit` event with JS, build a `FormData` object manually, and `fetch()` it to the controller, bypassing the native `<form>` POST.
+**Why bad:** Quest Board's own `AccountController.Edit` (per PROJECT.md's Key Decisions table,
+Phase 34.3) already had a real security bug from assuming `User.Name`/`Username` is a stable
+unique identity — display names have no cross-system uniqueness guarantee and can be freely
+renamed. Two different Quest Board users could plausibly end up mapped to the same Omphalos
+account, or a renamed user could silently "become" a different Omphalos identity.
 
-**Why it's wrong:** This is unnecessary complexity for this codebase. Every other form in the app (all 6 upload views) is a plain server-rendered `<form method="post">` with full-page redirect-after-post; introducing one AJAX-driven exception creates an inconsistent UX (no full-page navigation feedback, needs manual error-display JS, breaks the existing `asp-validation-summary`/`asp-validation-for` tag helpers which rely on a real postback) for zero added benefit — the `DataTransfer`-swap trick (Pattern 1) achieves an identical visual result using the existing plain-POST mechanism.
+**Instead:** Carry Quest Board's stable numeric `UserEntity.Id` in the signed token payload and
+match/store it against a new nullable `ExternalId` (or similar) column on Omphalos's `User`
+entity — exactly the same "use the stable ID, not the display name" lesson Quest Board's own
+Phase 34.3 fix already encoded elsewhere in this codebase.
 
-**Do this instead:** Swap the `<input type="file">`'s `FileList` via `DataTransfer` before the user submits the existing form normally, as shown in Pattern 1.
+### Anti-Pattern 4: Building a client-side React route (`react-router`) for `/sso` landing
 
-### Anti-Pattern 3: Storing the crop rectangle instead of the actual cropped pixels
+**What:** Adding `react-router-dom` (or similar) to handle a distinct `/sso-landing` client route
+that then dispatches session selection.
 
-**What people do:** Store `CropX`, `CropY`, `CropWidth`, `CropHeight` as new columns alongside the original image, and compute the "cropped" view on every read.
+**Why bad:** Omphalos's SPA has **no router today** — `App.jsx` is a single view switched by
+reducer state (`view: 'sessions' | 'library'`), not URL-driven. Introducing a router just for this
+one landing case is a disproportionate dependency/architecture change for a milestone whose own
+scope note says "foundation for a future API, not built now" — i.e. minimal footprint is the
+explicit intent.
 
-**Why it's wrong:** This reintroduces a server-side (or repeated client-side) re-crop operation on every page that shows the thumbnail, which is both slower and reopens the "does this need an image library" question this milestone is trying to avoid. It also doesn't match issue #78's explicit requirement — "both the original and cropped image are stored."
+**Instead:** The whole SSO exchange is server-side (Quest Board → Omphalos `/api/sso/login` →
+redirect to SPA root with `?session=<id>` in the query string). The only client change is
+`AppContext.jsx`'s `INIT` effect reading that one query param once, on mount — no routing library
+needed.
 
-**Do this instead:** Store the already-rasterized cropped bytes directly (Recommended Schema Shape above), computed once client-side at upload time.
+### Anti-Pattern 5: Putting Omphalos integration settings on `GroupEntity`
 
-## Integration Points
+**What:** Adding `OmphalosUrl`/`OmphalosSecret` columns to `GroupEntity` since that's where
+group-scoped config would normally live in this now-multi-tenant codebase.
 
-### Internal Boundaries (files touched, by layer)
+**Why bad:** Already explicitly decided against in PROJECT.md's Key Decisions table — Omphalos
+has no tenant concept on its own side, so a per-group value would have nothing to map onto when
+Omphalos validates the token. Confirmed independently during this research: Omphalos's `User`
+entity has zero group/org/tenant fields anywhere in `Omphalos.Domain/Entities/`.
 
-| File | Layer | Change |
-|------|-------|--------|
-| `QuestBoard.Repository/Entities/CharacterImageEntity.cs` | Repository | Add `OriginalImageData byte[]?` |
-| `QuestBoard.Repository/Entities/DungeonMasterProfileImageEntity.cs` | Repository | Add `OriginalImageData byte[]?` |
-| `QuestBoard.Repository/Migrations/{new}_AddOriginalImageColumn.cs` | Repository | New additive migration (nullable column, no backfill) |
-| `QuestBoard.Repository/CharacterRepository.cs` | Repository | `UpdateProfileImageAsync` accepts `(byte[]? cropped, byte[]? original)`; add `GetCharacterOriginalPictureAsync` |
-| `QuestBoard.Repository/DungeonMasterProfileRepository.cs` | Repository | `UpsertProfileImageAsync` accepts `(byte[]? cropped, byte[]? original)`; add `GetOriginalPictureAsync` |
-| `QuestBoard.Repository/Automapper/EntityProfile.cs` | Repository | Map new `byte[]?` properties Entity ↔ DomainModel |
-| `QuestBoard.Domain/Models/Character.cs` | Domain | Add `OriginalProfilePicture byte[]?` |
-| `QuestBoard.Domain/Models/DungeonMasterProfile.cs` | Domain | Add `OriginalProfilePicture byte[]?` |
-| `QuestBoard.Domain/Interfaces/ICharacterService.cs` | Domain | Add `GetCharacterOriginalPictureAsync`; widen picture-upsert signature |
-| `QuestBoard.Domain/Interfaces/IDungeonMasterProfileService.cs` | Domain | Same shape of change |
-| `QuestBoard.Domain/Interfaces/IImageValidationService.cs` (new, recommended) | Domain | Centralize size/type validation, remove 3x duplication |
-| `QuestBoard.Domain/Services/CharacterService.cs` | Domain | Wire validation + widened upsert call |
-| `QuestBoard.Domain/Services/DungeonMasterProfileService.cs` | Domain | Same |
-| `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs` | Service | Add `IFormFile? OriginalPictureFile` |
-| `QuestBoard.Service/ViewModels/DungeonMasterViewModels/EditDMProfileViewModel.cs` | Service | Add `IFormFile? OriginalPictureFile` |
-| `QuestBoard.Service/Controllers/Characters/GuildMembersController.cs` | Service | `Create`/`Edit` POST actions read both files; new `GetOriginalPicture` action |
-| `QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs` | Service | `EditProfile` POST reads both files; new `GetOriginalPicture` action |
-| `QuestBoard.Service/Views/GuildMembers/Create.cshtml` + `.Mobile.cshtml` | Service | Add crop modal markup, hidden original input, script includes |
-| `QuestBoard.Service/Views/GuildMembers/Edit.cshtml` + `.Mobile.cshtml` | Service | Same |
-| `QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml` + `.Mobile.cshtml` | Service | Same |
-| `QuestBoard.Service/Views/GuildMembers/Details.cshtml` | Service | Switch `<img>` src to `GetOriginalPicture` per issue #78 |
-| `QuestBoard.Service/wwwroot/lib/cropperjs/*` (new) | Service (static assets) | Vendored Cropper.js v1.6.2 files |
-| `QuestBoard.Service/wwwroot/js/image-crop.js` (new) | Service (static assets) | Shared crop-modal wiring, used by all 3 forms |
-| `QuestBoard.Service/wwwroot/css/image-crop.css` (new) | Service (static assets) | Crop modal styling |
+**Instead:** The new `IntegrationSettingEntity` (single instance-wide row) as described in
+Pattern 1, gated by `SuperAdminOnly`, not `AdminOnly`.
 
-### External Services
+## Scalability Considerations
 
-None. This feature has zero external service dependencies — it is entirely client-side JS + existing EF Core/SQL Server.
+Not a meaningful axis for this milestone — both apps are small self-hosted single-instance
+deployments (Quest Board: 17 members on an LXC container; Omphalos: single-maintainer scale).
+No connection pooling, caching, or horizontal-scaling concerns apply. The one real constraint is
+**clock skew** between the two hosts for the short-lived handshake token's expiry check — worth a
+generous-but-bounded clock-skew allowance (e.g. ±30s) in Omphalos's validation rather than an
+exact-match window, since both apps deploy to different hosts with no guaranteed NTP sync
+verification.
 
-## Suggested Build Order
+## New vs Modified Components — Quest Board (`C:\Repos\quest-board`)
 
-1. **Schema first (Repository layer):** Add `OriginalImageData` column to both image entities, generate and verify the EF Core migration applies cleanly (additive, nullable — low risk). Nothing else can be built/tested end-to-end until this exists, since controllers need somewhere to persist the second byte array.
-2. **Repository + Domain plumbing:** Widen `UpdateProfileImageAsync`/`UpsertProfileImageAsync` signatures, add `GetCharacterOriginalPictureAsync`/`GetOriginalPictureAsync`, update `Character`/`DungeonMasterProfile` domain models and AutoMapper profiles, update `ICharacterService`/`IDungeonMasterProfileService` and their implementations. This can be built and unit-tested independently of any UI change (pass two `byte[]` literals in a test, assert both columns are set).
-3. **ViewModel + controller wiring (still without crop UI):** Add `OriginalPictureFile` to both ViewModels, update the 3 POST actions to read and forward both files, add the two `GetOriginalPicture` actions. At this point the feature is fully functional via manual two-file-input testing (e.g. Postman) even before any JS crop UI exists — a good integration checkpoint.
-4. **Client-side crop UI (Service layer, static assets):** Vendor Cropper.js v1.6.2, build `image-crop.js`, wire it into the 3 form views (desktop + mobile = 6 view files), add the hidden `OriginalPictureFile` input and crop-modal markup.
-5. **Character details page original-image display:** Point the one view that must show the original (per issue #78) at the new `GetOriginalPicture` endpoint.
-6. **Manual UAT across all 3 forms x desktop/mobile:** Confirm crop -> save -> thumbnail (cropped) shows correctly everywhere, and the character details page specifically shows the original.
+| Component | File (new path) | Status | Layer |
+|-----------|------------------|--------|-------|
+| `IntegrationSettingEntity` | `QuestBoard.Repository/Entities/IntegrationSettingEntity.cs` | NEW | Repository |
+| EF migration (`AddIntegrationSettings`) | `QuestBoard.Repository/Migrations/<timestamp>_AddIntegrationSettings.cs` | NEW | Repository |
+| `IntegrationSetting` domain model | `QuestBoard.Domain/Models/IntegrationSetting.cs` | NEW | Domain |
+| `IIntegrationSettingRepository` | `QuestBoard.Domain/Interfaces/IIntegrationSettingRepository.cs` | NEW | Domain (interface) |
+| `IntegrationSettingRepository` | `QuestBoard.Repository/IntegrationSettingRepository.cs` (flat, per Pattern 2) | NEW | Repository (impl) |
+| `IIntegrationSettingsService` | `QuestBoard.Domain/Interfaces/IIntegrationSettingsService.cs` | NEW | Domain (interface) |
+| `IntegrationSettingsService` | `QuestBoard.Domain/Services/IntegrationSettingsService.cs` | NEW | Domain (impl) |
+| `ISsoTokenService` | `QuestBoard.Domain/Interfaces/ISsoTokenService.cs` | NEW | Domain (interface) |
+| `SsoTokenService` (HMAC-SHA256 sign, short expiry, base64url payload) | `QuestBoard.Domain/Services/SsoTokenService.cs` | NEW | Domain (impl) |
+| `EntityProfile` AutoMapper additions (Entity ↔ Domain for the new model) | `QuestBoard.Domain/Automapper/EntityProfile.cs` | MODIFIED | Domain |
+| `AddRepositoryServices` registration | `QuestBoard.Repository/Extensions/ServiceExtensions.cs` | MODIFIED | Repository |
+| `AddDomainServices` registration | `QuestBoard.Domain/Extensions/ServiceExtensions.cs` | MODIFIED | Domain |
+| `Areas/Platform/Controllers/SettingsController.cs` | new file | NEW | Service (Platform Area) |
+| `Areas/Platform/Views/Settings/Index.cshtml` (edit form) | new file | NEW | Service (Platform Area views) |
+| `ViewModelProfile` additions (Domain ↔ ViewModel for the settings form) | `QuestBoard.Service/Automapper/ViewModelProfile.cs` | MODIFIED | Service |
+| `QuestBoard.Service.ViewModels.PlatformViewModels` — `IntegrationSettingsViewModel` | new file, same folder as `GroupCreateViewModel` etc. | NEW | Service |
+| SSO redirect action (`SsoController.OpenDmTool` / `.OpenSessionNotes`) | `QuestBoard.Service/Controllers/SsoController.cs` (its own controller — the redirect concern is orthogonal to quest CRUD, not added onto `QuestController`) | NEW | Service |
+| `_Layout.cshtml` DM dropdown — "Open DM Tool" link | `QuestBoard.Service/Views/Shared/_Layout.cshtml` (inside existing DM dropdown, ~line 96) | MODIFIED | Service (view) |
+| `Details.cshtml` — "Open Session Notes" button | `QuestBoard.Service/Views/Quest/Details.cshtml` (inside/near existing `CanManage` card, ~line 611+) | MODIFIED | Service (view) |
+| `Details.Mobile.cshtml` — same button, mobile view | `QuestBoard.Service/Views/Quest/Details.Mobile.cshtml` | MODIFIED | Service (view) |
 
-This order front-loads the EF migration (step 1) because every later step depends on the column existing, and defers the riskiest/most novel piece (a brand-new client-side library integration, step 4) until the data path underneath it is already proven correct via direct testing — so if the crop UI has any integration issues, they're isolated to JS/markup, not conflated with schema or Domain logic bugs.
+**Not needed:** no changes to `QuestBoardContext.cs`'s Global Query Filters — `IntegrationSettingEntity`
+is instance-wide and must NOT be tenant-filtered; register it as a `DbSet` without the group query
+filter applied to other entities (verify against however `QuestBoardContext.cs` currently scopes
+filters — `GroupEntity` itself and any instance-wide entity are presumably already exempt, follow
+that same exemption).
+
+## New vs Modified Components — Omphalos (`C:\Repos\omphalos`)
+
+| Component | File (new path) | Status | Layer |
+|-----------|------------------|--------|-------|
+| `SsoLoginRequest`/`SsoLoginResult` DTOs | `Omphalos.Domain/DTOs/SsoDtos.cs` (or added to an existing DTO file) | NEW | Domain |
+| `ISsoService` | `Omphalos.Domain/Interfaces/ISsoService.cs` | NEW | Domain (interface) |
+| `IAuthService.GenerateTokenAsync` (promote from `AuthService.GenerateToken` private method) | `Omphalos.Domain/Interfaces/IAuthService.cs` | MODIFIED | Domain (interface) |
+| `AuthService.GenerateToken` → public/interface-exposed | `Omphalos.Services/Implementations/AuthService.cs` | MODIFIED | Services |
+| `SsoService` (validates HMAC token, find-or-create user, find-or-create session, calls `IAuthService` for the Omphalos JWT) | `Omphalos.Services/Implementations/SsoService.cs` | NEW | Services |
+| `User.ExternalId` (nullable, stores Quest Board's numeric user Id) | `Omphalos.Domain/Entities/User.cs` | MODIFIED | Domain |
+| `UserConfiguration` — index on `ExternalId` | `Omphalos.Repository/Configurations/UserConfiguration.cs` | MODIFIED | Repository |
+| `IUserRepository.GetByExternalIdAsync` | `Omphalos.Domain/Interfaces/IUserRepository.cs` | MODIFIED | Domain (interface) |
+| `UserRepository.GetByExternalIdAsync` impl | `Omphalos.Repository/Repositories/UserRepository.cs` | MODIFIED | Repository |
+| `GameSession.QuestBoardQuestId` (nullable int/string, links back to the originating quest) | `Omphalos.Domain/Entities/GameSession.cs` | MODIFIED | Domain |
+| `GameSessionConfiguration` — index on `(UserId, QuestBoardQuestId)` | `Omphalos.Repository/Configurations/GameSessionConfiguration.cs` | MODIFIED | Repository |
+| `ISessionRepository.GetByQuestBoardQuestIdAsync` (or extend `GetByIdAsync` semantics) | `Omphalos.Domain/Interfaces/ISessionRepository.cs` | MODIFIED | Domain (interface) |
+| `SessionRepository` impl of the above | `Omphalos.Repository/Repositories/SessionRepository.cs` | MODIFIED | Repository |
+| EF migration (`AddSsoLinking`) | `Omphalos.Repository/Migrations/<timestamp>_AddSsoLinking.cs` | NEW | Repository |
+| `SsoEndpoints.cs` (`MapSsoEndpoints`, `AllowAnonymous`) | `Omphalos.Web/Endpoints/SsoEndpoints.cs` | NEW | Web |
+| `Program.cs` — register `ISsoService`, `app.MapSsoEndpoints()` | `Omphalos.Web/Program.cs` | MODIFIED | Web |
+| `appsettings.json` — `Sso:SharedSecret` config key | `Omphalos.Web/appsettings.json` | MODIFIED | Web (config) |
+| `appsettings.json` — `AllowedOrigins` populated with Quest Board's origin | `Omphalos.Web/appsettings.json` | MODIFIED | Web (config) — only strictly needed if any XHR/fetch call crosses origins; the redirect-based flow itself is a top-level navigation, not a fetch, so CORS isn't a hard blocker, but populate it anyway since it's currently inert and this is the first real cross-origin consumer |
+| `AppContext.jsx` — read `?session=` on `INIT`, override `activeSessionId` | `client/context/AppContext.jsx` (the `INIT` case and/or the "load data" `useEffect`) | MODIFIED | client (React) |
+
+**Not needed:** no new repository file for SSO — `SsoService` composes the existing
+`IUserRepository` + `ISessionRepository`, consistent with how `SessionService`/`UserService`
+never introduced dedicated repositories beyond the 1:1 pattern already established.
+
+## Build Order
+
+These are two separately-deployed repos with **no compile-time coupling** — the only shared
+contract is the token format (claims/fields, HMAC algorithm, shared-secret config key names) and
+the redirect URL shape. That contract must be pinned down and documented (e.g. in each repo's
+`.planning/` or a short design note) before either side writes code, since nothing will catch a
+mismatch except a live end-to-end test.
+
+**Recommended order:**
+
+1. **Pin the token contract first** (no code, just a written spec both sides implement against):
+   payload fields (Quest Board numeric UserId, Name/Email for display, optional QuestId, issued-at,
+   expiry), signing algorithm (HMAC-SHA256 over a compact string or JSON payload — NOT a full JWT
+   library dependency on the Quest Board side, since `System.IdentityModel.Tokens.Jwt` is not
+   currently a direct `PackageReference` in `QuestBoard.Domain`/`QuestBoard.Service` and pulling
+   it in only to mirror what a simple keyed-HMAC already achieves is unnecessary weight — Omphalos
+   already has the JWT library on its side for its own unrelated login tokens, no need to
+   standardize the SSO handshake token on the same format), shared-secret config key names on each
+   side, redirect URL query-param names (`token`, `questId`).
+
+2. **Quest Board side can start immediately and independently** — the settings entity, migration,
+   `IIntegrationSettingsService`, `ISsoTokenService`, Platform Settings page, and nav/button entry
+   points are all self-contained; they only need the *shape* of the token contract from step 1, not
+   a running Omphalos instance. This is genuinely the easier, lower-risk half and has no external
+   dependency — build and test it (unit tests on `SsoTokenService` covering signature generation and
+   expiry) fully before touching Omphalos.
+
+3. **Omphalos side depends on step 1's contract but not on step 2's code** — `ISsoService`,
+   `SsoEndpoints`, the `User.ExternalId`/`GameSession.QuestBoardQuestId` schema changes, and the
+   `IAuthService.GenerateTokenAsync` promotion can all be built and unit-tested against a
+   hand-crafted valid token matching the contract, without Quest Board running. This is the
+   **hard dependency point**: Omphalos is owned/maintained by someone else and changes there go
+   through normal PR review on that separate repo (per `PROJECT.md`'s constraints) — this is the
+   long pole for scheduling, not the technical complexity. Start this side's PR early given
+   external review latency is unpredictable.
+
+4. **Integration/end-to-end verification requires both sides deployed** — this cannot be
+   meaningfully tested with mocks alone for the final acceptance check, since the whole point is
+   two independently-versioned live services agreeing on a wire format. Plan a manual (or scripted)
+   end-to-end smoke test as the last step: real SuperAdmin-configured secret in Quest Board's
+   Platform Settings, real click-through, confirm landing in the correct Omphalos session with a
+   newly-provisioned or matched user.
+
+5. **The client-side `AppContext.jsx` query-param read** can be built and tested independently of
+   both the token contract and the backend SSO endpoint — it only needs *some* value in
+   `?session=` and a matching session in the loaded list. Low risk, can be done in parallel with
+   step 3, or even before it.
+
+## Gaps to Address
+
+- **Quest Board user identity → Omphalos `Username` mapping is not yet decided.** Omphalos's
+  `User` entity has a unique `Username` with no `Email` field. The token contract needs to settle
+  whether Omphalos derives/stores a `Username` from Quest Board's `Name` at first provisioning
+  (display-only after that, keyed by the new `ExternalId`) or from `Email`. Recommend deciding
+  this as part of pinning the token contract (build-order step 1), not left to whoever implements
+  the Omphalos side first.
+- **Exact redirect URL path on the Omphalos side** (`/api/sso/login` used throughout this document
+  as the working assumption, matching the `/api/auth/*` convention) is Omphalos's call to make
+  since it owns that route — Quest Board's `SsoController` only needs the base URL + path
+  documented in the settings/config, not hardcoded.
+- **Whether CORS (`AllowedOrigins`) is strictly required** for this flow is unresolved — the
+  primary SSO handshake is a top-level browser navigation (redirect), not a `fetch()`, so CORS may
+  not gate it at all. Worth confirming during implementation rather than assuming population is
+  required, though populating it costs nothing and unblocks any future in-page fetch-based
+  integration (the "foundation for bidirectional API calls" goal already named in PROJECT.md).
 
 ## Sources
 
-- `QuestBoard.Repository/Entities/CharacterImageEntity.cs` — verified by direct read (HIGH)
-- `QuestBoard.Repository/Entities/DungeonMasterProfileImageEntity.cs` — verified by direct read (HIGH)
-- `QuestBoard.Repository/CharacterRepository.cs` — verified by direct read (HIGH)
-- `QuestBoard.Repository/DungeonMasterProfileRepository.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/Controllers/Characters/GuildMembersController.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/Views/GuildMembers/Edit.cshtml` — verified by direct read (HIGH), including existing inline JS validation pattern to be consolidated
-- `.planning/PROJECT.md` — verified by direct read (HIGH); source of the SkiaSharp-pause decision and issue #78 requirements
-- `.planning/milestones/v1.0-phases/07-dm-profile-page/07-RESEARCH.md` — verified by direct read (HIGH); prior research establishing the `CharacterImageEntity` PK=FK pattern this milestone extends
-- `.planning/codebase/ARCHITECTURE.md` — verified by direct read (HIGH); confirms strict Service→Domain→Repository layering and "EF packages only in Repository" rule
-- [Cropper.js homepage/guide](https://fengyuanchen.github.io/cropperjs/) — WebFetch (MEDIUM, cross-verified against v1 docs page); confirms v2 uses a custom-elements API
-- [Cropper.js v1 docs](https://fengyuanchen.github.io/cropperjs/v1/) — WebFetch (MEDIUM, cross-verified against homepage); confirms v1.6.2 retains the classic class API with `getCroppedCanvas()`
-- [Cropper.js GitHub repo](https://github.com/fengyuanchen/cropperjs) — WebSearch (LOW individually, corroborates the above)
-- General `canvas.toBlob()` + `IFormFile` crop-before-upload pattern — WebSearch results across Telerik/GemBox/community sources (LOW individually; pattern is well-established, cross-referenced against the `DataTransfer` FileList-replacement technique which is standard/documented browser API usage, not vendor-specific)
+All findings are HIGH confidence — derived from direct inspection of source files in both repos, not
+training-data assumptions or web search. Key files read:
 
----
-*Architecture research for: D&D Quest Board — v7.0 client-side image crop-before-save*
-*Researched: 2026-07-04*
+- `C:\Repos\quest-board\.planning\PROJECT.md` — milestone scope, decided constraints, prior
+  abandoned-branch context
+- `C:\Repos\quest-board\QuestBoard.Service\Areas\Platform\Controllers\GroupController.cs` — Platform
+  Area controller pattern
+- `C:\Repos\quest-board\QuestBoard.Repository\Entities\GroupEntity.cs`,
+  `QuestEntity.cs`, `UserEntity.cs`, `UserGroupEntity.cs` — entity conventions, confirmed no
+  existing settings entity
+- `C:\Repos\quest-board\QuestBoard.Domain\Interfaces\IGroupService.cs`,
+  `IGroupRepository.cs`, `IUserService.cs`, `IActiveGroupContext.cs` — Domain interface conventions
+- `C:\Repos\quest-board\QuestBoard.Repository\GroupRepository.cs` — confirmed flat repository file
+  location (not in a `Repositories/` subfolder) and `internal class : BaseRepository<T,E>` shape
+- `C:\Repos\quest-board\QuestBoard.Domain\Extensions\ServiceExtensions.cs`,
+  `QuestBoard.Repository\Extensions\ServiceExtensions.cs` — DI registration pattern
+  (`AddDomainServices`/`AddRepositoryServices`)
+- `C:\Repos\quest-board\QuestBoard.Domain\Models\EmailSettings.cs` — confirmed existing "settings"
+  precedent is `appsettings.json`-bound, not DB-backed (doesn't fit this requirement)
+- `C:\Repos\quest-board\QuestBoard.Service\Program.cs` — full DI/middleware pipeline, confirms
+  `IActiveGroupContext` dual-registration pattern, Hangfire/Testing branching
+- `C:\Repos\quest-board\QuestBoard.Service\Views\Shared\_Layout.cshtml` — navbar DM dropdown
+  structure, confirms where "Open DM Tool" belongs
+- `C:\Repos\quest-board\QuestBoard.Service\Controllers\QuestBoard\QuestController.cs` — `Details`
+  action, `ViewBag.CanManage` computation, confirms `User.Email` availability
+- `C:\Repos\quest-board\QuestBoard.Domain\QuestBoard.Domain.csproj` — confirmed no direct JWT
+  package reference (only `AutoMapper` + `FrameworkReference`)
+- `C:\Repos\omphalos\src\Omphalos.Web\Program.cs` — full Omphalos DI/pipeline, JWT bearer config,
+  cookie-from-header extraction, CORS config, endpoint map registrations
+- `C:\Repos\omphalos\src\Omphalos.Web\Endpoints\AuthEndpoints.cs`, `SessionEndpoints.cs`,
+  `AdminEndpoints.cs`, `SettingsEndpoints.cs` — endpoint-group conventions, `AllowAnonymous` vs
+  `RequireAuthorization` placement
+- `C:\Repos\omphalos\src\Omphalos.Services\Implementations\AuthService.cs`,
+  `UserService.cs` — confirmed `GenerateToken` is private, JWT claims shape, BCrypt usage
+- `C:\Repos\omphalos\src\Omphalos.Domain\Interfaces\IAuthService.cs`,
+  `IUserRepository.cs`, `ISessionService.cs`, `ISessionRepository.cs` — Domain interface shapes
+- `C:\Repos\omphalos\src\Omphalos.Domain\Entities\GameSession.cs`, `User.cs` — confirmed
+  `GameSession.Id` is client-generated string, `User` has `Username` (unique) but no `Email` field
+- `C:\Repos\omphalos\src\Omphalos.Repository\Repositories\SessionRepository.cs`,
+  `UserRepository.cs` — upsert/find patterns
+- `C:\Repos\omphalos\src\Omphalos.Repository\OmphalosDbContext.cs`,
+  `Configurations\GameSessionConfiguration.cs`, `UserConfiguration.cs` — EF Core configuration
+  style (Fluent API `IEntityTypeConfiguration<T>`, PostgreSQL `jsonb`, unique index on `Username`)
+- `C:\Repos\omphalos\src\Omphalos.Web\appsettings.json` — confirmed `Jwt`/`AllowedOrigins`/`Admin`
+  config shape
+- `C:\Repos\omphalos\src\client\App.jsx`, `context\AppContext.jsx`, `db\index.js` — confirmed
+  **no client-side router**, single-view SPA gated by reducer state, `activeSessionId` defaults to
+  first session, `fetch`-based API client with `credentials: 'include'`
+- `C:\Repos\quest-board\QuestBoard.Service\QuestBoard.Service.csproj`,
+  `C:\Repos\omphalos\src\Omphalos.Web\Omphalos.Web.csproj`,
+  `Omphalos.Services\Omphalos.Services.csproj` — package reference inventories confirming JWT
+  library presence/absence on each side

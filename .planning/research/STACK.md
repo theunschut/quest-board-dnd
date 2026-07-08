@@ -1,104 +1,145 @@
 # Stack Research
 
-**Domain:** Adding client-side image-crop UI + dual-image persistence + server-side image processing + iOS Safari CSS fix, to an existing server-rendered ASP.NET Core 10 MVC app (v7.0 Backlog Cleanup milestone)
-**Researched:** 2026-07-04
-**Confidence:** MEDIUM (web-search-derived; no Context7/official-docs MCP available this session — versions cross-checked against NuGet/npm pages directly, but treat as verify-before-pinning)
+**Domain:** Cross-app SSO bridge (HMAC-signed token handoff) between two independently-deployed .NET 10 apps
+**Researched:** 2026-07-02
+**Confidence:** HIGH
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Technologies — Quest Board side (`C:\Repos\quest-board`)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Cropper.js | 2.1.1 (npm `cropperjs`) | Client-side drag/resize crop UI over an uploaded image | Current de-facto standard vanilla-JS cropper (961+ dependent npm packages), framework-agnostic, ships as native Web Components (`<cropper-canvas>`, `<cropper-image>`, `<cropper-selection>`) that drop into a plain `.cshtml` view with a `<script type="module">` import — no build step, no SPA framework, no jQuery (v1's old dependency) required. Actively published (latest release ~3 months old at research time). |
-| SixLabors.ImageSharp | 4.0.0 (targets net8.0+, works on net10.0) | Server-side re-encode/resize/validate of the cropped image before storage | Fully managed .NET code — **zero native binary dependency**, so nothing to verify on the Ubuntu 24.04 LXC host (no `.so` loading, no `ldd` checks, no apt packages). This directly resolves the year-old deferred SkiaSharp blocker by sidestepping the native-dependency question entirely. Apache-2.0 licensed for this project (org revenue well under the Six Labors Split License's $1M/year commercial threshold). See "SkiaSharp re-evaluation" below for why it's not the pick despite being viable now. |
+| `System.Security.Cryptography.HMACSHA256` (BCL) | Built into .NET 10 runtime | Sign the outgoing SSO token payload | Zero new dependency. Static `HMACSHA256.HashData(ReadOnlySpan<byte> key, ReadOnlySpan<byte> source)` has existed since .NET 6, confirmed current in .NET 10 docs. No instantiation, no `IDisposable` juggling. [Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.hmacsha256.hashdata?view=net-10.0) |
+| `Microsoft.AspNetCore.WebUtilities.WebEncoders` (framework-provided) | Ships with `Microsoft.AspNetCore.App` (already a `<FrameworkReference>` in `QuestBoard.Domain.csproj`) | URL-safe base64 encode of the HMAC signature bytes | **Already the established pattern in this codebase** — `AccountController.cs` uses `WebEncoders.Base64UrlEncode`/`Base64UrlDecode` for password-reset and email-change confirmation tokens (lines 44, 86, 222, 250). Reusing it keeps token-encoding conventions consistent across the app instead of introducing a second technique. No new package reference needed. |
+| EF Core 10.0.9 (existing) | Already in use | New `PlatformSettingEntity` (or similarly named) table to store the Omphalos base URL + shared secret | No existing key-value settings store exists in the repo (verified — no `Settings`/`Setting` entity anywhere in `QuestBoard.Repository`). This must be a new EF Core entity + migration, not an `IOptions` binding, because the value has to be **admin-editable at runtime** via the Platform Settings page — `IOptions<T>` (used by `EmailSettings`) is bound once from `appsettings.json`/env vars at startup and isn't meant for live admin edits without a restart or `IOptionsMonitor` reload plumbing that doesn't exist here. |
 
-### Supporting Libraries
+### Core Technologies — Omphalos side (`C:\Repos\omphalos`)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `System.Security.Cryptography.HMACSHA256` (BCL) | Built into .NET 10 runtime | Verify the incoming Quest Board token's signature | Same BCL type, verification side: recompute HMAC over the received payload with the shared secret and compare. No new package — Omphalos already references `Microsoft.AspNetCore.App` via `Sdk="Microsoft.NET.Sdk.Web"`. |
+| `System.Security.Cryptography.CryptographicOperations.FixedTimeEquals` (BCL) | Built into .NET 10 runtime | Constant-time comparison of the recomputed HMAC vs. the token's signature bytes | A plain `==`/`SequenceEqual` byte comparison short-circuits on first mismatch, leaking timing information an attacker could use to brute-force the signature byte-by-byte. `FixedTimeEquals` is the documented BCL answer to this and has existed since .NET Core 2.1 — no reason to hand-roll it. [Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.cryptographicoperations.fixedtimeequals?view=net-10.0) |
+| `Microsoft.AspNetCore.WebUtilities.WebEncoders` (framework-provided) | Ships with `Microsoft.AspNetCore.App` | Decode the URL-safe base64 signature/payload sent by Quest Board | Must match whatever Quest Board encodes with — see Integration Contract below. Already implicitly available (Omphalos is also `Sdk="Microsoft.NET.Sdk.Web"`), just unused today. |
+| EF Core 10 / Npgsql (existing) | Already in use | Extend `IUserRepository` with a "get-or-create by external identity" method for auto-provisioning; no new settings table needed on this side | Omphalos needs to look up (or create) a `User` row keyed by something stable from Quest Board (email is the natural choice — see Integration Contract). The shared secret itself lives in Omphalos `appsettings.json`/env var (`Sso:Secret`), mirroring the existing `Jwt:Secret` pattern — it does **not** need to be admin-editable at runtime on the Omphalos side, since Omphalos has no per-tenant concept and Quest Board is the only caller. |
+| `System.Text.Json` (BCL) | Built into .NET 10 runtime | Not required for the token payload itself (see contract — payload is pipe-delimited, not JSON) but already the default serializer for Minimal API request/response bodies if the SSO endpoint needs any JSON side-channel | Already used throughout Omphalos (`GameSession.SessionLog` is `JsonDocument`). No new dependency. |
+
+### What NOT to add (either repo)
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| A JWT library (`System.IdentityModel.Tokens.Jwt`, `Microsoft.IdentityModel.Tokens`) **on the Quest Board side** | Quest Board has zero crypto/JWT dependencies today (verified — no `System.IdentityModel`, no `Microsoft.IdentityModel.Tokens` anywhere in the repo). Pulling in a JWT stack for a single internal signed-redirect token is disproportionate: JWT gives you a header/claims/registered-claim-names envelope, `alg` negotiation, and a spec surface (`kid`, `nbf`, audience validation edge cases) that solves problems this integration doesn't have. A raw HMAC-signed query string is simpler to reason about, simpler to debug (no base64url-JSON-decode step to eyeball a payload), and has no algorithm-confusion attack surface (JWT's `alg: none` / RS256-vs-HS256 confusion class of bugs literally cannot occur if there's no `alg` field to attack). | Flat delimited payload + HMACSHA256 signature, both base64url-encoded (see Integration Contract) |
+| Reusing Omphalos's **existing** JWT machinery (`Microsoft.IdentityModel.Tokens`, already a dependency there) for the *incoming* SSO token | Tempting since the package is already referenced for Omphalos's own login flow, but it signs Omphalos's *own* session tokens with `Jwt:Secret` — reusing that secret/format for the cross-app handoff would conflate two different trust boundaries (Omphalos's own users' sessions vs. a federated-login assertion from an external system) and couple the two token formats together. A short-lived, single-purpose HMAC token with its own distinct secret (`Sso:Secret`, separate from `Jwt:Secret`) keeps the blast radius of a leaked SSO secret contained to the bridge, not to Omphalos's entire session-issuance capability. | A second, dedicated `Sso:Secret` config value; new endpoint that mints Omphalos's own `omphalos_token` cookie *after* verifying the bridge token — i.e., the JWT library still gets used, just one layer downstream, to issue the normal Omphalos session once SSO validation succeeds |
+| OAuth2 / OIDC (`Duende.IdentityServer`, `Microsoft.AspNetCore.Authentication.OpenIdConnect`, or standing up Quest Board as an OIDC provider) | Massive overkill for a two-app, same-operator, shared-secret trust relationship. OIDC solves delegated-authorization-across-untrusted-parties problems (consent screens, token introspection endpoints, discovery documents, refresh token rotation) that don't exist here — both apps are operated by the same person/group, and the "client" (Quest Board) already knows the "user" is legitimately authenticated because it just checked its own Identity cookie. | Direct HMAC-signed redirect — the entire flow is: Quest Board signs a short-lived assertion, redirects the browser to Omphalos with it in the query string, Omphalos verifies and establishes its own session |
+| A generic "webhook signature" NuGet package (e.g., wrapper libraries for HMAC webhook verification) | These exist for verifying *inbound webhook* signatures (Stripe/GitHub-style), which is a slightly different shape (header-based signature, request-body hashing, replay-window headers) from a redirect-carried token. Using one here would be forcing an ill-fitting abstraction onto a simpler problem, plus adding a dependency for what's ~15 lines of BCL code on each side. | Hand-rolled HMAC sign/verify helper class per repo, following the Integration Contract below |
+| `Microsoft.Extensions.Caching.SqlServer`-style server-side token store / nonce table for replay protection | Possible future hardening, but not needed for a first cut given the trust model (same operator, short expiry window covers the realistic threat). Introduces a new table + cleanup job on one or both sides for marginal benefit given the token's short TTL already bounds replay risk. | Short expiry (recommend 60-120 seconds) baked into the signed payload, checked on verify; revisit a nonce/jti store only if logs later show token replay attempts |
+
+## Integration Contract (must match exactly on both sides — no shared compile-time types exist)
+
+Because Quest Board and Omphalos are separately deployed .NET solutions with no shared library, the wire format must be pinned down in prose, not code. This is the single most important part of this research — a one-byte difference in field order or encoding between the two independently-maintained implementations breaks SSO with no compiler to catch it.
+
+**Recommended payload shape** — pipe-delimited fields, UTF-8 encoded, then HMAC-signed as a whole:
+
+```
+payload = "{email}|{issuedAtUnixSeconds}|{expiresAtUnixSeconds}|{questId}"
+signature = Base64UrlEncode( HMACSHA256( key: UTF8(sharedSecret), data: UTF8(payload) ) )
+token = Base64UrlEncode(UTF8(payload)) + "." + signature
+```
+
+Then Quest Board redirects the browser to:
+```
+{OmphalosBaseUrl}/sso?token={token}
+```
+
+**Exact rules both sides must agree on (write these into both repos' code/comments, since there's no shared package to enforce it):**
+
+1. **Field order is fixed and positional** — `email`, then `issuedAt`, then `expiresAt`, then `questId` (nullable — empty string if the navigation didn't originate from a specific quest). Do not reorder; do not make fields optional/named — a positional format avoids JSON-canonicalization ambiguity (key ordering, whitespace, escaping) entirely.
+2. **Delimiter is `|` (pipe)** — chosen because it cannot legally appear in an email address or a Unix timestamp, and `questId` is numeric (Quest Board's `QuestEntity.Id` is `int`), so it cannot contain a pipe either. **Deliberately excluding `questTitle` from the signed payload** avoids the one field (free-text) that could contain a pipe or need escaping — if Omphalos needs the quest title, it should be fetched via the "foundation for a future bidirectional API" mentioned in PROJECT.md, not embedded in the token. For v1, Omphalos can display a generic "Quest #{id}" label, or use the `Title` already stored on any existing `GameSession` if this session was linked before.
+3. **Timestamps are Unix seconds (`long`, UTC)** — not ISO-8601 strings. `DateTimeOffset.UtcNow.ToUnixTimeSeconds()` on the Quest Board side; parse as `long` on Omphalos. Avoids all timezone-string-parsing ambiguity between a Windows-dev/Linux-prod .NET app and a Linux-hosted Omphalos.
+4. **Signature covers the raw pipe-delimited string, not the base64url-encoded payload** — sign before encoding, verify by decoding the payload segment first, then recomputing HMAC over those raw bytes.
+5. **Encoding is Base64URL (RFC 4648 §5: `-`/`_`, no padding), not standard Base64** — because the token rides in a query string. Use `Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode`/`Base64UrlDecode` on **both** sides for this — same BCL-adjacent function, same behavior, zero ambiguity about padding/alphabet edge cases that a hand-rolled `Replace('+','-')` might get subtly wrong.
+6. **Key encoding is UTF-8** — the shared secret string is signed/verified as `Encoding.UTF8.GetBytes(secret)`, not `Convert.FromBase64String` or any other interpretation. State this explicitly in both admin UIs ("enter as plain text, minimum 32 characters") since Omphalos's existing `Jwt:Secret` convention is also a plain UTF-8 string, and mismatching this is the single easiest way for the two sides to silently disagree.
+7. **Expiry window: short.** Recommend 90 seconds from `issuedAt` to `expiresAt` at signing time, and Omphalos independently checks `expiresAt` server-side (does not trust `expiresAt` blindly — also sanity-check `issuedAt` isn't in the future, to guard against clock skew being exploited rather than just clock skew being a bug). This is a redirect-driven, human-in-the-browser flow — 90 seconds comfortably covers redirect latency while keeping the replay window tight.
+8. **HTTPS is mandatory in production for this to mean anything** — the token is a bearer credential for the duration of its short life; it must never traverse plaintext HTTP. Both apps' production deployment docs should call this out explicitly (Omphalos's own `Secure = true` cookie TODO in `AuthEndpoints.cs` is a related, currently-open gap worth fixing in the same milestone since the SSO cookie ends up in the same httpOnly cookie jar).
+
+**What identifies the user across systems:** use **email**, not a numeric/GUID user ID — Quest Board's `UserEntity` extends `IdentityUser<int>` (int PK, not portable), Omphalos's `User.Id` is a `Guid` with no relationship to Quest Board's ID space. Email is the only field both systems already collect that can serve as a natural join key for auto-provisioning ("find Omphalos user by email — Omphalos's `User` entity has no `Email` column today, only `Username`, so this requires either adding an `Email` column to Omphalos's `User` or using the email's local part / a normalized form as the `Username` on auto-create; or create one with a random password hash and `Role = Player`, then log them in"). Confirm Quest Board's `IdentityUser<int>.Email` is populated/confirmed for every DM/Admin account expected to use this feature (it is, per existing email-confirmation flow — Phase 24/32).
+
+**Note (Omphalos schema gap):** `Omphalos.Domain.Entities.User` (in `src/Omphalos.Domain/Entities/User.cs`) currently has `Id`, `Username`, `PasswordHash`, `Role`, `CreatedAt` — no `Email` field. Auto-provisioning-by-email requires either (a) adding an `Email` column + EF Core/Npgsql migration on the Omphalos side, or (b) treating the incoming email as the `Username` directly (simpler, no schema change, but collides if a manually-created Omphalos account already uses a different username for the same person). This is an implementation decision for the phase/plan stage, not a stack decision — flagged here because it affects whether Omphalos needs a migration at all.
+
+## Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| (none — no additional NuGet package needed beyond ImageSharp) | — | — | Standard `IFormFile` → `Stream` → `Image.Load()` → `.Resize()`/`.Crop()` → `.SaveAsJpeg()`/`.SaveAsPng()` covers this feature's full server-side need. |
-| (none — no additional npm package needed beyond cropperjs) | — | — | Cropper.js v2 ships its own Web Component styling; no separate CSS framework integration needed beyond loading its stylesheet. |
-
-### Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| Browser DevTools (iOS Safari via BrowserStack/real device, or Safari Technology Preview responsive mode) | Verify the CSS fixed-background fix actually renders fixed on iOS | `background-attachment: fixed` bugs are notoriously inconsistent across iOS Safari point releases — desktop Safari does NOT reproduce the bug, so a real iOS device or an iOS simulator/BrowserStack session is required for verification, not just resizing a desktop browser window. |
+| None beyond BCL + already-referenced `Microsoft.AspNetCore.App` framework libs | — | — | This integration deliberately needs zero new NuGet packages in either repo. If `dotnet add package` shows up in either plan for this feature, that's a signal to re-read the "What NOT to add" table above before proceeding. |
 
 ## Installation
 
+No new packages required in either repo.
+
 ```bash
-# Client-side crop UI (npm not currently used in this repo — see integration note below)
-npm install cropperjs@2.1.1
+# Quest Board — nothing to install; HMACSHA256, CryptographicOperations, and
+# WebEncoders are all already reachable via existing FrameworkReference/PackageReference.
 
-# Server-side image processing (NuGet, add to QuestBoard.Domain — keep out of QuestBoard.Service per the EF-package layering convention; ImageSharp itself has no EF dependency, but Domain is where business logic like "produce a stored cropped/original image pair" belongs)
-dotnet add QuestBoard.Domain package SixLabors.ImageSharp --version 4.0.0
+# Omphalos — nothing to install; same BCL/framework surface already available
+# via Sdk="Microsoft.NET.Sdk.Web".
 ```
-
-**Integration note — no npm/bundler pipeline exists in this repo today.** `wwwroot` is plain static files served by ASP.NET Core's static file middleware; there is no `package.json`/webpack/vite build step evident in the codebase. Two integration options:
-1. **Recommended:** Download the `cropperjs` UMD/ESM build's static distribution files (`cropper.js` + its CSS, or the ESM `cropper.esm.js`) and drop them into `wwwroot/lib/cropperjs/` by hand (same pattern likely already used for Bootstrap/FontAwesome in this project — check `wwwroot/lib/` before implementation). Reference via `<script type="module" src="~/lib/cropperjs/cropper.esm.js">` in the two upload views (`Character` create/edit, `EditDMProfile`). This avoids introducing a Node/npm build pipeline into a project that has none.
-2. **Alternative:** Pull from a CDN (`unpkg.com/cropperjs@2.1.1` or jsDelivr) with a Subresource Integrity hash — simplest, but adds an external runtime dependency for a self-hosted app; given this app already appears to vendor its own front-end assets, option 1 is more consistent with existing conventions. **Verify the `wwwroot/lib/` convention against `_Layout.cshtml`'s existing `<script>`/`<link>` tags before deciding.**
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|--------------------------|
-| Cropper.js v2 | Cropper.js v1.6.x | Only if the Web Components approach proves awkward to wire into Razor views (e.g. CSP/module-script friction) — v1 is the older canvas+`<img>`+absolute-positioned-div implementation, still works, but is effectively in maintenance mode versus v2's active development. Prefer v2 unless a concrete blocker appears during implementation. |
-| Cropper.js | `react-easy-crop`, `ngx-image-cropper` | Never for this project — both require React/Angular. This app has no SPA framework and none should be introduced for a scoped crop-before-save feature. |
-| Cropper.js | Native `<input type="file">` + raw `<canvas>` + manual pointer-event math (no library) | Only if the team wants zero third-party JS at all costs. Not recommended: reimplementing drag-handles, aspect-lock, touch support, and pinch-zoom by hand is a multi-day effort Cropper.js already solved and battle-tested; not worth it for a "scoped feature" per the milestone framing. |
-| SixLabors.ImageSharp | SkiaSharp 4.148.0 | If a future feature needs actual rendering/compositing beyond simple resize/crop/re-encode (e.g. drawing text/shapes onto images, complex canvas-like operations) — SkiaSharp is a rendering engine, not primarily an image-processing library, and its API is more verbose for basic resize/crop tasks. Also reconsider if ImageSharp's commercial license threshold ever becomes a concern (it won't at this project's scale). |
-| SixLabors.ImageSharp | Magick.NET | If ImageMagick-specific format support or filters are needed (this app only handles JPEG/PNG photo uploads, so no need). Magick.NET is free/OSS with no revenue-based licensing caveat, but it's a native-backed wrapper (bundles its own native ImageMagick binaries per-RID) and is the slowest of the three in resize benchmarks — worse fit than ImageSharp's fully-managed simplicity for this narrow use case. |
-| Pure-CSS `::before`/pseudo-element fixed layer | JS scroll-listener background-position hack | Never for this project — the JS approach is the older, higher-maintenance workaround for the same problem; modern CSS (`position: fixed` on a layered pseudo-element) fully solves it with no JS and no scroll-jank risk. Only fall back to JS if a future requirement needs parallax-style *speed* differences (not just "stay fixed"), which is out of scope here. |
+| Raw HMACSHA256 + pipe-delimited payload | JWT (`System.IdentityModel.Tokens.Jwt`) with `HmacSha256` signing | If a third consumer of this token ever appears (not just Quest Board → Omphalos), or if the payload needs to grow to many optional/nested fields — JWT's self-describing claims model starts paying for itself once you have more than ~2 producers/consumers or need standard claim semantics (`exp`, `iss`, `aud`) validated by off-the-shelf middleware instead of hand-written checks |
+| EF Core-backed `PlatformSettingEntity` (admin-editable) | `IOptions<OmphalosSettings>` bound from `appsettings.json`/env vars | If the URL/secret only ever needs to change via redeploy (not through the running app's UI) — but PROJECT.md explicitly requires a SuperAdmin-editable Platform Settings page, so `IOptions` alone doesn't satisfy the requirement without adding `IOptionsMonitor` + a custom reload-on-write mechanism, which is more moving parts than one EF Core table |
+| Email as the cross-system join key | A new `ExternalId`/`OmphalosUserId` column on Quest Board's `UserEntity` | If email addresses in the group are expected to change often, or if a user might want an Omphalos identity decoupled from their Quest Board email — not the case here (17-member trusted group, confirmed-email flow already enforced); email is simpler and needs no schema change on the Quest Board side at all (the schema gap is entirely on the Omphalos side — see note above) |
+| 90-second token expiry | Longer-lived tokens (5-10 min) | If the redirect chain involves additional hops (e.g., an intermediate confirmation page) that could plausibly take longer than ~90 seconds for a real user — current design is a direct link/button → immediate redirect, so 90s is generous already |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
-|-------|-----|--------------|
-| SkiaSharp for this feature | The exact concern that paused this feature for a year (native `libSkiaSharp.so` availability on the deploy host) is now moot only because we're picking a library that has no native dependency at all — re-litigating SkiaSharp's Ubuntu 24.04 compatibility (it likely IS fine now; Ubuntu 24.04 is glibc-based like the originally-planned Debian Bookworm target, and `SkiaSharp.NativeAssets.Linux.NoDependencies` exists specifically for minimal-dependency Linux hosts, with the standard variant needing only `apt install libfontconfig1`) is unnecessary extra deployment-verification work when ImageSharp needs zero verification. Don't reopen this investigation just because the constraint changed — the simpler library is now clearly correct given the app's modest image-processing needs (resize + re-encode, not compositing/rendering). | SixLabors.ImageSharp 4.0.0 |
-| A full-blown SPA framework (React/Vue/Angular) "just for the cropper" | This app is 100% server-rendered Razor MVC with zero client-side framework anywhere; introducing one for a single crop widget would be wildly disproportionate and break the project's stated "no framework changes" constraint. | Cropper.js v2 as a standalone Web Component, loaded via `<script type="module">` in the existing `.cshtml` upload forms |
-| Base64-encoding the cropped image into a hidden `<input type="text">` field | Works, but bloats form payload by ~33% (base64 overhead) and requires manual `Convert.FromBase64String` server-side parsing instead of using the framework's native `IFormFile` model binding. | `canvas.toBlob()` → append the `Blob` to a `FormData`/hidden `<input type="file">` (via `DataTransfer`) so the existing `IFormFile` controller-action parameter pattern keeps working unchanged |
-| JS-based `background-attachment: fixed` polyfills/scroll-listeners | Deprecated pattern now that a pure-CSS fix exists; adds scroll-event listener overhead and jank risk on mobile Safari, which is exactly the performance-sensitive context you're trying to fix. | CSS-only `::before`/`div` layer with `position: fixed` |
+|-------|-----|-------------|
+| `System.IdentityModel.Tokens.Jwt` / `Microsoft.IdentityModel.Tokens` newly added to Quest Board | See "What NOT to add" table above — zero justification for a JWT stack on a codebase that has never needed one, for a single-purpose internal redirect token | `System.Security.Cryptography.HMACSHA256` (BCL, already implicitly available) |
+| Duende.IdentityServer / any OIDC provider package on either side | Solves a delegated-trust problem this integration doesn't have (both apps share one operator) | Shared-secret HMAC redirect per the Integration Contract |
+| Hand-rolled Base64 URL-encoding (`Replace('+','-').Replace('/','_').TrimEnd('=')`) | Easy to get subtly wrong (padding edge cases, `-`/`_` typos) and would silently diverge between the two independently-written implementations since there's no shared compile-time contract to catch a copy-paste slip | `Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode/Decode` — same framework-provided function on both sides |
+| `==` or `Enumerable.SequenceEqual` for comparing the recomputed HMAC to the received signature | Not constant-time; leaks timing information usable for a byte-by-byte signature forgery attempt | `CryptographicOperations.FixedTimeEquals` (BCL) |
 
 ## Stack Patterns by Variant
 
-**If the crop UI needs a fixed aspect ratio (e.g. portrait crop for a character photo):**
-- Use Cropper.js v2's `<cropper-selection aspect-ratio="...">` attribute
-- Because it constrains the drag-handles declaratively without custom JS math — directly matches the milestone's stated example ("make a portrait crop from a full-body photo")
+**If a future milestone adds a third SSO-consuming app:**
+- Migrate from the hand-rolled HMAC format to JWT (`System.IdentityModel.Tokens.Jwt` is already a Omphalos dependency, so it would only be new to Quest Board)
+- Because: JWT's self-describing `iss`/`aud`/`exp` claims stop being boilerplate you write by hand once there's more than one producer/consumer pair to keep in sync
 
-**If original and cropped images must both persist per upload:**
-- Submit both the original `File` (from the `<input type="file">` the user picked) AND the cropped `Blob` (from `$toCanvas()` + `toBlob()`) in the same `FormData` as two distinct `IFormFile` parameters on the controller action
-- Because this avoids a round-trip re-upload of the original — the browser already has the original `File` object in memory from the initial file-picker selection; no need to re-derive or re-fetch it
+**If Omphalos ever gains its own multi-tenant/org concept:**
+- Revisit the "instance-wide, not per-group" decision for the Quest Board-side settings (currently correct per PROJECT.md's Key Decisions table, since Omphalos is flatly `UserId`-scoped today)
+- Because: a per-group Omphalos target would need a per-group secret too, changing the settings entity from a singleton row to a `GroupId`-keyed table
 
-**If the character/DM-profile upload forms currently post as standard (non-AJAX) MVC form submissions:**
-- Keep them as standard form submissions; wire Cropper.js into the same submit flow by intercepting the "Save" button click, populating a hidden `<input type="file">` (via `DataTransfer.items.add(croppedFileFromBlob)`) with the generated cropped `File`, then letting the existing native form `submit()` proceed
-- Because this requires the least controller/action-signature change — `IFormFile OriginalImage` + `IFormFile CroppedImage` bind exactly like the existing single `IFormFile` parameter does today, no fetch/AJAX rewrite needed
-
-**Existing storage shape needs to change regardless of library choice (found during codebase check, not a library concern but affects rollout):**
-- `CharacterImageEntity`/`DungeonMasterProfileImageEntity` today are 1-row-per-owner tables (`[Key][ForeignKey(nameof(Character))] public int Id`) storing exactly one `byte[]`. Storing both an original and a cropped image needs either two columns (`OriginalImageData`/`CroppedImageData` on the same row) or a discriminator/second table — a migration either way, independent of which crop/image library is chosen.
+**If token replay logging ever shows real abuse attempts:**
+- Add a server-side used-token/nonce store (e.g., a small Omphalos table keyed by a `jti`-equivalent random GUID embedded in the payload, purged on a schedule)
+- Because: the current design accepts the residual risk of a token being replayed within its ~90s window, which is a reasonable tradeoff for a trusted-operator, low-token-volume internal tool — but isn't unconditionally safe if the redirect URL ever leaks (e.g., via browser history sync, referrer headers to a third-party resource on the Omphalos landing page)
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|------------------|-------|
-| SixLabors.ImageSharp 4.0.0 | .NET 10 (net10.0), QuestBoard.Service's `net10.0` TargetFramework | ImageSharp's minimum target is net8.0; net10.0 is forward-compatible. No known compatibility issues. |
-| Cropper.js 2.1.1 | Any modern evergreen browser (Chrome/Edge/Safari/Firefox, incl. iOS Safari) supporting native Web Components/Custom Elements | No IE11 support in v2 (already dropped in the v1→v2 rewrite) — irrelevant for this app's user base. No legacy-browser support requirement is stated in PROJECT.md. |
-| `canvas.toBlob()` | All target browsers | Universally supported in evergreen browsers; no polyfill needed. |
+| `HMACSHA256.HashData` (static) | .NET 6.0+ | Both repos target `net10.0`; API has been stable since introduction, no breaking changes through .NET 10. Verified against the `net-10.0` Microsoft Learn doc revision. |
+| `CryptographicOperations.FixedTimeEquals` | .NET Core 2.1+ | Stable, unchanged API surface; verified against the `net-10.0` doc revision. |
+| `Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode/Decode` | Ships with ASP.NET Core since 2.x, present in `Microsoft.AspNetCore.App` 10.0.9 (both repos' current framework version) | Already in active use in Quest Board (`AccountController.cs`); confirm Omphalos's `Sdk="Microsoft.NET.Sdk.Web"` + `TargetFramework net10.0` also has it — it does, since it ships with the shared framework, not a separate package. |
+| Quest Board: EF Core 10.0.9 + SQL Server | New migration for `PlatformSettingEntity` | Follows the existing auto-migrate-on-startup pattern (`context.Database.Migrate()`); no new provider or version needed. |
+| Omphalos: EF Core 10 + Npgsql | New repository method(s) on `IUserRepository`/`UserRepository`; possible migration if `Email` column is added to `User` | If auto-provisioning uses email-as-username (no schema change), no migration needed. If an `Email` column is added instead, one Npgsql migration is required, following Omphalos's own `db.Database.MigrateAsync()` auto-apply-on-startup pattern (already in `Program.cs`). |
 
 ## Sources
 
-- https://www.npmjs.com/package/cropperjs — version 2.1.1 confirmed as latest published (MEDIUM confidence, websearch-derived, cross-checked against GitHub repo)
-- https://fengyuanchen.github.io/cropperjs/v2/guide.html — Web Component tag list, ESM import pattern (MEDIUM confidence)
-- https://github.com/fengyuanchen/cropperjs/discussions/1264 — v2 `$toCanvas()` API replacing v1 `getCroppedCanvas()`, `canvas.toBlob()` chaining (MEDIUM confidence)
-- https://www.nuget.org/packages/SkiaSharp — version 4.148.0 confirmed, target frameworks incl. net10.0 (MEDIUM confidence)
-- https://www.nuget.org/packages/SkiaSharp.NativeAssets.Linux.NoDependencies — native dependency list (libpthread/libdl/libm/libc/ld-linux) for minimal Linux hosts (MEDIUM confidence)
-- https://www.nuget.org/packages/SixLabors.ImageSharp — version 4.0.0 confirmed, targets net8.0+, stable (MEDIUM confidence)
-- https://sixlabors.com/posts/license-changes/ and https://github.com/SixLabors/ImageSharp/blob/main/LICENSE — Six Labors Split License terms, $1M revenue threshold for commercial license requirement (MEDIUM confidence)
-- https://anthonysimmon.com/benchmarking-dotnet-libraries-for-image-resizing/ — ImageSharp vs SkiaSharp vs Magick.NET vs NetVips performance/memory comparison (MEDIUM confidence)
-- https://dev.to/saint_vandora/the-ultimate-guide-choosing-between-sixlaborsimagesharp-and-skiasharp-for-net-image-processing-17hi — API complexity and deployment-dependency comparison (MEDIUM confidence)
-- https://juand89.hashnode.dev/troubleshooting-background-attachment-fixed-bug-in-ios-safari and https://css-tricks.com/the-fixed-background-attachment-hack/ — pure-CSS pseudo-element/fixed-layer fix for iOS Safari (MEDIUM confidence, cross-checked across multiple independent sources)
-- Direct codebase inspection (`QuestBoard.Service.csproj`, `QuestBoard.Repository/Entities/CharacterImageEntity.cs`, `wwwroot/css/site.css`, `wwwroot/css/mobile.css`) — HIGH confidence, primary source; confirms .NET 10 target, current single-image storage shape, and the exact `background-attachment: fixed` declarations needing the CSS fix
+- [HMACSHA256.HashData Method — Microsoft Learn (net-10.0)](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.hmacsha256.hashdata?view=net-10.0) — confirmed static overloads, byte[]/Span variants, current for .NET 10
+- [CryptographicOperations.FixedTimeEquals Method — Microsoft Learn (net-10.0)](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.cryptographicoperations.fixedtimeequals?view=net-10.0) — confirmed timing-safe comparison semantics, current for .NET 10
+- [WebEncoders.Base64UrlEncode Method — Microsoft Learn (aspnetcore-10.0)](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.webutilities.webencoders.base64urlencode?view=aspnetcore-10.0) — confirmed availability and behavior for ASP.NET Core 10
+- Direct source inspection, `C:\Repos\quest-board\QuestBoard.Service\Controllers\Admin\AccountController.cs` (lines 42-50, 84-88, 220-252) — confirmed existing `WebEncoders` usage pattern already established in this codebase
+- Direct source inspection, `C:\Repos\quest-board\QuestBoard.Domain\Models\EmailSettings.cs` + `QuestBoard.Service\Program.cs` — confirmed `IOptions`-style static config pattern, and its unsuitability for admin-runtime-editable values
+- Direct source inspection, `C:\Repos\quest-board\QuestBoard.Repository\Entities\*.cs` — confirmed no existing key-value settings entity (grep for `Setting`/`Settings` returned no matches)
+- Direct source inspection, `C:\Repos\omphalos\src\Omphalos.Web\Program.cs`, `AuthEndpoints.cs`, `AuthService.cs` — confirmed existing JWT stack (`Microsoft.IdentityModel.Tokens`, `System.IdentityModel.Tokens.Jwt`), cookie-based session delivery (`omphalos_token`, httpOnly, SameSite=Lax, `Secure=true` still a TODO), CORS config pattern (`AllowedOrigins` array, inert by default)
+- Direct source inspection, `C:\Repos\omphalos\src\Omphalos.Web\Endpoints\SettingsEndpoints.cs`, `AdminEndpoints.cs`, `SessionEndpoints.cs` — confirmed Minimal API route-group-per-feature pattern, `RequireAuthorization("AdminOnly")`/`.AllowAnonymous()` conventions, `ClaimsPrincipal`-based user-ID extraction (`ClaimTypes.NameIdentifier`)
+- Direct source inspection, `C:\Repos\omphalos\src\Omphalos.Domain\Entities\User.cs`, `GameSession.cs`, `IUserRepository.cs`, `UserRepository.cs` — confirmed `Guid` user PK, `UserRole { Player, Admin }` enum, no `Email` column (Username only), no existing external-identity link column, no username-uniqueness-independent "find or create" method (needed for auto-provisioning)
+- Direct source inspection, `C:\Repos\quest-board\QuestBoard.Repository\Entities\UserEntity.cs`, `QuestEntity.cs` — confirmed `IdentityUser<int>` (int PK, has `Email`/`UserName` from base class), `QuestEntity.Id` (int), `.Title` (string), `.GroupId` (int) available for the token payload
+- Both `.csproj` inspections (`QuestBoard.Domain.csproj`, `QuestBoard.Service.csproj`, `Omphalos.Web.csproj`) — confirmed zero existing crypto/JWT packages on the Quest Board side, confirmed `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.9 already present on the Omphalos side
 
 ---
-*Stack research for: D&D Quest Board v7.0 Backlog Cleanup — image crop UI, dual-image storage, server-side image processing, iOS Safari CSS fix*
-*Researched: 2026-07-04*
+*Stack research for: HMAC-signed-token SSO bridge, Quest Board ↔ Omphalos*
+*Researched: 2026-07-02*
