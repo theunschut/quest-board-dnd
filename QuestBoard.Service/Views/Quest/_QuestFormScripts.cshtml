@@ -7,25 +7,35 @@
 <script>
     // Form validation for quest forms
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('form');
+        // Scoped to the quest form specifically — document.querySelector('form') would
+        // instead match the navbar's Logout form, which renders earlier in the DOM on
+        // every authenticated page (see _Layout.cshtml / _Layout.Mobile.cshtml).
+        const form = document.querySelector('form[action*="/Quest/"]');
         if (!form) return;
         
         form.addEventListener('submit', function(e) {
-            const dateInputs = document.querySelectorAll('#proposed-dates input[type="datetime-local"]');
-            let hasValidDate = false;
-            
-            dateInputs.forEach(function(input) {
-                if (input.value) {
-                    hasValidDate = true;
+            // No #proposed-dates container means this form doesn't manage dates at all
+            // (a finalized-quest Edit, or a Campaign-board Create/Edit) — nothing to require.
+            const container = document.getElementById('proposed-dates');
+            if (container) {
+                // Existing dates render as hidden inputs (Edit.cshtml), newly-added ones as
+                // datetime-local (site.js addProposedDate) — both count toward "has a date".
+                const dateInputs = container.querySelectorAll('input[type="datetime-local"], input[type="hidden"][name*="ProposedDates"]');
+                let hasValidDate = false;
+
+                dateInputs.forEach(function(input) {
+                    if (input.value) {
+                        hasValidDate = true;
+                    }
+                });
+
+                if (!hasValidDate) {
+                    e.preventDefault();
+                    alert('Please provide at least one proposed date and time.');
+                    return false;
                 }
-            });
-            
-            if (!hasValidDate) {
-                e.preventDefault();
-                alert('Please provide at least one proposed date and time.');
-                return false;
             }
-            
+
             const submitButton = document.querySelector('button[type="submit"]');
             if (submitButton) {
                 submitButton.disabled = true;

@@ -6,56 +6,6 @@
     <link href="~/css/shop-details.mobile.css" asp-append-version="true" rel="stylesheet" />
 }
 
-<!-- Toast Container -->
-<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
-    @if (TempData["Success"] != null)
-    {
-        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
-            <div class="toast-header bg-success text-white">
-                <i class="fas fa-check-circle me-2"></i>
-                <strong class="me-auto">Success</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-                @TempData["Success"]
-            </div>
-        </div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
-            <div class="toast-header bg-danger text-white">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                <strong class="me-auto">Error</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-                @TempData["Error"]
-            </div>
-        </div>
-    }
-    @if (TempData["GoldReceived"] != null)
-    {
-        <div class="toast show gold-toast" role="alert" data-bs-autohide="true" data-bs-delay="6000">
-            <div class="toast-header bg-warning text-dark">
-                <i class="fas fa-coins me-2"></i>
-                <strong class="me-auto">Gold Received!</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-coins fa-2x text-warning me-3"></i>
-                    <div>
-                        <strong class="fs-5">+@TempData["GoldReceived"] gp</strong>
-                        <br>
-                        <small class="text-muted">@TempData["Success"]</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-</div>
-
 <div class="shop-details-card-mobile mb-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0 parchment-text">@Model.Name</h5>
@@ -68,7 +18,7 @@
         @Model.Rarity.ToString().Replace("VeryRare", "Very Rare")
     </span>
 
-    <p class="mt-2 parchment-text-muted">@Model.Description</p>
+    <p class="mt-2 parchment-text-muted" style="white-space: pre-wrap;">@Model.Description</p>
 
     <div class="mb-2">
         <strong class="parchment-text"><i class="fas fa-coins me-1"></i>@Model.Price gp</strong>
@@ -102,16 +52,3 @@
         </a>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        // Initialize toasts
-        document.addEventListener('DOMContentLoaded', function() {
-            const toastElements = document.querySelectorAll('.toast');
-            toastElements.forEach(function(toastElement) {
-                const toast = new bootstrap.Toast(toastElement);
-                toast.show();
-            });
-        });
-    </script>
-}

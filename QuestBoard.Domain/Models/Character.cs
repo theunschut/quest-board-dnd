@@ -13,6 +13,9 @@ public class Character : IModel
 
     public byte[]? ProfilePicture { get; set; }
 
+    // Lets list/detail views show a placeholder-or-photo state without pulling the image bytes.
+    public bool HasProfilePicture { get; set; }
+
     [Range(1, 20)]
     public int Level { get; set; } = 1;
 
@@ -37,6 +40,8 @@ public class Character : IModel
 
     // Multi-class support: each character can have multiple classes with level distribution
     public IList<CharacterClass> Classes { get; set; } = [];
+
+    public int GroupId { get; set; }
 }
 
 public class CharacterClass : IModel

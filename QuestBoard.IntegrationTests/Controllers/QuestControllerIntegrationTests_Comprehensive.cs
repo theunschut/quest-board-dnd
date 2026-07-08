@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
 
@@ -232,5 +233,45 @@ public class QuestControllerIntegrationTests_Comprehensive(WebApplicationFactory
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+    }
+
+    // Regression guard: RemoveAsync's internal re-fetch (GetQuestWithManageDetailsAsync) loads
+    // ProposedDates and PlayerSignups as two separate collection Includes in one query, which
+    // EF Core cross-joins unless AsSplitQuery() is applied — producing a combinatorial row count
+    // and a very slow delete. This test exercises that exact shape (dates + votes + signups
+    // together) rather than the empty-graph case the Forbidden test above uses.
+    [Fact]
+    public async Task Delete_Post_WhenQuestHasDatesVotesAndSignups_RemovesEntireGraph()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, "graphdeletedm", "graphdelete@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(factory.Services, dm.Id, "Graph Delete Quest");
+        var proposedDate = await TestDataHelper.CreateProposedDateAsync(factory.Services, quest.Id, DateTime.UtcNow.AddDays(3));
+        var signupA = await TestDataHelper.CreatePlayerSignupAsync(factory.Services, quest.Id, dm.Id);
+        var (_, playerB) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, "graphdeleteplayer", "graphdeleteplayer@example.com");
+        var signupB = await TestDataHelper.CreatePlayerSignupAsync(factory.Services, quest.Id, playerB.Id);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.Set<PlayerDateVoteEntity>().AddRange(
+                new PlayerDateVoteEntity { PlayerSignupId = signupA.Id, ProposedDateId = proposedDate.Id, Vote = (int)VoteType.Yes },
+                new PlayerDateVoteEntity { PlayerSignupId = signupB.Id, ProposedDateId = proposedDate.Id, Vote = (int)VoteType.Maybe });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act
+        var response = await dmClient.DeleteAsync($"/Quest/Delete/{quest.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var verifyScope = factory.Services.CreateScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        (await verifyContext.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken)).Should().BeNull();
+        (await verifyContext.Set<ProposedDateEntity>().FindAsync([proposedDate.Id], TestContext.Current.CancellationToken)).Should().BeNull();
+        (await verifyContext.PlayerSignups.FindAsync([signupA.Id], TestContext.Current.CancellationToken)).Should().BeNull();
+        (await verifyContext.PlayerSignups.FindAsync([signupB.Id], TestContext.Current.CancellationToken)).Should().BeNull();
     }
 }

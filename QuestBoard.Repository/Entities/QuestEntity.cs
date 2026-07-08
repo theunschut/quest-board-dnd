@@ -30,11 +30,17 @@ public class QuestEntity : IEntity
 
     public DateTime? FinalizedEmailSentForDate { get; set; }
 
+    public DateTime? ClosedDate { get; set; }
+
+    public bool IsClosed { get; set; }
+
     public int TotalPlayerCount { get; set; }
 
     public bool DungeonMasterSession { get; set; }
 
     public string? Recap { get; set; }
+
+    public string? Rewards { get; set; }
 
     public int? OriginalQuestId { get; set; }
 

@@ -38,6 +38,12 @@ public class QuestBoardContext(
 
     public DbSet<UserGroupEntity> UserGroups { get; set; }
 
+    public DbSet<ContactEntity> Contacts { get; set; }
+
+    public DbSet<ContactImageEntity> ContactImages { get; set; }
+
+    public DbSet<ContactNoteEntity> ContactNotes { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -136,6 +142,20 @@ public class QuestBoardContext(
             .HasForeignKey(ps => ps.CharacterId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // Contact entity relationships
+        modelBuilder.Entity<ContactEntity>()
+            .HasMany(c => c.Notes)
+            .WithOne(n => n.Contact)
+            .HasForeignKey(n => n.ContactId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Author FK uses NoAction to avoid a cascade cycle through UserEntity, same as QuestEntity.DungeonMaster
+        modelBuilder.Entity<ContactNoteEntity>()
+            .HasOne(n => n.Author)
+            .WithMany()
+            .HasForeignKey(n => n.AuthorUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         // DungeonMasterProfile — Id = UserId (no auto-generation)
         modelBuilder.Entity<DungeonMasterProfileEntity>()
             .Property(p => p.Id)
@@ -220,6 +240,20 @@ public class QuestBoardContext(
             .HasForeignKey(si => si.GroupId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // Character → Group: NoAction to prevent cascade cycles
+        modelBuilder.Entity<CharacterEntity>()
+            .HasOne(c => c.Group)
+            .WithMany()
+            .HasForeignKey(c => c.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // Contact → Group: NoAction to prevent cascade cycles
+        modelBuilder.Entity<ContactEntity>()
+            .HasOne(c => c.Group)
+            .WithMany()
+            .HasForeignKey(c => c.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         // UserGroup → User: Cascade — removing a user removes their memberships
         modelBuilder.Entity<UserGroupEntity>()
             .HasOne(ug => ug.User)
@@ -237,25 +271,105 @@ public class QuestBoardContext(
         // Global query filters for group isolation.
         // QuestEntity and ShopItemEntity carry a GroupId and are the two entities directly scoped
         // to a tenant, so every read is automatically restricted to the caller's active group.
-        // Null = see all (SuperAdmin/seeding contexts intentionally bypass group scoping)
+        // A null ActiveGroupId (no group selected yet, or a session that never picked one) must
+        // return zero rows, never every group's rows merged together — the caller has to pick a
+        // group before any group-scoped data is servable, full stop.
         // Lambda closes over activeGroupContext instance — re-evaluated per query, not at startup
         // CRITICAL: Do NOT capture activeGroupContext.ActiveGroupId into a local var here.
         //           That captures the value once (null at model-build time). Always reference the service.
         modelBuilder.Entity<QuestEntity>()
             .HasQueryFilter(e =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 e.GroupId == activeGroupContext.ActiveGroupId);
 
         modelBuilder.Entity<ShopItemEntity>()
             .HasQueryFilter(e =>
-                activeGroupContext.ActiveGroupId == null ||
+                activeGroupContext.ActiveGroupId != null &&
                 e.GroupId == activeGroupContext.ActiveGroupId);
+
+        // ProposedDateEntity carries no GroupId of its own — it is scoped through its required Quest
+        // navigation instead. EF Core's model validation otherwise warns that a required relationship
+        // to a filtered entity can behave unexpectedly if the two aren't both filtered, so this mirrors
+        // QuestEntity's own fail-closed filter shape rather than relying on every caller reaching this
+        // entity only through an already-filtered Quest.
+        modelBuilder.Entity<ProposedDateEntity>()
+            .HasQueryFilter(pd =>
+                activeGroupContext.ActiveGroupId != null &&
+                pd.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
+        // PlayerDateVoteEntity carries no GroupId of its own. It has two required FKs
+        // (ProposedDateId, PlayerSignupId); either navigation reaches the same quest, so filtering
+        // through ProposedDate is sufficient to keep it consistent with both filtered parents above.
+        modelBuilder.Entity<PlayerDateVoteEntity>()
+            .HasQueryFilter(pdv =>
+                activeGroupContext.ActiveGroupId != null &&
+                pdv.ProposedDate.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
+        // PlayerSignupEntity carries no GroupId of its own — scoped through its required Quest
+        // navigation. This also makes every PlayerSignupRepository method (including the base
+        // GetByIdAsync/FindAsync path) automatically group-scoped, not just the ones that manually
+        // re-derive the target through an already-filtered quest.PlayerSignups navigation first.
+        modelBuilder.Entity<PlayerSignupEntity>()
+            .HasQueryFilter(ps =>
+                activeGroupContext.ActiveGroupId != null &&
+                ps.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
+        // ReminderLogEntity carries no GroupId of its own — scoped through its required Quest
+        // navigation, same shape as the other Quest-dependent entities above.
+        modelBuilder.Entity<ReminderLogEntity>()
+            .HasQueryFilter(r =>
+                activeGroupContext.ActiveGroupId != null &&
+                r.Quest.GroupId == activeGroupContext.ActiveGroupId);
+
+        // CharacterEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
+        // do above. With no active group selected, every character query returns nothing rather than
+        // everyone's characters across every group. Do not "fix" this to match the Quest/ShopItem shape —
+        // an empty character roster is the intended behavior here, not an oversight.
+        modelBuilder.Entity<CharacterEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
+        // CharacterClassEntity and CharacterImageEntity carry no GroupId of their own — both are
+        // scoped through their required Character navigation, mirroring CharacterEntity's own filter
+        // shape (no SuperAdmin escape hatch) rather than relying on every caller reaching them only
+        // through an already-filtered Character.
+        modelBuilder.Entity<CharacterClassEntity>()
+            .HasQueryFilter(cc =>
+                activeGroupContext.ActiveGroupId != null &&
+                cc.Character.GroupId == activeGroupContext.ActiveGroupId);
+
+        modelBuilder.Entity<CharacterImageEntity>()
+            .HasQueryFilter(ci =>
+                activeGroupContext.ActiveGroupId != null &&
+                ci.Character.GroupId == activeGroupContext.ActiveGroupId);
+
+        // ContactEntity deliberately does NOT offer a SuperAdmin cross-group view like Quest/ShopItem
+        // do above — same "per-group roster" shape as CharacterEntity. An empty Contact list when no
+        // group is selected is the intended behavior here, not an oversight.
+        modelBuilder.Entity<ContactEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
+        modelBuilder.Entity<ContactImageEntity>()
+            .HasQueryFilter(ci =>
+                activeGroupContext.ActiveGroupId != null &&
+                ci.Contact.GroupId == activeGroupContext.ActiveGroupId);
+
+        modelBuilder.Entity<ContactNoteEntity>()
+            .HasQueryFilter(cn =>
+                activeGroupContext.ActiveGroupId != null &&
+                cn.Contact.GroupId == activeGroupContext.ActiveGroupId);
 
         // UserEntity intentionally excluded — HasQueryFilter on UserEntity breaks ASP.NET Core Identity
         // (login, password reset, and email confirmation all fail silently)
         //
-        // CharacterEntity and PlayerSignupEntity are also intentionally unfiltered: they carry no
-        // GroupId of their own and are only ever reached through an already-filtered QuestEntity or
-        // ShopItemEntity navigation, so the parent's filter scopes them transitively.
+        // UserTransactionEntity carries no GroupId of its own — scoped through its required ShopItem
+        // navigation, same fail-closed shape as the Quest-dependent entities above.
+        modelBuilder.Entity<UserTransactionEntity>()
+            .HasQueryFilter(t =>
+                activeGroupContext.ActiveGroupId != null &&
+                t.ShopItem.GroupId == activeGroupContext.ActiveGroupId);
     }
 }

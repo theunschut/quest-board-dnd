@@ -22,8 +22,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         {
             await base.AddAsync(model, token);
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Quests_OriginalQuestId") == true
-                                            || ex.InnerException?.Message.Contains("unique") == true)
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Quests_OriginalQuestId") == true)
         {
             throw new InvalidOperationException("A follow-up quest already exists for this quest.", ex);
         }
@@ -59,7 +58,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     {
         var oneDayAgo = DateTime.UtcNow.AddDays(-1);
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
-            .Where(q => !q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo))
+            .Where(q => (!q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo)) && !q.IsClosed)
             .OrderByDescending(q => q.CreatedAt)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<Quest>>(entities);
@@ -71,7 +70,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         var oneDayAgo = DateTime.UtcNow.AddDays(-1);
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
             .Where(q => (!q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo)) &&
-                        (!q.DungeonMasterSession || isAdminOrDm))
+                        (!q.DungeonMasterSession || isAdminOrDm) && !q.IsClosed)
             .OrderByDescending(q => q.CreatedAt)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<Quest>>(entities);
@@ -88,7 +87,12 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     /// <inheritdoc/>
     public async Task<Quest?> GetQuestWithManageDetailsAsync(int id, CancellationToken token = default)
     {
+        // Two independent collection Includes (ProposedDates and PlayerSignups) in a single
+        // query force EF to cross-join both collections, multiplying row count combinatorially
+        // and triggering the MultipleCollectionIncludeWarning. AsSplitQuery() issues one query
+        // per collection instead, avoiding the row-count blowup without changing the loaded shape.
         var entity = await DbContext.Quests
+            .AsSplitQuery()
             .Include(q => q.ProposedDates)
                 .ThenInclude(pd => pd.PlayerVotes)
                     .ThenInclude(pv => pv.PlayerSignup)
@@ -157,7 +161,31 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     }
 
     /// <inheritdoc/>
-    public async Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default)
+    public async Task CloseQuestAsync(int questId, CancellationToken token = default)
+    {
+        var entity = await DbContext.Quests.FirstOrDefaultAsync(q => q.Id == questId, cancellationToken: token);
+        if (entity == null) return;
+
+        entity.IsClosed = true;
+        entity.ClosedDate = DateTime.UtcNow;
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task ReopenQuestAsync(int questId, CancellationToken token = default)
+    {
+        var entity = await DbContext.Quests.FirstOrDefaultAsync(q => q.Id == questId, cancellationToken: token);
+        if (entity == null) return;
+
+        entity.IsClosed = false;
+        entity.ClosedDate = null;
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<User>> UpdateQuestPropertiesWithNotificationsAsync(int questId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount, bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null, CancellationToken token = default)
     {
         var entity = await DbContext.Quests
             .Include(q => q.ProposedDates)
@@ -171,6 +199,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
 
         entity.Title = title;
         entity.Description = description;
+        entity.Rewards = rewards;
         entity.ChallengeRating = challengeRating;
         entity.TotalPlayerCount = totalPlayerCount;
         entity.DungeonMasterSession = dungeonMasterSession;
@@ -245,38 +274,6 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     private static bool IsSameDateTime(DateTime date1, DateTime date2)
     {
         return Math.Abs((date1 - date2).TotalMinutes) <= DateMatchWindowMinutes;
-    }
-
-    private static void UpdateProposedDatesIntelligently(QuestEntity entity, IList<DateTime> newProposedDates)
-    {
-        var existingDates = entity.ProposedDates.ToList();
-        var datesToRemove = new List<ProposedDateEntity>();
-
-        foreach (var existingDate in existingDates)
-        {
-            var matchingNewDate = newProposedDates.FirstOrDefault(nd => IsSameDateTime(existingDate.Date, nd));
-            if (matchingNewDate == default)
-            {
-                datesToRemove.Add(existingDate);
-            }
-            else
-            {
-                existingDate.Date = matchingNewDate;
-            }
-        }
-
-        foreach (var newDate in newProposedDates)
-        {
-            if (!existingDates.Any(ed => IsSameDateTime(ed.Date, newDate)))
-            {
-                entity.ProposedDates.Add(new ProposedDateEntity { Date = newDate, Quest = entity, QuestId = entity.Id });
-            }
-        }
-
-        foreach (var dateToRemove in datesToRemove)
-        {
-            entity.ProposedDates.Remove(dateToRemove);
-        }
     }
 
     private static List<UserEntity> UpdateProposedDatesWithNotificationTracking(QuestEntity entity, IList<DateTime> newProposedDates)

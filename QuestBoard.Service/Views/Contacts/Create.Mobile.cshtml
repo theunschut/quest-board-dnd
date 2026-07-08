@@ -1,0 +1,121 @@
+@using QuestBoard.Service.ViewModels.ContactViewModels
+@model ContactViewModel
+@{
+    ViewData["Title"] = "Create New Contact";
+}
+
+@section Styles {
+    <link href="~/css/contact-form.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="container-fluid px-3 py-3">
+    <div class="contact-form-card">
+        <h4><i class="fas fa-plus me-2"></i>Create New Contact</h4>
+        <hr class="mb-3" style="border-color: rgba(244,228,188,0.3);" />
+
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
+                <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" />
+                <input type="file" name="CroppedPictureFile" style="display:none" />
+                <small class="form-text">Upload a contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
+                <span asp-validation-for="ContactImageFile" class="text-danger"></span>
+                <div id="fileSizeError" class="text-danger" style="display: none;"></div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Name <span class="text-danger">*</span></label>
+                <input asp-for="Name" class="form-control" placeholder="Enter contact name" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="TownCity" class="form-label">Town/City</label>
+                <input asp-for="TownCity" class="form-control" placeholder="e.g. Waterdeep" />
+                <span asp-validation-for="TownCity" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="SubLocation" class="form-label">Sub-location</label>
+                <input asp-for="SubLocation" class="form-control" placeholder="e.g. The Guilded Rose Smithy" />
+                <span asp-validation-for="SubLocation" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="2000" placeholder="Brief contact description"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <hr style="border-color: rgba(244,228,188,0.3);" />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-plus me-2"></i>Create Contact
+                </button>
+                <a href="@Url.Action("Index")" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="cropPhotoModal" tabindex="-1" aria-labelledby="cropPhotoModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="cropPhotoModalLabel">
+                    <i class="fas fa-crop-alt me-2"></i>Crop Your Photo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="crop-stage">
+                    <cropper-canvas background style="width:100%;height:320px;">
+                        <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
+                        <cropper-shade hidden></cropper-shade>
+                        <cropper-handle action="move" plain></cropper-handle>
+                        <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
+                            <cropper-grid role="grid" bordered covered></cropper-grid>
+                            <cropper-crosshair centered></cropper-crosshair>
+                            <cropper-handle action="move" theme-color="rgba(255,193,7,0.35)"></cropper-handle>
+                            <cropper-handle action="n-resize"></cropper-handle>
+                            <cropper-handle action="e-resize"></cropper-handle>
+                            <cropper-handle action="s-resize"></cropper-handle>
+                            <cropper-handle action="w-resize"></cropper-handle>
+                            <cropper-handle action="ne-resize"></cropper-handle>
+                            <cropper-handle action="nw-resize"></cropper-handle>
+                            <cropper-handle action="se-resize"></cropper-handle>
+                            <cropper-handle action="sw-resize"></cropper-handle>
+                        </cropper-selection>
+                    </cropper-canvas>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Drag to reposition, use the corner handles to resize. We'll use a square crop —
+                    if you skip this, we'll center one automatically.
+                </p>
+            </div>
+            <div class="modal-footer border-secondary d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
+                    <i class="fas fa-times me-2"></i>Discard Photo
+                </button>
+                <button type="button" class="btn btn-warning" id="cropConfirmBtn">
+                    <i class="fas fa-check me-2"></i>Use This Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
+            integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
+            crossorigin="anonymous"></script>
+    <script src="~/js/image-crop.js" asp-append-version="true"></script>
+    <script>
+        initImageCrop({ fileInputId: 'contactImageInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
+    </script>
+}

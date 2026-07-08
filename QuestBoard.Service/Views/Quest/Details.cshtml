@@ -1,4 +1,5 @@
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @using QuestBoard.Service.ViewModels.CalendarViewModels
@@ -9,784 +10,810 @@
     ViewData["Title"] = Model.Quest?.Title;
     ViewData["BodyClass"] = "quest-details-page";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 <div class="quest-details-page">
-<div class="row">
-    <div class="col-lg-10 col-md-9">
-        <div class="card modern-card">
-            <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                <h1 class="mb-0">@ViewData["Title"]</h1>
-                <span class="badge cr-badge fs-6">
-                    <i class="fas fa-dice-d20 me-1"></i>
-                    CR @Model.Quest?.ChallengeRating
-                </span>
-            </div>
-            <div class="card-body modern-card-body">
-                <p class="lead" style="white-space: pre-wrap;">@Model.Quest?.Description</p>
-
-                @if (Model.Quest?.IsFinalized == true)
-                {var selectedPlayersCount = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() ?? 0;
-                    var hasSpace = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
-                    var currentUserSignedUp = (bool)ViewBag.IsPlayerSignedUp;
-                    var userCanJoin = User.Identity?.IsAuthenticated == true && !currentUserSignedUp;
-
-                    @if (currentUserSignedUp)
+    <div class="row">
+        <div class="col-lg-10 col-md-9">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+                    <h1 class="mb-0">@ViewData["Title"]</h1>
+                    @if (boardType != BoardType.Campaign)
                     {
-                        var currentUser = Model.Player;
-                        var userSignup = Model.Quest?.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == currentUser?.Id);
+                        <span class="badge cr-badge fs-6">
+                            <i class="fas fa-dice-d20 me-1"></i>
+                            CR @Model.Quest?.ChallengeRating
+                        </span>
+                    }
+                </div>
+                <div class="card-body modern-card-body">
+                    <p class="lead" style="white-space: pre-wrap;">@Model.Quest?.Description</p>
 
-                        <div class="alert alert-success">
-                            <h5>You're signed up!</h5>
-                            @if (userSignup?.IsSelected == true)
-                            {
-                                <p><strong>You are selected for this quest!</strong></p>
-                                <p><strong>Date:</strong> @Model.Quest?.FinalizedDate?.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
-                            }
-                            else
-                            {
-                                <p>You are on the waitlist for this quest.</p>
-                            }
+                    @if (!string.IsNullOrWhiteSpace(Model.Quest?.Rewards))
+                    {
+                        <div class="mb-4">
+                            <h5><i class="fas fa-coins text-warning me-2"></i>Rewards</h5>
+                            <div class="quest-description-box" style="white-space: pre-wrap;">@Model.Quest.Rewards</div>
                         </div>
                     }
 
-                    <div class="alert alert-info">
-                        <h5>Quest Finalized!</h5>
-                        <p><strong>Date & Time:</strong> @Model.Quest?.FinalizedDate?.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
-
-                        @{
-                            var selectedPlayers = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
-                            var selectedAssistants = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.AssistantDM).OrderBy(ps => ps.SignupTime).ToList() ?? [];
-                            var selectedSpectators = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Spectator).OrderBy(ps => ps.SignupTime).ToList() ?? [];
-                            var waitlistPlayers = Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
-                            
-                            var allSelectedParticipants = new List<PlayerSignup>();
-                            allSelectedParticipants.AddRange(selectedPlayers);
-                            allSelectedParticipants.AddRange(selectedAssistants);
-                            allSelectedParticipants.AddRange(selectedSpectators);
-                        }
-
-                        @if (allSelectedParticipants.Any())
-                        {
-                            var finalizedProposedDateForSelected = Model.Quest?.ProposedDates
-                                .FirstOrDefault(pd => pd.Date == Model.Quest.FinalizedDate);
-
-                            <p><strong><i class="fas fa-users me-1"></i>Participants:</strong></p>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Player Name</th>
-                                            <th>Character</th>
-                                            <th>Role</th>
-                                            <th>Vote</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var participant in allSelectedParticipants)
-                                        {
-                                            var isCurrentUser = participant.Player.Id == ViewBag.CurrentUserId;
-                                            var participantVote = participant.DateVotes
-                                                ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDateForSelected?.Id)?.Vote;
-                                            <tr>
-                                                <td>@participant.Player.Name</td>
-                                                <td>
-                                                    @if (participant.Character != null)
-                                                    {
-                                                        <div class="d-flex align-items-center">
-                                                            <img src="@Url.Action("GetProfilePicture", "GuildMembers", new { id = participant.Character.Id })"
-                                                                 alt="@participant.Character.Name"
-                                                                 class="character-mini-avatar me-2"
-                                                                 style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
-                                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                                            <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
-                                                                <i class="fas fa-user"></i>
-                                                            </span>
-                                                            <span>@participant.Character.Name</span>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="d-flex align-items-center gap-2">
-                                                            <span class="text-muted fst-italic">No character</span>
-                                                            @if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
-                                                            {
-                                                                <button type="button" class="btn btn-sm btn-success"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#addCharacterModal"
-                                                                        title="Add character">
-                                                                    <i class="fas fa-plus"></i>
-                                                                </button>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </td>
-                                                <td>
-                                                    @if (participant.Role == SignupRole.Player)
-                                                    {
-                                                        <span class="badge bg-primary">
-                                                            <i class="fas fa-user me-1"></i>Player
-                                                        </span>
-                                                    }
-                                                    else if (participant.Role == SignupRole.AssistantDM)
-                                                    {
-                                                        <span class="badge bg-success">
-                                                            <i class="fas fa-user-shield me-1"></i>Assistant DM
-                                                        </span>
-                                                    }
-                                                    else if (participant.Role == SignupRole.Spectator)
-                                                    {
-                                                        <span class="badge bg-info">
-                                                            <i class="fas fa-eye me-1"></i>Spectator
-                                                        </span>
-                                                    }
-                                                </td>
-                                                <td>
-                                                    @if (participant.Role == SignupRole.Spectator)
-                                                    {
-                                                        <span class="badge bg-secondary">
-                                                            <i class="fas fa-minus me-1"></i>N/A
-                                                        </span>
-                                                    }
-                                                    else if (participantVote == VoteType.Yes)
-                                                    {
-                                                        <span class="badge bg-success">
-                                                            <i class="fas fa-check me-1"></i>Yes
-                                                        </span>
-                                                    }
-                                                    else if (participantVote == VoteType.Maybe)
-                                                    {
-                                                        <span class="badge bg-warning text-dark">
-                                                            <i class="fas fa-question me-1"></i>Maybe
-                                                        </span>
-                                                    }
-                                                    else if (participantVote == VoteType.No)
-                                                    {
-                                                        <span class="badge bg-danger">
-                                                            <i class="fas fa-times me-1"></i>No
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-secondary">
-                                                            <i class="fas fa-minus me-1"></i>No Vote
-                                                        </span>
-                                                    }
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-
-                        @if (waitlistPlayers.Any())
-                        {
-                            <p><strong>Waitlist:</strong></p>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Player Name</th>
-                                            <th>Character</th>
-                                            <th>Role</th>
-                                            <th>Vote</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var player in waitlistPlayers)
-                                        {
-                                            var isCurrentUser = player.Player.Id == ViewBag.CurrentUserId;
-
-                                            // Find the finalized date's ProposedDate ID
-                                            var finalizedProposedDate = Model.Quest?.ProposedDates
-                                                .FirstOrDefault(pd => pd.Date == Model.Quest.FinalizedDate);
-                                            var playerVote = player.DateVotes
-                                                ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDate?.Id)?.Vote;
-
-                                            // Check if there are available spots
-                                            var hasAvailableSpots = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
-                                            var canChangeVote = isCurrentUser && hasAvailableSpots && playerVote != VoteType.Yes;
-
-                                            <tr>
-                                                <td>@player.Player.Name</td>
-                                                <td>
-                                                    @if (player.Character != null)
-                                                    {
-                                                        <div class="d-flex align-items-center">
-                                                            <img src="@Url.Action("GetProfilePicture", "GuildMembers", new { id = player.Character.Id })"
-                                                                 alt="@player.Character.Name"
-                                                                 class="character-mini-avatar me-2"
-                                                                 style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
-                                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                                            <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
-                                                                <i class="fas fa-user"></i>
-                                                            </span>
-                                                            <span>@player.Character.Name</span>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="d-flex align-items-center gap-2">
-                                                            <span class="text-muted fst-italic">No character</span>
-                                                            @if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
-                                                            {
-                                                                <button type="button" class="btn btn-sm btn-success"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#addCharacterModal"
-                                                                        title="Add character">
-                                                                    <i class="fas fa-plus"></i>
-                                                                </button>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-secondary">
-                                                        <i class="fas fa-user me-1"></i>Player (Waitlist)
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    @if (playerVote == VoteType.Yes)
-                                                    {
-                                                        <span class="badge bg-success">
-                                                            <i class="fas fa-check me-1"></i>Yes
-                                                        </span>
-                                                    }
-                                                    else if (playerVote == VoteType.Maybe)
-                                                    {
-                                                        <span class="badge bg-warning text-dark">
-                                                            <i class="fas fa-question me-1"></i>Maybe
-                                                        </span>
-                                                    }
-                                                    else if (playerVote == VoteType.No)
-                                                    {
-                                                        <span class="badge bg-danger">
-                                                            <i class="fas fa-times me-1"></i>No
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-secondary">
-                                                            <i class="fas fa-minus me-1"></i>No Vote
-                                                        </span>
-                                                    }
-                                                </td>
-                                                <td>
-                                                    @if (canChangeVote)
-                                                    {
-                                                        <button type="button" class="btn btn-sm btn-success"
-                                                                onclick="changeVoteToYes(@Model.Quest?.Id)"
-                                                                title="Change vote to Yes and join quest">
-                                                            <i class="fas fa-check me-1"></i>Join Quest
-                                                        </button>
-                                                    }
-                                                    else if (isCurrentUser && !hasAvailableSpots)
-                                                    {
-                                                        <span class="text-muted small">
-                                                            <i class="fas fa-info-circle me-1"></i>Quest Full
-                                                        </span>
-                                                    }
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </div>
-
-                    if (userCanJoin)
+                    @if (boardType != BoardType.Campaign)
                     {
-                        <div class="card modern-card mb-4">
-                            <div class="card-header modern-card-header">
-                                <h5>Join This Quest</h5>
-                            </div>
-                            <div class="card-body modern-card-body">
-                                <div class="alert alert-info">
-                                    <strong>Joining as:</strong> @Model.Player?.Name (@Model.Player?.Email)
-                                </div>
+                        @if (Model.Quest?.IsFinalized == true)
+                        {
+                            var selectedPlayersCount = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() ?? 0;
+                            var hasSpace = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
+                            var currentUserSignedUp = (bool)ViewBag.IsPlayerSignedUp;
+                            var userCanJoin = User.Identity?.IsAuthenticated == true && !currentUserSignedUp;
+
+                            @if (currentUserSignedUp)
+                            {
+                                var currentUser = Model.Player;
+                                var userSignup = Model.Quest?.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == currentUser?.Id);
 
                                 <div class="alert alert-success">
-                                    <h6>Join This Quest!</h6>
-                                    <p><strong>Quest Date:</strong> @Model.Quest?.FinalizedDate?.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
-                                    <p><strong>Player Slots:</strong> @selectedPlayersCount/@Model.Quest?.TotalPlayerCount filled</p>
-                                    @if (hasSpace)
+                                    <h5>You're signed up!</h5>
+                                    @if (userSignup?.IsSelected == true)
                                     {
-                                        <p class="mb-0"><i class="fas fa-check-circle text-success me-1"></i>Space available for players!</p>
+                                        <p><strong>You are selected for this quest!</strong></p>
+                                        <p><strong>Date:</strong> @Model.Quest?.FinalizedDate?.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
                                     }
                                     else
                                     {
-                                        <p class="mb-0"><i class="fas fa-info-circle text-warning me-1"></i>Player slots full, but you can join as Assistant DM or Spectator!</p>
+                                        <p>You are on the waitlist for this quest.</p>
                                     }
                                 </div>
+                            }
 
-                                <h6 class="mb-3">Select Your Role:</h6>
-                                
-                                @* Single Character Selection for All Roles *@
-                                <div class="mb-3">
-                                    <label class="form-label">Select Character (Optional)</label>
-                                    <select id="finalizedQuestCharacter" class="form-select">
-                                        <option value="">-- Join without character --</option>
-                                        @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
-                                        {
-                                            var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
-                                            <option value="@character.Id">
-                                                @character.Name - Level @character.Level (@classList)
-                                            </option>
-                                        }
-                                    </select>
-                                    <small class="form-text">Choose which character you'll be playing, or join without one.</small>
-                                </div>
-
-                                <div class="d-grid gap-2">
-                                    <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinPlayerForm">
-                                        <input type="hidden" name="questId" value="@Model.Quest?.Id" />
-                                        <input type="hidden" name="selectedRole" value="0" />
-                                        <input type="hidden" name="characterId" id="playerCharacterId" value="" />
-                                        
-                                        <button type="submit" class="btn btn-primary w-100">
-                                            <i class="fas fa-users me-2"></i>Join as Player
-                                            <small class="d-block mt-1" style="font-size: 0.8em;">Participate in the quest (counts toward player limit)</small>
-                                        </button>
-                                    </form>
-
-                                    <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinAssistantForm">
-                                        <input type="hidden" name="questId" value="@Model.Quest?.Id" />
-                                        <input type="hidden" name="selectedRole" value="2" />
-                                        <input type="hidden" name="characterId" id="assistantCharacterId" value="" />
-                                        
-                                        <button type="submit" class="btn btn-success w-100">
-                                            <i class="fas fa-user-shield me-2"></i>Join as Assistant DM
-                                            <small class="d-block mt-1" style="font-size: 0.8em;">Help the DM run the session</small>
-                                        </button>
-                                    </form>
-
-                                    <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinSpectatorForm">
-                                        <input type="hidden" name="questId" value="@Model.Quest?.Id" />
-                                        <input type="hidden" name="selectedRole" value="1" />
-                                        <input type="hidden" name="characterId" id="spectatorCharacterId" value="" />
-                                        <button type="submit" class="btn btn-info w-100">
-                                            <i class="fas fa-eye me-2"></i>Join as Spectator
-                                            <small class="d-block mt-1" style="font-size: 0.8em;">Watch the session (auto-approved)</small>
-                                        </button>
-                                    </form>
-                                </div>
-
-                                <script>
-                                    // Sync character selection to all forms
-                                    document.getElementById('finalizedQuestCharacter').addEventListener('change', function() {
-                                        const characterId = this.value;
-                                        document.getElementById('playerCharacterId').value = characterId;
-                                        document.getElementById('assistantCharacterId').value = characterId;
-                                        document.getElementById('spectatorCharacterId').value = characterId;
-                                    });
-                                </script>
-                            </div>
-                        </div>
-                    }
-                }
-                else if (!(User.Identity?.IsAuthenticated == true))
-                {
-                    <div class="alert alert-warning">
-                        <h5>Sign In Required</h5>
-                        <p>You must <a href="@Url.Action("Login", "Account")" class="alert-link">sign in</a> to sign up for quests.</p>
-                        <p>Don't have an account? <a href="@Url.Action("Register", "Account")" class="alert-link">Register here</a>.</p>
-                    </div>
-                }
-                else if (!(bool)ViewBag.IsPlayerSignedUp)
-                {
-                    <div class="card modern-card mb-4">
-                        <div class="card-header modern-card-header">
-                            <h5>Sign Up for This Quest</h5>
-                        </div>
-                        <div class="card-body modern-card-body">
                             <div class="alert alert-info">
-                                <strong>Signing up as:</strong> @Model.Player?.Name (@Model.Player?.Email)
+                                <h5>Quest Finalized!</h5>
+                                <p><strong>Date & Time:</strong> @Model.Quest?.FinalizedDate?.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
+
+                                @{
+                                    var selectedPlayers = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
+                                    var selectedAssistants = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.AssistantDM).OrderBy(ps => ps.SignupTime).ToList() ?? [];
+                                    var selectedSpectators = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Spectator).OrderBy(ps => ps.SignupTime).ToList() ?? [];
+
+                                    var waitlistFinalizedProposedDate = Model.Quest?.IsFinalized == true && Model.Quest.FinalizedDate != null
+                                        ? Model.Quest.ProposedDates.FirstOrDefault(pd => pd.Date.Date == Model.Quest.FinalizedDate.Value.Date)
+                                        : null;
+                                    var waitlistPlayers = waitlistFinalizedProposedDate != null
+                                        ? Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderWaitlist(waitlistFinalizedProposedDate.Id).ToList() ?? []
+                                        : Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
+
+                                    var allSelectedParticipants = new List<PlayerSignup>();
+                                    allSelectedParticipants.AddRange(selectedPlayers);
+                                    allSelectedParticipants.AddRange(selectedAssistants);
+                                    allSelectedParticipants.AddRange(selectedSpectators);
+                                }
+
+                                @if (allSelectedParticipants.Any())
+                                {
+                                    var finalizedProposedDateForSelected = Model.Quest?.ProposedDates
+                                        .FirstOrDefault(pd => pd.Date == Model.Quest.FinalizedDate);
+
+                                    <p><strong><i class="fas fa-users me-1"></i>Participants:</strong></p>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Player Name</th>
+                                                    <th>Character</th>
+                                                    <th>Role</th>
+                                                    <th>Vote</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var participant in allSelectedParticipants)
+                                                {
+                                                    var isCurrentUser = participant.Player.Id == ViewBag.CurrentUserId;
+                                                    var participantVote = participant.DateVotes
+                                                        ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDateForSelected?.Id)?.Vote;
+                                                    <tr>
+                                                        <td>@participant.Player.Name</td>
+                                                        <td>
+                                                            @if (participant.Character != null)
+                                                            {
+                                                                <div class="d-flex align-items-center">
+                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = participant.Character.Id })"
+                                                                         alt="@participant.Character.Name"
+                                                                         class="character-mini-avatar me-2"
+                                                                         style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                                                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                                                    <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
+                                                                        <i class="fas fa-user"></i>
+                                                                    </span>
+                                                                    <span>@participant.Character.Name</span>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="text-muted fst-italic">No character</span>
+                                                                    @if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                                                    {
+                                                                        <button type="button" class="btn btn-sm btn-success"
+                                                                                data-bs-toggle="modal"
+                                                                                data-bs-target="#addCharacterModal"
+                                                                                title="Add character">
+                                                                            <i class="fas fa-plus"></i>
+                                                                        </button>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (participant.Role == SignupRole.Player)
+                                                            {
+                                                                <span class="badge bg-primary">
+                                                                    <i class="fas fa-user me-1"></i>Player
+                                                                </span>
+                                                            }
+                                                            else if (participant.Role == SignupRole.AssistantDM)
+                                                            {
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-user-shield me-1"></i>Assistant DM
+                                                                </span>
+                                                            }
+                                                            else if (participant.Role == SignupRole.Spectator)
+                                                            {
+                                                                <span class="badge bg-info">
+                                                                    <i class="fas fa-eye me-1"></i>Spectator
+                                                                </span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (participant.Role == SignupRole.Spectator)
+                                                            {
+                                                                <span class="badge bg-secondary">
+                                                                    <i class="fas fa-minus me-1"></i>N/A
+                                                                </span>
+                                                            }
+                                                            else if (participantVote == VoteType.Yes)
+                                                            {
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-check me-1"></i>Yes
+                                                                </span>
+                                                            }
+                                                            else if (participantVote == VoteType.Maybe)
+                                                            {
+                                                                <span class="badge bg-warning text-dark">
+                                                                    <i class="fas fa-question me-1"></i>Maybe
+                                                                </span>
+                                                            }
+                                                            else if (participantVote == VoteType.No)
+                                                            {
+                                                                <span class="badge bg-danger">
+                                                                    <i class="fas fa-times me-1"></i>No
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-secondary">
+                                                                    <i class="fas fa-minus me-1"></i>No Vote
+                                                                </span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+
+                                @if (waitlistPlayers.Any())
+                                {
+                                    <p><strong>Waitlist:</strong></p>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Player Name</th>
+                                                    <th>Character</th>
+                                                    <th>Role</th>
+                                                    <th>Vote</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var player in waitlistPlayers)
+                                                {
+                                                    var isCurrentUser = player.Player.Id == ViewBag.CurrentUserId;
+
+                                                    // Find the finalized date's ProposedDate ID
+                                                    var finalizedProposedDate = Model.Quest?.ProposedDates
+                                                        .FirstOrDefault(pd => pd.Date == Model.Quest.FinalizedDate);
+                                                    var playerVote = player.DateVotes
+                                                        ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDate?.Id)?.Vote;
+
+                                                    <tr>
+                                                        <td>@player.Player.Name</td>
+                                                        <td>
+                                                            @if (player.Character != null)
+                                                            {
+                                                                <div class="d-flex align-items-center">
+                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
+                                                                         alt="@player.Character.Name"
+                                                                         class="character-mini-avatar me-2"
+                                                                         style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                                                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                                                    <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
+                                                                        <i class="fas fa-user"></i>
+                                                                    </span>
+                                                                    <span>@player.Character.Name</span>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="text-muted fst-italic">No character</span>
+                                                                    @if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                                                    {
+                                                                        <button type="button" class="btn btn-sm btn-success"
+                                                                                data-bs-toggle="modal"
+                                                                                data-bs-target="#addCharacterModal"
+                                                                                title="Add character">
+                                                                            <i class="fas fa-plus"></i>
+                                                                        </button>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-secondary">
+                                                                <i class="fas fa-user me-1"></i>Player (Waitlist)
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            @if (playerVote == VoteType.Yes)
+                                                            {
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-check me-1"></i>Yes
+                                                                </span>
+                                                            }
+                                                            else if (playerVote == VoteType.Maybe)
+                                                            {
+                                                                <span class="badge bg-warning text-dark">
+                                                                    <i class="fas fa-question me-1"></i>Maybe
+                                                                </span>
+                                                            }
+                                                            else if (playerVote == VoteType.No)
+                                                            {
+                                                                <span class="badge bg-danger">
+                                                                    <i class="fas fa-times me-1"></i>No
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-secondary">
+                                                                    <i class="fas fa-minus me-1"></i>No Vote
+                                                                </span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
                             </div>
 
-                            <form asp-action="Details" method="post">
-                                <input type="hidden" name="Id" value="0" />
-                                <input type="hidden" name="Quest.Id" value="@Model.Quest?.Id" />
-
-                                @* Character Selection *@
-                                <div class="mb-3">
-                                    <label class="form-label">Select Character (Optional)</label>
-                                    <select name="CharacterId" class="form-select">
-                                        <option value="">-- Sign up without character --</option>
-                                        @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
-                                        {
-                                            var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
-                                            <option value="@character.Id">
-                                                @character.Name - Level @character.Level (@classList)
-                                            </option>
-                                        }
-                                    </select>
-                                    <small class="form-text">Choose which character you'll be playing, or sign up without one.</small>
-                                </div>
-
-                                @* Role Selection *@
-                                <div class="mb-3">
-                                    <label for="selectedRole" class="form-label">
-                                        <i class="fas fa-user-tag me-2"></i>
-                                        <strong>Select Your Role:</strong>
-                                    </label>
-                                    <select name="selectedRole" id="selectedRole" class="form-select" required>
-                                        <option value="0" selected>Player - Join as an active player</option>
-                                        <option value="2">Assistant DM - Help the Dungeon Master</option>
-                                        <option value="1">Spectator - Watch the session</option>
-                                    </select>
-                                    <div class="form-text">
-                                        <ul class="mb-0 small">
-                                            <li><strong>Player:</strong> Participate in the quest (counts toward player limit)</li>
-                                            <li><strong>Assistant DM:</strong> Help the DM run the session (can vote on dates)</li>
-                                            <li><strong>Spectator:</strong> Observe the session (auto-approved, cannot vote)</li>
-                                        </ul>
-                                    </div>
-                                </div>
-
-                                <h6>Vote on Proposed Dates:</h6>
-                                <p class="text-muted mb-3" id="votingInstruction">Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.</p>
-
-                                @* Hidden form fields for the DateVotes - these will be populated by the calendar vote buttons *@
-                                @{
-                                    var sortedDateVotes = Model.DateVotes.OrderBy(dv => dv.ProposedDate?.Date).ToList();
-                                    // Create a lookup dictionary for vote indices by ProposedDateId
-                                    var voteIndexLookup = new Dictionary<int, int>();
-                                    for (var i = 0; i < sortedDateVotes.Count; i++)
-                                    {
-                                        voteIndexLookup[sortedDateVotes[i].ProposedDateId] = i;
-                                    }
-                                    ViewBag.VoteIndexLookup = voteIndexLookup;
-                                }
-                                @for (var i = 0; i < sortedDateVotes.Count; i++)
-                                {
-                                    var vote = sortedDateVotes[i];
-                                    <input type="hidden" name="DateVotes[@i].ProposedDateId" value="@vote.ProposedDateId" />
-                                    <input type="hidden" name="DateVotes[@i].PlayerSignupId" value="@vote.PlayerSignupId" />
-                                }
-
-                                @* Calendar views for each month with proposed dates *@
-                                @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
-                                {
-                                    <div class="card modern-card mb-3">
-                                        <div class="card-header modern-card-header">
-                                            <h6 class="mb-0">
-                                                <i class="fas fa-calendar-alt text-info me-2"></i>
-                                                @calendarMonth.MonthName
-                                            </h6>
-                                        </div>
-                                        <div class="card-body modern-card-body p-0">
-                                            @await Html.PartialAsync("_Calendar", calendarMonth)
-                                        </div>
-                                    </div>
-                                }
-
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-user-plus me-2"></i>
-                                    Sign Up with Votes
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    var currentUser = Model.Player;
-                    var userSignup = Model.Quest?.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == currentUser?.Id);
-                    var userVotes = userSignup?.DateVotes?.ToDictionary(v => v.ProposedDateId, v => v.Vote) ?? new Dictionary<int, VoteType?>();
-                    
-                    <div class="alert alert-success">
-                        <h5>You're signed up!</h5>
-                        <p>Thank you for signing up. You'll be notified when the quest is finalized.</p>
-                    </div>
-
-                    <div id="viewSignupCalendar">
-                        @if (Model.Quest?.ProposedDates?.Any() == true)
-                        {
-                            <h6 class="mb-3">
-                                <i class="fas fa-calendar-alt text-primary me-2"></i>
-                                Your Date Preferences
-                            </h6>
-                            <p class="text-muted mb-3">View your votes and all proposed dates in the calendar below. Current quest dates are highlighted.</p>
-
-                            @* Calendar views for each month with proposed dates *@
-                            @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
+                            if (userCanJoin)
                             {
-                                <div class="card modern-card mb-3">
+                                <div class="card modern-card mb-4">
                                     <div class="card-header modern-card-header">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-calendar-alt text-info me-2"></i>
-                                            @calendarMonth.MonthName
-                                        </h6>
+                                        <h5>Join This Quest</h5>
                                     </div>
-                                    <div class="card-body modern-card-body p-0">
-                                        @await Html.PartialAsync("_Calendar", calendarMonth)
+                                    <div class="card-body modern-card-body">
+                                        <div class="alert alert-info">
+                                            <strong>Joining as:</strong> @Model.Player?.Name (@Model.Player?.Email)
+                                        </div>
+
+                                        <div class="alert alert-success">
+                                            <h6>Join This Quest!</h6>
+                                            <p><strong>Quest Date:</strong> @Model.Quest?.FinalizedDate?.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
+                                            <p><strong>Player Slots:</strong> @selectedPlayersCount/@Model.Quest?.TotalPlayerCount filled</p>
+                                            @if (hasSpace)
+                                            {
+                                                <p class="mb-0"><i class="fas fa-check-circle text-success me-1"></i>Space available for players!</p>
+                                            }
+                                            else
+                                            {
+                                                <p class="mb-0"><i class="fas fa-info-circle text-warning me-1"></i>Player slots full &mdash; joining as a Player will place you on the waitlist. You can also join as Assistant DM or Spectator.</p>
+                                            }
+                                        </div>
+
+                                        <h6 class="mb-3">Select Your Role:</h6>
+
+                                        @* Single Character Selection for All Roles *@
+                                        <div class="mb-3">
+                                            <label class="form-label">Select Character (Optional)</label>
+                                            <select id="finalizedQuestCharacter" class="form-select">
+                                                <option value="">-- Join without character --</option>
+                                                @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
+                                                {
+                                                    var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
+                                                    <option value="@character.Id">
+                                                        @character.Name - Level @character.Level (@classList)
+                                                    </option>
+                                                }
+                                            </select>
+                                            <small class="form-text">Choose which character you'll be playing, or join without one.</small>
+                                        </div>
+
+                                        <div class="d-grid gap-2">
+                                            <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinPlayerForm">
+                                                <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+                                                <input type="hidden" name="selectedRole" value="0" />
+                                                <input type="hidden" name="characterId" id="playerCharacterId" value="" />
+
+                                                <button type="submit" class="btn btn-primary w-100">
+                                                    <i class="fas fa-users me-2"></i>Join as Player
+                                                    <small class="d-block mt-1" style="font-size: 0.8em;">Participate in the quest (counts toward player limit)</small>
+                                                </button>
+                                            </form>
+
+                                            <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinAssistantForm">
+                                                <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+                                                <input type="hidden" name="selectedRole" value="2" />
+                                                <input type="hidden" name="characterId" id="assistantCharacterId" value="" />
+
+                                                <button type="submit" class="btn btn-success w-100">
+                                                    <i class="fas fa-user-shield me-2"></i>Join as Assistant DM
+                                                    <small class="d-block mt-1" style="font-size: 0.8em;">Help the DM run the session</small>
+                                                </button>
+                                            </form>
+
+                                            <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinSpectatorForm">
+                                                <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+                                                <input type="hidden" name="selectedRole" value="1" />
+                                                <input type="hidden" name="characterId" id="spectatorCharacterId" value="" />
+                                                <button type="submit" class="btn btn-info w-100">
+                                                    <i class="fas fa-eye me-2"></i>Join as Spectator
+                                                    <small class="d-block mt-1" style="font-size: 0.8em;">Watch the session (auto-approved)</small>
+                                                </button>
+                                            </form>
+                                        </div>
+
+                                        <script>
+                                                                        // Sync character selection to all forms
+                                                                        document.getElementById('finalizedQuestCharacter').addEventListener('change', function() {
+                                                                            const characterId = this.value;
+                                                                            document.getElementById('playerCharacterId').value = characterId;
+                                                                            document.getElementById('assistantCharacterId').value = characterId;
+                                                                            document.getElementById('spectatorCharacterId').value = characterId;
+                                                                        });
+                                        </script>
                                     </div>
                                 </div>
                             }
                         }
-                    </div>
+                        else if (!(User.Identity?.IsAuthenticated == true))
+                        {
+                            <div class="alert alert-warning">
+                                <h5>Sign In Required</h5>
+                                <p>You must <a href="@Url.Action("Login", "Account")" class="alert-link">sign in</a> to sign up for quests.</p>
+                                <p>Don't have an account? <a href="@Url.Action("Register", "Account")" class="alert-link">Register here</a>.</p>
+                            </div>
+                        }
+                        else if (!(bool)ViewBag.IsPlayerSignedUp)
+                        {
+                            <div class="card modern-card mb-4">
+                                <div class="card-header modern-card-header">
+                                    <h5>Sign Up for This Quest</h5>
+                                </div>
+                                <div class="card-body modern-card-body">
+                                    <div class="alert alert-info">
+                                        <strong>Signing up as:</strong> @Model.Player?.Name (@Model.Player?.Email)
+                                    </div>
 
-                    @* Update signup form - hidden by default *@
-                    <div class="card modern-card mb-4" id="updateSignupForm" style="display: none;">
-                        <div class="card-header modern-card-header">
-                            <h5>Update Your Signup</h5>
-                        </div>
-                        <div class="card-body modern-card-body">
-                            <form asp-action="UpdateSignup" method="post">
-                                <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+                                    <form asp-action="Details" method="post">
+                                        <input type="hidden" name="Id" value="0" />
+                                        <input type="hidden" name="Quest.Id" value="@Model.Quest?.Id" />
 
-                                <h6>Update Your Date Preferences:</h6>
-                                <p class="text-muted mb-3">Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.</p>
+                                        @* Character Selection *@
+                                        <div class="mb-3">
+                                            <label class="form-label">Select Character (Optional)</label>
+                                            <select name="CharacterId" class="form-select">
+                                                <option value="">-- Sign up without character --</option>
+                                                @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
+                                                {
+                                                    var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
+                                                    <option value="@character.Id">
+                                                        @character.Name - Level @character.Level (@classList)
+                                                    </option>
+                                                }
+                                            </select>
+                                            <small class="form-text">Choose which character you'll be playing, or sign up without one.</small>
+                                        </div>
 
-                                @* Hidden form fields for the DateVotes - these will be populated by the calendar vote buttons *@
-                                @{
-                                    var sortedUpdateDateVotes = Model.Quest?.ProposedDates.OrderBy(pd => pd.Date).Select(pd => new { ProposedDateId = pd.Id, Vote = userVotes.GetValueOrDefault(pd.Id) }).ToList() ?? [];
-                                    var updateVoteIndexLookup = new Dictionary<int, int>();
-                                    for (var i = 0; i < sortedUpdateDateVotes.Count; i++)
+                                        @* Role Selection *@
+                                        <div class="mb-3">
+                                            <label for="selectedRole" class="form-label">
+                                                <i class="fas fa-user-tag me-2"></i>
+                                                <strong>Select Your Role:</strong>
+                                            </label>
+                                            <select name="selectedRole" id="selectedRole" class="form-select" required>
+                                                <option value="0" selected>Player - Join as an active player</option>
+                                                <option value="2">Assistant DM - Help the Dungeon Master</option>
+                                                <option value="1">Spectator - Watch the session</option>
+                                            </select>
+                                            <div class="form-text">
+                                                <ul class="mb-0 small">
+                                                    <li><strong>Player:</strong> Participate in the quest (counts toward player limit)</li>
+                                                    <li><strong>Assistant DM:</strong> Help the DM run the session (can vote on dates)</li>
+                                                    <li><strong>Spectator:</strong> Observe the session (auto-approved, cannot vote)</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <h6>Vote on Proposed Dates:</h6>
+                                        <p class="text-muted mb-3" id="votingInstruction">Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.</p>
+
+                                        @* Hidden form fields for the DateVotes - these will be populated by the calendar vote buttons *@
+                                        @{
+                                            var sortedDateVotes = Model.DateVotes.OrderBy(dv => dv.ProposedDate?.Date).ToList();
+                                            // Create a lookup dictionary for vote indices by ProposedDateId
+                                            var voteIndexLookup = new Dictionary<int, int>();
+                                            for (var i = 0; i < sortedDateVotes.Count; i++)
+                                            {
+                                                voteIndexLookup[sortedDateVotes[i].ProposedDateId] = i;
+                                            }
+                                            ViewBag.VoteIndexLookup = voteIndexLookup;
+                                        }
+                                        @for (var i = 0; i < sortedDateVotes.Count; i++)
+                                        {
+                                            var vote = sortedDateVotes[i];
+                                            <input type="hidden" name="DateVotes[@i].ProposedDateId" value="@vote.ProposedDateId" />
+                                            <input type="hidden" name="DateVotes[@i].PlayerSignupId" value="@vote.PlayerSignupId" />
+                                        }
+
+                                        @* Calendar views for each month with proposed dates *@
+                                        @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
+                                        {
+                                            <div class="card modern-card mb-3">
+                                                <div class="card-header modern-card-header">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-calendar-alt text-info me-2"></i>
+                                                        @calendarMonth.MonthName
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body modern-card-body p-0">
+                                                    @await Html.PartialAsync("_Calendar", calendarMonth)
+                                                </div>
+                                            </div>
+                                        }
+
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-user-plus me-2"></i>
+                                            Sign Up with Votes
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            var currentUser = Model.Player;
+                            var userSignup = Model.Quest?.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == currentUser?.Id);
+                            var userVotes = userSignup?.DateVotes?.ToDictionary(v => v.ProposedDateId, v => v.Vote) ?? new Dictionary<int, VoteType?>();
+
+                            <div class="alert alert-success">
+                                <h5>You're signed up!</h5>
+                                <p>Thank you for signing up. You'll be notified when the quest is finalized.</p>
+                            </div>
+
+                            <div id="viewSignupCalendar">
+                                @if (Model.Quest?.ProposedDates?.Any() == true)
+                                {
+                                    <h6 class="mb-3">
+                                        <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                        Your Date Preferences
+                                    </h6>
+                                    <p class="text-muted mb-3">View your votes and all proposed dates in the calendar below. Current quest dates are highlighted.</p>
+
+                                    @* Calendar views for each month with proposed dates *@
+                                    @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
                                     {
-                                        updateVoteIndexLookup[sortedUpdateDateVotes[i].ProposedDateId] = i;
+                                        <div class="card modern-card mb-3">
+                                            <div class="card-header modern-card-header">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-calendar-alt text-info me-2"></i>
+                                                    @calendarMonth.MonthName
+                                                </h6>
+                                            </div>
+                                            <div class="card-body modern-card-body p-0">
+                                                @await Html.PartialAsync("_Calendar", calendarMonth)
+                                            </div>
+                                        </div>
                                     }
                                 }
-                                @for (var i = 0; i < sortedUpdateDateVotes.Count; i++)
-                                {
-                                    var vote = sortedUpdateDateVotes[i];
-                                    <input type="hidden" name="DateVotes[@i].ProposedDateId" value="@vote.ProposedDateId" />
-                                }
+                            </div>
 
-                                @* Calendar views for each month with proposed dates - IN UPDATE MODE *@
-                                @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
-                                {
-                                    <div class="card modern-card mb-3">
-                                        <div class="card-header modern-card-header">
-                                            <h6 class="mb-0">
-                                                <i class="fas fa-calendar-alt text-info me-2"></i>
-                                                @calendarMonth.MonthName
-                                            </h6>
-                                        </div>
-                                        <div class="card-body modern-card-body p-0">
-                                            @{
-                                                ViewData["UpdateVoteIndexLookup"] = updateVoteIndexLookup;
+                            @* Update signup form - hidden by default *@
+                            <div class="card modern-card mb-4" id="updateSignupForm" style="display: none;">
+                                <div class="card-header modern-card-header">
+                                    <h5>Update Your Signup</h5>
+                                </div>
+                                <div class="card-body modern-card-body">
+                                    <form asp-action="UpdateSignup" method="post">
+                                        <input type="hidden" name="questId" value="@Model.Quest?.Id" />
+
+                                        <h6>Update Your Date Preferences:</h6>
+                                        <p class="text-muted mb-3">Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.</p>
+
+                                        @* Hidden form fields for the DateVotes - these will be populated by the calendar vote buttons *@
+                                        @{
+                                            var sortedUpdateDateVotes = Model.Quest?.ProposedDates.OrderBy(pd => pd.Date).Select(pd => new { ProposedDateId = pd.Id, Vote = userVotes.GetValueOrDefault(pd.Id) }).ToList() ?? [];
+                                            var updateVoteIndexLookup = new Dictionary<int, int>();
+                                            for (var i = 0; i < sortedUpdateDateVotes.Count; i++)
+                                            {
+                                                updateVoteIndexLookup[sortedUpdateDateVotes[i].ProposedDateId] = i;
                                             }
-                                            @await Html.PartialAsync("_Calendar", calendarMonth)
-                                        </div>
-                                    </div>
-                                }
+                                        }
+                                        @for (var i = 0; i < sortedUpdateDateVotes.Count; i++)
+                                        {
+                                            var vote = sortedUpdateDateVotes[i];
+                                            <input type="hidden" name="DateVotes[@i].ProposedDateId" value="@vote.ProposedDateId" />
+                                        }
 
-                                <div class="mt-3">
-                                    <button type="submit" class="btn btn-primary me-2">
-                                        <i class="fas fa-check me-2"></i>Update Signup
+                                        @* Calendar views for each month with proposed dates - IN UPDATE MODE *@
+                                        @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
+                                        {
+                                            <div class="card modern-card mb-3">
+                                                <div class="card-header modern-card-header">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-calendar-alt text-info me-2"></i>
+                                                        @calendarMonth.MonthName
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body modern-card-body p-0">
+                                                    @{
+                                                        ViewData["UpdateVoteIndexLookup"] = updateVoteIndexLookup;
+                                                    }
+                                                    @await Html.PartialAsync("_Calendar", calendarMonth)
+                                                </div>
+                                            </div>
+                                        }
+
+                                        <div class="mt-3">
+                                            <button type="submit" class="btn btn-primary me-2">
+                                                <i class="fas fa-check me-2"></i>Update Signup
+                                            </button>
+                                            <button type="button" class="btn btn-secondary" onclick="hideUpdateForm()">
+                                                <i class="fas fa-times me-2"></i>Cancel
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @* Revoke and Update button section - shown for any signed up user *@
+                    @if (boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && (bool)ViewBag.IsPlayerSignedUp)
+                    {
+                        <div class="d-flex justify-content-between">
+                            <div class="d-flex gap-2">
+                                @if (Model.Quest?.IsFinalized != true)
+                                {
+                                    <button type="button" class="btn btn-primary" onclick="showUpdateForm()">
+                                        <i class="fas fa-edit me-2"></i>Update Signup
                                     </button>
-                                    <button type="button" class="btn btn-secondary" onclick="hideUpdateForm()">
-                                        <i class="fas fa-times me-2"></i>Cancel
+                                }
+                                <button type="button" class="btn btn-danger" onclick="revokeSignup(@ViewContext.RouteData.Values["id"])">
+                                    <i class="fas fa-times me-2"></i>Revoke My Signup
+                                </button>
+                            </div>
+                            @if (Model.Quest?.IsFinalized == true)
+                            {
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-success" onclick="changeVote(@Model.Quest?.Id, 2)">
+                                        <i class="fas fa-check me-2"></i>Vote Yes
+                                    </button>
+                                    <button type="button" class="btn btn-warning" onclick="changeVote(@Model.Quest?.Id, 1)">
+                                        <i class="fas fa-question me-2"></i>Vote Maybe
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="changeVote(@Model.Quest?.Id, 0)">
+                                        <i class="fas fa-times me-2"></i>Vote No
                                     </button>
                                 </div>
-                            </form>
+                            }
                         </div>
-                    </div>
-                }
-
-                @* Revoke and Update button section - shown for any signed up user *@
-                @if (User.Identity?.IsAuthenticated == true && (bool)ViewBag.IsPlayerSignedUp)
-                {
-                    <div class="d-flex gap-2">
-                        @if (Model.Quest?.IsFinalized != true)
-                        {
-                            <button type="button" class="btn btn-primary" onclick="showUpdateForm()">
-                                <i class="fas fa-edit me-2"></i>Update Signup
-                            </button>
-                        }
-                        <button type="button" class="btn btn-danger" onclick="revokeSignup(@ViewContext.RouteData.Values["id"])">
-                            <i class="fas fa-times me-2"></i>Revoke My Signup
-                        </button>
-                    </div>
-                }
+                    }
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-2 col-md-3">
-        @if ((bool)ViewBag.CanManage)
-        {
-            <div class="card modern-card mb-3">
+        <div class="col-lg-2 col-md-3">
+            @if ((bool)ViewBag.CanManage)
+            {
+                <div class="card modern-card mb-3">
+                    <div class="card-header modern-card-header">
+                        <h5>DM Controls</h5>
+                    </div>
+                    <div class="card-body modern-card-body">
+                        <a href="@Url.Action("Manage", "Quest", new { id = Model.Quest?.Id })" class="btn btn-primary w-100">
+                            <i class="fas fa-cog me-2"></i>
+                            Manage Quest
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <div class="card modern-card">
                 <div class="card-header modern-card-header">
-                    <h5>DM Controls</h5>
+                    <h5>Quest Summary</h5>
                 </div>
                 <div class="card-body modern-card-body">
-                    <a href="@Url.Action("Manage", "Quest", new { id = Model.Quest?.Id })" class="btn btn-primary w-100">
-                        <i class="fas fa-cog me-2"></i>
-                        Manage Quest
-                    </a>
+                    <p><strong>DM:</strong> @Model.Quest?.DungeonMaster?.Name</p>
+                    @if (boardType != BoardType.Campaign)
+                    {
+                        <p>
+                            <strong>Status:</strong>
+                            @{
+                                string statusBadge;
+                                string statusIcon;
+                                string statusText;
+
+                                if (Model.Quest?.IsFinalized == true && Model.Quest?.FinalizedDate.HasValue == true && Model.Quest?.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+                                {
+                                    statusBadge = "bg-dark";
+                                    statusIcon = "fas fa-flag-checkered";
+                                    statusText = "Done";
+                                }
+                                else if (Model.Quest?.IsFinalized == true)
+                                {
+                                    statusBadge = "bg-primary";
+                                    statusIcon = "fas fa-check-circle";
+                                    statusText = "Finalized";
+                                }
+                                else
+                                {
+                                    statusBadge = "bg-success";
+                                    statusIcon = "fas fa-clock";
+                                    statusText = "Open for Signups";
+                                }
+                            }
+                            <span class="badge @statusBadge">
+                                <i class="@statusIcon me-1"></i>
+                                @statusText
+                            </span>
+                        </p>
+
+                        <p>
+                            <strong>Building Access:</strong>
+                            @{
+                                var dmHasKey = Model.Quest?.DungeonMaster?.HasKey == true;
+                                var playersHaveKey = Model.Quest?.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
+                                var anyoneHasKey = dmHasKey || playersHaveKey;
+                            }
+                            <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
+                                @if (anyoneHasKey)
+                                {
+                                    <i class="fas fa-key me-1"></i>@:Available
+                                }
+                                else
+                                {
+                                    <i class="fas fa-lock me-1"></i>@:No Key
+                                }
+                            </span>
+                        </p>
+                    }
+                    @if (boardType != BoardType.Campaign)
+                    {
+                        @if (Model.Quest?.IsFinalized == true)
+                        {
+                            var selectedPlayers = Model.Quest?.PlayerSignups
+                                .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
+                                .Count() ?? 0;
+                            <p><strong>Selected Players:</strong> @selectedPlayers/@Model.Quest?.TotalPlayerCount</p>
+                            <p><strong>Total Signups:</strong> @Model.Quest?.PlayerSignups.Count</p>
+                        }
+                        else
+                        {
+                            var playerSignups = Model.Quest?.PlayerSignups
+                                .Where(ps => ps.Role == SignupRole.Player)
+                                .Count() ?? 0;
+                            <p><strong>Players Signed Up:</strong> @playerSignups/@Model.Quest?.TotalPlayerCount</p>
+                            <p><strong>Total Signups:</strong> @Model.Quest?.PlayerSignups.Count</p>
+                        }
+                    }
+                    <p><strong>Created:</strong> @Model.Quest?.CreatedAt.ToString("MMM dd, yyyy")</p>
+
+                    @if (Model.Quest?.FollowUpQuest != null)
+                    {
+                        <p>
+                            <i class="fas fa-scroll text-warning me-2"></i>
+                            <strong>Continues in:</strong>
+                            <a href="@Url.Action("Details", "Quest", new { id = Model.Quest.FollowUpQuest.Id })">
+                                @Model.Quest.FollowUpQuest.Title
+                            </a>
+                        </p>
+                    }
+                    @if (Model.Quest?.OriginalQuest != null)
+                    {
+                        <p>
+                            <i class="fas fa-scroll text-warning me-2"></i>
+                            <strong>Continues from:</strong>
+                            <a href="@Url.Action("Details", "Quest", new { id = Model.Quest.OriginalQuest.Id })">
+                                @Model.Quest.OriginalQuest.Title
+                            </a>
+                        </p>
+                    }
+
+                    @if (Model.Quest?.PlayerSignups.Any() == true)
+                    {
+                        <hr>
+                        <h6>Current Signups:</h6>
+
+                        @* Players *@
+                        var players = Model.Quest.PlayerSignups
+                            .Where(ps => ps.Role == SignupRole.Player)
+                            .OrderBy(ps => ps.SignupTime)
+                            .ToList();
+                        @if (players.Any())
+                        {
+                            <div class="mb-2">
+                                <strong class="text-primary"><i class="fas fa-users me-1"></i>Players (@players.Count):</strong>
+                                <div class="player-list ms-3">
+                                    @foreach (var signup in players)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center py-1">
+                                            <span>@signup.Player.Name</span>
+                                            <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @* Assistant DMs *@
+                        var assistantDMs = Model.Quest.PlayerSignups
+                            .Where(ps => ps.Role == SignupRole.AssistantDM)
+                            .OrderBy(ps => ps.SignupTime)
+                            .ToList();
+                        @if (assistantDMs.Any())
+                        {
+                            <div class="mb-2">
+                                <strong class="text-success"><i class="fas fa-user-shield me-1"></i>Assistant DMs (@assistantDMs.Count):</strong>
+                                <div class="player-list ms-3">
+                                    @foreach (var signup in assistantDMs)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center py-1">
+                                            <span>@signup.Player.Name</span>
+                                            <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @* Spectators *@
+                        var spectators = Model.Quest.PlayerSignups
+                            .Where(ps => ps.Role == SignupRole.Spectator)
+                            .OrderBy(ps => ps.SignupTime)
+                            .ToList();
+                        @if (spectators.Any())
+                        {
+                            <div class="mb-2">
+                                <strong class="text-info"><i class="fas fa-eye me-1"></i>Spectators (@spectators.Count):</strong>
+                                <div class="player-list ms-3">
+                                    @foreach (var signup in spectators)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center py-1">
+                                            <span>@signup.Player.Name</span>
+                                            <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
                 </div>
-            </div>
-        }
-
-        <div class="card modern-card">
-            <div class="card-header modern-card-header">
-                <h5>Quest Summary</h5>
-            </div>
-            <div class="card-body modern-card-body">
-                <p><strong>DM:</strong> @Model.Quest?.DungeonMaster?.Name</p>
-                <p><strong>Status:</strong>
-                    @{
-                        string statusBadge;
-                        string statusIcon;
-                        string statusText;
-                        
-                        if (Model.Quest?.IsFinalized == true && Model.Quest?.FinalizedDate.HasValue == true && Model.Quest?.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
-                        {
-                            statusBadge = "bg-dark";
-                            statusIcon = "fas fa-flag-checkered";
-                            statusText = "Done";
-                        }
-                        else if (Model.Quest?.IsFinalized == true)
-                        {
-                            statusBadge = "bg-primary";
-                            statusIcon = "fas fa-check-circle";
-                            statusText = "Finalized";
-                        }
-                        else
-                        {
-                            statusBadge = "bg-success";
-                            statusIcon = "fas fa-clock";
-                            statusText = "Open for Signups";
-                        }
-                    }
-                    <span class="badge @statusBadge">
-                        <i class="@statusIcon me-1"></i>
-                        @statusText
-                    </span>
-                </p>
-                <p><strong>Building Access:</strong>
-                    @{
-                        var dmHasKey = Model.Quest?.DungeonMaster?.HasKey == true;
-                        var playersHaveKey = Model.Quest?.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
-                        var anyoneHasKey = dmHasKey || playersHaveKey;
-                    }
-                    <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
-                        @if (anyoneHasKey)
-                        {
-                            <i class="fas fa-key me-1"></i>@:Available
-                        }
-                        else
-                        {
-                            <i class="fas fa-lock me-1"></i>@:No Key
-                        }
-                    </span>
-                </p>
-                @if (Model.Quest?.IsFinalized == true)
-                {
-                    var selectedPlayers = Model.Quest?.PlayerSignups
-                        .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
-                        .Count() ?? 0;
-                    <p><strong>Selected Players:</strong> @selectedPlayers/@Model.Quest?.TotalPlayerCount</p>
-                    <p><strong>Total Signups:</strong> @Model.Quest?.PlayerSignups.Count</p>
-                }
-                else
-                {
-                    var playerSignups = Model.Quest?.PlayerSignups
-                        .Where(ps => ps.Role == SignupRole.Player)
-                        .Count() ?? 0;
-                    <p><strong>Players Signed Up:</strong> @playerSignups/@Model.Quest?.TotalPlayerCount</p>
-                    <p><strong>Total Signups:</strong> @Model.Quest?.PlayerSignups.Count</p>
-                }
-                <p><strong>Created:</strong> @Model.Quest?.CreatedAt.ToString("MMM dd, yyyy")</p>
-
-                @if (Model.Quest?.FollowUpQuest != null)
-                {
-                    <p>
-                        <i class="fas fa-scroll text-warning me-2"></i>
-                        <strong>Continues in:</strong>
-                        <a href="@Url.Action("Details", "Quest", new { id = Model.Quest.FollowUpQuest.Id })">
-                            @Model.Quest.FollowUpQuest.Title
-                        </a>
-                    </p>
-                }
-                @if (Model.Quest?.OriginalQuest != null)
-                {
-                    <p>
-                        <i class="fas fa-scroll text-warning me-2"></i>
-                        <strong>Continues from:</strong>
-                        <a href="@Url.Action("Details", "Quest", new { id = Model.Quest.OriginalQuest.Id })">
-                            @Model.Quest.OriginalQuest.Title
-                        </a>
-                    </p>
-                }
-
-                @if (Model.Quest?.PlayerSignups.Any() == true)
-                {
-                    <hr>
-                    <h6>Current Signups:</h6>
-
-                    @* Players *@
-                    var players = Model.Quest.PlayerSignups
-                        .Where(ps => ps.Role == SignupRole.Player)
-                        .OrderBy(ps => ps.SignupTime)
-                        .ToList();
-                    @if (players.Any())
-                    {
-                        <div class="mb-2">
-                            <strong class="text-primary"><i class="fas fa-users me-1"></i>Players (@players.Count):</strong>
-                            <div class="player-list ms-3">
-                                @foreach (var signup in players)
-                                {
-                                    <div class="d-flex justify-content-between align-items-center py-1">
-                                        <span>@signup.Player.Name</span>
-                                        <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    @* Assistant DMs *@
-                    var assistantDMs = Model.Quest.PlayerSignups
-                        .Where(ps => ps.Role == SignupRole.AssistantDM)
-                        .OrderBy(ps => ps.SignupTime)
-                        .ToList();
-                    @if (assistantDMs.Any())
-                    {
-                        <div class="mb-2">
-                            <strong class="text-success"><i class="fas fa-user-shield me-1"></i>Assistant DMs (@assistantDMs.Count):</strong>
-                            <div class="player-list ms-3">
-                                @foreach (var signup in assistantDMs)
-                                {
-                                    <div class="d-flex justify-content-between align-items-center py-1">
-                                        <span>@signup.Player.Name</span>
-                                        <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    @* Spectators *@
-                    var spectators = Model.Quest.PlayerSignups
-                        .Where(ps => ps.Role == SignupRole.Spectator)
-                        .OrderBy(ps => ps.SignupTime)
-                        .ToList();
-                    @if (spectators.Any())
-                    {
-                        <div class="mb-2">
-                            <strong class="text-info"><i class="fas fa-eye me-1"></i>Spectators (@spectators.Count):</strong>
-                            <div class="player-list ms-3">
-                                @foreach (var signup in spectators)
-                                {
-                                    <div class="d-flex justify-content-between align-items-center py-1">
-                                        <span>@signup.Player.Name</span>
-                                        <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                }
             </div>
         </div>
     </div>
-</div>
 </div>
 
 <!-- Add Character Modal -->
@@ -802,12 +829,12 @@
             <form asp-action="UpdateSignupCharacter" method="post" id="addCharacterForm">
                 <div class="modal-body">
                     <input type="hidden" name="questId" value="@Model.Quest?.Id" />
-                    
+
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
                         Select a character to add to your quest signup. This character will be saved to the database.
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="characterSelect" class="form-label">Select Character <span class="text-danger">*</span></label>
                         <select name="characterId" id="characterSelect" class="form-select" required>
@@ -858,28 +885,27 @@
         }
     }
 
-    function changeVoteToYes(questId) {
-        if (confirm("Change your vote to Yes and join this quest?")) {
-            const formData = new FormData();
-            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+    function changeVote(questId, vote) {
+        const formData = new FormData();
+        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+        formData.append('vote', vote);
 
-            fetch(`/Quest/ChangeVoteToYes/${questId}`, {
-                method: "POST",
-                body: formData
-            }).then(res => {
-                if (res.ok) {
-                    location.reload();
-                } else {
-                    res.text().then(text => {
-                        alert(`Failed to change vote: ${text}`);
-                    });
-                }
-            }).catch(err => {
-                alert("An error occurred while changing vote.");
-            });
-        }
+        fetch(`/Quest/ChangeVote/${questId}`, {
+            method: "POST",
+            body: formData
+        }).then(res => {
+            if (res.ok) {
+                location.reload();
+            } else {
+                res.text().then(text => {
+                    alert(`Failed to change vote: ${text}`);
+                });
+            }
+        }).catch(err => {
+            alert("An error occurred while changing vote.");
+        });
     }
-    
+
     function showUpdateForm() {
         document.getElementById('viewSignupCalendar').style.display = 'none';
         document.getElementById('updateSignupForm').style.display = 'block';
@@ -891,7 +917,7 @@
         document.getElementById('viewSignupCalendar').style.display = 'block';
         document.querySelector('[onclick="showUpdateForm()"]').style.display = 'inline-block';
     }
-    
+
     // Handle role selection change to hide/show voting section
     document.addEventListener('DOMContentLoaded', function() {
         const roleSelect = document.getElementById('selectedRole');

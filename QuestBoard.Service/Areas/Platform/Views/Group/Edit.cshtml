@@ -24,6 +24,11 @@
                         <span asp-validation-for="Name" class="text-danger"></span>
                     </div>
 
+                    <div class="mb-3">
+                        <label asp-for="BoardType" class="form-label">Board Type</label>
+                        <select asp-for="BoardType" class="form-select" asp-items="Html.GetEnumSelectList<BoardType>()" disabled></select>
+                    </div>
+
                     <hr>
 
                     <div class="d-flex justify-content-between">

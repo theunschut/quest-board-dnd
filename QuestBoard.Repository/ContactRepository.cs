@@ -1,0 +1,212 @@
+using AutoMapper;
+using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
+using QuestBoard.Repository.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace QuestBoard.Repository;
+
+internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<Contact, ContactEntity>(dbContext, mapper), IContactRepository
+{
+    /// <inheritdoc/>
+    public async Task<IList<Contact>> GetAllContactsWithDetailsAsync(CancellationToken token = default)
+    {
+        // Group scoping is enforced entirely by ContactEntity's fail-closed query filter here --
+        // no manual GroupId .Where is needed or added. Ordering is flat alphabetical by name
+        // (no owner-based grouping, since Contacts have no ownership/edit-restriction concept).
+        var entities = await DbContext.Contacts
+            .Include(c => c.CreatedByUser)
+            .Include(c => c.Notes).ThenInclude(n => n.Author)
+            .OrderBy(c => c.Name)
+            .ToListAsync(token);
+
+        var contacts = Mapper.Map<IList<Contact>>(entities);
+
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        var imageFlags = await DbContext.Contacts
+            .Select(c => new { c.Id, HasImage = c.ProfileImage != null })
+            .ToDictionaryAsync(x => x.Id, x => x.HasImage, token);
+        foreach (var contact in contacts)
+        {
+            contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+            contact.HasContactImage = imageFlags.GetValueOrDefault(contact.Id);
+        }
+        return contacts;
+    }
+
+    /// <inheritdoc/>
+    public async Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default)
+    {
+        var entity = await DbContext.Contacts
+            .Include(c => c.CreatedByUser)
+            .Include(c => c.Notes).ThenInclude(n => n.Author)
+            .FirstOrDefaultAsync(c => c.Id == id, token);
+        if (entity == null) return null;
+
+        var contact = Mapper.Map<Contact>(entity);
+        contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+        // Image bytes are never selected here -- only a presence flag, via a scalar query that
+        // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
+        contact.HasContactImage = await DbContext.Contacts
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null)
+            .FirstOrDefaultAsync(token);
+        return contact;
+    }
+
+    /// <inheritdoc/>
+    public async Task<byte[]?> GetContactOriginalImageAsync(int id, CancellationToken token = default)
+    {
+        // Rooted at the filtered Contacts DbSet (not ContactImages directly) so the
+        // ContactEntity group filter applies -- a cross-group id returns null here.
+        return await DbContext.Contacts
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.OriginalImageData : null)
+            .FirstOrDefaultAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<byte[]?> GetContactCroppedImageAsync(int id, CancellationToken token = default)
+    {
+        // Same group-filtered rooting as the original read; falls back to the original bytes
+        // at the query level when no crop has ever been saved for this contact.
+        return await DbContext.Contacts
+            .Where(c => c.Id == id)
+            .Select(c => c.ProfileImage != null ? c.ProfileImage.CroppedImageData ?? c.ProfileImage.OriginalImageData : null)
+            .FirstOrDefaultAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public override async Task UpdateAsync(Contact model, CancellationToken token = default)
+    {
+        // Handles only the Contact's own core fields (Name/Description/TownCity/SubLocation/
+        // IsRevealed). ProfileImage goes through UpdateProfileImageAsync separately, so the
+        // tracked instance is restored here rather than re-derived from the incoming model.
+        // Notes are intentionally NOT reconciled here -- they have their own dedicated
+        // Add/Update/Delete methods below that manipulate the ContactNotes DbSet directly,
+        // avoiding AutoMapper's child-collection replacement problem entirely.
+        var entity = await DbContext.Contacts
+            .Include(c => c.ProfileImage)
+            .FirstOrDefaultAsync(c => c.Id == model.Id, token);
+        if (entity == null) return;
+
+        var trackedProfileImage = entity.ProfileImage;
+        var trackedCreatedByUser = entity.CreatedByUser;
+        var trackedGroup = entity.Group;
+
+        Mapper.Map(model, entity);
+
+        // The domain model's CreatedByUser/Group navigations are frequently left unset by
+        // callers that only ever populate CreatedByUserId/GroupId (e.g. a freshly-constructed
+        // Contact with no prior fetch) -- restoring EF's own tracked reference-navigation
+        // instances instead of trusting whatever AutoMapper produced from the (possibly null)
+        // model navigations avoids nulling out a required FK the tracked entity depends on.
+        entity.ProfileImage = trackedProfileImage;
+        entity.CreatedByUser = trackedCreatedByUser;
+        entity.Group = trackedGroup;
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateProfileImageAsync(int contactId, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
+    {
+        var entity = await DbContext.Contacts
+            .Include(c => c.ProfileImage)
+            .FirstOrDefaultAsync(c => c.Id == contactId, token);
+        if (entity == null) return;
+
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateWithProfileImageAsync(Contact model, byte[]? originalImageData, byte[]? croppedImageData, CancellationToken token = default)
+    {
+        // Same tracked-entity handling as UpdateAsync, plus the profile image mutation from
+        // UpdateProfileImageAsync, saved together in one SaveChangesAsync so a failure partway
+        // through cannot durably commit the image while leaving the rest of the entity stale.
+        var entity = await DbContext.Contacts
+            .Include(c => c.ProfileImage)
+            .FirstOrDefaultAsync(c => c.Id == model.Id, token);
+        if (entity == null) return;
+
+        var trackedProfileImage = entity.ProfileImage;
+        var trackedCreatedByUser = entity.CreatedByUser;
+        var trackedGroup = entity.Group;
+
+        Mapper.Map(model, entity);
+
+        // See UpdateAsync above for why CreatedByUser/Group must be restored: the
+        // caller-supplied model frequently has no CreatedByUser/Group populated (only
+        // CreatedByUserId/GroupId), and trusting AutoMapper's mapping of those null
+        // references would null out a required FK the tracked entity depends on.
+        entity.ProfileImage = trackedProfileImage;
+        entity.CreatedByUser = trackedCreatedByUser;
+        entity.Group = trackedGroup;
+
+        ApplyProfileImage(entity, originalImageData, croppedImageData);
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    private static void ApplyProfileImage(ContactEntity entity, byte[]? originalImageData, byte[]? croppedImageData)
+    {
+        if (originalImageData == null)
+        {
+            entity.ProfileImage = null;
+        }
+        else if (entity.ProfileImage == null)
+        {
+            entity.ProfileImage = new ContactImageEntity
+            {
+                Id = entity.Id,
+                OriginalImageData = originalImageData,
+                CroppedImageData = croppedImageData
+            };
+        }
+        else
+        {
+            entity.ProfileImage.OriginalImageData = originalImageData;
+            entity.ProfileImage.CroppedImageData = croppedImageData;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task AddNoteAsync(ContactNote note, CancellationToken token = default)
+    {
+        var entity = Mapper.Map<ContactNoteEntity>(note);
+        DbContext.Set<ContactNoteEntity>().Add(entity);
+        await DbContext.SaveChangesAsync(token);
+        note.Id = entity.Id;
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateNoteAsync(ContactNote note, CancellationToken token = default)
+    {
+        var entity = await DbContext.Set<ContactNoteEntity>()
+            .FirstOrDefaultAsync(n => n.Id == note.Id, token);
+        // Guard against a caller passing a ContactId that doesn't match the note's actual
+        // owning Contact (e.g. a stale form) — no-op rather than silently editing the note
+        // and redirecting to an unrelated Contact's page.
+        if (entity == null || entity.ContactId != note.ContactId) return;
+
+        entity.Text = note.Text;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteNoteAsync(int noteId, CancellationToken token = default)
+    {
+        var entity = await DbContext.Set<ContactNoteEntity>()
+            .FirstOrDefaultAsync(n => n.Id == noteId, token);
+        if (entity == null) return;
+
+        DbContext.Set<ContactNoteEntity>().Remove(entity);
+        await DbContext.SaveChangesAsync(token);
+    }
+}

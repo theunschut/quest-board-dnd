@@ -1,3 +1,4 @@
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @model IEnumerable<Quest>
@@ -5,7 +6,7 @@
     ViewData["Title"] = "Quest Board";
     ViewData["BodyClass"] = "home-page";
     var currentUserId = ViewBag.CurrentUserId as int?;
-    var currentUserName = ViewBag.CurrentUserName as string;
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 @section Styles {
     <link href="~/css/home.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -28,7 +29,7 @@
                 var isUserSignedUp = currentUserId.HasValue
                     && quest.PlayerSignups.Any(ps => ps.Player.Id == currentUserId.Value);
 
-                var navUrl = currentUserName != null && currentUserName == quest.DungeonMaster?.Name
+                var navUrl = currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id
                     ? Url.Action("Manage", "Quest", new { id = quest.Id })
                     : Url.Action("Details", "Quest", new { id = quest.Id });
 
@@ -36,7 +37,22 @@
                 string statusIcon;
                 string statusText;
 
-                if (quest.IsFinalized && quest.FinalizedDate.HasValue
+                if (boardType == BoardType.Campaign)
+                {
+                    if (quest.IsClosed)
+                    {
+                        statusBadge = "bg-secondary";
+                        statusIcon = "fas fa-flag-checkered";
+                        statusText = "Closed";
+                    }
+                    else
+                    {
+                        statusBadge = "bg-success";
+                        statusIcon = "fas fa-clock";
+                        statusText = "Open";
+                    }
+                }
+                else if (quest.IsFinalized && quest.FinalizedDate.HasValue
                     && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
                 {
                     statusBadge = "bg-secondary";
@@ -77,12 +93,15 @@
                         <small class="text-muted">
                             <i class="fas fa-crown me-1"></i>@(quest.DungeonMaster?.Name ?? "Unknown DM")
                         </small>
-                        <span class="badge bg-dark border">
-                            <i class="fas fa-dice-d20 me-1"></i>CR @quest.ChallengeRating
-                        </span>
+                        @if (boardType != BoardType.Campaign)
+                        {
+                            <span class="badge bg-dark border">
+                                <i class="fas fa-dice-d20 me-1"></i>CR @quest.ChallengeRating
+                            </span>
+                        }
                     </div>
 
-                    @if (quest.IsFinalized && quest.FinalizedDate.HasValue)
+                    @if (boardType != BoardType.Campaign && quest.IsFinalized && quest.FinalizedDate.HasValue)
                     {
                         <div class="mt-1">
                             <small class="text-muted">

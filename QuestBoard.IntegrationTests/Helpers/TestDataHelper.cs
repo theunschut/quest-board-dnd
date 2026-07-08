@@ -13,7 +13,10 @@ public static class TestDataHelper
         int challengeRating = 5,
         bool isFinalized = false,
         bool dungeonMasterSession = false,
-        DateTime? finalizedDate = null)
+        DateTime? finalizedDate = null,
+        bool isClosed = false,
+        DateTime? closedDate = null,
+        int groupId = 1)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -28,8 +31,10 @@ public static class TestDataHelper
             FinalizedDate = finalizedDate,
             DungeonMasterSession = dungeonMasterSession,
             TotalPlayerCount = 4,
-            GroupId = 1,
-            CreatedAt = DateTime.UtcNow
+            GroupId = groupId,
+            CreatedAt = DateTime.UtcNow,
+            IsClosed = isClosed,
+            ClosedDate = closedDate
         };
 
         context.Quests.Add(quest);
@@ -122,7 +127,8 @@ public static class TestDataHelper
         int level = 1,
         int status = 0, // Active
         int role = 1, // Backup
-        int dndClass = 5) // Fighter
+        int dndClass = 5, // Fighter
+        int groupId = 1)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -134,6 +140,7 @@ public static class TestDataHelper
             Level = level,
             Status = status,
             Role = role,
+            GroupId = groupId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -152,6 +159,60 @@ public static class TestDataHelper
         await context.SaveChangesAsync();
 
         return character;
+    }
+
+    public static async Task<ContactEntity> CreateTestContactAsync(
+        IServiceProvider services,
+        int createdByUserId,
+        string name = "Test Contact",
+        string? townCity = null,
+        string? subLocation = null,
+        bool isRevealed = false,
+        int groupId = 1,
+        byte[]? imageData = null)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var contact = new ContactEntity
+        {
+            Name = name,
+            TownCity = townCity,
+            SubLocation = subLocation,
+            CreatedByUserId = createdByUserId,
+            IsRevealed = isRevealed,
+            GroupId = groupId,
+            CreatedAt = DateTime.UtcNow,
+            ProfileImage = imageData == null ? null : new ContactImageEntity { OriginalImageData = imageData }
+        };
+
+        context.Contacts.Add(contact);
+        await context.SaveChangesAsync();
+
+        return contact;
+    }
+
+    public static async Task<ContactNoteEntity> CreateTestContactNoteAsync(
+        IServiceProvider services,
+        int contactId,
+        int authorUserId,
+        string text = "Test note")
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var note = new ContactNoteEntity
+        {
+            ContactId = contactId,
+            AuthorUserId = authorUserId,
+            Text = text,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.Set<ContactNoteEntity>().Add(note);
+        await context.SaveChangesAsync();
+
+        return note;
     }
 
     public static async Task ClearDatabaseAsync(IServiceProvider services)
@@ -179,6 +240,24 @@ public static class TestDataHelper
         if (!context.Groups.Any(g => g.Id == 1))
         {
             context.Groups.Add(new GroupEntity { Id = 1, Name = "EuphoriaInn", CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync();
+        }
+    }
+
+    public static async Task SeedCampaignGroupAsync(IServiceProvider services, int groupId = 2)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        if (!context.Groups.Any(g => g.Id == groupId))
+        {
+            context.Groups.Add(new GroupEntity
+            {
+                Id = groupId,
+                Name = "Campaign Test Group",
+                BoardType = (int)BoardType.Campaign,
+                CreatedAt = DateTime.UtcNow
+            });
             await context.SaveChangesAsync();
         }
     }

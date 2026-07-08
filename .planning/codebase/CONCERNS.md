@@ -1,6 +1,7 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-07-02
+**Analysis Date:** 2026-07-03
+**last_mapped_commit:** e5b37a73cda29bf355c4de6ebf4663b1625c3cf6
 
 ## Tech Debt
 
@@ -26,6 +27,13 @@
 - Fix approach: Add SkiaSharp NuGet package, implement image crop/resize service in Domain layer (no direct image I/O), wire into character creation/edit controllers.
 - Blocker: SkiaSharp native library (`libSkiaSharp.so`) availability on deployment host (Debian Bookworm, aspnet:10 base image) must be verified via build testing on production environment before implementation.
 - Status: Paused — native-lib verification deferred
+
+**CI/CD .NET version mismatch (dotnet.yml vs runtime):**
+- Issue: `.github/workflows/dotnet.yml` line 25 uses `dotnet-version: 8.0.x` for CI builds, but project runs on .NET 10 (verified in Phase 37 context). Binary release workflow (line 26 of `binary-release.yml`) correctly uses `10.0.x`, but main CI pipeline builds against .NET 8.
+- Files: `.github/workflows/dotnet.yml`, `.github/workflows/binary-release.yml`
+- Impact: CI tests may pass against wrong runtime version; incompatibilities (new language features, breaking APIs) between .NET 8 and 10 could be masked until release. Build artifacts from dotnet.yml cannot run on .NET 10 host.
+- Fix approach: Update `.github/workflows/dotnet.yml` line 25 to `dotnet-version: 10.0.x` to match `binary-release.yml` and runtime version. Verify all tests pass with .NET 10 SDK.
+- Priority: High — unify CI/release build configuration to prevent version skew
 
 ---
 
@@ -112,6 +120,13 @@
 - Current mitigation: SuperAdmin check is explicit (`User.IsInRole("SuperAdmin")`) at each call site. Hangfire jobs explicitly reject SuperAdmin (no group context). Platform area routes block non-SuperAdmins via `[Authorize(Policy = "SuperAdminOnly")]`.
 - Status: Adequate — Phase 34.3 verified all sites and added comprehensive integration tests
 
+**Docker build stage secrets exposure:**
+- Risk: Multi-stage Dockerfile copies all source code and dependencies into build stage, which can be inspected if intermediate image layers are accessible or if build cache is exposed. NuGet cache mount (line 16, `.github/workflows/docker-publish.yml`) caches `/root/.nuget/packages` — if build secrets or nuget.config auth are stored there, they could leak.
+- Files: `Dockerfile` (lines 1–41), `.dockerignore`
+- Current mitigation: `.dockerignore` (line 2) excludes `.env` files from Docker build context. Build runs in GitHub Actions, not exposing intermediate layers publicly. NuGet auth via GitHub Packages uses `GITHUB_TOKEN` secret (docker-publish.yml line 59), injected per-request, never stored in build cache.
+- Recommendations: Verify `.dockerignore` includes all sensitive files (`.env*`, `secrets/`, `*.key`, `*.pem`). Consider using `docker/build-push-action` BuildKit secrets mount (`--secret=id=...`) for any future auth needs instead of build args.
+- Status: Adequate — current mitigation sufficient; document for future builds
+
 ---
 
 ## Performance Bottlenecks
@@ -183,6 +198,15 @@
   2. Wrap all repository/service calls in `HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, sp => { ... })`
   3. Add a unit test `[Fact] public async Task ExecuteAsync_RespectsTenantIsolation()` — verify the job respects global query filters and only processes the specified groupId's data
 - Test coverage: `DailyReminderJobTests`, `SessionReminderJobTests`, etc. all test tenant isolation; extend pattern to new jobs
+
+**Dockerfile multi-stage build cache invalidation:**
+- Files: `Dockerfile` (lines 1–41), `.github/workflows/docker-publish.yml`
+- Why fragile: BuildKit cache mount at line 16 persists NuGet package cache across builds. If a `csproj` file adds a new dependency or updates an existing one, the cache should be invalidated to fetch the new version. BuildKit cache-bust keys are automatic (based on `dotnet restore` command hash), but if dependency manifests are not hashed correctly, stale packages could be used.
+- Safe modification: When updating NuGet dependencies:
+  1. Run `dotnet restore` locally to verify new versions are fetched
+  2. Run Docker build with `--no-cache` flag once to force cache invalidation: `docker build --no-cache -t questboard .`
+  3. Verify the build output shows "Downloading [package]..." for new/updated packages, not "Restoring from cache..."
+- Test coverage: CI pipeline (docker-publish.yml) runs every release tag; local testing can trigger cache-bust as needed
 
 ---
 
@@ -261,11 +285,11 @@
 - Risk: Without a fix test, the POST-body-loss bug could regress if the middleware is refactored. Integration test should verify: 1) GET request → 302 redirect to picker, 2) POST request with expired session → 409 Conflict (once implemented).
 - Priority: Medium — add test *before* implementing the fix to prevent regression
 
-**SuperAdmin-specific authorization bypass scenarios:**
-- What's not tested: All SuperAdmin short-circuit paths (RequireActiveGroupId, GetEffectiveGroupRoleAsync, Hangfire job execution) are tested for "no crash" but not for "correct behavior". A SuperAdmin should see ALL groups' data, not just one.
-- Files: Test files across `QuestBoard.IntegrationTests/Controllers/*`
-- Risk: A SuperAdmin querying `/quests` should list all quests across all groups (via `IgnoreQueryFilters`), not zero quests from a null group. Current tests verify no null-dereference, but not correctness of cross-group results.
-- Priority: High — add `[Fact] public async Task QuestController_SuperAdmin_SeesAllGroupQuests()` to verify a SuperAdmin sees quests from multiple groups in one query
+**SuperAdmin-specific authorization bypass scenarios (corrected — Phase 55):**
+- Superseded: This entry previously asserted that a SuperAdmin querying `/quests` with no active group should list all quests across all groups (via `IgnoreQueryFilters`), treating a null-group "show everything" merge as intended behavior. That expectation was the confirmed root cause of a cross-tenant quest leak — a SuperAdmin with a null active group reached `/quests` and saw every group's quests merged together, because `GroupSessionMiddleware` blanket-bypassed the "must have an active group" gate for the SuperAdmin role on every route.
+- Corrected behavior: SuperAdmin is now gated on group-scoped routes exactly like every other role — a null active group redirects to `/groups/pick` (GET/HEAD) or returns 409 Conflict (non-idempotent verbs), the same as any other authenticated user. SuperAdmin's genuine group-agnostic workflows (the group picker, account management, platform-wide administration) remain exempt via the middleware's exempt-path list, which now runs before any role check.
+- Files: `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs`, `QuestBoard.IntegrationTests/Controllers/GroupSessionMiddlewareIntegrationTests.cs`
+- Status: Closed — the fail-open bypass is removed and regression-tested (SuperAdmin redirect on `/quests`, `/Calendar`, `/DungeonMaster/EditProfile`, `/QuestLog`).
 
 **Email configuration secret logging:**
 - What's not tested: Email settings (SMTP password, Resend API token) are never logged in exception traces or debug output. Current tests mock ILogger but don't verify log content.
@@ -284,4 +308,10 @@
 - Files: `QuestBoard.IntegrationTests/` (integration tests suite)
 - Risk: If a Hangfire job or admin action accidentally uses `.IgnoreQueryFilters()` without validating SuperAdmin role, a normal Admin/Player could see other groups' data.
 - Priority: Medium — add a negative test: `[Fact] public async Task NormalAdmin_CannotBypassGroupFilter_ViaIgnoreQueryFilters()` which verifies QueryFilter is still active for non-SuperAdmin queries (via controller action that attempts to list all groups' quests).
+
+**Docker healthcheck verification:**
+- What's not tested: `docker-compose.yml` defines a healthcheck for the questboard service (lines 21–26) with `/health` endpoint. No test verifies the endpoint responds correctly or that the container is marked healthy after startup.
+- Files: `docker-compose.yml`, `QuestBoard.Service/Program.cs` (health endpoint configuration)
+- Risk: A future refactor of health-check endpoint logic could break the endpoint without detection. Container orchestrators rely on this endpoint to know when service is ready.
+- Priority: Medium — add a Docker integration test: `[Fact] public async Task DockerHealthcheck_RespondsWithOk()` that verifies HTTP `GET /health` returns 200 OK. Consider adding a startup smoke test to CI (docker-publish.yml) that runs container and hits the endpoint before declaring success.
 

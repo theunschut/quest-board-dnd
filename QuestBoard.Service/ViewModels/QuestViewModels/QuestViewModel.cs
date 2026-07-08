@@ -11,6 +11,8 @@ public class QuestViewModel
     [Required]
     public string Description { get; set; } = string.Empty;
 
+    public string? Rewards { get; set; }
+
     [Required]
     [Range(1, 20, ErrorMessage = "Challenge Rating must be between 1 and 20.")]
     public int ChallengeRating { get; set; } = 1;
@@ -22,7 +24,5 @@ public class QuestViewModel
 
     public bool DungeonMasterSession { get; set; }
 
-    [Required]
-    [MinLength(1, ErrorMessage = "At least one proposed date is required.")]
-    public IList<DateTime> ProposedDates { get; set; } = [DateTime.Today.AddDays(1).AddHours(18)];
+    public IList<DateTime> ProposedDates { get; set; } = [];
 }

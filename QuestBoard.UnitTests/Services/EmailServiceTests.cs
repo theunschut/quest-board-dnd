@@ -100,4 +100,24 @@ public class EmailServiceTests
         await act.Should().NotThrowAsync(
             "because an empty FromEmail must prevent any SMTP connection attempt");
     }
+
+    [Fact]
+    public async Task SendAsync_WhenSuppressSendingIsTrue_DoesNotAttemptSmtpConnection()
+    {
+        // SuppressSending must short-circuit before CreateSmtpClient runs, even when
+        // FromEmail/SmtpServer are otherwise fully configured — the SmtpServer here is
+        // deliberately non-routable so a real connection attempt would throw.
+        var service = Create(new EmailSettings
+        {
+            SmtpServer      = "192.0.2.1",  // TEST-NET-1, guaranteed non-routable (RFC 5737)
+            SmtpPort        = 587,
+            FromEmail       = "noreply@example.com",
+            SuppressSending = true,
+        });
+
+        var act = async () => await service.SendAsync("to@example.com", "Subject", "<h1>Body</h1>");
+
+        await act.Should().NotThrowAsync(
+            "because SuppressSending must prevent any SMTP connection attempt");
+    }
 }

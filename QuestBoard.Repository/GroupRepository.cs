@@ -19,7 +19,8 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
                 Id = g.Id,
                 Name = g.Name,
                 CreatedAt = g.CreatedAt,
-                MemberCount = g.UserGroups.Count
+                MemberCount = g.UserGroups.Count,
+                BoardType = (BoardType)g.BoardType
             })
             .ToListAsync(token);
     }
@@ -34,7 +35,8 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
                 Id = g.Id,
                 Name = g.Name,
                 CreatedAt = g.CreatedAt,
-                MemberCount = g.UserGroups.Count
+                MemberCount = g.UserGroups.Count,
+                BoardType = (BoardType)g.BoardType
             })
             .ToListAsync(token);
     }
@@ -58,7 +60,18 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
             GroupId = groupId,
             GroupRole = (int)groupRole
         });
-        await DbContext.SaveChangesAsync(token);
+
+        try
+        {
+            await DbContext.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException)
+        {
+            // A concurrent request can win the race between the AnyAsync check above and this
+            // insert; the table's unique index on (UserId, GroupId) then rejects the write.
+            // Surface it as the same friendly exception the pre-check throws.
+            throw new InvalidOperationException("User is already a member of this group.");
+        }
     }
 
     /// <inheritdoc/>
@@ -72,12 +85,18 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
     }
 
     /// <inheritdoc/>
-    public async Task<IList<UserGroup>> GetMembersAsync(int groupId, CancellationToken token = default)
+    public async Task<IList<UserGroup>> GetMembersAsync(int groupId, string? search = null, CancellationToken token = default)
     {
-        var entities = await DbContext.UserGroups
+        var query = DbContext.UserGroups
             .Include(ug => ug.User)
-            .Where(ug => ug.GroupId == groupId)
-            .ToListAsync(token);
+            .Where(ug => ug.GroupId == groupId);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(ug => ug.User!.Name.Contains(search) || (ug.User!.Email != null && ug.User!.Email.Contains(search)));
+        }
+
+        var entities = await query.ToListAsync(token);
         return Mapper.Map<IList<UserGroup>>(entities);
     }
 }

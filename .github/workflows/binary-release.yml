@@ -25,8 +25,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Publish
-        run: dotnet publish QuestBoard.Service/QuestBoard.Service.csproj -c Release -o ./publish
+        run: dotnet publish QuestBoard.Service/QuestBoard.Service.csproj -c Release -o ./publish -p:Version=${{ steps.version.outputs.version }}
 
       - name: Zip artifact
         run: cd publish && zip -r ../questboard-${{ github.ref_name }}.zip .

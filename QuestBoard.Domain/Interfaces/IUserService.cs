@@ -8,11 +8,6 @@ namespace QuestBoard.Domain.Interfaces;
 public interface IUserService : IBaseService<User>
 {
     /// <summary>
-    /// Adds the user to the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<IdentityResult> AddToRoleAsync(User user, string role);
-
-    /// <summary>
     /// Changes the currently signed-in user's password after verifying the old password.
     /// </summary>
     Task<IdentityResult> ChangePasswordAsync(ClaimsPrincipal user, string oldPassword, string newPassword);
@@ -23,8 +18,9 @@ public interface IUserService : IBaseService<User>
     Task<IdentityResult> ChangePasswordAsync(User user, string oldPassword, string newPassword);
 
     /// <summary>
-    /// Creates a new user account with no password set and assigns the Player role.
-    /// The user must complete the Welcome/SetPassword flow before they can sign in.
+    /// Creates a new user account with no password set and no role assigned; per-group roles
+    /// are assigned later via group membership. The user must complete the Welcome/SetPassword
+    /// flow before they can sign in.
     /// </summary>
     Task<IdentityResult> CreateAsync(string email, string name);
 
@@ -42,6 +38,17 @@ public interface IUserService : IBaseService<User>
     /// Returns all users holding the Player group role in the active group.
     /// </summary>
     Task<IList<User>> GetAllPlayersAsync(CancellationToken token = default);
+
+    /// <summary>
+    /// Returns all members of the specified group, regardless of their group role.
+    /// </summary>
+    Task<IList<User>> GetAllGroupMembersAsync(int groupId, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns users who are NOT members of the given group, optionally filtered by a search term
+    /// matching Name or Email (case-insensitive).
+    /// </summary>
+    Task<IList<User>> GetAvailableUsersAsync(int groupId, string? search, CancellationToken token = default);
 
     /// <summary>
     /// Returns the effective GroupRole for the given ClaimsPrincipal in the specified group,
@@ -68,34 +75,14 @@ public interface IUserService : IBaseService<User>
     Task<GroupRole?> GetGroupRoleByIdAsync(int userId, int groupId);
 
     /// <summary>
-    /// Returns the ASP.NET Core Identity roles assigned to the user.
-    /// </summary>
-    Task<IList<string>> GetRolesAsync(User user);
-
-    /// <summary>
     /// Returns the domain User for the currently signed-in ClaimsPrincipal, or a new empty User if not resolvable.
     /// </summary>
     Task<User> GetUserAsync(ClaimsPrincipal user);
 
     /// <summary>
-    /// Returns whether the user holds the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<bool> IsInRoleAsync(User user, string role);
-
-    /// <summary>
-    /// Returns whether the currently signed-in ClaimsPrincipal holds the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<bool> IsInRoleAsync(ClaimsPrincipal user, string role);
-
-    /// <summary>
     /// Attempts to sign in with the given credentials, honoring lockout policy.
     /// </summary>
     Task<SignInResult> PasswordSignInAsync(string email, string password, bool rememberMe, bool lockoutOnFailure);
-
-    /// <summary>
-    /// Removes the user from the given ASP.NET Core Identity role.
-    /// </summary>
-    Task<IdentityResult> RemoveFromRoleAsync(User user, string role);
 
     /// <summary>
     /// Resets the user's password using a previously issued reset token.
@@ -127,6 +114,19 @@ public interface IUserService : IBaseService<User>
     /// Creates or updates the user's role within the specified group. Returns the UserGroup row Id.
     /// </summary>
     Task<int?> SetGroupRoleAsync(int userId, int groupId, GroupRole role);
+
+    /// <summary>
+    /// Collision-aware user creation: creates a brand-new account when the email is unused,
+    /// or adds the existing account to the group when the email already belongs to a user.
+    /// </summary>
+    /// <remarks>
+    /// Returns one of four outcomes: a new account was created; an existing, already-confirmed
+    /// account was added to the group; an existing account that never completed its own
+    /// onboarding was added to the group; or the email already belonged to a member of the
+    /// group, in which case no membership row is created. On any collision branch the
+    /// submitted name is ignored — the existing account's name is never modified.
+    /// </remarks>
+    Task<CreateOrAddToGroupResult> CreateOrAddToGroupAsync(string email, string name, int groupId, GroupRole role, CancellationToken token = default);
 
     /// <summary>
     /// Signs the current user out of their authentication session.

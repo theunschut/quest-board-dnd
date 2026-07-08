@@ -46,8 +46,6 @@ internal class PlayerSignupService(IPlayerSignupRepository repository, IMapper m
     }
 
     /// <inheritdoc/>
-    public async Task ChangeVoteToYesAndSelectAsync(int playerSignupId, int proposedDateId, CancellationToken cancellationToken = default)
-    {
-        await repository.ChangeVoteToYesAndSelectAsync(playerSignupId, proposedDateId, cancellationToken);
-    }
+    public Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default) =>
+        repository.GetByIdWithQuestAsync(id, cancellationToken);
 }

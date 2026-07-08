@@ -9,7 +9,7 @@ using System.Security.Claims;
 namespace QuestBoard.Service.Controllers;
 
 [Authorize]
-public class GroupPickerController(IGroupService groupService) : Controller
+public class GroupPickerController(IGroupService groupService, IUserService userService) : Controller
 {
     [HttpGet]
     [Route("groups/pick")]
@@ -32,6 +32,7 @@ public class GroupPickerController(IGroupService groupService) : Controller
         {
             HttpContext.Session.SetInt32(SessionKeys.ActiveGroupId, groups[0].Id);
             HttpContext.Session.SetString(SessionKeys.ActiveGroupName, groups[0].Name);
+            HttpContext.Session.SetString(SessionKeys.ActiveGroupValidatedAtUtc, DateTime.UtcNow.ToString("O"));
             return RedirectToLocal(returnUrl);
         }
 
@@ -45,8 +46,17 @@ public class GroupPickerController(IGroupService groupService) : Controller
         var group = await groupService.GetByIdAsync(groupId);
         if (group == null) return NotFound();
 
+        var isSuperAdmin = User.IsInRole("SuperAdmin");
+        if (!isSuperAdmin)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var role = await userService.GetGroupRoleByIdAsync(userId, groupId);
+            if (role == null) return NotFound();
+        }
+
         HttpContext.Session.SetInt32(SessionKeys.ActiveGroupId, group.Id);
         HttpContext.Session.SetString(SessionKeys.ActiveGroupName, group.Name);
+        HttpContext.Session.SetString(SessionKeys.ActiveGroupValidatedAtUtc, DateTime.UtcNow.ToString("O"));
         return RedirectToLocal(returnUrl);
     }
 

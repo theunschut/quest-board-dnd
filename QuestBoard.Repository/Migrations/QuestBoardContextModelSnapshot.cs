@@ -198,6 +198,9 @@ namespace QuestBoard.Repository.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<int>("GroupId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Level")
                         .HasColumnType("int");
 
@@ -221,6 +224,8 @@ namespace QuestBoard.Repository.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GroupId");
+
                     b.HasIndex("OwnerId");
 
                     b.ToTable("Characters");
@@ -231,13 +236,113 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<byte[]>("CroppedImageData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<byte[]>("OriginalImageData")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
                     b.HasKey("Id");
 
                     b.ToTable("CharacterImages");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.ContactEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsRevealed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SubLocation")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TownCity")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("Contacts");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.ContactImageEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("CroppedImageData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<byte[]>("OriginalImageData")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ContactImages");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.ContactNoteEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AuthorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ContactId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId");
+
+                    b.HasIndex("ContactId");
+
+                    b.ToTable("ContactNotes");
                 });
 
             modelBuilder.Entity("QuestBoard.Repository.Entities.DungeonMasterProfileEntity", b =>
@@ -259,7 +364,10 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<byte[]>("CroppedImageData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<byte[]>("OriginalImageData")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
@@ -275,6 +383,9 @@ namespace QuestBoard.Repository.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoardType")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -332,6 +443,9 @@ namespace QuestBoard.Repository.Migrations
 
                     b.Property<bool>("IsSelected")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastVoteChangeTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("PlayerId")
                         .HasColumnType("int");
@@ -393,6 +507,9 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("ChallengeRating")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ClosedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -415,6 +532,9 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<int>("GroupId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsFinalized")
                         .HasColumnType("bit");
 
@@ -422,6 +542,9 @@ namespace QuestBoard.Repository.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Recap")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Rewards")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
@@ -796,11 +919,19 @@ namespace QuestBoard.Repository.Migrations
 
             modelBuilder.Entity("QuestBoard.Repository.Entities.CharacterEntity", b =>
                 {
+                    b.HasOne("QuestBoard.Repository.Entities.GroupEntity", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("QuestBoard.Repository.Entities.UserEntity", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Group");
 
                     b.Navigation("Owner");
                 });
@@ -814,6 +945,55 @@ namespace QuestBoard.Repository.Migrations
                         .IsRequired();
 
                     b.Navigation("Character");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.ContactEntity", b =>
+                {
+                    b.HasOne("QuestBoard.Repository.Entities.UserEntity", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("QuestBoard.Repository.Entities.GroupEntity", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.ContactImageEntity", b =>
+                {
+                    b.HasOne("QuestBoard.Repository.Entities.ContactEntity", "Contact")
+                        .WithOne("ProfileImage")
+                        .HasForeignKey("QuestBoard.Repository.Entities.ContactImageEntity", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Contact");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.ContactNoteEntity", b =>
+                {
+                    b.HasOne("QuestBoard.Repository.Entities.UserEntity", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("QuestBoard.Repository.Entities.ContactEntity", "Contact")
+                        .WithMany("Notes")
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Contact");
                 });
 
             modelBuilder.Entity("QuestBoard.Repository.Entities.DungeonMasterProfileEntity", b =>
@@ -1019,6 +1199,13 @@ namespace QuestBoard.Repository.Migrations
                     b.Navigation("Classes");
 
                     b.Navigation("PlayerSignups");
+
+                    b.Navigation("ProfileImage");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.ContactEntity", b =>
+                {
+                    b.Navigation("Notes");
 
                     b.Navigation("ProfileImage");
                 });

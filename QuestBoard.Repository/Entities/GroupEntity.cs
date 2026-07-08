@@ -16,5 +16,7 @@ public class GroupEntity : IEntity
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public int BoardType { get; set; }
+
     public virtual ICollection<UserGroupEntity> UserGroups { get; set; } = [];
 }

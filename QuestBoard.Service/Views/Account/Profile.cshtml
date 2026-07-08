@@ -77,15 +77,6 @@
 
                 <hr>
 
-                @if (TempData["SuccessMessage"] != null)
-                {
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <i class="fas fa-check-circle me-2"></i>
-                        @TempData["SuccessMessage"]
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
                 <div class="d-flex justify-content-between">
                     <a asp-controller="Quest" asp-action="Index" class="btn btn-warning">
                         <i class="fas fa-home me-2"></i>

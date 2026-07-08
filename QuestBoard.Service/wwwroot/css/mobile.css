@@ -13,12 +13,25 @@ textarea,
 body {
     font-size: 16px; /* prevents iOS auto-zoom on input focus */
     line-height: 1.5;
-    /* Notice board background — same image as desktop site.css */
+}
+
+/* Notice board background — same image as desktop site.css.
+   Rendered on a fixed pseudo-element instead of a fixed background on body,
+   because iOS Safari does not composite that case correctly (the background
+   scrolls with the page instead of staying in place). */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
     background-image: url('/images/Notice Board-blank2.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-attachment: fixed;
+    z-index: -1;
 }
 
 /* Mobile spacing overrides */

@@ -22,6 +22,19 @@
                         <span asp-validation-for="Name" class="text-danger"></span>
                     </div>
 
+                    <div class="mb-3">
+                        <label asp-for="BoardType" class="form-label">Board Type</label>
+                        <select asp-for="BoardType" class="form-select">
+                            <option value="">-- Select Board Type --</option>
+                            @foreach (var item in Html.GetEnumSelectList<BoardType>())
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </select>
+                        <span asp-validation-for="BoardType" class="text-danger"></span>
+                        <small class="form-text text-muted">This cannot be changed after creation.</small>
+                    </div>
+
                     <hr>
 
                     <div class="d-flex justify-content-between">

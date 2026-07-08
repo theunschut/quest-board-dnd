@@ -1,12 +1,13 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-07-02
+**Analysis Date:** 2026-07-03
+**Last Mapped Commit:** e5b37a73cda29bf355c4de6ebf4663b1625c3cf6
 
 ## Directory Layout
 
 ```
 quest-board/ (project root)
-├── QuestBoard.Service/                    # ASP.NET Core MVC service layer
+├── QuestBoard.Service/                    # ASP.NET Core 10 MVC service layer
 │   ├── Controllers/
 │   │   ├── QuestBoard/                    # Feature: quest management
 │   │   │   ├── HomeController.cs
@@ -257,21 +258,36 @@ quest-board/ (project root)
 ├── docs/                                  # Operational documentation
 │   └── server-setup.md
 │
-├── Dockerfile                             # Container image for deployment
-├── docker-compose.yml                     # Local dev environment (SQL Server)
-├── .dockerignore
-├── .env                                   # Environment variables (secrets)
-├── .env.example                           # Committed template (no values)
-├── QuestBoard.slnx                        # Solution file
-├── CLAUDE.md                              # This project's Claude instructions
-├── README.md
-└── LICENSE
+├── .github/                               # GitHub configuration
+│   ├── workflows/
+│   │   ├── dotnet.yml                     # .NET CI pipeline (build, test)
+│   │   ├── docker-publish.yml             # Docker image build & publish to ghcr.io
+│   │   └── binary-release.yml             # Binary release workflow (if used)
+│   └── ISSUE_TEMPLATE/
+│       ├── bug_report.md                  # Bug report template
+│       └── feature_request.md             # Feature request template
+│
+├── .config/
+│   └── dotnet-tools.json                  # Local tool manifest (dotnet-ef v9.0.6)
+│
+├── .dockerignore                          # Docker build context exclusions
+├── Dockerfile                             # Multi-stage container build
+├── docker-compose.yml                     # Local dev & production deployment
+├── create-migration.sh                    # Migration helper script (WSL/Git Bash)
+│
+├── QuestBoard.slnx                        # Modern solution file
+├── .env                                   # Environment variables (secrets; NOT committed)
+├── .env.example                           # Template for .env (committed)
+├── CLAUDE.md                              # Project-specific Claude instructions
+├── README.md                              # Project documentation
+├── LICENSE                                # Project license
+└── .gitignore                             # Git exclusions
 ```
 
 ## Directory Purposes
 
 **QuestBoard.Service/**
-- Purpose: ASP.NET Core MVC web application; HTTP request handlers, views, DI orchestration.
+- Purpose: ASP.NET Core 10 MVC web application; HTTP request handlers, views, DI orchestration.
 - Contains: Controllers (request handlers), Views (Razor templates), ViewModels (presentation DTOs), Middleware, Authorization handlers, Hangfire job classes.
 - Key files: `Program.cs` (startup config), `appsettings.json` (configuration).
 
@@ -318,6 +334,66 @@ quest-board/ (project root)
 - Auto-applied: `context.Database.Migrate()` runs on startup (Program.cs line 332).
 - Do NOT edit by hand; use `dotnet ef migrations add MigrationName`.
 
+**.github/workflows/ (Deployment)**
+- Purpose: GitHub Actions CI/CD automation.
+- Key workflows:
+  - `dotnet.yml`: Restores packages, builds Service project, runs unit + integration tests on push to main and PRs.
+  - `docker-publish.yml`: Builds multi-stage Dockerfile, publishes `ghcr.io/theunschut/dnd-quest-board:{tag}` on semver tag push, signs image with Cosign.
+  - `binary-release.yml`: (Optional) Distributes standalone binaries.
+
+**.config/dotnet-tools.json (Tool Manifest)**
+- Purpose: Declares `dotnet-ef` v9.0.6 as a local tool for the project.
+- Usage: Allows `dotnet ef` commands without global installation.
+- Managed by: `dotnet tool install` / `dotnet tool update` commands.
+
+**.dockerignore**
+- Purpose: Specifies files/directories excluded from Docker build context.
+- Excludes: node_modules, compiled output (bin/obj), IDE settings, test projects, Docker files themselves, git history.
+- Benefit: Reduces context size sent to Docker daemon; faster builds.
+
+**Dockerfile**
+- Purpose: Multi-stage container image definition.
+- Stages:
+  1. `base`: ASP.NET Core 10 runtime (final runtime environment)
+  2. `build`: SDK image; restores packages, builds Release configuration
+  3. `publish`: Publishes Release build to `/app/publish` (stripped of debug symbols)
+  4. `final`: Copies artifacts to runtime image; sets environment + entrypoint
+- Entrypoint: `dotnet QuestBoard.Service.dll`
+- Environment: `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_URLS=http://+:8080`
+
+**docker-compose.yml**
+- Purpose: Defines development and production deployment stack.
+- Services:
+  - `questboard`: Application container (port 7080 external → 8080 internal), depends on SQL Server.
+  - `sqlserver`: SQL Server 2022 container (port 1433, persistent volume `sqlserver_data`).
+- Network: External `net-dnd` (must exist or be auto-created).
+- Configuration: Environment variables for DB connection string, email settings (commented out template).
+- Health check: HTTP GET `/health` with retries and 40s start grace period.
+- Restart: Unless-stopped (survives host reboot).
+
+**create-migration.sh (Migration Helper)**
+- Purpose: Documents the EF Core migration workflow for Git Bash / WSL.
+- Steps: Navigates to Service project, ensures Microsoft.EntityFrameworkCore.Tools is installed, runs `dotnet ef migrations add`.
+- Usage: Executed manually when schema changes are needed (not part of CI/CD).
+
+**QuestBoard.slnx (Solution File)**
+- Purpose: Modern solution format for IDE navigation and batch builds.
+- Structure:
+  - Folder `/Tests/`: Unit + Integration test projects
+  - Production projects: Domain → Repository → Service (dependency order)
+- Platforms: Any CPU, x64, x86 (for multi-platform builds).
+
+**CLAUDE.md (Project Instructions)**
+- Purpose: Guides Claude Code when working in this repository.
+- Contains: Platform guidance (Windows paths, CRLF), branching rules, development commands, architecture overview, EF/AutoMapper patterns, UI guidelines, reference docs.
+
+**README.md**
+- Purpose: Entry point for developers; quick-start guide, tech stack, local dev setup.
+- Key: Explains Docker Compose usage, .NET 10 SDK requirement, GitHub Actions badge links.
+
+**LICENSE**
+- Purpose: Legal license for the project (e.g., MIT, GPL).
+
 ## Key File Locations
 
 **Entry Points:**
@@ -325,11 +401,25 @@ quest-board/ (project root)
 - `QuestBoard.Service/Controllers/QuestBoard/HomeController.cs` — First controller hit by browser; redirects to quest board or login.
 - `QuestBoard.Service/Controllers/GroupPickerController.cs` — Group selection UI; stores `ActiveGroupId` in session.
 
+**Deployment & Configuration:**
+- `Dockerfile` — Multi-stage build definition (base → build → publish → final).
+- `docker-compose.yml` — Stack definition for production deployment (QuestBoard + SQL Server).
+- `.dockerignore` — Build context optimization.
+- `.config/dotnet-tools.json` — Declares `dotnet-ef` tool.
+- `create-migration.sh` — Helper script for creating EF migrations.
+
+**CI/CD Pipelines:**
+- `.github/workflows/dotnet.yml` — Build, restore, test pipeline (on main push / PRs).
+- `.github/workflows/docker-publish.yml` — Docker image build & publish (on semver tag).
+- `.github/workflows/binary-release.yml` — Binary release (optional).
+
 **Configuration:**
 - `QuestBoard.Service/appsettings.json` — Default settings (connection string, email, Hangfire, logging).
 - `QuestBoard.Service/appsettings.Development.json` — Local development overrides.
 - `QuestBoard.Service/appsettings.Production.json` — Production overrides.
 - `.env` — Environment variables (secrets; NOT committed).
+- `.env.example` — Template showing required keys; committed (no values).
+- `CLAUDE.md` — Project-specific instructions for Claude.
 
 **Core Logic:**
 - `QuestBoard.Domain/Services/` — Business logic (QuestService, GroupService, UserService, etc.).
@@ -345,6 +435,9 @@ quest-board/ (project root)
 **Automapper:**
 - `QuestBoard.Repository/Automapper/EntityProfile.cs` — Entity ↔ DomainModel mappings.
 - `QuestBoard.Service/Automapper/ViewModelProfile.cs` — DomainModel ↔ ViewModel mappings.
+
+**Solution & Project Files:**
+- `QuestBoard.slnx` — Modern solution file (groups tests, orders projects by dependency).
 
 ## Naming Conventions
 
@@ -424,6 +517,18 @@ quest-board/ (project root)
 2. Use `HttpContext.Session.SetInt32(SessionKeys.[Key], value)` in controllers
 3. Read via `HttpContext.Session.GetInt32(SessionKeys.[Key])`
 
+**Docker Build Optimization:**
+1. Add exclusions to `.dockerignore` (node_modules, bin/obj, git files, test projects, etc.)
+2. Use `--mount=type=cache` in Dockerfile RUN commands for NuGet package caching
+3. Multi-stage builds: runtime image in `base` stage is smaller; `build` stage discarded after publish
+
+**GitHub Actions Workflow:**
+1. Create `.github/workflows/[purpose].yml` with YAML syntax
+2. Define triggers (`on: push`, `on: pull_request`, `on: schedule`, etc.)
+3. Jobs run on ubuntu-latest (or other runner); steps execute sequentially
+4. Use `actions/checkout@v4`, `actions/setup-dotnet@v4`, and standard CLI commands
+5. Secrets referenced as `${{ secrets.SECRET_NAME }}`; must be registered in GitHub project settings
+
 ## Special Directories
 
 **Migrations/:**
@@ -449,6 +554,11 @@ quest-board/ (project root)
 - `appsettings.Development.json` — Dev overrides (can be NOT committed if it contains secrets).
 - `appsettings.Production.json` — Production overrides; NOT committed (secrets).
 
+**.github/workflows/:**
+- Purpose: GitHub Actions CI/CD automation files.
+- Committed: Yes (part of repo).
+- Auto-triggered: On push to main, pull requests, scheduled crons, or tag pushes (per workflow).
+
 ---
 
-*Structure analysis: 2026-07-02*
+*Structure analysis: 2026-07-03*

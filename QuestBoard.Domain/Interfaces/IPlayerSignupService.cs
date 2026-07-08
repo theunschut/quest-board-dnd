@@ -16,7 +16,7 @@ public interface IPlayerSignupService : IBaseService<PlayerSignup>
     Task UpdateSignupCharacterAsync(int playerSignupId, int? characterId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sets a player's vote for the given proposed date to Yes and marks the signup as selected.
+    /// Returns a signup with its parent Quest loaded, or null.
     /// </summary>
-    Task ChangeVoteToYesAndSelectAsync(int playerSignupId, int proposedDateId, CancellationToken cancellationToken = default);
+    Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default);
 }

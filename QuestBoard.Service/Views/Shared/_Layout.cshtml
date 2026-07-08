@@ -1,6 +1,8 @@
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Constants
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject IBoardTypeResolver BoardTypeResolver
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,8 +16,10 @@
     <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/quests.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/guild-members.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/characters.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/contacts.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/dm-profile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
 </head>
 <body class="d-flex flex-column min-vh-100 @ViewData["BodyClass"]">
     <header>
@@ -33,6 +37,9 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbar">
+                    @{
+                        var activeBoardType = await BoardTypeResolver.GetBoardTypeAsync();
+                    }
                     <ul class="navbar-nav me-auto">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
@@ -62,11 +69,14 @@
                                             </a>
                                         </li>
                                         }
+                                        @if (User.IsInRole("SuperAdmin"))
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="Admin" asp-action="EmailStats">
                                                 <i class="fas fa-envelope-open-text me-2"></i>Email Stats
                                             </a>
                                         </li>
+                                        }
                                     </ul>
                                 </li>
                             }
@@ -84,60 +94,81 @@
                                                 <i class="fas fa-scroll me-2"></i>Create Quest
                                             </a>
                                         </li>
+                                        @if (activeBoardType == BoardType.OneShot)
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="ShopManagement" asp-action="Index">
                                                 <i class="fas fa-coins me-2"></i>Manage Shop
                                             </a>
                                         </li>
+                                        }
+                                        @if (activeBoardType == BoardType.OneShot)
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="DungeonMaster" asp-action="EditProfile">
                                                 <i class="fas fa-user-edit me-2"></i>Edit My Profile
                                             </a>
                                         </li>
+                                        }
 
                                     </ul>
                                 </li>
                             }
 
                             @* Available to all authenticated users *@
+                            @if (activeBoardType == BoardType.OneShot)
+                            {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Shop" asp-action="Index">
                                     <i class="fas fa-store me-1"></i>Shop
                                 </a>
                             </li>
+                            }
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="QuestLog" asp-action="Index">
                                     <i class="fas fa-book-open me-1"></i>Quest Log
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" asp-controller="GuildMembers" asp-action="Index">
-                                    <i class="fas fa-people-group me-1"></i>Guild Members
+                                <a class="nav-link" asp-controller="Characters" asp-action="Index">
+                                    <i class="fas fa-people-group me-1"></i>Characters
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Contacts" asp-action="Index">
+                                    <i class="fas fa-address-book me-1"></i>Contacts
+                                </a>
+                            </li>
+                            @if (activeBoardType == BoardType.OneShot)
+                            {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Players" asp-action="Index">
                                     <i class="fas fa-users me-1"></i>Players
                                 </a>
                             </li>
+                            }
 
                         }
                     </ul>
                     <ul class="navbar-nav ms-auto">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Calendar" asp-action="Index">
-                                <i class="fas fa-calendar-alt me-1"></i>Calendar
-                            </a>
-                        </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
+                            if (activeBoardType == BoardType.OneShot)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Calendar" asp-action="Index">
+                                        <i class="fas fa-calendar-alt me-1"></i>Calendar
+                                    </a>
+                                </li>
+                            }
+
                             var currentUser = await UserService.GetUserAsync(User);
 
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-user me-1"></i>@currentUser.Name
                                 </a>
-                                <ul class="dropdown-menu">
+                                <ul class="dropdown-menu dropdown-menu-end text-wrap" style="width: max-content; max-width: 90vw;">
                                     <li>
                                         <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
                                             <i class="fas fa-user-cog me-2"></i>Profile
@@ -148,7 +179,7 @@
                                         var activeGroupName = HttpContextAccessor.HttpContext?.Session?.GetString(SessionKeys.ActiveGroupName);
                                     }
                                     <li>
-                                        <a class="dropdown-item" asp-controller="GroupPicker" asp-action="Index">
+                                        <a class="dropdown-item text-wrap" asp-controller="GroupPicker" asp-action="Index">
                                             <i class="fas fa-arrows-rotate me-2"></i>@(string.IsNullOrEmpty(activeGroupName) ? "Switch Group" : activeGroupName)
                                         </a>
                                     </li>
@@ -181,15 +212,9 @@
             @RenderBody()
         </main>
     </div>
+    <partial name="_Toasts" />
 
-    <footer class="navbar navbar-dark bg-dark mt-auto">
-        <div class="container">
-            <span class="navbar-text">D&D Quest Board. Created by Theun Schut.</span>
-            <a href="https://github.com/theunschut/dnd-quest-board" target="_blank" class="navbar-brand">
-                <i class="fab fa-github"></i>
-            </a>
-        </div>
-    </footer>
+    <partial name="_Footer" />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

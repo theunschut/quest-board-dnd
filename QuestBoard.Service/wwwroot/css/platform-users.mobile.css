@@ -1,0 +1,46 @@
+/* platform-users.mobile.css - Platform Users mobile view (Index) */
+/* No @media queries — exclusively loaded by Areas/Platform/Views/Users/Index.Mobile.cshtml via _Layout.Platform.Mobile.cshtml */
+
+/* Glass card container */
+.platform-users-card-mobile {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 16px;
+}
+
+/* Per-user sub-card */
+.platform-users-card-mobile .user-card-mobile {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 12px;
+}
+
+/* Card headings/labels — parchment text */
+.platform-users-card-mobile h5,
+.platform-users-card-mobile .parchment-text {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+}
+
+/* Small meta / help / muted text — faded parchment */
+.platform-users-card-mobile small,
+.platform-users-card-mobile .text-muted {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Badges — no text-shadow */
+.platform-users-card-mobile .badge {
+    text-shadow: none !important;
+}
+
+/* Muted empty-state icons */
+.platform-users-card-mobile .fa-3x.text-muted {
+    color: rgba(244, 228, 188, 0.7) !important;
+}

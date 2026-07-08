@@ -94,6 +94,18 @@ internal class QuestService(
     }
 
     /// <inheritdoc/>
+    public async Task CloseQuestAsync(int questId, CancellationToken token = default)
+    {
+        await repository.CloseQuestAsync(questId, token);
+    }
+
+    /// <inheritdoc/>
+    public async Task ReopenQuestAsync(int questId, CancellationToken token = default)
+    {
+        await repository.ReopenQuestAsync(questId, token);
+    }
+
+    /// <inheritdoc/>
     public override async Task RemoveAsync(Quest model, CancellationToken token = default)
     {
         var quest = await repository.GetQuestWithManageDetailsAsync(model.Id, token);
@@ -119,7 +131,7 @@ internal class QuestService(
 
     /// <inheritdoc/>
     public async Task<ServiceResult<int>> UpdateQuestPropertiesWithNotificationsAsync(
-        int questId, string title, string description, int challengeRating, int totalPlayerCount,
+        int questId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount,
         bool dungeonMasterSession, bool updateProposedDates = false, IList<DateTime>? proposedDates = null,
         CancellationToken token = default)
     {
@@ -137,7 +149,7 @@ internal class QuestService(
         }
 
         var affectedPlayers = await repository.UpdateQuestPropertiesWithNotificationsAsync(
-            questId, title, description, challengeRating, totalPlayerCount, dungeonMasterSession,
+            questId, title, description, rewards, challengeRating, totalPlayerCount, dungeonMasterSession,
             updateProposedDates, proposedDates, token);
 
         if (affectedPlayers.Count == 0) return ServiceResult<int>.Ok(0);
@@ -166,11 +178,12 @@ internal class QuestService(
         var quests = await repository.GetQuestsWithDetailsAsync(token);
 
         return quests
-            .Where(q => q.IsFinalized
-                        && q.FinalizedDate.HasValue
-                        && q.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
-                        && !q.DungeonMasterSession)
-            .OrderByDescending(q => q.FinalizedDate)
+            .Where(q => (q.IsFinalized
+                         && q.FinalizedDate.HasValue
+                         && q.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+                         && !q.DungeonMasterSession)
+                        || (q.IsClosed && !q.DungeonMasterSession))
+            .OrderByDescending(q => q.IsClosed ? q.ClosedDate : q.FinalizedDate)
             .ToList();
     }
 
@@ -210,6 +223,7 @@ internal class QuestService(
             TotalPlayerCount = original.TotalPlayerCount,
             DungeonMasterId = original.DungeonMasterId,
             DungeonMasterSession = false,
+            GroupId = original.GroupId,
             ProposedDates = [],
             OriginalQuestId = original.Id,
         };
@@ -240,8 +254,98 @@ internal class QuestService(
     }
 
     /// <inheritdoc/>
+    public async Task ChangeVoteAsync(int questId, int playerSignupId, VoteType vote, int finalizedProposedDateId, CancellationToken token = default)
+    {
+        var seatFreed = await playerSignupRepository.ChangeVoteAsync(playerSignupId, finalizedProposedDateId, vote, token);
+
+        if (vote == VoteType.Yes || vote == VoteType.Maybe)
+        {
+            // A Yes or Maybe vote can both fill an open seat when one is available; only a No
+            // vote never grants a seat.
+            // Re-fetch post-vote to avoid stale IsSelected/seat-count state; never trust a
+            // client-supplied capacity signal for the selection decision.
+            var quest = await repository.GetQuestWithDetailsAsync(questId, token);
+            if (quest != null)
+            {
+                var signup = quest.PlayerSignups.FirstOrDefault(ps => ps.Id == playerSignupId);
+                if (signup != null && !signup.IsSelected)
+                {
+                    var selectedCount = quest.PlayerSignups.Count(ps => ps.IsSelected && ps.Role == SignupRole.Player);
+                    if (selectedCount < quest.TotalPlayerCount)
+                    {
+                        signup.IsSelected = true;
+                        await playerSignupRepository.UpdateAsync(signup, token);
+                    }
+                }
+            }
+        }
+
+        if (seatFreed)
+        {
+            await PromoteNextWaitlistedPlayerIfSeatFreedAsync(questId, finalizedProposedDateId, freeingPlayerSignupId: playerSignupId, token);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task RevokeSignupAsync(int questId, int playerSignupId, CancellationToken token = default)
+    {
+        var quest = await repository.GetQuestWithDetailsAsync(questId, token);
+        if (quest == null) return;
+
+        var signup = quest.PlayerSignups.FirstOrDefault(ps => ps.Id == playerSignupId);
+        if (signup == null) return;
+
+        // Only a selected Player-role signup frees a seat that counts against TotalPlayerCount;
+        // Assistant DM and Spectator seats are never part of that capacity.
+        var wasSelectedPlayer = signup.IsSelected && signup.Role == SignupRole.Player;
+
+        await playerSignupRepository.RemoveAsync(signup, token);
+
+        if (!wasSelectedPlayer) return;
+
+        var finalizedProposedDate = quest.ProposedDates
+            .FirstOrDefault(pd => quest.FinalizedDate.HasValue && pd.Date.Date == quest.FinalizedDate.Value.Date);
+        if (finalizedProposedDate == null) return;
+
+        await PromoteNextWaitlistedPlayerIfSeatFreedAsync(questId, finalizedProposedDate.Id, freeingPlayerSignupId: playerSignupId, token);
+    }
+
+    /// <summary>
+    /// Finds the top waitlisted candidate for the given quest/date and promotes them into the
+    /// freed seat, emailing only that one candidate. Never promotes the player who freed the seat.
+    /// </summary>
+    private async Task PromoteNextWaitlistedPlayerIfSeatFreedAsync(int questId, int finalizedProposedDateId, int freeingPlayerSignupId, CancellationToken token)
+    {
+        var candidate = await playerSignupRepository.GetTopWaitlistedCandidateAsync(questId, finalizedProposedDateId, token);
+        if (candidate == null) return;
+
+        // The freeing player must never be the one promoted.
+        if (candidate.Id == freeingPlayerSignupId) return;
+
+        candidate.IsSelected = true;
+        await playerSignupRepository.UpdateAsync(candidate, token);
+
+        // Selection is never gated on email eligibility — only the email send is.
+        if (string.IsNullOrEmpty(candidate.Player.Email) || !candidate.Player.EmailConfirmed) return;
+
+        var quest = await repository.GetQuestWithDetailsAsync(questId, token);
+        if (quest == null || quest.FinalizedDate == null) return;
+
+        dispatcher.EnqueueWaitlistPromotedEmail(
+            quest.Id,
+            quest.GroupId,
+            quest.FinalizedDate.Value,
+            candidate.Player.Email!,
+            candidate.Player.Name,
+            quest.Title,
+            quest.DungeonMaster?.Name ?? "Unknown DM",
+            quest.Description,
+            quest.ChallengeRating);
+    }
+
+    /// <inheritdoc/>
     public async Task<int> CreateFollowUpQuestWithDetailsAsync(
-        int originalQuestId, string title, string description, int challengeRating, int totalPlayerCount,
+        int originalQuestId, string title, string description, string? rewards, int challengeRating, int totalPlayerCount,
         bool dungeonMasterSession, IList<DateTime> proposedDates, CancellationToken token = default)
     {
         // Create the shell quest and import selected players first
@@ -252,7 +356,7 @@ internal class QuestService(
             // Apply the proposed dates and title/description edits from the form
             // (CreateFollowUpQuestAsync creates the quest shell without dates; dates come from the form)
             await UpdateQuestPropertiesWithNotificationsAsync(
-                newQuestId, title, description, challengeRating, totalPlayerCount,
+                newQuestId, title, description, rewards, challengeRating, totalPlayerCount,
                 dungeonMasterSession, updateProposedDates: true, proposedDates, token);
         }
         catch

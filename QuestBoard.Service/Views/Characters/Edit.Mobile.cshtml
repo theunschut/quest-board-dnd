@@ -1,0 +1,227 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.CharacterViewModels
+@model CharacterViewModel
+@{
+    ViewData["Title"] = $"Edit {Model.Name}";
+}
+
+@section Styles {
+    <link href="~/css/character-form.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="container-fluid px-3 py-3">
+    <div class="character-form-card">
+        <h5><i class="fas fa-edit me-2"></i>Edit @Model.Name</h5>
+        <hr class="mb-3" style="border-color: rgba(244,228,188,0.3);" />
+
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="OwnerId" />
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="ProfilePictureFile" class="form-label">Profile Picture</label>
+                @if (Model.HasProfilePicture)
+                {
+                    <div class="mb-2 text-center">
+                        <img src="@Url.Action("GetCroppedPicture", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />
+                    </div>
+                }
+                <input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" />
+                <input type="file" name="CroppedPictureFile" style="display:none" />
+                <small class="form-text">Upload a new character portrait (JPG, PNG, GIF - Max 5 MB)</small>
+                <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
+                <div id="fileSizeError" class="text-danger" style="display: none;"></div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Character Name <span class="text-danger">*</span></label>
+                <input asp-for="Name" class="form-control" placeholder="Enter character name" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Level" class="form-label">Level <span class="text-danger">*</span></label>
+                <input asp-for="Level" type="number" class="form-control" min="1" max="20" />
+                <span asp-validation-for="Level" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Status" class="form-label">Status</label>
+                <select asp-for="Status" asp-items="Html.GetEnumSelectList<CharacterStatus>()" class="form-select"></select>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Role" class="form-label">Role</label>
+                <select asp-for="Role" asp-items="Html.GetEnumSelectList<CharacterRole>()" class="form-select"></select>
+                <small class="form-text">Setting as Main will change your other characters to Backup</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Classes</label>
+                <small class="form-text d-block mb-2">Total class levels must equal character level (@Model.Level).</small>
+                <div id="class-list">
+                    @for (var i = 0; i < (Model.Classes.Any() ? Model.Classes.Count : 1); i++)
+                    {
+                        var classData = Model.Classes.Count > i ? Model.Classes[i] : new CharacterClassViewModel { ClassLevel = 1 };
+                        <div class="class-entry mb-2" data-index="@i">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <select name="Classes[@i].Class" class="form-select" required>
+                                        <option value="">Select Class</option>
+                                        @foreach (DndClass dndClass in Enum.GetValues(typeof(DndClass)))
+                                        {
+                                            <option value="@((int)dndClass)" selected="@(classData.Class == dndClass)">@dndClass</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <input type="number" name="Classes[@i].ClassLevel" class="form-control"
+                                           value="@classData.ClassLevel" placeholder="Level" min="1" max="20" required />
+                                </div>
+                                @if (i > 0)
+                                {
+                                    <div class="col-12">
+                                        <button type="button" class="btn btn-danger w-100 remove-class">
+                                            <i class="fas fa-trash"></i> Remove
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <button type="button" id="add-class" class="btn btn-sm btn-secondary mt-2">
+                    <i class="fas fa-plus me-1"></i>Add Another Class
+                </button>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="SheetLink" class="form-label">Character Sheet Link</label>
+                <input asp-for="SheetLink" type="url" class="form-control" placeholder="https://..." />
+                <span asp-validation-for="SheetLink" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-control" rows="3" placeholder="Brief character description"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Backstory" class="form-label">Backstory</label>
+                <textarea asp-for="Backstory" class="form-control" rows="5" placeholder="Character backstory"></textarea>
+                <span asp-validation-for="Backstory" class="text-danger"></span>
+            </div>
+
+            <hr style="border-color: rgba(244,228,188,0.3);" />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+                <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="cropPhotoModal" tabindex="-1" aria-labelledby="cropPhotoModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="cropPhotoModalLabel">
+                    <i class="fas fa-crop-alt me-2"></i>Crop Your Photo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="crop-stage">
+                    <cropper-canvas background style="width:100%;height:320px;">
+                        <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
+                        <cropper-shade hidden></cropper-shade>
+                        <cropper-handle action="move" plain></cropper-handle>
+                        <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
+                            <cropper-grid role="grid" bordered covered></cropper-grid>
+                            <cropper-crosshair centered></cropper-crosshair>
+                            <cropper-handle action="move" theme-color="rgba(255,193,7,0.35)"></cropper-handle>
+                            <cropper-handle action="n-resize"></cropper-handle>
+                            <cropper-handle action="e-resize"></cropper-handle>
+                            <cropper-handle action="s-resize"></cropper-handle>
+                            <cropper-handle action="w-resize"></cropper-handle>
+                            <cropper-handle action="ne-resize"></cropper-handle>
+                            <cropper-handle action="nw-resize"></cropper-handle>
+                            <cropper-handle action="se-resize"></cropper-handle>
+                            <cropper-handle action="sw-resize"></cropper-handle>
+                        </cropper-selection>
+                    </cropper-canvas>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Drag to reposition, use the corner handles to resize. We'll use a square crop —
+                    if you skip this, we'll center one automatically.
+                </p>
+            </div>
+            <div class="modal-footer border-secondary d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
+                    <i class="fas fa-times me-2"></i>Discard Photo
+                </button>
+                <button type="button" class="btn btn-warning" id="cropConfirmBtn">
+                    <i class="fas fa-check me-2"></i>Use This Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let classIndex = @(Model.Classes.Any() ? Model.Classes.Count : 1);
+
+        document.getElementById('add-class').addEventListener('click', function() {
+            const classListDiv = document.getElementById('class-list');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'class-entry mb-2';
+            newEntry.setAttribute('data-index', classIndex);
+            newEntry.innerHTML = `
+                <div class="row g-2">
+                    <div class="col-12">
+                        <select name="Classes[${classIndex}].Class" class="form-select" required>
+                            <option value="">Select Class</option>
+                            @foreach (DndClass dndClass in Enum.GetValues(typeof(DndClass)))
+                            {
+                                <text><option value="@((int)dndClass)">@dndClass</option></text>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <input type="number" name="Classes[${classIndex}].ClassLevel" class="form-control"
+                               value="1" placeholder="Level" min="1" max="20" required />
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-danger w-100 remove-class">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                    </div>
+                </div>
+            `;
+            classListDiv.appendChild(newEntry);
+            classIndex++;
+        });
+
+        document.getElementById('class-list').addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-class') || e.target.closest('.remove-class')) {
+                const entry = e.target.closest('.class-entry');
+                entry.remove();
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
+            integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
+            crossorigin="anonymous"></script>
+    <script src="~/js/image-crop.js" asp-append-version="true"></script>
+    <script>
+        initImageCrop({ fileInputId: 'profilePictureInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
+    </script>
+}

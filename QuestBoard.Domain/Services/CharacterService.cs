@@ -66,13 +66,77 @@ internal class CharacterService(ICharacterRepository repository, IMapper mapper)
     /// <inheritdoc/>
     public override async Task UpdateAsync(Character model, CancellationToken token = default)
     {
-        await repository.UpdateProfileImageAsync(model.Id, model.ProfilePicture, token);
-        await repository.UpdateAsync(model, token);
+        // No caller-supplied signal (e.g. a not-yet-updated call site) defaults to the safe
+        // preserve-crop behaviour, since model.ProfilePicture is never null on a no-photo-change edit.
+        await UpdateAsync(model, hasNewOriginalUpload: false, token);
     }
 
     /// <inheritdoc/>
-    public Task<byte[]?> GetCharacterProfilePictureAsync(int id, CancellationToken token = default)
+    public Task UpdateAsync(Character model, bool hasNewOriginalUpload, CancellationToken token = default) =>
+        UpdateAsync(model, hasNewOriginalUpload, newCroppedImageData: null, token);
+
+    /// <inheritdoc/>
+    public async Task UpdateAsync(Character model, bool hasNewOriginalUpload, byte[]? newCroppedImageData, CancellationToken token = default)
     {
-        return repository.GetCharacterProfilePictureAsync(id, token);
+        // The image write and the rest of the entity's fields are saved together in a single
+        // repository call so a failure in either half cannot leave the character in a
+        // half-updated state (new photo, stale metadata, or vice versa).
+        byte[]? croppedImageData;
+        if (newCroppedImageData != null)
+        {
+            // The caller submitted a genuinely new crop this request -- persist it directly.
+            croppedImageData = newCroppedImageData;
+        }
+        else if (hasNewOriginalUpload)
+        {
+            // A genuinely new original arrived this request with no accompanying crop -- clear
+            // any stale crop of the superseded photo, since it belonged to the photo that's
+            // being replaced.
+            croppedImageData = null;
+        }
+        else
+        {
+            // No new file; model.ProfilePicture is the round-tripped existing original. Fetch
+            // the currently-stored crop and pass it through unchanged so it survives an
+            // unrelated-field edit.
+            croppedImageData = await repository.GetCharacterCroppedPictureAsync(model.Id, token);
+        }
+
+        // The original follows the same "don't trust the round-tripped value" rule as the
+        // crop above: the read path that populates model.ProfilePicture no longer loads the
+        // original's bytes, so on a no-upload edit it must be re-fetched fresh here rather
+        // than passed straight through -- otherwise an unrelated-field edit would wipe the
+        // stored original image.
+        var originalImageData = hasNewOriginalUpload
+            ? model.ProfilePicture
+            : await repository.GetCharacterOriginalPictureAsync(model.Id, token);
+
+        await repository.UpdateWithProfileImageAsync(model, originalImageData, croppedImageData, token);
+    }
+
+    /// <inheritdoc/>
+    public async Task AddAsync(Character model, byte[]? newCroppedImageData, CancellationToken token = default)
+    {
+        // The base Add call creates the character and its profile image row (original only).
+        await repository.AddAsync(model, token);
+
+        // Only make a second write when the caller actually submitted a crop this request --
+        // otherwise the freshly-created row is left exactly as the base Add produced it.
+        if (newCroppedImageData != null)
+        {
+            await repository.UpdateWithProfileImageAsync(model, model.ProfilePicture, newCroppedImageData, token);
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task<byte[]?> GetCharacterOriginalPictureAsync(int id, CancellationToken token = default)
+    {
+        return repository.GetCharacterOriginalPictureAsync(id, token);
+    }
+
+    /// <inheritdoc/>
+    public Task<byte[]?> GetCharacterCroppedPictureAsync(int id, CancellationToken token = default)
+    {
+        return repository.GetCharacterCroppedPictureAsync(id, token);
     }
 }

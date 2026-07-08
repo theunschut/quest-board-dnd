@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 
 namespace QuestBoard.IntegrationTests.Mobile;
@@ -426,6 +427,124 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
+    // Finalized-quest "Join This Quest" mobile card (presence/absence/copy)
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Authenticated player who has NOT signed up for a finalized quest sees the mobile
+    /// "Join This Quest" card with all 3 role-join forms.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuest_AuthenticatedNotSignedUp_RendersJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard01", "dm_joincard01@test.com", name: "DM JoinCard01");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard01", "player_joincard01@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Join This Quest");
+        html.Should().Contain("JoinFinalizedQuest");
+    }
+
+    /// <summary>
+    /// A player who is already signed up for the finalized quest must NOT see the mobile
+    /// "Join This Quest" card.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuest_AlreadySignedUp_DoesNotRenderJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard02", "dm_joincard02@test.com", name: "DM JoinCard02");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Signed Up Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+        var (authClient, joinCardPlayer) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard02", "player_joincard02@test.com");
+        await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, joinCardPlayer.Id, signupRole: 0, isSelected: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("joinPlayerFormMobile");
+    }
+
+    /// <summary>
+    /// An unauthenticated visitor must NOT see the mobile "Join This Quest" card.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuest_Unauthenticated_DoesNotRenderJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard03", "dm_joincard03@test.com", name: "DM JoinCard03");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Unauth Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+
+        var (response, html) = await GetWithUserAgentAsync($"/Quest/Details/{quest.Id}", MobileUserAgent);
+
+        html.Should().NotContain("joinPlayerFormMobile");
+    }
+
+    /// <summary>
+    /// When a finalized quest's Player slots are full, the mobile Join card shows waitlist
+    /// copy instead of implying a Player join is rejected.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_FinalizedQuestFull_RendersWaitlistCopy()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard04", "dm_joincard04@test.com", name: "DM JoinCard04");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Join Card Full Quest", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+
+        for (var i = 0; i < 4; i++)
+        {
+            var seatedPlayer = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, $"joincard04_seated{i}", $"joincard04_seated{i}@test.com");
+            await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, seatedPlayer.Id, signupRole: 0, isSelected: true);
+        }
+
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard04", "player_joincard04@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("joining as a Player will place you on the waitlist");
+    }
+
+    /// <summary>
+    /// Regression guard: the "Join This Quest" card is finalized-quest-only. An authenticated,
+    /// not-yet-signed-up player viewing an OPEN (non-finalized) quest must NOT see it — only the
+    /// pre-finalization "Choose a Date" signup card should render.
+    /// </summary>
+    [Fact]
+    public async Task MobileQuestDetails_OpenQuest_AuthenticatedNotSignedUp_DoesNotRenderJoinCard()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_joincard05", "dm_joincard05@test.com", name: "DM JoinCard05");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Open Join Card Quest");
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, DateTime.UtcNow.AddDays(7));
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory, "player_joincard05", "player_joincard05@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Details/{quest.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("joinPlayerFormMobile");
+        html.Should().Contain("Choose a Date");
+    }
+
+    // -----------------------------------------------------------------------
     // Login page renders glass card form on mobile UA
     // -----------------------------------------------------------------------
 
@@ -615,30 +734,29 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // Guild Members index renders list rows on mobile UA
+    // Characters index renders list rows on mobile UA
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers links guild-members.mobile.css. The guild-member-row
+    /// Mobile UA on /Characters links characters.mobile.css. The character-member-row
     /// class only renders when characters exist; the CSS link renders unconditionally, so that is
     /// the stable smoke-test assertion here.
-    /// Note: guild-member-row presence with seeded characters is verified by Plan 04's own seeded test.
-    /// Test starts RED — GuildMembers/Index.Mobile.cshtml does not exist yet.
+    /// Note: character-member-row presence with seeded characters is verified by Plan 04's own seeded test.
     /// </summary>
     [Fact]
-    public async Task MobileGuildMembers_MobileUserAgent_RendersListRows()
+    public async Task MobileCharacters_MobileUserAgent_RendersListRows()
     {
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            _factory, "guild_browse16", "guild_browse16@test.com");
+            _factory, "char_browse16", "char_browse16@test.com");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/GuildMembers");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/Characters");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("guild-members.mobile.css");
+        html.Should().Contain("characters.mobile.css");
     }
 
     // -----------------------------------------------------------------------
@@ -646,8 +764,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers/Details/{id} renders character-detail-card glass card
-    /// and links character-detail.mobile.css. Test starts RED — Details.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Characters/Details/{id} renders character-detail-card glass card
+    /// and links character-detail.mobile.css.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterDetails_ReturnsSuccessAndMobileLayout()
@@ -656,7 +774,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
             _factory, "char_det17", "char_det17@test.com");
         var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, ownerUser.Id, "Aria Swiftblade");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"/GuildMembers/Details/{character.Id}");
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Characters/Details/{character.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -672,8 +790,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers/Create renders character-form-card glass card form
-    /// and links character-form.mobile.css. Test starts RED — Create.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Characters/Create renders character-form-card glass card form
+    /// and links character-form.mobile.css.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterCreate_ReturnsSuccessAndMobileLayout()
@@ -681,7 +799,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "char_cre17", "char_cre17@test.com");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/GuildMembers/Create");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/Characters/Create");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -697,8 +815,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /GuildMembers/Edit/{id} renders character-form-card glass card form
-    /// and links character-form.mobile.css. Test starts RED — Edit.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Characters/Edit/{id} renders character-form-card glass card form
+    /// and links character-form.mobile.css.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterEdit_ReturnsSuccessAndMobileLayout()
@@ -707,7 +825,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
             _factory, "char_edi17", "char_edi17@test.com");
         var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, ownerUser.Id, "Bram Ironfist");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"/GuildMembers/Edit/{character.Id}");
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Characters/Edit/{character.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -912,6 +1030,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var targetUser = await AuthenticationHelper.CreateTestUserAsync(
             _factory.Services, "edit_target19", "edit_target19@test.com");
 
+        // Target must be a group 1 member — AdminController.EditUser rejects out-of-group targets.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            await userService.SetGroupRoleAsync(targetUser.Id, 1, GroupRole.Player);
+        }
+
         var request = new HttpRequestMessage(HttpMethod.Get, $"/Admin/EditUser?userId={targetUser.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
         request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
@@ -966,6 +1091,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
             _factory, "admin_resetpw19", "admin_resetpw19@test.com");
         var targetUser = await AuthenticationHelper.CreateTestUserAsync(
             _factory.Services, "resetpw_target19", "resetpw_target19@test.com");
+
+        // Target must be a group 1 member — AdminController.ResetPassword rejects out-of-group targets.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            await userService.SetGroupRoleAsync(targetUser.Id, 1, GroupRole.Player);
+        }
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"/Admin/ResetPassword?userId={targetUser.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);

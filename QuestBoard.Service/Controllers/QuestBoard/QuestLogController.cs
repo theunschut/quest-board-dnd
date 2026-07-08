@@ -11,7 +11,8 @@ namespace QuestBoard.Service.Controllers.QuestBoard;
 public class QuestLogController(
     IUserService userService,
     IQuestService questService,
-    IActiveGroupContext activeGroupContext
+    IActiveGroupContext activeGroupContext,
+    IGroupService groupService
     ) : Controller
 {
     [HttpGet]
@@ -24,6 +25,7 @@ public class QuestLogController(
             CompletedQuests = completedQuests
         };
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(viewModel);
     }
 
@@ -37,8 +39,12 @@ public class QuestLogController(
             return NotFound();
         }
 
-        // Verify this is a completed quest (DM-only sessions are not shown in the quest log)
-        if (!quest.IsFinalized || !quest.FinalizedDate.HasValue || quest.FinalizedDate.Value.Date > DateTime.UtcNow.AddDays(-1).Date || quest.DungeonMasterSession)
+        // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
+        // admitting closed campaign quests even though they never set FinalizedDate.
+        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
+            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+            && !quest.DungeonMasterSession;
+        if (!isCompletedOneShot && !quest.IsClosed)
         {
             return NotFound();
         }
@@ -54,23 +60,25 @@ public class QuestLogController(
             }
         }
 
-        // Check if current user can edit recap (DM or admin)
+        // Recap editing is open to any authenticated viewer of this quest, while managing the
+        // quest itself (Open/Close, edit details, remove signups) stays limited to this quest's
+        // DM or an admin.
         var isQuestDm = currentUser != null && currentUser.Id == quest.DungeonMaster?.Id;
         var isAdmin = currentUser != null && await GetEffectiveRoleAsync() == GroupRole.Admin;
-        ViewBag.CanEditRecap = isQuestDm || isAdmin;
+        ViewBag.CanEditRecap = currentUser != null;
+        ViewBag.CanManageQuest = isQuestDm || isAdmin;
 
         var viewModel = new QuestLogDetailsViewModel
         {
             Quest = quest
         };
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(viewModel);
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = "DungeonMasterOnly")]
-    public async Task<IActionResult> UpdateRecap(int id, string recap, CancellationToken token = default)
+    [HttpGet]
+    public async Task<IActionResult> EditRecap(int id, CancellationToken token = default)
     {
         var quest = await questService.GetQuestWithDetailsAsync(id, token);
 
@@ -79,25 +87,48 @@ public class QuestLogController(
             return NotFound();
         }
 
-        // Verify this is a completed quest
-        if (!quest.IsFinalized || !quest.FinalizedDate.HasValue || quest.FinalizedDate.Value.Date > DateTime.UtcNow.AddDays(-1).Date)
+        // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
+        // admitting closed campaign quests even though they never set FinalizedDate.
+        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
+            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+            && !quest.DungeonMasterSession;
+        if (!isCompletedOneShot && !quest.IsClosed)
         {
-            return BadRequest("Cannot update recap for a quest that is not completed.");
+            return NotFound();
         }
 
-        var currentUser = await userService.GetUserAsync(User);
-        if (currentUser == null)
+        if (User.Identity?.IsAuthenticated != true)
         {
             return Challenge();
         }
 
-        // Check if current user is the quest's DM or an admin
-        var isQuestDm = currentUser.Id == quest.DungeonMaster?.Id;
-        var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
+        return View(new EditRecapViewModel { Id = quest.Id, Recap = quest.Recap, Quest = quest });
+    }
 
-        if (!isQuestDm && !isAdmin)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditRecap(int id, string recap, CancellationToken token = default)
+    {
+        var quest = await questService.GetQuestWithDetailsAsync(id, token);
+
+        if (quest == null)
         {
-            return Forbid();
+            return NotFound();
+        }
+
+        // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
+        // admitting closed campaign quests even though they never set FinalizedDate.
+        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
+            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+            && !quest.DungeonMasterSession;
+        if (!isCompletedOneShot && !quest.IsClosed)
+        {
+            return BadRequest("Cannot update recap for a quest that is not completed.");
+        }
+
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Challenge();
         }
 
         await questService.UpdateQuestRecapAsync(id, recap, token);
@@ -112,4 +143,18 @@ public class QuestLogController(
         User.IsInRole("SuperAdmin")
             ? GroupRole.Admin
             : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+    // Resolves the active group's board type server-side, mirroring QuestController's helper.
+    // SuperAdmin legitimately has no active group selected, so default to OneShot rather than
+    // calling RequireActiveGroupId(), which would throw.
+    private async Task<BoardType> GetActiveBoardTypeAsync(CancellationToken token = default)
+    {
+        if (activeGroupContext.ActiveGroupId is not { } groupId)
+        {
+            return BoardType.OneShot;
+        }
+
+        var group = await groupService.GetByIdAsync(groupId, token);
+        return group?.BoardType ?? BoardType.OneShot;
+    }
 }

@@ -33,6 +33,12 @@ public class EmailService(IOptions<EmailSettings> options, ILogger<EmailService>
     /// <inheritdoc/>
     public async Task SendAsync(string toEmail, string subject, string htmlBody)
     {
+        if (_settings.SuppressSending)
+        {
+            logger.LogInformation("EmailSettings:SuppressSending is enabled — skipping send of \"{Subject}\".", subject);
+            return;
+        }
+
         try
         {
             using var client = CreateSmtpClient();

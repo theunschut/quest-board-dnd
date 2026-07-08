@@ -1,6 +1,7 @@
 # Coding Conventions
 
 **Analysis Date:** 2026-07-02
+**last_mapped_commit:** e5b37a73cda29bf355c4de6ebf4663b1625c3cf6
 
 ## Naming Patterns
 
@@ -32,10 +33,11 @@
 ## Code Style
 
 **Formatting:**
-- Target framework: .NET 10 (net10.0)
+- Target framework: .NET 10 (net10.0) — development target for production deployment
+- CI pipeline uses .NET 8.0.x (ubuntu-latest) for build validation (`.github/workflows/dotnet.yml`)
 - Implicit usings enabled in all `.csproj` files (`<ImplicitUsings>enable</ImplicitUsings>`)
 - Nullable reference types enabled (`<Nullable>enable</Nullable>`)
-- Line endings: CRLF (Windows)
+- Line endings: CRLF (Windows) — per `CLAUDE.md` development guidelines
 - No line length limit enforced (varies 60-120 characters observed)
 
 **Linting:**
@@ -110,6 +112,7 @@ namespace QuestBoard.Service.Controllers.QuestBoard;
 - Block comments explain non-obvious business logic: `// SuperAdmin bypass — reads claims directly, no DB call`
 - Single-line comments for clarification at code sections, not on individual statements
 - High-level intent documented in XML doc comments for public methods and types
+- **Never embed GSD planning references** (phase/plan IDs, requirement IDs, review IDs) in source code comments — these belong in `.planning/`, not in code that stays deployed (per `CLAUDE.md`)
 
 **JSDoc/TSDoc:**
 - Not used (C# codebase uses XML documentation instead)
@@ -209,6 +212,33 @@ public int Level { get; set; } = 1;
 - Async methods always suffix with `Async`: never `GetQuests()`, always `GetQuestsAsync()`
 - CancellationToken piped through: `await repository.GetAllAsync(token)`
 
+## Migration Management
+
+**Tool:** `dotnet-ef` v9.0.6 (`.config/dotnet-tools.json`)
+
+**Patterns:**
+- Migrations created via: `dotnet ef migrations add MigrationName --project ../QuestBoard.Repository`
+- Removed via: `dotnet ef migrations remove --project ../QuestBoard.Repository`
+- Auto-applied on startup via `context.Database.Migrate()` in `Program.cs` — no manual `database update` step needed in dev
+- Shell script helper available: `create-migration.sh` (adds EF tools, creates initial migration)
+
+## UI/UX Design
+
+**Modern Card Pattern (from `CLAUDE.md`):**
+- All new views use CSS classes: `modern-card`, `modern-card-header`, `modern-card-body`
+- Header structure:
+  ```html
+  <div class="card-header modern-card-header">
+      <h2 class="mb-0">
+          <i class="fas fa-icon-name text-color me-2"></i>
+          Page Title
+      </h2>
+  </div>
+  ```
+- Always include `<hr>` before the button section
+- Use filled colored buttons (not outline), FontAwesome icons with `me-2` spacing
+- Button layout: `d-flex justify-content-between` — secondary (cancel) left, primary (submit) right
+
 ---
 
-*Convention analysis: 2026-07-02*
+*Convention analysis: 2026-07-02 (updated 2026-07-03)*

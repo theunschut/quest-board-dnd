@@ -18,7 +18,8 @@ public class QuestController(
     IQuestService questService,
     ICharacterService characterService,
     IReminderJobDispatcher reminderJobDispatcher,
-    IActiveGroupContext activeGroupContext
+    IActiveGroupContext activeGroupContext,
+    IGroupService groupService
     ) : Controller
 {
     [HttpGet]
@@ -58,6 +59,7 @@ public class QuestController(
 
         ViewBag.CurrentUserName = currentUserName;
         ViewBag.CurrentUserId = currentUserId;
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(quests);
     }
 
@@ -72,6 +74,7 @@ public class QuestController(
             return Challenge();
         }
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
         return View(new QuestViewModel());
     }
 
@@ -90,13 +93,35 @@ public class QuestController(
         // Automatically set the current user as the DM
         viewModel.DungeonMasterId = currentUser.Id;
 
+        // BoardType is always resolved server-side from the active group, never trusted
+        // from the posted form.
+        var boardType = await GetActiveBoardTypeAsync(token);
+        if (boardType == BoardType.OneShot && (viewModel.ProposedDates == null || viewModel.ProposedDates.Count == 0))
+        {
+            ModelState.AddModelError(nameof(viewModel.ProposedDates), "At least one proposed date is required.");
+        }
+        else if (boardType == BoardType.Campaign)
+        {
+            // Campaign quests have no date picker or per-quest signup — silently override
+            // any posted values with fixed defaults regardless of what the client sent.
+            viewModel.ProposedDates = [];
+            viewModel.ChallengeRating = 1;
+            viewModel.TotalPlayerCount = 0;
+            viewModel.DungeonMasterSession = false;
+        }
+
         if (!ModelState.IsValid)
         {
+            ViewBag.BoardType = boardType;
             return View(viewModel);
         }
 
         // Create Quest entity from ViewModel using AutoMapper
         var quest = mapper.Map<Quest>(viewModel);
+
+        // Tag the quest to the active group so it is visible on the correct board
+        // (QuestEntity is scoped by a global query filter on GroupId).
+        quest.GroupId = activeGroupContext.RequireActiveGroupId();
 
         // Set Quest reference for all ProposedDates
         foreach (var proposedDate in quest.ProposedDates)
@@ -134,12 +159,6 @@ public class QuestController(
             return Forbid();
         }
 
-        // Don't allow editing of finalized quests
-        if (quest.IsFinalized)
-        {
-            return BadRequest("Cannot edit a finalized quest. Open the quest first to make changes.");
-        }
-
         var dms = await userService.GetAllDungeonMastersAsync(token);
         var questViewModel = mapper.Map<QuestViewModel>(quest);
 
@@ -147,13 +166,16 @@ public class QuestController(
         var canEditProposedDates = true;
         var hasExistingSignups = quest.PlayerSignups.Any();
 
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
+
         return View(new EditQuestViewModel
         {
             Id = quest.Id,
             Quest = questViewModel,
             DungeonMasters = dms,
             CanEditProposedDates = canEditProposedDates,
-            HasExistingSignups = hasExistingSignups
+            HasExistingSignups = hasExistingSignups,
+            IsFinalized = quest.IsFinalized
         });
     }
 
@@ -187,34 +209,64 @@ public class QuestController(
             return Forbid();
         }
 
-        // Don't allow editing of finalized quests
-        if (existingQuest.IsFinalized)
-        {
-            return BadRequest("Cannot edit a finalized quest. Open the quest first to make changes.");
-        }
-
         // Allow editing of proposed dates even with signups (service will handle it intelligently)
         var canEditProposedDates = true;
         var hasExistingSignups = existingQuest.PlayerSignups.Any();
         viewModel.CanEditProposedDates = canEditProposedDates;
         viewModel.HasExistingSignups = hasExistingSignups;
+        viewModel.IsFinalized = existingQuest.IsFinalized;
+
+        // BoardType is always resolved server-side from the active group, never trusted
+        // from the posted form. Resolved before the validation check so a re-rendered
+        // Edit form (on a validation failure) can hide Campaign-irrelevant fields without
+        // throwing, and reused below for the Campaign sanitization.
+        var boardType = await GetActiveBoardTypeAsync(token);
+
+        // A finalized quest already has a locked-in roster; lowering the seat count below
+        // the number of players already selected would leave the quest over capacity with
+        // no mechanism to reconcile it, so reject the edit instead of silently dropping anyone.
+        // Scoped to non-Campaign boards: TotalPlayerCount is hidden from the Campaign Edit form
+        // and always model-binds to 0, which would otherwise always trip this guard for a quest
+        // that is (abnormally) both IsFinalized and on a Campaign board.
+        if (existingQuest.IsFinalized && boardType != BoardType.Campaign)
+        {
+            var selectedPlayerCount = existingQuest.PlayerSignups.Count(ps => ps.IsSelected && ps.Role == SignupRole.Player);
+            if (viewModel.Quest.TotalPlayerCount < selectedPlayerCount)
+            {
+                ModelState.AddModelError(
+                    "Quest.TotalPlayerCount",
+                    $"Total Player Count cannot be less than the {selectedPlayerCount} players already selected for this quest.");
+            }
+        }
 
         if (!ModelState.IsValid)
         {
             var dms = await userService.GetAllDungeonMastersAsync(token);
             viewModel.DungeonMasters = dms;
+            ViewBag.BoardType = boardType;
             return View(viewModel);
+        }
+
+        // Mirror the sanitization performed in Create so a Campaign quest can never
+        // end up with DM-only-session/CR/player-count values.
+        if (boardType == BoardType.Campaign)
+        {
+            viewModel.Quest.ChallengeRating = 1;
+            viewModel.Quest.TotalPlayerCount = 0;
+            viewModel.Quest.DungeonMasterSession = false;
+            viewModel.Quest.ProposedDates = [];
         }
 
         await questService.UpdateQuestPropertiesWithNotificationsAsync(
             id,
             viewModel.Quest.Title,
             viewModel.Quest.Description,
+            viewModel.Quest.Rewards,
             viewModel.Quest.ChallengeRating,
             viewModel.Quest.TotalPlayerCount,
             viewModel.Quest.DungeonMasterSession,
-            true,
-            viewModel.Quest.ProposedDates,
+            !existingQuest.IsFinalized,
+            existingQuest.IsFinalized ? null : viewModel.Quest.ProposedDates,
             token
         );
 
@@ -309,6 +361,7 @@ public class QuestController(
         ViewBag.IsDetailsPage = true;
         ViewBag.CurrentQuestId = id;
         ViewBag.CurrentUserId = currentUser?.Id;
+        ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
 
         var signup = new PlayerSignup
         {
@@ -389,19 +442,11 @@ public class QuestController(
 
         var role = (SignupRole)selectedRole;
 
-        // Check if quest has space - only count Player roles
-        if (role == SignupRole.Player)
-        {
-            var selectedPlayersCount = quest.PlayerSignups
-                .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
-                .Count();
-
-            if (selectedPlayersCount >= quest.TotalPlayerCount)
-            {
-                ModelState.AddModelError("", $"This quest is full ({selectedPlayersCount}/{quest.TotalPlayerCount} players).");
-                return RedirectToAction("Details", new { id = questId });
-            }
-        }
+        // Recompute space server-side - never trust client state. Player joins go to the
+        // waitlist when full; AssistantDM/Spectator are always auto-approved, since no
+        // capacity limit applies to those roles.
+        var isPlayerRoleWithSpace = role != SignupRole.Player
+            || quest.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() < quest.TotalPlayerCount;
 
         // Validate character if selected
         if (characterId.HasValue)
@@ -431,7 +476,7 @@ public class QuestController(
             Quest = quest,
             CharacterId = characterId,
             Role = role,
-            IsSelected = true, // Auto-approve all roles when joining finalized quest
+            IsSelected = isPlayerRoleWithSpace, // Player joins the waitlist when full; AssistantDM/Spectator always auto-approved
             DateVotes = role == SignupRole.Spectator ? [] : // Spectators don't vote
                 [new PlayerDateVote
                 {
@@ -512,7 +557,7 @@ public class QuestController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize]
-    public async Task<IActionResult> ChangeVoteToYes(int id)
+    public async Task<IActionResult> ChangeVote(int id, VoteType vote)
     {
         var quest = await questService.GetQuestWithDetailsAsync(id);
         if (quest == null || !quest.IsFinalized || quest.FinalizedDate == null)
@@ -523,27 +568,16 @@ public class QuestController(
         if (user == null)
             return Challenge();
 
-        // Find the user's signup for this quest
+        // Find the user's signup for this quest — never trust a client-supplied signup id
         var playerSignup = quest.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == user.Id);
         if (playerSignup == null)
         {
             return BadRequest("You are not signed up for this quest.");
         }
 
-        // Check if already selected
-        if (playerSignup.IsSelected)
+        if (!Enum.IsDefined(typeof(VoteType), vote))
         {
-            return BadRequest("You are already selected for this quest.");
-        }
-
-        // Check if there are available spots for players
-        var selectedPlayersCount = quest.PlayerSignups
-            .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
-            .Count();
-
-        if (selectedPlayersCount >= quest.TotalPlayerCount)
-        {
-            return BadRequest("No available spots in this quest.");
+            return BadRequest("Invalid vote value.");
         }
 
         // Find the finalized date's corresponding proposed date
@@ -555,8 +589,8 @@ public class QuestController(
             return BadRequest("Could not find the finalized date information.");
         }
 
-        // Use the specialized service method to update vote and mark as selected
-        await playerSignupService.ChangeVoteToYesAndSelectAsync(playerSignup.Id, finalizedProposedDate.Id);
+        // Voting is never rejected on capacity; the service decides selection vs waitlist.
+        await questService.ChangeVoteAsync(id, playerSignup.Id, vote, finalizedProposedDate.Id);
 
         return Ok();
     }
@@ -582,8 +616,9 @@ public class QuestController(
             return BadRequest("You are not signed up for this quest.");
         }
 
-        // Remove the player signup (allow revoking at any time)
-        await playerSignupService.RemoveAsync(playerSignup);
+        // Revoke the signup; the service captures whether the seat was selected
+        // before deleting it, and promotes the top waitlisted player if it was.
+        await questService.RevokeSignupAsync(id, playerSignup.Id);
 
         return Ok();
     }
@@ -593,9 +628,18 @@ public class QuestController(
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> RemovePlayerSignup(int id)
     {
-        // Get the signup
-        var signup = await playerSignupService.GetByIdAsync(id);
+        // Get the signup along with its parent Quest, so we can confirm the quest belongs
+        // to the caller's active group before deleting anything.
+        var signup = await playerSignupService.GetByIdWithQuestAsync(id);
         if (signup == null)
+        {
+            return NotFound();
+        }
+
+        // An Admin caller only has authority over their own active group's signups. Without
+        // this check, an Admin in one group could delete a signup on another group's quest by
+        // guessing its id, since the AdminOnly policy alone only confirms the caller's role.
+        if (activeGroupContext.ActiveGroupId is not { } groupId || signup.Quest.GroupId != groupId)
         {
             return NotFound();
         }
@@ -661,6 +705,84 @@ public class QuestController(
 
         // Open the quest using the specialized service method
         await questService.OpenQuestAsync(id);
+
+        return RedirectToAction("Manage", new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "DungeonMasterOnly")]
+    public async Task<IActionResult> Close(int id)
+    {
+        var quest = await questService.GetQuestWithDetailsAsync(id);
+
+        if (quest == null || quest.IsClosed)
+        {
+            return NotFound();
+        }
+
+        // Close/Reopen only makes sense for campaign-board quests; never trust the
+        // client-rendered button visibility to enforce this server-side.
+        var boardType = await GetActiveBoardTypeAsync();
+        if (boardType != BoardType.Campaign)
+        {
+            return BadRequest("Close is only supported for campaign quests.");
+        }
+
+        var currentUser = await userService.GetUserAsync(User);
+        if (currentUser == null)
+        {
+            return Challenge();
+        }
+
+        // Verify DM authorization
+        var role = await GetEffectiveRoleAsync();
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
+        {
+            return Forbid();
+        }
+
+        // Close the quest using the specialized service method
+        await questService.CloseQuestAsync(id);
+
+        return RedirectToAction("Manage", new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "DungeonMasterOnly")]
+    public async Task<IActionResult> Reopen(int id)
+    {
+        var quest = await questService.GetQuestWithDetailsAsync(id);
+
+        if (quest == null || !quest.IsClosed)
+        {
+            return NotFound();
+        }
+
+        // Close/Reopen only makes sense for campaign-board quests; never trust the
+        // client-rendered button visibility to enforce this server-side.
+        var boardType = await GetActiveBoardTypeAsync();
+        if (boardType != BoardType.Campaign)
+        {
+            return BadRequest("Reopen is only supported for campaign quests.");
+        }
+
+        var currentUser = await userService.GetUserAsync(User);
+        if (currentUser == null)
+        {
+            return Challenge();
+        }
+
+        // Verify DM authorization
+        var role = await GetEffectiveRoleAsync();
+        if (!IsQuestOwner(currentUser, quest.DungeonMaster) && role != GroupRole.Admin)
+        {
+            return Forbid();
+        }
+
+        // Reopen the quest using the specialized service method
+        await questService.ReopenQuestAsync(id);
 
         return RedirectToAction("Manage", new { id });
     }
@@ -752,6 +874,7 @@ public class QuestController(
         var isAdmin = await GetEffectiveRoleAsync() == GroupRole.Admin;
         ViewBag.IsAuthorized = isQuestDm || isAdmin;
         ViewBag.IsAdmin = isAdmin;
+        ViewBag.BoardType = await GetActiveBoardTypeAsync();
 
         return View(quest);
     }
@@ -870,6 +993,7 @@ public class QuestController(
                 id,
                 viewModel.Title,
                 viewModel.Description,
+                viewModel.Rewards,
                 viewModel.ChallengeRating,
                 viewModel.TotalPlayerCount,
                 viewModel.DungeonMasterSession,
@@ -896,6 +1020,22 @@ public class QuestController(
         User.IsInRole("SuperAdmin")
             ? GroupRole.Admin
             : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+    // Resolves the active group's board type server-side. Never trust a client-posted
+    // BoardType — a single lookup per render/mutation is fine since BoardType is immutable
+    // per group and every quest on a board shares it. SuperAdmin legitimately has no active
+    // group selected (see ActiveGroupContextExtensions' documented contract), so default to
+    // OneShot rather than calling RequireActiveGroupId(), which would throw.
+    private async Task<BoardType> GetActiveBoardTypeAsync(CancellationToken token = default)
+    {
+        if (activeGroupContext.ActiveGroupId is not { } groupId)
+        {
+            return BoardType.OneShot;
+        }
+
+        var group = await groupService.GetByIdAsync(groupId, token);
+        return group?.BoardType ?? BoardType.OneShot;
+    }
 
     // Id-based identity comparison for "is this the quest's DM" — deliberately avoids
     // currentUser.Equals(dungeonMaster), which is full value equality (Id, Name, Email, HasKey,

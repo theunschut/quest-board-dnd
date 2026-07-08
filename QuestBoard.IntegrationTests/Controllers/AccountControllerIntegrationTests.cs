@@ -23,6 +23,19 @@ public class AccountControllerIntegrationTests(WebApplicationFactoryBase factory
         content.Should().Contain("Login");
     }
 
+    [Fact]
+    public async Task AccessDenied_Get_ShouldReturnSuccessWithGeneralizedCopy()
+    {
+        // Act
+        var response = await _client.GetAsync("/Account/AccessDenied", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("You Don't Have Permission");
+        content.Should().NotContain("Dungeon Master");
+    }
+
     // Public self-registration was removed — the route
     // no longer exists, so both GET and POST must 404.
     [Fact]
@@ -498,6 +511,106 @@ public class AccountControllerIntegrationTests(WebApplicationFactoryBase factory
         unchangedUser.Should().NotBeNull();
         var passwordCheck = await userManager.CheckPasswordAsync(unchangedUser!, "ShouldNotApply123!");
         passwordCheck.Should().BeFalse();
+    }
+
+    // A disabled account (LockoutEnd == DateTimeOffset.MaxValue, exactly what DisableUserAsync sets)
+    // must show the disabled-account message, not the generic 15-minute lockout copy.
+    [Fact]
+    public async Task Login_Post_DisabledAccount_ShowsDisabledMessage()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var email = $"disabled_{uniqueSuffix}@example.com";
+        var password = "DisabledUser123!";
+
+        // Login resolves the posted Email as a username lookup (PasswordSignInAsync), so
+        // UserName must match Email exactly for the sign-in attempt to find the account.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+            var newUser = new UserEntity { UserName = email, Email = email, EmailConfirmed = true, Name = "Disabled User" };
+            var createResult = await userManager.CreateAsync(newUser, password);
+            createResult.Succeeded.Should().BeTrue();
+            var setLockoutResult = await userManager.SetLockoutEndDateAsync(newUser, DateTimeOffset.MaxValue);
+            setLockoutResult.Succeeded.Should().BeTrue();
+        }
+
+        var client = factory.CreateNonRedirectingClient();
+        var getResponse = await client.GetAsync("/Account/Login", TestContext.Current.CancellationToken);
+        var (token, cookieValue) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(getResponse);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            client.DefaultRequestHeaders.Add("Cookie", $".AspNetCore.Antiforgery={cookieValue}");
+        }
+
+        var formContent = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(
+            new Dictionary<string, string>
+            {
+                ["Email"] = email,
+                ["Password"] = password,
+                ["RememberMe"] = "false"
+            },
+            token);
+
+        // Act
+        var response = await client.PostAsync("/Account/Login", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("This account has been disabled. Contact an administrator.");
+        content.Should().NotContain("Try again in 15 minutes.");
+    }
+
+    // An ordinary 5-failed-attempt temporary lockout must keep showing the unchanged
+    // "Try again in 15 minutes." copy, not the disabled-account message.
+    [Fact]
+    public async Task Login_Post_TemporaryLockout_ShowsFifteenMinuteMessage()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var email = $"templockout_{uniqueSuffix}@example.com";
+        var password = "TempLockout123!";
+
+        // Login resolves the posted Email as a username lookup (PasswordSignInAsync), so
+        // UserName must match Email exactly for the sign-in attempt to find the account.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+            var newUser = new UserEntity { UserName = email, Email = email, EmailConfirmed = true, Name = "Temp Lockout User" };
+            var createResult = await userManager.CreateAsync(newUser, password);
+            createResult.Succeeded.Should().BeTrue();
+            var setLockoutResult = await userManager.SetLockoutEndDateAsync(newUser, DateTimeOffset.UtcNow.AddMinutes(15));
+            setLockoutResult.Succeeded.Should().BeTrue();
+        }
+
+        var client = factory.CreateNonRedirectingClient();
+        var getResponse = await client.GetAsync("/Account/Login", TestContext.Current.CancellationToken);
+        var (token, cookieValue) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(getResponse);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            client.DefaultRequestHeaders.Add("Cookie", $".AspNetCore.Antiforgery={cookieValue}");
+        }
+
+        var formContent = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(
+            new Dictionary<string, string>
+            {
+                ["Email"] = email,
+                ["Password"] = password,
+                ["RememberMe"] = "false"
+            },
+            token);
+
+        // Act
+        var response = await client.PostAsync("/Account/Login", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Account locked due to too many failed attempts. Try again in 15 minutes.");
+        content.Should().NotContain("This account has been disabled");
     }
 
     // A passwordless account cannot sign in (no crash, no successful auth).

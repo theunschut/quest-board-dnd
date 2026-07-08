@@ -31,6 +31,18 @@ internal static class ControllerExtensions
         => controller.RedirectWithMessage(action, "Error", message);
 
     /// <summary>
+    /// Sets TempData["Warning"] and redirects to the given action.
+    /// </summary>
+    internal static IActionResult RedirectWithWarning(this Controller controller, string action, string message)
+        => controller.RedirectWithMessage(action, "Warning", message);
+
+    /// <summary>
+    /// Sets TempData Info and redirects to the given action.
+    /// </summary>
+    internal static IActionResult RedirectWithInfo(this Controller controller, string action, string message)
+        => controller.RedirectWithMessage(action, "Info", message);
+
+    /// <summary>
     /// Collapses the "if (!ModelState.IsValid) return View(model);" shape into a single call.
     /// Returns true and sets <paramref name="result"/> to the invalid-model view when the
     /// model state is invalid; otherwise returns false and leaves <paramref name="result"/> null.

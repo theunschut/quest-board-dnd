@@ -1,0 +1,243 @@
+/* ========================================
+   CONTACTS - CONTACT CARDS
+   ======================================== */
+
+.contacts-page h1 {
+    color: #F4E4BC;
+    font-family: 'Cinzel', serif;
+    text-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+}
+
+.contacts-page .contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    padding: 0.5rem 0;
+}
+
+.contacts-page .contact-card {
+    background: linear-gradient(145deg, rgba(20, 20, 30, 0.95), rgba(30, 30, 40, 0.95));
+    border: 2px solid rgba(255, 193, 7, 0.4);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 193, 7, 0.1);
+    position: relative;
+    cursor: pointer;
+}
+
+.contacts-page .contact-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 193, 7, 0.15), transparent);
+    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+}
+
+.contacts-page .contact-card:hover::before {
+    left: 100%;
+}
+
+.contacts-page .contact-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 2px;
+    background: linear-gradient(135deg, transparent, rgba(255, 193, 7, 0.5), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 2;
+}
+
+.contacts-page .contact-card:hover::after {
+    opacity: 1;
+}
+
+.contacts-page .contact-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: #ffc107;
+    box-shadow: 0 12px 35px rgba(255, 193, 7, 0.5),
+                0 0 40px rgba(255, 193, 7, 0.3),
+                inset 0 0 20px rgba(255, 193, 7, 0.1);
+}
+
+.contacts-page .contact-card:active {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4),
+                0 0 30px rgba(255, 193, 7, 0.25);
+}
+
+.contacts-page .contact-card:focus-within {
+    outline: none;
+    border-color: #ffc107;
+    box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.3),
+                0 12px 35px rgba(255, 193, 7, 0.5);
+}
+
+.contacts-page .contact-card-content {
+    padding: 1.25rem;
+    position: relative;
+    z-index: 3;
+}
+
+.contacts-page .contact-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+}
+
+.contacts-page .contact-card:hover .contact-image {
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.3);
+    transform: scale(1.02);
+}
+
+.contacts-page .contact-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.3s ease;
+}
+
+.contacts-page .contact-card:hover .contact-image img {
+    transform: scale(1.05);
+}
+
+.contacts-page .contact-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.3), rgba(160, 82, 45, 0.3));
+    color: rgba(255, 193, 7, 0.4);
+    transition: all 0.3s ease;
+}
+
+.contacts-page .contact-card:hover .contact-placeholder {
+    color: rgba(255, 193, 7, 0.6);
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.4), rgba(160, 82, 45, 0.4));
+}
+
+.contacts-page .hidden-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(108, 117, 125, 0.95);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.contacts-page .contact-info {
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.contacts-page .contact-card:hover .contact-info {
+    transform: translateY(-2px);
+}
+
+.contacts-page .contact-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #F4E4BC;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7), 0 0 10px rgba(255, 193, 7, 0.3);
+    transition: all 0.3s ease;
+}
+
+.contacts-page .contact-card:hover .contact-name {
+    color: #ffc107;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 193, 7, 0.6);
+}
+
+.contacts-page .contact-town-city {
+    color: #ffc107;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+    transition: all 0.3s ease;
+}
+
+.contacts-page .contact-card:hover .contact-town-city {
+    color: #ffd54f;
+}
+
+.contacts-page .contact-sub-location {
+    color: rgba(244, 228, 188, 0.9);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.contacts-page .contact-card a {
+    text-decoration: none;
+}
+
+.contacts-page .text-center i.fa-3x {
+    color: rgba(255, 193, 7, 0.3);
+}
+
+.contacts-page .text-center h4 {
+    color: #F4E4BC;
+}
+
+.contacts-page .text-center p.text-muted {
+    color: rgba(244, 228, 188, 0.6);
+}
+
+/* Notes list (Details page) */
+.note-item {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .contacts-page .contact-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .contacts-page .contact-card:hover {
+        transform: translateY(-4px) scale(1.01);
+    }
+}
+
+@keyframes contact-card-ripple {
+    0% {
+        transform: scale(0);
+        opacity: 0.6;
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+.contacts-page .contact-card:active::after {
+    animation: contact-card-ripple 0.6s ease-out;
+}

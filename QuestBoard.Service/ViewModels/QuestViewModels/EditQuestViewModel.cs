@@ -9,4 +9,5 @@ public class EditQuestViewModel
     public IList<User> DungeonMasters { get; set; } = [];
     public bool CanEditProposedDates { get; set; }
     public bool HasExistingSignups { get; set; }
+    public bool IsFinalized { get; set; }
 }

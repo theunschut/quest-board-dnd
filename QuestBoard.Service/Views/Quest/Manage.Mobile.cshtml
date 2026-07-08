@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = $"Manage Quest: {Model.Title}";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 @section Styles {
@@ -27,21 +28,16 @@ else
             @* Quest title + CR badge row *@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0 dm-manage-title">@ViewData["Title"]</h5>
-                <span class="badge bg-dark border ms-2">
-                    <i class="fas fa-dice-d20 me-1"></i>CR @Model.ChallengeRating
-                </span>
+                @if (boardType != BoardType.Campaign)
+                {
+                    <span class="badge bg-dark border ms-2">
+                        <i class="fas fa-dice-d20 me-1"></i>CR @Model.ChallengeRating
+                    </span>
+                }
             </div>
 
-            @* TempData error alert *@
-            @if (TempData["Error"] != null)
+            @if (boardType != BoardType.Campaign)
             {
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    @TempData["Error"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            }
-
             @if (Model.IsFinalized)
             {
                 @* === FINALIZED STATE === *@
@@ -122,6 +118,9 @@ else
                 <hr>
 
                 <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary flex-fill">
+                        <i class="fas fa-edit me-1"></i>Edit Quest
+                    </a>
                     <form asp-action="Open" method="post" class="flex-fill">
                         <input type="hidden" name="id" value="@Model.Id" />
                         <button type="submit" class="btn btn-warning w-100"
@@ -371,6 +370,38 @@ else
 
                     </form>
                 }
+            }
+            }
+            @if (boardType == BoardType.Campaign)
+            {
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-secondary flex-fill">
+                        <i class="fas fa-edit me-1"></i>Edit Quest
+                    </a>
+                    @if (!Model.IsClosed)
+                    {
+                        <form asp-action="Close" method="post" class="flex-fill">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-secondary w-100">Close Quest</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="Reopen" method="post" class="flex-fill">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning w-100">Reopen Quest</button>
+                        </form>
+                    }
+                    <a href="#" class="btn btn-danger w-100" onclick="deleteQuest(@Model.Id)">
+                        <i class="fas fa-trash me-1"></i>Delete Quest
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary w-100"
+                            onclick="window.location.reload()">
+                        <i class="fas fa-sync me-1"></i>Refresh Data
+                    </button>
+                </div>
             }
 
         </div>

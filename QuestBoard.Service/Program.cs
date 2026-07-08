@@ -62,6 +62,13 @@ builder.Services.AddIdentity<UserEntity, IdentityRole<int>>(options =>
 .AddEntityFrameworkStores<QuestBoardContext>()
 .AddDefaultTokenProviders();
 
+// Revalidate the security stamp every 5 minutes so a disabled account's active session
+// is force-expired sooner than the 30-minute default; negligible DB load at this scale.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(5);
+});
+
 // Extend the shared "Default" token provider lifespan to 7 days.
 // This affects password-reset, email-confirmation, and change-email tokens uniformly —
 // net-new configuration block (framework default was 1 day, previously unconfigured).
@@ -80,6 +87,13 @@ builder.Services.AddAuthorizationBuilder()
         policy.Requirements.Add(new AdminRequirement()))
     .AddPolicy("SuperAdminOnly", policy =>
         policy.RequireRole("SuperAdmin"));
+
+// Route authorization-policy failures to a real Access Denied page app-wide instead of a 404,
+// so a rejected request (e.g. a non-SuperAdmin hitting an admin-only URL) gets a clear message.
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.AccessDeniedPath = "/Account/AccessDenied";
+});
 
 // Trust X-Forwarded-For from the configured reverse proxy (e.g. Traefik)
 // so RemoteIpAddress reflects the real client instead of the proxy — otherwise every request
@@ -214,6 +228,12 @@ builder.Services.AddScoped<ActiveGroupContextService>();
 builder.Services.AddScoped<IActiveGroupContext>(sp =>
     sp.GetRequiredService<ActiveGroupContextService>());
 
+// IBoardTypeResolver is intentionally separate from IActiveGroupContext — it depends on
+// IGroupService, whose repository chain depends on QuestBoardContext, which itself depends
+// on IActiveGroupContext. Resolving BoardType via ActiveGroupContextService would create a
+// circular DI dependency (QuestBoardContext -> IActiveGroupContext -> IGroupService -> QuestBoardContext).
+builder.Services.AddScoped<IBoardTypeResolver, BoardTypeResolver>();
+
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     // HangfireQuestEmailDispatcher requires IBackgroundJobClient which is only
@@ -331,9 +351,6 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     app.Services.ConfigureDatabase();
 
-    // Seed basic shop data
-    await SeedShopDataAsync(app);
-
     // Register daily session reminder sweep — runs at 09:00 server local time (CET/CEST).
     // Placed after ConfigureDatabase to ensure migrations have run before the job can fire (RESEARCH.md Pitfall 4).
     RecurringJob.AddOrUpdate<DailyReminderJob>(
@@ -363,31 +380,3 @@ if (app.Environment.IsProduction())
 }
 
 app.Run();
-
-static async Task SeedShopDataAsync(WebApplication app)
-{
-    using var scope = app.Services.CreateScope();
-    try
-    {
-        var shopSeedService = scope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IShopSeedService>();
-        var groupService = scope.ServiceProvider.GetRequiredService<IGroupService>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
-
-        // Find first admin/DM user to attribute seed data to
-        var adminUser = await userManager.Users.FirstOrDefaultAsync();
-        if (adminUser != null)
-        {
-            var groups = await groupService.GetAllAsync();
-            foreach (var group in groups)
-            {
-                await shopSeedService.SeedBasicEquipmentAsync(adminUser.Id, group.Id);
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        // Log error but don't stop application startup
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Error seeding shop data");
-    }
-}

@@ -5,6 +5,7 @@ using QuestBoard.Domain.Models.Shop;
 using QuestBoard.Service.ViewModels.QuestViewModels;
 using QuestBoard.Service.ViewModels.ShopViewModels;
 using QuestBoard.Service.ViewModels.CharacterViewModels;
+using QuestBoard.Service.ViewModels.ContactViewModels;
 using QuestBoard.Service.ViewModels.DungeonMasterViewModels;
 
 namespace QuestBoard.Service.Automapper;
@@ -67,11 +68,32 @@ public class ViewModelProfile : Profile
         // CharacterViewModel to Character
         CreateMap<CharacterViewModel, Character>()
             .ForMember(dest => dest.Owner, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.ProfilePicture, opt => opt.Ignore());
 
         // CharacterClass mappings
         CreateMap<CharacterClass, CharacterClassViewModel>()
             .ReverseMap();
+
+        // Contact to ContactViewModel
+        CreateMap<Contact, ContactViewModel>()
+            .ForMember(dest => dest.HasContactImage, opt => opt.MapFrom(src => src.HasContactImage))
+            .ForMember(dest => dest.ContactImageFile, opt => opt.Ignore())
+            .ForMember(dest => dest.CanManage, opt => opt.Ignore());
+
+        // ContactViewModel to Contact
+        CreateMap<ContactViewModel, Contact>()
+            .ForMember(dest => dest.ContactImageData, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedByUser, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Notes, opt => opt.Ignore());
+
+        // ContactNote to ContactNoteViewModel
+        CreateMap<ContactNote, ContactNoteViewModel>();
+
+        // ContactNoteViewModel to ContactNote
+        CreateMap<ContactNoteViewModel, ContactNote>()
+            .ForMember(dest => dest.AuthorName, opt => opt.Ignore());
 
         // Quest to QuestSummaryViewModel (for DM profile quest history)
         CreateMap<Quest, QuestSummaryViewModel>()
