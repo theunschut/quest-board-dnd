@@ -20,7 +20,7 @@ SuperAdmin-only Platform Settings page for the Omphalos integration (URL, shared
 
 ### Shared Secret Input UX
 - **D-03:** The settings page has a **"Generate Secret" button** — server generates a cryptographically random value, shown once in the masked field. SuperAdmin manually copies it into Omphalos's `.env` (e.g. `Sso:Secret`, distinct from Omphalos's own `Jwt:Secret`). No automatic sync between the two apps.
-- **D-04:** No REST API or other server-to-server channel between Quest Board and Omphalos for syncing this secret (or anything else) is in scope. This was raised by the user during discussion and redirected — see Deferred Ideas.
+- **D-04 [informational]:** No REST API or other server-to-server channel between Quest Board and Omphalos for syncing this secret (or anything else) is in scope. This was raised by the user during discussion and redirected — see Deferred Ideas. Nothing to build for this decision — it is satisfied by the absence of such a channel, not by a plan task.
 
 ### Settings Page Naming & Placement
 - **D-05:** The page is a generic **"Integrations"** page under `/platform` (not "Omphalos Integration" by name) — framed as a settings category that could hold future integrations, even though only Omphalos exists today. Exact route, icon, and copy are left to planning/implementation, following the existing `Areas/Platform/Controllers/GroupController.cs` pattern (own nav item, own controller/view under the Platform area).

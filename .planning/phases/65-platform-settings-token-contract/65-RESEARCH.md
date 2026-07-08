@@ -455,17 +455,17 @@ dotnet ef migrations add AddIntegrationSettings --project ../QuestBoard.Reposito
 
 **If this table is empty:** N/A — see entries above. All are low-to-medium risk, cosmetic-or-style-level items; none affect the phase's core correctness (persistence, authorization, blank-preserve guard, or the byte-exact-verification contract design).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the "Test Connection" idea from the original Pitfalls research (a button that round-trips a validation call to Omphalos before the SuperAdmin considers the feature live) be in scope for this phase?**
    - What we know: The original milestone-level `PITFALLS.md` flagged "SuperAdmin configures URL/secret but never tests the connection before DMs try it live" as a UX pitfall, recommending a test-connection action.
    - What's unclear: This would require Quest Board to make an outbound HTTP call to Omphalos, which doesn't exist until Phase 67 ships the SSO endpoint — so a real "test connection" can't functionally work until all three phases are done, making it a poor fit for Phase 65 specifically.
-   - Recommendation: Out of scope for Phase 65 (no SETT-* requirement asks for it, and it can't be meaningfully implemented before Phase 67 exists); flag as a candidate follow-up once all three phases ship, if desired.
+   - RESOLVED: Out of scope for Phase 65 (no SETT-* requirement asks for it, and it can't be meaningfully implemented before Phase 67 exists); flag as a candidate follow-up once all three phases ship, if desired.
 
 2. **Exact route path and page title for the "Integrations" page.**
    - What we know: CONTEXT.md D-05 locks the generic "Integrations" naming/framing; exact route, icon, copy explicitly left to planning.
    - What's unclear: Nothing blocking — this is a pure implementation-detail choice with no research-level ambiguity.
-   - Recommendation: `Areas/Platform/Controllers/IntegrationsController.cs`, default `Index` action at `/platform/Integrations`, matching `GroupController`/`UsersController`'s own `{Controller}/{action}` convention (no custom route needed).
+   - RESOLVED: `Areas/Platform/Controllers/IntegrationsController.cs`, default `Index` action at `/platform/Integrations`, matching `GroupController`/`UsersController`'s own `{Controller}/{action}` convention (no custom route needed).
 
 ## Environment Availability
 

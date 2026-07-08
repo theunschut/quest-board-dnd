@@ -27,7 +27,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 - [ ] **NAV-05**: When integration is disabled or unconfigured, neither the navbar link nor the quest-page buttons appear — no dead/erroring buttons
 - [ ] **NAV-06**: The redirect shows a brief "Opening Omphalos…" loading state rather than an abrupt blank-then-jump transition
 - [ ] **TOKEN-01**: `IIntegrationTokenService` (Domain layer) generates a signed redirect URL given a quest ID, quest title/date, and the current user's Quest Board `UserEntity.Id`
-- [ ] **TOKEN-02**: The HMAC-SHA256 canonical message format (field order, encoding, delimiter, expiry inclusion) is written down as an explicit, unambiguous contract and copied verbatim into both repos' planning docs before either side's implementation starts
+- [ ] **TOKEN-02**: The HMAC-SHA256 canonical message format (field order, encoding, delimiter, expiry inclusion) is written down as an explicit, unambiguous contract in Quest Board's `.planning/` (single canonical copy per D-06, not duplicated into the Omphalos repo) before either side's implementation starts
 - [ ] **TOKEN-03**: Tokens expire 5 minutes (300s) after generation
 - [ ] **TOKEN-04**: The token's identity claim is Quest Board's `UserEntity.Id` (int) — never `Name`, `UserName`, or email
 - [ ] **TOKEN-05**: A `QuestController.LaunchOmphalos(int id)` action generates the signed URL and redirects; returns a graceful response (not a raw error) when integration is disabled; protected by `DungeonMasterOnly` (defense in depth — does not rely solely on the button being hidden)
