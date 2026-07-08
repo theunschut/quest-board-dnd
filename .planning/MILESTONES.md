@@ -1,5 +1,36 @@
 # Milestones — D&D Quest Board
 
+## v7.0 Backlog Cleanup (Shipped: 2026-07-08)
+
+**Phases completed:** 22 phases (43–64), 59 plans, ~141 tasks
+**Timeline:** ~3.1 days (2026-07-04 → 2026-07-08)
+**Files changed:** 190 | **Lines:** +20,746 / -3,579
+
+**Key accomplishments:**
+
+- Fixed the iOS Safari `background-attachment: fixed` mobile background bug via a `body::before` pseudo-element layer, and added the missing "Session Recap Available" badge to the mobile Quest Log — both verified on a real iPhone over LAN, not devtools emulation.
+- Post-finalization voting and waitlist auto-promotion for One-Shot quests: a player can vote Yes (or, per a live scope confirmation, Maybe) on a fully-seated finalized quest and lands on a waitlist ordered by vote-then-recency, with automatic promotion and a single targeted email when a selected player's seat frees up.
+- Dual-image storage backend (original + cropped, zero server-side image processing) and a Cropper.js v2.1.1 client-side crop UI wired into all 10 character/contact/DM-profile upload views — closing issue #78, deferred since v1.0's Phase 8.
+- Closed two real cross-tenant security leaks found mid-milestone: `CharacterEntity`/DM-profile/`PlayerSignup` group-tenant filtering gaps (new `GroupId` column + fail-closed query filters), and a SuperAdmin null-`ActiveGroupId` escape hatch plus a `SelectGroup` IDOR gap that let one tenant's quests leak onto another's board.
+- Added a full NPC/Contacts directory (DM-authored, group-bound, collaborative player notes) mirroring the Characters feature end-to-end, plus a site-wide rename of "Guild Members" to "Characters" across controller, routes, views, CSS, and copy with zero behavior change.
+- Added a `Dead` character status, a quest `Rewards` field, DM editing of finalized quest details (excluding locked-in dates/roster), and opened quest-recap editing to any group member instead of just the assigned DM/Admin.
+- Closed the milestone with a performance pass: Character/Contact/DM-profile list and detail queries stopped eager-loading image `byte[]` data, projecting a lightweight `HasProfilePicture`/`HasContactImage` boolean instead, matching the pattern `QuestRepository` already used for quest pages.
+- Grew from an original 4-phase scope (43–46) to 22 phases via 18 ad-hoc backlog additions folded in through `/gsd-phase` during execution — validating that phase-insertion scales past the "occasional inserted decimal phase" pattern seen in earlier milestones into a primary execution mode.
+
+### Known Deferred Items at Close
+
+- Digest batching for session reminders (EMAIL-04/REMIND-02) — still deferred, same-day quests have never occurred in over a year of operation.
+- `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
+- A pre-existing dead-code bug in `GuildMembersController.Edit`'s `SetAsMainCharacterAsync` demotion guard (predates this milestone, found during Phase 56 verification) — spun off as a separate follow-up task, not fixed in-phase.
+
+### Archive
+
+- `.planning/milestones/v7.0-ROADMAP.md`
+- `.planning/milestones/v7.0-REQUIREMENTS.md`
+- `.planning/milestones/v7.0-phases/` (phases 43–64)
+
+---
+
 ## v6.1 Bugfixes (Shipped: 2026-07-04)
 
 **Phases completed:** 5 phases, 16 plans, 37 tasks
