@@ -4,7 +4,7 @@
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
 **Date:** 2026-07-02
-**Phase:** 35-platform-settings-token-contract
+**Phase:** 65-platform-settings-token-contract
 **Areas discussed:** Token contract fields & replay nonce, Shared secret input UX, Settings page naming & nav placement, Cross-repo contract delivery
 
 ---

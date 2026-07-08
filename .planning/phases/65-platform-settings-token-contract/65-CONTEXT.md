@@ -2,6 +2,7 @@
 
 **Gathered:** 2026-07-02
 **Status:** Ready for planning
+**Re-validated:** 2026-07-08 — after the v7.0 merge into this branch. All decisions (D-01–D-06) confirmed unchanged against current `PROJECT.md`/`REQUIREMENTS.md`; `code_context` below updated with pointers that shifted or improved because of code the merge brought in.
 
 <domain>
 ## Phase Boundary
@@ -55,16 +56,17 @@ SuperAdmin-only Platform Settings page for the Omphalos integration (URL, shared
 ## Existing Code Insights
 
 ### Reusable Assets
-- `QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs` — the shape to follow for the new Integrations settings controller/view (SuperAdmin-only Platform-area CRUD page, one nav item)
-- `WebEncoders.Base64UrlEncode`/`Decode` (`Microsoft.AspNetCore.WebUtilities`) — already used in `AdminController.EditUser`'s email-change-confirmation flow; reuse verbatim for the token contract's encoding (D-02)
+- `QuestBoard.Service/Areas/Platform/Controllers/UsersController.cs` — added by the v7.0 merge (2026-07-08); a lean SuperAdmin-only Platform-area controller (~2K, no member-management CRUD) that's a closer-scoped template for the new Integrations controller than `GroupController.cs`
+- `QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs` — still valid for the general Platform-area/`SuperAdminOnly` shape, but prefer `UsersController.cs` as the template given its closer scope
+- `WebEncoders.Base64UrlEncode`/`Decode` (`Microsoft.AspNetCore.WebUtilities`) — used throughout `AdminController.cs` (password-reset and email-change-confirmation flows); reuse verbatim for the token contract's encoding (D-02)
 
 ### Established Patterns
-- `AdminController.EditUser` (`QuestBoard.Service/Controllers/Admin/AdminController.cs:167`) — blank/unchanged-field guard pattern relevant to SETT-04 (secret field blank preserves existing value)
-- `SuperAdminOnly` policy (`policy.RequireRole("SuperAdmin")`) — apply directly to the new Integrations controller (SETT-07)
+- Blank-preserves-existing-value guard relevant to SETT-04: the closest current analog is `ContactsController.cs:238` / `CharactersController.cs:308` ("otherwise remains unchanged" — blank upload input keeps the prior value), both added by the v6.0/v7.0 merge. `AdminController.EditUser` (`QuestBoard.Service/Controllers/Admin/AdminController.cs:224`, line shifted from the original :167 reference) handles email-change logic, not a masked-field blank-preserve — it is **not** the pattern to copy for SETT-04.
+- `SuperAdminOnly` policy (`policy.RequireRole("SuperAdmin")`) — apply directly to the new Integrations controller (SETT-07); see `UsersController.cs`/`GroupController.cs` for usage
 - Modern card UI pattern (`modern-card`/`modern-card-header`/`modern-card-body`, per root `CLAUDE.md`) — apply to the new Integrations page
 
 ### Integration Points
-- `Areas/Platform/` nav (wherever `GroupController`'s nav entry is wired) — add the new "Integrations" nav item alongside it
+- There is no shared per-page nav list in `Areas/Platform/Views/Shared/_Layout.Platform.cshtml` (desktop) / `_Layout.Platform.Mobile.cshtml` (mobile) — confirmed by inspecting both after the merge. Cross-linking between Platform pages is done via a header button on the source page instead: `UsersController`'s addition wired in a `<a asp-controller="Users" asp-action="Index" asp-area="Platform" class="btn btn-secondary">` button on `Group/Index.cshtml` and `Index.Mobile.cshtml`. Follow the same pattern for the new Integrations page — add a header button to `Group/Index.cshtml`/`Index.Mobile.cshtml`, not a shared-layout nav item.
 - New `IntegrationSettingEntity` + repository + domain service, single-row table — no existing entity to extend
 
 </code_context>
@@ -86,5 +88,6 @@ SuperAdmin-only Platform Settings page for the Omphalos integration (URL, shared
 
 ---
 
-*Phase: 35-platform-settings-token-contract*
+*Phase: 65-platform-settings-token-contract*
 *Context gathered: 2026-07-02*
+*Re-validated post-v7.0-merge: 2026-07-08*
