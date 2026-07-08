@@ -3,7 +3,7 @@ status: resolved
 phase: 46-client-side-crop-ui
 source: [46-VERIFICATION.md]
 started: 2026-07-07T22:35:00Z
-updated: 2026-07-07T22:40:00Z
+updated: 2026-07-08T00:30:00Z
 ---
 
 ## Current Test
@@ -18,26 +18,26 @@ result: PASSED — user confirmed D-03 (DM profile shows cropped image) is the c
 
 ### 2. Real touchscreen device: confirm the crop frame responds correctly to drag and pinch gestures
 expected: Smooth, precise response to touch gestures with no missed input.
-result: DEFERRED — device access not available. User elected to close Phase 46 now and carry this forward as a tracked, known gap rather than block phase completion.
+result: PASSED — verified by the user on a real iPhone at v7.0 milestone close (2026-07-08), after device access became available.
 
 ### 3. Real phone-camera EXIF orientation: upload a real phone-camera portrait photo through any of the 6 crop-enabled forms on a real iOS Safari device
 expected: Photo displays with correct orientation everywhere the cropped/original image is shown.
-result: DEFERRED — same reason as #2.
+result: PASSED — same verification pass as #2.
 
 ### 4. Real iOS Safari canvas-memory ceiling: upload a full-resolution (12MP+) camera photo through the crop flow on real iOS Safari
 expected: Canvas renders and remains interactive; no crash, no blank canvas.
-result: DEFERRED — same reason as #2.
+result: PASSED — same verification pass as #2.
 
 ## Summary
 
 total: 4
-passed: 1
+passed: 4
 issues: 0
 pending: 0
 skipped: 0
 blocked: 0
-deferred: 3
+deferred: 0
 
 ## Gaps
 
-- Real-device verification (touch gestures, EXIF orientation, iOS Safari canvas-memory ceiling) remains open, carried forward from this phase per user decision (2026-07-07). Not a code defect — the implementation (createImageBitmap EXIF correction, 2400px downscale-before-crop, Cropper.js v2 pointer-based touch handling) exists and is unit-exercised; only real-device confirmation is outstanding. Revisit once device access (the Phase-43 iPhone over LAN, or equivalent) is available.
+None — all four items passed. Real-device verification (touch gestures, EXIF orientation, iOS Safari canvas-memory ceiling), originally deferred on 2026-07-07 for lack of device access, was completed by the user on a real iPhone before v7.0 milestone close (2026-07-08).

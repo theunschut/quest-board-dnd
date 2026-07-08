@@ -192,3 +192,53 @@
 - Sessions: 1 extended session covering Phase 42 planning through execution through milestone close
 - Model mix: opus (planning), sonnet (research/execution/verification/UI/plan-checking) — consistent with the project's "balanced" model profile
 - Notable: fastest milestone yet by wall-clock time (~1 day, 2026-07-03 22:30 → 2026-07-04 17:51) across 5 phases, 16 plans
+
+---
+
+## Milestone: v7.0 — Backlog Cleanup
+
+**Shipped:** 2026-07-08
+**Phases:** 22 (43–64) | **Plans:** 59
+**Timeline:** ~3.1 days (2026-07-04 22:30 → 2026-07-08 00:21)
+
+### What Was Built
+
+1. Two mobile parity fixes — the iOS Safari `background-attachment: fixed` scroll bug (via a `body::before` pseudo-element pattern) and a missing Session Recap badge on the mobile Quest Log (Phase 43)
+2. Post-finalization vote flexibility — waitlist auto-promotion, centralized `WaitlistOrdering`, and a single-recipient promotion email, with a live-verified scope extension letting Maybe also fill an open seat (Phase 44)
+3. Dual-image storage (original + cropped, zero server-side image processing) and a Cropper.js v2.1.1 client-side crop UI applied to every character/DM-profile upload field — closing issue #78, deferred since v1.0 (Phases 45–46)
+4. 18 ad-hoc backlog phases folded in during execution (47–64) — an NPC/Contacts directory, a full Guild Members → Characters rename, a quest Rewards field, a Dead character status, and a long tail of bug fixes
+5. Two real cross-tenant security leaks found and closed mid-milestone: Character/DM-profile/PlayerSignup group-tenant filtering gaps (Phase 49) and a SuperAdmin null-ActiveGroupId escape hatch plus a SelectGroup IDOR gap (Phase 55)
+6. A closing performance pass — Character/Contact/DM-profile list queries stopped eager-loading image bytes, matching the pattern QuestRepository already used (Phase 62)
+
+### What Worked
+
+- **PROJECT.md kept current phase-by-phase, not batched at milestone close:** every phase's Validated-section writeup and Key Decisions rows were added as part of that phase's own doc-update step, not deferred. By the time this milestone closed, PROJECT.md needed only a header rewrite, an LOC-stats update, and one Active-item removal — no retroactive reconstruction of 22 phases' worth of decisions.
+- **Ad-hoc phase insertion via `/gsd-phase` scaled cleanly to 18 extra phases:** the milestone's original 4-phase scope (43–46) grew to 22 phases without ever needing a roadmap restructure — each new phase just depended on the previous one and got appended, letting genuinely independent bug reports and feature requests get folded in as they surfaced instead of queued for a future milestone.
+- **User-confirmed scope extensions handled as first-class deviations, not silent reinterpretation:** Phase 44's Maybe-can-fill-a-seat behavior and Phase 46's DM-profile-shows-cropped decision were both live disagreements between shipped behavior and the original requirement wording, resolved by asking the user directly mid-checkpoint and then updating ROADMAP.md/REQUIREMENTS.md wording to match — not by either silently shipping the stricter reading or blocking on it.
+- **Deferring a verification checkpoint (device access) instead of blocking the phase:** Phase 46's real-device touch/EXIF/canvas-memory checks were explicitly recorded as an open, tracked gap rather than forcing the phase to wait indefinitely for hardware access — and the user closed that gap independently before milestone close, exactly as the deferral was designed to allow.
+
+### What Was Inefficient
+
+- **ROADMAP.md's summary bullet list and Progress table drifted out of sync with Phase Details, again:** Phases 61–64 had full `### Phase N` detail sections and SUMMARY.md files on disk, but were missing from the v7.0 `<details>` bullet list and the `## Progress` table — the same class of structural drift v6.1's retrospective already flagged (Key Lesson #1: "ROADMAP.md's structural integrity needs an explicit check, not just visual review"). It recurred here across 4 phases instead of 1, caught only at milestone-close time by cross-referencing the Phase Details section against the summary table by hand.
+- **REQUIREMENTS.md's traceability table stayed "Pending" for 13 of 14 requirements despite all being shipped:** this is the third consecutive milestone (v5.0, v6.0, and now v7.0) where a requirement-tracking table drifted from actual phase-completion status and was only reconciled at milestone close, despite v5.0's retrospective explicitly naming this failure mode and recommending a mechanical check rather than relying on memory.
+- **STATE.md's `current_phase`/`stopped_at` fields lagged the real state by 2 phases:** frontmatter said "Phase 63, stopped at Phase 64 context gathered" when Phases 63 and 64 were both already fully executed with SUMMARY.md files on disk — the session-continuity metadata wasn't updated as execution continued past its last checkpoint.
+- **Git history for this milestone was hard to reconstruct forensically:** the local git tooling proxy (rtk) silently returned stale/filtered `git log` output during the completion workflow (missing the branch tip and recent commits), requiring a fallback to `rtk proxy git ...` for raw output before commit-range stats could be trusted.
+
+### Patterns Established
+
+- **`body::before` pseudo-element (not `background-attachment: fixed`) for full-viewport fixed backgrounds** — sidesteps a known WebKit-iOS compositing bug
+- **Authorization checks must validate the TARGET resource's group, not just the caller's role** — the recurring root cause behind both Phase 49 and Phase 55's security fixes
+- **Mobile parity enforced by pairing desktop+mobile edits into the same task**, not merely the same wave or phase — applied proactively in Phase 61 after Phases 43 and 54 both needed backfill phases for the same gap
+- **A code-review "critical" finding must be empirically verified against the real app/DOM before being treated as a blocker** — Phase 61's reviewer's plausible-but-wrong static reading was caught by a live DOM test, not by re-deriving the same reasoning
+
+### Key Lessons
+
+1. **A written-down lesson isn't a fix until it's enforced — this is now a 3-milestone pattern, not a 1-off.** REQUIREMENTS.md traceability drift was named as a specific failure mode in v5.0's retrospective and recurred in both v6.0 and v7.0; ROADMAP.md structural drift was named in v6.1's retrospective and recurred in v7.0 across more phases than before. Both lessons independently point to the same fix: a mechanical consistency check (diffing traceability-table status against phase-completion status, and diffing the roadmap summary/progress-table phase list against `## Phase Details` section headers) run at each phase close, not deferred to milestone close where the drift has had 20+ phases to compound.
+2. **Session-continuity metadata (STATE.md's `current_phase`/`stopped_at`) needs to be updated at the same cadence as phase completion, not just at session boundaries** — it fell 2 phases behind here with no functional harm (ROADMAP.md and SUMMARY.md files were the actual source of truth), but it meant the milestone-close workflow had to reconcile actual progress from primary artifacts instead of trusting the state file at face value.
+3. **When a local tool proxy silently filters or caches command output (as rtk did for `git log` during this close), verify suspicious results with the tool's own raw/debug escape hatch (`rtk proxy git ...`) before trusting derived stats** — the alternative is presenting fabricated-looking numbers (a 1.5-hour "milestone" instead of 3.1 days) with high confidence.
+4. **Deferring a blocking verification item with an explicit, tracked gap (rather than forcing a wait) lets the phase close on schedule while still leaving a clear path to closure** — Phase 46's real-device gap was resolved independently by the user before milestone close specifically because it was recorded as "deferred, not skipped."
+
+### Cost Observations
+
+- Sessions: multiple across 4 days, plus a final milestone-close session
+- Notable: largest milestone by phase count so far (22 phases vs. v5.0's previous high of 12) — driven almost entirely by ad-hoc backlog folding (18 of 22 phases had no original REQUIREMENTS.md mapping), validating that the `/gsd-phase` insertion mechanism scales past the "few inserted decimal phases" pattern seen in earlier milestones into a primary execution mode
