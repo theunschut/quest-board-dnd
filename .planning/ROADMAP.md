@@ -171,7 +171,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   2. A single rendering service is the only place Markdown-to-HTML conversion happens — the service is designed to be called identically by MVC page views and by Razor email components, with no separate or duplicated parsing logic anywhere in the codebase
   3. A blank line (not a single Enter) is required to start a new paragraph, proven by unit tests asserting strict CommonMark paragraph behavior on multi-line input
 **Plans**: 1 plan
-- [ ] 65-01-PLAN.md — Build and unit-test the shared Markdig + HtmlSanitizer rendering service (IMarkdownService, single pipeline, dual web/email sanitizer profiles, AddSingleton registration)
+- [x] 65-01-PLAN.md — Build and unit-test the shared Markdig + HtmlSanitizer rendering service (IMarkdownService, single pipeline, dual web/email sanitizer profiles, AddSingleton registration)
 
 ### Phase 66: Quest Description Editor & Rendering (Proof-of-Concept)
 **Goal**: A user can write formatted Quest Description text with a Markdown toolbar and preview, and see it rendered as formatted HTML everywhere it's displayed — including the Quest Finalized email — proving the full write-to-read-to-email loop for the milestone's riskiest cross-cutting field before mechanically repeating the pattern elsewhere.
@@ -319,7 +319,7 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 62. Stop eagerly loading image bytes in list/entity queries | v7.0 | 3/3 | Complete    | 2026-07-07 |
 | 63. Allow any player to edit quest recaps | v7.0 | 1/1 | Complete    | 2026-07-07 |
 | 64. Preserve line breaks in description text on mobile views | v7.0 | 2/2 | Complete    | 2026-07-07 |
-| 65. Markdown Rendering Foundation | v8.0 | 0/1 | Not started | - |
+| 65. Markdown Rendering Foundation | v8.0 | 1/1 | Complete   | 2026-07-09 |
 | 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 0/? | Not started | - |
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 0/? | Not started | - |
 | 68. Character Fields | v8.0 | 0/? | Not started | - |
