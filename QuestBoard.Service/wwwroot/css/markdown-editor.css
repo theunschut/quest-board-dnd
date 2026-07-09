@@ -1,0 +1,15 @@
+/* EasyMDE's own toolbar carries its complete visual styling -- this file does not restyle it.
+   It only fixes two things EasyMDE's defaults get wrong for this app's mobile requirements:
+   touch targets below the 44px accessibility floor, and toolbar chrome that doesn't leave room
+   for all 7 buttons to fit one row on a 320px-wide viewport. Sizing/fit only -- no color,
+   border, or icon changes. */
+
+.editor-toolbar button {
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+}
+
+.editor-toolbar {
+    padding: 0;
+}
