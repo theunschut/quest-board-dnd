@@ -163,88 +163,112 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 ## Phase Details
 
 ### Phase 65: Markdown Rendering Foundation
+
 **Goal**: A single, secure, well-tested Markdown-to-HTML rendering pipeline exists that every later phase reuses for both page views and HTML emails — no live user-facing views change yet.
 **Depends on**: Nothing (first phase of v8.0; builds on the shipped v7.0 codebase)
 **Requirements**: RENDER-01, RENDER-02, RENDER-03
 **Success Criteria** (what must be TRUE):
+
   1. Markdown input is converted to sanitized HTML that blocks script execution and `javascript:`-scheme links, proven by unit tests covering `<script>` tags, `javascript:` URLs inside `[text](url)` syntax, and generic-attribute injection payloads
   2. A single rendering service is the only place Markdown-to-HTML conversion happens — the service is designed to be called identically by MVC page views and by Razor email components, with no separate or duplicated parsing logic anywhere in the codebase
   3. A blank line (not a single Enter) is required to start a new paragraph, proven by unit tests asserting strict CommonMark paragraph behavior on multi-line input
+
 **Plans**: 1 plan
+
 - [x] 65-01-PLAN.md — Build and unit-test the shared Markdig + HtmlSanitizer rendering service (IMarkdownService, single pipeline, dual web/email sanitizer profiles, AddSingleton registration)
 
 ### Phase 66: Quest Description Editor & Rendering (Proof-of-Concept)
+
 **Goal**: A user can write formatted Quest Description text with a Markdown toolbar and preview, and see it rendered as formatted HTML everywhere it's displayed — including the Quest Finalized email — proving the full write-to-read-to-email loop for the milestone's riskiest cross-cutting field before mechanically repeating the pattern elsewhere.
 **Depends on**: Phase 65
 **Requirements**: EDITOR-01, EDITOR-02, EDITOR-03, EDITOR-04, EDITOR-05, EDITOR-06, QUESTMD-01
 **Success Criteria** (what must be TRUE):
+
   1. A user editing Quest Description (Create/Edit/Follow-Up forms, desktop or mobile) sees a formatting toolbar (Bold, Italic, Heading, List, Link, Blockquote) that inserts Markdown syntax around the current selection or at the cursor
   2. A user can toggle Preview to see a rendered-HTML view of their Quest Description that exactly matches how it displays once saved, with the rest of the toolbar disabled (not just visually greyed out) while Preview is active
   3. An inline hint next to the editor explains that a blank line starts a new paragraph
   4. The toolbar and editor behave identically on desktop and mobile, with icon-only 44px+ touch targets fitting in one row with no overflow or scroll mechanism
   5. Quest Description renders as formatted HTML on the quest board card, Quest Details, Quest Manage, and in the Quest Finalized email
-**Plans**: 7 plans
-- [ ] 66-01-PLAN.md — Domain plain-text extraction (AngleSharp) + `Html.Markdown()` read helper
-- [ ] 66-02-PLAN.md — `POST /markdown/preview` endpoint + header-antiforgery integration test
-- [ ] 66-03-PLAN.md — Quest Finalized email renders Description as HTML (images stripped)
-- [ ] 66-04-PLAN.md — Shared editor assets: EasyMDE init, CSS, partial, FA v4-shim, tooltip init
+
+**Plans**: 4/7 plans executed
+
+- [x] 66-01-PLAN.md — Domain plain-text extraction (AngleSharp) + `Html.Markdown()` read helper
+- [x] 66-02-PLAN.md — `POST /markdown/preview` endpoint + header-antiforgery integration test
+- [x] 66-03-PLAN.md — Quest Finalized email renders Description as HTML (images stripped)
+- [x] 66-04-PLAN.md — Shared editor assets: EasyMDE init, CSS, partial, FA v4-shim, tooltip init
 - [ ] 66-05-PLAN.md — Wire the EasyMDE editor into all 6 Quest Description write forms
 - [ ] 66-06-PLAN.md — Render Description on Details/Manage (HTML) + board card (plain text)
 - [ ] 66-07-PLAN.md — Manual UI verification checkpoint (desktop + 320px mobile + email)
+
 **UI hint**: yes
 
 ### Phase 67: Remaining Quest Fields & Email Templates
+
 **Goal**: The Markdown editor and rendering pattern proven on Quest Description is mechanically applied to Quest Rewards and Quest Recap, and all 3 quest-related email templates render Quest Description as formatted HTML.
 **Depends on**: Phase 66
 **Requirements**: QUESTMD-02, QUESTMD-03, EMAILMD-01
 **Success Criteria** (what must be TRUE):
+
   1. A user editing Quest Rewards sees the same Markdown editor/toolbar/preview as Quest Description, and Rewards renders as formatted HTML on Quest Details and the QuestLog
   2. A user editing a Quest Recap (via the EditRecap form) sees the same Markdown editor, and the Recap renders as formatted HTML on Quest Details and the QuestLog
   3. The Quest Finalized, Session Reminder, and Waitlist Promoted emails all render Quest Description as formatted HTML, not raw Markdown syntax
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 68: Character Fields
+
 **Goal**: A user can write and view formatted Character Description and Backstory text.
 **Depends on**: Phase 66
 **Requirements**: CHARMD-01, CHARMD-02
 **Success Criteria** (what must be TRUE):
+
   1. A user editing Character Description or Backstory sees the same Markdown editor/toolbar/preview established in Phase 66
   2. Character Description and Backstory render as formatted HTML on Character Details (desktop and mobile)
   3. Existing multi-line Character Description/Backstory text displays without doubled spacing — the old line-break-preserving CSS is removed from the rendered-output containers as a companion edit
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 69: Contact Fields
+
 **Goal**: A user can write and view formatted Contact Description and Notes, with each note's formatting staying independent of every other note.
 **Depends on**: Phase 66
 **Requirements**: CONTACTMD-01, CONTACTMD-02
 **Success Criteria** (what must be TRUE):
+
   1. A user editing Contact Description sees the Markdown editor, and Description renders as formatted HTML on Contact Details and Index
   2. A user editing a Contact Note sees the Markdown editor, and each note renders independently as formatted HTML — one author's unclosed formatting never bleeds into another author's note
   3. Existing multi-line Contact text displays without doubled spacing — the old line-break-preserving CSS is removed from the rendered-output containers as a companion edit
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 70: DM Profile & Shop Fields
+
 **Goal**: A user can write and view formatted DM Profile Bio and Shop Item Description text.
 **Depends on**: Phase 66
 **Requirements**: PROFILEMD-01, PROFILEMD-02
 **Success Criteria** (what must be TRUE):
+
   1. A user editing DM Profile Bio sees the Markdown editor, and Bio renders as formatted HTML on the DM Profile page
   2. A user editing Shop Item Description sees the Markdown editor, and Description renders as formatted HTML on Shop Index, Details, and Manage
   3. Existing multi-line Bio/Description text displays without doubled spacing — the old line-break-preserving CSS is removed from the rendered-output containers as a companion edit
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 71: Email-Safety Hardening
+
 **Goal**: Markdown-formatted Quest Description content displays correctly and completely — not broken, missing, or clipped — when the 3 quest email templates are opened in real email clients.
 **Depends on**: Phase 67
 **Requirements**: EMAILMD-02, EMAILMD-03
 **Success Criteria** (what must be TRUE):
+
   1. A recipient opening the Quest Finalized, Session Reminder, or Waitlist Promoted email in real Outlook desktop sees visible bullets and intact heading/blockquote styling for Markdown-structured Quest Description content
   2. A recipient opening the same emails in real Gmail webmail sees the same correctly formatted content
   3. A recipient can read the full quest description even when formatted with headings, lists, or blockquotes — content is not silently clipped by a fixed-height card, resolved via an explicit layout decision (truncate-with-link or remove the fixed height)
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -327,7 +351,7 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 63. Allow any player to edit quest recaps | v7.0 | 1/1 | Complete    | 2026-07-07 |
 | 64. Preserve line breaks in description text on mobile views | v7.0 | 2/2 | Complete    | 2026-07-07 |
 | 65. Markdown Rendering Foundation | v8.0 | 1/1 | Complete    | 2026-07-09 |
-| 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 0/7 | Not started | - |
+| 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 4/7 | In Progress|  |
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 0/? | Not started | - |
 | 68. Character Fields | v8.0 | 0/? | Not started | - |
 | 69. Contact Fields | v8.0 | 0/? | Not started | - |
