@@ -128,6 +128,10 @@ None - no external service configuration required. This phase adds no new enviro
 ## Known Stubs
 None — this phase is pure Domain-layer plumbing with no UI wiring; there is no partially-wired data path to stub.
 
+## Self-Check: PASSED
+
+All 6 claimed files verified present on disk; all 4 claimed commit hashes (8f52a3d, 16f4bdc, b6269e8, 442fac9) verified present in git log.
+
 ---
 *Phase: 65-markdown-rendering-foundation*
 *Completed: 2026-07-09*
