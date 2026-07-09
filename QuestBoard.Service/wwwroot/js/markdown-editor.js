@@ -7,6 +7,11 @@
 // to the server so Preview renders through the exact same sanitizer/parser as the saved output
 // (no second, client-side Markdown parser) -- see /markdown/preview.
 function initMarkdownEditor(textarea, antiforgeryToken) {
+    // Tracks the most recently issued preview request per editor instance, so an
+    // earlier-issued-but-later-resolving response (normal network jitter, or a retry after a
+    // failed request) can't overwrite a newer preview with stale content.
+    let latestRequestId = 0;
+
     return new EasyMDE({
         element: textarea,
         // Font Awesome 6 is already loaded app-wide (plus its v4-shim for EasyMDE's default
@@ -18,6 +23,8 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
         // for the Blockquote button; "blockquote" is not recognized and silently renders nothing.
         toolbar: ["bold", "italic", "heading", "unordered-list", "link", "quote", "preview"],
         previewRender: function (plainText, previewElement) {
+            const requestId = ++latestRequestId;
+
             fetch('/markdown/preview', {
                 method: 'POST',
                 headers: {
@@ -30,10 +37,14 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
                     return response.text();
                 })
                 .then(function (html) {
-                    previewElement.innerHTML = html;
+                    if (requestId === latestRequestId) {
+                        previewElement.innerHTML = html;
+                    }
                 })
                 .catch(function () {
-                    previewElement.innerHTML = '<p class="text-danger">Preview failed to load.</p>';
+                    if (requestId === latestRequestId) {
+                        previewElement.innerHTML = '<p class="text-danger">Preview failed to load.</p>';
+                    }
                 });
 
             // EasyMDE renders this return value synchronously while the fetch above is still in
