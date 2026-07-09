@@ -308,4 +308,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const toast = new bootstrap.Toast(toastElement);
         toast.show();
     });
+
+    // Initialize Bootstrap tooltips (e.g. the Markdown paragraph-break hint) app-wide -- Bootstrap
+    // does not auto-activate tooltips, they require this one-time explicit init per element.
+    const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipElements.forEach(function(tooltipElement) {
+        new bootstrap.Tooltip(tooltipElement);
+    });
 });
