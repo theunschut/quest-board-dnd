@@ -24,7 +24,7 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 
 ### Quest Fields
 
-- [ ] **QUESTMD-01**: Quest Description supports the Markdown editor on Create/Edit/Follow-Up forms (desktop + mobile) and renders as formatted HTML wherever displayed (board card, Details, Manage)
+- [x] **QUESTMD-01**: Quest Description supports the Markdown editor on Create/Edit/Follow-Up forms (desktop + mobile) and renders as formatted HTML wherever displayed (board card, Details, Manage)
 - [ ] **QUESTMD-02**: Quest Rewards supports the Markdown editor and renders as formatted HTML on Details/QuestLog
 - [ ] **QUESTMD-03**: Quest Recap (via the EditRecap form) supports the Markdown editor and renders as formatted HTML on Details/QuestLog
 
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EDITOR-04 | Phase 66 | Pending |
 | EDITOR-05 | Phase 66 | Pending |
 | EDITOR-06 | Phase 66 | Pending |
-| QUESTMD-01 | Phase 66 | Pending |
+| QUESTMD-01 | Phase 66 | Complete |
 | QUESTMD-02 | Phase 67 | Pending |
 | QUESTMD-03 | Phase 67 | Pending |
 | CHARMD-01 | Phase 68 | Pending |
@@ -104,6 +104,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EMAILMD-03 | Phase 71 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 21 total
 - Mapped to phases: 21/21 ✓
 - Unmapped: 0
