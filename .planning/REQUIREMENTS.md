@@ -81,33 +81,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RENDER-01 | TBD | Pending |
-| RENDER-02 | TBD | Pending |
-| RENDER-03 | TBD | Pending |
-| EDITOR-01 | TBD | Pending |
-| EDITOR-02 | TBD | Pending |
-| EDITOR-03 | TBD | Pending |
-| EDITOR-04 | TBD | Pending |
-| EDITOR-05 | TBD | Pending |
-| EDITOR-06 | TBD | Pending |
-| QUESTMD-01 | TBD | Pending |
-| QUESTMD-02 | TBD | Pending |
-| QUESTMD-03 | TBD | Pending |
-| CHARMD-01 | TBD | Pending |
-| CHARMD-02 | TBD | Pending |
-| CONTACTMD-01 | TBD | Pending |
-| CONTACTMD-02 | TBD | Pending |
-| PROFILEMD-01 | TBD | Pending |
-| PROFILEMD-02 | TBD | Pending |
-| EMAILMD-01 | TBD | Pending |
-| EMAILMD-02 | TBD | Pending |
-| EMAILMD-03 | TBD | Pending |
+| RENDER-01 | Phase 65 | Pending |
+| RENDER-02 | Phase 65 | Pending |
+| RENDER-03 | Phase 65 | Pending |
+| EDITOR-01 | Phase 66 | Pending |
+| EDITOR-02 | Phase 66 | Pending |
+| EDITOR-03 | Phase 66 | Pending |
+| EDITOR-04 | Phase 66 | Pending |
+| EDITOR-05 | Phase 66 | Pending |
+| EDITOR-06 | Phase 66 | Pending |
+| QUESTMD-01 | Phase 66 | Pending |
+| QUESTMD-02 | Phase 67 | Pending |
+| QUESTMD-03 | Phase 67 | Pending |
+| CHARMD-01 | Phase 68 | Pending |
+| CHARMD-02 | Phase 68 | Pending |
+| CONTACTMD-01 | Phase 69 | Pending |
+| CONTACTMD-02 | Phase 69 | Pending |
+| PROFILEMD-01 | Phase 70 | Pending |
+| PROFILEMD-02 | Phase 70 | Pending |
+| EMAILMD-01 | Phase 67 | Pending |
+| EMAILMD-02 | Phase 71 | Pending |
+| EMAILMD-03 | Phase 71 | Pending |
 
 **Coverage:**
 - v1 requirements: 21 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 21 ⚠️ (expected — filled in by roadmap creation)
+- Mapped to phases: 21/21 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after initial definition*
+*Last updated: 2026-07-09 after roadmap creation (v8.0, Phases 65–71)*

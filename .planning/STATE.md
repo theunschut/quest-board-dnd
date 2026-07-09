@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-07-09T06:20:26.759Z"
 last_activity: 2026-07-09
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08 — v7.0 milestone close)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Planning next milestone — run `/gsd:new-milestone`
+**Current focus:** Phase 65 — Markdown Rendering Foundation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-09 — Milestone v8.0 started
+Phase: 65 of 71 (Markdown Rendering Foundation)
+Plan: — (not yet planned)
+Status: Roadmap created — ready to plan Phase 65
+Last activity: 2026-07-09 — ROADMAP.md and REQUIREMENTS.md traceability written for v8.0 (Phases 65–71)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -39,27 +41,28 @@ Last activity: 2026-07-09 — Milestone v8.0 started
 **Recent Trend:**
 
 - v7.0 shipped in ~3.1 days across 22 phases, 59 plans — largest milestone by phase count yet, driven by a long tail of ad-hoc backlog phases (47–64) folded in during execution. See `.planning/RETROSPECTIVE.md` for details.
+- v8.0 roadmapped as 7 phases (65–71), continuing numbering from v7.0's last phase (64). No velocity data yet — planning not yet started.
 
 ## Accumulated Context
 
 ### Decisions
 
-v7.0's full decision log (55+ entries across Phases 43–64) has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v7.0-ROADMAP.md` Milestone Summary for the consolidated view.
-
-- v7.0 Backlog Cleanup milestone shipped 2026-07-08 (22 phases: 43–64, 59 plans) and archived to `.planning/milestones/v7.0-ROADMAP.md` / `v7.0-REQUIREMENTS.md`.
-- Phase 46's real-device crop-UI verification (touch/EXIF/canvas-memory), deferred at phase close for lack of device access, was completed by the user on a real iPhone before milestone close — all checks passed, no longer an open gap.
+- v8.0 roadmap locks the researcher-recommended sequencing: Foundation (65, no user-visible change) → Quest Description proof-of-concept (66, builds the shared editor + retires the email cross-cutting risk early) → mechanical field-migration phases (67 Quest Rewards/Recap + remaining emails, 68 Character, 69 Contact, 70 DM Profile/Shop) → Email-Safety Hardening last (71, a visual-design decision needing live Outlook/Gmail verification, deliberately not bundled into the proof-of-concept).
+- Stack locked by research: Markdig 1.3.2 + HtmlSanitizer (Ganss.Xss) 9.0.892 server-side, EasyMDE 2.21.0 client-side (CDN + SRI, matching the existing Cropper.js precedent). Preview toggle resolved in favor of a server round-trip (`POST /markdown/preview`) over a second client-side parser, to guarantee preview output is byte-identical to saved output by construction.
+- EMAILMD-01 (all 3 quest email templates render Quest Description as HTML) is fully satisfied only at Phase 67, not Phase 66 — Phase 66 wires only Quest Finalized (the proof-of-concept); Phase 67 completes Session Reminder and Waitlist Promoted.
+- v7.0's full decision log (55+ entries across Phases 43–64) has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v7.0-ROADMAP.md` Milestone Summary for the consolidated view.
 
 ### Roadmap Evolution
 
-v7.0's roadmap grew from its original 4 phases (43–46) to 22 phases (43–64) via 18 ad-hoc additions folded in through `/gsd-phase` during execution. Full evolution history archived in `.planning/milestones/v7.0-ROADMAP.md`.
+v8.0 roadmap created 2026-07-09 from `.planning/REQUIREMENTS.md` (21 v1 requirements) and `.planning/research/SUMMARY.md`. 7 phases (65–71), 100% requirement coverage, no orphans. v7.0's roadmap grew from its original 4 phases (43–46) to 22 phases (43–64) via 18 ad-hoc additions — full evolution history archived in `.planning/milestones/v7.0-ROADMAP.md`.
 
 ### Pending Todos
 
-None — v7.0 fully shipped. Next: run `/gsd:new-milestone` to scope the next milestone.
+None captured yet for v8.0.
 
 ### Blockers/Concerns
 
-None open for a specific milestone. Carried forward, still unresolved:
+None open for v8.0 yet. Carried forward from prior milestones, still unresolved:
 
 - `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
 - `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` appears to be dead code (Platform area's `_ViewStart.cshtml` never selects it) — discovered during Phase 42 research, deliberately left unfixed as out-of-scope for that phase. See PROJECT.md Known Issues.
@@ -67,7 +70,7 @@ None open for a specific milestone. Carried forward, still unresolved:
 
 ## Deferred Items
 
-Items acknowledged and carried forward across milestone closes. Issue #78 (profile picture crop) was delivered by v7.0 and is no longer deferred.
+Items acknowledged and carried forward across milestone closes.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
@@ -77,11 +80,11 @@ Items acknowledged and carried forward across milestone closes. Issue #78 (profi
 
 ## Session Continuity
 
-Last session: 2026-07-08T00:30:00.000Z
-Stopped at: v7.0 milestone archived
-Next step: Run `/gsd:new-milestone` to scope the next milestone
+Last session: 2026-07-09T06:20:26.759Z
+Stopped at: v8.0 ROADMAP.md and REQUIREMENTS.md traceability written (Phases 65–71, 21/21 requirements mapped)
+Resume file: None
 
 ## Operator Next Steps
 
-- Review `.planning/PROJECT.md` "Next Milestone Goals" for carried-forward candidates
-- Run `/gsd:new-milestone` to start requirements gathering for the next milestone
+- Review `.planning/ROADMAP.md` v8.0 section (Phases 65–71) for approval
+- Run `/gsd:plan-phase 65` to begin planning the Markdown Rendering Foundation phase
