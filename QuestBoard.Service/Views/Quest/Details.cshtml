@@ -2,6 +2,7 @@
 @using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
+@using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.CalendarViewModels
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @model PlayerSignup
@@ -28,7 +29,7 @@
                     }
                 </div>
                 <div class="card-body modern-card-body">
-                    <p class="lead" style="white-space: pre-wrap;">@Model.Quest?.Description</p>
+                    @Html.Markdown(Model.Quest?.Description)
 
                     @if (!string.IsNullOrWhiteSpace(Model.Quest?.Rewards))
                     {
