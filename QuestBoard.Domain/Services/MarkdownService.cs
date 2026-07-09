@@ -126,7 +126,16 @@ internal class MarkdownService : IMarkdownService
         // "<h1>Foo</h1><p>Bar</p>".TextContent would be "FooBar", not "Foo Bar".
         var parts = document.Body!.Children
             .Select(el => el.TextContent.Trim())
-            .Where(t => !string.IsNullOrEmpty(t));
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToList();
+
+        // RenderToHtml's pathological-nesting guard falls back to bare HTML-encoded text with no
+        // wrapping element at all, so parsing that fallback yields zero element children here --
+        // fall back to the parsed document's raw text content instead of silently returning "".
+        if (parts.Count == 0)
+        {
+            return WhitespaceRun.Replace(document.Body.TextContent, " ").Trim();
+        }
 
         var joined = string.Join(" ", parts);
 

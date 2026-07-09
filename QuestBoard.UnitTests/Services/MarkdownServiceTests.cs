@@ -184,4 +184,18 @@ public class MarkdownServiceTests
         plainText.Should().NotContain("<");
         plainText.Should().NotContain("*");
     }
+
+    [Fact]
+    public void ExtractPlainText_DeeplyNestedInput_ReturnsFallbackEncodedTextInsteadOfEmpty()
+    {
+        // When RenderToHtml's nesting-depth guard trips, it returns bare HTML-encoded text with no
+        // wrapping element, which parses to zero Body.Children -- ExtractPlainText must still
+        // surface that text via Body.TextContent rather than silently returning "".
+        var markdown = new string('>', 200) + " deeply nested";
+
+        var plainText = Service.ExtractPlainText(markdown);
+
+        plainText.Should().Contain("deeply nested");
+        plainText.Should().NotBeEmpty();
+    }
 }
