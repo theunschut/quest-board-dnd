@@ -190,14 +190,14 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   4. The toolbar and editor behave identically on desktop and mobile, with icon-only 44px+ touch targets fitting in one row with no overflow or scroll mechanism
   5. Quest Description renders as formatted HTML on the quest board card, Quest Details, Quest Manage, and in the Quest Finalized email
 
-**Plans**: 4/7 plans executed
+**Plans**: 6/7 plans executed
 
 - [x] 66-01-PLAN.md — Domain plain-text extraction (AngleSharp) + `Html.Markdown()` read helper
 - [x] 66-02-PLAN.md — `POST /markdown/preview` endpoint + header-antiforgery integration test
 - [x] 66-03-PLAN.md — Quest Finalized email renders Description as HTML (images stripped)
 - [x] 66-04-PLAN.md — Shared editor assets: EasyMDE init, CSS, partial, FA v4-shim, tooltip init
-- [ ] 66-05-PLAN.md — Wire the EasyMDE editor into all 6 Quest Description write forms
-- [ ] 66-06-PLAN.md — Render Description on Details/Manage (HTML) + board card (plain text)
+- [x] 66-05-PLAN.md — Wire the EasyMDE editor into all 6 Quest Description write forms
+- [x] 66-06-PLAN.md — Render Description on Details/Manage (HTML) + board card (plain text)
 - [ ] 66-07-PLAN.md — Manual UI verification checkpoint (desktop + 320px mobile + email)
 
 **UI hint**: yes
@@ -351,7 +351,7 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 63. Allow any player to edit quest recaps | v7.0 | 1/1 | Complete    | 2026-07-07 |
 | 64. Preserve line breaks in description text on mobile views | v7.0 | 2/2 | Complete    | 2026-07-07 |
 | 65. Markdown Rendering Foundation | v8.0 | 1/1 | Complete    | 2026-07-09 |
-| 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 4/7 | In Progress|  |
+| 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 6/7 | In Progress|  |
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 0/? | Not started | - |
 | 68. Character Fields | v8.0 | 0/? | Not started | - |
 | 69. Contact Fields | v8.0 | 0/? | Not started | - |
