@@ -1,168 +1,154 @@
 # Project Research Summary
 
-**Project:** D&D Quest Board — Milestone v7.0 (Backlog Cleanup)
-**Domain:** Server-rendered ASP.NET Core MVC web app; feature work spans client-side image cropping, dual-image storage, waitlist auto-promotion notifications, and iOS Safari CSS bug fixes
-**Researched:** 2026-07-04
-**Confidence:** MEDIUM-HIGH (architecture and pitfalls grounded in direct codebase reads; stack/feature findings are web-search-derived but corroborated across multiple independent sources)
+**Project:** D&D Quest Board — Milestone v8.0 (Markdown Support)
+**Domain:** Server-rendered ASP.NET Core MVC app; retrofitting Markdown authoring + rendering onto 9 existing plain-text fields with real production data, reused across page views and HTML email templates, with zero client-side build tooling
+**Researched:** 2026-07-09
+**Confidence:** HIGH (stack versions and XSS specifics verified against primary sources — NuGet/npm registry APIs, official GitHub repos, a named security advisory; architecture and pitfalls grounded directly in this codebase's own source)
 
 ## Executive Summary
 
-v7.0 clears four long-standing backlog items, the headline being the crop-before-save avatar feature (#78) that has been paused since v1.0 over an unverified `SkiaSharp` native-library dependency on the deployment host. All four researchers converge on the same resolution: **no server-side image-processing library is needed at all.** Cropping happens entirely client-side via `<canvas>`; the server's job stays exactly what it is today — read an `IFormFile` into a `byte[]` and store it — except now it does that twice (original + cropped) instead of once. This eliminates the SkiaSharp deployment risk by removing the dependency rather than re-verifying it, and it is the direct answer to the question this research was commissioned to resolve.
+The stack question is settled with high confidence: **Markdig 1.3.2 + HtmlSanitizer (Ganss.Xss) 9.0.892** server-side, **EasyMDE 2.21.0** client-side. All three researchers independently converged on Markdig as the standard .NET CommonMark processor and flagged the same critical gotcha — `Markdig.DisableHtml()` alone is **not** sufficient sanitization, since it blocks raw `<script>` tags but not `javascript:`-scheme URLs in ordinary `[text](url)` link syntax (a real, named vulnerability class: GHSA-gwjh-c548-f787). A second `HtmlSanitizer` pass with a narrow `AllowedSchemes`/`AllowedTags` allowlist is the actual security boundary, and it must be applied identically to all 9 fields — none of them get a "trusted author" exemption, since all are rendered to other group members' browsers and 3 of them also flow into HTML emails.
 
-The recommended approach: extend the existing `CharacterImageEntity`/`DungeonMasterProfileImageEntity` tables with a second nullable `byte[]` column (not a second table — cardinality is strictly 1:1 and always read/written together), post both the original file and a canvas-cropped `Blob` as two `IFormFile`s in the same existing `multipart/form-data` POST via a `DataTransfer` FileList swap (no AJAX, no fetch, the existing Razor `<form>` and model binding are untouched), and wire a vanilla-JS crop library into the three affected upload views (character create/edit, DM profile edit) with zero build tooling. The waitlist auto-promotion feature (#104) reuses 100% existing infrastructure (Hangfire + Razor/HtmlRenderer + Resend SMTP) — the only design risk is getting the trigger condition exactly right (notify only the passively-promoted player, never the player whose own action caused it, never broadcast to the rest of the waitlist).
+One architectural question had a real 2-to-1 split among the three researchers, and this summary resolves it: how should the Preview toggle render its output? STACK.md and PITFALLS.md both independently recommend routing Preview through a small server round-trip (`POST /markdown/preview`) that calls the *exact same* rendering service used for final storage/display — guaranteeing byte-identical output by construction. ARCHITECTURE.md proposed a zero-round-trip client parser (`commonmark.js` + DOMPurify) for lower latency. **Resolution: use the server round-trip.** Pitfall 4 makes the deciding argument — even a "spec-matched" client parser is a second, independently-maintained implementation, and this project's own EasyMDE default bundles `marked.js`, which fails ~25% of the official CommonMark spec suite with documented gaps in exactly the constructs D&D prose uses (nested lists, blockquotes). A round-trip at 17 users has no meaningful latency cost and eliminates an entire class of "preview lied to me" bugs by construction rather than by hoping two parsers agree.
 
-Key risks are almost all mobile/iOS-specific and share one root cause: **desktop and devtools-emulation testing cannot catch them.** EXIF orientation silently corrupting canvas-cropped photos, iOS Safari's hard canvas memory ceiling crashing on real camera-resolution photos, touch-drag precision issues on real touchscreens, and the recurrence of the exact `background-attachment: fixed` bug class (already proven in this codebase to escape desktop/emulation testing once) all require verification on a real iOS device or device-cloud service as a named, non-optional acceptance step — not an assumed pass because devtools "mobile view" looked fine.
+The single biggest risk this milestone carries is not the rendering pipeline itself but what happens to **existing production data** and **the 3 email templates**. Switching every read view from Razor's auto-encoding `@Field` to `Html.Raw`/`MarkupString` removes an XSS safety net this codebase has silently relied on since inception — the sanitizing service must be built and proven before any view is touched. Separately, real D&D prose already contains characters that are live CommonMark syntax (mid-word `*asterisks*` for dice notation, leading `#`, `---` dividers, Word-paste indentation) that will silently change *meaning*, not just layout, beyond the already-accepted paragraph-reflow trade-off — a one-off diff script comparing old plain text against rendered output (tags stripped) before each field's rollout is the concrete mitigation. And the 3 HTML email templates were built and CSS-tuned for one short italic paragraph; real Markdown structure (headings, lists, blockquotes) needs its own dedicated, later styling/layout pass verified in actual Outlook and Gmail — not folded into the same phase as the core rendering pipeline.
+
 ## Key Findings
 
 ### Recommended Stack
 
+Server-side: **Markdig 1.3.2** (Markdown → HTML, pure managed code, no native dependency) paired with **HtmlSanitizer 9.0.892** (`Ganss.Xss`, AngleSharp-based allowlist sanitizer — Markdig is explicitly not a sanitizer and needs this pairing). Both multi-target `net8.0`/`netstandard2.0` and are consumed transparently by .NET 10. Client-side: **EasyMDE 2.21.0**, a maintained fork of the abandoned SimpleMDE, self-contained UMD bundle (327 KB JS + 13 KB CSS) with zero build step — its default toolbar already ships Bold/Italic/Heading/List/Preview, trimmed via a `toolbar: [...]` config array rather than custom-built. EasyMDE's bundled Marked.js parser should be present in the bundle (no way to tree-shake it out without a build step) but never actually used for the real Preview — override the `previewRender` hook (documented to support async) to call the server round-trip endpoint instead.
+
 **Core technologies:**
-- **Cropper.js v2.1.1** (vendored into `wwwroot/lib/cropperjs/`, no npm/bundler) — client-side drag/resize/zoom crop UI. See "Library Version Decision" below for why v2.1.1 is picked over the abandoned v1.6.2.
-- **No server-side image-processing library** (no SkiaSharp, no ImageSharp, no Magick.NET) — the crop is fully client-side canvas work; the server only validates and stores the two byte arrays it receives. This is the resolution to the year-old SkiaSharp blocker: it is avoided entirely rather than re-verified.
-- **Pure-CSS pseudo-element fix** for the iOS Safari `background-attachment: fixed` bug (#116) — replace the broken rule with a `position: fixed`, `100vh`/`100dvh` layered `::before`/`<div>`. No JS scroll-listener workaround needed.
-- **Existing infra reused as-is** for waitlist promotion emails — Hangfire background jobs, Razor/HtmlRenderer HTML templates, Resend SMTP relay. No new package needed.
-
-### Library Version Decision: Cropper.js v2.1.1 (not v1.6.2) — REVISED
-
-**This decision was revised after the user pushed back on the original v1.6.2 recommendation and requested direct verification.** Direct fetches of GitHub's release/commit history (not secondhand via research agent) found:
-
-- v1.6.2 was the last v1 release (2024-04-21); the v1 branch's last commit was 2025-03-08 — over a year stale with zero activity since.
-- v2 is under active, ongoing maintenance: v2.0.0 (2025-03-01), v2.0.1 (2025-07-25), v2.1.0 (2025-10-19), v2.1.1 (2026-04-06) — a steady release cadence, most recent 3 months ago. npm's `dist-tags.latest` is `2.1.1`, confirming v2 is the actual current supported line, not v1.
-- The original architecture-research objection to v2 — "requires hand-authored Web Components markup, a materially heavier integration surface" — does not hold up. A direct fetch of the published `dist/cropper.js` UMD bundle confirms it works via a plain `<script src="...">` tag with zero bundler, registering a global `window.Cropper`, exactly like v1. And v2's own basic-usage documentation shows the same simple imperative pattern as v1 — `new Cropper('#image')` against a plain `<img>` element — not hand-written `<cropper-canvas>` markup. The Web Components exist under the hood but aren't something the integrating code has to author by hand for basic usage.
-
-**Resolution: use Cropper.js v2.1.1, vendored, pinned.** Shipping a new feature in a long-lived production app against a dependency with zero commits in over a year is a worse bet than a v2 API surface that turned out to be nearly as simple to integrate as originally assumed for v1. Confirm the exact cropped-canvas/blob extraction method (likely `.getCropperSelection().$toCanvas()` per earlier STACK.md findings, since v2's `Cropper` instance exposes an underlying `CropperSelection` element) against the official v2 API docs during Phase 3 implementation — this specific method call was not independently re-verified in this correction pass and should be confirmed against source, not assumed.
+- **Markdig 1.3.2**: server Markdown→HTML — de facto .NET standard, 67M+ downloads, zero native dependency (unlike the project's paused SkiaSharp plan)
+- **HtmlSanitizer 9.0.892**: post-parse HTML sanitization — closes the `javascript:`-scheme gap `DisableHtml()` leaves open; configure `AllowedTags` narrowly (`p, br, strong, em, del, code, pre, h1-h6, ul, ol, li, blockquote, a, hr`) and `AllowedSchemes` to `http, https, mailto` only
+- **EasyMDE 2.21.0**: client textarea + toolbar + Preview UI, zero build step, CDN-loaded (matching this repo's actual Cropper.js/Font Awesome precedent — both are CDN-hosted with version pins, not locally vendored files, despite the milestone framing initially assuming otherwise)
 
 ### Expected Features
 
-**Must have (table stakes) — crop UX:**
-- Draggable/resizable crop frame with fixed aspect ratio matching the destination avatar shape
-- Live preview of the crop result before submit
-- Zoom/pan inside the crop frame
-- Touch-usable (drag + pinch) on mobile, verified on a real device
-- Original image preserved unmodified; cropped image generated and stored separately (this is a storage/schema requirement, not just a UI one)
-- Entirely client-side crop pipeline — no server-side image processing library, by design
+The locked design (textarea + toolbar with Bold/Italic/Heading/List + single Preview toggle, not split-pane) is correct and confirmed by research — EasyMDE explicitly disables side-by-side/fullscreen on mobile via a `no-mobile` class, and Discourse's own UX team independently converged on toggle-not-split. Beyond the locked 4 buttons, research identifies 2 more as genuine table stakes and a clear line for everything else:
 
-**Must have (table stakes) — waitlist promotion:**
-- Targeted "you were promoted" email to only the passively-promoted player
-- Waitlist/signup status visible in the UI itself, not solely via email
+**Must have (table stakes, beyond the locked Bold/Italic/Heading/List):**
+- **Link button** — `[text](url)` selection-wrap, no modal needed; every general-purpose toolbar surveyed includes it, and D&D players will link D&D Beyond sheets/wikis
+- **Blockquote button** — reuses the same prefix-insertion mechanism Heading/List already need (near-zero marginal cost); genuinely useful for NPC dialogue and read-aloud text
+- **Preview toggle disables the rest of the toolbar while active** (EasyMDE's `no-disable` pattern) — a required behavior, not a button
+- **44px+ icon-only touch targets on mobile** — this app already enforces this convention (`mobile.css`); the recommended 7-control set (Bold/Italic/Heading/List/Link/Blockquote/Preview) fits one row on a 320–390px viewport with no overflow mechanism needed
+- **One inline hint about the strict-CommonMark paragraph rule** ("Press Enter twice for a new paragraph") — the one genuine behavior-change surprise toolbar buttons alone won't prevent
 
-**Should have / nice-to-have (not required this milestone):**
-- Rotate/flip control (cheap to bolt on later via Cropper.js's existing API)
-- In-app "you were promoted" banner in addition to email
+**Should have (defer to P2/P3, cheap to add later if requested):**
+- Strikethrough — only if the chosen parser has GFM strikethrough at no extra wiring cost
+- Horizontal rule — trivial, but strict CommonMark's paragraph spacing already reduces the need
+- Cheatsheet link/popover — only if users report confusion beyond the paragraph-break hint
 
-**Defer / do not build:**
-- Multiple aspect-ratio presets, image filters/brightness/contrast — scope creep, no second consumer shape exists
-- SMS/push notification channels — contradicts this app's existing email-only, batch-first, small-trusted-group design
-- Broadcasting a notification to the entire waitlist on any position change — the exact anti-pattern every waitlist UX source warns against, and directly costly given this app's constrained email budget (100/day, 3000/month)
-- Server-side re-crop/image-processing pipeline "for robustness" — this is precisely the path that caused the original year-long pause; do not reopen it
+**Explicitly out of scope (anti-features for this domain, not just deferred):** inline code/code blocks (no dice-notation/code use case), image embed (duplicates the existing Cropper.js photo pipeline), tables (painful on mobile textareas), @mention/#ref (no data-model analog), task list/checkboxes (interactive checkboxes have no equivalent in static HTML email — a real architectural mismatch, not just added complexity), fullscreen mode (none of the 9 fields are long-form documents).
 
 ### Architecture Approach
 
-The crop feature adds no new infrastructure, no new endpoints, and no new external dependency. The existing plain `<form method="post" enctype="multipart/form-data">` on the three affected views keeps working completely unchanged: a new `image-crop.js` (vendored, no bundler) intercepts the file input's `change` event, opens a Cropper.js modal, and on confirm uses the `DataTransfer` FileList-swap trick to replace the visible file input's contents with the cropped `Blob`-as-`File` while placing the untouched original into a second hidden `<input type="file">`. The user's existing "Save" click then submits both files in one ordinary POST — no AJAX, no fetch, no `asp-validation` disruption.
+One Domain-layer service owns the actual Markdig+HtmlSanitizer algorithm (mirrors the existing `IImageValidationService` precedent — stateless, pure `string? → string`, unit-testable, zero Repository dependency), wrapped by two thin per-pipeline adapters: an `IHtmlHelper` extension method for `.cshtml` views (following the `ControllerExtensions` convention this codebase already uses — no TagHelpers exist here today, so a HtmlHelper extension is the smaller, idiomatic fit), and direct `@inject` + `MarkupString` in the 3 email `.razor` components. Because the service is stateless, it needs **no** `IServiceScopeFactory`/`HangfireJobHelper` bridging unlike every other scoped Hangfire-job service — ordinary DI resolves it in both the request-scoped MVC pipeline and the Hangfire background-job pipeline. No schema/migration/Repository changes are needed anywhere; all 9 fields already exist as plain string columns.
 
 **Major components:**
-1. **Client-side crop UI** (`wwwroot/lib/cropperjs/` + new `wwwroot/js/image-crop.js` + `wwwroot/css/image-crop.css`) — renders the crop modal, produces the cropped `Blob`, performs the `DataTransfer` swap. Shared across all three affected forms rather than duplicated per view.
-2. **ViewModel layer widening** (`CharacterViewModel`, `EditDMProfileViewModel`) — add a second nullable `IFormFile? OriginalPictureFile` alongside the existing picture field.
-3. **New `IImageValidationService` (Domain layer)** — centralizes size/MIME validation currently duplicated three times inline in controllers; a natural moment to fix this existing tech debt since the validation surface is already being touched.
-4. **Widened Repository methods** (`CharacterRepository`, `DungeonMasterProfileRepository`) — existing `UpdateProfileImageAsync`/`UpsertProfileImageAsync` accept two `byte[]?` instead of one; new `GetCharacterOriginalPictureAsync`/`GetOriginalPictureAsync` actions serve the original specifically for the character/DM details page.
-5. **Schema change**: one additive nullable column (`OriginalImageData byte[]?`) added to each existing 1-row-per-owner image table — not a new table, not a new relationship. Existing `ImageData` column is repurposed to mean "cropped/display" bytes; old rows simply have `OriginalImageData = NULL` until next edit, with `GetOriginalPicture` falling back to `ImageData` for those rows.
-6. **Waitlist promotion trigger + email template** — a new condition inside the existing signup-processing logic plus one new Razor/HtmlRenderer template, following the same pattern as 6+ existing job/template pairs. No new plumbing.
-
-Suggested build order (from ARCHITECTURE.md, front-loads schema since everything downstream depends on it, defers the riskiest/most novel piece — the JS library integration — until the data path is already proven via direct testing): schema migration -> Repository/Domain plumbing -> ViewModel/controller wiring (testable via Postman before any UI exists) -> client-side crop UI -> character-details "show original" wiring -> cross-device/cross-browser UAT.
+1. `IMarkdownService`/`MarkdownService` (Domain layer) — the single Markdig+HtmlSanitizer pipeline, registered as a singleton (a deliberate one-line deviation from this codebase's usual `AddScoped` convention, justified because it's stateless and the pipeline object is meant to be built once and reused)
+2. `HtmlHelperExtensions.Markdown()` (Service layer) — read-side MVC adapter, one line per call site (`@Html.Markdown(Model.X)`), replacing the current `<p style="white-space:pre-wrap">@Model.X</p>` pattern at all 9 read call sites
+3. `Views/Shared/_MarkdownEditor.cshtml` + `wwwroot/js/markdown-editor.js` — write-side shared partial + script generalizing the existing single-feature `_QuestFormScripts.cshtml` pattern across all 5 features/9 fields, desktop and mobile share the exact same partial (no mobile-specific reimplementation needed)
+4. A small `POST /markdown/preview` endpoint — authenticated, antiforgery-protected, no DB access, calls the same `IMarkdownService` for the AJAX-round-trip Preview (resolves the 2-to-1 architecture disagreement above in favor of correctness-by-construction)
+5. The 3 email components (`QuestFinalized`, `SessionReminder`, `WaitlistPromoted`) — `@inject IMarkdownService`, swap `@QuestDescription` for `@((MarkupString)MarkdownService.RenderToHtml(QuestDescription))`
 
 ### Critical Pitfalls
 
-1. **EXIF orientation silently discarded by canvas cropping** — `drawImage()` ignores the EXIF `Orientation` tag that browsers otherwise respect for `<img>` display; a portrait iPhone photo can be saved sideways/upside-down with no visible error during desktop testing. Must read and apply the orientation tag before drawing to canvas, and this must be a named acceptance criterion tested with an actual phone-camera photo, not a sample image.
-2. **iOS Safari's hard canvas memory/pixel-area ceiling (16.7M pixels)** — a single modern 12MP+ camera photo can crash or blank the canvas silently on real iOS devices; invisible in desktop Chrome or devtools emulation. Downscale the source to a bounded max dimension (~2000-2500px) immediately after file selection, before any full-resolution canvas work, and verify with a real unmodified iPhone photo.
-3. **Touch-drag crop handles built with mouse-only events "half work" on real touchscreens** — synthesized compatibility events mask this in devtools emulation. Use Pointer Events (not separate mouse/touch handlers), disable page scroll during drag (`touch-action: none`), size hit-targets for fingertips, and verify on a real touchscreen.
-4. **The `background-attachment: fixed` iOS Safari bug is fixed on paper but only verified via desktop/emulation** — this exact failure mode already happened once in this codebase (the bug shipped once and only a real iPhone caught it; both `site.css` and `mobile.css` still carry the broken rule today). Any fix for #116 must be verified on a real iOS Safari session (physical device or real-device cloud), not devtools "iPhone" emulation, and the verification method/device must be recorded explicitly in the phase's evidence.
-5. **Original/cropped image divergence on re-upload** — if a user re-uploads a new original photo but only one column gets updated, the stored cropped avatar can silently no longer correspond to the current original. Re-upload must atomically replace both columns together, never a partial update.
+1. **Switching to `Html.Raw`/`MarkupString` removes an XSS safety net that has silently protected all 9 fields since inception** — build and unit-test the sanitizing service (feeding `<script>`, `javascript:` links, `<img onerror>`) *before* any view is touched; apply uniformly to all 9 fields, no "trusted author" exemptions.
+2. **Sanitized HTML is not automatically email-safe HTML** — Outlook's Word rendering engine doesn't show `<ul>`/`<li>` bullets without proprietary MSO CSS, and Gmail strips `<style>` blocks (this app's existing email convention already inlines every style for exactly this reason). Needs its own dedicated, later phase with real Outlook/Gmail verification — not folded into the core rendering-service phase.
+3. **The 3 email templates' `height:840px; overflow:hidden` description card was tuned for one short paragraph** — real Markdown structure (heading + list + blockquote) can silently clip in Outlook, which doesn't honor `overflow-y:auto`. This is a visual-design decision (truncate-with-link vs. remove fixed height) that needs explicit user input, not an engineering default.
+4. **Client and server Markdown parsers will disagree unless it's literally the same renderer** — resolved above by using the AJAX round-trip instead of a second JS parser.
+5. **Existing casual D&D prose contains characters that are live CommonMark syntax with side effects beyond the accepted paragraph-reflow** — mid-word `*asterisks*` (dice notation like `2*4`), leading `#`, `---` dividers colliding with setext headings, Word-paste indentation becoming code blocks. Mitigate with a one-off diff script (rendered-text-stripped vs. original) run per field before its rollout, flagging content-altering cases distinct from harmless reflow.
+
+Two more pitfalls worth carrying into planning: Phase 64's `white-space: pre-wrap` CSS (added specifically for several of these exact fields) must be removed from *rendered-output* containers (not editor textareas) as a companion edit per field migration, or real Markdown HTML will double-space. And Contact Notes must render each note independently through the shared service (never concatenated) so one author's unclosed formatting marker can't bleed into another author's note.
+
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+Based on research, suggested phase structure (numbering continues from Phase 64 — the roadmapper assigns actual numbers):
 
-### Phase 1: Dual-image schema + Repository/Domain plumbing
-**Rationale:** Everything downstream (UI, controllers) depends on the new column existing; this is the lowest-risk, most mechanical piece and should land first so later phases build on a proven data path.
-**Delivers:** `OriginalImageData byte[]?` column on both `CharacterImageEntity` and `DungeonMasterProfileImageEntity`, additive EF Core migration, widened `UpdateProfileImageAsync`/`UpsertProfileImageAsync` signatures, new `GetCharacterOriginalPictureAsync`/`GetOriginalPictureAsync` repository methods, updated AutoMapper profiles and Domain models.
-**Addresses:** the "original + cropped dual storage" table-stakes requirement from FEATURES.md.
-**Avoids:** the original/cropped divergence-on-re-upload pitfall — build the atomic-replace behavior into the repository method from the start rather than retrofitting it.
+### Phase: Markdown Rendering Foundation
+**Rationale:** Everything else depends on one correctly-built, well-tested sanitizing service; building it in isolation first makes it fully unit-testable (Domain layer) with zero user-visible risk, matching this project's own TDD-friendly phase pattern (e.g. Phase 61).
+**Delivers:** `IMarkdownService` (Markdig + HtmlSanitizer, singleton), NuGet refs, unit tests covering XSS payloads (script tags, `javascript:` links, generic-attribute injection) and CommonMark edge cases (mid-word asterisks, ATX/setext heading collisions, indented code blocks), `HtmlHelperExtensions.Markdown()`, `.markdown-content` CSS class, `_ViewImports.cshtml` using-line. Nothing visibly changes yet.
+**Addresses:** the shared-rendering-pipeline requirement (FEATURES.md's #1 dependency flag)
+**Avoids:** Pitfall 1 (XSS regression)
 
-### Phase 2: Controller/ViewModel wiring (no crop UI yet)
-**Rationale:** Fully testable end-to-end (e.g. via Postman with two raw file inputs) before any client-side JS exists — isolates schema/Domain bugs from JS/markup bugs, per the architecture research's suggested build order.
-**Delivers:** `OriginalPictureFile` added to `CharacterViewModel`/`EditDMProfileViewModel`; `Create`/`Edit`/`EditProfile` POST actions read and forward both files; new `GetOriginalPicture` actions; new `IImageValidationService` in Domain to de-duplicate the existing 3x inline validation.
-**Uses:** existing `IFormFile`/`CopyToAsync` pattern, called twice instead of once.
-**Implements:** Pattern 2 from ARCHITECTURE.md (validation in Domain, byte[] I/O in Repository only).
+### Phase: Quest Description End-to-End Proof-of-Concept
+**Rationale:** Quest Description is the one field that already flows into an email template today — proving both adapters (MVC helper + Blazor component) and the full write→read→email loop in one phase retires the milestone's flagged cross-cutting risk early rather than deferring it.
+**Delivers:** `_MarkdownEditor.cshtml` + `markdown-editor.js` (EasyMDE, 6-button toolbar + Preview toggle wired to the new `POST /markdown/preview` endpoint), wired into `Quest/Create(.Mobile)` + `Quest/Edit(.Mobile)`; Quest board card, `Quest/Details`, `Quest/Manage` swapped to `Html.Markdown()`; `QuestFinalized.razor` updated to the inject/MarkupString pattern (functional wiring only — email-safe styling is a later phase, see below).
+**Uses:** EasyMDE 2.21.0, the round-trip preview endpoint
+**Implements:** the write-side and read-side adapter pattern from ARCHITECTURE.md
 
-### Phase 3: Client-side crop UI
-**Rationale:** The riskiest, most novel piece — deferred until the data path underneath it is already proven, so any integration issues are isolated to JS/markup.
-**Delivers:** Vendored Cropper.js v2.1.1 (`wwwroot/lib/cropperjs/`), shared `image-crop.js` wiring the crop modal into all three affected forms (character create/edit, DM profile edit — desktop + `.Mobile.cshtml` = 6 view files), the `DataTransfer` FileList-swap logic, EXIF orientation correction, canvas downscale-before-crop, and the character-details page pointed at the new `GetOriginalPicture` endpoint (issue #78's explicit requirement).
-**Addresses:** all crop-UX table-stakes features from FEATURES.md (draggable frame, fixed aspect ratio, live preview, zoom/pan, touch support).
-**Avoids:** Pitfalls 1-4 (EXIF orientation, canvas memory ceiling, touch-drag precision) — each must be verified on a real device as a named acceptance criterion, not inferred from devtools emulation.
+### Phase: Remaining Quest Fields + Remaining Email Templates
+**Rationale:** Mechanical reuse of the now-proven pattern — low risk.
+**Delivers:** Rewards + Recap wired the same way (`Quest/Details`, `QuestLog/Details`, `QuestLog/EditRecap(.Mobile)`); `SessionReminder.razor` and `WaitlistPromoted.razor` get the identical one-line adapter change already validated.
 
-### Phase 4: Waitlist auto-promotion notification
-**Rationale:** No dependency on the crop-image work (different tables entirely — quest signup/vote vs. image storage); can be sequenced independently, before or after Phases 1-3.
-**Delivers:** New trigger condition in the existing signup/promotion logic (Yes > Maybe > No, then signup time — already internally specified), a new Razor/HtmlRenderer email template, wired through the existing Hangfire job pattern.
-**Addresses:** the "targeted promotion email" table-stakes requirement, explicitly excluding self-notification and broadcast-to-all-waitlisted anti-patterns.
+### Phase: Character Fields
+**Delivers:** Description + Backstory migrated (Create/Edit/Details, desktop+mobile), paired with the Phase 64 `pre-wrap` CSS audit and an old-data diff sweep for this field group specifically.
 
-### Phase 5: iOS Safari background-attachment fixed fix (#116)
-**Rationale:** Independent, small, CSS-only fix; no dependency on the other three items. Sequence last only because it's lowest-effort/lowest-risk, not because of any technical ordering constraint — could equally run in parallel with Phase 4.
-**Delivers:** Replace the broken `background-attachment: fixed` rule in both `site.css` and `mobile.css` with a `position: fixed` pseudo-element/layered-div approach.
-**Avoids:** Pitfall 5 — must be verified on a real iOS Safari session (physical device or real-device cloud), with the verification device/method recorded explicitly, since this exact bug class already escaped desktop/emulation testing once in this codebase.
+### Phase: Contact Fields
+**Delivers:** Description + collaborative Notes migrated, with the per-note independent-rendering constraint (Pitfall 7) explicit in the plan, plus its own `pre-wrap` audit and diff sweep.
+
+### Phase: DM Profile Bio + Shop Item Description
+**Delivers:** The remaining 2 fields, mechanical reuse, `pre-wrap` audit + diff sweep.
+
+### Phase: Email-Safety Hardening
+**Rationale:** Deliberately sequenced last, after the mechanism is proven working end-to-end in earlier phases — this phase is about how Markdown-generated HTML *looks* in real email clients, which is a visual-design decision needing user input, not a mechanical follow-on.
+**Delivers:** Inline `style=` attributes on every block element Markdig can produce (matching `_EmailLayout.razor`'s existing Georgia-serif/inline-style convention), MSO conditional-comment bullet fix for lists, a resolved fixed-height-card design decision (truncate + "View full quest" link vs. remove the fixed height), verified by actually opening sent test emails in real Outlook desktop and Gmail webmail with Markdown-structured (not single-paragraph) test content — not just a browser preview.
 
 ### Phase Ordering Rationale
 
-- Schema-first ordering (Phase 1 -> 2 -> 3) is a hard dependency chain: controllers need the column to exist, and the crop UI needs a working two-file POST path to submit into. This isn't a preference — it's the only order that lets each phase be tested in isolation.
-- Waitlist promotion (Phase 4) and the CSS fix (Phase 5) are fully independent of the crop work and of each other — they touch unrelated tables/files and can be resequenced or parallelized freely without any coordination cost.
-- Deferring the crop UI (Phase 3) to after the data-plumbing phases specifically isolates the riskiest, least-precedented work (a new client-side library, real-device-only bug classes) so failures there don't get conflated with schema or Domain bugs.
+- Foundation-first isolates all XSS/sanitization risk into one unit-testable phase before any view changes
+- Quest Description proof-of-concept proves the hardest cross-cutting case (email) early, so remaining phases are genuinely mechanical
+- Field-migration phases are grouped by feature (matching this project's usual phase-sizing convention) and each carries its own pre-wrap audit + diff sweep as a companion task, not a follow-up
+- Email styling is deliberately the *last* phase, not bundled into the proof-of-concept, because Pitfalls 2/3 are real visual-design decisions requiring live Outlook/Gmail verification — bundling it early would block the mechanical field-migration phases on a slower, human-verification-heavy task
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 3 (Client-side crop UI):** Needs a `--research-phase` pass specifically for the EXIF-orientation-correction snippet (no npm package is being introduced, so the ~40-line vendored parser needs to be sourced/verified carefully) and for the canvas-downscale-before-crop implementation details — both are narrow, easy-to-get-subtly-wrong pieces flagged as HIGH-severity pitfalls.
+Phases likely needing deeper research/decisions during planning:
+- **Foundation phase:** exact Markdig extension set beyond base CommonMark (autolinks confirmed useful; anything beyond that should stay minimal per the `UseAdvancedExtensions()`/`UseGenericAttributes()` attribute-injection gotcha)
+- **Email-safety phase:** the fixed-height card redesign is a genuine design decision — flag for discuss-phase or a live checkpoint with the user, not resolved by an engineer alone
 
 Phases with standard patterns (skip research-phase):
-- **Phase 1 (schema/Repository/Domain plumbing):** Standard EF Core additive-migration pattern, already well-precedented in this exact codebase (the prior `MoveCharacterImagesToSeparateTable` migration establishes the convention being extended).
-- **Phase 2 (controller/ViewModel wiring):** Mechanical widening of an existing, well-understood `IFormFile` pattern already used 3x in this codebase.
-- **Phase 4 (waitlist promotion email):** Reuses an infrastructure pattern already proven 6+ times in this codebase (Hangfire + Razor/HtmlRenderer + Resend); only the trigger-condition logic is new, and it's already fully specified.
-- **Phase 5 (CSS fix):** The fix pattern itself (pseudo-element/layered-div replacing `background-attachment: fixed`) is well-documented and cross-verified across multiple independent sources; the only non-standard requirement is mandatory real-device verification, which is a process step, not a research gap.
+- **Quest Description proof-of-concept and all subsequent field-migration phases:** the pattern is proven once and mechanically repeated — no new research needed per field
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | Web-search-derived (no Context7/official-docs MCP available this session); versions cross-checked against npm/NuGet registry pages directly. The core "no server-side image library needed" conclusion is HIGH confidence since it's corroborated independently by all four researchers plus direct codebase inspection. |
-| Features | MEDIUM | Cross-checked web search across independent queries converging on the same conclusions, but no single official-vendor-doc-tier source reached for either the crop UX or waitlist UX sub-topic. Pattern-level conclusions (fixed aspect ratio + preview + zoom as baseline; targeted-not-broadcast notification) are reliable — corroborated by 3+ independent sources each. |
-| Architecture | HIGH for codebase integration points (verified by direct file reads of `CharacterImageEntity.cs`, `CharacterRepository.cs`, controllers, ViewModels, existing views) / MEDIUM for the crop-library API-choice research (cross-verified across two independent doc fetches). |
-| Pitfalls | HIGH — grounded in this codebase's actual source (confirmed the `background-attachment: fixed` bug still exists in both `site.css` and `mobile.css`; confirmed the no-bundler `site.js` convention; confirmed PROJECT.md's own prior SkiaSharp-pause decision) cross-checked against current sourced findings on SkiaSharp Linux deployment, canvas EXIF handling, and iOS Safari devtools-emulation gaps. |
+| Stack | HIGH | Versions verified via NuGet/npm registry APIs and official GitHub source, not training-data recall |
+| Features | MEDIUM-HIGH | Toolbar button sets verified against official library sources; one GitHub UI convention cited from general product familiarity rather than a freshly-pulled source |
+| Architecture | HIGH (integration points) / MEDIUM (XSS specifics) | Integration points verified directly against this codebase's source; XSS specifics WebSearch-verified against official docs (no Context7 available this session) |
+| Pitfalls | HIGH | Grounded directly in this codebase's actual email templates, entity schemas, and CSS; external claims corroborated by the CommonMark spec and multiple independent sources |
 
-**Overall confidence:** MEDIUM-HIGH — the architectural and pitfall findings (the parts that most affect implementation correctness and risk) are grounded in direct codebase evidence; the stack/feature findings rely on web search but converge strongly and consistently across independent sources and researchers.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **EXIF-orientation-correction snippet sourcing:** No specific vendored library/snippet was pinned down to a specific, audited source — flag this for a focused look during Phase 3 planning (options mentioned: exif-js-style snippet, blueimp-load-image-style snippet, or a hand-rolled ~40-line reader).
-- **`wwwroot/lib/` convention confirmation:** STACK.md flagged that the existing convention for vendoring third-party JS/CSS (matching how Bootstrap/FontAwesome are likely already handled) should be verified against `_Layout.cshtml`'s existing `<script>`/`<link>` tags before implementation — not yet directly confirmed in this research pass.
-- **Real-device/device-cloud access:** Multiple pitfalls (EXIF, canvas memory, touch-drag, the CSS fix itself) require verification on a physical iPhone or a real-device-cloud service (e.g. BrowserStack). Confirm what device/service access is actually available to the team before phases are scheduled — this is a process/tooling gap, not a research gap, but it blocks the verification step for at least 4 of the 5 suggested phases.
-- **Server-side re-validation depth for the two posted images:** PITFALLS.md raises re-validating uploaded bytes via magic-byte content-sniffing (not just posted MIME type) as a security consideration; since no server-side image-decoding library is being introduced, decide during Phase 2 planning exactly how deep this validation goes without pulling in a decoding dependency (e.g. magic-byte check only, vs. skip entirely given this is a small trusted-group internal tool).
+- **Preview mechanism:** this summary resolves the 2-to-1 researcher split in favor of the AJAX round-trip — confirm this during requirements/roadmap rather than treating it as still-open
+- **Client-side library delivery (CDN vs. vendored):** STACK.md initially assumed local vendoring; direct codebase verification during this session confirmed the actual precedent is CDN + SRI (Cropper.js) — use that same pattern for EasyMDE, pinned to an exact version
+- **Outlook/Gmail email rendering claims:** corroborated by community sources but not verified against this project's actual `_EmailLayout.razor` output — budget real send-and-open verification time in the email-safety phase itself, not assumed from research alone
+- **Old-data diff sweep tooling:** no existing precedent in this codebase for a one-off data-comparison script — build it as a small one-time console/test utility during the first field-migration phase, reuse for the rest
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Direct codebase reads: `QuestBoard.Repository/Entities/CharacterImageEntity.cs`, `DungeonMasterProfileImageEntity.cs`, `CharacterRepository.cs`, `DungeonMasterProfileRepository.cs`, `QuestBoard.Service/Controllers/Characters/GuildMembersController.cs`, `DungeonMaster/DungeonMasterController.cs`, `ViewModels/CharacterViewModels/CharacterViewModel.cs`, `Views/GuildMembers/Edit.cshtml`, `wwwroot/css/site.css` / `mobile.css`, `wwwroot/js/site.js`
-- `.planning/PROJECT.md` — Key Decisions log (SkiaSharp pause rationale, issue #78/#104/#116 scope)
-- `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/CONCERNS.md`
+- https://api.nuget.org/v3-flatcontainer/markdig/index.json and /htmlsanitizer/index.json — NuGet v3 API, confirmed latest stable versions
+- https://registry.npmjs.org/easymde/latest — npm registry API, confirmed EasyMDE 2.21.0 and bundled dependencies
+- https://github.com/xoofx/markdig, https://github.com/mganss/HtmlSanitizer, https://github.com/Ionaru/easy-markdown-editor — official repos, confirmed APIs/behavior
+- https://github.com/NuGet/NuGetGallery/security/advisories/GHSA-gwjh-c548-f787 — real-world confirmed `javascript:`-scheme Markdown XSS vulnerability class
+- https://spec.commonmark.org/0.31.2/ — official CommonMark spec, confirmed edge-case rules (delimiter-flanking, ATX/setext headings, indented code blocks)
+- Direct repository inspection — `QuestBoard.Repository/Entities/*.cs`, `QuestBoard.Service/Components/Emails/*.razor`, `QuestBoard.Service/Views/Shared/_Layout*.cshtml`, repo-wide `pre-wrap` grep — confirmed actual current architecture, CDN-vendoring precedent, and email template structure firsthand
 
 ### Secondary (MEDIUM confidence)
-- https://www.npmjs.com/package/cropperjs and https://fengyuanchen.github.io/cropperjs/v1/ and /v2/guide.html — version/API cross-verification for both Cropper.js major versions
-- https://www.nuget.org/packages/SixLabors.ImageSharp, SkiaSharp, SkiaSharp.NativeAssets.Linux.NoDependencies — package/dependency details (informative for the "what we're deliberately not using" record)
-- https://anthonysimmon.com/benchmarking-dotnet-libraries-for-image-resizing/ — image library comparison
-- https://pqina.nl/blog/total-canvas-memory-use-exceeds-the-maximum-limit/ and WebKit Bugzilla #195325 — iOS Safari canvas memory/pixel-area ceiling
-- https://github.com/Foliotek/Croppie/issues/31 and https://github.com/fengyuanchen/cropper/issues/120 — EXIF-orientation bug corroborated across two independent crop libraries
-- https://juand89.hashnode.dev/troubleshooting-background-attachment-fixed-bug-in-ios-safari and css-tricks.com — pure-CSS fix pattern for the iOS background-attachment fixed bug
-- Waitlist UX sources (DICE waitlist UX deep-dive, Waitlist Me, WaitlistCare) — targeted-not-broadcast notification pattern
+- https://weblog.west-wind.com/posts/2018/Aug/31/Markdown-and-Cross-Site-Scripting — Rick Strahl, corroborates the `DisableHtml()` limitation
+- https://github.com/markedjs/marked/discussions/1202 — maintainer-acknowledged CommonMark compliance gap (157/624 failing tests) in EasyMDE's bundled parser
+- https://meta.discourse.org/t/mobile-editor-preview-button-and-toolbar/113942 — Discourse's own team's mobile preview/toolbar UX debate
+- Email client CSS/list-support community sources (GetResponse, Litmus community) — corroborated across multiple independent sources on Outlook's `<ul>`/`<li>` limitations
 
 ### Tertiary (LOW confidence)
-- Consumer avatar-cropper marketing pages (avatarcropper.org, Pokecut, ToolPoint) — used only to corroborate "fixed aspect ratio + zoom + live preview" as a cross-product baseline pattern, not for any implementation detail
+- GitHub's "Markdown is supported" compose-box hint convention — cited from general product familiarity, no fresh citable source found this session; treated as a well-known convention, not a load-bearing claim
 
 ---
-*Research completed: 2026-07-04*
+*Research completed: 2026-07-09*
 *Ready for roadmap: yes*

@@ -1,425 +1,200 @@
-# Architecture Research
+# Architecture Research: Markdown Integration
 
-**Domain:** Client-side image crop-before-upload for a server-rendered ASP.NET Core 10 MVC app (no SPA, no bundler)
-**Researched:** 2026-07-04
-**Confidence:** HIGH (codebase integration points — verified by direct file read) / MEDIUM (crop-library API choice — cross-verified across two independent sources)
+**Domain:** Markdown authoring + rendering integration into an existing 3-layer ASP.NET Core 10 MVC app (D&D Quest Board, v8.0 milestone)
+**Researched:** 2026-07-09
+**Confidence:** HIGH (integration points — verified directly against this codebase's source); MEDIUM (Markdig/HtmlSanitizer XSS specifics — verified via WebSearch against official GitHub/NuGet sources, no Context7 available in this environment)
 
-> **CORRECTED after publication — see `.planning/research/SUMMARY.md` "Library Version Decision" section.** This document's "Cropper.js v1.6.2, not v2" recommendation below was overturned: direct GitHub history checks showed the v1 branch has had zero commits since 2025-03-08 (effectively abandoned) while v2 has shipped steady releases through 2026-04 (most recent 3 months old), and a direct fetch of v2's published UMD bundle + docs showed it *does* work via a plain `<script>` tag with a simple `new Cropper('#image')` imperative call — contradicting this document's claim that v2 requires hand-authored Web Components markup. **Use Cropper.js v2.1.1, not v1.6.2.** The integration-pattern narrative below (vendoring into `wwwroot/lib/cropperjs/`, the `DataTransfer` FileList-swap technique, schema/repository design) is otherwise unaffected — only the version number and the "why v1" reasoning are wrong.
+## Summary / Recommendation
 
-## Standard Architecture
+Put the actual Markdown→HTML conversion in **one new Domain-layer service, `IMarkdownService`**, exactly mirroring the `IImageValidationService` precedent already in this codebase (stateless, pure-transformation, zero infrastructure dependency, unit-testable in isolation). Wrap it with **two thin adapters**, one per rendering pipeline this project already runs side-by-side:
 
-### System Overview
+- **MVC pipeline (`.cshtml`):** a `Html.Markdown(text)` extension method (`IHtmlContent`), following the same "static extension class in `Extensions/`" convention as `ControllerExtensions` — not a TagHelper (this codebase has zero TagHelpers today; a HtmlHelper extension is the smaller, more idiomatic addition given existing conventions).
+- **Blazor component pipeline (`.razor` emails via `HtmlRenderer`):** the 3 email components `@inject IMarkdownService` directly and wrap the parameter in `(MarkupString)`. This works with **zero Hangfire-specific scope plumbing** — `IMarkdownService` is stateless, so unlike `ActiveGroupContextService` it needs no `HangfireJobHelper.RunInScopeAsync` bridge; ordinary constructor/`@inject` DI resolves it from whatever scope `HtmlRenderer`'s `IServiceProvider` was built from (request scope or job scope, doesn't matter).
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Browser (no build step — plain <script> tags)                      │
-│  ┌───────────────────────┐   ┌──────────────────────────────────┐  │
-│  │ <input type="file">   │──▶│ Cropper.js v1.6.2 (CDN, vendored) │  │
-│  │ (existing form field) │   │ new Cropper(imgEl, opts)          │  │
-│  └───────────────────────┘   │ .getCroppedCanvas()               │  │
-│                                └──────────────┬───────────────────┘  │
-│                                               │ canvas.toBlob()      │
-│                                               ▼                      │
-│                                ┌──────────────────────────────────┐ │
-│                                │ DataTransfer trick: replace the   │ │
-│                                │ <input type="file">'s FileList    │ │
-│                                │ with the cropped Blob → File      │ │
-│                                └──────────────┬───────────────────┘ │
-│                                               │ normal <form> POST   │
-│                                               │ (multipart/form-data)│
-├───────────────────────────────────────────────┼──────────────────────┤
-│  QuestBoard.Service (MVC)                    ▼                      │
-│  GuildMembersController / DungeonMasterController                   │
-│  Edit/Create POST actions — model-bind IFormFile (unchanged shape)  │
-│  + read ORIGINAL bytes from a second posted IFormFile               │
-├───────────────────────────────────────────────────────────────────────┤
-│  QuestBoard.Domain (business logic — no EF, no System.Drawing IO)   │
-│  ICharacterService / IDungeonMasterProfileService                   │
-│  + new: ImageUploadValidator (size/type/dimension checks)           │
-├───────────────────────────────────────────────────────────────────────┤
-│  QuestBoard.Repository (EF Core — byte[] I/O only)                   │
-│  CharacterImageEntity / DungeonMasterProfileImageEntity              │
-│  + ADD: OriginalImageData byte[] column (existing ImageData column   │
-│    is repurposed to mean "cropped/display" bytes — see Recommended   │
-│    Schema Shape below)                                               │
-│  SQL Server — migration auto-applied on startup                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+The **Preview toggle needs zero server round-trip.** This app already vendors all client JS via CDN `<script>` tags (Bootstrap, FontAwesome, jQuery, Cropper.js — no npm/libman/build step, matching the "no additional setup steps" deployment constraint). Add a CDN-loaded **`commonmark.js`** (the reference implementation of the same CommonMark spec Markdig implements server-side, chosen specifically to minimize preview/render drift given "Strict CommonMark paragraph rules" is a locked v8.0 decision) plus **DOMPurify** (client-side sanitizer, pairs with the server-side `HtmlSanitizer` pass — see Anti-Patterns) for the live preview pane. No new controller endpoint (`POST /markdown/preview`) is needed or recommended.
 
-**Key point:** No server-side image-processing library is required. Cropping happens entirely client-side (canvas). The server's job is unchanged in kind — it still just reads an `IFormFile` into a `byte[]` — the only new work is reading a *second* `IFormFile` (for the original) and validating that the crop a client claims to have applied is sane. No `System.Drawing`, `ImageSharp`, or `SkiaSharp` needs to enter the Domain or Repository layer for this milestone. This directly avoids the exact problem — `SkiaSharp` native-library availability on the deployment host — that caused this feature to be paused since v1.0 (see PROJECT.md Key Decisions: "Profile picture crop paused... SkiaSharp native lib availability on deployment host unverified").
+The **9 read-side call sites** share logic via the single `Html.Markdown()` helper (one call replaces the current `<p style="white-space:pre-wrap">@Model.X</p>` pattern at each site). The **write-side editor UI** (textarea + Bold/Italic/Heading/List toolbar + Preview toggle) shares logic via one new `Views/Shared/_MarkdownEditor.cshtml` partial + one `wwwroot/js/markdown-editor.js` module, generalizing the existing `_QuestFormScripts.cshtml` "shared partial for form JS" pattern from single-feature to cross-feature scope.
 
-### Component Responsibilities
-
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|-------------------------|
-| Cropper.js v1.6.2 (vendored JS+CSS in `wwwroot/lib/cropperjs/`) | Renders the crop UI over the just-selected image, exposes `getCroppedCanvas()` | Plain `<script>`/`<link>` tags, no npm — see Library Choice below |
-| Crop-init JS (new `wwwroot/js/image-crop.js`) | Wires `<input type="file">` `change` event → shows a crop modal → on "Confirm crop" rewrites the form's file input(s) via `DataTransfer` so a normal POST carries the cropped bytes | Vanilla JS, follows existing `site.js` script-tag convention (no module bundler) |
-| `CharacterViewModel` / `EditDMProfileViewModel` (Service layer) | Model-binds the posted file(s); unchanged `[MaxFileSize]`/`[AllowedExtensions]` attributes still apply to whichever file is now "the" `ProfilePictureFile` | Add a second nullable `IFormFile? OriginalPictureFile` property |
-| `GuildMembersController` / `DungeonMasterController` (Service layer) | Reads both `IFormFile`s into `byte[]`, delegates size/type/dimension validation to Domain, calls the (widened) upsert service method with both byte arrays | Same `CopyToAsync(memoryStream)` pattern already used 3x in the codebase — just called twice |
-| New `IImageValidationService` (Domain layer, recommended) | Centralizes size/MIME validation that today is duplicated inline in 3 controller call sites (`GuildMembersController.Create`, `.Edit`, `DungeonMasterController.EditProfile`) | Plain C# — no image-processing dependency needed for a size/MIME check |
-| `CharacterService` / `DungeonMasterProfileService` (Domain layer) | Orchestrates the upsert call, unchanged responsibility, wider signature (`byte[] cropped, byte[] original`) | Extend existing `UpsertProfileAsync`/character-picture methods |
-| `CharacterRepository` / `DungeonMasterProfileRepository` (Repository layer) | Persists both byte arrays into the (modified) image entity; pure EF Core I/O, no processing | Extend existing `UpdateProfileImageAsync`/`UpsertProfileImageAsync` to accept and set two `byte[]` properties on the same row |
-| `CharacterImageEntity` / `DungeonMasterProfileImageEntity` (Repository layer) | Adds `OriginalImageData byte[]?` column alongside existing `ImageData` (kept as the display/cropped column — see schema section) | EF Core migration, `dotnet ef migrations add` |
-| `GetProfilePicture` / `GetDMProfilePicture` actions (Service layer) | Unchanged for the character-card/DM-list "cropped" thumbnail use. New action added to serve the **original** for the one place that needs it — the character details page | `return File(bytes, contentType)`, same pattern, new repository method `GetCharacterOriginalPictureAsync` |
-
-## Recommended Project Structure
+## System Overview — Where Markdown Rendering Sits
 
 ```
-QuestBoard.Service/
-├── wwwroot/
-│   ├── lib/
-│   │   └── cropperjs/                # NEW — vendored (not CDN-only; see rationale)
-│   │       ├── cropper.min.js        # v1.6.2, pinned
-│   │       └── cropper.min.css
-│   ├── js/
-│   │   ├── site.js                   # existing — untouched
-│   │   └── image-crop.js             # NEW — shared crop-modal wiring, reused by all 3 forms
-│   └── css/
-│       └── image-crop.css            # NEW — crop modal chrome, follows modern-card conventions
-├── ViewModels/
-│   ├── CharacterViewModels/
-│   │   └── CharacterViewModel.cs     # MODIFIED — add OriginalPictureFile IFormFile?
-│   └── DungeonMasterViewModels/
-│       └── EditDMProfileViewModel.cs # MODIFIED — add OriginalPictureFile IFormFile?
-├── Controllers/
-│   ├── Characters/
-│   │   └── GuildMembersController.cs # MODIFIED — Create/Edit POST actions; new GetOriginalPicture action
-│   └── DungeonMaster/
-│       └── DungeonMasterController.cs # MODIFIED — EditProfile POST; new GetOriginalPicture action
-└── Views/
-    ├── GuildMembers/
-    │   ├── Create.cshtml / .Mobile.cshtml   # MODIFIED — crop modal markup + script include
-    │   ├── Edit.cshtml / .Mobile.cshtml     # MODIFIED — same
-    │   └── Details.cshtml                   # MODIFIED — switch <img> src to GetOriginalPicture (issue #78)
-    └── DungeonMaster/
-        └── EditProfile.cshtml / .Mobile.cshtml # MODIFIED — crop modal markup + script include
+┌────────────────────────────────────────────────────────────────────────┐
+│  WRITE PATH (unchanged data model — no schema/migration needed)        │
+│                                                                          │
+│  Create/Edit .cshtml (+.Mobile.cshtml)                                 │
+│    └─ <partial name="_MarkdownEditor" model="...">  ◄── NEW partial    │
+│         textarea (raw Markdown) + toolbar + Preview pane               │
+│         markdown-editor.js: commonmark.js + DOMPurify (CDN, client)    │
+│    └─ POST → Controller → Domain Service → Repository                 │
+│         (raw Markdown string persisted verbatim — SAME 9 columns)      │
+└────────────────────────────────────────────────────────────────────────┘
 
-QuestBoard.Domain/
-├── Interfaces/
-│   ├── ICharacterService.cs                    # MODIFIED — widen picture-upsert signature; add GetCharacterOriginalPictureAsync
-│   ├── IDungeonMasterProfileService.cs         # MODIFIED — same
-│   └── IImageValidationService.cs              # NEW — optional but recommended (see Patterns)
-├── Services/
-│   ├── CharacterService.cs                     # MODIFIED
-│   ├── DungeonMasterProfileService.cs          # MODIFIED
-│   └── ImageValidationService.cs               # NEW
-└── Models/
-    ├── Character.cs                            # MODIFIED — add OriginalProfilePicture byte[]?
-    └── DungeonMasterProfile.cs                 # MODIFIED — same
-
-QuestBoard.Repository/
-├── Entities/
-│   ├── CharacterImageEntity.cs                 # MODIFIED — add OriginalImageData byte[]?
-│   └── DungeonMasterProfileImageEntity.cs      # MODIFIED — same
-├── CharacterRepository.cs                      # MODIFIED — UpdateProfileImageAsync takes 2 byte[]?; add GetCharacterOriginalPictureAsync
-├── DungeonMasterProfileRepository.cs            # MODIFIED — UpsertProfileImageAsync takes 2 byte[]?; add GetOriginalPictureAsync
-├── Automapper/EntityProfile.cs                 # MODIFIED — map new byte[]? properties
-└── Migrations/
-    └── {timestamp}_AddOriginalImageColumn.cs    # NEW — single additive migration
+┌────────────────────────────────────────────────────────────────────────┐
+│  READ PATH — two independent rendering pipelines, ONE shared core      │
+│                                                                          │
+│   MVC Request Pipeline              Hangfire Background-Job Pipeline   │
+│   (.cshtml, request-scoped DI)      (.razor via HtmlRenderer, scoped-  │
+│                                       factory pattern)                 │
+│         │                                    │                        │
+│  @Html.Markdown(Model.X)          @inject IMarkdownService              │
+│  (Service/Extensions/                @((MarkupString)                 │
+│   HtmlHelperExtensions.cs — NEW)      MarkdownService                  │
+│         │                             .RenderToHtml(X)))               │
+│         │                            (QuestFinalized/SessionReminder/  │
+│         │                             WaitlistPromoted .razor — MOD)   │
+│         └────────────────┬───────────────────┘                        │
+│                           ▼                                           │
+│         QuestBoard.Domain/Services/MarkdownService.cs  ◄── NEW        │
+│         QuestBoard.Domain/Interfaces/IMarkdownService.cs               │
+│         Markdig (DisableHtml, base CommonMark) → HtmlSanitizer pass    │
+│         registered AddSingleton in ServiceExtensions.AddDomainServices │
+│         (stateless — no IServiceScopeFactory bridge needed, unlike     │
+│          ActiveGroupContextService)                                   │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Structure Rationale
+This slots cleanly into the existing one-way layer rule: `MarkdownService` lives in `QuestBoard.Domain`, has **no dependency on `QuestBoard.Repository`** (it takes a `string?` in, returns a `string` out — no entities, no `DbContext`, no repository interface). Both adapters (`HtmlHelperExtensions` in Service, and the `.razor` components in Service) depend *down* into Domain, exactly like every other Service→Domain call in this app. Nothing here requires touching `QuestBoard.Repository` at all — confirming the milestone's framing that this is "a rendering-layer and editing-UX change, not a data-model change."
 
-- **Vendor the JS/CSS instead of pure CDN `<script src="https://...">`:** Bootstrap/FontAwesome are loaded via CDN in `_Layout.cshtml` today, so a CDN reference would be *consistent* with existing convention — but Cropper.js is load-bearing for a core upload flow, not decorative chrome. Vendor the two files into `wwwroot/lib/cropperjs/` so the crop feature does not silently break if the CDN is unreachable from the small self-hosted LXC deployment's network path. This mirrors how the project already treats `site.js` (self-hosted, not CDN).
-- **One shared `image-crop.js`, not three duplicated inline scripts:** All 3 upload forms (`GuildMembers/Create`, `GuildMembers/Edit`, `DungeonMaster/EditProfile`) currently duplicate an inline file-size/type-validation `<script>` block per view (verified: `Edit.cshtml` lines 144-174 and equivalents in `Create.cshtml`/`EditProfile.cshtml`). Adding crop-modal wiring is the right moment to extract a shared script, matching this project's own precedent of consolidating duplicated JS (Phase 42 collapsed 4 duplicated toast-init scripts into `site.js`).
-- **`IImageValidationService` in Domain, not inline in controllers:** Today, MIME/size validation is duplicated 3× directly in controller methods (`GuildMembersController.Create`, `.Edit`, `DungeonMasterController.EditProfile`) — a known duplication pattern in this codebase already (PROJECT.md's Known Issues separately calls out a 3× duplication of `GetActiveBoardTypeAsync` as tech debt). Adding a second file input is a natural moment to centralize this in one Domain-layer service rather than adding a 4th inline copy.
+## Component Responsibilities
 
-## Architectural Patterns
+| Component | Layer | New/Modified | Responsibility |
+|-----------|-------|---------------|-----------------|
+| `IMarkdownService` | `QuestBoard.Domain/Interfaces/` | New | Contract: `string RenderToHtml(string? markdown)` |
+| `MarkdownService` | `QuestBoard.Domain/Services/` | New | Markdig parse (`.DisableHtml()`, base CommonMark only) + `HtmlSanitizer` allowlist pass; the single source of truth both pipelines call into |
+| `Markdig` NuGet ref | `QuestBoard.Domain.csproj` | New | Parser — pure managed library, no ASP.NET/EF dependency, safe to add to Domain (same reasoning `AutoMapper` is already there) |
+| `HtmlSanitizer` (Ganss.Xss) NuGet ref | `QuestBoard.Domain.csproj` | New | Post-parse allowlist sanitizer (tags + `AllowedSchemes`) — closes a gap Markdig's `DisableHtml()` alone does not close (see Anti-Patterns) |
+| `ServiceExtensions.AddDomainServices` | `QuestBoard.Domain/Extensions/` | Modified | Register `IMarkdownService` — as **Singleton**, a deliberate one-line deviation from this file's otherwise-uniform `AddScoped` convention, justified because the service is stateless and the Markdig pipeline object is expensive-ish to build once and is documented thread-safe for reuse |
+| `HtmlHelperExtensions.Markdown()` | `QuestBoard.Service/Extensions/` | New | Read-side adapter: `IHtmlContent Markdown(this IHtmlHelper html, string? markdown)`, resolves `IMarkdownService` via `html.ViewContext.HttpContext.RequestServices` (standard ASP.NET Core idiom — no `_ViewImports` `@inject` needed per-view), wraps output in `<div class="markdown-content">...</div>` |
+| `Views/_ViewImports.cshtml` | `QuestBoard.Service/Views/` | Modified | Add `@using QuestBoard.Service.Extensions;` so all 9 read call sites can call `@Html.Markdown(...)` without per-view usings (mirrors how `ControllerExtensions` is already `using`-scoped per controller) |
+| `Views/Shared/_MarkdownEditor.cshtml` | `QuestBoard.Service/Views/Shared/` | New | Write-side reusable partial: textarea + toolbar buttons (Bold/Italic/Heading/List) + Preview toggle markup, parameterized by field id/name/rows |
+| `wwwroot/js/markdown-editor.js` | `QuestBoard.Service/wwwroot/js/` | New | Toolbar button logic (vanilla JS textarea-selection wrapping, no library) + Preview toggle (client-side `commonmark.js` render + `DOMPurify` sanitize) |
+| `commonmark.js` (CDN) | `_Layout.cshtml` / `_Layout.Mobile.cshtml` | New | Client-side CommonMark-spec parser for the Preview pane, matched to server-side Markdig's base ruleset |
+| `DOMPurify` (CDN) | `_Layout.cshtml` / `_Layout.Mobile.cshtml` | New | Client-side HTML sanitizer for the Preview pane, pairs with server-side `HtmlSanitizer` |
+| `.markdown-content` CSS class | `wwwroot/css/site.css` | New | One shared typography ruleset (headings/lists/bold/italic/links/code) for all 9 rendered-Markdown read views — desktop and mobile both load `site.css`, so one rule covers both |
+| 9 read call sites (Quest card partial, Quest Details ×2 fields, Quest Manage, Quest Log Details ×2 fields, Character Details ×2 fields, Contact Details + Notes loop, DM Profile, Shop Index/Details) | `QuestBoard.Service/Views/**` | Modified | Replace `<p style="white-space:pre-wrap">@Model.X</p>` with `@Html.Markdown(Model.X)` |
+| 9 fields' Create/Edit (+`EditRecap`) forms, desktop + mobile | `QuestBoard.Service/Views/**` | Modified | Replace plain `<textarea asp-for="X">` with `<partial name="_MarkdownEditor" model="...">` |
+| `QuestFinalized.razor`, `SessionReminder.razor`, `WaitlistPromoted.razor` | `QuestBoard.Service/Components/Emails/` | Modified | Add `@inject IMarkdownService MarkdownService`; change `@QuestDescription` → `@((MarkupString)MarkdownService.RenderToHtml(QuestDescription))` |
 
-### Pattern 1: Client posts TWO files, not crop coordinates
+## Why a Domain Service (not just a view helper)
 
-**What:** On crop-confirm, the browser produces a cropped `Blob` via `canvas.toBlob()`. Rather than sending crop coordinates (x/y/w/h) to the server and asking it to re-crop the original — which would require a server-side image-processing library, exactly what caused this feature's original pause — the browser sends **both** the original file bytes (unmodified, from the original `File` object still held in memory) and the cropped blob as two separate `IFormFile` entries in the same `multipart/form-data` POST.
+This project has an explicit, already-validated requirement: *"Business logic lives in services, not controllers"* (v1.x, Phase 02) — and the more recent `IImageValidationService` (v7.0, Phase 45) is the exact template to follow for "small, pure, cross-cutting transformation logic that several controllers/views need identically." Putting the actual Markdig/HtmlSanitizer logic only in a view helper would:
 
-**When to use:** Any time "keep both variants" is a hard requirement (it is here — the character details page must keep showing the original per issue #78) and a server-side image pipeline is explicitly undesirable (it is — SkiaSharp was paused for exactly this).
+1. Make it untestable without spinning up MVC's `IHtmlHelper` machinery (Domain-layer unit tests are cheap and already the norm — see `QuestBoard.UnitTests/`).
+2. Be unreachable from the `.razor` email pipeline, which has no `IHtmlHelper` at all — `HtmlRenderer` renders Blazor components via `IServiceProvider`, not MVC's view engine. A view-only helper would force the email adapter to duplicate the parsing/sanitizing logic, which is the "logic duplicated 9(+3) times" outcome the question explicitly wants avoided.
 
-**Trade-offs:**
-- Zero new server dependencies; Domain/Repository layering stays exactly as strict as it is today (no image-processing package needed in any project).
-- Sidesteps the SkiaSharp-on-Linux-host verification blocker entirely — this is the single most important architectural consequence of this choice.
-- Server-side validation is still meaningful: it can check both files are valid image MIME types and within the existing 5 MB cap without ever decoding pixels.
-- Slightly larger request payload (transmits original bytes even though the server already effectively "has" them from a prior upload on Edit) — acceptable at this app's scale (17 members, occasional profile edits, not a hot path).
-- Server cannot mathematically re-verify that the "cropped" blob is actually a crop of the "original" blob without decoding both — accepted risk; this is a trusted internal tool for a friend group, not a public upload surface.
+So: **Domain owns the algorithm, Service-layer owns two thin per-pipeline adapters.** This is the "both" option the question raises, and it is the right call — not because "both" is safe/wishy-washy, but because the two adapters genuinely cannot be unified: MVC's `IHtmlContent`/`HtmlString` and Blazor's `MarkupString` are different rendering-pipeline primitives, which is inherent to this project already choosing to run two parallel Razor rendering engines (documented in this codebase's own `ARCHITECTURE.md`: *"IRazorViewEngine throws NullReferenceException in background job context, which is why HtmlRenderer was adopted"*). The adapters are unavoidable plumbing; the algorithm is not duplicated.
 
-**Example (client-side, vanilla JS, no bundler):**
-```javascript
-// wwwroot/js/image-crop.js
-function wireCropInput(inputId, previewImgId, cropperOptions) {
-    const input = document.getElementById(inputId);
-    input.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+## Why HtmlHelper, not a TagHelper
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const img = document.getElementById(previewImgId);
-            img.src = evt.target.result;
-            openCropModal(img, file, input, cropperOptions);
-        };
-        reader.readAsDataURL(file);
-    });
-}
+Both are legitimate ASP.NET Core choices. This codebase currently has **zero TagHelpers** — `Views/_ViewImports.cshtml` only registers the built-in `@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers`. It does, however, have an established, repeatedly-used convention: a `internal static class ...Extensions` in `QuestBoard.Service/Extensions/` (see `ControllerExtensions.cs`, cited directly in the milestone context as the "extract shared logic into helpers when duplicated 3+ times" precedent). A `HtmlHelperExtensions.Markdown()` method is the same shape of thing, in the same folder, following the same naming convention — it is the smaller, more consistent addition. Introducing a TagHelper for the first time in this milestone would mean inventing a second reusable-view-logic convention where one already exists and fits.
 
-function openCropModal(imgEl, originalFile, fileInputEl, options) {
-    const cropper = new Cropper(imgEl, { aspectRatio: 1, viewMode: 1, ...options });
-
-    document.getElementById('confirmCropBtn').onclick = () => {
-        cropper.getCroppedCanvas({ width: 512, height: 512 }).toBlob((croppedBlob) => {
-            const croppedFile = new File([croppedBlob], originalFile.name, { type: 'image/jpeg' });
-
-            // Replace the visible file input's FileList with the cropped result
-            // so the existing <form> posts the cropped bytes as ProfilePictureFile —
-            // no JS-driven fetch/AJAX needed, the form submits normally.
-            const croppedDT = new DataTransfer();
-            croppedDT.items.add(croppedFile);
-            fileInputEl.files = croppedDT.files;
-
-            // Also stash the untouched original into a second hidden file input
-            // so both ride along in the same multipart/form-data POST.
-            const originalInput = document.getElementById('originalPictureInput');
-            const originalDT = new DataTransfer();
-            originalDT.items.add(originalFile);
-            originalInput.files = originalDT.files;
-
-            cropper.destroy();
-            closeCropModal();
-        }, 'image/jpeg', 0.92);
-    };
-}
-```
-
-```html
-<!-- Existing field, now populated with the CROPPED result before submit -->
-<input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" />
-
-<!-- New hidden field carrying the untouched ORIGINAL -->
-<input type="file" asp-for="OriginalPictureFile" class="d-none" id="originalPictureInput" />
-```
-
-This is the cleanest way to wire a vanilla-JS/CDN-delivered crop library into an existing upload `<form>` so the cropped result — not the raw file — is what gets posted: **no AJAX, no fetch, no JS-driven `FormData` submit.** The existing Razor `<form method="post" enctype="multipart/form-data">` and `asp-for` model binding continue to work completely unchanged; only the *contents* of the `FileList` on two `<input type="file">` elements are swapped via `DataTransfer` immediately before the user clicks the existing "Save" submit button.
-
-### Pattern 2: Validation lives in Domain, byte[] I/O stays in Repository
-
-**What:** The Domain layer's `IImageValidationService` (or inline checks in `CharacterService`/`DungeonMasterProfileService`) validates business rules purely from the `byte[]` payloads it's handed — file size and allowed MIME type (logic that already exists 3× in controllers today, just needs de-duplicating). The Repository layer never validates anything; it only reads/writes the two `byte[]` columns.
-
-**When to use:** Any validation that depends on business meaning (file size limits, allowed formats) belongs in Domain because it's a business rule, not a storage concern — consistent with this codebase's existing rule that "business logic lives in services, not controllers" (validated requirement in PROJECT.md, Phase 02).
-
-**Trade-offs:**
-- Matches the project's existing hard boundary: "Domain layer must not depend directly on Repository entities" and "EF packages only in Repository" — this pattern requires zero EF references and zero image-processing package references in Domain.
-- Removes the current 3x duplication of MIME/size-check logic sitting directly in controllers today (verified in `GuildMembersController.Create`/`.Edit` and `DungeonMasterController.EditProfile`). Fixing this existing duplication is optional scope, not required by the four backlog items, but this phase is a natural moment to do it since the validation surface is being touched anyway.
-- Controllers still do the actual `IFormFile.CopyToAsync(memoryStream)` byte-extraction (unavoidable — `IFormFile` is an ASP.NET Core Service-layer type and must not leak into Domain).
-
-**Example:**
+Concretely:
 ```csharp
-// QuestBoard.Domain/Interfaces/IImageValidationService.cs
-public interface IImageValidationService
+// QuestBoard.Service/Extensions/HtmlHelperExtensions.cs
+internal static class HtmlHelperExtensions
 {
-    /// <summary>
-    /// Returns null if the image passes business rules (size cap, allowed MIME type),
-    /// or an error message describing the failure.
-    /// </summary>
-    string? ValidateImage(byte[] imageBytes, string contentType, long maxSizeBytes);
+    internal static IHtmlContent Markdown(this IHtmlHelper html, string? markdown)
+    {
+        var service = html.ViewContext.HttpContext.RequestServices.GetRequiredService<IMarkdownService>();
+        var rendered = service.RenderToHtml(markdown);
+        return new HtmlString($"<div class=\"markdown-content\">{rendered}</div>");
+    }
 }
 ```
-
-### Pattern 3: Both file inputs are lost on server-side validation failure — same as today, now doubled
-
-**What:** When `ModelState.IsValid` is false or an inline check fails, the controller currently does `return View(viewModel)`. With two file inputs, both must be surfaced consistently — but `IFormFile` values are never round-tripped to the client on a failed POST (browsers cannot pre-populate `<input type="file">` for security reasons), and this is already true today for the single-file case in this codebase. No new problem is introduced, but the UI should tell the user their crop selection was lost and prompt them to re-select/re-crop, rather than assuming either file persists.
-
-**When to use:** Any validation-failure branch in `GuildMembersController.Create/Edit` or `DungeonMasterController.EditProfile`.
-
-## Data Flow
-
-### Upload + Crop Request Flow
-
-```
-User selects a file in <input type="file">
-    v
-image-crop.js 'change' handler -> FileReader.readAsDataURL -> shows Cropper.js modal
-    v
-User adjusts crop box, clicks "Confirm Crop" (NEW button, not the form's Save button)
-    v
-cropper.getCroppedCanvas().toBlob() -> cropped File built via DataTransfer,
-replaces ProfilePictureFile's FileList; original File placed into a new
-hidden OriginalPictureFile input via a second DataTransfer
-    v
-User clicks existing "Save Changes" button -> normal <form> POST (multipart/form-data)
-    v
-Controller (GuildMembersController.Edit / DungeonMasterController.EditProfile)
-    reads BOTH IFormFiles into byte[] (existing CopyToAsync pattern, called twice)
-    v
-Domain service (CharacterService / DungeonMasterProfileService)
-    validates via IImageValidationService, then calls repository upsert with 2 byte[]
-    v
-Repository (CharacterRepository.UpdateProfileImageAsync / DungeonMasterProfileRepository.UpsertProfileImageAsync)
-    writes CharacterImageEntity.ImageData (cropped) + .OriginalImageData (original)
-    v
-SQL Server -- EF Core SaveChangesAsync
-    v
-RedirectToAction (unchanged)
-```
-
-### Display Flow (existing thumbnail vs. new "show original")
-
-```
-Guild list / character card / DM directory
-    -> <img src="GetProfilePicture/{id}">  (unchanged -- always serves the CROPPED/display image)
-
-Character details page (the one place that must show the ORIGINAL per issue #78)
-    -> <img src="GetOriginalPicture/{id}"> (NEW action, mirrors GetProfilePicture exactly,
-       reads the new OriginalImageData column instead, falling back to ImageData if
-       OriginalImageData is NULL for pre-existing rows)
-```
-
-## Recommended Schema Shape
-
-**Decision: one entity, two `byte[]` columns — NOT two related rows.**
-
-```csharp
-// QuestBoard.Repository/Entities/CharacterImageEntity.cs — MODIFIED
-[Table("CharacterImages")]
-public class CharacterImageEntity : IEntity
-{
-    [Key]
-    [ForeignKey(nameof(Character))]
-    public int Id { get; set; }
-
-    [Required]
-    public byte[] ImageData { get; set; } = [];          // EXISTING — repurposed as "display/cropped" bytes
-
-    public byte[]? OriginalImageData { get; set; }        // NEW — nullable so existing rows migrate cleanly
-
-    public virtual CharacterEntity Character { get; set; } = null!;
-}
-```
-
-Same change mirrored on `DungeonMasterProfileImageEntity`.
-
-**Why one entity/two columns, not two related rows:**
-
-1. **Cardinality is fixed and 1:1, not 1:many.** There is exactly one "current cropped" and exactly one "current original" per character/profile at any time — never a history, never multiple originals. A second related entity (e.g. `CharacterOriginalImageEntity`) would just duplicate `CharacterImageEntity`'s existing `PK=FK` pattern a second time for no benefit: a second table, a second cascade-delete relationship to configure, and a second `Include()` everywhere the image is loaded, all to store what is fundamentally the same row's data.
-2. **They are always read/written together.** Every existing repository method (`UpdateProfileImageAsync`, `UpsertProfileImageAsync`) already loads the image row with `.Include(c => c.ProfileImage)` and treats it as a single atomic unit (null → create, exists → update in place). Splitting into two rows would only add join overhead for zero query-pattern benefit — there is no scenario in this app where you fetch the cropped image without potentially needing the original.
-3. **Matches the existing codebase convention exactly.** An earlier migration (`MoveCharacterImagesToSeparateTable`) already established the precedent that image bytes live in a dedicated 1-row-per-owner table, kept separate from the owning entity purely so image bytes aren't loaded on every non-image query of `CharacterEntity`/`DungeonMasterProfileEntity`. Adding a second nullable column to that *same* dedicated table preserves that exact isolation property (a `Characters` list query still never touches `CharacterImages` at all) while avoiding a third table.
-4. **Migration is trivially additive and reversible.** `ALTER TABLE CharacterImages ADD OriginalImageData varbinary(max) NULL` — no data loss risk, no backfill required (nullable, so all pre-existing rows simply have `OriginalImageData = NULL` until the owner next edits their photo; `GetOriginalPicture` should fall back to `ImageData` when `OriginalImageData IS NULL`, so old photos don't visually "lose" their original in the UI — they just show the same image for both).
-
-**When two related rows WOULD be justified (and why not here):** If the requirement were "keep a history of every crop ever made" (1:many) or "support multiple pending uploads before one is chosen" a related entity would be correct. Issue #78 explicitly wants exactly one original + one cropped, replaced together on every edit — a two-column single row is the minimal correct shape.
-
-## Library Choice: Cropper.js v1.6.2 (not v2)
-
-Cropper.js is the de facto standard vanilla-JS, canvas-based, touch-friendly crop library — CDN-deliverable with no build step, which fits this project's constraint exactly.
-
-**Version finding (cross-verified across the official homepage/guide and the dedicated v1 docs page — MEDIUM confidence, since both sources are web-fetched docs rather than a package registry, but the two independent fetches agree):** Cropper.js v2 (`https://unpkg.com/cropperjs`, current default distribution) is a ground-up rewrite onto a **custom-elements/Web Components API** (`<cropper-canvas>`, `<cropper-image>`, `<cropper-selection>`) — a materially different, heavier integration surface than the classic v1 API. Cropper.js v1.6.2 retains the simple, extremely well-documented `new Cropper(imageElement, options)` class with a `.getCroppedCanvas()` method that hands back a plain `<canvas>` — the pattern used in Pattern 1 above and in the vast majority of "crop before multipart upload" tutorials/integrations across server-rendered frameworks.
-
-**Recommendation: use v1.6.2, pinned, vendored — not v2.** Reasons:
-- v1's plain class API maps directly onto `getCroppedCanvas().toBlob()` with zero framework/component-model learning curve, for a team with no other web-component usage anywhere in this codebase.
-- v2's custom-elements API would be the only web component in the entire application — a one-off architectural inconsistency for a vanilla-JS, no-bundler codebase that otherwise uses plain DOM APIs (`document.getElementById`, `addEventListener`) everywhere (verified in `Edit.cshtml`'s existing inline script).
-- v1 remains distributed under its own dist-tag (cdnjs/jsdelivr/unpkg), and vendoring a specific pinned file protects against any future v2-only breaking changes regardless.
-
-**Installation (vendored, recommended):**
+Call site (all 9, desktop and mobile identically, since both share `Views/_ViewImports.cshtml`):
 ```html
-<!-- In the 3 form views (desktop + mobile = 6 files) -->
-<link rel="stylesheet" href="~/lib/cropperjs/cropper.min.css" />
-<script src="~/lib/cropperjs/cropper.min.js"></script>
-<script src="~/js/image-crop.js"></script>
+@Html.Markdown(Model.Quest?.Description)
 ```
-Download `cropper.min.js` + `cropper.min.css` from the `v1` release assets (jsdelivr `cropperjs@1.6.2/dist/cropper.min.js` and `.../cropper.min.css`) once, commit them into `wwwroot/lib/cropperjs/`, exactly as Bootstrap/FontAwesome are referenced today.
+This one line replaces both the old inline `<p style="white-space:pre-wrap">@Model.X</p>` markup **and** the per-page CSS reliance on `white-space: pre-wrap` (which becomes obsolete for these fields once Markdown owns paragraph semantics — this is literally the "Strict CommonMark paragraph rules... replacing today's line-break-preserving plain-text display" requirement).
 
-## Scaling Considerations
+## Preview Toggle — Zero Round-Trip, Not a New Endpoint
 
-| Scale | Architecture Adjustments |
-|-------|---------------------------|
-| Current (17 members, occasional profile edits) | Exactly as described above — no queueing, no async processing; synchronous crop+upload on the request thread is trivial at this volume. |
-| Moderate growth (100s of members) | No change needed. Image upload is not a hot path; `byte[]` columns on a dedicated 1-row table remain fine. |
-| Out of scope for this milestone | Image blob storage migration to external storage — already explicitly listed in PROJECT.md's "Out of Scope": "Image blob storage migration — performance acceptable at current scale." Do not let this phase creep into that. |
+**Recommendation: no `POST /markdown/preview` controller.** Reasons, in order of weight:
 
-## Anti-Patterns
+1. **Deployment constraint fit.** This app already vendors 100% of its client JS via CDN `<script>` tags in `_Layout.cshtml`/`_Layout.Mobile.cshtml` (Bootstrap, FontAwesome, jQuery, Cropper.js v2.1.1) with zero npm/libman/build tooling — matching the project's own "must remain deployable via `dotnet run` on LXC host; no additional setup steps" constraint. A CDN-loaded client Markdown parser is the same pattern, not a new one.
+2. **Fidelity, not just speed.** A round-trip endpoint's only real advantage over client rendering is guaranteeing the preview is byte-identical to the real render. That guarantee is achievable client-side instead by choosing a **spec-matched** parser: `commonmark.js` is the reference implementation of the same CommonMark spec Markdig implements, and "Strict CommonMark paragraph rules" is already a locked v8.0 decision — so keeping the server pipeline to base CommonMark (no extra Markdig extensions beyond what's needed) and pointing the client at the spec reference implementation gets near-identical output without a network hop.
+3. **No new attack surface / no antiforgery plumbing for a preview-only action.** A `POST /markdown/preview` endpoint accepting arbitrary raw text from any authenticated user is a new unauthenticated-content-reflection surface that then needs its own rate limiting, its own antiforgery token wiring in 9+ forms, and its own test coverage — for a feature (live preview) whose entire value proposition is "just show me what this looks like," where a slight parser-edge-case mismatch is a cosmetic risk, not a functional one.
 
-### Anti-Pattern 1: Re-introducing a server-side image-processing library to "properly" re-crop from coordinates
+**One real, acknowledged gap:** the recommended client stack (`commonmark.js` + DOMPurify) cannot be made to exactly replicate the server's second-stage `HtmlSanitizer` allowlist pass (see Anti-Patterns below) without also shipping a client sanitizer configuration kept in lockstep with the server one. This is an accepted, narrow asymmetry — the client preview is only ever shown to the authoring user before they submit; the server-side sanitizer is what actually protects *other* users and the emailed HTML once the content is saved and re-rendered. Recommend pairing `commonmark.js` with **DOMPurify** (industry-standard, dependency-free, CDN-friendly) in the preview pane specifically so this gap is small (raw-tag injection is still stripped client-side too), not absent.
 
-**What people do:** Send crop rectangle (x/y/w/h) to the server and use `SkiaSharp`/`ImageSharp`/`System.Drawing` to perform the actual crop server-side, treating the client-side crop UI as "just a preview."
+Toolbar buttons (Bold/Italic/Heading/List) need no library at all — pure vanilla JS wrapping of the current `textarea` selection with `**`/`_`/`## `/`- ` markers, consistent with this app's already-vanilla-JS front end (no SPA framework, no bundler anywhere in the codebase).
 
-**Why it's wrong:** This is precisely the approach that was paused in v1.0 because `SkiaSharp`'s native library availability on the `aspnet:10` Debian Bookworm deployment target was never verified (PROJECT.md Key Decisions: "Profile picture crop paused — SkiaSharp native lib availability on deployment host unverified"). Re-introducing any native-dependent image library reopens exactly the blocker this milestone should retire, and it couples business logic to platform-specific native binaries with no natural home in this project's strict layering.
+## Sharing Logic Across the 9 Write-Side Call Sites
 
-**Do this instead:** Crop entirely client-side with canvas (`getCroppedCanvas().toBlob()`), and post the already-cropped pixels as ordinary `byte[]`. The server only ever validates and stores bytes it's handed — this is the whole point of Pattern 1 above.
+This project already has the right precedent for this: `Views/Quest/_QuestFormScripts.cshtml`, a partial view holding JS shared across `Quest/Create(.Mobile)` and `Quest/Edit(.Mobile)`. The Markdown editor needs the same idea, generalized from one feature to five. New component:
 
-### Anti-Pattern 2: AJAX/fetch-based crop-then-upload flow
+- `Views/Shared/_MarkdownEditor.cshtml` — a partial view accepting the bound field's `id`/`name` (or a small parameter object), rendering the textarea + toolbar + preview-pane markup identically everywhere it's included.
+- `wwwroot/js/markdown-editor.js` — one shared script (loaded once via the layout, same as `site.js` — note this project already consolidated "4 duplicated toast-init scripts into one `site.js` listener" in Phase 42, the exact same kind of dedup this is), exposing an `initMarkdownEditor(...)` entry point the partial's inline script calls per-instance.
 
-**What people do:** Intercept the form's `submit` event with JS, build a `FormData` object manually, and `fetch()` it to the controller, bypassing the native `<form>` POST.
+Each of the 9 fields' Create/Edit views (18 files counting desktop+mobile pairs, plus `QuestLog/EditRecap(.Mobile).cshtml` for Recap specifically) becomes a one-line `<partial name="_MarkdownEditor" model="...">` swap-in for what is today a plain `<textarea asp-for="Description" class="form-control" rows="6"></textarea>`. Because the partial is pure markup + client JS with no server dependency, mobile and desktop forms include the exact same partial and get identical behavior for free — there is nothing mobile-specific to re-implement, which matters given this project's own repeated lesson (flagged multiple times in `PROJECT.md`, e.g. Phase 43/54) that mobile parity gets missed when a feature is built desktop-only first.
 
-**Why it's wrong:** This is unnecessary complexity for this codebase. Every other form in the app (all 6 upload views) is a plain server-rendered `<form method="post">` with full-page redirect-after-post; introducing one AJAX-driven exception creates an inconsistent UX (no full-page navigation feedback, needs manual error-display JS, breaks the existing `asp-validation-summary`/`asp-validation-for` tag helpers which rely on a real postback) for zero added benefit — the `DataTransfer`-swap trick (Pattern 1) achieves an identical visual result using the existing plain-POST mechanism.
+## Anti-Patterns to Avoid
 
-**Do this instead:** Swap the `<input type="file">`'s `FileList` via `DataTransfer` before the user submits the existing form normally, as shown in Pattern 1.
+### Relying on `Markdig.DisableHtml()` alone as "the" sanitizer
 
-### Anti-Pattern 3: Storing the crop rectangle instead of the actual cropped pixels
+**What people do:** Configure the Markdig pipeline with `.DisableHtml()` and consider the output safe to render as raw HTML, reasoning "no raw HTML in, no raw HTML out."
 
-**What people do:** Store `CropX`, `CropY`, `CropWidth`, `CropHeight` as new columns alongside the original image, and compute the "cropped" view on every read.
+**Why it's wrong:** `DisableHtml()` stops literal `<script>`/`<iframe>`/etc. tags typed *inside* the Markdown source from being echoed as live HTML (it encodes them as text instead) — but it does **not** restrict the URI scheme of a normal Markdown link. `[Click here](javascript:alert(document.cookie))` is completely valid CommonMark and Markdig will happily emit a live `<a href="javascript:...">`. This is a well-documented, real-world Markdown XSS vector (verified via Rick Strahl's "Markdown and Cross Site Scripting" writeup and Markdig's own usage docs — MEDIUM confidence, WebSearch-verified against primary sources, no Context7 available in this environment). Given these 9 fields are writable by ordinary group members (Contact Notes = any member, Character fields = the owning player) and the rendered output is injected as raw HTML into both pages *and* the 3 HTML email templates, this is not a theoretical risk.
 
-**Why it's wrong:** This reintroduces a server-side (or repeated client-side) re-crop operation on every page that shows the thumbnail, which is both slower and reopens the "does this need an image library" question this milestone is trying to avoid. It also doesn't match issue #78's explicit requirement — "both the original and cropped image are stored."
+**Do this instead:** Pipe Markdig's HTML output through a second pass with **`HtmlSanitizer`** (Ganss.Xss NuGet package — pure managed, MIT-licensed, thread-safe `Sanitize()`), configured with:
+- An allowed-tag list matching exactly what Markdig's base CommonMark renderer can ever produce (`p, strong, em, h1–h6, ul, ol, li, a, code, pre, blockquote, br, hr, img` if images are ever allowed),
+- `AllowedSchemes` restricted to `http`, `https`, `mailto` — this is the specific configuration that closes the `javascript:` gap `DisableHtml()` leaves open.
 
-**Do this instead:** Store the already-rasterized cropped bytes directly (Recommended Schema Shape above), computed once client-side at upload time.
+Both stages (`DisableHtml()` + `HtmlSanitizer`) belong inside `MarkdownService.RenderToHtml`, not scattered across call sites — this is precisely why the algorithm belongs in one Domain service rather than being reimplemented per adapter.
+
+### Persisting rendered HTML instead of rendering on read
+
+**What people do:** Since Markdown rendering has a cost, cache/store the rendered HTML alongside the raw Markdown (e.g., a new `DescriptionHtml` column) to avoid re-rendering on every page view.
+
+**Why it's wrong:** This milestone is explicitly scoped as "no schema change needed — this is a rendering-layer and editing-UX change, not a data-model change." Storing rendered HTML also creates a cache-invalidation problem (stale HTML if the sanitizer/renderer config ever changes) and doubles the surface that could drift from the source of truth. At this app's scale (~17 members, description-length text), Markdig rendering is sub-millisecond — there is no performance case for pre-rendering.
+
+**Do this instead:** Render on every read, in the adapter, from the always-current raw Markdown string. If profiling ever shows this matters (it won't at this scale), memoize per-request only, never persist.
+
+### Reflecting `IMarkdownService` through `IServiceScopeFactory`/`HangfireJobHelper` "for consistency" with other Hangfire-job services
+
+**What people do:** Because every existing Hangfire job resolves its scoped services via `HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, ...)`, it's tempting to route `IMarkdownService` through the same ceremony "to match the pattern."
+
+**Why it's wrong:** That ceremony exists specifically to bridge `HttpContext.Session`-dependent state (`ActiveGroupContextService.SetGroupId`) into a background thread that has no `HttpContext`. `IMarkdownService` has no such state — it is a pure function of its string input. Forcing it through the scope-factory dance adds indirection with no benefit, and — more importantly — the `.razor` email components render via `HtmlRenderer`'s own `IServiceProvider` (already the scoped provider from `RazorEmailRenderService`'s constructor), so `@inject IMarkdownService` on the component resolves it directly, no bridge needed at all.
+
+**Do this instead:** Register `IMarkdownService` as `AddSingleton` in `QuestBoard.Domain/Extensions/ServiceExtensions.cs` and let both pipelines resolve it through ordinary DI — MVC via `RequestServices` (inside the `Html.Markdown()` extension), Blazor via `@inject` on the 3 email components.
 
 ## Integration Points
 
-### Internal Boundaries (files touched, by layer)
+### Internal Boundaries
 
-| File | Layer | Change |
-|------|-------|--------|
-| `QuestBoard.Repository/Entities/CharacterImageEntity.cs` | Repository | Add `OriginalImageData byte[]?` |
-| `QuestBoard.Repository/Entities/DungeonMasterProfileImageEntity.cs` | Repository | Add `OriginalImageData byte[]?` |
-| `QuestBoard.Repository/Migrations/{new}_AddOriginalImageColumn.cs` | Repository | New additive migration (nullable column, no backfill) |
-| `QuestBoard.Repository/CharacterRepository.cs` | Repository | `UpdateProfileImageAsync` accepts `(byte[]? cropped, byte[]? original)`; add `GetCharacterOriginalPictureAsync` |
-| `QuestBoard.Repository/DungeonMasterProfileRepository.cs` | Repository | `UpsertProfileImageAsync` accepts `(byte[]? cropped, byte[]? original)`; add `GetOriginalPictureAsync` |
-| `QuestBoard.Repository/Automapper/EntityProfile.cs` | Repository | Map new `byte[]?` properties Entity ↔ DomainModel |
-| `QuestBoard.Domain/Models/Character.cs` | Domain | Add `OriginalProfilePicture byte[]?` |
-| `QuestBoard.Domain/Models/DungeonMasterProfile.cs` | Domain | Add `OriginalProfilePicture byte[]?` |
-| `QuestBoard.Domain/Interfaces/ICharacterService.cs` | Domain | Add `GetCharacterOriginalPictureAsync`; widen picture-upsert signature |
-| `QuestBoard.Domain/Interfaces/IDungeonMasterProfileService.cs` | Domain | Same shape of change |
-| `QuestBoard.Domain/Interfaces/IImageValidationService.cs` (new, recommended) | Domain | Centralize size/type validation, remove 3x duplication |
-| `QuestBoard.Domain/Services/CharacterService.cs` | Domain | Wire validation + widened upsert call |
-| `QuestBoard.Domain/Services/DungeonMasterProfileService.cs` | Domain | Same |
-| `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs` | Service | Add `IFormFile? OriginalPictureFile` |
-| `QuestBoard.Service/ViewModels/DungeonMasterViewModels/EditDMProfileViewModel.cs` | Service | Add `IFormFile? OriginalPictureFile` |
-| `QuestBoard.Service/Controllers/Characters/GuildMembersController.cs` | Service | `Create`/`Edit` POST actions read both files; new `GetOriginalPicture` action |
-| `QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs` | Service | `EditProfile` POST reads both files; new `GetOriginalPicture` action |
-| `QuestBoard.Service/Views/GuildMembers/Create.cshtml` + `.Mobile.cshtml` | Service | Add crop modal markup, hidden original input, script includes |
-| `QuestBoard.Service/Views/GuildMembers/Edit.cshtml` + `.Mobile.cshtml` | Service | Same |
-| `QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml` + `.Mobile.cshtml` | Service | Same |
-| `QuestBoard.Service/Views/GuildMembers/Details.cshtml` | Service | Switch `<img>` src to `GetOriginalPicture` per issue #78 |
-| `QuestBoard.Service/wwwroot/lib/cropperjs/*` (new) | Service (static assets) | Vendored Cropper.js v1.6.2 files |
-| `QuestBoard.Service/wwwroot/js/image-crop.js` (new) | Service (static assets) | Shared crop-modal wiring, used by all 3 forms |
-| `QuestBoard.Service/wwwroot/css/image-crop.css` (new) | Service (static assets) | Crop modal styling |
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `QuestBoard.Service` (Html.Markdown extension) → `QuestBoard.Domain` (IMarkdownService) | Direct DI resolution via `RequestServices` | Matches existing Service→Domain dependency direction; no new boundary type |
+| `QuestBoard.Service` (email `.razor` components) → `QuestBoard.Domain` (IMarkdownService) | `@inject`, resolved from `HtmlRenderer`'s scoped `IServiceProvider` | Same Domain service, second adapter — proves the "one core, two adapters" design under the project's own two-Razor-pipeline constraint |
+| `QuestBoard.Domain` (MarkdownService) → `QuestBoard.Repository` | **None** | Correctly respects the one-way layer rule — this service touches no entities, no `DbContext`; it is a pure string-transform, so there is nothing for it to depend on downward |
+| Write-side `_MarkdownEditor.cshtml` partial → existing Create/Edit controller actions | Unchanged — the partial only replaces the `<textarea>` markup; the posted field name/model binding is untouched, so no controller/ViewModel changes are needed beyond the view swap | Confirms "no data-model change" holds for the write path too, not just the read path |
 
-### External Services
+### External Services (CDN-vendored, matching existing convention)
 
-None. This feature has zero external service dependencies — it is entirely client-side JS + existing EF Core/SQL Server.
+| Library | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| `commonmark.js` | `<script src="https://cdn.jsdelivr.net/...">` in `_Layout.cshtml`/`_Layout.Mobile.cshtml`, same tier as Bootstrap/FontAwesome/Cropper.js | Client-side Preview parser; chosen for spec parity with server-side Markdig, not for feature richness |
+| DOMPurify | Same CDN pattern | Client-side sanitizer for the Preview pane only — does not replace the server-side `HtmlSanitizer` pass, which remains authoritative |
+| `Markdig` (NuGet) | `QuestBoard.Domain.csproj` `PackageReference` | Server-side parser |
+| `HtmlSanitizer` (Ganss.Xss, NuGet) | `QuestBoard.Domain.csproj` `PackageReference` | Server-side sanitizer, second stage after Markdig |
 
 ## Suggested Build Order
 
-1. **Schema first (Repository layer):** Add `OriginalImageData` column to both image entities, generate and verify the EF Core migration applies cleanly (additive, nullable — low risk). Nothing else can be built/tested end-to-end until this exists, since controllers need somewhere to persist the second byte array.
-2. **Repository + Domain plumbing:** Widen `UpdateProfileImageAsync`/`UpsertProfileImageAsync` signatures, add `GetCharacterOriginalPictureAsync`/`GetOriginalPictureAsync`, update `Character`/`DungeonMasterProfile` domain models and AutoMapper profiles, update `ICharacterService`/`IDungeonMasterProfileService` and their implementations. This can be built and unit-tested independently of any UI change (pass two `byte[]` literals in a test, assert both columns are set).
-3. **ViewModel + controller wiring (still without crop UI):** Add `OriginalPictureFile` to both ViewModels, update the 3 POST actions to read and forward both files, add the two `GetOriginalPicture` actions. At this point the feature is fully functional via manual two-file-input testing (e.g. Postman) even before any JS crop UI exists — a good integration checkpoint.
-4. **Client-side crop UI (Service layer, static assets):** Vendor Cropper.js v1.6.2, build `image-crop.js`, wire it into the 3 form views (desktop + mobile = 6 view files), add the hidden `OriginalPictureFile` input and crop-modal markup.
-5. **Character details page original-image display:** Point the one view that must show the original (per issue #78) at the new `GetOriginalPicture` endpoint.
-6. **Manual UAT across all 3 forms x desktop/mobile:** Confirm crop -> save -> thumbnail (cropped) shows correctly everywhere, and the character details page specifically shows the original.
+1. **Foundation (no field wired yet).** `IMarkdownService`/`MarkdownService` in Domain (+ Markdig/HtmlSanitizer NuGet refs, unit tests covering the `javascript:`-scheme and raw-`<script>` cases specifically), `AddSingleton` registration, `HtmlHelperExtensions.Markdown()` in Service, the `.markdown-content` CSS class, and the `_ViewImports.cshtml` using-line. Nothing user-visible changes yet — this phase is pure plumbing and is fully unit-testable in isolation (Domain layer), matching this project's TDD-friendly phase pattern (see Phase 61's "Wave 1: failing tests, Wave 2: implementation" shape).
 
-This order front-loads the EF migration (step 1) because every later step depends on the column existing, and defers the riskiest/most novel piece (a brand-new client-side library integration, step 4) until the data path underneath it is already proven correct via direct testing — so if the crop UI has any integration issues, they're isolated to JS/markup, not conflated with schema or Domain logic bugs.
+2. **One feature end-to-end, proof-of-concept: Quest Description.** Wire `_MarkdownEditor.cshtml` + `markdown-editor.js` (toolbar + CDN preview) into `Quest/Create(.Mobile)` and `Quest/Edit(.Mobile)`; swap the Quest board card partial, `Quest/Details`, and `Quest/Manage` read call sites to `Html.Markdown()`; update `QuestFinalized.razor` to the `@inject`/`MarkupString` pattern. This single field is deliberately chosen as the proof-of-concept because it is the **one field that already flows into an email template today** — proving both adapters (MVC helper and Blazor component) and the full write→read→email loop in one phase directly retires the milestone's flagged cross-cutting risk ("emails need the same renderer as pages") early, rather than deferring it to a separate, later "email" phase where a design gap would be more expensive to unwind.
+
+3. **Remaining Quest fields (Rewards, Recap) + remaining 2 email templates.** `Quest/Details` (Rewards) and `QuestLog/Details` + `QuestLog/EditRecap(.Mobile)` (Recap) reuse the now-proven partial/helper with zero new plumbing. `SessionReminder.razor` and `WaitlistPromoted.razor` get the identical one-line adapter change already validated in step 2 — low-risk, mechanical.
+
+4. **Remaining 6 fields across 4 features.** Character (Description, Backstory), Contact (Description, Notes — note the Notes list needs `Html.Markdown()` called per-item inside the existing `@foreach`, not a special case), DM Profile (Bio), Shop Item (Description). Each is a mechanical repeat of the now-proven write/read pattern; a roadmapper can size this as one wide phase or split by feature (e.g., Characters+Contacts, then DM Profile+Shop) without any sequencing risk between them — none of these 6 fields depend on each other or on anything not already proven in steps 1–3.
 
 ## Sources
 
-- `QuestBoard.Repository/Entities/CharacterImageEntity.cs` — verified by direct read (HIGH)
-- `QuestBoard.Repository/Entities/DungeonMasterProfileImageEntity.cs` — verified by direct read (HIGH)
-- `QuestBoard.Repository/CharacterRepository.cs` — verified by direct read (HIGH)
-- `QuestBoard.Repository/DungeonMasterProfileRepository.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/Controllers/Characters/GuildMembersController.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/Controllers/DungeonMaster/DungeonMasterController.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/ViewModels/CharacterViewModels/CharacterViewModel.cs` — verified by direct read (HIGH)
-- `QuestBoard.Service/Views/GuildMembers/Edit.cshtml` — verified by direct read (HIGH), including existing inline JS validation pattern to be consolidated
-- `.planning/PROJECT.md` — verified by direct read (HIGH); source of the SkiaSharp-pause decision and issue #78 requirements
-- `.planning/milestones/v1.0-phases/07-dm-profile-page/07-RESEARCH.md` — verified by direct read (HIGH); prior research establishing the `CharacterImageEntity` PK=FK pattern this milestone extends
-- `.planning/codebase/ARCHITECTURE.md` — verified by direct read (HIGH); confirms strict Service→Domain→Repository layering and "EF packages only in Repository" rule
-- [Cropper.js homepage/guide](https://fengyuanchen.github.io/cropperjs/) — WebFetch (MEDIUM, cross-verified against v1 docs page); confirms v2 uses a custom-elements API
-- [Cropper.js v1 docs](https://fengyuanchen.github.io/cropperjs/v1/) — WebFetch (MEDIUM, cross-verified against homepage); confirms v1.6.2 retains the classic class API with `getCroppedCanvas()`
-- [Cropper.js GitHub repo](https://github.com/fengyuanchen/cropperjs) — WebSearch (LOW individually, corroborates the above)
-- General `canvas.toBlob()` + `IFormFile` crop-before-upload pattern — WebSearch results across Telerik/GemBox/community sources (LOW individually; pattern is well-established, cross-referenced against the `DataTransfer` FileList-replacement technique which is standard/documented browser API usage, not vendor-specific)
+- This codebase, verified directly (HIGH confidence): `QuestBoard.Domain/Interfaces/IImageValidationService.cs`, `QuestBoard.Domain/Services/ImageValidationService.cs`, `QuestBoard.Domain/Extensions/ServiceExtensions.cs`, `QuestBoard.Service/Extensions/ControllerExtensions.cs`, `QuestBoard.Service/Services/RazorEmailRenderService.cs`, `QuestBoard.Domain/Interfaces/IEmailRenderService.cs`, `QuestBoard.Service/Jobs/HangfireJobHelper.cs`, `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs`, `QuestBoard.Service/Components/Emails/{QuestFinalized,SessionReminder,WaitlistPromoted}.razor`, `QuestBoard.Service/Views/_ViewImports.cshtml`, `QuestBoard.Service/Views/Quest/_QuestFormScripts.cshtml`, `QuestBoard.Service/Views/Quest/{_QuestCard,Details,Manage}.cshtml`, `QuestBoard.Service/Views/Shared/_Layout.cshtml` (CDN vendoring pattern), `.planning/codebase/ARCHITECTURE.md`, `.planning/PROJECT.md`
+- [Markdown and Cross Site Scripting — Rick Strahl](https://weblog.west-wind.com/posts/2018/Aug/31/Markdown-and-Cross-Site-Scripting) — MEDIUM confidence, corroborates the `javascript:`-scheme gap in Markdown renderers generally, including Markdig-based ones
+- [Markdig usage docs — DisableHtml](https://xoofx.github.io/markdig/docs/usage/) — MEDIUM confidence, official project docs, confirms `DisableHtml()` behavior and scope
+- [HtmlSanitizer (Ganss.Xss) — GitHub](https://github.com/mganss/HtmlSanitizer) and [NuGet Gallery](https://www.nuget.org/packages/htmlsanitizer) — MEDIUM-HIGH confidence, official repo/package docs, confirms `AllowedSchemes`/`UriAttributes` configuration and thread-safety of `Sanitize()`
 
 ---
-*Architecture research for: D&D Quest Board — v7.0 client-side image crop-before-save*
-*Researched: 2026-07-04*
+*Architecture research for: Markdown editing/rendering integration, D&D Quest Board v8.0*
+*Researched: 2026-07-09*
