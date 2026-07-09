@@ -152,4 +152,36 @@ public class MarkdownServiceTests
         html.Should().NotContain("<em");
         html.Should().NotContain("<strong");
     }
+
+    [Fact]
+    public void ExtractPlainText_MultiBlockInput_PreservesWordBoundariesAcrossBlocks()
+    {
+        var plainText = Service.ExtractPlainText("# Heading\n\nSome text.\n\n- item one\n- item two");
+
+        plainText.Should().Contain("Heading Some text.");
+        plainText.Should().Contain("item one item two");
+        plainText.Should().NotContain("HeadingSome");
+        plainText.Should().NotContain("item oneitem two");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ExtractPlainText_NullOrWhitespace_ReturnsEmpty(string? markdown)
+    {
+        var plainText = Service.ExtractPlainText(markdown);
+
+        plainText.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ExtractPlainText_BoldParagraph_StripsMarkdownSyntaxAndHtmlTags()
+    {
+        var plainText = Service.ExtractPlainText("**Bold** text");
+
+        plainText.Should().Be("Bold text");
+        plainText.Should().NotContain("<");
+        plainText.Should().NotContain("*");
+    }
 }
