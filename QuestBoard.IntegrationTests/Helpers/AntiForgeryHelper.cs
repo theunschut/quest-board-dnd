@@ -42,4 +42,24 @@ public static class AntiForgeryHelper
         formData["__RequestVerificationToken"] = antiForgeryToken;
         return new FormUrlEncodedContent(formData);
     }
+
+    /// <summary>
+    /// Extracts a request-verification token from an authenticated GET response for use as the
+    /// <c>RequestVerificationToken</c> HTTP header on a JSON POST -- this app's existing default
+    /// header-based antiforgery convention (see <c>QuestController.RevokeSignup</c>/<c>RemovePlayerSignup</c>
+    /// and <c>MarkdownController.Preview</c>). ASP.NET Core's <c>AntiforgeryTokenSet.RequestToken</c>
+    /// value is the same regardless of whether it travels as a hidden form field or a header --
+    /// only the transport differs, so this reuses <see cref="ExtractAntiForgeryTokenAsync"/>'s
+    /// hidden-input extraction (every authenticated page in this app that renders a standard
+    /// asp-action form already emits that hidden field) rather than a second parsing strategy.
+    /// The returned cookie value is provided for callers using a fresh <see cref="HttpClient"/>
+    /// with no shared cookie container; a client created with the default
+    /// <c>WebApplicationFactoryClientOptions</c> (cookie handling enabled) already carries the
+    /// antiforgery cookie automatically once it has issued the GET this method reads from.
+    /// </summary>
+    public static async Task<(string HeaderToken, string CookieValue)> ExtractHeaderAntiForgeryTokenAsync(HttpResponseMessage response)
+    {
+        var (token, cookieValue) = await ExtractAntiForgeryTokenAsync(response);
+        return (token, cookieValue);
+    }
 }
