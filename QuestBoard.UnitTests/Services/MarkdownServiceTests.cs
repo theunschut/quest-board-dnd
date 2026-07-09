@@ -71,7 +71,7 @@ public class MarkdownServiceTests
     [Fact]
     public void RenderToHtml_DefinitionList_PreservesTermAndDefinition()
     {
-        var html = Service.RenderToHtml("Sword\n: A blade");
+        var html = Service.RenderToHtml("Sword\n:   A blade");
 
         html.Should().Contain("<dt");
         html.Should().Contain("<dd");
