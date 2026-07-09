@@ -11,7 +11,10 @@ public interface IMarkdownService
 {
     /// <summary>
     /// Converts Markdown text into sanitized HTML safe to render directly in a browser or email
-    /// client. A null, empty, or whitespace-only input returns <see cref="string.Empty"/>.
+    /// client. A null, empty, or whitespace-only input returns <see cref="string.Empty"/>. Input
+    /// that trips Markdig's own nesting-depth guard (e.g. hundreds of nested blockquote or
+    /// emphasis markers) is never thrown into the caller -- it is returned HTML-encoded instead,
+    /// so callers never need to catch an exception from this method.
     /// </summary>
     string RenderToHtml(string? markdown, MarkdownRenderTarget target = MarkdownRenderTarget.Web);
 }

@@ -129,4 +129,27 @@ public class MarkdownServiceTests
 
         webHtml.Should().Be(emailHtml);
     }
+
+    [Fact]
+    public void RenderToHtml_DeeplyNestedBlockquotes_FallsBackToEncodedTextInsteadOfThrowing()
+    {
+        var markdown = new string('>', 200) + " deeply nested";
+
+        var html = Service.RenderToHtml(markdown);
+
+        html.Should().Contain("deeply nested");
+        html.Should().NotContain("<blockquote");
+    }
+
+    [Fact]
+    public void RenderToHtml_DeeplyNestedEmphasis_FallsBackToEncodedTextInsteadOfThrowing()
+    {
+        var markdown = new string('*', 300) + "deeply nested" + new string('*', 300);
+
+        var html = Service.RenderToHtml(markdown);
+
+        html.Should().Contain("deeply nested");
+        html.Should().NotContain("<em");
+        html.Should().NotContain("<strong");
+    }
 }

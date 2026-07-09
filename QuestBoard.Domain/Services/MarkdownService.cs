@@ -85,7 +85,18 @@ internal class MarkdownService : IMarkdownService
             return string.Empty;
         }
 
-        var rawHtml = Markdown.ToHtml(markdown, Pipeline);
+        string rawHtml;
+        try
+        {
+            rawHtml = Markdown.ToHtml(markdown, Pipeline);
+        }
+        catch (ArgumentException)
+        {
+            // Markdig's own nesting-depth guard tripped on pathologically nested input (e.g.
+            // hundreds of nested blockquote/emphasis markers). Fail safe by HTML-encoding the raw
+            // input instead of throwing into the caller.
+            return System.Net.WebUtility.HtmlEncode(markdown);
+        }
 
         return target == MarkdownRenderTarget.Email
             ? EmailSanitizer.Sanitize(rawHtml)
