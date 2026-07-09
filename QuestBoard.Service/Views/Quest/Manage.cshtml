@@ -1,6 +1,7 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
+@using QuestBoard.Service.Extensions
 @model Quest
 @{
     ViewData["Title"] = $"Manage Quest: {Model.Title}";
@@ -33,6 +34,22 @@ else
                     }
                 </div>
                 <div class="card-body modern-card-body">
+                    <div class="card modern-card mb-3">
+                        <div class="card-header modern-card-header">
+                            <h5 class="mb-0">
+                                <button class="btn btn-link text-decoration-none text-warning fw-bold p-0" type="button" data-bs-toggle="collapse" data-bs-target="#questDescriptionCollapse" aria-expanded="false" aria-controls="questDescriptionCollapse">
+                                    <i class="fas fa-scroll me-2"></i>Description
+                                    <i class="fas fa-chevron-down ms-2"></i>
+                                </button>
+                            </h5>
+                        </div>
+                        <div id="questDescriptionCollapse" class="collapse">
+                            <div class="card-body modern-card-body">
+                                @Html.Markdown(Model.Description)
+                            </div>
+                        </div>
+                    </div>
+
                     @if (TempData["Success"] != null)
                     {
                         <form asp-action="SendReminder" asp-route-id="@Model.Id" method="post" class="mb-2">
