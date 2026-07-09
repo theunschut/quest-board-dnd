@@ -10,7 +10,7 @@
 
 This research answers "what's table stakes vs optional" for the toolbar/preview UX layered on top of the app's **already-locked** design: plain textarea + formatting toolbar (Bold/Italic/Heading/List insert syntax at cursor) + a single Preview button that toggles the same input area between edit and rendered-HTML preview. Those four locked decisions are not re-litigated here. This file's job is everything *beyond* that: which additional toolbar buttons earn their keep, how the Preview toggle itself should look/behave, how to signal "Markdown is supported," and how the toolbar should adapt on mobile.
 
-The audience distinction matters throughout: this is **not** GitHub, GitLab, or a docs tool built for developers who already know Markdown syntax by heart. It's ~17 D&D players/DMs writing quest blurbs, character backstories, and shop item flavor text — casually, on both desktop and phone. Every recommendation below is filtered through that lens, not through "what does every markdown editor library ship by default."
+The audience distinction matters throughout: this is **not** GitHub, GitLab, or a docs tool built for developers who already know Markdown syntax by heart. It's D&D players/DMs writing quest blurbs, character backstories, and shop item flavor text — casually, on both desktop and phone. Every recommendation below is filtered through that lens, not through "what does every markdown editor library ship by default."
 
 ## Feature Landscape
 
@@ -25,7 +25,7 @@ Buttons users will genuinely reach for, given the fields in play (Quest Descript
 | Preview toggle disables the rest of the toolbar while active | Confirmed convention: EasyMDE's Preview button carries a `no-disable` class specifically so it stays clickable while every *other* toolbar button is disabled during preview mode (there's no textarea selection to act on while viewing rendered HTML). | LOW | Not a "button" per se, but a required *behavior* of the toolbar + preview interaction. Skipping this means Bold/Italic/etc. appear clickable but do nothing meaningful while in preview mode — confusing for non-technical users. |
 | 44px+ icon-only touch targets on mobile toolbar buttons | This app already enforces `min-height: 44px` on `textarea`/`.form-control`/`.form-select` (`QuestBoard.Service/wwwroot/css/mobile.css`). WCAG 2.2 AAA and platform HIG guidance (Apple 44pt, Android 48dp) both converge on this figure; general mobile-UX research confirms 44px minimum with ~8px gaps between adjacent icon buttons is the accepted floor. | LOW | Not a "feature" but a hard mobile constraint the whole toolbar must satisfy — this app already has the precedent, so it's non-negotiable to extend it to the new toolbar. |
 
-### Differentiators (Nice-to-Have, Genuinely Optional for a Casual 17-Person Group)
+### Differentiators (Nice-to-Have, Genuinely Optional for This Casual-Use App)
 
 These appear in mainstream toolbars (GitHub, EasyMDE) but the case for building them *now* is weaker than the table-stakes set above — either low marginal value for this domain, or non-trivial added complexity relative to the payoff.
 
@@ -38,7 +38,7 @@ These appear in mainstream toolbars (GitHub, EasyMDE) but the case for building 
 
 ### Anti-Features (Skip Entirely — Not Just "Later")
 
-Features that appear in general-purpose Markdown toolbars but actively don't fit this app's domain or already-shipped architecture. Building these would be over-engineering for a 17-person casual group, not under-building.
+Features that appear in general-purpose Markdown toolbars but actively don't fit this app's domain or already-shipped architecture. Building these would be over-engineering for this app's casual-use domain, not under-building.
 
 | Feature | Why It's In Other Toolbars | Why Problematic Here | Alternative |
 |---------|---------------------------|------------------------|-------------|
@@ -77,7 +77,7 @@ Three patterns observed across the tools surveyed:
 ## Mobile Toolbar Adaptation
 
 - **Icon-only buttons, no text labels**, is the near-universal mobile pattern to conserve horizontal space — confirmed in GitHub's `markdown-toolbar-element` (icon buttons with tooltips serving as the accessible name/label) and EasyMDE.
-- **Keep the button count small enough that no overflow mechanism is needed at all.** The recommended v1 set (Bold, Italic, Heading, List, Link, Blockquote, Preview toggle = 7 controls) should fit a single row on a ~320–390px mobile viewport at 44px touch targets with adequate gaps, avoiding the need to build a horizontal-scroll row or an overflow "more" menu — both of which are real, nontrivial extra engineering for a 17-person casual-use app. If a future differentiator (Strikethrough, Horizontal Rule) pushes the count higher, horizontal scroll (not wrapping to a second row, which eats vertical space that's already scarce on mobile) is the standard fallback — but it isn't needed for the recommended v1 set.
+- **Keep the button count small enough that no overflow mechanism is needed at all.** The recommended v1 set (Bold, Italic, Heading, List, Link, Blockquote, Preview toggle = 7 controls) should fit a single row on a ~320–390px mobile viewport at 44px touch targets with adequate gaps, avoiding the need to build a horizontal-scroll row or an overflow "more" menu — both of which are real, nontrivial extra engineering with no clear payoff for this app's casual-use domain. If a future differentiator (Strikethrough, Horizontal Rule) pushes the count higher, horizontal scroll (not wrapping to a second row, which eats vertical space that's already scarce on mobile) is the standard fallback — but it isn't needed for the recommended v1 set.
 - **Advanced/complex modes are what actually get stripped on mobile in the wild**, not the core formatting buttons — EasyMDE's `no-mobile` class specifically targets side-by-side and fullscreen, not Bold/Italic/Link. This app's locked single-toggle-preview design already avoids that whole problem class on both desktop and mobile, which this research confirms is the right simplification rather than a corner cut.
 - **Touch target sizing**: reuse the app's own existing `min-height: 44px` convention (`mobile.css`) for every toolbar button, with ~8px gaps between adjacent icons to prevent mis-taps, consistent with WCAG 2.2 AAA / platform HIG guidance found across the mobile-accessibility sources reviewed.
 

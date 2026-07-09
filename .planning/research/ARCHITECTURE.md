@@ -146,7 +146,7 @@ Both stages (`DisableHtml()` + `HtmlSanitizer`) belong inside `MarkdownService.R
 
 **What people do:** Since Markdown rendering has a cost, cache/store the rendered HTML alongside the raw Markdown (e.g., a new `DescriptionHtml` column) to avoid re-rendering on every page view.
 
-**Why it's wrong:** This milestone is explicitly scoped as "no schema change needed — this is a rendering-layer and editing-UX change, not a data-model change." Storing rendered HTML also creates a cache-invalidation problem (stale HTML if the sanitizer/renderer config ever changes) and doubles the surface that could drift from the source of truth. At this app's scale (~17 members, description-length text), Markdig rendering is sub-millisecond — there is no performance case for pre-rendering.
+**Why it's wrong:** This milestone is explicitly scoped as "no schema change needed — this is a rendering-layer and editing-UX change, not a data-model change." Storing rendered HTML also creates a cache-invalidation problem (stale HTML if the sanitizer/renderer config ever changes) and doubles the surface that could drift from the source of truth. For description-length text, Markdig rendering is sub-millisecond regardless of request volume — there is no performance case for pre-rendering.
 
 **Do this instead:** Render on every read, in the adapter, from the always-current raw Markdown string. If profiling ever shows this matters (it won't at this scale), memoize per-request only, never persist.
 
