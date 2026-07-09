@@ -17,4 +17,11 @@ public interface IMarkdownService
     /// so callers never need to catch an exception from this method.
     /// </summary>
     string RenderToHtml(string? markdown, MarkdownRenderTarget target = MarkdownRenderTarget.Web);
+
+    /// <summary>
+    /// Renders the same sanitized HTML used for display, then strips it down to plain text so
+    /// the board card can show a short preview without Markdown syntax characters inflating the
+    /// displayed length. A null, empty, or whitespace-only input returns <see cref="string.Empty"/>.
+    /// </summary>
+    string ExtractPlainText(string? markdown);
 }

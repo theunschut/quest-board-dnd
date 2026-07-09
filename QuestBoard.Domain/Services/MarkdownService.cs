@@ -102,4 +102,7 @@ internal class MarkdownService : IMarkdownService
             ? EmailSanitizer.Sanitize(rawHtml)
             : WebSanitizer.Sanitize(rawHtml);
     }
+
+    /// <inheritdoc/>
+    public string ExtractPlainText(string? markdown) => throw new NotImplementedException();
 }
