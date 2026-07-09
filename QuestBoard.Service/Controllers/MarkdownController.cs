@@ -17,12 +17,12 @@ public class MarkdownController(IMarkdownService markdownService) : Controller
     [HttpPost]
     [Route("markdown/preview")]
     [ValidateAntiForgeryToken]
-    public IActionResult Preview([FromBody] PreviewRequest request)
+    public IActionResult Preview([FromBody] PreviewRequest? request)
     {
         // Always the Web target: preview must match the page display (Details/Manage), which
         // never strips images the way the Email target does. Email rendering is a separate,
         // asynchronous surface the author never sees live.
-        var html = markdownService.RenderToHtml(request.Markdown, MarkdownRenderTarget.Web);
+        var html = markdownService.RenderToHtml(request?.Markdown, MarkdownRenderTarget.Web);
         return Content(html, "text/html");
     }
 }

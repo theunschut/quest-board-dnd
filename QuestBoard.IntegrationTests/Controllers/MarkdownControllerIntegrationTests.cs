@@ -124,4 +124,30 @@ public class MarkdownControllerIntegrationTests(WebApplicationFactoryBase factor
         // Assert -- anonymous access must not succeed (redirect/401/403 all acceptable denials).
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task Preview_WithEmptyBody_DoesNotServerError()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "mdquestdm3", "mdquestdm3@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(factory.Services, dm.Id, "Markdown Preview Quest 3");
+
+        var (client, headerToken) = await CreateAuthenticatedClientWithHeaderTokenAsync(factory, quest.Id);
+
+        // Act -- POST with an empty body and no [FromBody] payload at all. The model binder leaves
+        // the action's request parameter null (this controller is not [ApiController], so invalid
+        // model state isn't auto-rejected with a 400) -- the action must not NRE on a null request.
+        var request = new HttpRequestMessage(HttpMethod.Post, PreviewUrl)
+        {
+            Content = new StringContent(string.Empty, Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("RequestVerificationToken", headerToken);
+
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert -- no server error.
+        ((int)response.StatusCode).Should().BeLessThan(500);
+    }
 }
