@@ -13,3 +13,23 @@
 .editor-toolbar {
     padding: 0;
 }
+
+/* Desktop write forms wrap the editor in .modern-card, whose `.modern-card h1-h6/p/li/span/small
+   { color: #F4E4BC !important; text-shadow: ... !important; }` rules (site.css) are meant for
+   read-only card text but also match CodeMirror's syntax-highlighting spans and the Preview
+   pane's injected <h*>/<p>/<li>/etc, tinting both the raw editing surface and Preview gold with
+   a drop-shadow instead of plain black-on-white. Only the editing/preview surfaces are scoped
+   here -- .markdown-content (Details/Manage/email) is untouched and keeps its gold parchment
+   styling with shadow.
+   The doubled class (.CodeMirror.CodeMirror) is a specificity bump, not a typo: a plain
+   `.CodeMirror *` loses to `.modern-card span` because the universal selector contributes zero
+   specificity, leaving the match tied on classes (1 vs 1) and decided by element count (0 vs 1)
+   in the leaking rule's favor. Doubling the class wins outright on class count (2 vs 1) instead
+   of depending on stylesheet load order. */
+.CodeMirror.CodeMirror,
+.CodeMirror.CodeMirror *,
+.editor-preview.editor-preview,
+.editor-preview.editor-preview * {
+    color: #000 !important;
+    text-shadow: none !important;
+}
