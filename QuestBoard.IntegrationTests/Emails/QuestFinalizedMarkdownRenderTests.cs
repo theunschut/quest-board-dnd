@@ -38,4 +38,37 @@ public class QuestFinalizedMarkdownRenderTests(WebApplicationFactoryBase factory
         html.Should().NotContain("http://example.com/x.png");
         html.Should().NotContain("alt=\"logo\"");
     }
+
+    [Fact]
+    public async Task QuestFinalized_MultiBlockMarkdownDescription_KeepsStyledWrapperIntact()
+    {
+        // Arrange
+        using var scope = factory.Services.CreateScope();
+        var emailRenderService = scope.ServiceProvider.GetRequiredService<IEmailRenderService>();
+        const string appUrl = "https://example.com";
+
+        // Act
+        var html = await emailRenderService.RenderAsync<Service.Components.Emails.QuestFinalized>(new()
+        {
+            [nameof(Service.Components.Emails.QuestFinalized.QuestTitle)] = "The Tomb of Annihilation",
+            [nameof(Service.Components.Emails.QuestFinalized.DmName)] = "Dungeon Master Theomund",
+            [nameof(Service.Components.Emails.QuestFinalized.QuestDate)] = DateTime.Today.AddDays(7),
+            [nameof(Service.Components.Emails.QuestFinalized.QuestDescription)] = "Paragraph one\n\nParagraph two\n\n## A heading\n\n- item 1\n- item 2",
+            [nameof(Service.Components.Emails.QuestFinalized.ConfirmedPlayerNames)] = new List<string> { "Arannis", "Tordek" },
+            [nameof(Service.Components.Emails.QuestFinalized.QuestUrl)] = $"{appUrl}/Quest",
+            [nameof(Service.Components.Emails.QuestFinalized.ChallengeRating)] = 9,
+            [nameof(Service.Components.Emails.QuestFinalized.AppUrl)] = appUrl,
+        });
+
+        // Assert
+        // A <p> wrapper around multi-block Markdown output gets implicitly closed/emptied by the
+        // browser as soon as it hits the first nested block tag, dropping the styled wrapper's
+        // italic/color/text-shadow styling for every paragraph after the first. Asserting the
+        // wrapper isn't immediately self-closed/emptied pins the fix (block-safe <div> wrapper).
+        html.Should().NotMatchRegex("<p [^>]*font-style:italic[^>]*></p>");
+        html.Should().Contain("Paragraph one");
+        html.Should().Contain("Paragraph two");
+        html.Should().Contain("<h2>A heading</h2>");
+        html.Should().Contain("<li>item 1</li>");
+    }
 }
