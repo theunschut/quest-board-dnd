@@ -7,9 +7,15 @@
 **Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
 **Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
 
-## Next Milestone Goals
+## Current Milestone: v8.0 Markdown Support
 
-Not yet planned — run `/gsd:new-milestone` to scope the next milestone. Candidates carried forward from this milestone's Active/Known Issues sections below: digest batching for session reminders, the `GroupSessionMiddleware` POST data-loss risk, and the dead `SetAsMainCharacterAsync` demotion-guard bug found during Phase 56.
+**Goal:** Let users write and view formatted text (bold, lists, headings, links) in every free-text field across the app instead of plain unstyled text.
+
+**Target features:**
+- Markdown editor (textarea + formatting toolbar: Bold/Italic/Heading/List + a Preview toggle) applied to all 9 free-text fields: Quest Description, Quest Rewards, Quest Recap, Character Description, Character Backstory, Contact Description, Contact Notes, DM Profile Bio, Shop Item Description
+- Strict CommonMark paragraph rules (blank line separates paragraphs), replacing today's line-break-preserving plain-text display
+- Every read view that shows these fields renders the Markdown as formatted HTML instead of raw text
+- The 3 HTML email templates that quote Quest Description (Quest Finalized, Session Reminder, Waitlist Promoted) also render it formatted
 
 ---
 
@@ -88,6 +94,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - ✓ Stop eagerly loading image bytes in list/entity queries (no REQ-IDs — ad-hoc backlog phase via `/gsd-phase`; source of truth is 62-CONTEXT.md decisions D-02/D-05, 62-RESEARCH.md) — the six Character/Contact/DungeonMaster list/detail read methods (`CharacterRepository.GetAllCharactersWithDetailsAsync`/`GetCharactersByOwnerIdAsync`/`GetCharacterWithDetailsAsync`, `ContactRepository.GetAllContactsWithDetailsAsync`/`GetContactWithDetailsAsync`, `DungeonMasterProfileRepository.GetProfileByUserIdAsync`) no longer eager-load the image `byte[]` via `.Include(x => x.ProfileImage)`; each now projects a lightweight `HasProfilePicture`/`HasContactImage` boolean via a `!= null` scalar query instead, added as new additive Domain-model properties alongside the existing byte[] fields (kept because the write path still needs them). Portrait/photo bytes now only ever transfer through the existing dedicated per-entity endpoints, matching `QuestRepository.ProjectWithoutCharacterImages`'s established pattern. A same-day CONTEXT.md sanity-check (run after Phase 45/46 completed, which this phase had been sequenced behind) surfaced a stale scope claim — corrected before planning — and RESEARCH.md then found the real remaining gap: `CharacterService.UpdateAsync`/`ContactService.UpdateAsync`'s "no new upload" branch still trusted the now-permanently-null round-tripped original image bytes, which would have silently wiped a stored photo on any unrelated-field edit once the eager-load was removed. Fixed by re-fetching the original fresh via the already-existing `GetCharacterOriginalPictureAsync`/`GetContactOriginalImageAsync`, mirroring the identical fix Phase 45-02 already shipped for the cropped-image branch. ViewModels (`CharacterViewModel`/`ContactViewModel`/`EditDMProfileViewModel`) converted from raw byte[] display properties to the new booleans; Create-POST controller actions switched from staging uploaded bytes on the ViewModel to a local variable + post-map Domain assignment; 15 Razor views (desktop+mobile pairs) updated to gate on the boolean instead of a byte[] null-check. Code review: clean (0 critical, 0 warning, 2 info). Full suite: 243 unit + 385 integration passing — v7.0 (Phase 62), closes the last incomplete phase in ROADMAP.md as of this update
 
 ### Active
+- [ ] Markdown editor (toolbar + preview toggle) and rendered-HTML display for all 9 free-text fields — v8.0, see REQUIREMENTS.md
 - [ ] Digest batching for session reminders — single combined email when player has multiple same-day quests (EMAIL-04/REMIND-02 — deferred; same-day quests have never occurred in one year)
 - [ ] `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed
 
@@ -213,4 +220,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-08 after v7.0 milestone close. All 22 phases (43–64) shipped; Phase 46's real-device crop-UI verification (deferred at phase close for lack of device access) was completed by the user on a real iPhone before this close and all checks passed. Next milestone not yet scoped — run `/gsd:new-milestone`.*
+*Last updated: 2026-07-09 after starting v8.0 Markdown Support milestone.*

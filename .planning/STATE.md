@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v7.0
-milestone_name: Backlog Cleanup
-current_phase: null
-current_phase_name: null
-status: milestone_complete
-stopped_at: v7.0 milestone archived
-last_updated: "2026-07-08T00:30:00.000Z"
-last_activity: 2026-07-08
-last_activity_desc: v7.0 Backlog Cleanup milestone shipped and archived
+milestone: v8.0
+milestone_name: Markdown Support
+status: planning
+last_updated: "2026-07-09T06:20:26.759Z"
+last_activity: 2026-07-09
 progress:
-  total_phases: 22
-  completed_phases: 22
-  total_plans: 59
-  completed_plans: 59
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-08 — v7.0 milestone close)
 
 ## Current Position
 
-Phase: None — v7.0 complete, no phase in progress
-Plan: N/A
-Status: Milestone shipped and archived
-Last activity: 2026-07-08 — v7.0 Backlog Cleanup archived to `.planning/milestones/v7.0-ROADMAP.md` / `v7.0-REQUIREMENTS.md`
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-09 — Milestone v8.0 started
 
 ## Performance Metrics
 
