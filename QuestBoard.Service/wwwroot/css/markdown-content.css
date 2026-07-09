@@ -1,0 +1,39 @@
+/* Typography for server-rendered Markdown output (Description today, more fields in later
+   phases). All rules are scoped under .markdown-content so they never leak into the rest of the
+   app's typography -- notably, the heading color override below intentionally shadows the
+   global h1-h6 rule (site.css) only inside this scope. */
+
+.markdown-content {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.markdown-content strong {
+    font-weight: 700;
+}
+
+/* Quest Description is short-form card/detail content, not a document -- every heading level
+   collapses to one restrained tier instead of letting an author-chosen H1 render at full browser
+   size inside a quest card. Color/text-shadow match .quest-description-box exactly (quests.css)
+   because this content always renders inside that dark-overlay box; the global site.css h1-h6
+   rule uses a dark-brown color meant for the light parchment background and would be nearly
+   invisible here. */
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #F4E4BC;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.markdown-content blockquote {
+    border-left: 3px solid rgba(255, 193, 7, 0.5);
+    padding-left: 12px;
+    font-style: italic;
+}
