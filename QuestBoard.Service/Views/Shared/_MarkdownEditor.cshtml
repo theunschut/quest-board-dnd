@@ -15,6 +15,6 @@
             <span class="text-danger">*</span>
         }
     </label>
-    <textarea name="@Model.FieldName" id="@elementId" class="form-control markdown-editor-textarea" rows="4" placeholder="@Model.Placeholder">@Model.Value</textarea>
+    <textarea name="@Model.FieldName" id="@elementId" class="form-control markdown-editor-textarea" rows="4" placeholder="@Model.Placeholder" required="@Model.Required">@Model.Value</textarea>
     <span class="text-danger" data-valmsg-for="@Model.FieldName" data-valmsg-replace="true"></span>
 </div>
