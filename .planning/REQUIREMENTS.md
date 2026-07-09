@@ -9,9 +9,9 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 
 ### Rendering Infrastructure
 
-- [ ] **RENDER-01**: Markdown text in any of the 9 target fields is converted to safe, sanitized HTML for display — no raw HTML or script execution is possible regardless of what a user types
-- [ ] **RENDER-02**: Page views and the 3 HTML email templates that echo Quest Description use the exact same rendering pipeline — no separate or duplicated rendering logic
-- [ ] **RENDER-03**: A blank line (not a single Enter) is required to start a new paragraph (strict CommonMark) — a deliberate change from today's line-break-preserving plain-text display
+- [x] **RENDER-01**: Markdown text in any of the 9 target fields is converted to safe, sanitized HTML for display — no raw HTML or script execution is possible regardless of what a user types
+- [x] **RENDER-02**: Page views and the 3 HTML email templates that echo Quest Description use the exact same rendering pipeline — no separate or duplicated rendering logic
+- [x] **RENDER-03**: A blank line (not a single Enter) is required to start a new paragraph (strict CommonMark) — a deliberate change from today's line-break-preserving plain-text display
 
 ### Editor UI
 
@@ -81,9 +81,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RENDER-01 | Phase 65 | Pending |
-| RENDER-02 | Phase 65 | Pending |
-| RENDER-03 | Phase 65 | Pending |
+| RENDER-01 | Phase 65 | Complete |
+| RENDER-02 | Phase 65 | Complete |
+| RENDER-03 | Phase 65 | Complete |
 | EDITOR-01 | Phase 66 | Pending |
 | EDITOR-02 | Phase 66 | Pending |
 | EDITOR-03 | Phase 66 | Pending |
