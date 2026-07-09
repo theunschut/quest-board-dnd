@@ -2,11 +2,16 @@ using Ganss.Xss;
 using Markdig;
 using Markdig.Extensions.EmphasisExtras;
 using QuestBoard.Domain.Interfaces;
+using System.Text.RegularExpressions;
 
 namespace QuestBoard.Domain.Services;
 
 internal class MarkdownService : IMarkdownService
 {
+    // Collapses runs of whitespace (including literal newlines emitted by Markdig's own HTML
+    // formatting between sibling elements) into a single space during plain-text extraction.
+    private static readonly Regex WhitespaceRun = new(@"\s+", RegexOptions.Compiled);
+
     // Extensions are composed individually, one Use*() call per feature, rather than via the
     // bundled convenience method that chains 19 extensions at once -- that bundle includes generic
     // attributes ({...} syntax), which lets arbitrary HTML attributes, including event handlers, be
@@ -104,5 +109,30 @@ internal class MarkdownService : IMarkdownService
     }
 
     /// <inheritdoc/>
-    public string ExtractPlainText(string? markdown) => throw new NotImplementedException();
+    public string ExtractPlainText(string? markdown)
+    {
+        var html = RenderToHtml(markdown, MarkdownRenderTarget.Web);
+        if (string.IsNullOrEmpty(html))
+        {
+            return string.Empty;
+        }
+
+        var parser = new AngleSharp.Html.Parser.HtmlParser();
+        using var document = parser.ParseDocument(html);
+
+        // Join top-level block elements (p, ul, ol, h1-h6, blockquote, table, dl) with a space so
+        // word boundaries at block edges survive. document.Body.TextContent alone concatenates
+        // descendant text nodes with zero inserted whitespace at block-element boundaries --
+        // "<h1>Foo</h1><p>Bar</p>".TextContent would be "FooBar", not "Foo Bar".
+        var parts = document.Body!.Children
+            .Select(el => el.TextContent.Trim())
+            .Where(t => !string.IsNullOrEmpty(t));
+
+        var joined = string.Join(" ", parts);
+
+        // Markdig's own HTML formatting inserts newlines between sibling elements inside a block
+        // (e.g. between <li> items), which surface as literal newlines in TextContent. Collapse
+        // any run of whitespace down to a single space so word boundaries stay uniform.
+        return WhitespaceRun.Replace(joined, " ").Trim();
+    }
 }
