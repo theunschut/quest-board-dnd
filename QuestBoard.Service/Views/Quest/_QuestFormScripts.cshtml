@@ -3,6 +3,9 @@
     Shared JavaScript for quest forms
     Requires: site.js (contains addProposedDate and removeProposedDate functions)
 *@
+@{
+    var markdownTokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+}
 
 <script>
     // Form validation for quest forms
@@ -12,7 +15,7 @@
         // every authenticated page (see _Layout.cshtml / _Layout.Mobile.cshtml).
         const form = document.querySelector('form[action*="/Quest/"]');
         if (!form) return;
-        
+
         form.addEventListener('submit', function(e) {
             // No #proposed-dates container means this form doesn't manage dates at all
             // (a finalized-quest Edit, or a Campaign-board Create/Edit) — nothing to require.
@@ -46,3 +49,14 @@
         });
     });
 </script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.css"
+      integrity="sha384-ZoLYv3S+AsZX+zhbN1D1+WPpc8f+DmLfxfgw+qn0Nq8wJPOYQQXEW5ZrRhcGozlG"
+      crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.js"
+        integrity="sha384-mTM6vzy+/UiHrMBClNGViM9qEv0/26iCGqpJKhSzdnjrxbKjO3vkT62ujXQ8B5iv"
+        crossorigin="anonymous"></script>
+<script>
+    window.markdownAntiforgeryToken = '@markdownTokens.RequestToken';
+</script>
+<script src="~/js/markdown-editor.js" asp-append-version="true"></script>
