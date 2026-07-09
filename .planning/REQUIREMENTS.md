@@ -15,12 +15,12 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 
 ### Editor UI
 
-- [ ] **EDITOR-01**: Editing a free-text field shows a formatting toolbar (Bold, Italic, Heading, List, Link, Blockquote) that inserts Markdown syntax around the current selection or at the cursor
-- [ ] **EDITOR-02**: A Preview button toggles the same input area between the raw-text editor and a rendered-HTML preview, without leaving the page
-- [ ] **EDITOR-03**: While in Preview mode, the rest of the toolbar is disabled (not clickable-but-nonfunctional)
-- [ ] **EDITOR-04**: What a user sees in Preview mode exactly matches how the content actually displays once saved — no formatting surprises after saving
-- [ ] **EDITOR-05**: An inline hint near the editor explains that a blank line starts a new paragraph
-- [ ] **EDITOR-06**: The toolbar and editor work identically on desktop and mobile, with icon-only buttons sized for touch (44px+) on mobile, fitting one row with no overflow/scroll mechanism
+- [x] **EDITOR-01**: Editing a free-text field shows a formatting toolbar (Bold, Italic, Heading, List, Link, Blockquote) that inserts Markdown syntax around the current selection or at the cursor
+- [x] **EDITOR-02**: A Preview button toggles the same input area between the raw-text editor and a rendered-HTML preview, without leaving the page
+- [x] **EDITOR-03**: While in Preview mode, the rest of the toolbar is disabled (not clickable-but-nonfunctional)
+- [x] **EDITOR-04**: What a user sees in Preview mode exactly matches how the content actually displays once saved — no formatting surprises after saving
+- [x] **EDITOR-05**: An inline hint near the editor explains that a blank line starts a new paragraph
+- [x] **EDITOR-06**: The toolbar and editor work identically on desktop and mobile, with icon-only buttons sized for touch (44px+) on mobile, fitting one row with no overflow/scroll mechanism
 
 ### Quest Fields
 
@@ -84,12 +84,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RENDER-01 | Phase 65 | Complete |
 | RENDER-02 | Phase 65 | Complete |
 | RENDER-03 | Phase 65 | Complete |
-| EDITOR-01 | Phase 66 | Pending |
-| EDITOR-02 | Phase 66 | Pending |
-| EDITOR-03 | Phase 66 | Pending |
-| EDITOR-04 | Phase 66 | Pending |
-| EDITOR-05 | Phase 66 | Pending |
-| EDITOR-06 | Phase 66 | Pending |
+| EDITOR-01 | Phase 66 | Complete |
+| EDITOR-02 | Phase 66 | Complete |
+| EDITOR-03 | Phase 66 | Complete |
+| EDITOR-04 | Phase 66 | Complete |
+| EDITOR-05 | Phase 66 | Complete |
+| EDITOR-06 | Phase 66 | Complete |
 | QUESTMD-01 | Phase 66 | Complete |
 | QUESTMD-02 | Phase 67 | Pending |
 | QUESTMD-03 | Phase 67 | Pending |
