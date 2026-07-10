@@ -1,4 +1,6 @@
+@using QuestBoard.Domain.Interfaces
 @using QuestBoard.Service.Components.Emails
+@inject IMarkdownService MarkdownService
 
 <_EmailLayout Subject="@($"Reminder: {QuestTitle} is tomorrow")" PreviewText="@($"Session Tomorrow — {QuestTitle} on {QuestDate:dddd, MMMM d}")">
     <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-image:url('@(AppUrl)/images/Blanks/Blanks%20w%20Shadow/Poster1.png');background-size:cover;background-position:center top;background-color:#F4E4BC;margin:0 auto;">
@@ -39,7 +41,7 @@
                         <td style="padding:16px 20%;vertical-align:top;height:100%;">
                             <div style="height:100%;overflow-y:auto;padding-right:6px;">
                                 <p style="font-size:14px;font-weight:700;font-family:Georgia,serif;color:#1a0f08;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0 0 4px 0;">The Adventure:</p>
-                                <p style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;">@QuestDescription</p>
+                                <div style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;">@((MarkupString)MarkdownService.RenderToHtml(QuestDescription, MarkdownRenderTarget.Email))</div>
                             </div>
                         </td>
                     </tr>
