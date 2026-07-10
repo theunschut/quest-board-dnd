@@ -91,6 +91,7 @@
    in a note renders almost invisible. */
 .contact-detail-card .note-item,
 .contact-detail-card .note-item p,
+.contact-detail-card .note-item a,
 .contact-detail-card .note-item li,
 .contact-detail-card .note-item span:not(.badge),
 .contact-detail-card .note-item h1,
