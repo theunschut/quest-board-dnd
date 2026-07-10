@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Markdown Support
-status: executing
-stopped_at: Phase 67 planned
-last_updated: "2026-07-10T08:06:30.457Z"
+status: milestone_complete
+stopped_at: Milestone complete (Phase 67 was final phase)
+last_updated: 2026-07-10T09:19:40.813Z
 last_activity: 2026-07-10 -- Phase 67 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 13
-  completed_plans: 8
-  percent: 62
+  completed_plans: 13
+  percent: 67
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08 — v7.0 milestone close)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 67 — remaining-quest-fields-email-templates
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 67 (remaining-quest-fields-email-templates) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 67
-Last activity: 2026-07-10 -- Phase 67 execution started
+Phase: 67
+Plan: Not started
+Status: Milestone complete
+Last activity: 2026-07-10
 
 Progress: [░░░░░░░░░░] 0%
 

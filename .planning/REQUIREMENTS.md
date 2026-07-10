@@ -25,8 +25,8 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 ### Quest Fields
 
 - [x] **QUESTMD-01**: Quest Description supports the Markdown editor on Create/Edit/Follow-Up forms (desktop + mobile) and renders as formatted HTML wherever displayed (board card, Details, Manage)
-- [ ] **QUESTMD-02**: Quest Rewards supports the Markdown editor and renders as formatted HTML on Details/QuestLog
-- [ ] **QUESTMD-03**: Quest Recap (via the EditRecap form) supports the Markdown editor and renders as formatted HTML on Details/QuestLog
+- [x] **QUESTMD-02**: Quest Rewards supports the Markdown editor and renders as formatted HTML on Details/QuestLog
+- [x] **QUESTMD-03**: Quest Recap (via the EditRecap form) supports the Markdown editor and renders as formatted HTML on Details/QuestLog
 
 ### Character Fields
 
@@ -45,7 +45,7 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 
 ### Email Integration
 
-- [ ] **EMAILMD-01**: Quest Description renders as formatted HTML (not raw Markdown syntax) in the Quest Finalized, Session Reminder, and Waitlist Promoted emails
+- [x] **EMAILMD-01**: Quest Description renders as formatted HTML (not raw Markdown syntax) in the Quest Finalized, Session Reminder, and Waitlist Promoted emails
 - [ ] **EMAILMD-02**: A recipient viewing these 3 emails in real Outlook desktop or Gmail webmail sees correctly formatted content (visible bullets, intact styling) — not broken or missing formatting
 - [ ] **EMAILMD-03**: A recipient can read the full quest description in these emails even when formatted with headings/lists/blockquotes — content is not silently clipped by a fixed-height card
 
@@ -91,15 +91,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EDITOR-05 | Phase 66 | Complete |
 | EDITOR-06 | Phase 66 | Complete |
 | QUESTMD-01 | Phase 66 | Complete |
-| QUESTMD-02 | Phase 67 | Pending |
-| QUESTMD-03 | Phase 67 | Pending |
+| QUESTMD-02 | Phase 67 | Complete |
+| QUESTMD-03 | Phase 67 | Complete |
 | CHARMD-01 | Phase 68 | Pending |
 | CHARMD-02 | Phase 68 | Pending |
 | CONTACTMD-01 | Phase 69 | Pending |
 | CONTACTMD-02 | Phase 69 | Pending |
 | PROFILEMD-01 | Phase 70 | Pending |
 | PROFILEMD-02 | Phase 70 | Pending |
-| EMAILMD-01 | Phase 67 | Pending |
+| EMAILMD-01 | Phase 67 | Complete |
 | EMAILMD-02 | Phase 71 | Pending |
 | EMAILMD-03 | Phase 71 | Pending |
 
