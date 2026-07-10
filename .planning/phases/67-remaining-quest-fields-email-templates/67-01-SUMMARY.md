@@ -98,3 +98,7 @@ None - no external service configuration required.
 ---
 *Phase: 67-remaining-quest-fields-email-templates*
 *Completed: 2026-07-10*
+
+## Self-Check: PASSED
+
+All 6 modified view files and the SUMMARY.md itself confirmed present on disk. Both task commits (`be39490`, `8d7af06`) confirmed present in git log.
