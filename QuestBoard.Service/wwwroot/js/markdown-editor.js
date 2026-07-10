@@ -38,6 +38,9 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
                 body: JSON.stringify({ markdown: plainText })
             })
                 .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Preview request failed: ' + response.status);
+                    }
                     return response.text();
                 })
                 .then(function (html) {
