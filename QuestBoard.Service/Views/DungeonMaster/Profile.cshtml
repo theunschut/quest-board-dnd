@@ -49,9 +49,7 @@
                 <div class="card-body modern-card-body">
                     @if (!string.IsNullOrWhiteSpace(Model.Bio))
                     {
-                        <div class="markdown-content">
-                            @Html.Markdown(Model.Bio)
-                        </div>
+                        @Html.Markdown(Model.Bio)
                     }
                     else
                     {
