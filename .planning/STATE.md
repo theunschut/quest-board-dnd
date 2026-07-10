@@ -5,8 +5,8 @@ milestone_name: Markdown Support
 current_phase: 70
 current_phase_name: DM Profile & Shop Fields
 status: executing
-stopped_at: Phase 70 context gathered
-last_updated: "2026-07-10T16:10:40.719Z"
+stopped_at: Phase 70 UI-SPEC approved
+last_updated: "2026-07-10T16:38:12.756Z"
 last_activity: 2026-07-10
 last_activity_desc: Phase 69 complete, transitioned to Phase 70
 progress:
@@ -84,9 +84,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-10T16:10:40.708Z
-Stopped at: Phase 70 context gathered
-Resume file: .planning/phases/70-dm-profile-shop-fields/70-CONTEXT.md
+Last session: 2026-07-10T16:38:12.744Z
+Stopped at: Phase 70 UI-SPEC approved
+Resume file: .planning/phases/70-dm-profile-shop-fields/70-UI-SPEC.md
 
 ## Operator Next Steps
 
