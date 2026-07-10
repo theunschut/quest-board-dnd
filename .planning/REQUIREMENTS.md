@@ -46,8 +46,8 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 ### Email Integration
 
 - [x] **EMAILMD-01**: Quest Description renders as formatted HTML (not raw Markdown syntax) in the Quest Finalized, Session Reminder, and Waitlist Promoted emails
-- [ ] **EMAILMD-02**: A recipient viewing these 3 emails in real Outlook desktop or Gmail webmail sees correctly formatted content (visible bullets, intact styling) — not broken or missing formatting
-- [ ] **EMAILMD-03**: A recipient can read the full quest description in these emails even when formatted with headings/lists/blockquotes — content is not silently clipped by a fixed-height card
+- [x] **EMAILMD-02**: A recipient viewing these 3 emails in real Outlook desktop or Gmail webmail sees correctly formatted content (visible bullets, intact styling) — not broken or missing formatting *(Gmail confirmed for Quest Finalized directly, Session Reminder/Waitlist Promoted accepted via operator override on shared-engine grounds; real Outlook desktop deferred to production access — see 71-VERIFICATION.md `overrides`)*
+- [x] **EMAILMD-03**: A recipient can read the full quest description in these emails even when formatted with headings/lists/blockquotes — content is not silently clipped by a fixed-height card *(server-side block-boundary truncation verified via unit/integration tests; real card-overflow bug found and fixed during this phase — see 71-VERIFICATION.md)*
 
 ## v2 Requirements
 
@@ -100,8 +100,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROFILEMD-01 | Phase 70 | Complete |
 | PROFILEMD-02 | Phase 70 | Complete |
 | EMAILMD-01 | Phase 67 | Complete |
-| EMAILMD-02 | Phase 71 | Pending |
-| EMAILMD-03 | Phase 71 | Pending |
+| EMAILMD-02 | Phase 71 | Complete (override) |
+| EMAILMD-03 | Phase 71 | Complete |
 
 **Coverage:**
 
