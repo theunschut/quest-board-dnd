@@ -64,7 +64,13 @@
     font-size: 0.875rem;
 }
 
-.markdown-content blockquote {
+/* EasyMDE's live Preview pane (.editor-preview) renders the identical Markdig-generated HTML as
+   the saved page, but only .markdown-content carried this rule -- so a blockquote showed styled
+   on Details/Manage/email yet plain in Preview, a real EDITOR-04 (preview-matches-saved)
+   mismatch. Scoping the same rule to .editor-preview keeps every Blockquote-button field (Quest,
+   Character, Contact) consistent between the two render paths. */
+.markdown-content blockquote,
+.editor-preview blockquote {
     border-left: 3px solid rgba(255, 193, 7, 0.5);
     padding-left: 12px;
     font-style: italic;
