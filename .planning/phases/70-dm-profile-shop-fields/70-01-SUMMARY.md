@@ -121,3 +121,7 @@ None - no external service configuration required.
 ---
 *Phase: 70-dm-profile-shop-fields*
 *Completed: 2026-07-10*
+
+## Self-Check: PASSED
+
+All 4 modified view files found on disk; SUMMARY.md found on disk; all 3 commits (b29207d0, b3fb79c1, d1eb3c31) found in git log.
