@@ -24,4 +24,20 @@ public interface IMarkdownService
     /// displayed length. A null, empty, or whitespace-only input returns <see cref="string.Empty"/>.
     /// </summary>
     string ExtractPlainText(string? markdown);
+
+    /// <summary>
+    /// Renders Quest Description Markdown for the 3 transactional quest emails: the same sanitized
+    /// structural HTML as <see cref="RenderToHtml"/> with <see cref="MarkdownRenderTarget.Email"/>,
+    /// with every block/inline element Markdig can emit carrying its own explicit inline
+    /// <c>style=</c> attribute plus an Outlook bullet-visibility fallback on every list item. Every
+    /// injected style string is a hard-coded C# constant keyed by tag name -- never built from any
+    /// part of <paramref name="markdown"/> or the sanitized HTML -- so this step never re-opens the
+    /// XSS surface the sanitizer already closed. A null, empty, or whitespace-only input returns
+    /// <see cref="string.Empty"/>. When the rendered content exceeds <paramref name="maxTopLevelBlocks"/>
+    /// top-level block elements or <paramref name="maxPlainTextChars"/> of extracted plain text
+    /// (whichever limit is reached first), the output is cut at the last complete block boundary
+    /// -- never mid-element -- and a "read more" link to <paramref name="readMoreUrl"/> is appended;
+    /// content within both budgets is returned untouched with no link appended.
+    /// </summary>
+    string RenderEmailHtml(string? markdown, string readMoreUrl, int maxTopLevelBlocks = 5, int maxPlainTextChars = 650);
 }
