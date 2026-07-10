@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Markdown Support
 status: executing
-stopped_at: Phase 68 UI-SPEC approved
-last_updated: "2026-07-10T10:13:32.845Z"
+stopped_at: Phase 68 planned
+last_updated: "2026-07-10T10:13:53.211Z"
 last_activity: 2026-07-10 -- Phase 68 planning complete
 progress:
   total_phases: 4
@@ -81,9 +81,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-10T09:45:08.848Z
-Stopped at: Phase 68 UI-SPEC approved
-Resume file: .planning/phases/68-character-fields/68-UI-SPEC.md
+Last session: 2026-07-10T10:13:53.197Z
+Stopped at: Phase 68 planned
+Resume file: .planning/phases/68-character-fields/68-01-PLAN.md
 
 ## Operator Next Steps
 
