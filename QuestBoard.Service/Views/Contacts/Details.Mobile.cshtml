@@ -92,7 +92,14 @@
 
         <form asp-action="AddNote" method="post">
             <input type="hidden" name="contactId" value="@Model.Id" />
-            <textarea name="Text" class="form-control" rows="3" maxlength="2000" placeholder="Add a note about this contact..."></textarea>
+            @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+               {
+                   FieldName = "Text",
+                   Value = null,
+                   Label = "Add a Note",
+                   Required = true,
+                   Placeholder = "Add a note about this contact..."
+               }); }
             <div class="d-flex justify-content-end mt-2">
                 <button type="submit" class="btn btn-warning">
                     <i class="fas fa-plus me-2"></i>Add Note
@@ -129,12 +136,19 @@
                             </form>
                         </div>
                     </div>
-                    <p class="mb-0 mt-2 note-view-text" style="white-space: pre-wrap;">@note.Text</p>
+                    <div class="mb-0 mt-2 note-view-text">@Html.Markdown(note.Text)</div>
 
                     <form asp-action="EditNote" method="post" class="note-edit-form" style="display: none;">
                         <input type="hidden" name="id" value="@note.Id" />
                         <input type="hidden" name="contactId" value="@Model.Id" />
-                        <textarea name="Text" class="form-control mt-2" rows="3" maxlength="2000">@note.Text</textarea>
+                        @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                           {
+                               FieldName = "Text",
+                               ElementId = $"Text_{note.Id}",
+                               Value = note.Text,
+                               Label = "Edit Note",
+                               Required = true
+                           }); }
                         <div class="d-flex justify-content-end gap-2 mt-2">
                             <button type="button" class="btn btn-sm btn-secondary note-cancel-btn">Cancel</button>
                             <button type="submit" class="btn btn-sm btn-warning">Save</button>
@@ -163,6 +177,7 @@
 </div>
 
 @section Scripts {
+    @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
     <script>
         document.querySelectorAll('.note-item').forEach(function (noteItem) {
             var editBtn = noteItem.querySelector('.note-edit-btn');
