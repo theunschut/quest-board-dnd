@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Markdown Support
-status: completed
+status: executing
 stopped_at: Phase 68 UI-SPEC approved
-last_updated: "2026-07-10T09:45:08.860Z"
-last_activity: 2026-07-10
+last_updated: "2026-07-10T10:13:32.845Z"
+last_activity: 2026-07-10 -- Phase 68 planning complete
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 13
+  total_plans: 16
   completed_plans: 13
   percent: 75
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-07-08 — v7.0 milestone close)
 
 Phase: 67
 Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-10
+Status: Ready to execute
+Last activity: 2026-07-10 -- Phase 68 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
