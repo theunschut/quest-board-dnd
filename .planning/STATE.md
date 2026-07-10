@@ -5,8 +5,8 @@ milestone_name: Markdown Support
 current_phase: 71
 current_phase_name: Email-Safety Hardening
 status: executing
-stopped_at: Phase 71 context gathered
-last_updated: "2026-07-10T18:51:44.764Z"
+stopped_at: Phase 71 UI-SPEC approved
+last_updated: "2026-07-10T18:59:28.104Z"
 last_activity: 2026-07-10
 last_activity_desc: Phase 70 complete, transitioned to Phase 71
 progress:
@@ -86,9 +86,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-10T18:51:44.753Z
-Stopped at: Phase 71 context gathered
-Resume file: .planning/phases/71-email-safety-hardening/71-CONTEXT.md
+Last session: 2026-07-10T18:59:28.093Z
+Stopped at: Phase 71 UI-SPEC approved
+Resume file: .planning/phases/71-email-safety-hardening/71-UI-SPEC.md
 
 ## Operator Next Steps
 
