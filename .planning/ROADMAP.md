@@ -305,9 +305,18 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. A recipient can read the full quest description even when formatted with headings, lists, or blockquotes — content is not silently clipped by a fixed-height card, resolved via an explicit layout decision (truncate-with-link or remove the fixed height)
 
 **Plans**: 3 plans
+**Wave 1**
+
 - [ ] 71-01-PLAN.md — RenderEmailHtml: email-safe inline styling + Outlook bullet fallback + block-boundary truncation with read-more (Domain + unit tests)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 71-02-PLAN.md — Wire the 3 quest email templates to RenderEmailHtml, remove the Outlook-incompatible scroll wrapper, add WaitlistPromoted browser preview
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 71-03-PLAN.md — Live Outlook desktop + Gmail webmail verification via real test emails (D-05/D-06 blocking human-verify)
+
 **UI hint**: yes
 
 ## Progress
