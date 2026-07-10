@@ -61,6 +61,31 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
         }
     });
 
+    // Native <textarea maxlength> only guards typing into the raw textarea, but EasyMDE/CodeMirror
+    // intercepts every keystroke itself and never touches the textarea until submit -- so the
+    // browser's built-in limit never fires while editing. Re-implement it against CodeMirror's own
+    // change event, reading the same maxlength attribute so the markup stays the single source of
+    // truth. textarea.maxLength is -1 when no maxlength attribute is present, so this is a no-op
+    // for every editor that doesn't opt in.
+    const maxLength = textarea.maxLength;
+    if (maxLength >= 0) {
+        const fieldContainer = textarea.closest('.mb-3');
+        const charCountCurrent = fieldContainer ? fieldContainer.querySelector('.markdown-editor-char-count-current') : null;
+
+        easyMDE.codemirror.on('change', function () {
+            const value = easyMDE.value();
+            if (value.length > maxLength) {
+                // Setting the value re-fires this same 'change' handler with the now-truncated
+                // text, which updates the counter below -- no separate update needed here.
+                easyMDE.value(value.slice(0, maxLength));
+                return;
+            }
+            if (charCountCurrent) {
+                charCountCurrent.textContent = value.length;
+            }
+        });
+    }
+
     // CodeMirror's own fromTextArea() (which EasyMDE builds on) only syncs its content back to
     // the underlying <textarea> right before the owning form's native "submit" event fires. But
     // the browser's own required-field validation runs BEFORE that submit event -- against the

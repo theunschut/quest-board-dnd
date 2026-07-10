@@ -25,4 +25,11 @@ public class MarkdownEditorViewModel
     /// default single-instance behavior, which derives the id from FieldName.
     /// </summary>
     public string? ElementId { get; set; }
+
+    /// <summary>
+    /// Optional client-side character limit, enforced live by markdown-editor.js and mirrored
+    /// in a counter below the field. Leave null for editors with no client-side limit; any
+    /// server-side [StringLength] validation on the bound property is unaffected either way.
+    /// </summary>
+    public int? MaxLength { get; set; }
 }

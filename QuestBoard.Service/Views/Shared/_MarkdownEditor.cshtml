@@ -17,6 +17,12 @@
             <span class="text-danger">*</span>
         }
     </label>
-    <textarea name="@Model.FieldName" id="@elementId" class="form-control markdown-editor-textarea" rows="4" placeholder="@Model.Placeholder" required="@Model.Required">@Model.Value</textarea>
+    <textarea name="@Model.FieldName" id="@elementId" class="form-control markdown-editor-textarea" rows="4" placeholder="@Model.Placeholder" required="@Model.Required" maxlength="@Model.MaxLength">@Model.Value</textarea>
     <span class="text-danger" data-valmsg-for="@Model.FieldName" data-valmsg-replace="true"></span>
+    @if (Model.MaxLength.HasValue)
+    {
+        <small class="form-text text-muted markdown-editor-char-count">
+            <span class="markdown-editor-char-count-current">@(Model.Value?.Length ?? 0)</span>/@Model.MaxLength characters
+        </small>
+    }
 </div>
