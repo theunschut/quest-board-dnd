@@ -219,7 +219,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] 67-02-PLAN.md — Render Rewards on Quest Details + new Manage collapsible section (D-01) + pre-wrap CSS override
 - [x] 67-03-PLAN.md — Wire Recap editor + render Rewards/Recap on QuestLog Details (incl. mobile Rewards backfill, D-03)
 - [x] 67-04-PLAN.md — Session Reminder + Waitlist Promoted emails render Quest Description as HTML
-- [ ] 67-05-PLAN.md — Operator human-verification checkpoint (desktop + 320px mobile)
+- [x] 67-05-PLAN.md — Operator human-verification checkpoint (desktop + 320px mobile)
 
 **UI hint**: yes
 
@@ -359,7 +359,7 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 64. Preserve line breaks in description text on mobile views | v7.0 | 2/2 | Complete    | 2026-07-07 |
 | 65. Markdown Rendering Foundation | v8.0 | 1/1 | Complete    | 2026-07-09 |
 | 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 7/7 | Complete    | 2026-07-09 |
-| 67. Remaining Quest Fields & Email Templates | v8.0 | 4/5 | In Progress|  |
+| 67. Remaining Quest Fields & Email Templates | v8.0 | 5/5 | Complete   | 2026-07-10 |
 | 68. Character Fields | v8.0 | 0/? | Not started | - |
 | 69. Contact Fields | v8.0 | 0/? | Not started | - |
 | 70. DM Profile & Shop Fields | v8.0 | 0/? | Not started | - |
