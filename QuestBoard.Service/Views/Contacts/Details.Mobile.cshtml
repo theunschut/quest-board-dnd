@@ -219,6 +219,11 @@
                 if (!noteEditors.has(noteId)) {
                     const instance = initMarkdownEditor(textarea, window.markdownAntiforgeryToken);
                     noteEditors.set(noteId, { instance: instance, originalText: textarea.value });
+                } else {
+                    // Re-showing an already-constructed CodeMirror instance needs a refresh call
+                    // after being unhidden, or it can render with stale/zero measurements
+                    // (collapsed height, broken line wrapping) until the user interacts with it.
+                    noteEditors.get(noteId).instance.codemirror.refresh();
                 }
             });
 
