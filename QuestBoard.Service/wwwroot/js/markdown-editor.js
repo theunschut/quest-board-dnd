@@ -99,6 +99,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        initMarkdownEditor(textarea, window.markdownAntiforgeryToken);
+        // Stash the built editor on the textarea itself so a page-local script can look up the
+        // live editor for a visible field by element id (the raw textarea is hidden by EasyMDE,
+        // so bespoke submit handlers can't just read its .value directly).
+        textarea.easyMDE = initMarkdownEditor(textarea, window.markdownAntiforgeryToken);
     });
 });
