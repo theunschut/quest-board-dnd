@@ -304,7 +304,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   2. A recipient opening the same emails in real Gmail webmail sees the same correctly formatted content
   3. A recipient can read the full quest description even when formatted with headings, lists, or blockquotes — content is not silently clipped by a fixed-height card, resolved via an explicit layout decision (truncate-with-link or remove the fixed height)
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 **Wave 1**
 
 - [x] 71-01-PLAN.md — RenderEmailHtml: email-safe inline styling + Outlook bullet fallback + block-boundary truncation with read-more (Domain + unit tests)
@@ -315,7 +315,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 71-03-PLAN.md — Live Outlook desktop + Gmail webmail verification via real test emails (D-05/D-06 blocking human-verify)
+- [x] 71-03-PLAN.md — Live Outlook desktop + Gmail webmail verification via real test emails (D-05/D-06 blocking human-verify)
 
 **UI hint**: yes
 
@@ -403,4 +403,4 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 68. Character Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 70. DM Profile & Shop Fields | v8.0 | 4/4 | Complete    | 2026-07-10 |
-| 71. Email-Safety Hardening | v8.0 | 2/3 | In Progress|  |
+| 71. Email-Safety Hardening | v8.0 | 3/3 | Complete   | 2026-07-10 |
