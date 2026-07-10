@@ -1,5 +1,5 @@
 {
-  "model_profile": "balanced",
+  "model_profile": "adaptive",
   "commit_docs": true,
   "parallelization": true,
   "search_gitignored": false,
@@ -10,7 +10,8 @@
     "branching_strategy": "none",
     "phase_branch_template": "gsd/phase-{phase}-{slug}",
     "milestone_branch_template": "gsd/{milestone}-{slug}",
-    "quick_branch_template": null
+    "quick_branch_template": null,
+    "create_tag": false
   },
   "workflow": {
     "research": true,
@@ -30,11 +31,26 @@
     "use_worktrees": true,
     "build_command": "dotnet build",
     "test_command": "dotnet test",
-    "code_review": true
+    "code_review": true,
+    "pattern_mapper": true,
+    "ai_integration_phase": true,
+    "tdd_mode": false,
+    "ui_review": true,
+    "code_review_depth": "standard"
   },
   "hooks": {
     "context_warnings": true
   },
   "mode": "yolo",
-  "granularity": "standard"
+  "granularity": "standard",
+  "intel": {
+    "enabled": false
+  },
+  "graphify": {
+    "enabled": false,
+    "auto_update": false
+  },
+  "plan_review": {
+    "source_grounding": true
+  }
 }
