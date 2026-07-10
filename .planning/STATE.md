@@ -2,19 +2,16 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Markdown Support
-current_phase: 66
 status: executing
-stopped_at: Phase 66 UI-SPEC approved
-last_updated: "2026-07-09T21:55:15.956Z"
-last_activity: 2026-07-09
-last_activity_desc: Phase 66 complete
+stopped_at: Phase 67 context gathered
+last_updated: "2026-07-10T06:25:54.014Z"
+last_activity: 2026-07-09 — Phase 66 complete
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
   total_plans: 8
   completed_plans: 8
-  percent: 100
-current_phase_name: quest-description-editor-rendering-proof-of-concept
+  percent: 67
 ---
 
 # Project State
@@ -84,9 +81,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-09T13:12:29.061Z
-Stopped at: Phase 66 UI-SPEC approved
-Resume file: .planning/phases/66-quest-description-editor-rendering-proof-of-concept/66-UI-SPEC.md
+Last session: 2026-07-10T06:25:54.003Z
+Stopped at: Phase 67 context gathered
+Resume file: .planning/phases/67-remaining-quest-fields-email-templates/67-CONTEXT.md
 
 ## Operator Next Steps
 
