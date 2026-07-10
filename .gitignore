@@ -711,8 +711,10 @@ FodyWeavers.xsd
 *.sqlite
 *.sqlite3
 
-# Claude Code configuration
-.claude/
+# Claude Code configuration — only ignore what's personal/ephemeral;
+# settings.json and launch.json are shared project config and stay tracked
+.claude/settings.local.json
+.claude/worktrees/
 
 # Environment variables
 .env
