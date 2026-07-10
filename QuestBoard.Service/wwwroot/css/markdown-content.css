@@ -3,10 +3,18 @@
    app's typography -- notably, the heading color override below intentionally shadows the
    global h1-h6 rule (site.css) only inside this scope. */
 
+/* Markdown output is real block-level HTML (<p>, <ul>, <blockquote>, etc). The parchment boxes
+   this content renders inside (.quest-description-box, .recap-display-box in quests.css) set
+   white-space: pre-wrap -- an inherited property -- to preserve newlines from the old plain-text
+   era. Left inherited, that would also preserve the insignificant newlines Markdig emits between
+   block elements, doubling the vertical spacing. Overriding back to normal here collapses that
+   whitespace for rendered Markdown only; raw-text fields that still share those box classes (with
+   no .markdown-content child) keep their pre-wrap line-break preservation untouched. */
 .markdown-content {
     font-size: 1rem;
     font-weight: 400;
     line-height: 1.6;
+    white-space: normal;
 }
 
 .markdown-content strong {
