@@ -2,8 +2,10 @@
 @model MarkdownEditorViewModel
 @{
     // Mirrors ASP.NET Core's own tag-helper id generation (IdAttributeDotReplacement, default
-    // "_") so this computed id matches what asp-for would have produced for the same field name.
-    var elementId = Model.FieldName.Replace('.', '_');
+    // "_") so this computed id matches what asp-for would have produced for the same field name,
+    // unless the caller supplies an explicit ElementId override (e.g. multiple instances of the
+    // same field on one page).
+    var elementId = Model.ElementId ?? Model.FieldName.Replace('.', '_');
 }
 
 <div class="mb-3">

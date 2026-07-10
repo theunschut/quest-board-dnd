@@ -60,6 +60,13 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
 // -> id="Quest_Description" on Edit). A single shared class lets one init loop cover every form.
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.markdown-editor-textarea').forEach(function (textarea) {
+        // A textarea inside a display:none ancestor (e.g. a collapsed/hidden container) has no
+        // offsetParent -- skip it here and leave it for whatever reveal handler shows the
+        // container to lazy-init it at that point instead.
+        if (textarea.offsetParent === null) {
+            return;
+        }
+
         initMarkdownEditor(textarea, window.markdownAntiforgeryToken);
     });
 });
