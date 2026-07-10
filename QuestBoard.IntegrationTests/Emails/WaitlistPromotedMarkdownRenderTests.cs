@@ -31,7 +31,9 @@ public class WaitlistPromotedMarkdownRenderTests(WebApplicationFactoryBase facto
         });
 
         // Assert
-        html.Should().Contain("<strong>bold description</strong>");
+        // RenderEmailHtml adds an inline style= attribute to <strong>, so match the tag loosely
+        // instead of asserting the exact unstyled markup.
+        html.Should().MatchRegex(@"<strong\b[^>]*>bold description</strong>");
         html.Should().NotContain("**bold description**");
         // The layout template itself has a static Wax Seal <img>, unrelated to the Description
         // markdown — scope the "images stripped" assertion to the test-supplied image specifically.
@@ -70,7 +72,9 @@ public class WaitlistPromotedMarkdownRenderTests(WebApplicationFactoryBase facto
         html.Should().MatchRegex(@"<div\b[^>]*font-style:italic[^>]*>\s*<p[\s>]");
         html.Should().Contain("Paragraph one");
         html.Should().Contain("Paragraph two");
-        html.Should().Contain("<h2>A heading</h2>");
-        html.Should().Contain("<li>item 1</li>");
+        // RenderEmailHtml adds inline style= attributes to <h2>/<li> and an Outlook MSO bullet
+        // fallback comment inside each <li>, so match loosely instead of the exact bare tags.
+        html.Should().MatchRegex(@"<h2\b[^>]*>A heading</h2>");
+        html.Should().MatchRegex(@"<li\b[^>]*>(?:<!--\[if mso\]>[^<]*<!\[endif\]-->)?item 1</li>");
     }
 }
