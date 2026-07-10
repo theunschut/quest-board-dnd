@@ -61,11 +61,13 @@ public class QuestFinalizedMarkdownRenderTests(WebApplicationFactoryBase factory
         });
 
         // Assert
-        // A <p> wrapper around multi-block Markdown output gets implicitly closed/emptied by the
+        // A <p> wrapper around multi-block Markdown output is illegal HTML (a <p> cannot legally
+        // contain block elements like <h2>/<li>) and gets implicitly closed/emptied by a real
         // browser as soon as it hits the first nested block tag, dropping the styled wrapper's
-        // italic/color/text-shadow styling for every paragraph after the first. Asserting the
-        // wrapper isn't immediately self-closed/emptied pins the fix (block-safe <div> wrapper).
-        html.Should().NotMatchRegex("<p [^>]*font-style:italic[^>]*></p>");
+        // italic/color/text-shadow styling for every paragraph after the first. This asserts
+        // directly on the wrapper element itself (must be a <div>, not a <p>) rather than trying
+        // to infer browser auto-close behavior from the raw, unparsed render-service output string.
+        html.Should().MatchRegex(@"<div\b[^>]*font-style:italic[^>]*>\s*<p[\s>]");
         html.Should().Contain("Paragraph one");
         html.Should().Contain("Paragraph two");
         html.Should().Contain("<h2>A heading</h2>");

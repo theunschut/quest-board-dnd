@@ -69,3 +69,18 @@
     padding-left: 12px;
     font-style: italic;
 }
+
+/* The heading color above assumes .markdown-content always renders inside the dark-overlay
+   .quest-description-box/.recap-display-box. Quest Details' Description block and every field
+   on Quest Manage's collapsible sections render .markdown-content directly inside the light
+   .modern-card-body instead, with no dark box -- the pale heading color is nearly invisible
+   there, so this reverts headings back to the card's own dark text color in that context. */
+.modern-card-body > .markdown-content h1,
+.modern-card-body > .markdown-content h2,
+.modern-card-body > .markdown-content h3,
+.modern-card-body > .markdown-content h4,
+.modern-card-body > .markdown-content h5,
+.modern-card-body > .markdown-content h6 {
+    color: #1a1a1a;
+    text-shadow: none;
+}

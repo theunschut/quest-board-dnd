@@ -64,6 +64,24 @@
     white-space: pre-wrap;
 }
 
+/* Beats the page-wide parchment-on-dark text rules above, which now also match the
+   <p>/<li>/<hN> tags Html.Markdown() emits inside this white recap box. Both this rule and the
+   one it overrides use !important, so this deliberately scopes through the shared
+   .quest-log-detail-main-card ancestor to win on specificity rather than relying on being
+   declared later in the file -- the exact kind of ordering assumption that caused this bug. */
+.quest-log-detail-main-card .recap-display-box,
+.quest-log-detail-main-card .recap-display-box p,
+.quest-log-detail-main-card .recap-display-box li,
+.quest-log-detail-main-card .recap-display-box h1,
+.quest-log-detail-main-card .recap-display-box h2,
+.quest-log-detail-main-card .recap-display-box h3,
+.quest-log-detail-main-card .recap-display-box h4,
+.quest-log-detail-main-card .recap-display-box h5,
+.quest-log-detail-main-card .recap-display-box h6 {
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+}
+
 /* Recap textarea — high-contrast for editability */
 .quest-log-detail-main-card textarea {
     background-color: rgba(255, 255, 255, 0.95) !important;
