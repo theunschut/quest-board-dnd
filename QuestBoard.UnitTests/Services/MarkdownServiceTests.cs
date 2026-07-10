@@ -439,4 +439,48 @@ public class MarkdownServiceTests
         var truncated = Service.RenderEmailHtml(markdown, TestReadMoreUrl, maxTopLevelBlocks: 5, maxPlainTextChars: 10000);
         truncated.Should().Contain("margin-bottom:0");
     }
+
+    [Fact]
+    public void RenderEmailHtml_OnlyBlockAloneExceedsCharBudget_IsKeptInFullWithNoReadMoreLink()
+    {
+        // Regression: a single unformatted paragraph over the char budget must never produce an
+        // email showing nothing but the read-more link -- the only block is always kept even when
+        // it alone exceeds maxPlainTextChars. No read-more link, since nothing was actually cut.
+        var longParagraph = new string('a', 500);
+
+        var html = Service.RenderEmailHtml(longParagraph, TestReadMoreUrl, maxTopLevelBlocks: 3, maxPlainTextChars: 400);
+
+        html.Should().Contain(longParagraph);
+        html.Should().NotContain("continue reading on the quest board");
+    }
+
+    [Fact]
+    public void RenderEmailHtml_FirstBlockAloneExceedsCharBudget_IsStillKeptAndLaterBlocksTruncated()
+    {
+        // Regression: when a later block exists beyond the over-budget first one, the first block
+        // is kept in full (not dropped to empty) and a read-more link is appended, since real
+        // content genuinely was cut.
+        var longParagraph = new string('a', 500);
+        var markdown = $"{longParagraph}\n\nMore text.";
+
+        var html = Service.RenderEmailHtml(markdown, TestReadMoreUrl, maxTopLevelBlocks: 3, maxPlainTextChars: 400);
+
+        html.Should().Contain(longParagraph);
+        html.Should().NotContain("More text.");
+        html.Should().Contain("continue reading on the quest board");
+    }
+
+    [Fact]
+    public void RenderEmailHtml_PathologicalNestingFallback_RespectsCharBudget()
+    {
+        // Regression: RenderToHtml's own nesting-depth guard falls back to bare HTML-encoded text
+        // with no wrapping element -- that path must still respect maxPlainTextChars rather than
+        // returning the fallback text completely unbounded.
+        var pathological = string.Concat(Enumerable.Repeat("> ", 300)) + new string('a', 1000);
+
+        var html = Service.RenderEmailHtml(pathological, TestReadMoreUrl, maxTopLevelBlocks: 3, maxPlainTextChars: 400);
+
+        html.Length.Should().BeLessThan(pathological.Length);
+        html.Should().Contain("continue reading on the quest board");
+    }
 }

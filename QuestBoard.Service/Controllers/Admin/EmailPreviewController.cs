@@ -13,8 +13,8 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
     private static readonly IList<string> SamplePlayers = ["Arannis", "Tordek", "Mialee"];
 
     // Structured-Markdown sample exercising headings/lists/blockquote styling and exceeding the
-    // default truncation budget (5 top-level blocks / 650 plain-text characters) so the read-more
-    // link is visible in the browser preview.
+    // default truncation budget (3 top-level blocks / 400 plain-text characters, 2/350 for
+    // SessionReminder's own override) so the read-more link is visible in the browser preview.
     private const string SampleMarkdownDescription = """
         ## The Sunken Archive
 

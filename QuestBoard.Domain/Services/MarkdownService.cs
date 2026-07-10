@@ -235,11 +235,21 @@ internal class MarkdownService : IMarkdownService
         }
 
         // Markdig's pathological-nesting guard (see RenderToHtml) can fall back to bare
-        // HTML-encoded text with no wrapping element at all -- there's nothing to walk/truncate in
-        // that case, so pass the already-sanitized text straight through rather than losing it.
+        // HTML-encoded text with no wrapping element at all -- there's nothing to walk at block
+        // granularity in that case, so the char budget is applied as a simple length cap on the
+        // encoded string instead, still appending a read-more link when truncated. Without this,
+        // pathological input would bypass the card-overflow guard entirely (an unbounded return).
         if (!document.Body!.Children.Any())
         {
-            return sanitizedHtml;
+            if (sanitizedHtml.Length <= maxPlainTextChars)
+            {
+                return sanitizedHtml;
+            }
+
+            var fallbackParagraph = document.CreateElement("p");
+            fallbackParagraph.SetAttribute("style", "margin:0;");
+            fallbackParagraph.InnerHtml = sanitizedHtml[..maxPlainTextChars];
+            return fallbackParagraph.OuterHtml + BuildReadMoreParagraph(document, readMoreUrl);
         }
 
         return TruncateAtBlockBoundary(document, readMoreUrl, maxTopLevelBlocks, maxPlainTextChars);
@@ -251,29 +261,37 @@ internal class MarkdownService : IMarkdownService
     // method exists to preserve.
     private static string TruncateAtBlockBoundary(IDocument document, string readMoreUrl, int maxTopLevelBlocks, int maxPlainTextChars)
     {
+        var allBlocks = document.Body!.Children.ToList();
         var kept = new List<IElement>();
         var plainTextLength = 0;
-        var truncated = false;
 
-        foreach (var block in document.Body!.Children)
+        foreach (var block in allBlocks)
         {
             var blockText = block.TextContent.Trim();
-            var wouldExceedBlocks = kept.Count >= maxTopLevelBlocks;
-            var wouldExceedChars = plainTextLength + blockText.Length > maxPlainTextChars;
 
-            if (wouldExceedBlocks || wouldExceedChars)
+            // Always keep at least the first block, even if it alone exceeds either budget --
+            // returning zero content when real content exists is worse than one over-budget
+            // block; the Description div's own max-height/overflow:hidden CSS backstop still
+            // bounds this visually in browser-based clients.
+            if (kept.Count > 0)
             {
-                truncated = true;
-                break;
+                var wouldExceedBlocks = kept.Count >= maxTopLevelBlocks;
+                var wouldExceedChars = plainTextLength + blockText.Length > maxPlainTextChars;
+                if (wouldExceedBlocks || wouldExceedChars)
+                {
+                    break;
+                }
             }
 
             kept.Add(block);
             plainTextLength += blockText.Length;
         }
 
+        var truncated = kept.Count < allBlocks.Count;
+
         if (kept.Count == 0)
         {
-            return truncated ? BuildReadMoreParagraph(document, readMoreUrl) : string.Empty;
+            return string.Empty;
         }
 
         // The Description column's own wrapper already supplies top/bottom spacing, so the first
