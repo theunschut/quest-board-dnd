@@ -279,7 +279,18 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   2. A user editing Shop Item Description sees the Markdown editor, and Description renders as formatted HTML on Shop Index, Details, and Manage
   3. Existing multi-line Bio/Description text displays without doubled spacing — the old line-break-preserving CSS is removed from the rendered-output containers as a companion edit
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 70-01-PLAN.md — Wire the Markdown editor into DM Profile Bio (both write forms) + render Bio via Html.Markdown (both read views)
+- [ ] 70-02-PLAN.md — Wire the Markdown editor into Shop Item Description (4 write forms, Required=true) + expose EasyMDE instance handle + fix the bespoke inline submit validators
+- [ ] 70-03-PLAN.md — Render Shop Description on Details (desktop + modal + mobile) + ExtractPlainText teaser on Shop Index (D-01) and one consolidated ShopManagement dashboard helper (D-02/D-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 70-04-PLAN.md — Automated render gate + operator human-verification checkpoint (desktop + 320px mobile)
+
 **UI hint**: yes
 
 ### Phase 71: Email-Safety Hardening
@@ -379,5 +390,5 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 5/5 | Complete    | 2026-07-10 |
 | 68. Character Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
-| 70. DM Profile & Shop Fields | v8.0 | 0/? | Not started | - |
+| 70. DM Profile & Shop Fields | v8.0 | 0/4 | Planned | - |
 | 71. Email-Safety Hardening | v8.0 | 0/? | Not started | - |
