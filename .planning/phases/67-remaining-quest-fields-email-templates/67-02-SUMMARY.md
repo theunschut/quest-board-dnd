@@ -100,6 +100,10 @@ None - no external service configuration required.
 - Rewards read-side rendering is now consistent across Quest Details and Quest Manage (desktop + mobile); QuestLog's Rewards/Recap read views and the Follow-Up/QuestLog mobile parity gaps (D-02, D-03) are handled in sibling plans 67-03/67-04.
 - No blockers for downstream plans in this phase.
 
+## Self-Check: PASSED
+
+All 5 modified files confirmed present on disk; both task commits (`2f726fd`, `50e2e63`) confirmed present in git log.
+
 ---
 *Phase: 67-remaining-quest-fields-email-templates*
 *Completed: 2026-07-10*
