@@ -234,11 +234,11 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   2. Character Description and Backstory render as formatted HTML on Character Details (desktop and mobile)
   3. Existing multi-line Character Description/Backstory text displays without doubled spacing — the old line-break-preserving CSS is removed from the rendered-output containers as a companion edit
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 - [x] 68-01-PLAN.md — Wire the Markdown editor into Character Description + Backstory on all 4 write forms (incl. the full-path `_QuestFormScripts` include) + global editor-color specificity fix
 - [x] 68-02-PLAN.md — Render Description + Backstory as HTML on Character Details (desktop + mobile) + mobile list-item color fix
-- [ ] 68-03-PLAN.md — Operator human-verification checkpoint (desktop + 320px mobile)
+- [x] 68-03-PLAN.md — Operator human-verification checkpoint (desktop + 320px mobile)
 
 **UI hint**: yes
 
@@ -365,7 +365,7 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 65. Markdown Rendering Foundation | v8.0 | 1/1 | Complete    | 2026-07-09 |
 | 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 7/7 | Complete    | 2026-07-09 |
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 5/5 | Complete    | 2026-07-10 |
-| 68. Character Fields | v8.0 | 2/3 | In Progress|  |
+| 68. Character Fields | v8.0 | 3/3 | Complete   | 2026-07-10 |
 | 69. Contact Fields | v8.0 | 0/? | Not started | - |
 | 70. DM Profile & Shop Fields | v8.0 | 0/? | Not started | - |
 | 71. Email-Safety Hardening | v8.0 | 0/? | Not started | - |
