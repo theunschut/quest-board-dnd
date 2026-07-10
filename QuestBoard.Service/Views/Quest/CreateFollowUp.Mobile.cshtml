@@ -46,6 +46,15 @@
                    Placeholder = "Describe the quest..."
                }); }
 
+            @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+               {
+                   FieldName = "Rewards",
+                   Value = Model.Rewards,
+                   Label = "Rewards",
+                   Required = false,
+                   Placeholder = "Describe the loot, gold, or other rewards for this quest..."
+               }); }
+
             <div class="mb-3">
                 <label asp-for="ChallengeRating" class="form-label">Challenge Rating <span class="text-danger">*</span></label>
                 <input asp-for="ChallengeRating" type="number" class="form-control" min="1" max="20" step="1" />
