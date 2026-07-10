@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Markdown Support
 status: executing
-stopped_at: Phase 67 UI-SPEC approved
-last_updated: "2026-07-10T07:40:13.099Z"
+stopped_at: Phase 67 planned
+last_updated: "2026-07-10T07:40:40.372Z"
 last_activity: 2026-07-10 -- Phase 67 planning complete
 progress:
   total_phases: 3
@@ -81,9 +81,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-10T06:50:38.350Z
-Stopped at: Phase 67 UI-SPEC approved
-Resume file: .planning/phases/67-remaining-quest-fields-email-templates/67-UI-SPEC.md
+Last session: 2026-07-10T07:40:40.361Z
+Stopped at: Phase 67 planned
+Resume file: .planning/phases/67-remaining-quest-fields-email-templates/67-01-PLAN.md
 
 ## Operator Next Steps
 
