@@ -1,4 +1,6 @@
+@using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.ContactViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model ContactViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -76,7 +78,7 @@
         <div class="contact-section-heading mb-2"><i class="fas fa-scroll me-2"></i>Description</div>
         @if (!string.IsNullOrEmpty(Model.Description))
         {
-            <p class="mb-0" style="white-space: pre-wrap;">@Model.Description</p>
+            @Html.Markdown(Model.Description)
         }
         else
         {
@@ -90,7 +92,14 @@
 
         <form asp-action="AddNote" method="post">
             <input type="hidden" name="contactId" value="@Model.Id" />
-            <textarea name="Text" class="form-control" rows="3" maxlength="2000" placeholder="Add a note about this contact..."></textarea>
+            @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+               {
+                   FieldName = "Text",
+                   Value = null,
+                   Label = "Add a Note",
+                   Required = true,
+                   Placeholder = "Add a note about this contact..."
+               }); }
             <div class="d-flex justify-content-end mt-2">
                 <button type="submit" class="btn btn-warning">
                     <i class="fas fa-plus me-2"></i>Add Note
@@ -127,12 +136,19 @@
                             </form>
                         </div>
                     </div>
-                    <p class="mb-0 mt-2 note-view-text" style="white-space: pre-wrap;">@note.Text</p>
+                    <div class="mb-0 mt-2 note-view-text">@Html.Markdown(note.Text)</div>
 
                     <form asp-action="EditNote" method="post" class="note-edit-form" style="display: none;">
                         <input type="hidden" name="id" value="@note.Id" />
                         <input type="hidden" name="contactId" value="@Model.Id" />
-                        <textarea name="Text" class="form-control mt-2" rows="3" maxlength="2000">@note.Text</textarea>
+                        @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                           {
+                               FieldName = "Text",
+                               ElementId = $"Text_{note.Id}",
+                               Value = note.Text,
+                               Label = "Edit Note",
+                               Required = true
+                           }); }
                         <div class="d-flex justify-content-end gap-2 mt-2">
                             <button type="button" class="btn btn-sm btn-secondary note-cancel-btn">Cancel</button>
                             <button type="submit" class="btn btn-sm btn-warning">Save</button>
@@ -161,24 +177,55 @@
 </div>
 
 @section Scripts {
+    @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
     <script>
+        // noteId -> { instance, originalText }. Lets collapseNote revert a note's visible
+        // EasyMDE content to its saved text (unsaved-text discard) and lets the click handler
+        // below know whether an editor has already been created for a given note this page load.
+        const noteEditors = new Map();
+
+        function collapseNote(noteItem) {
+            const noteId = noteItem.dataset.noteId;
+            const entry = noteEditors.get(noteId);
+            if (entry) {
+                entry.instance.value(entry.originalText);
+            }
+            noteItem.querySelector('.note-edit-form').style.display = 'none';
+            noteItem.querySelector('.note-view-text').style.display = '';
+            noteItem.querySelector('.note-view-actions').style.display = '';
+        }
+
         document.querySelectorAll('.note-item').forEach(function (noteItem) {
-            var editBtn = noteItem.querySelector('.note-edit-btn');
-            var cancelBtn = noteItem.querySelector('.note-cancel-btn');
-            var viewActions = noteItem.querySelector('.note-view-actions');
-            var viewText = noteItem.querySelector('.note-view-text');
-            var editForm = noteItem.querySelector('.note-edit-form');
+            const noteId = noteItem.dataset.noteId;
+            const editBtn = noteItem.querySelector('.note-edit-btn');
+            const cancelBtn = noteItem.querySelector('.note-cancel-btn');
+            const editForm = noteItem.querySelector('.note-edit-form');
+            const textarea = editForm.querySelector('.markdown-editor-textarea');
 
             editBtn?.addEventListener('click', function () {
-                viewText.style.display = 'none';
-                viewActions.style.display = 'none';
+                // D-03: only one note editor open at a time -- collapse (and discard unsaved
+                // text in) every other currently-open note editor before opening this one.
+                document.querySelectorAll('.note-item').forEach(function (other) {
+                    if (other !== noteItem && other.querySelector('.note-edit-form').style.display !== 'none') {
+                        collapseNote(other);
+                    }
+                });
+
+                noteItem.querySelector('.note-view-text').style.display = 'none';
+                noteItem.querySelector('.note-view-actions').style.display = 'none';
                 editForm.style.display = 'block';
+
+                // Lazy-init: never construct EasyMDE while the container is display:none
+                // (avoids the CodeMirror hidden-container sizing bug). This textarea's
+                // container is now visible from the display toggle above.
+                if (!noteEditors.has(noteId)) {
+                    const instance = initMarkdownEditor(textarea, window.markdownAntiforgeryToken);
+                    noteEditors.set(noteId, { instance: instance, originalText: textarea.value });
+                }
             });
 
             cancelBtn?.addEventListener('click', function () {
-                editForm.style.display = 'none';
-                viewText.style.display = '';
-                viewActions.style.display = '';
+                collapseNote(noteItem);
             });
         });
     </script>
