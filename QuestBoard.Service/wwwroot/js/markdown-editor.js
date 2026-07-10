@@ -71,7 +71,13 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
     // validity check, so validation (and the eventual POST) see the real, current content.
     const form = textarea.closest('form');
     if (form) {
-        form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (submitControl) {
+        form.querySelectorAll('button, input[type="submit"]').forEach(function (submitControl) {
+            // A <button> inside a <form> with no type attribute at all defaults to
+            // type="submit" per the HTML spec -- skip only buttons that explicitly opt out
+            // (type="button"/"reset") rather than requiring an explicit type="submit".
+            if (submitControl.tagName === 'BUTTON' && submitControl.type !== 'submit') {
+                return;
+            }
             submitControl.addEventListener('click', function () {
                 easyMDE.codemirror.save();
             });
