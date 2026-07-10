@@ -40,8 +40,8 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 
 ### DM Profile & Shop
 
-- [ ] **PROFILEMD-01**: DM Profile Bio supports the Markdown editor and renders as formatted HTML on the DM Profile page
-- [ ] **PROFILEMD-02**: Shop Item Description supports the Markdown editor and renders as formatted HTML on Shop Index/Details/Manage
+- [x] **PROFILEMD-01**: DM Profile Bio supports the Markdown editor and renders as formatted HTML on the DM Profile page
+- [x] **PROFILEMD-02**: Shop Item Description supports the Markdown editor and renders as formatted HTML on Shop Index/Details/Manage
 
 ### Email Integration
 
@@ -97,8 +97,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHARMD-02 | Phase 68 | Complete |
 | CONTACTMD-01 | Phase 69 | Complete |
 | CONTACTMD-02 | Phase 69 | Complete |
-| PROFILEMD-01 | Phase 70 | Pending |
-| PROFILEMD-02 | Phase 70 | Pending |
+| PROFILEMD-01 | Phase 70 | Complete |
+| PROFILEMD-02 | Phase 70 | Complete |
 | EMAILMD-01 | Phase 67 | Complete |
 | EMAILMD-02 | Phase 71 | Pending |
 | EMAILMD-03 | Phase 71 | Pending |
