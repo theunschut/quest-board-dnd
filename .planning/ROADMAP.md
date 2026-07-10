@@ -150,11 +150,11 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Overview:** Let users write and view formatted text (bold, lists, headings, links, blockquotes) in all 9 free-text fields across the app — Quest Description/Rewards/Recap, Character Description/Backstory, Contact Description/Notes, DM Profile Bio, Shop Item Description — via a shared Markdown editor + toolbar + Preview toggle, replacing today's line-break-preserving plain-text display with strict CommonMark paragraph rules. A single, unit-tested sanitizing rendering pipeline (Markdig + HtmlSanitizer) is built once and reused identically by every page view and by the 3 HTML email templates that quote Quest Description.
 
-- [ ] Phase 65: Markdown Rendering Foundation — Build and unit-test the shared Markdig + HtmlSanitizer rendering service; no user-visible changes yet
+- [x] Phase 65: Markdown Rendering Foundation — Build and unit-test the shared Markdig + HtmlSanitizer rendering service; no user-visible changes yet (completed 2026-07-09)
 - [x] Phase 66: Quest Description Editor & Rendering (Proof-of-Concept) — Wire the shared Markdown editor into Quest Description end-to-end, including the Quest Finalized email, proving the full write→read→email loop (completed 2026-07-09)
-- [ ] Phase 67: Remaining Quest Fields & Email Templates — Apply the proven pattern to Quest Rewards and Quest Recap, and wire the remaining 2 email templates
+- [x] Phase 67: Remaining Quest Fields & Email Templates — Apply the proven pattern to Quest Rewards and Quest Recap, and wire the remaining 2 email templates (completed 2026-07-10)
 - [x] Phase 68: Character Fields — Character Description and Backstory get the Markdown editor and rendering (completed 2026-07-10)
-- [ ] Phase 69: Contact Fields — Contact Description and per-note Contact Notes get the Markdown editor and rendering
+- [x] Phase 69: Contact Fields — Contact Description and per-note Contact Notes get the Markdown editor and rendering (completed 2026-07-10)
 - [ ] Phase 70: DM Profile & Shop Fields — DM Profile Bio and Shop Item Description get the Markdown editor and rendering
 - [ ] Phase 71: Email-Safety Hardening — Inline styling/layout fixes so Markdown-structured content displays correctly, unclipped, in real Outlook and Gmail
 
@@ -378,6 +378,6 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 7/7 | Complete    | 2026-07-09 |
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 5/5 | Complete    | 2026-07-10 |
 | 68. Character Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
-| 69. Contact Fields | v8.0 | 3/3 | Complete   | 2026-07-10 |
+| 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 70. DM Profile & Shop Fields | v8.0 | 0/? | Not started | - |
 | 71. Email-Safety Hardening | v8.0 | 0/? | Not started | - |

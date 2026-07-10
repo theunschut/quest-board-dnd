@@ -30,13 +30,13 @@ Requirements for the v8.0 milestone. Each maps to roadmap phases.
 
 ### Character Fields
 
-- [ ] **CHARMD-01**: Character Description supports the Markdown editor and renders as formatted HTML on Character Details
-- [ ] **CHARMD-02**: Character Backstory supports the Markdown editor and renders as formatted HTML on Character Details
+- [x] **CHARMD-01**: Character Description supports the Markdown editor and renders as formatted HTML on Character Details
+- [x] **CHARMD-02**: Character Backstory supports the Markdown editor and renders as formatted HTML on Character Details
 
 ### Contact Fields
 
-- [ ] **CONTACTMD-01**: Contact Description supports the Markdown editor and renders as formatted HTML on Contact Details/Index
-- [ ] **CONTACTMD-02**: Each Contact Note supports the Markdown editor and renders independently as formatted HTML — one author's formatting never bleeds into another note
+- [x] **CONTACTMD-01**: Contact Description supports the Markdown editor and renders as formatted HTML on Contact Details/Index
+- [x] **CONTACTMD-02**: Each Contact Note supports the Markdown editor and renders independently as formatted HTML — one author's formatting never bleeds into another note
 
 ### DM Profile & Shop
 
@@ -93,10 +93,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUESTMD-01 | Phase 66 | Complete |
 | QUESTMD-02 | Phase 67 | Complete |
 | QUESTMD-03 | Phase 67 | Complete |
-| CHARMD-01 | Phase 68 | Pending |
-| CHARMD-02 | Phase 68 | Pending |
-| CONTACTMD-01 | Phase 69 | Pending |
-| CONTACTMD-02 | Phase 69 | Pending |
+| CHARMD-01 | Phase 68 | Complete |
+| CHARMD-02 | Phase 68 | Complete |
+| CONTACTMD-01 | Phase 69 | Complete |
+| CONTACTMD-02 | Phase 69 | Complete |
 | PROFILEMD-01 | Phase 70 | Pending |
 | PROFILEMD-02 | Phase 70 | Pending |
 | EMAILMD-01 | Phase 67 | Complete |
