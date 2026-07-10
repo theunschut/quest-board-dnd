@@ -39,7 +39,7 @@
                     <!-- Row 3: Description — truncates at a block boundary with a read-more link when it exceeds the available space -->
                     <tr style="height:100%;">
                         <td style="padding:16px 20%;vertical-align:top;height:100%;">
-                            <div style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;">@((MarkupString)MarkdownService.RenderEmailHtml(QuestDescription, QuestUrl))</div>
+                            <div style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;max-height:290px;overflow:hidden;">@((MarkupString)MarkdownService.RenderEmailHtml(QuestDescription, QuestUrl))</div>
                         </td>
                     </tr>
 

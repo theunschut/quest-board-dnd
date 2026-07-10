@@ -39,5 +39,5 @@ public interface IMarkdownService
     /// -- never mid-element -- and a "read more" link to <paramref name="readMoreUrl"/> is appended;
     /// content within both budgets is returned untouched with no link appended.
     /// </summary>
-    string RenderEmailHtml(string? markdown, string readMoreUrl, int maxTopLevelBlocks = 5, int maxPlainTextChars = 650);
+    string RenderEmailHtml(string? markdown, string readMoreUrl, int maxTopLevelBlocks = 3, int maxPlainTextChars = 400);
 }

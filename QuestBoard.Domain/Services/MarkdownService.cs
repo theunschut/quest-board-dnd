@@ -194,7 +194,14 @@ internal class MarkdownService : IMarkdownService
     }
 
     /// <inheritdoc/>
-    public string RenderEmailHtml(string? markdown, string readMoreUrl, int maxTopLevelBlocks = 5, int maxPlainTextChars = 650)
+    // Defaults sized against the 3 quest templates' actual fixed-row budget: Row 1 (CR badge) +
+    // Row 2 (title block) + Row 4 (divider) + Row 5 (metadata) + Row 6 (wax seal/CTA) consume
+    // roughly 490px of the 840px card, plus Row 3's own 32px vertical padding, leaving ~320px for
+    // rendered Description content. A heading + paragraph + 3-item list already costs ~200px at
+    // this typography scale, so 5 blocks / 650 chars left too little margin for line-wrapping
+    // variance -- confirmed visually against the EmailPreviewController sample content, which was
+    // overflowing the card and stretching the poster background image. Tightened with real slack.
+    public string RenderEmailHtml(string? markdown, string readMoreUrl, int maxTopLevelBlocks = 3, int maxPlainTextChars = 400)
     {
         var sanitizedHtml = RenderToHtml(markdown, MarkdownRenderTarget.Email);
         if (string.IsNullOrEmpty(sanitizedHtml))

@@ -40,7 +40,7 @@
                     <tr style="height:100%;">
                         <td style="padding:16px 20%;vertical-align:top;height:100%;">
                             <p style="font-size:14px;font-weight:700;font-family:Georgia,serif;color:#1a0f08;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0 0 4px 0;">The Adventure:</p>
-                            <div style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;">@((MarkupString)MarkdownService.RenderEmailHtml(QuestDescription, QuestUrl))</div>
+                            <div style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;max-height:270px;overflow:hidden;">@((MarkupString)MarkdownService.RenderEmailHtml(QuestDescription, QuestUrl, maxTopLevelBlocks: 2, maxPlainTextChars: 350))</div>
                         </td>
                     </tr>
 
