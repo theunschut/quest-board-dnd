@@ -4,14 +4,14 @@ milestone: v8.0
 milestone_name: Markdown Support
 status: executing
 stopped_at: Phase 67 UI-SPEC approved
-last_updated: "2026-07-10T06:50:38.365Z"
-last_activity: 2026-07-09 — Phase 66 complete
+last_updated: "2026-07-10T07:40:13.099Z"
+last_activity: 2026-07-10 -- Phase 67 planning complete
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 8
+  total_plans: 13
   completed_plans: 8
-  percent: 67
+  percent: 62
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-07-08 — v7.0 milestone close)
 
 Phase: 66
 Plan: Not started
-Status: Executing Phase 66
-Last activity: 2026-07-09 — Phase 66 complete
+Status: Ready to execute
+Last activity: 2026-07-10 -- Phase 67 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
