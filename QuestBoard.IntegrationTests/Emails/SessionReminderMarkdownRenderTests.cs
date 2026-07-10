@@ -55,7 +55,11 @@ public class SessionReminderMarkdownRenderTests(WebApplicationFactoryBase factor
             [nameof(Service.Components.Emails.SessionReminder.QuestTitle)] = "The Tomb of Annihilation",
             [nameof(Service.Components.Emails.SessionReminder.DmName)] = "Dungeon Master Theomund",
             [nameof(Service.Components.Emails.SessionReminder.QuestDate)] = DateTime.Today.AddDays(1),
-            [nameof(Service.Components.Emails.SessionReminder.QuestDescription)] = "Paragraph one\n\nParagraph two\n\n## A heading\n\n- item 1\n- item 2",
+            // SessionReminder passes a tighter maxTopLevelBlocks: 2 override at its call site (it has
+            // an extra "The Adventure:" label row eating into the card's available height), so this
+            // sample is exactly 2 blocks -- heading + list -- unlike the 3-block sample the other two
+            // templates use, to stay within budget and keep both blocks unretouched by truncation.
+            [nameof(Service.Components.Emails.SessionReminder.QuestDescription)] = "## A heading\n\n- item 1\n- item 2",
             [nameof(Service.Components.Emails.SessionReminder.ConfirmedPlayerNames)] = new List<string> { "Arannis", "Tordek" },
             [nameof(Service.Components.Emails.SessionReminder.QuestUrl)] = $"{appUrl}/Quest",
             [nameof(Service.Components.Emails.SessionReminder.ChallengeRating)] = 9,
@@ -69,9 +73,10 @@ public class SessionReminderMarkdownRenderTests(WebApplicationFactoryBase factor
         // italic/color/text-shadow styling for every paragraph after the first. This asserts
         // directly on the wrapper element itself (must be a <div>, not a <p>) rather than trying
         // to infer browser auto-close behavior from the raw, unparsed render-service output string.
-        html.Should().MatchRegex(@"<div\b[^>]*font-style:italic[^>]*>\s*<p[\s>]");
-        html.Should().Contain("Paragraph one");
-        html.Should().Contain("Paragraph two");
+        // First nested element is <h2> here (not <p>, unlike the other two templates' version of
+        // this test) since this sample starts with the heading directly -- still proves the
+        // wrapper is a <div>, which is the actual thing under test.
+        html.Should().MatchRegex(@"<div\b[^>]*font-style:italic[^>]*>\s*<h2[\s>]");
         // RenderEmailHtml adds inline style= attributes to <h2>/<li> and an Outlook MSO bullet
         // fallback comment inside each <li>, so match loosely instead of the exact bare tags.
         html.Should().MatchRegex(@"<h2\b[^>]*>A heading</h2>");

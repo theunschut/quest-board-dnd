@@ -55,7 +55,10 @@ public class WaitlistPromotedMarkdownRenderTests(WebApplicationFactoryBase facto
             [nameof(Service.Components.Emails.WaitlistPromoted.QuestTitle)] = "The Tomb of Annihilation",
             [nameof(Service.Components.Emails.WaitlistPromoted.DmName)] = "Dungeon Master Theomund",
             [nameof(Service.Components.Emails.WaitlistPromoted.QuestDate)] = DateTime.Today.AddDays(7),
-            [nameof(Service.Components.Emails.WaitlistPromoted.QuestDescription)] = "Paragraph one\n\nParagraph two\n\n## A heading\n\n- item 1\n- item 2",
+            // Exactly 3 blocks -- paragraph, heading, list -- to stay within RenderEmailHtml's
+            // default maxTopLevelBlocks: 3 budget (tightened from 5 to fit this card's actual
+            // available height) so none of them get dropped by truncation.
+            [nameof(Service.Components.Emails.WaitlistPromoted.QuestDescription)] = "Paragraph one\n\n## A heading\n\n- item 1",
             [nameof(Service.Components.Emails.WaitlistPromoted.PlayerName)] = "Arannis",
             [nameof(Service.Components.Emails.WaitlistPromoted.QuestUrl)] = $"{appUrl}/Quest",
             [nameof(Service.Components.Emails.WaitlistPromoted.ChallengeRating)] = 9,
@@ -71,7 +74,6 @@ public class WaitlistPromotedMarkdownRenderTests(WebApplicationFactoryBase facto
         // to infer browser auto-close behavior from the raw, unparsed render-service output string.
         html.Should().MatchRegex(@"<div\b[^>]*font-style:italic[^>]*>\s*<p[\s>]");
         html.Should().Contain("Paragraph one");
-        html.Should().Contain("Paragraph two");
         // RenderEmailHtml adds inline style= attributes to <h2>/<li> and an Outlook MSO bullet
         // fallback comment inside each <li>, so match loosely instead of the exact bare tags.
         html.Should().MatchRegex(@"<h2\b[^>]*>A heading</h2>");
