@@ -227,9 +227,80 @@ internal class MarkdownService : IMarkdownService
             li.InsertBefore(bulletFallback, li.FirstChild);
         }
 
-        // Serialize every styled top-level block back to HTML. Truncation at a block boundary
-        // (using maxTopLevelBlocks/maxPlainTextChars) is layered on top of this in a later step --
-        // this pass always renders the full styled content.
-        return string.Concat(document.Body!.Children.Select(e => e.OuterHtml));
+        // Markdig's pathological-nesting guard (see RenderToHtml) can fall back to bare
+        // HTML-encoded text with no wrapping element at all -- there's nothing to walk/truncate in
+        // that case, so pass the already-sanitized text straight through rather than losing it.
+        if (!document.Body!.Children.Any())
+        {
+            return sanitizedHtml;
+        }
+
+        return TruncateAtBlockBoundary(document, readMoreUrl, maxTopLevelBlocks, maxPlainTextChars);
+    }
+
+    // Cuts only at whole top-level block boundaries so the emitted HTML is always well-formed --
+    // never a partially-closed <li>/<blockquote>/heading. This is deliberately not built on top of
+    // ExtractPlainText's flat-text truncation, which would discard the Markdown structure this
+    // method exists to preserve.
+    private static string TruncateAtBlockBoundary(IDocument document, string readMoreUrl, int maxTopLevelBlocks, int maxPlainTextChars)
+    {
+        var kept = new List<IElement>();
+        var plainTextLength = 0;
+        var truncated = false;
+
+        foreach (var block in document.Body!.Children)
+        {
+            var blockText = block.TextContent.Trim();
+            var wouldExceedBlocks = kept.Count >= maxTopLevelBlocks;
+            var wouldExceedChars = plainTextLength + blockText.Length > maxPlainTextChars;
+
+            if (wouldExceedBlocks || wouldExceedChars)
+            {
+                truncated = true;
+                break;
+            }
+
+            kept.Add(block);
+            plainTextLength += blockText.Length;
+        }
+
+        if (kept.Count == 0)
+        {
+            return truncated ? BuildReadMoreParagraph(document, readMoreUrl) : string.Empty;
+        }
+
+        // The Description column's own wrapper already supplies top/bottom spacing, so the first
+        // and last rendered elements must not stack a second gap on top of that -- these
+        // corrections append a compile-time-constant fragment to an already-set style value, the
+        // same trust argument as the style table above.
+        var firstStyle = kept[0].GetAttribute("style") ?? string.Empty;
+        kept[0].SetAttribute("style", firstStyle + "margin-top:0;");
+
+        if (truncated)
+        {
+            return string.Concat(kept.Select(e => e.OuterHtml)) + BuildReadMoreParagraph(document, readMoreUrl);
+        }
+
+        var lastStyle = kept[^1].GetAttribute("style") ?? string.Empty;
+        kept[^1].SetAttribute("style", lastStyle + "margin-bottom:0;");
+
+        return string.Concat(kept.Select(e => e.OuterHtml));
+    }
+
+    // Built through the AngleSharp DOM (create element, set attributes, set text) rather than
+    // string concatenation so the href is DOM-encoded even though readMoreUrl is always a
+    // server-built QuestUrl, never user content.
+    private static string BuildReadMoreParagraph(IDocument document, string readMoreUrl)
+    {
+        var paragraph = document.CreateElement("p");
+        paragraph.SetAttribute("style", "margin:0;margin-bottom:0;");
+
+        var link = document.CreateElement("a");
+        link.SetAttribute("href", readMoreUrl);
+        link.SetAttribute("style", ReadMoreLinkStyle);
+        link.TextContent = ReadMoreLinkText;
+
+        paragraph.AppendChild(link);
+        return paragraph.OuterHtml;
     }
 }

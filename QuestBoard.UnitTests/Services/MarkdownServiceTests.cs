@@ -362,4 +362,81 @@ public class MarkdownServiceTests
 
         html.Should().BeEmpty();
     }
+
+    [Fact]
+    public void RenderEmailHtml_UnderBothBudgets_ReturnsUntruncatedWithNoReadMoreLink()
+    {
+        var html = Service.RenderEmailHtml("Short paragraph one.\n\nShort paragraph two.", TestReadMoreUrl);
+
+        html.Should().NotContain("continue reading on the quest board");
+        html.Should().NotContain(TestReadMoreUrl);
+    }
+
+    [Fact]
+    public void RenderEmailHtml_OverBlockBudget_KeepsAtMostMaxBlocksAndAppendsReadMore()
+    {
+        var markdown = string.Join("\n\n", Enumerable.Range(1, 8).Select(i => $"Paragraph {i}."));
+
+        var html = Service.RenderEmailHtml(markdown, TestReadMoreUrl, maxTopLevelBlocks: 5, maxPlainTextChars: 10000);
+
+        Regex.Matches(html, @"Paragraph \d+\.").Count.Should().Be(5);
+        html.Should().Contain("continue reading on the quest board");
+    }
+
+    [Fact]
+    public void RenderEmailHtml_OverCharBudget_TruncatesAtBlockBoundaryBeforeExceedingBudget()
+    {
+        var longPara = new string('a', 300);
+        var markdown = $"{longPara}\n\n{longPara}\n\n{longPara}";
+
+        var html = Service.RenderEmailHtml(markdown, TestReadMoreUrl, maxTopLevelBlocks: 10, maxPlainTextChars: 650);
+
+        Regex.Matches(html, Regex.Escape(longPara)).Count.Should().Be(2);
+        html.Should().Contain("continue reading on the quest board");
+    }
+
+    [Fact]
+    public void RenderEmailHtml_TruncationNeverCutsMidElement()
+    {
+        var filler = string.Join("\n\n", Enumerable.Range(1, 10).Select(i => $"Filler paragraph {i} with enough text to exceed budget quickly."));
+        var markdown = $"# H\n\n- a\n- b\n- c\n\n> quote\n\n{filler}";
+
+        var html = Service.RenderEmailHtml(markdown, TestReadMoreUrl, maxTopLevelBlocks: 3, maxPlainTextChars: 10000);
+
+        html.Should().Contain("</ul>");
+        html.Should().Contain("</blockquote>");
+        // The read-more <p> must immediately follow the last kept block's closing tag -- proves the
+        // cut happened at the whole-blockquote boundary, not mid-element.
+        html.Should().MatchRegex(@"</blockquote><p[^>]*>");
+    }
+
+    [Fact]
+    public void RenderEmailHtml_Truncated_ReadMoreLinkHasExactCopyAndHref()
+    {
+        var markdown = string.Join("\n\n", Enumerable.Range(1, 8).Select(i => $"Paragraph {i}."));
+
+        var html = Service.RenderEmailHtml(markdown, TestReadMoreUrl, maxTopLevelBlocks: 5, maxPlainTextChars: 10000);
+
+        Regex.IsMatch(html, $@"<a[^>]*href=""{Regex.Escape(TestReadMoreUrl)}""[^>]*>…continue reading on the quest board</a>").Should().BeTrue();
+    }
+
+    [Fact]
+    public void RenderEmailHtml_FirstKeptBlock_HasMarginTopZero()
+    {
+        var html = Service.RenderEmailHtml("Only paragraph.", TestReadMoreUrl);
+
+        var firstTag = html.Substring(0, html.IndexOf('>') + 1);
+        firstTag.Should().Contain("margin-top:0");
+    }
+
+    [Fact]
+    public void RenderEmailHtml_LastRenderedElement_HasMarginBottomZero()
+    {
+        var untruncated = Service.RenderEmailHtml("Only paragraph.", TestReadMoreUrl);
+        untruncated.Should().Contain("margin-bottom:0");
+
+        var markdown = string.Join("\n\n", Enumerable.Range(1, 8).Select(i => $"Paragraph {i}."));
+        var truncated = Service.RenderEmailHtml(markdown, TestReadMoreUrl, maxTopLevelBlocks: 5, maxPlainTextChars: 10000);
+        truncated.Should().Contain("margin-bottom:0");
+    }
 }
