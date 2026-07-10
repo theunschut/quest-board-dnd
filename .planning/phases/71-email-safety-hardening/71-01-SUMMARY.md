@@ -131,3 +131,12 @@ One test-authoring mistake caught and fixed during implementation (not a source-
 ---
 *Phase: 71-email-safety-hardening*
 *Completed: 2026-07-10*
+
+## Self-Check: PASSED
+
+- FOUND: `QuestBoard.Domain/Interfaces/IMarkdownService.cs`
+- FOUND: `QuestBoard.Domain/Services/MarkdownService.cs`
+- FOUND: `QuestBoard.UnitTests/Services/MarkdownServiceTests.cs`
+- FOUND: `.planning/phases/71-email-safety-hardening/71-01-SUMMARY.md`
+- FOUND commit: `50351b6e` (test)
+- FOUND commit: `21c7f812` (feat)
