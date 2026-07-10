@@ -114,29 +114,27 @@
             @foreach (var note in Model.Notes)
             {
                 <div class="note-item border rounded p-3 mb-3" data-note-id="@note.Id">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <small class="text-muted">
-                            <i class="fas fa-user me-1"></i>@note.AuthorName
-                            <i class="fas fa-clock me-1 ms-2"></i>@note.CreatedAt.ToString("MMM d, yyyy h:mm tt")
-                            @if (note.UpdatedAt != null)
-                            {
-                                <text> (edited)</text>
-                            }
-                        </small>
-                        <div class="note-view-actions">
-                            <button type="button" class="btn btn-sm btn-outline-secondary note-edit-btn" title="Edit note">
-                                <i class="fas fa-pen"></i>
-                            </button>
-                            <form asp-action="DeleteNote" method="post" class="d-inline" onsubmit="return confirm('Delete this note? This action cannot be undone.');">
-                                <input type="hidden" name="id" value="@note.Id" />
-                                <input type="hidden" name="contactId" value="@Model.Id" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete note">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-user me-1"></i>@note.AuthorName
+                        <i class="fas fa-clock me-1 ms-2"></i>@note.CreatedAt.ToString("MMM d, yyyy h:mm tt")
+                        @if (note.UpdatedAt != null)
+                        {
+                            <text> (edited)</text>
+                        }
+                    </small>
                     <div class="mb-0 mt-2 note-view-text">@Html.Markdown(note.Text)</div>
+                    <div class="note-view-actions d-flex justify-content-end gap-2 mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary note-edit-btn" title="Edit note">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <form asp-action="DeleteNote" method="post" class="d-inline" onsubmit="return confirm('Delete this note? This action cannot be undone.');">
+                            <input type="hidden" name="id" value="@note.Id" />
+                            <input type="hidden" name="contactId" value="@Model.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete note">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
 
                     <form asp-action="EditNote" method="post" class="note-edit-form" style="display: none;">
                         <input type="hidden" name="id" value="@note.Id" />
