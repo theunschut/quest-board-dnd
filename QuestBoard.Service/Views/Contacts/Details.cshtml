@@ -1,4 +1,6 @@
+@using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.ContactViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model ContactViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -88,7 +90,7 @@
                 <div class="card-body modern-card-body">
                     @if (!string.IsNullOrEmpty(Model.Description))
                     {
-                        <p class="mb-0" style="white-space: pre-wrap;">@Model.Description</p>
+                        @Html.Markdown(Model.Description)
                     }
                     else
                     {

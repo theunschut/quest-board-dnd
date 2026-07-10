@@ -1,4 +1,6 @@
+@using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.ContactViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model ContactViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -76,7 +78,7 @@
         <div class="contact-section-heading mb-2"><i class="fas fa-scroll me-2"></i>Description</div>
         @if (!string.IsNullOrEmpty(Model.Description))
         {
-            <p class="mb-0" style="white-space: pre-wrap;">@Model.Description</p>
+            @Html.Markdown(Model.Description)
         }
         else
         {
