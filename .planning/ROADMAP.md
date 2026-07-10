@@ -155,7 +155,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 - [x] Phase 67: Remaining Quest Fields & Email Templates — Apply the proven pattern to Quest Rewards and Quest Recap, and wire the remaining 2 email templates (completed 2026-07-10)
 - [x] Phase 68: Character Fields — Character Description and Backstory get the Markdown editor and rendering (completed 2026-07-10)
 - [x] Phase 69: Contact Fields — Contact Description and per-note Contact Notes get the Markdown editor and rendering (completed 2026-07-10)
-- [ ] Phase 70: DM Profile & Shop Fields — DM Profile Bio and Shop Item Description get the Markdown editor and rendering
+- [x] Phase 70: DM Profile & Shop Fields — DM Profile Bio and Shop Item Description get the Markdown editor and rendering (completed 2026-07-10)
 - [ ] Phase 71: Email-Safety Hardening — Inline styling/layout fixes so Markdown-structured content displays correctly, unclipped, in real Outlook and Gmail
 
 </details>
@@ -390,5 +390,5 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 5/5 | Complete    | 2026-07-10 |
 | 68. Character Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
-| 70. DM Profile & Shop Fields | v8.0 | 4/4 | Complete   | 2026-07-10 |
+| 70. DM Profile & Shop Fields | v8.0 | 4/4 | Complete    | 2026-07-10 |
 | 71. Email-Safety Hardening | v8.0 | 0/? | Not started | - |
