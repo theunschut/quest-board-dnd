@@ -21,15 +21,20 @@
    a drop-shadow instead of plain black-on-white. Only the editing/preview surfaces are scoped
    here -- .markdown-content (Details/Manage/email) is untouched and keeps its gold parchment
    styling with shadow.
-   The doubled class (.CodeMirror.CodeMirror) is a specificity bump, not a typo: a plain
-   `.CodeMirror *` loses to `.modern-card span` because the universal selector contributes zero
-   specificity, leaving the match tied on classes (1 vs 1) and decided by element count (0 vs 1)
-   in the leaking rule's favor. Doubling the class wins outright on class count (2 vs 1) instead
-   of depending on stylesheet load order. */
-.CodeMirror.CodeMirror,
-.CodeMirror.CodeMirror *,
-.editor-preview.editor-preview,
-.editor-preview.editor-preview * {
+   The tripled class (.CodeMirror.CodeMirror.CodeMirror) is a specificity bump, not a typo. A
+   plain `.CodeMirror *` loses to `.modern-card span` because the universal selector contributes
+   zero specificity, leaving the match tied on classes (1 vs 1) and decided by element count
+   (0 vs 1) in the leaking rule's favor -- doubling the class fixes that case by winning
+   outright on class count (2 vs 1). But some mobile write-form card wrappers add a
+   `:not()`-qualified catch-all (e.g. `.character-form-card span:not(.badge)`) that combines a
+   type selector with a pseudo-class, putting it at the same specificity as the doubled class
+   for `<span>` elements specifically -- CodeMirror's own syntax-highlighting spans. Tripling the
+   class raises this override above what any single-type-selector `:not()`-qualified catch-all
+   can match, regardless of stylesheet load order. */
+.CodeMirror.CodeMirror.CodeMirror,
+.CodeMirror.CodeMirror.CodeMirror *,
+.editor-preview.editor-preview.editor-preview,
+.editor-preview.editor-preview.editor-preview * {
     color: #000 !important;
     text-shadow: none !important;
 }
