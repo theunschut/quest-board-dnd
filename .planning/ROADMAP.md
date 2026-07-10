@@ -254,9 +254,16 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   3. Existing multi-line Contact text displays without doubled spacing — the old line-break-preserving CSS is removed from the rendered-output containers as a companion edit
 
 **Plans**: 3 plans
+**Wave 1**
 
 - [ ] 69-01-PLAN.md — Shared ElementId/visibility-guard infra + wire the Markdown editor into Contact Description on all 4 write forms (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 69-02-PLAN.md — Contact Details: render Description + per-note Notes via Html.Markdown, per-note editors (ElementId), D-03 lazy-init/auto-collapse registry, mobile list CSS (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 69-03-PLAN.md — Automated render gate + operator human-verification checkpoint (desktop + 320px mobile) (Wave 3)
 
 **UI hint**: yes
