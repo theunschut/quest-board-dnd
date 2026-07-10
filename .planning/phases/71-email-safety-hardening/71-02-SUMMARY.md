@@ -146,3 +146,17 @@ None - no external service configuration required.
 ---
 *Phase: 71-email-safety-hardening*
 *Completed: 2026-07-10*
+
+## Self-Check: PASSED
+
+- FOUND: `QuestBoard.Service/Components/Emails/QuestFinalized.razor`
+- FOUND: `QuestBoard.Service/Components/Emails/SessionReminder.razor`
+- FOUND: `QuestBoard.Service/Components/Emails/WaitlistPromoted.razor`
+- FOUND: `QuestBoard.Service/Controllers/Admin/EmailPreviewController.cs`
+- FOUND: `QuestBoard.IntegrationTests/Emails/QuestFinalizedMarkdownRenderTests.cs`
+- FOUND: `QuestBoard.IntegrationTests/Emails/SessionReminderMarkdownRenderTests.cs`
+- FOUND: `QuestBoard.IntegrationTests/Emails/WaitlistPromotedMarkdownRenderTests.cs`
+- FOUND commit: `dd11ddf7` (feat)
+- FOUND commit: `033d3abc` (feat)
+- FOUND commit: `caca8942` (fix)
+- FOUND commit: `527207d9` (docs)
