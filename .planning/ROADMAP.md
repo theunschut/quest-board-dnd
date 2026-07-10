@@ -253,7 +253,12 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   2. A user editing a Contact Note sees the Markdown editor, and each note renders independently as formatted HTML — one author's unclosed formatting never bleeds into another author's note
   3. Existing multi-line Contact text displays without doubled spacing — the old line-break-preserving CSS is removed from the rendered-output containers as a companion edit
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 69-01-PLAN.md — Shared ElementId/visibility-guard infra + wire the Markdown editor into Contact Description on all 4 write forms (Wave 1)
+- [ ] 69-02-PLAN.md — Contact Details: render Description + per-note Notes via Html.Markdown, per-note editors (ElementId), D-03 lazy-init/auto-collapse registry, mobile list CSS (Wave 2)
+- [ ] 69-03-PLAN.md — Automated render gate + operator human-verification checkpoint (desktop + 320px mobile) (Wave 3)
+
 **UI hint**: yes
 
 ### Phase 70: DM Profile & Shop Fields
@@ -366,6 +371,6 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 7/7 | Complete    | 2026-07-09 |
 | 67. Remaining Quest Fields & Email Templates | v8.0 | 5/5 | Complete    | 2026-07-10 |
 | 68. Character Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
-| 69. Contact Fields | v8.0 | 0/? | Not started | - |
+| 69. Contact Fields | v8.0 | 0/3 | Not started | - |
 | 70. DM Profile & Shop Fields | v8.0 | 0/? | Not started | - |
 | 71. Email-Safety Hardening | v8.0 | 0/? | Not started | - |
