@@ -63,6 +63,15 @@ No new typography surface — Rewards and Recap render through the exact same `.
 | Heading | stepped 24px→14px (h1 1.5rem down to h6 0.875rem) | 700 bold | 1.2 |
 | Display | not used | — | — |
 
+**Accepted Deviation — Heading row (6 sizes, exceeds standard 4-size guideline):**
+
+The Heading row's stepped h1–h6 scale (24/22/20/18/16/14px) combined with Body/Label (16px) totals 6 unique font sizes in this document, exceeding the standard 4-font-size guideline. This is a **documented, accepted exception, not a defect to fix by changing CSS**:
+
+- The 6-level heading scale is already-shipped, operator-approved CSS from Phase 66 (`.markdown-content h1`–`h6` in `markdown-content.css`), added at explicit operator request during Phase 66's human-verification checkpoint (see `66-07-SUMMARY.md`).
+- It is global, class-scoped CSS applying app-wide to every `Html.Markdown()` render — not introduced by, or specific to, this phase's new Rewards/Recap fields.
+- Phase 67 does not modify this CSS. "Fixing" it here would mean silently changing already-shipped, user-requested Description rendering behavior, which is out of Phase 67's scope entirely.
+- Accepted as-is by the user, matching the precedent set by Phase 66's own accepted 44px-tall/~30-34px-wide mobile touch-target deviation (see Spacing Scale section above): a known, named, justified departure from a general rule, not a silent violation.
+
 **Notes (inherited, not re-decided):**
 
 - Heading scale is `.markdown-content h1 { 24px }` → `h2 22px` → `h3 20px` → `h4 18px` → `h5 16px` → `h6 14px` (`markdown-content.css`) — applies automatically to any Rewards/Recap heading syntax a user types.
