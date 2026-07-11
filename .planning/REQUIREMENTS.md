@@ -9,16 +9,16 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 
 ### Platform Settings (Phase 72 — Quest Board)
 
-- [ ] **SETT-01**: SuperAdmin can navigate to an Omphalos Settings page from the `/platform` area
-- [ ] **SETT-02**: Settings page has input fields for Omphalos URL and shared secret
-- [ ] **SETT-03**: Shared secret field renders as `type="password"` (masked in the UI)
-- [ ] **SETT-04**: Submitting the form with the secret field blank preserves the existing secret — empty input = keep existing value, never overwrite with empty string (matches the blank-preserves-existing-value guard used by `ContactsController`/`CharactersController`'s image-upload flows)
-- [ ] **SETT-05**: An "Integration Enabled" toggle controls whether all Omphalos UI elements are visible and the SSO redirect is active; when disabled, no Omphalos buttons/links appear anywhere and the launch action is inert
-- [ ] **SETT-06**: Settings are persisted in a generic key-value `PlatformSettingEntity` (`Key`, `Value`, nullable `GroupId`) — `GroupId = null` is the instance-wide default, `GroupId = <group>` is a group-specific override; lookups resolve the group-specific row first, falling back to the instance-wide default when no override exists
-- [ ] **SETT-07**: The instance-wide settings page (`/platform` area) is protected by the `SuperAdminOnly` authorization policy
-- [ ] **SETT-08**: An EF Core migration creates the `PlatformSetting` table
-- [ ] **SETT-09**: A group Admin (`GroupRole.Admin`) can configure a group-specific Omphalos URL/secret override from the group's Admin area (alongside the existing `AdminController` group-scoped surface); the override applies only to that group and never affects the instance-wide default or other groups
-- [ ] **SETT-10**: A group's DungeonMaster (not Admin) cannot configure the group's Omphalos override — write access is Group Admin only, matching the existing group-scoped authorization pattern
+- [x] **SETT-01**: SuperAdmin can navigate to an Omphalos Settings page from the `/platform` area
+- [x] **SETT-02**: Settings page has input fields for Omphalos URL and shared secret
+- [x] **SETT-03**: Shared secret field renders as `type="password"` (masked in the UI)
+- [x] **SETT-04**: Submitting the form with the secret field blank preserves the existing secret — empty input = keep existing value, never overwrite with empty string (matches the blank-preserves-existing-value guard used by `ContactsController`/`CharactersController`'s image-upload flows)
+- [x] **SETT-05**: An "Integration Enabled" toggle controls whether all Omphalos UI elements are visible and the SSO redirect is active; when disabled, no Omphalos buttons/links appear anywhere and the launch action is inert
+- [x] **SETT-06**: Settings are persisted in a generic key-value `PlatformSettingEntity` (`Key`, `Value`, nullable `GroupId`) — `GroupId = null` is the instance-wide default, `GroupId = <group>` is a group-specific override; lookups resolve the group-specific row first, falling back to the instance-wide default when no override exists
+- [x] **SETT-07**: The instance-wide settings page (`/platform` area) is protected by the `SuperAdminOnly` authorization policy
+- [x] **SETT-08**: An EF Core migration creates the `PlatformSetting` table
+- [x] **SETT-09**: A group Admin (`GroupRole.Admin`) can configure a group-specific Omphalos URL/secret override from the group's Admin area (alongside the existing `AdminController` group-scoped surface); the override applies only to that group and never affects the instance-wide default or other groups
+- [x] **SETT-10**: A group's DungeonMaster (not Admin) cannot configure the group's Omphalos override — write access is Group Admin only, matching the existing group-scoped authorization pattern
 
 ### Navigation + Token Generation (Phase 73 — Quest Board)
 
@@ -115,6 +115,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 | LINK-04 | Phase 74 | Omphalos | Pending |
 
 **Coverage:**
+
 - v1 requirements: 35 total
 - Mapped to phases: 35/35
 - Unmapped: 0

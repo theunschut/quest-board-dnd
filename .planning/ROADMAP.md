@@ -327,6 +327,6 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 70. DM Profile & Shop Fields | v8.0 | 4/4 | Complete    | 2026-07-10 |
 | 71. Email-Safety Hardening | v8.0 | 3/3 | Complete    | 2026-07-10 |
-| 72. Platform Settings + Token Contract | v2.0 (redo) | 6/6 | Complete   | 2026-07-11 |
+| 72. Platform Settings + Token Contract | v2.0 (redo) | 6/6 | Complete    | 2026-07-11 |
 | 73. Navigation + Token Generation | v2.0 (redo) | 0/? | Not started | - |
 | 74. Omphalos SSO Endpoint + Session Linking | v2.0 (redo) | 0/? | Not started | - |
