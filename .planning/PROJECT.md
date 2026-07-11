@@ -1,21 +1,22 @@
 # D&D Quest Board
 
-## Current State: v7.0 Backlog Cleanup shipped (2026-07-08)
+## Current State: v8.0 Markdown Support shipped (2026-07-11)
+
+**Shipped:** A shared, secure Markdig+HtmlSanitizer rendering pipeline (RENDER-01/02/03) now backs a Markdown editor (toolbar + Preview toggle) across all 9 free-text fields in the app — Quest Description/Rewards/Recap, Character Description/Backstory, Contact Description/Notes, DM Profile Bio, Shop Item Description — replacing the old line-break-preserving plain-text display with strict CommonMark paragraph rules. All 3 quest-related HTML email templates (Quest Finalized, Session Reminder, Waitlist Promoted) render the same formatted Markdown, hardened with inline styles + Outlook MSO bullet-fallback + server-side block-boundary truncation so long or heavily-structured content can't silently break email layout. 7 phases, 26 plans, ~2 days, 73 code files changed (+2,469/−318 lines). A milestone-close audit found and fixed one last cross-phase gap (QuestLog Details still rendering Description raw) before shipping. Full detail: `.planning/milestones/v8.0-ROADMAP.md`.
+
+**Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire + Markdig/HtmlSanitizer
+**Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
+
+<details>
+<summary>Previous state: v7.0 Backlog Cleanup shipped (2026-07-08)</summary>
 
 **Shipped:** Closed out the four original standing backlog items — two mobile UI bugs, post-finalization vote flexibility with waitlist auto-promotion, and client-side crop-before-save for character/DM profile photos (#78, deferred since v1.0) — plus a long tail of 17 ad-hoc bug fixes and small features folded in along the way (Phases 47–64), including two real cross-tenant security leaks found and closed mid-milestone. 22 phases, 59 plans, ~3.1 days, 190 files changed (+20,746/−3,579 lines). Full detail: `.planning/milestones/v7.0-ROADMAP.md`.
 
-**Stack:** ASP.NET Core 10 MVC + SQL Server + EF Core + Hangfire
-**Deployment:** LXC container on Linux host (`/opt/questboard/`), Postfix for email relay via Resend SMTP
+</details>
 
-## Current Milestone: v8.0 Markdown Support
+## Next Milestone
 
-**Goal:** Let users write and view formatted text (bold, lists, headings, links) in every free-text field across the app instead of plain unstyled text.
-
-**Target features:**
-- Markdown editor (textarea + formatting toolbar: Bold/Italic/Heading/List + a Preview toggle) applied to all 9 free-text fields: Quest Description, Quest Rewards, Quest Recap, Character Description, Character Backstory, Contact Description, Contact Notes, DM Profile Bio, Shop Item Description
-- Strict CommonMark paragraph rules (blank line separates paragraphs), replacing today's line-break-preserving plain-text display
-- Every read view that shows these fields renders the Markdown as formatted HTML instead of raw text
-- The 3 HTML email templates that quote Quest Description (Quest Finalized, Session Reminder, Waitlist Promoted) also render it formatted
+Not yet planned. Run `/gsd-new-milestone` to begin questioning → research → requirements → roadmap.
 
 ---
 
@@ -105,6 +106,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 ### Active
 - [ ] Digest batching for session reminders — single combined email when player has multiple same-day quests (EMAIL-04/REMIND-02 — deferred; same-day quests have never occurred in one year)
 - [ ] `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed
+- [ ] Markdown toolbar extras — strikethrough, horizontal rule, and a cheatsheet link/popover (EDITOR-07/08/09 — deferred as v8.0's v2 requirements; add only if users request them, or GFM strikethrough at no extra wiring cost)
 
 ### Out of Scope
 
@@ -119,7 +121,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 
 ## Context
 
-**Codebase:** ~56 450 lines added / ~6 374 removed in v5.0 (754 files touched, incl. the full EuphoriaInn→QuestBoard rename). ~13 717 lines added / ~535 removed in v6.0 (121 files touched, 28 tasks across 11 plans). ~2 720 lines added / ~597 removed in v6.1 (63 files touched, 37 tasks across 16 plans, 5 phases). ~20 746 lines added / ~3 579 removed in v7.0 (190 files touched, 59 plans across 22 phases). Full codebase estimated 60 000–70 000 LOC C#/Razor.
+**Codebase:** ~56 450 lines added / ~6 374 removed in v5.0 (754 files touched, incl. the full EuphoriaInn→QuestBoard rename). ~13 717 lines added / ~535 removed in v6.0 (121 files touched, 28 tasks across 11 plans). ~2 720 lines added / ~597 removed in v6.1 (63 files touched, 37 tasks across 16 plans, 5 phases). ~20 746 lines added / ~3 579 removed in v7.0 (190 files touched, 59 plans across 22 phases). ~2 469 lines added / ~318 removed in v8.0 (73 code files touched, 26 plans across 7 phases, ~2 days). Full codebase estimated 60 000–70 000 LOC C#/Razor.
 
 **Tech stack:**
 - ASP.NET Core 10 MVC with Razor views (`.cshtml`) and Razor components (`.razor`) for email templates
@@ -127,6 +129,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - Hangfire 1.8 with SQL Server storage (2 workers) for background jobs
 - Resend SMTP relay via Postfix; Resend REST API for stats
 - HtmlRenderer (`Microsoft.AspNetCore.Components.Web`) for email template rendering in job context
+- Markdig 1.3.2 + Ganss.Xss HtmlSanitizer 9.0.892 for Markdown rendering — one shared `IMarkdownService` pipeline used identically by page views and HTML emails (web/email differ only by sanitizer profile), plus a dedicated `RenderEmailHtml` path for inline-styled, Outlook-safe email output
 
 **Deployment:** Linux host at `/opt/questboard/`, env overrides at `/etc/questboard/.env`. Postfix for outbound mail → Resend SMTP relay. No Docker required — direct `dotnet run` on host.
 
@@ -143,6 +146,8 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - `Characters/Create.cshtml`'s entire `isEdit` conditional branch is dead code — `CharactersController.Create()` never populates `Id`, so the branch can never execute; `Edit.cshtml` is the real edit view. Found by Phase 68's code review (WR-02), not yet actioned
 - `markdown-editor.css`'s 44px-touch-target/toolbar-padding rules are documented as mobile-only but the file is linked unconditionally from both desktop and mobile layouts, so they also affect the desktop EasyMDE toolbar. Found by Phase 68's code review (WR-03), not yet actioned
 - `GuildMembersController.Edit` POST's `SetAsMainCharacterAsync` demotion guard (`existingCharacter.Role != CharacterRole.Main`) can never be true — `existingCharacter.Role` is assigned from the posted value earlier in the same action, so promoting any character to Main never actually demotes that owner's other characters to Backup, for any caller (self-edit included). Pre-existing, predates Phase 56 entirely (traced to the original EuphoriaInn→QuestBoard rename); found while verifying Phase 56's CR-01 fix, out of scope for that phase, not yet actioned
+- Minor non-blocking Info-level findings from v8.0 code reviews, left unactioned: `MarkdownRenderTarget` enum lives inside `IMarkdownService.cs` rather than its own file, and `start`/`style` HTML attributes aren't allowlisted by the sanitizer, cosmetic formatting loss only (65-REVIEW); `.quest-description-mobile` duplicates `.quest-description-box`'s visual role under a different class name (67-REVIEW IN-02); email-rendered footnote/`<dl>` blocks have no email-safe inline styling, and inconsistent use of the null-forgiving operator (71-REVIEW IN-03/IN-04)
+- Nyquist `VALIDATION.md` was never produced for Phases 67, 68, or 70 (discovery-only gap, not a code defect) — backfill with `/gsd-validate-phase 67`/`68`/`70` if desired
 
 ## Constraints
 
@@ -212,6 +217,14 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 | A pre-existing dead-code bug found while verifying an adjacent fix is spun off as a separate follow-up task, not folded into the current phase | Phase 56 is scoped to admin-authorization widening, not the Main/Backup character-role business logic; the guard bug (`existingCharacter.Role` mutated before the check that tests it) predates this phase entirely, traced via `git log -S` to the original EuphoriaInn→QuestBoard rename | — Pending: flagged as a separate follow-up task, not yet actioned |
 | A code-review "critical" finding must be empirically verified against the real app/DOM before being treated as a blocker, not just re-derived from the same static reading that produced it | Phase 61's reviewer correctly spotted that `#proposed-dates` is absent for finalized quests, but wrongly concluded this blocks real-browser submission — a live DOM test (`document.querySelector('form')` on a page fragment mirroring `_Layout.cshtml`'s actual form order) proved the validation script was never bound to the quest form at all, due to a separate, unrelated, pre-existing bug | ✓ Good — Phase 61; reclassified the finding from Critical to Info only after direct verification, not by trusting the review's own reasoning |
 | Mobile parity enforced by pairing desktop+mobile edits into the SAME task, not merely the same wave or phase | Phase 43 and Phase 54 both had to open dedicated follow-up phases to backfill a desktop-only fix onto mobile; CONTEXT.md for Phase 61 made this an explicit, emphasized requirement up front, and the planner complied by writing single tasks that touch `Edit.cshtml`+`Edit.Mobile.cshtml` together and `Manage.cshtml`+`Manage.Mobile.cshtml` together | ✓ Good — Phase 61; no mobile-parity gap shipped, first time this exact lesson was applied proactively instead of remediated after the fact |
+| Markdig extensions composed individually via explicit `Use*()` calls, never `.UseAdvancedExtensions()` | The bundled convenience method also enables `UseGenericAttributes()`, a real attribute-injection XSS vector; individual composition keeps exactly the extension set intended, nothing more | ✓ Good — Phase 65 |
+| One shared Markdig parse feeds two immutable `HtmlSanitizer` profiles (web keeps `<img>`, email strips it) rather than two separate parses | A single parse guarantees web and email never silently diverge in supported Markdown syntax; sanitizer choice is the only branch point | ✓ Good — Phase 65 |
+| `POST /markdown/preview` calls the exact same `RenderToHtml(text, Web)` path saved-page display uses | Guarantees "Preview exactly matches saved" (EDITOR-04) by construction, not by keeping two implementations in sync | ✓ Good — Phase 66; established the write→read→email loop every later field-migration phase (67-70) mechanically repeated |
+| Mobile Markdown-toolbar 44px+ touch-target requirement measured as met on height only, after a CSS cascade tie left width at ~30-34px at 320px | No functional breakage — all 7 buttons still fit one row with no overflow/scroll; mobile Description/field editing judged a low-usage path | ✓ Accepted (operator override) — Phase 66; same shared CSS means this deviation recurs identically for every later field-migration phase |
+| `IMarkdownService.ExtractPlainText()` is the single mechanism for every plain-text card/teaser preview (Quest board card, Shop Index, ShopManagement dashboard) | Prevents raw Markdown syntax (`**`, `#`, `-`) leaking into any preview surface that predates the Markdown-authoring change | ✓ Good — established Phase 66 (D-06), reused Phase 70; 3 duplicated Shop teaser copies consolidated into one `DescriptionTeaser()` helper at the user's direction |
+| `RenderEmailHtml` is a dedicated third rendering path (distinct from `RenderToHtml`), applying verbatim inline styles + MSO bullet-fallback comments + server-side block-boundary truncation | Email clients (Outlook's Word engine especially) can't load external CSS and don't reliably support `overflow`/scroll; Markdown structure has to survive as literal inline `style=` attributes, and overlong content needs a real content boundary a CSS clip can't guarantee | ✓ Good — Phase 71; the milestone's most durable new pattern for any future HTML-email work |
+| Real Outlook desktop / full 3-template Gmail confirmation deferred to production access via an explicit, structured `overrides`/`deferred` record rather than silently marked done | Outlook testing genuinely requires a production relay + real `AppUrl`; recording the gap structurally keeps it visible and actionable instead of losing it in a SUMMARY footnote | — Pending: manual check once deployed to production — Phase 71 |
+| QuestLog Description raw-rendering gap (deferred at Phase 67 as WR-02) fixed at milestone-close rather than shipped as accepted debt | The milestone audit's cross-phase integration check re-surfaced it as a live, reproducible user-facing defect independent of Phase 67's original scoping decision; a 2-line fix mirroring the adjacent Rewards field closed it before v8.0 shipped | ✓ Good — fixed during `/gsd-complete-milestone 8` audit, commit `222b9a3d` |
 
 ## Evolution
 
@@ -232,4 +245,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-10 after Phase 69 (Contact Fields) completion.*
+*Last updated: 2026-07-11 after v8.0 milestone close.*
