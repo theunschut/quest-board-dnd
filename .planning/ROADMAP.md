@@ -186,12 +186,12 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document in Quest Board's `.planning/` — the single canonical copy per D-06, referenced (not duplicated) by Phase 74's PR description
   6. A group's Admin (not DungeonMaster) can configure a group-specific Omphalos override from the group's Admin area; a group with no override falls back to the instance-wide default
 
-**Plans**: 6 plans
+**Plans**: 2/6 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 72-01-PLAN.md — Persistence foundation: PlatformSettingEntity (key-value, nullable GroupId), DbContext + two filtered unique indexes, domain model/DTO/keys + interfaces, AddPlatformSettings migration (SETT-06, SETT-08)
-- [ ] 72-02-PLAN.md — Written .planning/TOKEN-CONTRACT.md HMAC token-format contract (TOKEN-02, written portion)
+- [x] 72-01-PLAN.md — Persistence foundation: PlatformSettingEntity (key-value, nullable GroupId), DbContext + two filtered unique indexes, domain model/DTO/keys + interfaces, AddPlatformSettings migration (SETT-06, SETT-08)
+- [x] 72-02-PLAN.md — Written .planning/TOKEN-CONTRACT.md HMAC token-format contract (TOKEN-02, written portion)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -327,6 +327,6 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 70. DM Profile & Shop Fields | v8.0 | 4/4 | Complete    | 2026-07-10 |
 | 71. Email-Safety Hardening | v8.0 | 3/3 | Complete    | 2026-07-10 |
-| 72. Platform Settings + Token Contract | v2.0 (redo) | 0/5 | Not started | - |
+| 72. Platform Settings + Token Contract | v2.0 (redo) | 2/6 | In Progress|  |
 | 73. Navigation + Token Generation | v2.0 (redo) | 0/? | Not started | - |
 | 74. Omphalos SSO Endpoint + Session Linking | v2.0 (redo) | 0/? | Not started | - |
