@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Omphalos Integration
 current_phase: 72
-current_phase_name: Platform Settings + Token Contract
+current_phase_name: platform-settings-token-contract
 status: executing
 stopped_at: Phase 72 replanned (6 plans, 4 waves) against settings-storage redesign; plan-checker passed, no issues
-last_updated: "2026-07-11T14:17:35.843Z"
+last_updated: "2026-07-11T14:27:01.526Z"
 last_activity: 2026-07-11
-last_activity_desc: merged main, renumbered phases post-v8.0
+last_activity_desc: Phase 72 execution started
 progress:
   total_phases: 3
   completed_phases: 0
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-11 — merged main post-v8.0 close; v2.0 Omphalos Integration phases renumbered 65–67 → 72–74)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 72 — Platform Settings + Token Contract
+**Current focus:** Phase 72 — platform-settings-token-contract
 
 ## Current Position
 
-Phase: 72 of 74 (Platform Settings + Token Contract)
-Plan: — (not yet planned)
-Status: Ready to execute
-Last activity: 2026-07-11 -- merged main, renumbered phases post-v8.0
+Phase: 72 (platform-settings-token-contract) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 72
+Last activity: 2026-07-11 — Phase 72 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
