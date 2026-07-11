@@ -1,5 +1,6 @@
 @using QuestBoard.Service.ViewModels.ShopViewModels
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Service.Extensions
 @model ShopItemViewModel
 
 <div class="row">
@@ -133,7 +134,7 @@
         </h6>
     </div>
     <div class="card-body modern-card-body">
-        <p class="mb-0" style="white-space: pre-wrap;">@Model.Description</p>
+        @Html.Markdown(Model.Description)
     </div>
 </div>
 

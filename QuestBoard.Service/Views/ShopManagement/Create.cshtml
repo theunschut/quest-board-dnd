@@ -1,4 +1,5 @@
 @using QuestBoard.Service.ViewModels.ShopViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model CreateShopItemViewModel
 @{
     ViewData["Title"] = "Add New Shop Item";
@@ -40,13 +41,15 @@
                 </div>
 
                 <!-- Description -->
-                <div class="mb-3">
-                    <label asp-for="Description" class="form-label"></label>
-                    <textarea asp-for="Description" class="form-control" rows="4"
-                              placeholder="Describe the item's appearance, properties, and lore..."></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
-                    <div class="form-text">Provide a detailed description including mechanical effects, appearance, and any lore.</div>
-                </div>
+                @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                   {
+                       FieldName = "Description",
+                       Value = Model.Description,
+                       Label = "Description",
+                       Required = true,
+                       Placeholder = "Describe the item's appearance, properties, and lore..."
+                   }); }
+                <div class="form-text">Provide a detailed description including mechanical effects, appearance, and any lore.</div>
 
                 <!-- Rarity and Quantity -->
                 <div class="row mb-4">
@@ -157,6 +160,7 @@
 </div>
 
 @section Scripts {
+    @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
     <script>
         // Price suggestions based on Tasha's Cauldron
         const pricingGuide = {
@@ -236,7 +240,11 @@
         // Form validation enhancement
         document.querySelector('form').addEventListener('submit', function(e) {
             const name = document.getElementById('Name').value.trim();
-            const description = document.getElementById('Description').value.trim();
+            // EasyMDE hides the raw textarea and only syncs its content back on submit-button
+            // click, so read the live editor content directly rather than the (possibly stale)
+            // raw textarea value; fall back to the raw value if the editor never initialized.
+            const descriptionEl = document.getElementById('Description');
+            const description = (descriptionEl.easyMDE ? descriptionEl.easyMDE.value() : descriptionEl.value).trim();
             const type = document.getElementById('Type').value;
             const rarity = document.getElementById('Rarity').value;
 

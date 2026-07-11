@@ -1,6 +1,7 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Service.ViewModels.QuestViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model QuestViewModel
 @{
     ViewData["Title"] = "Create Quest";
@@ -25,17 +26,23 @@
                         <span asp-validation-for="Title" class="text-danger"></span>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="Description" class="form-label">Description <span class="text-danger">*</span></label>
-                        <textarea asp-for="Description" class="form-control" rows="4" placeholder="Describe the quest, what players can expect, any special requirements..."></textarea>
-                        <span asp-validation-for="Description" class="text-danger"></span>
-                    </div>
+                    @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                       {
+                           FieldName = "Description",
+                           Value = Model.Description,
+                           Label = "Description",
+                           Required = true,
+                           Placeholder = "Describe the quest, what players can expect, any special requirements..."
+                       }); }
 
-                    <div class="mb-3">
-                        <label asp-for="Rewards" class="form-label">Rewards</label>
-                        <textarea asp-for="Rewards" class="form-control" rows="4" placeholder="Describe the loot, gold, or other rewards for this quest..."></textarea>
-                        <span asp-validation-for="Rewards" class="text-danger"></span>
-                    </div>
+                    @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                       {
+                           FieldName = "Rewards",
+                           Value = Model.Rewards,
+                           Label = "Rewards",
+                           Required = false,
+                           Placeholder = "Describe the loot, gold, or other rewards for this quest..."
+                       }); }
 
                     @if (boardType != BoardType.Campaign)
                     {

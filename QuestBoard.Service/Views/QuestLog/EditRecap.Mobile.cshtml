@@ -1,4 +1,5 @@
 @using QuestBoard.Service.ViewModels.QuestLogViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model EditRecapViewModel
 @{
     ViewData["Title"] = $"Edit Recap: {Model.Quest.Title}";
@@ -23,15 +24,15 @@
         <form asp-action="EditRecap" asp-route-id="@Model.Id" method="post">
             <input type="hidden" asp-for="Id" />
 
-            <div class="mb-3">
-                <label for="recap" class="form-label">Write or update the session recap:</label>
-                <textarea class="form-control"
-                          id="recap"
-                          name="recap"
-                          rows="6"
-                          placeholder="Describe what happened during this quest...">@Model.Recap</textarea>
-                <small class="form-text">Share the story of this adventure with your players!</small>
-            </div>
+            @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+               {
+                   FieldName = "recap",
+                   Value = Model.Recap,
+                   Label = "Recap",
+                   Required = false,
+                   Placeholder = "Describe what happened during this quest..."
+               }); }
+            <small class="form-text">Share the story of this adventure with your players!</small>
 
             <div class="d-flex gap-2 mt-3">
                 <a href="@Url.Action("Details", "QuestLog", new { id = Model.Id })" class="btn btn-secondary flex-fill">
@@ -46,3 +47,7 @@
 
     </div>
 </div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
+}

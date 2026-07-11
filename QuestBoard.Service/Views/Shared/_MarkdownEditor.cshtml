@@ -1,0 +1,28 @@
+@using QuestBoard.Service.ViewModels.Shared
+@model MarkdownEditorViewModel
+@{
+    // Mirrors ASP.NET Core's own tag-helper id generation (IdAttributeDotReplacement, default
+    // "_") so this computed id matches what asp-for would have produced for the same field name,
+    // unless the caller supplies an explicit ElementId override (e.g. multiple instances of the
+    // same field on one page).
+    var elementId = Model.ElementId ?? Model.FieldName.Replace('.', '_');
+}
+
+<div class="mb-3">
+    <label for="@elementId" class="form-label">
+        @Model.Label
+        <i class="fas fa-info-circle text-warning ms-1" data-bs-toggle="tooltip" title="Supports Markdown formatting. Leave a blank line between paragraphs."></i>
+        @if (Model.Required)
+        {
+            <span class="text-danger">*</span>
+        }
+    </label>
+    <textarea name="@Model.FieldName" id="@elementId" class="form-control markdown-editor-textarea" rows="4" placeholder="@Model.Placeholder" required="@Model.Required" maxlength="@Model.MaxLength">@Model.Value</textarea>
+    <span class="text-danger" data-valmsg-for="@Model.FieldName" data-valmsg-replace="true"></span>
+    @if (Model.MaxLength.HasValue)
+    {
+        <small class="form-text text-muted markdown-editor-char-count">
+            <span class="markdown-editor-char-count-current">@(Model.Value?.Length ?? 0)</span>/@Model.MaxLength characters
+        </small>
+    }
+</div>

@@ -1,7 +1,16 @@
 @using QuestBoard.Service.ViewModels.ShopViewModels
 @model ShopManagementIndexViewModel
+@inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @{
     ViewData["Title"] = "Shop Management - DM Dashboard";
+}
+
+@functions {
+    string DescriptionTeaser(string description)
+    {
+        var plain = MarkdownService.ExtractPlainText(description);
+        return plain.Length > 50 ? plain.Substring(0, 50) + "..." : plain;
+    }
 }
 
 <div class="container-fluid">
@@ -53,7 +62,7 @@
                                     <tr>
                                         <td>
                                             <strong>@item.Name</strong>
-                                            <br><small class="text-muted">@(item.Description.Length > 50 ? item.Description.Substring(0, 50) + "..." : item.Description)</small>
+                                            <br><small class="text-muted">@DescriptionTeaser(item.Description)</small>
                                         </td>
                                         <td>
                                             <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>
@@ -125,7 +134,7 @@
                                     <tr class="@(item.Status == ItemStatus.Draft ? "table-warning" : item.Status == ItemStatus.Denied ? "table-danger" : "")">
                                         <td>
                                             <strong>@item.Name</strong>
-                                            <br><small class="text-muted">@(item.Description.Length > 50 ? item.Description.Substring(0, 50) + "..." : item.Description)</small>
+                                            <br><small class="text-muted">@DescriptionTeaser(item.Description)</small>
                                             @if (item.Status == ItemStatus.Denied && !string.IsNullOrEmpty(item.DenialReason))
                                             {
                                                 <br>
@@ -297,7 +306,7 @@
                                     <tr>
                                         <td>
                                             <strong>@item.Name</strong>
-                                            <br><small class="text-muted">@(item.Description.Length > 50 ? item.Description.Substring(0, 50) + "..." : item.Description)</small>
+                                            <br><small class="text-muted">@DescriptionTeaser(item.Description)</small>
                                         </td>
                                         <td>
                                             <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>

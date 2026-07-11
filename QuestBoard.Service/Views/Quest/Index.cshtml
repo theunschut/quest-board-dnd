@@ -1,6 +1,7 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
+@inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @model IEnumerable<Quest>
 @{
     ViewData["Title"] = "Quest Board";
@@ -32,7 +33,7 @@
     string SelectPosterByContent(Quest quest, string[] availablePosters)
     {
         var title = quest.Title ?? "";
-        var description = quest.Description ?? "";
+        var description = MarkdownService.ExtractPlainText(quest.Description);
         var totalCharacters = title.Length + description.Length;
 
         switch (totalCharacters)
@@ -116,7 +117,7 @@
 
                 <!-- Description fills middle space -->
                 <div class="quest-middle">
-                    <div class="quest-description">@quest.Description</div>
+                    <div class="quest-description">@MarkdownService.ExtractPlainText(quest.Description)</div>
                 </div>
 
                 <!-- Info at bottom -->

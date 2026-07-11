@@ -1,5 +1,6 @@
 @using QuestBoard.Service.ViewModels.ShopViewModels
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Service.Extensions
 @model ShopItemDetailsViewModel
 
 @section Styles {
@@ -18,7 +19,9 @@
         @Model.Rarity.ToString().Replace("VeryRare", "Very Rare")
     </span>
 
-    <p class="mt-2 parchment-text-muted" style="white-space: pre-wrap;">@Model.Description</p>
+    <div class="parchment-text-muted mt-2">
+        @Html.Markdown(Model.Description)
+    </div>
 
     <div class="mb-2">
         <strong class="parchment-text"><i class="fas fa-coins me-1"></i>@Model.Price gp</strong>

@@ -215,6 +215,22 @@
     background: rgba(0, 0, 0, 0.03);
 }
 
+/* markdown-content.css's pale-gold heading color is meant for text on a dark
+   overlay box; the only override back to dark text targets a *direct* child of
+   .modern-card-body, but Notes render their Markdown one level deeper (inside
+   .note-item .note-view-text), so headings a user adds via the note editor's
+   heading button would otherwise render pale-gold-on-near-white and be nearly
+   illegible against .note-item's light background. */
+.modern-card-body .note-item h1,
+.modern-card-body .note-item h2,
+.modern-card-body .note-item h3,
+.modern-card-body .note-item h4,
+.modern-card-body .note-item h5,
+.modern-card-body .note-item h6 {
+    color: #1a1a1a;
+    text-shadow: none;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
     .contacts-page .contact-grid {

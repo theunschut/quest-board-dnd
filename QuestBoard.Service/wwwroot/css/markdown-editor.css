@@ -1,0 +1,40 @@
+/* EasyMDE's own toolbar carries its complete visual styling -- this file does not restyle it.
+   It only fixes two things EasyMDE's defaults get wrong for this app's mobile requirements:
+   touch targets below the 44px accessibility floor, and toolbar chrome that doesn't leave room
+   for all 7 buttons to fit one row on a 320px-wide viewport. Sizing/fit only -- no color,
+   border, or icon changes. */
+
+.editor-toolbar button {
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+}
+
+.editor-toolbar {
+    padding: 0;
+}
+
+/* Desktop write forms wrap the editor in .modern-card, whose `.modern-card h1-h6/p/li/span/small
+   { color: #F4E4BC !important; text-shadow: ... !important; }` rules (site.css) are meant for
+   read-only card text but also match CodeMirror's syntax-highlighting spans and the Preview
+   pane's injected <h*>/<p>/<li>/etc, tinting both the raw editing surface and Preview gold with
+   a drop-shadow instead of plain black-on-white. Only the editing/preview surfaces are scoped
+   here -- .markdown-content (Details/Manage/email) is untouched and keeps its gold parchment
+   styling with shadow.
+   The tripled class (.CodeMirror.CodeMirror.CodeMirror) is a specificity bump, not a typo. A
+   plain `.CodeMirror *` loses to `.modern-card span` because the universal selector contributes
+   zero specificity, leaving the match tied on classes (1 vs 1) and decided by element count
+   (0 vs 1) in the leaking rule's favor -- doubling the class fixes that case by winning
+   outright on class count (2 vs 1). But some mobile write-form card wrappers add a
+   `:not()`-qualified catch-all (e.g. `.character-form-card span:not(.badge)`) that combines a
+   type selector with a pseudo-class, putting it at the same specificity as the doubled class
+   for `<span>` elements specifically -- CodeMirror's own syntax-highlighting spans. Tripling the
+   class raises this override above what any single-type-selector `:not()`-qualified catch-all
+   can match, regardless of stylesheet load order. */
+.CodeMirror.CodeMirror.CodeMirror,
+.CodeMirror.CodeMirror.CodeMirror *,
+.editor-preview.editor-preview.editor-preview,
+.editor-preview.editor-preview.editor-preview * {
+    color: #000 !important;
+    text-shadow: none !important;
+}

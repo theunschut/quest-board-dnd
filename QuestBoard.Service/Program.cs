@@ -30,7 +30,6 @@ builder.Services.Configure<KestrelServerOptions>(options =>
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB (slightly higher than validation to allow for form overhead)
 });
 
-
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RazorViewEngineOptions>(options =>
@@ -379,4 +378,4 @@ if (app.Environment.IsProduction())
     }
 }
 
-app.Run();
+await app.RunAsync();
