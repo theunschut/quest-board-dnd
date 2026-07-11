@@ -26,6 +26,7 @@ public static class ServiceExtensions
         services.AddScoped<IDungeonMasterProfileRepository, DungeonMasterProfileRepository>();
         services.AddScoped<IReminderLogRepository, ReminderLogRepository>();
         services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<IPlatformSettingRepository, PlatformSettingRepository>();
 
         // Register IdentityService (wraps UserManager/SignInManager; depends on UserEntity)
         services.AddScoped<IIdentityService, IdentityService>();
