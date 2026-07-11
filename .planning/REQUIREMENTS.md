@@ -14,9 +14,11 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 - [ ] **SETT-03**: Shared secret field renders as `type="password"` (masked in the UI)
 - [ ] **SETT-04**: Submitting the form with the secret field blank preserves the existing secret — empty input = keep existing value, never overwrite with empty string (matches the blank-preserves-existing-value guard used by `ContactsController`/`CharactersController`'s image-upload flows)
 - [ ] **SETT-05**: An "Integration Enabled" toggle controls whether all Omphalos UI elements are visible and the SSO redirect is active; when disabled, no Omphalos buttons/links appear anywhere and the launch action is inert
-- [ ] **SETT-06**: Settings are persisted in a single-row `IntegrationSettingEntity` (columns: `OmphalosUrl`, `OmphalosSharedSecret`, `IsEnabled`) — instance-wide, not per-group
-- [ ] **SETT-07**: Settings page is protected by the `SuperAdminOnly` authorization policy
-- [ ] **SETT-08**: An EF Core migration creates the `IntegrationSetting` table
+- [ ] **SETT-06**: Settings are persisted in a generic key-value `PlatformSettingEntity` (`Key`, `Value`, nullable `GroupId`) — `GroupId = null` is the instance-wide default, `GroupId = <group>` is a group-specific override; lookups resolve the group-specific row first, falling back to the instance-wide default when no override exists
+- [ ] **SETT-07**: The instance-wide settings page (`/platform` area) is protected by the `SuperAdminOnly` authorization policy
+- [ ] **SETT-08**: An EF Core migration creates the `PlatformSetting` table
+- [ ] **SETT-09**: A group Admin (`GroupRole.Admin`) can configure a group-specific Omphalos URL/secret override from the group's Admin area (alongside the existing `AdminController` group-scoped surface); the override applies only to that group and never affects the instance-wide default or other groups
+- [ ] **SETT-10**: A group's DungeonMaster (not Admin) cannot configure the group's Omphalos override — write access is Group Admin only, matching the existing group-scoped authorization pattern
 
 ### Navigation + Token Generation (Phase 73 — Quest Board)
 
@@ -66,7 +68,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 |---------|--------|
 | Full OAuth2/OIDC authorization-code flow | Solves delegated *third-party* client access — both apps here are first-party and under common operational control, a different trust boundary. Not a scale-based exclusion; would be the same answer at any user count |
 | Self-service account-linking UI | Deterministic auto-provisioning by `QuestBoardUserId` (LINK-01) makes a manual linking flow unnecessary |
-| Per-group Omphalos configuration | Omphalos has no tenant/org concept in its own data model — a per-group Quest Board setting would have nothing on the Omphalos side to bind to, independent of scale |
+| Omphalos-side multi-tenancy / multi-secret verification | Per-group settings (SETT-06/09) work by letting each group point at its own independent Omphalos deployment — each deployment still only ever verifies against its own single configured secret. Omphalos itself never needs to know about Quest Board's groups |
 | Token encryption (JWE) on top of signing | The token payload (quest ID, user ID, expiry) has no confidential content; encryption adds a key-management burden with no confidentiality benefit |
 | Real-time bidirectional session sync | Explicitly out of scope per the original milestone ask — architectural seam only (BIDI-01), not built |
 
@@ -82,6 +84,8 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 | SETT-06 | Phase 72 | Quest Board | Pending |
 | SETT-07 | Phase 72 | Quest Board | Pending |
 | SETT-08 | Phase 72 | Quest Board | Pending |
+| SETT-09 | Phase 72 | Quest Board | Pending |
+| SETT-10 | Phase 72 | Quest Board | Pending |
 | NAV-01 | Phase 73 | Quest Board | Pending |
 | NAV-02 | Phase 73 | Quest Board | Pending |
 | NAV-03 | Phase 73 | Quest Board | Pending |

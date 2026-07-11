@@ -84,3 +84,50 @@
 ## Deferred Ideas
 
 - **Server-to-server API between Quest Board and Omphalos** — raised during the Shared Secret UX discussion. Not a new deferred item: already covered by requirement BIDI-01 and the milestone's Key Decisions log. Redirected back to existing scope rather than added to the roadmap backlog.
+
+---
+
+## Session 2 — Settings storage redesign
+
+**Date:** 2026-07-11
+**Areas discussed:** Settings storage schema, Per-group override scope, Authorization for group override
+
+User opened this session already rejecting the existing plan: *"I'm not a fan of a single row with columns as settings. It's not future proof and a bit of an ugly design."* Codebase scout confirmed no key-value settings precedent exists anywhere in the codebase, and that `PROJECT.md`'s original milestone wording had said "key-value store" from the start — the fixed-column design was an undocumented deviation introduced during research/planning.
+
+### Settings storage schema
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Generic key-value table | `PlatformSettingEntity{ Key, Value }`, no migration needed for future settings; no DB type safety | ✓ (later refined with GroupId) |
+| Singleton row + JSON column | One row, JSON-serialized typed object; future-proof and typed, but no query-inside-JSON needed anyway for this use case | |
+| Fixed-column singleton row (original plan) | `IntegrationSettingEntity{ Url, SharedSecret, IsEnabled }`; simplest but needs a migration per future setting | |
+
+**User's choice:** Generic key-value table, with a follow-up: *"add an additional column with GroupId so group settings are possible."*
+
+### Per-group override scope
+
+Three follow-up questions narrowed this down:
+1. **Schema-only groundwork vs. build the feature now** → User chose **build it now**.
+2. **Which per-group scenario** → User confirmed groups pointing at separate Omphalos deployments (not one shared instance needing multi-secret verification), but added: *"if two groups point to the same omphalos instance, it should still work... a single shared secret is fine"* — i.e. duplicate secret values across groups are acceptable, no uniqueness constraint needed.
+3. **GroupId nullable, so both instance-wide and per-group settings share one table** — user's own suggestion, adopted as D-08's cascade design (group override → instance-wide fallback).
+
+**Notes:** This resolves the "Omphalos has no tenant concept" objection that was in `REQUIREMENTS.md`'s Out of Scope table — Omphalos itself never needs multi-tenant awareness under this design, since each deployment only ever verifies its own single secret regardless of how many Quest Board groups point at it.
+
+### Authorization for group override
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Group DungeonMaster or Admin | Matches the existing `DungeonMasterOnly` policy pattern | |
+| Group Admin only | Narrower — mirrors SuperAdmin being sole owner of the instance-wide default | ✓ |
+
+**User's choice:** Group Admin only
+
+### Consequence: REQUIREMENTS.md and PROJECT.md updated
+
+User confirmed (explicit y/n question) that `REQUIREMENTS.md` should be updated directly rather than just noted as superseded in CONTEXT.md, since SETT-06 as originally worded directly contradicted the new design. SETT-06/07/08 revised, SETT-09/10 added, the "Per-group Omphalos configuration" Out of Scope row rewritten, traceability table updated. `PROJECT.md`'s target-features bullet and Key Decisions table row (previously "Pending: confirm during Phase 72 implementation") both updated to reflect the resolved decision.
+
+## Claude's Discretion (Session 2)
+
+- Exact `(Key, GroupId)` uniqueness enforcement mechanism (filtered unique index vs. app-level check) — left to research/planning.
+- Exact repository/service method shape for the cascade lookup — left to research/planning.
+- Whether the group-override page is a new action on the existing `AdminController` or a new sibling controller — left to planning.
