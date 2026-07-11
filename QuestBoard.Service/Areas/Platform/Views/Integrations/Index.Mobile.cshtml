@@ -1,0 +1,81 @@
+@model IntegrationSettingsViewModel
+@{
+    ViewData["Title"] = "Integrations";
+}
+
+@section Styles {
+    <link href="~/css/platform-integrations.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="platform-integrations-card-mobile mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">
+            <i class="fas fa-plug text-danger me-2"></i>Integrations
+        </h5>
+    </div>
+
+    <p class="text-muted">Configure the connection Quest Board uses to hand DMs and players off into Omphalos session notes.</p>
+
+    <form asp-action="Index" method="post" id="integrationsFormMobile">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="OmphalosUrl" class="form-label"></label>
+            <input asp-for="OmphalosUrl" class="form-control" placeholder="https://your-omphalos-instance.example.com" />
+            <div class="form-text">Base URL of your Omphalos instance. Used to build the signed redirect link.</div>
+            <span asp-validation-for="OmphalosUrl" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="SharedSecret" class="form-label"></label>
+            <input asp-for="SharedSecret" class="form-control" type="password" />
+            @if (Model.HasSecretConfigured)
+            {
+                <div class="form-text">
+                    <span class="badge bg-success me-1">Configured</span>
+                    &bull;&bull;&bull;&bull; Configured &mdash; leave blank to keep the current secret.
+                </div>
+            }
+            else
+            {
+                <div class="form-text fst-italic">
+                    <span class="badge bg-secondary me-1">Not configured</span>
+                    Not configured yet &mdash; click Generate Secret or paste a value below.
+                </div>
+            }
+            <span asp-validation-for="SharedSecret" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <div class="form-check">
+                <input asp-for="IsEnabled" class="form-check-input" type="checkbox" />
+                <label asp-for="IsEnabled" class="form-check-label">
+                    <i class="fas fa-toggle-on text-success me-2"></i>
+                    Integration Enabled
+                </label>
+            </div>
+        </div>
+    </form>
+
+    <hr>
+
+    <div class="d-flex flex-wrap justify-content-between gap-2">
+        <a asp-controller="Group" asp-action="Index" asp-area="Platform" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>
+            Back to Group Management
+        </a>
+        <div class="d-flex flex-wrap gap-2">
+            <form asp-action="GenerateSecret" method="post" class="d-inline"
+                  onsubmit="return confirm('Generate a new shared secret? The current secret stops working immediately. Update Omphalos\'s configured secret to match, or SSO will fail until you do.');">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-key me-2"></i>
+                    Generate Secret
+                </button>
+            </form>
+            <button type="submit" form="integrationsFormMobile" class="btn btn-warning">
+                <i class="fas fa-save me-2"></i>
+                Save Settings
+            </button>
+        </div>
+    </div>
+</div>
