@@ -160,5 +160,11 @@ public class EntityProfile : Profile
         CreateMap<UserGroup, UserGroupEntity>()
             .ForMember(dest => dest.GroupRole, opt => opt.MapFrom(src => (int)src.GroupRole))
             .ForMember(dest => dest.User, opt => opt.Ignore());
+
+        // PlatformSetting mapping
+        CreateMap<PlatformSettingEntity, PlatformSetting>();
+
+        CreateMap<PlatformSetting, PlatformSettingEntity>()
+            .ForMember(dest => dest.Group, opt => opt.Ignore());
     }
 }

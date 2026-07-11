@@ -44,6 +44,8 @@ public class QuestBoardContext(
 
     public DbSet<ContactNoteEntity> ContactNotes { get; set; }
 
+    public DbSet<PlatformSettingEntity> PlatformSettings { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -267,6 +269,34 @@ public class QuestBoardContext(
             .WithMany(g => g.UserGroups)
             .HasForeignKey(ug => ug.GroupId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // PlatformSetting → Group: Cascade is safe here — a single, non-cyclic FK into a
+        // settings table, so deleting a group takes its own overrides with it without
+        // creating a cascade cycle.
+        modelBuilder.Entity<PlatformSettingEntity>()
+            .HasOne(s => s.Group)
+            .WithMany()
+            .HasForeignKey(s => s.GroupId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Provider-safe uniqueness: a plain composite unique index on (Key, GroupId) would
+        // treat every NULL GroupId as distinct under SQL Server, allowing unlimited
+        // instance-default rows for the same key. Two filtered unique indexes instead:
+        // exactly one instance-default row per key, and exactly one override row per
+        // (key, group).
+        modelBuilder.Entity<PlatformSettingEntity>()
+            .HasIndex(s => s.Key)
+            .IsUnique()
+            .HasFilter("[GroupId] IS NULL");
+
+        modelBuilder.Entity<PlatformSettingEntity>()
+            .HasIndex(s => new { s.Key, s.GroupId })
+            .IsUnique()
+            .HasFilter("[GroupId] IS NOT NULL");
+
+        // No HasQueryFilter here — instance-default rows (GroupId == null) must stay visible
+        // regardless of the active group, same as GroupEntity/UserEntity above.
 
         // Global query filters for group isolation.
         // QuestEntity and ShopItemEntity carry a GroupId and are the two entities directly scoped
