@@ -1,0 +1,120 @@
+@using QuestBoard.Service.ViewModels.AdminViewModels
+@model GroupIntegrationSettingsViewModel
+@{
+    ViewData["Title"] = "Group Integrations";
+}
+
+<div class="card modern-card">
+    <div class="card-header modern-card-header">
+        <h2 class="mb-0">
+            <i class="fas fa-plug text-danger me-2"></i>
+            Group Integrations
+        </h2>
+    </div>
+    <div class="card-body modern-card-body">
+        <p class="text-muted">Configure Omphalos for this group only. This overrides the platform-wide default set by a SuperAdmin — see the status below.</p>
+
+        @if (Model.HasOverride)
+        {
+            <p class="text-muted mb-4">
+                <span class="badge bg-success"><i class="fas fa-circle-check me-1"></i>Override Active</span><br />
+                This group has its own Omphalos configuration, set below. It takes priority over the instance-wide default — even if a SuperAdmin changes the platform default later, this group keeps using its own settings until you clear the override.
+            </p>
+        }
+        else if (Model.InstanceDefaultConfigured)
+        {
+            <p class="text-muted mb-4">
+                <span class="badge bg-info text-dark"><i class="fas fa-arrow-turn-down me-1"></i>Inherited from Instance Default</span><br />
+                This group has no override — it's currently using the Omphalos configuration set platform-wide by a SuperAdmin. Fill in the fields below and save to give this group its own configuration instead.
+            </p>
+        }
+        else
+        {
+            <p class="text-muted mb-4">
+                <span class="badge bg-secondary"><i class="fas fa-circle-exclamation me-1"></i>Not Configured</span><br />
+                Omphalos integration isn't configured for this group or platform-wide, so DM Tool/Session Notes links won't appear for this group yet. Set the fields below to configure it for this group, or ask a SuperAdmin to set the platform-wide default.
+            </p>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.GeneratedSecret))
+        {
+            <div class="mb-3">
+                <span class="badge bg-warning text-dark"><i class="fas fa-key me-1"></i>New secret generated</span>
+                <p class="text-muted mb-0"><code>@Model.GeneratedSecret</code></p>
+            </div>
+        }
+
+        <form asp-action="Save" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="OmphalosUrl" class="form-label"></label>
+                @if (Model.HasOverride)
+                {
+                    <input asp-for="OmphalosUrl" class="form-control" />
+                }
+                else
+                {
+                    <input asp-for="OmphalosUrl" class="form-control" placeholder="Not set — inherits the instance-wide URL" />
+                }
+                <span asp-validation-for="OmphalosUrl" class="text-danger"></span>
+                <div class="form-text">Base URL of your Omphalos instance. Used to build the signed redirect link.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="SharedSecret" class="form-label"></label>
+                <input asp-for="SharedSecret" class="form-control" type="password" />
+                <span asp-validation-for="SharedSecret" class="text-danger"></span>
+                @if (Model.HasSecretConfigured)
+                {
+                    <div class="form-text">•••• Configured for this group — leave blank to keep the current override secret.</div>
+                }
+                else
+                {
+                    <div class="form-text">No group-specific secret set — inherits the instance-wide secret, if one is configured.</div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input asp-for="IsEnabled" class="form-check-input" type="checkbox" />
+                    <label asp-for="IsEnabled" class="form-check-label">
+                        <i class="fas fa-toggle-on text-success me-2"></i>
+                        Integration Enabled
+                    </label>
+                </div>
+                <span asp-validation-for="IsEnabled" class="text-danger"></span>
+                @if (!Model.HasOverride)
+                {
+                    <div class="form-text">Unchecked here means "no group override" — the group's actual enabled/disabled state currently comes from the instance-wide default shown above, not from this checkbox.</div>
+                }
+            </div>
+
+            <hr>
+
+            <div class="d-flex justify-content-between">
+                <a asp-controller="Admin" asp-action="Users" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Back to User Management
+                </a>
+                <div class="d-flex gap-2">
+                    <button type="submit" asp-action="GenerateSecret" formnovalidate class="btn btn-danger" onclick="return confirm('Generate a new shared secret for this group\'s override? The current group secret (or the instance-wide secret, if no override exists yet) stops working for this group immediately. Update Omphalos\'s configuration to match, or SSO will fail for this group until you do.');">
+                        <i class="fas fa-key me-2"></i>
+                        Generate Secret
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-2"></i>
+                        Save Override
+                    </button>
+                    @if (Model.HasOverride)
+                    {
+                        <button type="submit" asp-action="ClearOverride" formnovalidate class="btn btn-outline-danger" onclick="return confirm('Remove this group\'s Omphalos override? The group will immediately fall back to the instance-wide default (or stop working, if no instance-wide default is configured). This does not affect other groups.');">
+                            <i class="fas fa-eraser me-2"></i>
+                            Clear Override
+                        </button>
+                    }
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

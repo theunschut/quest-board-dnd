@@ -1,0 +1,30 @@
+/* admin-integrations.mobile.css - Admin/Integrations.Mobile.cshtml only */
+/* No @media queries — exclusively loaded by Admin/Integrations.Mobile.cshtml via _Layout.Mobile.cshtml */
+
+/* Glass card container */
+.admin-integrations-card-mobile {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 16px;
+}
+
+/* Card headings — parchment text */
+.admin-integrations-card-mobile h5,
+.admin-integrations-card-mobile .parchment-text {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+}
+
+/* Small meta text — faded parchment */
+.admin-integrations-card-mobile small {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Badges — no text-shadow */
+.admin-integrations-card-mobile .badge {
+    text-shadow: none !important;
+}
