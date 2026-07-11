@@ -76,16 +76,16 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 
 | Requirement | Phase | Repo | Status |
 |-------------|-------|------|--------|
-| SETT-01 | Phase 72 | Quest Board | Pending |
-| SETT-02 | Phase 72 | Quest Board | Pending |
-| SETT-03 | Phase 72 | Quest Board | Pending |
-| SETT-04 | Phase 72 | Quest Board | Pending |
-| SETT-05 | Phase 72 | Quest Board | Pending |
-| SETT-06 | Phase 72 | Quest Board | Pending |
-| SETT-07 | Phase 72 | Quest Board | Pending |
-| SETT-08 | Phase 72 | Quest Board | Pending |
-| SETT-09 | Phase 72 | Quest Board | Pending |
-| SETT-10 | Phase 72 | Quest Board | Pending |
+| SETT-01 | Phase 72 | Quest Board | Complete |
+| SETT-02 | Phase 72 | Quest Board | Complete |
+| SETT-03 | Phase 72 | Quest Board | Complete |
+| SETT-04 | Phase 72 | Quest Board | Complete |
+| SETT-05 | Phase 72 | Quest Board | Complete |
+| SETT-06 | Phase 72 | Quest Board | Complete |
+| SETT-07 | Phase 72 | Quest Board | Complete |
+| SETT-08 | Phase 72 | Quest Board | Complete |
+| SETT-09 | Phase 72 | Quest Board | Complete |
+| SETT-10 | Phase 72 | Quest Board | Complete |
 | NAV-01 | Phase 73 | Quest Board | Pending |
 | NAV-02 | Phase 73 | Quest Board | Pending |
 | NAV-03 | Phase 73 | Quest Board | Pending |
@@ -93,7 +93,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 | NAV-05 | Phase 73 | Quest Board | Pending |
 | NAV-06 | Phase 73 | Quest Board | Pending |
 | TOKEN-01 | Phase 73 | Quest Board | Pending |
-| TOKEN-02 | Phase 73 | Quest Board | Pending |
+| TOKEN-02 | Phase 72 | Quest Board | Complete |
 | TOKEN-03 | Phase 73 | Quest Board | Pending |
 | TOKEN-04 | Phase 73 | Quest Board | Pending |
 | TOKEN-05 | Phase 73 | Quest Board | Pending |
