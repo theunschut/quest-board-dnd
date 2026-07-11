@@ -5,14 +5,14 @@ milestone_name: Omphalos Integration
 current_phase: 72
 current_phase_name: Platform Settings + Token Contract
 status: executing
-stopped_at: Phase 72 UI-SPEC updated with group-override page and approved (6/6)
-last_updated: "2026-07-11T13:36:17.885Z"
+stopped_at: Phase 72 replanned (6 plans, 4 waves) against settings-storage redesign; plan-checker passed, no issues
+last_updated: "2026-07-11T14:17:35.843Z"
 last_activity: 2026-07-11
 last_activity_desc: merged main, renumbered phases post-v8.0
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 5
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -96,7 +96,7 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-11T13:36:17.873Z
-Stopped at: Phase 72 UI-SPEC updated with group-override page and approved (6/6)
-Resume file: .planning/phases/72-platform-settings-token-contract/72-UI-SPEC.md
+Last session: 2026-07-11T14:17:35.831Z
+Stopped at: Phase 72 replanned (6 plans, 4 waves) against settings-storage redesign; plan-checker passed, no issues
+Resume file: .planning/phases/72-platform-settings-token-contract/72-01-PLAN.md
 Next step: `/gsd:plan-phase 72`
