@@ -1,5 +1,6 @@
 @using QuestBoard.Service.ViewModels.QuestLogViewModels
 @using QuestBoard.Domain.Enums
+@inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @model QuestLogIndexViewModel
 @{
     ViewData["Title"] = "Quest Log";
@@ -59,9 +60,10 @@
                         <!-- Quest Description Preview -->
                         <div class="quest-log-card-description">
                             @{
-                                var shortDescription = quest.Description.Length > 200 
-                                    ? quest.Description.Substring(0, 200) + "..." 
-                                    : quest.Description;
+                                var plainDescription = MarkdownService.ExtractPlainText(quest.Description);
+                                var shortDescription = plainDescription.Length > 200
+                                    ? plainDescription.Substring(0, 200) + "..."
+                                    : plainDescription;
                             }
                             @shortDescription
                         </div>
