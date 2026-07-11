@@ -165,7 +165,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 **Milestone Goal:** DMs can open Omphalos session notes for any quest with one click — navigated automatically into the correct session, authenticated via a short-lived signed token. Redo of the abandoned attempt (old Phase 10–11, superseded above); redone from scratch against current `main` since that branch diverged too far to merge cleanly. Originally slotted as Phases 35–37 when planned on 2026-07-02, then deprioritized while v6.0/v6.1/v7.0 shipped and claimed those numbers on `main`; renumbered to 65–67 to follow v7.0's Phase 64 when this milestone resumed, then renumbered again to 72–74 to follow v8.0's Phase 71 after v8.0 Markdown Support shipped while this milestone was deprioritized a second time.
 
-- [ ] **Phase 72: Platform Settings + Token Contract** - SuperAdmin-configurable Omphalos URL/secret and the written HMAC token-format contract
+- [ ] **Phase 72: Platform Settings + Token Contract** - SuperAdmin instance-wide + Group Admin per-group Omphalos URL/secret settings (key-value cascade) and the written HMAC token-format contract
 - [ ] **Phase 73: Navigation + Token Generation** - Signed-URL token service and every Omphalos entry point (navbar link, quest-page buttons)
 - [ ] **Phase 74: Omphalos SSO Endpoint + Session Linking** - Omphalos-side SSO validation, auto-provisioning, and quest↔session linking
 
@@ -186,21 +186,25 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document in Quest Board's `.planning/` — the single canonical copy per D-06, referenced (not duplicated) by Phase 74's PR description
   6. A group's Admin (not DungeonMaster) can configure a group-specific Omphalos override from the group's Admin area; a group with no override falls back to the instance-wide default
 
-**Plans**: 5 plans
+**Plans**: 6 plans
 Plans:
 **Wave 1**
 
-- [ ] 72-01-PLAN.md — Persistence foundation: IntegrationSettingEntity, DbContext config, domain model + interfaces, AddIntegrationSettings migration (SETT-06, SETT-08)
-- [ ] 72-05-PLAN.md — Written .planning/TOKEN-CONTRACT.md HMAC token-format contract (TOKEN-02, written portion)
+- [ ] 72-01-PLAN.md — Persistence foundation: PlatformSettingEntity (key-value, nullable GroupId), DbContext + two filtered unique indexes, domain model/DTO/keys + interfaces, AddPlatformSettings migration (SETT-06, SETT-08)
+- [ ] 72-02-PLAN.md — Written .planning/TOKEN-CONTRACT.md HMAC token-format contract (TOKEN-02, written portion)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 72-02-PLAN.md — Repository + domain service (blank-preserve secret guard, singleton bootstrap) + DI + unit tests (SETT-04, SETT-05, SETT-06)
-- [ ] 72-03-PLAN.md — IntegrationsController + ViewModel + desktop/mobile Integrations views + mobile CSS (SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-07)
+- [ ] 72-03-PLAN.md — PlatformSettingRepository (cascade lookup, upsert, clear) + PlatformSettingService (blank-preserve secret, CSPRNG generate) + DI + unit tests (SETT-04, SETT-05, SETT-06)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 72-04-PLAN.md — Group/Index nav button (desktop+mobile) + integration-test authorization matrix (SETT-01, SETT-07)
+- [ ] 72-04-PLAN.md — Instance-wide IntegrationsController + ViewModel + desktop/mobile views + mobile CSS + Group/Index nav button (SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-07)
+- [ ] 72-05-PLAN.md — Group-override AdminIntegrationsController + ViewModel + desktop/mobile views (cascade banner) + mobile CSS + Admin navbar entry (SETT-09, SETT-10)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 72-06-PLAN.md — Authorization integration-test matrix for both settings pages (SETT-01, SETT-07, SETT-09, SETT-10)
 
 **UI hint**: yes
 
