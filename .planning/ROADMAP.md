@@ -186,7 +186,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document in Quest Board's `.planning/` — the single canonical copy per D-06, referenced (not duplicated) by Phase 74's PR description
   6. A group's Admin (not DungeonMaster) can configure a group-specific Omphalos override from the group's Admin area; a group with no override falls back to the instance-wide default
 
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 Plans:
 **Wave 1**
 
@@ -195,7 +195,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 72-03-PLAN.md — PlatformSettingRepository (cascade lookup, upsert, clear) + PlatformSettingService (blank-preserve secret, CSPRNG generate) + DI + unit tests (SETT-04, SETT-05, SETT-06)
+- [x] 72-03-PLAN.md — PlatformSettingRepository (cascade lookup, upsert, clear) + PlatformSettingService (blank-preserve secret, CSPRNG generate) + DI + unit tests (SETT-04, SETT-05, SETT-06)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -327,6 +327,6 @@ For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land
 | 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
 | 70. DM Profile & Shop Fields | v8.0 | 4/4 | Complete    | 2026-07-10 |
 | 71. Email-Safety Hardening | v8.0 | 3/3 | Complete    | 2026-07-10 |
-| 72. Platform Settings + Token Contract | v2.0 (redo) | 2/6 | In Progress|  |
+| 72. Platform Settings + Token Contract | v2.0 (redo) | 3/6 | In Progress|  |
 | 73. Navigation + Token Generation | v2.0 (redo) | 0/? | Not started | - |
 | 74. Omphalos SSO Endpoint + Session Linking | v2.0 (redo) | 0/? | Not started | - |
