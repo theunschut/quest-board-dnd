@@ -2,72 +2,68 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Markdown Support
-current_phase: 71
-status: executing
-stopped_at: Phase 71 UI-SPEC approved
-last_updated: "2026-07-10T21:38:14.988Z"
-last_activity: 2026-07-10
-last_activity_desc: Phase 71 complete
+current_phase: null
+status: shipped
+stopped_at: v8.0 milestone complete — archived and closed
+last_updated: "2026-07-11T00:00:00.000Z"
+last_activity: 2026-07-11
+last_activity_desc: v8.0 Markdown Support milestone shipped and archived
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 26
   completed_plans: 26
   percent: 100
-current_phase_name: Email-Safety Hardening
+current_phase_name: null
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-08 — v7.0 milestone close)
+See: .planning/PROJECT.md (updated 2026-07-11 — v8.0 milestone close)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 71 — Email-Safety Hardening
+**Current focus:** Planning next milestone — run `/gsd-new-milestone`
 
 ## Current Position
 
-Phase: 71
-Plan: Not started
-Status: Executing Phase 71
-Last activity: 2026-07-10 — Phase 71 complete
+Phase: None (between milestones)
+Plan: None
+Status: v8.0 shipped; no active milestone
+Last activity: 2026-07-11 — v8.0 milestone archived
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100% (v8.0, 7/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v7.0): 59/59 across 22 phases (43–64)
-- Timeline: ~3.1 days (2026-07-04 22:30 → 2026-07-08 00:21)
+- Total plans completed (v8.0): 26/26 across 7 phases (65–71)
+- Timeline: ~2 days (2026-07-09 → 2026-07-11)
 
 **Recent Trend:**
 
-- v7.0 shipped in ~3.1 days across 22 phases, 59 plans — largest milestone by phase count yet, driven by a long tail of ad-hoc backlog phases (47–64) folded in during execution. See `.planning/RETROSPECTIVE.md` for details.
-- v8.0 roadmapped as 7 phases (65–71), continuing numbering from v7.0's last phase (64). No velocity data yet — planning not yet started.
+- v8.0 shipped in ~2 days across 7 phases, 26 plans — no scope growth beyond the original roadmapped phase set (unlike v7.0's 18 ad-hoc additions). A milestone-close audit found and fixed one cross-phase gap (QuestLog Description rendering raw) before shipping. See `.planning/milestones/v8.0-ROADMAP.md` and `.planning/milestones/v8.0-MILESTONE-AUDIT.md` for details.
+- v7.0 shipped in ~3.1 days across 22 phases, 59 plans — largest milestone by phase count yet. See `.planning/RETROSPECTIVE.md` for the full cross-milestone trend view.
 
 ## Accumulated Context
 
 ### Decisions
 
-- v8.0 roadmap locks the researcher-recommended sequencing: Foundation (65, no user-visible change) → Quest Description proof-of-concept (66, builds the shared editor + retires the email cross-cutting risk early) → mechanical field-migration phases (67 Quest Rewards/Recap + remaining emails, 68 Character, 69 Contact, 70 DM Profile/Shop) → Email-Safety Hardening last (71, a visual-design decision needing live Outlook/Gmail verification, deliberately not bundled into the proof-of-concept).
-- Stack locked by research: Markdig 1.3.2 + HtmlSanitizer (Ganss.Xss) 9.0.892 server-side, EasyMDE 2.21.0 client-side (CDN + SRI, matching the existing Cropper.js precedent). Preview toggle resolved in favor of a server round-trip (`POST /markdown/preview`) over a second client-side parser, to guarantee preview output is byte-identical to saved output by construction.
-- EMAILMD-01 (all 3 quest email templates render Quest Description as HTML) is fully satisfied only at Phase 67, not Phase 66 — Phase 66 wires only Quest Finalized (the proof-of-concept); Phase 67 completes Session Reminder and Waitlist Promoted.
-- v7.0's full decision log (55+ entries across Phases 43–64) has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v7.0-ROADMAP.md` Milestone Summary for the consolidated view.
-- [Phase 70]: Phase 70 (DM Profile & Shop Fields) verification gate passed clean on first run: automated build/test/grep sweep and 10-step operator live verification both confirmed PROFILEMD-01 and PROFILEMD-02 with zero defects, so no gap-closure plan was needed.
+v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v8.0-ROADMAP.md` Milestone Summary for the consolidated view. No open decisions carried forward.
 
 ### Roadmap Evolution
 
-v8.0 roadmap created 2026-07-09 from `.planning/REQUIREMENTS.md` (21 v1 requirements) and `.planning/research/SUMMARY.md`. 7 phases (65–71), 100% requirement coverage, no orphans. v7.0's roadmap grew from its original 4 phases (43–46) to 22 phases (43–64) via 18 ad-hoc additions — full evolution history archived in `.planning/milestones/v7.0-ROADMAP.md`.
+v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100% requirement coverage (21/21), no orphans, no ad-hoc scope additions. Full evolution history archived in `.planning/milestones/v8.0-ROADMAP.md`.
 
 ### Pending Todos
 
-None captured yet for v8.0.
+None captured for v8.0. Two small deferred toolbar features (EDITOR-07/08/09 — strikethrough, horizontal rule, cheatsheet link) logged in `.planning/PROJECT.md` Requirements → Active for a future milestone to pick up if requested.
 
 ### Blockers/Concerns
 
-None open for v8.0 yet. Carried forward from prior milestones, still unresolved:
+None open for v8.0. Carried forward from prior milestones, still unresolved:
 
 - `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
 - `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` appears to be dead code (Platform area's `_ViewStart.cshtml` never selects it) — discovered during Phase 42 research, deliberately left unfixed as out-of-scope for that phase. See PROJECT.md Known Issues.
@@ -82,15 +78,15 @@ Items acknowledged and carried forward across milestone closes.
 | requirement | EMAIL-04 — digest session reminder (multiple same-day quests → one email) | Still deferred — same-day quests have never occurred in over a year of operation | v4.0 close |
 | requirement | REMIND-02 — combined reminder for multi-quest days | Still deferred — same as EMAIL-04 | v4.0 close |
 | tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Still deferred — flagged by code review in Phase 31, not yet fixed | v5.0 close |
-| Phase 70 P04 | 15min | 2 tasks | 1 files |
+| requirement | EMAILMD-02 — real Outlook desktop verification for all 3 quest email templates | Deferred — untestable without production access (real relay + real AppUrl); Gmail-confirmed via operator override for Quest Finalized directly, Session Reminder/Waitlist Promoted on shared-engine grounds | v8.0 close |
 
 ## Session Continuity
 
-Last session: 2026-07-10T18:59:28.093Z
-Stopped at: Phase 71 UI-SPEC approved
-Resume file: .planning/phases/71-email-safety-hardening/71-UI-SPEC.md
+Last session: 2026-07-11 — milestone close (`/gsd-complete-milestone 8`)
+Stopped at: v8.0 archived; awaiting `/gsd-new-milestone` to start v9.0
+Resume file: none — no phase in progress
 
 ## Operator Next Steps
 
-- Review `.planning/ROADMAP.md` v8.0 section (Phases 65–71) for approval
-- Run `/gsd:plan-phase 65` to begin planning the Markdown Rendering Foundation phase
+- Review `.planning/milestones/v8.0-ROADMAP.md` and `.planning/MILESTONES.md` for the shipped-milestone summary
+- Run `/gsd-new-milestone` to begin questioning → research → requirements → roadmap for the next milestone
