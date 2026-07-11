@@ -21,6 +21,7 @@ public static class ServiceExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IDungeonMasterProfileService, DungeonMasterProfileService>();
         services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<IPlatformSettingService, PlatformSettingService>();
         services.AddScoped<IImageValidationService, ImageValidationService>();
         // Singleton, not Scoped like everything above: this service is stateless -- it only holds
         // an immutable pre-built Markdig pipeline and two immutable sanitizer instances -- so it is
