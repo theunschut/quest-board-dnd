@@ -242,3 +242,52 @@
 
 - Sessions: multiple across 4 days, plus a final milestone-close session
 - Notable: largest milestone by phase count so far (22 phases vs. v5.0's previous high of 12) — driven almost entirely by ad-hoc backlog folding (18 of 22 phases had no original REQUIREMENTS.md mapping), validating that the `/gsd-phase` insertion mechanism scales past the "few inserted decimal phases" pattern seen in earlier milestones into a primary execution mode
+
+---
+
+## Milestone: v8.0 — Markdown Support
+
+**Shipped:** 2026-07-11
+**Phases:** 7 (65–71) | **Plans:** 26
+**Timeline:** ~2 days (2026-07-09 → 2026-07-11)
+
+### What Was Built
+
+1. A single, secure, unit-tested Markdown-to-HTML rendering pipeline (Markdig + HtmlSanitizer) as a Domain-layer singleton, with individually-composed GFM extensions and two immutable sanitizer profiles sharing one parse (Phase 65)
+2. Quest Description proof-of-concept — shared `_MarkdownEditor.cshtml` toolbar/Preview partial, a server-round-trip `/markdown/preview` endpoint, and the full write→read→email loop proven on the milestone's riskiest cross-cutting field before any other field was touched (Phase 66)
+3. Mechanical repetition of the proven pattern across the remaining 8 fields — Quest Rewards/Recap (67), Character Description/Backstory (68), Contact Description/per-note Notes (69), DM Profile Bio/Shop Item Description (70)
+4. The app's first multi-instance inline Markdown editor (Contact Notes), with independent per-note rendering and an auto-collapse/lazy-init registry (Phase 69)
+5. Email-safety hardening — a dedicated `RenderEmailHtml` path (inline styles, MSO bullet fallback, server-side block-boundary truncation) for all 3 quest email templates (Phase 71)
+6. A milestone-close audit that found and fixed one last cross-phase gap (QuestLog Description still rendering raw) before shipping, rather than shipping it as debt
+
+### What Worked
+
+- **The proof-of-concept phase's "by construction" guarantee paid off across every later phase:** Phase 66's decision to make `/markdown/preview` call the exact same `RenderToHtml(text, Web)` path saved-page display uses meant EDITOR-04 ("Preview matches saved") was true by architecture, not by keeping two implementations in sync — no phase after 66 had to re-verify or re-guard against preview/saved drift.
+- **Mechanical field-migration scaled cleanly across 5 phases with minimal rework:** Phases 67–70 repeated Phase 66's shared editor/render pattern onto 8 more fields with no roadmap restructuring and no scope growth — a sharp contrast to v6.1/v7.0's heavy ad-hoc phase insertion. The upfront investment in a shared `_MarkdownEditor.cshtml`/`MarkdownEditorViewModel`/`markdown-editor.js` seam in Phase 66 is why.
+- **Human-verification checkpoints kept finding real, non-cosmetic bugs, not just cosmetic nitpicks:** every field-migration phase's checkpoint (66, 67, 69, 70) caught at least one genuine defect live — a Critical email-wrapper bug, a cross-folder partial 404, an app-wide EasyMDE silent-submission-failure gotcha, a lost client-side length limit — reinforcing that these checkpoints are pulling real weight, not ceremony.
+- **The explicit-override protocol (VERIFICATION.md frontmatter `overrides:` with reason/accepted_by/accepted_at) handled every deliberate deviation cleanly:** 3 real deviations this milestone (Phase 66's mobile toolbar width, Phase 69's Contact-Index scope call, Phase 71's Outlook/Gmail live-client gap) were each surfaced, reasoned about, and explicitly accepted rather than either silently shipped or silently blocking the phase.
+- **The milestone-close cross-phase integration check earned its keep again** (as it did in v6.0's BoardType-lookup finding) — it independently re-derived Phase 67's already-known-but-never-revisited QuestLog raw-Description gap and this time the gap was fixed inline before shipping, not just logged as another round of debt.
+
+### What Was Inefficient
+
+- **A phase-scoped "deliberately deferred" finding had no forward-tracking mechanism:** Phase 67's WR-02 (QuestLog still renders Description raw) was correctly identified and reasoned about at the time, but nothing linked it to a future phase or a milestone-close checklist item — it only got caught because the milestone audit's integration checker happened to re-derive it independently from source, five phases later. Writing "deferred" in a REVIEW.md is not the same as guaranteeing it gets revisited.
+- **A live-send verification attempt in Phase 71 nearly shipped a real production risk:** an executor's first attempt at proving the email fix worked added an `[AllowAnonymous]` endpoint that could trigger real Hangfire email jobs against an arbitrary quest ID with no auth check. Caught by the operator reading agent output in real time, not by any automated gate — verification tooling itself needs the same security scrutiny as product code, not an exemption for being "just for testing."
+- **Nyquist `VALIDATION.md` coverage was inconsistent:** produced for Phases 65, 66, 69, and 71, but never generated for 67, 68, or 70 — a discovery-only gap the milestone audit surfaced but didn't block on.
+
+### Patterns Established
+
+- **Server-round-trip preview over a second client-side parser** — guarantees "Preview matches saved" by construction rather than by keeping two rendering implementations in sync; the milestone's single most load-bearing architectural decision
+- **A dedicated `RenderEmailHtml` path, distinct from the page-rendering path** — for any future HTML-email work where the client (Outlook's Word engine especially) can't load external CSS and needs verbatim inline styles plus a real server-side content boundary instead of a CSS clip
+- **`IMarkdownService.ExtractPlainText()` as the single mechanism for every plain-text card/teaser preview** — prevents raw Markdown syntax from leaking into any surface that predates a field's Markdown-authoring migration
+
+### Key Lessons
+
+1. **A "deliberately deferred, out of scope" finding needs an explicit forward link, not just a note in that phase's own REVIEW.md** — Phase 67's WR-02 was reasoned about correctly at the time but nothing guaranteed a later phase or the milestone audit would re-surface it; it worked out here because the integration checker happened to re-derive it independently, not because the deferral itself was tracked anywhere actionable.
+2. **Verification/testing tooling that can trigger real side effects (a real email send, in this case) is production code and needs the same authorization scrutiny as the feature it's testing** — Phase 71's near-miss `[AllowAnonymous]` endpoint is a concrete instance of a class of risk that's easy to wave off as "just for the dev loop."
+3. **An architectural guarantee ("by construction") beats a passing test suite for the specific property it guarantees** — Phase 66's shared-render-call design made preview/saved drift structurally impossible rather than merely covered by a test that could bit-rot; every later phase inherited that guarantee for free.
+
+### Cost Observations
+
+- Sessions: multiple across 2 days, plus a final milestone-close session
+- Model mix: opus (planning), sonnet (research/execution/verification/review/integration-check) — consistent with the project's "balanced" model profile
+- Notable: fastest-shipping phase-per-day rate yet (7 phases / ~2 days) with zero ad-hoc scope growth — a contrast to v6.1 and v7.0's heavy mid-milestone phase insertion, attributable to the proof-of-concept phase (66) absorbing nearly all of the milestone's architectural risk up front
