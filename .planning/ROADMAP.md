@@ -174,16 +174,17 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 ### Phase 72: Platform Settings + Token Contract
 
 **Repo**: Quest Board (`C:\Repos\quest-board`)
-**Goal**: SuperAdmin can configure the Omphalos integration (URL, shared secret, enabled toggle) instance-wide from the Platform area, and the HMAC token-format contract that Phases 73/74 depend on is written down and agreed before either side implements against it.
+**Goal**: SuperAdmin can configure the Omphalos integration instance-wide default (URL, shared secret, enabled toggle) from the Platform area, a Group Admin can configure a per-group override that falls back to that default, and the HMAC token-format contract that Phases 73/74 depend on is written down and agreed before either side implements against it.
 **Depends on**: Nothing (first phase of this milestone — no external dependency, lowest risk, built first per research)
-**Requirements**: SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-06, SETT-07, SETT-08
+**Requirements**: SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-06, SETT-07, SETT-08, SETT-09, SETT-10
 **Success Criteria** (what must be TRUE):
 
-  1. SuperAdmin can navigate to an Omphalos Settings page under `/platform` and save a URL, a masked shared secret, and an enabled toggle
-  2. Saving the settings form with the secret field left blank preserves the previously-saved secret rather than wiping it
-  3. A non-SuperAdmin (Admin, DungeonMaster, Player) cannot reach the settings page
-  4. Settings persist across app restarts in a single-row `IntegrationSetting` table created by an EF Core migration
+  1. SuperAdmin can navigate to an Omphalos Settings page under `/platform` and save a URL, a masked shared secret, and an enabled toggle as the instance-wide default
+  2. Saving either settings form with the secret field left blank preserves the previously-saved secret rather than wiping it
+  3. A non-SuperAdmin (Admin, DungeonMaster, Player) cannot reach the instance-wide settings page
+  4. Settings persist across app restarts in a generic key-value `PlatformSetting` table (nullable `GroupId`) created by an EF Core migration — not a fixed-column single-row entity
   5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document in Quest Board's `.planning/` — the single canonical copy per D-06, referenced (not duplicated) by Phase 74's PR description
+  6. A group's Admin (not DungeonMaster) can configure a group-specific Omphalos override from the group's Admin area; a group with no override falls back to the instance-wide default
 
 **Plans**: 5 plans
 Plans:
