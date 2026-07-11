@@ -64,6 +64,11 @@
                                                 <i class="fas fa-scroll me-2"></i>Quest Management
                                             </a>
                                         </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="AdminIntegrations" asp-action="Index">
+                                                <i class="fas fa-plug me-2"></i>Group Integrations
+                                            </a>
+                                        </li>
                                         @if (User.IsInRole("SuperAdmin"))
                                         {
                                         <li>
