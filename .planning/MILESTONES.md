@@ -1,5 +1,34 @@
 # Milestones — D&D Quest Board
 
+## v8.0 Markdown Support (Shipped: 2026-07-11)
+
+**Phases completed:** 7 phases (65–71), 26 plans
+**Timeline:** ~2 days (2026-07-09 → 2026-07-11)
+**Files changed:** 73 code files | **Lines:** +2,469 / -318
+
+**Key accomplishments:**
+
+- Built a single, secure, unit-tested Markdown-to-HTML rendering pipeline (Markdig 1.3.2 + Ganss.Xss HtmlSanitizer 9.0.892) as a Domain-layer singleton, with individually-composed GFM extensions (never `.UseAdvancedExtensions()`, which bundles a real attribute-injection XSS vector) and two immutable sanitizer profiles sharing one parse — web keeps `<img>`, email strips it.
+- Proved the full write→read→email loop on Quest Description first (the milestone's riskiest cross-cutting field) via a shared `_MarkdownEditor.cshtml` toolbar/Preview partial and a server-round-trip `POST /markdown/preview` that guarantees Preview-matches-saved by construction — then mechanically repeated the pattern across the remaining 8 fields: Quest Rewards/Recap, Character Description/Backstory, Contact Description/per-note Notes, DM Profile Bio, and Shop Item Description.
+- Shipped the app's first multi-instance inline Markdown editor for Contact Notes — each note renders and edits independently with an auto-collapse/lazy-init registry so one author's unclosed formatting never bleeds into another note.
+- Consolidated plain-text card/teaser previews (Quest board card, Shop Index, ShopManagement dashboard) onto a single `IMarkdownService.ExtractPlainText()` helper, preventing raw Markdown syntax from leaking into surfaces that predate the Markdown-authoring change.
+- Hardened all 3 quest email templates (Quest Finalized, Session Reminder, Waitlist Promoted) with a dedicated `RenderEmailHtml` path — inline styles, Outlook MSO bullet-fallback comments, and server-side block-boundary truncation with a read-more link — after a real production bug was found (`overflow:hidden` doesn't reliably clip in table-based email layout).
+- A milestone-close audit (`/gsd-complete-milestone 8`) spawned a cross-phase integration check that found and fixed one last real defect before shipping: `QuestLog/Details` was still rendering Quest Description raw instead of through the Markdown pipeline, leaking literal syntax to users.
+
+### Known Deferred Items at Close
+
+- Real Outlook desktop verification for all 3 quest email templates (EMAILMD-02) — untestable without production access (real relay + real `AppUrl`); Gmail-confirmed via operator override for Quest Finalized directly, Session Reminder/Waitlist Promoted on shared-engine grounds. Recommend a manual check once deployed.
+- Small Markdown toolbar extras (strikethrough, horizontal rule, cheatsheet link — EDITOR-07/08/09) deferred as v2 requirements; add only if requested.
+- Minor Info-level code-review findings left unactioned across Phases 65/67/71 (enum file placement, unallowlisted `start`/`style` attributes, a duplicated CSS class, unstyled email footnote/`<dl>` blocks) — see `.planning/PROJECT.md` Known Issues.
+
+### Archive
+
+- `.planning/milestones/v8.0-ROADMAP.md`
+- `.planning/milestones/v8.0-REQUIREMENTS.md`
+- `.planning/milestones/v8.0-MILESTONE-AUDIT.md`
+
+---
+
 ## v7.0 Backlog Cleanup (Shipped: 2026-07-08)
 
 **Phases completed:** 22 phases (43–64), 59 plans, ~141 tasks

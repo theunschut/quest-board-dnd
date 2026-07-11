@@ -10,7 +10,8 @@
 - ✅ **v6.0 Board Types (Campaign Mode)** — Phases 35–37 (shipped 2026-07-03)
 - ✅ **v6.1 Bugfixes** — Phases 38–42 (shipped 2026-07-04)
 - ✅ **v7.0 Backlog Cleanup** — Phases 43–64 (shipped 2026-07-08)
-- 🚧 **v2.0 Omphalos Integration (redo)** — Phases 65–67 (in progress — branch: `milestone/v2-omphalos-integration`; renumbered from 35–37 after v6.0/v6.1/v7.0 claimed those numbers while this milestone was deprioritized)
+- ✅ **v8.0 Markdown Support** — Phases 65–71 (shipped 2026-07-11)
+- 🚧 **v2.0 Omphalos Integration (redo)** — Phases 72–74 (in progress — branch: `milestone/v2-omphalos-integration`; renumbered from 65–67 after v8.0 claimed those numbers while this milestone was deprioritized again; originally renumbered from 35–37 after v6.0/v6.1/v7.0 claimed those numbers the first time)
 
 _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; issue #78 is now delivered by v7.0 Phases 45–46._
 
@@ -36,7 +37,7 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 <details>
 <summary>✗ v2.0 Omphalos Integration (Phases 10–11) — SUPERSEDED, abandoned attempt</summary>
 
-**Overview:** First attempt at Omphalos SSO integration, on branch `milestone/3-omphalos-integration`. Forked before v3.0/v4.0/v5.0 landed on `main`; by the time work resumed, the branch's code had diverged too far to merge. The milestone is being redone from scratch — see "v2.0 Omphalos Integration (redo)" below, Phases 35+. The old branch's planning docs (research, requirements, HMAC token-format design) were reviewed as historical reference during the redo's research phase but the phases below were never completed against `main`.
+**Overview:** First attempt at Omphalos SSO integration, on branch `milestone/3-omphalos-integration`. Forked before v3.0/v4.0/v5.0 landed on `main`; by the time work resumed, the branch's code had diverged too far to merge. The milestone is being redone from scratch — see "v2.0 Omphalos Integration (redo)" below, Phases 72+. The old branch's planning docs (research, requirements, HMAC token-format design) were reviewed as historical reference during the redo's research phase but the phases below were never completed against `main`.
 
 - [ ] ~~Phase 10: Admin Settings~~ (abandoned — details on branch `milestone/3-omphalos-integration`)
 - [ ] ~~Phase 11: Navigation Token Generation~~ (abandoned — details on branch `milestone/3-omphalos-integration`)
@@ -145,20 +146,35 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
 
 </details>
 
-### 🚧 v2.0 Omphalos Integration (redo) (Phases 65–67) — IN PROGRESS
+<details>
+<summary>✅ v8.0 Markdown Support (Phases 65–71) — SHIPPED 2026-07-11</summary>
 
-**Milestone Goal:** DMs can open Omphalos session notes for any quest with one click — navigated automatically into the correct session, authenticated via a short-lived signed token. Redo of the abandoned attempt (old Phase 10–11, superseded above); redone from scratch against current `main` since that branch diverged too far to merge cleanly. Originally slotted as Phases 35–37 when planned on 2026-07-02, then deprioritized while v6.0/v6.1/v7.0 shipped and claimed those numbers on `main`; renumbered to 65–67 to follow v7.0's Phase 64 when this milestone resumed.
+**Overview:** Let users write and view formatted text (bold, lists, headings, links, blockquotes) in all 9 free-text fields across the app — Quest Description/Rewards/Recap, Character Description/Backstory, Contact Description/Notes, DM Profile Bio, Shop Item Description — via a shared Markdown editor + toolbar + Preview toggle, replacing the old line-break-preserving plain-text display with strict CommonMark paragraph rules. A single, unit-tested sanitizing rendering pipeline (Markdig + HtmlSanitizer) is built once and reused identically by every page view and by the 3 HTML email templates that quote Quest Description. Full phase-level detail archived to `.planning/milestones/v8.0-ROADMAP.md`.
 
-- [ ] **Phase 65: Platform Settings + Token Contract** - SuperAdmin-configurable Omphalos URL/secret and the written HMAC token-format contract
-- [ ] **Phase 66: Navigation + Token Generation** - Signed-URL token service and every Omphalos entry point (navbar link, quest-page buttons)
-- [ ] **Phase 67: Omphalos SSO Endpoint + Session Linking** - Omphalos-side SSO validation, auto-provisioning, and quest↔session linking
+- [x] Phase 65: Markdown Rendering Foundation — Build and unit-test the shared Markdig + HtmlSanitizer rendering service; no user-visible changes yet (completed 2026-07-09)
+- [x] Phase 66: Quest Description Editor & Rendering (Proof-of-Concept) — Wire the shared Markdown editor into Quest Description end-to-end, including the Quest Finalized email, proving the full write→read→email loop (completed 2026-07-09)
+- [x] Phase 67: Remaining Quest Fields & Email Templates — Apply the proven pattern to Quest Rewards and Quest Recap, and wire the remaining 2 email templates (completed 2026-07-10)
+- [x] Phase 68: Character Fields — Character Description and Backstory get the Markdown editor and rendering (completed 2026-07-10)
+- [x] Phase 69: Contact Fields — Contact Description and per-note Contact Notes get the Markdown editor and rendering (completed 2026-07-10)
+- [x] Phase 70: DM Profile & Shop Fields — DM Profile Bio and Shop Item Description get the Markdown editor and rendering (completed 2026-07-10)
+- [x] Phase 71: Email-Safety Hardening — Inline styling/layout fixes so Markdown-structured content displays correctly, unclipped, in real Outlook and Gmail (completed 2026-07-10)
+
+</details>
+
+### 🚧 v2.0 Omphalos Integration (redo) (Phases 72–74) — IN PROGRESS
+
+**Milestone Goal:** DMs can open Omphalos session notes for any quest with one click — navigated automatically into the correct session, authenticated via a short-lived signed token. Redo of the abandoned attempt (old Phase 10–11, superseded above); redone from scratch against current `main` since that branch diverged too far to merge cleanly. Originally slotted as Phases 35–37 when planned on 2026-07-02, then deprioritized while v6.0/v6.1/v7.0 shipped and claimed those numbers on `main`; renumbered to 65–67 to follow v7.0's Phase 64 when this milestone resumed, then renumbered again to 72–74 to follow v8.0's Phase 71 after v8.0 Markdown Support shipped while this milestone was deprioritized a second time.
+
+- [ ] **Phase 72: Platform Settings + Token Contract** - SuperAdmin-configurable Omphalos URL/secret and the written HMAC token-format contract
+- [ ] **Phase 73: Navigation + Token Generation** - Signed-URL token service and every Omphalos entry point (navbar link, quest-page buttons)
+- [ ] **Phase 74: Omphalos SSO Endpoint + Session Linking** - Omphalos-side SSO validation, auto-provisioning, and quest↔session linking
 
 ## Phase Details
 
-### Phase 65: Platform Settings + Token Contract
+### Phase 72: Platform Settings + Token Contract
 
 **Repo**: Quest Board (`C:\Repos\quest-board`)
-**Goal**: SuperAdmin can configure the Omphalos integration (URL, shared secret, enabled toggle) instance-wide from the Platform area, and the HMAC token-format contract that Phases 66/67 depend on is written down and agreed before either side implements against it.
+**Goal**: SuperAdmin can configure the Omphalos integration (URL, shared secret, enabled toggle) instance-wide from the Platform area, and the HMAC token-format contract that Phases 73/74 depend on is written down and agreed before either side implements against it.
 **Depends on**: Nothing (first phase of this milestone — no external dependency, lowest risk, built first per research)
 **Requirements**: SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-06, SETT-07, SETT-08
 **Success Criteria** (what must be TRUE):
@@ -167,31 +183,31 @@ _Note: Phase 8 (profile picture avatar crop) was scoped in v1.0 but deferred; is
   2. Saving the settings form with the secret field left blank preserves the previously-saved secret rather than wiping it
   3. A non-SuperAdmin (Admin, DungeonMaster, Player) cannot reach the settings page
   4. Settings persist across app restarts in a single-row `IntegrationSetting` table created by an EF Core migration
-  5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document in Quest Board's `.planning/` — the single canonical copy per D-06, referenced (not duplicated) by Phase 67's PR description
+  5. The HMAC canonical token-message contract (field order, encoding, delimiter, expiry inclusion, identity claim) exists as a written document in Quest Board's `.planning/` — the single canonical copy per D-06, referenced (not duplicated) by Phase 74's PR description
 
 **Plans**: 5 plans
 Plans:
 **Wave 1**
 
-- [ ] 65-01-PLAN.md — Persistence foundation: IntegrationSettingEntity, DbContext config, domain model + interfaces, AddIntegrationSettings migration (SETT-06, SETT-08)
-- [ ] 65-05-PLAN.md — Written .planning/TOKEN-CONTRACT.md HMAC token-format contract (TOKEN-02, written portion)
+- [ ] 72-01-PLAN.md — Persistence foundation: IntegrationSettingEntity, DbContext config, domain model + interfaces, AddIntegrationSettings migration (SETT-06, SETT-08)
+- [ ] 72-05-PLAN.md — Written .planning/TOKEN-CONTRACT.md HMAC token-format contract (TOKEN-02, written portion)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 65-02-PLAN.md — Repository + domain service (blank-preserve secret guard, singleton bootstrap) + DI + unit tests (SETT-04, SETT-05, SETT-06)
-- [ ] 65-03-PLAN.md — IntegrationsController + ViewModel + desktop/mobile Integrations views + mobile CSS (SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-07)
+- [ ] 72-02-PLAN.md — Repository + domain service (blank-preserve secret guard, singleton bootstrap) + DI + unit tests (SETT-04, SETT-05, SETT-06)
+- [ ] 72-03-PLAN.md — IntegrationsController + ViewModel + desktop/mobile Integrations views + mobile CSS (SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-07)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 65-04-PLAN.md — Group/Index nav button (desktop+mobile) + integration-test authorization matrix (SETT-01, SETT-07)
+- [ ] 72-04-PLAN.md — Group/Index nav button (desktop+mobile) + integration-test authorization matrix (SETT-01, SETT-07)
 
 **UI hint**: yes
 
-### Phase 66: Navigation + Token Generation
+### Phase 73: Navigation + Token Generation
 
 **Repo**: Quest Board (`C:\Repos\quest-board`)
 **Goal**: Every Omphalos entry point in the UI (DM navbar link, quest-page buttons) generates a signed, time-limited redirect token through one shared service and lands the user in Omphalos — with no surface ever linking to Omphalos's raw base URL unsigned.
-**Depends on**: Phase 65 (settings service must exist at compile time; token contract must be written)
+**Depends on**: Phase 72 (settings service must exist at compile time; token contract must be written)
 **Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-06, TOKEN-01, TOKEN-02, TOKEN-03, TOKEN-04, TOKEN-05, TOKEN-06
 **Success Criteria** (what must be TRUE):
 
@@ -204,11 +220,11 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 67: Omphalos SSO Endpoint + Session Linking
+### Phase 74: Omphalos SSO Endpoint + Session Linking
 
 **Repo**: Omphalos (`C:\Repos\omphalos`) — owned/maintained by another GitHub identity; changes here go through that repo's normal PR review, not Quest Board's branch protection. Budget for review-latency slack: this is the actual critical path (external maintainer availability, not implementation effort), and the same "branch diverged before merge" failure mode killed the original attempt. Open the PR early and keep it small/reviewable. Confirm the exact SSO route path and live Postgres collation/unique-index state with the maintainer at the start of this phase — both are flagged LOW/unverified in research.
 **Goal**: Omphalos validates an incoming Quest Board token, auto-provisions or matches the user deterministically by stable ID, finds-or-creates the linked game session, and signs the user into its own session — independently enforcing its own authorization rather than trusting that Quest Board's button was hidden.
-**Depends on**: Phase 65's written token contract (no compile-time coupling to Phase 65/66 code — can run in parallel with Phase 66 once the contract exists)
+**Depends on**: Phase 72's written token contract (no compile-time coupling to Phase 72/73 code — can run in parallel with Phase 73 once the contract exists)
 **Requirements**: SSO-01, SSO-02, SSO-03, SSO-04, SSO-05, SSO-06, SSO-07, SSO-08, SSO-09, SSO-10, SSO-11, LINK-01, LINK-02, LINK-03, LINK-04
 **Success Criteria** (what must be TRUE):
 
@@ -224,9 +240,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61 → 62 → 63 → 64 → 65 → 66 → 67
+Phases execute in numeric order: 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61 → 62 → 63 → 64 → 65 → 66 → 67 → 68 → 69 → 70 → 71 → 72 → 73 → 74
 
-Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–64 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase (Phase 62 depends on Phase 46 specifically, not Phase 61). Phases 57, 58, and 59 executed out of numeric order — Phase 58 (Characters rename) was planned and executed before Phase 57 (NPC directory); Phase 59 (Rewards field) was then planned and executed concurrently with Phase 57's still-in-progress execution. Phase 65 has no dependency on 64 (v7.0 is a separate, already-shipped milestone); Phase 66 depends on 65; Phase 67 depends only on 65's written token contract and may run in parallel with 66.
+Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenced in either order. Phase 46 depends on Phase 45. Phases 47–64 are ad-hoc additions folded in after the original v7.0 roadmap was created, each depending on the previous phase (Phase 62 depends on Phase 46 specifically, not Phase 61). Phases 57, 58, and 59 executed out of numeric order — Phase 58 (Characters rename) was planned and executed before Phase 57 (NPC directory); Phase 59 (Rewards field) was then planned and executed concurrently with Phase 57's still-in-progress execution. Phase 72 has no dependency on 71 (v8.0 is a separate, already-shipped milestone); Phase 73 depends on 72; Phase 74 depends only on 72's written token contract and may run in parallel with 73.
+
+For v8.0 (Phases 65–71): Phase 65 (Foundation) has no dependency and must land before any view is touched. Phase 66 (Quest Description proof-of-concept) depends on Phase 65 and is itself the dependency every later field-migration phase (67, 68, 69, 70) builds on. Phases 68, 69, and 70 have no dependency on each other or on Phase 67 beyond both requiring Phase 66's proven editor pattern, but this project's convention executes phases in numeric sequence regardless of that parallelism. Phase 71 (Email-Safety Hardening) depends specifically on Phase 67, since all 3 quest email templates must be wired to render Markdown before their visual styling/layout is hardened for real email clients.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | ------- | ----------- | ---------------- | -------- | ----------- |
@@ -239,8 +257,8 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 7. DM Profile Page | v1.0 | 2/2 | Complete | 2026-06-17 |
 | 8. Profile Picture Avatar Crop | v1.0 | 0/? | Deferred | — |
 | 9. Shop Pagination | v1.0 | 2/2 | Complete | — |
-| 10. Admin Settings | v2.0 (abandoned attempt) | — | Superseded — see Phase 65+ | — |
-| 11. Navigation Token Generation | v2.0 (abandoned attempt) | — | Superseded — see Phase 65+ | — |
+| 10. Admin Settings | v2.0 (abandoned attempt) | — | Superseded — see Phase 72+ | — |
+| 11. Navigation Token Generation | v2.0 (abandoned attempt) | — | Superseded — see Phase 72+ | — |
 | 12. Mobile Infrastructure | v3.0 | 3/3 | Complete | 2026-06-24 |
 | 13. Core Player Views | v3.0 | 4/4 | Complete | 2026-06-24 |
 | 14. Calendar | v3.0 | 3/3 | Complete | 2026-06-24 |
@@ -297,6 +315,13 @@ Phases 43 and 44 have no dependency on each other or on 45/46 and may be sequenc
 | 62. Stop eagerly loading image bytes in list/entity queries | v7.0 | 3/3 | Complete    | 2026-07-07 |
 | 63. Allow any player to edit quest recaps | v7.0 | 1/1 | Complete    | 2026-07-07 |
 | 64. Preserve line breaks in description text on mobile views | v7.0 | 2/2 | Complete    | 2026-07-07 |
-| 65. Platform Settings + Token Contract | v2.0 (redo) | 0/5 | Not started | - |
-| 66. Navigation + Token Generation | v2.0 (redo) | 0/? | Not started | - |
-| 67. Omphalos SSO Endpoint + Session Linking | v2.0 (redo) | 0/? | Not started | - |
+| 65. Markdown Rendering Foundation | v8.0 | 1/1 | Complete    | 2026-07-09 |
+| 66. Quest Description Editor & Rendering (Proof-of-Concept) | v8.0 | 7/7 | Complete    | 2026-07-09 |
+| 67. Remaining Quest Fields & Email Templates | v8.0 | 5/5 | Complete    | 2026-07-10 |
+| 68. Character Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
+| 69. Contact Fields | v8.0 | 3/3 | Complete    | 2026-07-10 |
+| 70. DM Profile & Shop Fields | v8.0 | 4/4 | Complete    | 2026-07-10 |
+| 71. Email-Safety Hardening | v8.0 | 3/3 | Complete    | 2026-07-10 |
+| 72. Platform Settings + Token Contract | v2.0 (redo) | 0/5 | Not started | - |
+| 73. Navigation + Token Generation | v2.0 (redo) | 0/? | Not started | - |
+| 74. Omphalos SSO Endpoint + Session Linking | v2.0 (redo) | 0/? | Not started | - |

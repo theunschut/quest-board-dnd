@@ -1,5 +1,6 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Service.ViewModels.CharacterViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model CharacterViewModel
 @{
     var isEdit = Model.Id > 0;
@@ -115,17 +116,23 @@
                     <span asp-validation-for="SheetLink" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="Description" class="form-label">Description</label>
-                    <textarea asp-for="Description" class="form-control" rows="3" placeholder="Brief character description"></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
-                </div>
+                @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                   {
+                       FieldName = "Description",
+                       Value = Model.Description,
+                       Label = "Description",
+                       Required = false,
+                       Placeholder = "Brief character description..."
+                   }); }
 
-                <div class="mb-3">
-                    <label asp-for="Backstory" class="form-label">Backstory</label>
-                    <textarea asp-for="Backstory" class="form-control" rows="5" placeholder="Character backstory"></textarea>
-                    <span asp-validation-for="Backstory" class="text-danger"></span>
-                </div>
+                @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                   {
+                       FieldName = "Backstory",
+                       Value = Model.Backstory,
+                       Label = "Backstory",
+                       Required = false,
+                       Placeholder = "Character backstory..."
+                   }); }
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-warning">
@@ -190,6 +197,7 @@
 </div>
 
 @section Scripts {
+    @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
     <script>
         let classIndex = @(Model.Classes.Any() ? Model.Classes.Count : 1);
 

@@ -2,6 +2,7 @@
 @using QuestBoard.Domain.Enums
 @using Microsoft.AspNetCore.Http
 @model ShopIndexViewModel
+@inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @{
     ViewData["Title"] = "The Mystical Merchant's Emporium";
 }
@@ -304,9 +305,10 @@
                         <!-- Item Description -->
                         <div class="item-description">
                             @{
-                                var shortDescription = item.Description.Length > 120
-                                    ? item.Description.Substring(0, 120) + "..."
-                                    : item.Description;
+                                var plainDescription = MarkdownService.ExtractPlainText(item.Description);
+                                var shortDescription = plainDescription.Length > 120
+                                    ? plainDescription.Substring(0, 120) + "..."
+                                    : plainDescription;
                             }
                             @shortDescription
                         </div>

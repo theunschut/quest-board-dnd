@@ -12,6 +12,27 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
 {
     private static readonly IList<string> SamplePlayers = ["Arannis", "Tordek", "Mialee"];
 
+    // Structured-Markdown sample exercising headings/lists/blockquote styling and exceeding the
+    // default truncation budget (3 top-level blocks / 400 plain-text characters, 2/350 for
+    // SessionReminder's own override) so the read-more link is visible in the browser preview.
+    private const string SampleMarkdownDescription = """
+        ## The Sunken Archive
+
+        Deep beneath the tidal caves of Blackwater Bay lies a flooded library, said to hold the last surviving records of the Sunken Kings. Recovering even a single intact scroll would make any adventurer's name legend.
+
+        Before you descend, know this:
+
+        - The tide floods the lower archive twice a day — time your descent carefully
+        - Bioluminescent eels guard the deepest shelves and are drawn to torchlight
+        - The scrolls dissolve in fresh air within minutes unless sealed in wax
+
+        > "Three parties have gone in. None have come back with more than water-logged parchment and a grim story." — Harbor-master Wren
+
+        1. Scout the tidal entrance at low tide
+        2. Secure a sealed retrieval case before opening any shelf
+        3. Retreat the moment the bells of the tide-clock begin to toll
+        """;
+
     [HttpGet]
     public IActionResult Index()
     {
@@ -28,6 +49,7 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
               <li><a href="{{appUrl}}/EmailPreview/QuestFinalized">Quest Finalized</a></li>
               <li><a href="{{appUrl}}/EmailPreview/QuestDateChanged">Quest Date Changed</a></li>
               <li><a href="{{appUrl}}/EmailPreview/SessionReminder">Session Reminder</a></li>
+              <li><a href="{{appUrl}}/EmailPreview/WaitlistPromoted">Waitlist Promoted</a></li>
               <li><a href="{{appUrl}}/EmailPreview/Welcome">Welcome</a></li>
               <li><a href="{{appUrl}}/EmailPreview/AddedToGroup">Added To Group</a></li>
               <li><a href="{{appUrl}}/EmailPreview/ForgotPassword">Forgot Password</a></li>
@@ -46,7 +68,7 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
             [nameof(Components.Emails.QuestFinalized.QuestTitle)] = "The Tomb of Annihilation",
             [nameof(Components.Emails.QuestFinalized.DmName)] = "Dungeon Master Theomund",
             [nameof(Components.Emails.QuestFinalized.QuestDate)] = DateTime.Today.AddDays(7),
-            [nameof(Components.Emails.QuestFinalized.QuestDescription)] = "Deep in the jungles of Chult lies an ancient tomb that devours the souls of the dead. Your party must venture into the heart of darkness to stop the death curse before it claims you all.",
+            [nameof(Components.Emails.QuestFinalized.QuestDescription)] = SampleMarkdownDescription,
             [nameof(Components.Emails.QuestFinalized.ConfirmedPlayerNames)] = SamplePlayers,
             [nameof(Components.Emails.QuestFinalized.QuestUrl)] = $"{appUrl}/Quest",
             [nameof(Components.Emails.QuestFinalized.ChallengeRating)] = 9,
@@ -133,11 +155,29 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
             [nameof(Components.Emails.SessionReminder.QuestTitle)] = "The Tomb of Annihilation",
             [nameof(Components.Emails.SessionReminder.DmName)] = "Dungeon Master Theomund",
             [nameof(Components.Emails.SessionReminder.QuestDate)] = DateTime.Today.AddDays(1),
-            [nameof(Components.Emails.SessionReminder.QuestDescription)] = "Deep in the jungles of Chult lies an ancient tomb that devours the souls of the dead. Your party must venture into the heart of darkness to stop the death curse before it claims you all.",
+            [nameof(Components.Emails.SessionReminder.QuestDescription)] = SampleMarkdownDescription,
             [nameof(Components.Emails.SessionReminder.ConfirmedPlayerNames)] = SamplePlayers,
             [nameof(Components.Emails.SessionReminder.QuestUrl)] = $"{appUrl}/Quest",
             [nameof(Components.Emails.SessionReminder.ChallengeRating)] = 9,
             [nameof(Components.Emails.SessionReminder.AppUrl)] = appUrl,
+        });
+        return Content(html, "text/html");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> WaitlistPromoted()
+    {
+        var appUrl = emailOptions.Value.AppUrl;
+        var html = await emailRenderService.RenderAsync<Components.Emails.WaitlistPromoted>(new()
+        {
+            [nameof(Components.Emails.WaitlistPromoted.QuestTitle)] = "The Tomb of Annihilation",
+            [nameof(Components.Emails.WaitlistPromoted.DmName)] = "Dungeon Master Theomund",
+            [nameof(Components.Emails.WaitlistPromoted.QuestDate)] = DateTime.Today.AddDays(7),
+            [nameof(Components.Emails.WaitlistPromoted.QuestDescription)] = SampleMarkdownDescription,
+            [nameof(Components.Emails.WaitlistPromoted.PlayerName)] = "Arannis",
+            [nameof(Components.Emails.WaitlistPromoted.QuestUrl)] = $"{appUrl}/Quest",
+            [nameof(Components.Emails.WaitlistPromoted.ChallengeRating)] = 9,
+            [nameof(Components.Emails.WaitlistPromoted.AppUrl)] = appUrl,
         });
         return Content(html, "text/html");
     }

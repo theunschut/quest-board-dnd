@@ -1,4 +1,5 @@
 @using QuestBoard.Service.ViewModels.DungeonMasterViewModels
+@using QuestBoard.Service.Extensions
 @model DMProfileViewModel
 @{
     ViewData["Title"] = $"{Model.Name} — DM Profile";
@@ -44,7 +45,9 @@
         </h6>
         @if (!string.IsNullOrWhiteSpace(Model.Bio))
         {
-            <p class="dm-profile-bio-text">@Model.Bio</p>
+            <div class="dm-profile-bio-text">
+                @Html.Markdown(Model.Bio)
+            </div>
         }
         else
         {

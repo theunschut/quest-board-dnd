@@ -2,6 +2,7 @@
 @using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
+@using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.CalendarViewModels
 @model PlayerSignup
 @{
@@ -97,15 +98,13 @@
         @if (!string.IsNullOrWhiteSpace(Model.Quest?.Description))
         {
             <hr class="quest-card-divider mt-2 mb-2" />
-            <div class="quest-description-mobile">
-                @Model.Quest.Description
-            </div>
+            @Html.Markdown(Model.Quest.Description)
         }
         @if (!string.IsNullOrWhiteSpace(Model.Quest?.Rewards))
         {
             <hr class="quest-card-divider mt-2 mb-2" />
             <div class="quest-description-mobile">
-                <i class="fas fa-coins me-1"></i>@Model.Quest.Rewards
+                <i class="fas fa-coins me-1"></i>@Html.Markdown(Model.Quest.Rewards)
             </div>
         }
     </div>

@@ -1,5 +1,6 @@
 @using QuestBoard.Service.ViewModels.QuestLogViewModels
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Service.Extensions
 @model QuestLogDetailsViewModel
 @{
     ViewData["Title"] = $"Quest Log: {Model.Quest.Title}";
@@ -44,9 +45,7 @@
                 <!-- Original Quest Description -->
                 <div class="mb-4">
                     <h5 class="text-white"><i class="fas fa-scroll me-2"></i>Original Quest Description</h5>
-                    <div class="quest-description-box">
-                        @Model.Quest.Description
-                    </div>
+                    <div class="quest-description-box">@Html.Markdown(Model.Quest.Description)</div>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(Model.Quest.Rewards))
@@ -56,7 +55,7 @@
                     <!-- Rewards -->
                     <div class="mb-4">
                         <h5 class="text-white"><i class="fas fa-coins text-warning me-2"></i>Rewards</h5>
-                        <div class="quest-description-box">@Model.Quest.Rewards</div>
+                        <div class="quest-description-box">@Html.Markdown(Model.Quest.Rewards)</div>
                     </div>
                 }
 
@@ -119,7 +118,7 @@
                     @if (!string.IsNullOrWhiteSpace(Model.Quest.Recap))
                     {
                         <div class="recap-display-box">
-                            @Model.Quest.Recap
+                            @Html.Markdown(Model.Quest.Recap)
                         </div>
                     }
                     else

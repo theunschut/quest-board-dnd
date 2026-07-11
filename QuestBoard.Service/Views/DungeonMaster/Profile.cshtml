@@ -1,4 +1,5 @@
 @using QuestBoard.Service.ViewModels.DungeonMasterViewModels
+@using QuestBoard.Service.Extensions
 @model DMProfileViewModel
 @{
     ViewData["Title"] = $"{Model.Name} — DM Profile";
@@ -48,7 +49,7 @@
                 <div class="card-body modern-card-body">
                     @if (!string.IsNullOrWhiteSpace(Model.Bio))
                     {
-                        <p style="white-space: pre-wrap;">@Model.Bio</p>
+                        @Html.Markdown(Model.Bio)
                     }
                     else
                     {

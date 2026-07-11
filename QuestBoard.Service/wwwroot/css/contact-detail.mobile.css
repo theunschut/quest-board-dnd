@@ -76,6 +76,7 @@
 /* All text inside card — catch-all parchment override */
 .contact-detail-card p,
 .contact-detail-card a,
+.contact-detail-card li,
 .contact-detail-card span:not(.badge) {
     color: #F4E4BC !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
@@ -83,10 +84,22 @@
 
 /* Notes card — note items keep their own bordered/plain treatment (not parchment)
    since they mirror the desktop note-item convention (light bordered block, not
-   glass card text), so this scopes the catch-all parchment rules OUT of .note-item */
+   glass card text), so this scopes the catch-all parchment rules OUT of .note-item.
+   Headings are included here too -- markdown-content.css's pale-gold h1-h6 color is
+   meant for text on a dark background; .note-item's near-white background needs the
+   same dark-text treatment paragraphs/lists already get here, or a Markdown heading
+   in a note renders almost invisible. */
 .contact-detail-card .note-item,
 .contact-detail-card .note-item p,
-.contact-detail-card .note-item span:not(.badge) {
+.contact-detail-card .note-item a,
+.contact-detail-card .note-item li,
+.contact-detail-card .note-item span:not(.badge),
+.contact-detail-card .note-item h1,
+.contact-detail-card .note-item h2,
+.contact-detail-card .note-item h3,
+.contact-detail-card .note-item h4,
+.contact-detail-card .note-item h5,
+.contact-detail-card .note-item h6 {
     color: inherit !important;
     text-shadow: none !important;
 }

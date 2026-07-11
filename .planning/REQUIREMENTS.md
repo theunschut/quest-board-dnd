@@ -7,7 +7,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 
 ## v1 Requirements
 
-### Platform Settings (Phase 65 — Quest Board)
+### Platform Settings (Phase 72 — Quest Board)
 
 - [ ] **SETT-01**: SuperAdmin can navigate to an Omphalos Settings page from the `/platform` area
 - [ ] **SETT-02**: Settings page has input fields for Omphalos URL and shared secret
@@ -18,7 +18,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 - [ ] **SETT-07**: Settings page is protected by the `SuperAdminOnly` authorization policy
 - [ ] **SETT-08**: An EF Core migration creates the `IntegrationSetting` table
 
-### Navigation + Token Generation (Phase 66 — Quest Board)
+### Navigation + Token Generation (Phase 73 — Quest Board)
 
 - [ ] **NAV-01**: DM navbar dropdown shows an "Open DM Tool" link when integration is enabled and configured
 - [ ] **NAV-02**: Every Omphalos entry point — navbar link included — routes through the same signed-token generator; no surface ever links to Omphalos's raw base URL unsigned. (The old attempt's code review caught exactly this bug — WR-01 — on the navbar link; this requirement exists specifically to prevent a regression of it.)
@@ -33,7 +33,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 - [ ] **TOKEN-05**: A `QuestController.LaunchOmphalos(int id)` action generates the signed URL and redirects; returns a graceful response (not a raw error) when integration is disabled; protected by `DungeonMasterOnly` (defense in depth — does not rely solely on the button being hidden)
 - [ ] **TOKEN-06**: Quest title and date are included in the token payload for pass-through into Omphalos session naming
 
-### SSO Endpoint + Auto-Provisioning (Phase 67 — Omphalos)
+### SSO Endpoint + Auto-Provisioning (Phase 74 — Omphalos)
 
 - [ ] **SSO-01**: Omphalos exposes a new SSO endpoint (working assumption: `GET /api/sso/login`, following its existing `/api/auth/*` convention — confirm exact path with the maintainer) accepting the signed token
 - [ ] **SSO-02**: Endpoint validates the HMAC-SHA256 signature using a Quest Board shared-secret env var (distinct from Omphalos's own `Jwt:Secret`); invalid or missing signature returns HTTP 400
@@ -47,7 +47,7 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 - [ ] **SSO-10**: The `omphalos_token` cookie's `Secure` flag is enabled (resolves the existing commented-out TODO in `AuthEndpoints.cs`) — this milestone is what first exercises that cookie across a cross-app, cross-domain redirect
 - [ ] **SSO-11**: Omphalos independently enforces role/authorization on the SSO endpoint — it does not trust "the button was hidden on the Quest Board side" as its only access control
 
-### Session Linking (Phase 67 — Omphalos)
+### Session Linking (Phase 74 — Omphalos)
 
 - [ ] **LINK-01**: Omphalos's `User` entity gains a `QuestBoardUserId` column with a unique index — the authoritative cross-app identity match key (see TOKEN-04)
 - [ ] **LINK-02**: `GameSession` entity gains an `ExternalQuestId` (or equivalent) column with a unique partial index (non-null values only) for find-or-create lookups
@@ -74,41 +74,41 @@ This redoes the abandoned `milestone/3-omphalos-integration` attempt (old Phase 
 
 | Requirement | Phase | Repo | Status |
 |-------------|-------|------|--------|
-| SETT-01 | Phase 65 | Quest Board | Pending |
-| SETT-02 | Phase 65 | Quest Board | Pending |
-| SETT-03 | Phase 65 | Quest Board | Pending |
-| SETT-04 | Phase 65 | Quest Board | Pending |
-| SETT-05 | Phase 65 | Quest Board | Pending |
-| SETT-06 | Phase 65 | Quest Board | Pending |
-| SETT-07 | Phase 65 | Quest Board | Pending |
-| SETT-08 | Phase 65 | Quest Board | Pending |
-| NAV-01 | Phase 66 | Quest Board | Pending |
-| NAV-02 | Phase 66 | Quest Board | Pending |
-| NAV-03 | Phase 66 | Quest Board | Pending |
-| NAV-04 | Phase 66 | Quest Board | Pending |
-| NAV-05 | Phase 66 | Quest Board | Pending |
-| NAV-06 | Phase 66 | Quest Board | Pending |
-| TOKEN-01 | Phase 66 | Quest Board | Pending |
-| TOKEN-02 | Phase 66 | Quest Board | Pending |
-| TOKEN-03 | Phase 66 | Quest Board | Pending |
-| TOKEN-04 | Phase 66 | Quest Board | Pending |
-| TOKEN-05 | Phase 66 | Quest Board | Pending |
-| TOKEN-06 | Phase 66 | Quest Board | Pending |
-| SSO-01 | Phase 67 | Omphalos | Pending |
-| SSO-02 | Phase 67 | Omphalos | Pending |
-| SSO-03 | Phase 67 | Omphalos | Pending |
-| SSO-04 | Phase 67 | Omphalos | Pending |
-| SSO-05 | Phase 67 | Omphalos | Pending |
-| SSO-06 | Phase 67 | Omphalos | Pending |
-| SSO-07 | Phase 67 | Omphalos | Pending |
-| SSO-08 | Phase 67 | Omphalos | Pending |
-| SSO-09 | Phase 67 | Omphalos | Pending |
-| SSO-10 | Phase 67 | Omphalos | Pending |
-| SSO-11 | Phase 67 | Omphalos | Pending |
-| LINK-01 | Phase 67 | Omphalos | Pending |
-| LINK-02 | Phase 67 | Omphalos | Pending |
-| LINK-03 | Phase 67 | Omphalos | Pending |
-| LINK-04 | Phase 67 | Omphalos | Pending |
+| SETT-01 | Phase 72 | Quest Board | Pending |
+| SETT-02 | Phase 72 | Quest Board | Pending |
+| SETT-03 | Phase 72 | Quest Board | Pending |
+| SETT-04 | Phase 72 | Quest Board | Pending |
+| SETT-05 | Phase 72 | Quest Board | Pending |
+| SETT-06 | Phase 72 | Quest Board | Pending |
+| SETT-07 | Phase 72 | Quest Board | Pending |
+| SETT-08 | Phase 72 | Quest Board | Pending |
+| NAV-01 | Phase 73 | Quest Board | Pending |
+| NAV-02 | Phase 73 | Quest Board | Pending |
+| NAV-03 | Phase 73 | Quest Board | Pending |
+| NAV-04 | Phase 73 | Quest Board | Pending |
+| NAV-05 | Phase 73 | Quest Board | Pending |
+| NAV-06 | Phase 73 | Quest Board | Pending |
+| TOKEN-01 | Phase 73 | Quest Board | Pending |
+| TOKEN-02 | Phase 73 | Quest Board | Pending |
+| TOKEN-03 | Phase 73 | Quest Board | Pending |
+| TOKEN-04 | Phase 73 | Quest Board | Pending |
+| TOKEN-05 | Phase 73 | Quest Board | Pending |
+| TOKEN-06 | Phase 73 | Quest Board | Pending |
+| SSO-01 | Phase 74 | Omphalos | Pending |
+| SSO-02 | Phase 74 | Omphalos | Pending |
+| SSO-03 | Phase 74 | Omphalos | Pending |
+| SSO-04 | Phase 74 | Omphalos | Pending |
+| SSO-05 | Phase 74 | Omphalos | Pending |
+| SSO-06 | Phase 74 | Omphalos | Pending |
+| SSO-07 | Phase 74 | Omphalos | Pending |
+| SSO-08 | Phase 74 | Omphalos | Pending |
+| SSO-09 | Phase 74 | Omphalos | Pending |
+| SSO-10 | Phase 74 | Omphalos | Pending |
+| SSO-11 | Phase 74 | Omphalos | Pending |
+| LINK-01 | Phase 74 | Omphalos | Pending |
+| LINK-02 | Phase 74 | Omphalos | Pending |
+| LINK-03 | Phase 74 | Omphalos | Pending |
+| LINK-04 | Phase 74 | Omphalos | Pending |
 
 **Coverage:**
 - v1 requirements: 35 total

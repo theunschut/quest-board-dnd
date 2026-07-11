@@ -1,4 +1,5 @@
 @using QuestBoard.Service.ViewModels.DungeonMasterViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model EditDMProfileViewModel
 @{
     ViewData["Title"] = "Edit DM Profile";
@@ -44,13 +45,16 @@
             </div>
 
             <!-- Bio textarea below photo section -->
-            <div class="mb-3">
-                <label asp-for="Bio" class="form-label">Bio</label>
-                <textarea asp-for="Bio" class="form-control"
-                          rows="6" maxlength="2000"></textarea>
-                <span asp-validation-for="Bio" class="text-danger"></span>
-                <small class="form-text">Introduce yourself to the players (max 2000 characters).</small>
-            </div>
+            @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+               {
+                   FieldName = "Bio",
+                   Value = Model.Bio,
+                   Label = "Bio",
+                   Required = false,
+                   Placeholder = null,
+                   MaxLength = 2000
+               }); }
+            <small class="form-text">Introduce yourself to the players (max 2000 characters).</small>
 
             <div class="d-flex gap-2 mt-3">
                 <a asp-action="Profile" asp-route-id="@Model.DungeonMasterId" class="btn btn-secondary flex-fill">
@@ -114,6 +118,7 @@
 </div>
 
 @section Scripts {
+    @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
     <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
             integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
             crossorigin="anonymous"></script>
