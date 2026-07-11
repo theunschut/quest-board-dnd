@@ -1,11 +1,14 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: Omphalos Integration (redo)
+milestone_name: Omphalos Integration
+current_phase: 72
+current_phase_name: Platform Settings + Token Contract
 status: executing
-stopped_at: Phase 72 UI-SPEC approved (renumbered from 65 after v8.0 claimed 65–71)
-last_updated: "2026-07-11T00:00:00.000Z"
-last_activity: 2026-07-11 -- merged main (v8.0 Markdown Support shipped); renumbered phases 65–67 -> 72–74
+stopped_at: Phase 72 settings-storage redesign discussed (key-value + per-group override); context revised, REQUIREMENTS/PROJECT updated; plans 72-01/72-02 and UI-SPEC need regenerating
+last_updated: "2026-07-11T13:24:08.434Z"
+last_activity: 2026-07-11
+last_activity_desc: merged main, renumbered phases post-v8.0
 progress:
   total_phases: 3
   completed_phases: 0
@@ -93,7 +96,7 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-11 — merged `origin/main` (v8.0 shipped) into `milestone/v2-omphalos-integration`, renumbered phases 65–67 → 72–74
-Stopped at: Phase 72 UI-SPEC approved
-Resume file: .planning/phases/72-platform-settings-token-contract/72-UI-SPEC.md
+Last session: 2026-07-11T13:24:08.386Z
+Stopped at: Phase 72 settings-storage redesign discussed (key-value + per-group override); context revised, REQUIREMENTS/PROJECT updated; plans 72-01/72-02 and UI-SPEC need regenerating
+Resume file: .planning/phases/72-platform-settings-token-contract/72-CONTEXT.md
 Next step: `/gsd:plan-phase 72`
