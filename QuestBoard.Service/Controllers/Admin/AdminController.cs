@@ -18,7 +18,7 @@ using System.Threading.RateLimiting;
 namespace QuestBoard.Service.Controllers.Admin;
 
 [Authorize(Policy = "AdminOnly")]
-public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient) : Controller
+public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient, IBoardTypeResolver boardTypeResolver) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Users()
@@ -422,6 +422,8 @@ public class AdminController(IUserService userService, IQuestService questServic
         var sortedQuests = allQuests
             .OrderByDescending(q => q.CreatedAt)
             .ToList();
+
+        ViewBag.BoardType = await boardTypeResolver.GetBoardTypeAsync() ?? BoardType.OneShot;
 
         return View(sortedQuests);
     }

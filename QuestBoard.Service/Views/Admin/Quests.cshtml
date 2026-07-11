@@ -1,3 +1,4 @@
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
@@ -6,6 +7,7 @@
 
 @{
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardType = (BoardType)ViewBag.BoardType;
 }
 
 <div class="card modern-card">
@@ -66,8 +68,23 @@
                             string statusBadge;
                             string statusIcon;
                             string statusText;
-                            
-                            if (quest.IsFinalized && quest.FinalizedDate.HasValue && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+
+                            if (boardType == BoardType.Campaign)
+                            {
+                                if (quest.IsClosed)
+                                {
+                                    statusBadge = "bg-dark";
+                                    statusIcon = "fas fa-flag-checkered";
+                                    statusText = "Closed";
+                                }
+                                else
+                                {
+                                    statusBadge = "bg-success";
+                                    statusIcon = "fas fa-clock";
+                                    statusText = "Open";
+                                }
+                            }
+                            else if (quest.IsFinalized && quest.FinalizedDate.HasValue && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
                             {
                                 statusBadge = "bg-dark";
                                 statusIcon = "fas fa-flag-checkered";
