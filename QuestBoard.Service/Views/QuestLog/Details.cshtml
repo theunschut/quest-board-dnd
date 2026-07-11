@@ -45,9 +45,7 @@
                 <!-- Original Quest Description -->
                 <div class="mb-4">
                     <h5 class="text-white"><i class="fas fa-scroll me-2"></i>Original Quest Description</h5>
-                    <div class="quest-description-box">
-                        @Model.Quest.Description
-                    </div>
+                    <div class="quest-description-box">@Html.Markdown(Model.Quest.Description)</div>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(Model.Quest.Rewards))

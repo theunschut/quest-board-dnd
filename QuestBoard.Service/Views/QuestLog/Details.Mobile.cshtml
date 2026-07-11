@@ -43,9 +43,7 @@
         <!-- Original Quest Description -->
         <div class="mb-3">
             <h6><i class="fas fa-scroll me-2"></i>Original Quest Description</h6>
-            <div class="recap-display-box">
-                @Model.Quest.Description
-            </div>
+            <div class="recap-display-box">@Html.Markdown(Model.Quest.Description)</div>
         </div>
         <hr />
 
