@@ -199,20 +199,25 @@ namespace QuestBoard.Service.Controllers.Contacts
             // two checks can never drift apart.
             var hasNewOriginalUpload = viewModel.ContactImageFile != null && viewModel.ContactImageFile.Length > 0;
 
-            byte[]? newCroppedImageData = null;
-            if (hasNewOriginalUpload)
+            // The crop is read whenever it's submitted, independent of hasNewOriginalUpload, so a
+            // crop-only re-save (re-cropping the stored original without re-uploading it) isn't
+            // silently dropped -- ContactService.UpdateAsync already handles newCroppedImageData
+            // independently of hasNewOriginalUpload.
+            ImageFileInput? original = hasNewOriginalUpload
+                ? new ImageFileInput(viewModel.ContactImageFile!.Length, viewModel.ContactImageFile.ContentType,
+                    viewModel.ContactImageFile.FileName, nameof(viewModel.ContactImageFile))
+                : null;
+
+            ImageFileInput? cropped = null;
+            if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
             {
-                var newContactImageFile = viewModel.ContactImageFile!;
-                var original = new ImageFileInput(newContactImageFile.Length, newContactImageFile.ContentType,
-                    newContactImageFile.FileName, nameof(viewModel.ContactImageFile));
+                cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                    croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+            }
 
-                ImageFileInput? cropped = null;
-                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
-                {
-                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
-                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
-                }
-
+            byte[]? newCroppedImageData = null;
+            if (original != null || cropped != null)
+            {
                 var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
                 foreach (var error in validationErrors)
                 {
@@ -223,19 +228,22 @@ namespace QuestBoard.Service.Controllers.Contacts
                     viewModel.CanManage = true;
                     return View(viewModel);
                 }
+            }
 
+            if (hasNewOriginalUpload)
+            {
                 using var memoryStream = new MemoryStream();
-                await newContactImageFile.CopyToAsync(memoryStream, token);
+                await viewModel.ContactImageFile!.CopyToAsync(memoryStream, token);
                 existingContact.ContactImageData = memoryStream.ToArray();
-
-                if (cropped != null)
-                {
-                    using var croppedStream = new MemoryStream();
-                    await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
-                    newCroppedImageData = croppedStream.ToArray();
-                }
             }
             // Otherwise, the contact image remains unchanged.
+
+            if (cropped != null)
+            {
+                using var croppedStream = new MemoryStream();
+                await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+                newCroppedImageData = croppedStream.ToArray();
+            }
 
             // Passing hasNewOriginalUpload lets the service clear any stale cropped image when a
             // genuinely new original arrives, while preserving it on an edit that doesn't touch
