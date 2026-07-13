@@ -108,18 +108,22 @@ public class DungeonMasterController(
         byte[]? imageBytes = null;
         byte[]? newCroppedImageData = null;
         var newProfilePictureFile = viewModel.ProfilePictureFile;
-        if (newProfilePictureFile != null && newProfilePictureFile.Length > 0)
+        var hasNewOriginalUpload = newProfilePictureFile != null && newProfilePictureFile.Length > 0;
+
+        ImageFileInput? original = hasNewOriginalUpload
+            ? new ImageFileInput(newProfilePictureFile!.Length, newProfilePictureFile.ContentType,
+                newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile))
+            : null;
+
+        ImageFileInput? cropped = null;
+        if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
         {
-            var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
-                newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+            cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+        }
 
-            ImageFileInput? cropped = null;
-            if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
-            {
-                cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
-                    croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
-            }
-
+        if (original != null || cropped != null)
+        {
             var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
             foreach (var error in validationErrors)
             {
@@ -129,17 +133,20 @@ public class DungeonMasterController(
             {
                 return View(viewModel);
             }
+        }
 
+        if (hasNewOriginalUpload)
+        {
             using var memoryStream = new MemoryStream();
-            await newProfilePictureFile.CopyToAsync(memoryStream, token);
+            await newProfilePictureFile!.CopyToAsync(memoryStream, token);
             imageBytes = memoryStream.ToArray();
+        }
 
-            if (cropped != null)
-            {
-                using var croppedStream = new MemoryStream();
-                await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
-                newCroppedImageData = croppedStream.ToArray();
-            }
+        if (cropped != null)
+        {
+            using var croppedStream = new MemoryStream();
+            await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+            newCroppedImageData = croppedStream.ToArray();
         }
 
         await dmProfileService.UpsertProfileAsync(targetUser.Id, viewModel.Bio, imageBytes, newCroppedImageData: newCroppedImageData, token: token);
@@ -153,6 +160,23 @@ public class DungeonMasterController(
         if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
 
         var bytes = await dmProfileService.GetCroppedPictureAsync(id, token);
+        if (bytes == null || bytes.Length == 0) return NotFound();
+
+        var contentType = bytes.Length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50
+            ? "image/png"
+            : bytes.Length >= 6 && bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46
+            ? "image/gif"
+            : "image/jpeg";
+
+        return File(bytes, contentType);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOriginalDMProfilePicture(int id, CancellationToken token = default)
+    {
+        if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
+
+        var bytes = await dmProfileService.GetProfilePictureAsync(id, token);
         if (bytes == null || bytes.Length == 0) return NotFound();
 
         var contentType = bytes.Length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50
