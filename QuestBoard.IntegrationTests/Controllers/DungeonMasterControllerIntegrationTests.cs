@@ -2,6 +2,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -433,5 +434,54 @@ public class DungeonMasterControllerIntegrationTests(WebApplicationFactoryBase f
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
         var location = response.Headers.Location?.ToString() ?? string.Empty;
         location.Should().Contain("/groups/pick");
+    }
+
+    // Proves a crop-only submission (re-cropping the stored original without re-uploading a new
+    // ProfilePictureFile) is read, validated, and persisted by EditProfile POST, and — the
+    // explicit no-wipe assertion this task requires — the stored original survives untouched
+    // rather than being deleted by ApplyProfileImage receiving a null original.
+    [Fact]
+    public async Task EditProfile_CropOnlyNoNewOriginal_PreservesStoredOriginal()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dmcroponlyrecrop", "dmcroponlyrecrop@example.com", roles: ["DungeonMaster"]);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] staleCroppedBytes = [9, 9, 9, 9];
+        byte[] newCropBytes = [200, 201, 202, 203];
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dmProfileService = scope.ServiceProvider.GetRequiredService<IDungeonMasterProfileService>();
+            await dmProfileService.UpsertProfileAsync(
+                dmUser.Id, bio: "Original bio.", imageBytes: originalBytes, newCroppedImageData: staleCroppedBytes,
+                token: TestContext.Current.CancellationToken);
+        }
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(dmUser.Id.ToString()), "DungeonMasterId" },
+            { new StringContent("Original bio."), "Bio" }
+        };
+        // No ProfilePictureFile part -- this is the distinguishing property of a crop-only save.
+        var croppedFileContent = new ByteArrayContent(newCropBytes);
+        croppedFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(croppedFileContent, "CroppedPictureFile", "re-cropped.png");
+
+        var response = await dmClient.PostAsync(
+            $"/DungeonMaster/EditProfile/{dmUser.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope2 = factory.Services.CreateScope();
+        var context = scope2.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<DungeonMasterProfileImageEntity>().FindAsync(
+            [dmUser.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.OriginalImageData.Should().NotBeNull();
+        persistedImage.OriginalImageData.Should().Equal(originalBytes);
+        persistedImage.CroppedImageData.Should().Equal(newCropBytes);
     }
 }

@@ -198,6 +198,33 @@ public class ContactServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_CropOnlyNoNewOriginal_PersistsCropAndPreservesOriginal()
+    {
+        // Arrange: seed a contact with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactServiceTests." + nameof(UpdateAsync_CropOnlyNoNewOriginal_PersistsCropAndPreservesOriginal), groupContext);
+        await SeedContactWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new ContactRepository(context, mapper);
+        var service = new ContactService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        contact.Should().NotBeNull();
+        contact!.ContactImageData = null; // round-tripped value on a no-photo-change edit
+
+        // Act: re-crop of the already-stored original -- no new original uploaded this request
+        await service.UpdateAsync(contact, hasNewOriginalUpload: false, newCroppedImageData: [200, 201, 202], TestContext.Current.CancellationToken);
+
+        // Assert: the new crop is persisted AND the stored original is preserved
+        var original = await repository.GetContactOriginalImageAsync(1, TestContext.Current.CancellationToken);
+        var cropped = await repository.GetContactCroppedImageAsync(1, TestContext.Current.CancellationToken);
+        original.Should().Equal([1, 2, 3]);
+        cropped.Should().Equal([200, 201, 202]);
+    }
+
+    [Fact]
     public async Task AddAsync_NewCropSupplied_PersistsCrop()
     {
         // Arrange: a fresh group/creator, no contact yet

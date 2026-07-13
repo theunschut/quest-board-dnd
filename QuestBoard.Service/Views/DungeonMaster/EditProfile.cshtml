@@ -30,6 +30,11 @@
                                         <img src="@Url.Action("GetDMProfilePicture", new { id = Model.DungeonMasterId })"
                                              alt="Current profile photo"
                                              class="rounded-circle dm-profile-photo" />
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-warning mt-2" id="recropPhotoBtn">
+                                                <i class="fas fa-crop-alt me-1"></i>Re-crop Photo
+                                            </button>
+                                        </div>
                                     </div>
                                 }
                                 <input type="file" asp-for="ProfilePictureFile"
@@ -130,6 +135,6 @@
             crossorigin="anonymous"></script>
     <script src="~/js/image-crop.js" asp-append-version="true"></script>
     <script>
-        initImageCrop({ fileInputId: 'dmProfilePictureInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
+        initImageCrop({ fileInputId: 'dmProfilePictureInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1, recropButtonId: 'recropPhotoBtn', originalImageUrl: '@Url.Action("GetOriginalDMProfilePicture", new { id = Model.DungeonMasterId })' });
     </script>
 }

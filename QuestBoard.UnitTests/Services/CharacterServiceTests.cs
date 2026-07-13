@@ -201,6 +201,33 @@ public class CharacterServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_CropOnlyNoNewOriginal_PersistsCropAndPreservesOriginal()
+    {
+        // Arrange: seed a character with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("CharacterServiceTests." + nameof(UpdateAsync_CropOnlyNoNewOriginal_PersistsCropAndPreservesOriginal), groupContext);
+        await SeedCharacterWithImagesAsync(context, groupContext, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new CharacterRepository(context, mapper);
+        var service = new CharacterService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        var character = await repository.GetCharacterWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        character.Should().NotBeNull();
+        character!.ProfilePicture = null; // round-tripped value on a no-photo-change edit
+
+        // Act: re-crop of the already-stored original -- no new original uploaded this request
+        await service.UpdateAsync(character, hasNewOriginalUpload: false, newCroppedImageData: [200, 201, 202], TestContext.Current.CancellationToken);
+
+        // Assert: the new crop is persisted AND the stored original is preserved
+        var original = await repository.GetCharacterOriginalPictureAsync(1, TestContext.Current.CancellationToken);
+        var cropped = await repository.GetCharacterCroppedPictureAsync(1, TestContext.Current.CancellationToken);
+        original.Should().Equal([1, 2, 3]);
+        cropped.Should().Equal([200, 201, 202]);
+    }
+
+    [Fact]
     public async Task AddAsync_NewCropSupplied_PersistsCrop()
     {
         // Arrange: a fresh group/owner, no character yet
