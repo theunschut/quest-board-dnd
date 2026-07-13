@@ -268,21 +268,25 @@ namespace QuestBoard.Service.Controllers.Characters
             // two checks can never drift apart.
             var hasNewOriginalUpload = viewModel.ProfilePictureFile != null && viewModel.ProfilePictureFile.Length > 0;
 
-            // Handle profile picture upload - clear old picture first if new one is being uploaded
-            byte[]? newCroppedImageData = null;
-            if (hasNewOriginalUpload)
+            // The crop is read whenever it's submitted, independent of hasNewOriginalUpload, so a
+            // crop-only re-save (re-cropping the stored original without re-uploading it) isn't
+            // silently dropped -- CharacterService.UpdateAsync already handles newCroppedImageData
+            // independently of hasNewOriginalUpload.
+            ImageFileInput? original = hasNewOriginalUpload
+                ? new ImageFileInput(viewModel.ProfilePictureFile!.Length, viewModel.ProfilePictureFile.ContentType,
+                    viewModel.ProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile))
+                : null;
+
+            ImageFileInput? cropped = null;
+            if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
             {
-                var newProfilePictureFile = viewModel.ProfilePictureFile!;
-                var original = new ImageFileInput(newProfilePictureFile.Length, newProfilePictureFile.ContentType,
-                    newProfilePictureFile.FileName, nameof(viewModel.ProfilePictureFile));
+                cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
+                    croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
+            }
 
-                ImageFileInput? cropped = null;
-                if (viewModel.CroppedPictureFile is { Length: > 0 } croppedFile)
-                {
-                    cropped = new ImageFileInput(croppedFile.Length, croppedFile.ContentType,
-                        croppedFile.FileName, nameof(viewModel.CroppedPictureFile));
-                }
-
+            byte[]? newCroppedImageData = null;
+            if (original != null || cropped != null)
+            {
                 var validationErrors = imageValidationService.ValidateImagePair(original, cropped);
                 foreach (var error in validationErrors)
                 {
@@ -293,19 +297,22 @@ namespace QuestBoard.Service.Controllers.Characters
                     viewModel.IsOwner = existingCharacter.OwnerId == currentUser.Id;
                     return View(viewModel);
                 }
+            }
 
+            if (hasNewOriginalUpload)
+            {
                 using var memoryStream = new MemoryStream();
-                await newProfilePictureFile.CopyToAsync(memoryStream, token);
+                await viewModel.ProfilePictureFile!.CopyToAsync(memoryStream, token);
                 existingCharacter.ProfilePicture = memoryStream.ToArray();
-
-                if (cropped != null)
-                {
-                    using var croppedStream = new MemoryStream();
-                    await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
-                    newCroppedImageData = croppedStream.ToArray();
-                }
             }
             // Otherwise, profile picture remains unchanged
+
+            if (cropped != null)
+            {
+                using var croppedStream = new MemoryStream();
+                await viewModel.CroppedPictureFile!.CopyToAsync(croppedStream, token);
+                newCroppedImageData = croppedStream.ToArray();
+            }
 
             // Update classes
             existingCharacter.Classes = mapper.Map<List<CharacterClass>>(viewModel.Classes);

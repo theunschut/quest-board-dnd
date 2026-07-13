@@ -21,7 +21,12 @@ internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repos
         //                        non-null here already means a genuinely new original arrived --
         //                        unless newCroppedImageData supplies a real replacement crop.
         // removeImage == true  → explicitly clear the stored image (e.g. "remove photo" button)
-        // both false/null     → keep existing image unchanged (bio-only edit) -- the crop is
+        // newCroppedImageData only (imageBytes null, removeImage false) → a crop-only re-save --
+        //                        the caller re-cropped the already-stored original without
+        //                        re-uploading it, so the original must be re-fetched below
+        //                        rather than passed through as null (which the repository would
+        //                        otherwise interpret as "delete the image").
+        // all three absent    → keep existing image unchanged (bio-only edit) -- the crop is
         //                        preserved by construction, since the image is never touched on
         //                        this path.
         //
@@ -29,7 +34,13 @@ internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repos
         // repository call so a failure in either half cannot leave the profile in a
         // half-updated state (new photo, stale bio, or vice versa).
         var profile = await repository.GetProfileByUserIdAsync(userId, token);
-        var updateImage = imageBytes != null || removeImage;
+        var updateImage = imageBytes != null || removeImage || newCroppedImageData != null;
+
+        var isCropOnlyEdit = imageBytes == null && !removeImage && newCroppedImageData != null;
+        var originalImageData = isCropOnlyEdit
+            ? await repository.GetOriginalPictureAsync(userId, token)
+            : removeImage ? null : imageBytes;
+
         if (profile == null)
         {
             // Lazy create — profile entity does not exist until DM first saves. AddAsync must
@@ -40,11 +51,11 @@ internal class DungeonMasterProfileService(IDungeonMasterProfileRepository repos
             var newProfile = new DungeonMasterProfile { Id = userId, Bio = bio };
             await repository.AddAsync(newProfile, token);
             if (updateImage)
-                await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage: true, removeImage ? null : imageBytes, croppedImageData: newCroppedImageData, token);
+                await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage: true, originalImageData, croppedImageData: newCroppedImageData, token);
         }
         else
         {
-            await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage, removeImage ? null : imageBytes, croppedImageData: newCroppedImageData, token);
+            await repository.UpdateBioWithProfileImageAsync(userId, bio, updateImage, originalImageData, croppedImageData: newCroppedImageData, token);
         }
     }
 
