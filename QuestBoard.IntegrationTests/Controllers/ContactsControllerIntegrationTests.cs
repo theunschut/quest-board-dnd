@@ -725,6 +725,62 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         persistedImage!.OriginalImageData.Should().Equal(originalBytes);
     }
 
+    // Proves a crop-only submission (re-cropping the stored original without re-uploading a new
+    // ContactImageFile) is read, validated, and persisted by the controller, and the stored
+    // original survives untouched.
+    [Fact]
+    public async Task Edit_CropOnlyNoNewOriginal_PersistsCropAndPreservesOriginal()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_recrop_only", "contact_recrop_only@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact Getting Re-Cropped", groupId: 1);
+
+        byte[] originalBytes = [1, 2, 3, 4];
+        byte[] staleCroppedBytes = [9, 9, 9, 9];
+        byte[] newCropBytes = [200, 201, 202, 203];
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<ContactImageEntity>().Add(new ContactImageEntity
+            {
+                Id = contact.Id,
+                OriginalImageData = originalBytes,
+                CroppedImageData = staleCroppedBytes
+            });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var formContent = new MultipartFormDataContent
+        {
+            { new StringContent(contact.Id.ToString()), "Id" },
+            { new StringContent("Contact Getting Re-Cropped"), "Name" },
+            { new StringContent("Waterdeep"), "TownCity" },
+            { new StringContent(""), "SubLocation" },
+            { new StringContent(""), "Description" }
+        };
+        // No ContactImageFile part -- this is the distinguishing property of a crop-only save.
+        var croppedFileContent = new ByteArrayContent(newCropBytes);
+        croppedFileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        formContent.Add(croppedFileContent, "CroppedPictureFile", "re-cropped.png");
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedImage = await context.Set<ContactImageEntity>().FindAsync(
+            [contact.Id], TestContext.Current.CancellationToken);
+        persistedImage.Should().NotBeNull();
+        persistedImage!.CroppedImageData.Should().Equal(newCropBytes);
+        persistedImage.OriginalImageData.Should().Equal(originalBytes);
+    }
+
     // Visibility parity: the new GetCroppedContactImage read action must apply the identical
     // IsVisibleTo gate as GetContactImage — a hidden contact returns NotFound even though a
     // crop is stored.

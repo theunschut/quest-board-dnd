@@ -26,6 +26,11 @@
                         {
                             <div class="mb-2">
                                 <img src="@Url.Action("GetCroppedContactImage", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-warning mt-2" id="recropPhotoBtn">
+                                        <i class="fas fa-crop-alt me-1"></i>Re-crop Photo
+                                    </button>
+                                </div>
                             </div>
                         }
                         <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" />
@@ -137,6 +142,6 @@
             crossorigin="anonymous"></script>
     <script src="~/js/image-crop.js" asp-append-version="true"></script>
     <script>
-        initImageCrop({ fileInputId: 'contactImageInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
+        initImageCrop({ fileInputId: 'contactImageInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1, recropButtonId: 'recropPhotoBtn', originalImageUrl: '@Url.Action("GetContactImage", new { id = Model.Id })' });
     </script>
 }
