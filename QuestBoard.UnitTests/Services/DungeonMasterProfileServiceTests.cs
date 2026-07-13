@@ -128,6 +128,29 @@ public class DungeonMasterProfileServiceTests
         cropped.Should().Equal([70, 71, 72]);
     }
 
+    [Fact]
+    public async Task UpsertProfileAsync_CropOnlyNoNewOriginal_PersistsCropAndPreservesOriginal()
+    {
+        // Arrange: seed a DM profile with original A + crop A
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(UpsertProfileAsync_CropOnlyNoNewOriginal_PersistsCropAndPreservesOriginal), groupContext);
+        await SeedDungeonMasterProfileWithImagesAsync(context, 1, [1, 2, 3], [9, 9, 9]);
+
+        var mapper = CreateMapper();
+        var repository = new DungeonMasterProfileRepository(context, mapper);
+        var service = new DungeonMasterProfileService(repository, mapper);
+
+        // Act: re-crop of the already-stored original -- no new original uploaded, no removal
+        await service.UpsertProfileAsync(1, "Original bio.", imageBytes: null, removeImage: false, newCroppedImageData: [200, 201, 202], token: TestContext.Current.CancellationToken);
+
+        // Assert: the new crop is persisted AND the stored original is preserved, not wiped to
+        // null -- ApplyProfileImage treats a null original as "delete the whole image".
+        var cropped = await repository.GetCroppedPictureAsync(1, TestContext.Current.CancellationToken);
+        var original = await repository.GetOriginalPictureAsync(1, TestContext.Current.CancellationToken);
+        cropped.Should().Equal([200, 201, 202]);
+        original.Should().Equal([1, 2, 3]);
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }
