@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-11 — v8.0 milestone close)
 Phase: None (between milestones)
 Plan: None
 Status: v8.0 shipped; no active milestone
-Last activity: 2026-07-11 — v8.0 milestone archived
+Last activity: 2026-07-13 - Completed quick task 260713-js8: Add re-crop trigger for existing profile images (Characters, Contacts, DM Profile) and fix backend gaps that would drop or wipe crop-only submissions
 
 Progress: [██████████] 100% (v8.0, 7/7 phases)
 
@@ -68,6 +68,12 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 - `GroupSessionMiddleware` redirects on all HTTP verbs including POST — a POST-body data-loss risk if the session expires mid-submission; flagged by code review during Phase 31, not yet fixed.
 - `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` appears to be dead code (Platform area's `_ViewStart.cshtml` never selects it) — discovered during Phase 42 research, deliberately left unfixed as out-of-scope for that phase. See PROJECT.md Known Issues.
 - `GuildMembersController.Edit` POST's `SetAsMainCharacterAsync` demotion guard can never be true (dead code, predates Phase 56) — found during Phase 56 verification, flagged as a separate follow-up task, not yet actioned. See PROJECT.md Known Issues.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260713-js8 | Add re-crop trigger for existing profile images (Characters, Contacts, DM Profile) and fix backend gaps that would drop or wipe crop-only submissions | 2026-07-13 | d2f2f95 | [260713-js8-add-re-crop-trigger-for-existing-profile](./quick/260713-js8-add-re-crop-trigger-for-existing-profile/) |
 
 ## Deferred Items
 
