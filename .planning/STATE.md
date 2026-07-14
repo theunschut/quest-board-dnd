@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-07-11 — merged main post-v8.0 close; v
 
 Phase: 73 — Navigation + Token Generation
 Plan: Not started
-Status: Executing Phase 72
-Last activity: 2026-07-11 — Phase 72 complete, transitioned to Phase 73
+Status: Phase 73 context gathered, ready for planning
+Last activity: 2026-07-13 — Phase 73 context gathered
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -88,6 +88,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260713-js8 | Add re-crop trigger for existing profile images (Characters, Contacts, DM Profile) and fix backend gaps that would drop or wipe crop-only submissions | 2026-07-13 | d2f2f95 | [260713-js8-add-re-crop-trigger-for-existing-profile](./quick/260713-js8-add-re-crop-trigger-for-existing-profile/) |
+| 260714-b0w | Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist | 2026-07-14 | 79e76cb | [260714-b0w-waitlist-table-missing-on-quest-details-](./quick/260714-b0w-waitlist-table-missing-on-quest-details-/) |
 
 ## Deferred Items
 

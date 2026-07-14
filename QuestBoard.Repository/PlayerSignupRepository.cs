@@ -84,7 +84,16 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
             .Where(ps => ps.QuestId == questId && !ps.IsSelected && ps.SignupRole == (int)SignupRole.Player)
             .ToListAsync(cancellationToken);
 
+        // A freed seat can only go to a player who confirmed availability (Yes or Maybe) for the
+        // finalized date; a No vote - or no vote at all - never grants a seat, so those signups
+        // stay on the waitlist and are never auto-promoted into the participant list. This
+        // mirrors the seat-fill rule already applied when a player casts a Yes/Maybe vote.
         var entity = candidates
+            .Where(ps =>
+            {
+                var vote = VoteForProposedDate(ps, finalizedProposedDateId);
+                return vote == (int)VoteType.Yes || vote == (int)VoteType.Maybe;
+            })
             .OrderByDescending(ps => WaitlistOrdering.VotePriority(VoteForProposedDate(ps, finalizedProposedDateId)))
             .ThenBy(ps => ps.LastVoteChangeTime ?? ps.SignupTime)
             .FirstOrDefault();
