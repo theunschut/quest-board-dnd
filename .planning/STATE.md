@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-11 — v8.0 milestone close)
 Phase: None (between milestones)
 Plan: None
 Status: v8.0 shipped; no active milestone
-Last activity: 2026-07-13 - Completed quick task 260713-js8: Add re-crop trigger for existing profile images (Characters, Contacts, DM Profile) and fix backend gaps that would drop or wipe crop-only submissions
+Last activity: 2026-07-14 - Completed quick task 260714-b0w: Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist
 
 Progress: [██████████] 100% (v8.0, 7/7 phases)
 
@@ -74,6 +74,7 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260713-js8 | Add re-crop trigger for existing profile images (Characters, Contacts, DM Profile) and fix backend gaps that would drop or wipe crop-only submissions | 2026-07-13 | d2f2f95 | [260713-js8-add-re-crop-trigger-for-existing-profile](./quick/260713-js8-add-re-crop-trigger-for-existing-profile/) |
+| 260714-b0w | Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist | 2026-07-14 | 79e76cb | [260714-b0w-waitlist-table-missing-on-quest-details-](./quick/260714-b0w-waitlist-table-missing-on-quest-details-/) |
 
 ## Deferred Items
 
