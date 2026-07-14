@@ -348,6 +348,79 @@ public class PlayerSignupRepositoryTests
         candidate.Should().BeNull();
     }
 
+    [Fact]
+    public async Task GetTopWaitlistedCandidateAsync_AllNoVoters_ReturnsNull()
+    {
+        // Arrange: two waitlisted Player signups both voted No for the finalized date
+        await using var context = CreateContext(nameof(GetTopWaitlistedCandidateAsync_AllNoVoters_ReturnsNull));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 102);
+
+        var noVoter1 = MakeSignupEntity(1, questId: 1, isSelected: false);
+        noVoter1.DateVotes.Add(new PlayerDateVoteEntity { ProposedDateId = 5, PlayerSignupId = 1, Vote = (int)VoteType.No });
+
+        var noVoter2 = MakeSignupEntity(2, questId: 1, isSelected: false);
+        noVoter2.DateVotes.Add(new PlayerDateVoteEntity { ProposedDateId = 5, PlayerSignupId = 2, Vote = (int)VoteType.No });
+
+        context.PlayerSignups.AddRange(noVoter1, noVoter2);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var candidate = await repository.GetTopWaitlistedCandidateAsync(1, finalizedProposedDateId: 5, TestContext.Current.CancellationToken);
+
+        // Assert: a No voter never grants a seat, so the whole-No waitlist yields no candidate
+        candidate.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetTopWaitlistedCandidateAsync_NonVoterForFinalizedDate_ReturnsNull()
+    {
+        // Arrange: a waitlisted Player signup with no vote at all for the finalized date
+        await using var context = CreateContext(nameof(GetTopWaitlistedCandidateAsync_NonVoterForFinalizedDate_ReturnsNull));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
+
+        var nonVoter = MakeSignupEntity(1, questId: 1, isSelected: false);
+        context.PlayerSignups.Add(nonVoter);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var candidate = await repository.GetTopWaitlistedCandidateAsync(1, finalizedProposedDateId: 5, TestContext.Current.CancellationToken);
+
+        // Assert: no vote for the finalized date is treated the same as No — never a candidate
+        candidate.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetTopWaitlistedCandidateAsync_SkipsNoVoter_PromotesMaybeVoter()
+    {
+        // Arrange: one No voter and one Maybe voter waitlisted for the finalized date
+        await using var context = CreateContext(nameof(GetTopWaitlistedCandidateAsync_SkipsNoVoter_PromotesMaybeVoter));
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 101);
+        await SeedQuestAndUserAsync(context, questId: 1, playerId: 102);
+
+        var noVoter = MakeSignupEntity(1, questId: 1, isSelected: false);
+        noVoter.DateVotes.Add(new PlayerDateVoteEntity { ProposedDateId = 5, PlayerSignupId = 1, Vote = (int)VoteType.No });
+
+        var maybeVoter = MakeSignupEntity(2, questId: 1, isSelected: false);
+        maybeVoter.DateVotes.Add(new PlayerDateVoteEntity { ProposedDateId = 5, PlayerSignupId = 2, Vote = (int)VoteType.Maybe });
+
+        context.PlayerSignups.AddRange(noVoter, maybeVoter);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new PlayerSignupRepository(context, CreateMapper());
+
+        // Act
+        var candidate = await repository.GetTopWaitlistedCandidateAsync(1, finalizedProposedDateId: 5, TestContext.Current.CancellationToken);
+
+        // Assert: the No voter is excluded, so the Maybe voter is promoted
+        candidate.Should().NotBeNull();
+        candidate!.Id.Should().Be(2);
+    }
+
     // -------------------------------------------------------------------
     // GetByIdWithQuestAsync (cross-group regression coverage — RemovePlayerSignup's lookup)
     // -------------------------------------------------------------------

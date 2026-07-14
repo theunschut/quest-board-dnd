@@ -1,4 +1,5 @@
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @using QuestBoard.Service.Extensions
@@ -529,6 +530,89 @@ else
                             else
                             {
                                 <p class="text-muted">No participants selected for this quest.</p>
+                            }
+
+                            var waitlistFinalizedProposedDateManage = Model.ProposedDates?.FirstOrDefault(pd => pd.Date == Model.FinalizedDate);
+                            var waitlistPlayersManage = waitlistFinalizedProposedDateManage != null
+                                ? Model.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderWaitlist(waitlistFinalizedProposedDateManage.Id).ToList()
+                                : Model.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList();
+
+                            @if (waitlistPlayersManage.Any())
+                            {
+                                <h6>Waitlist:</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Player Name</th>
+                                                <th>Character</th>
+                                                <th>Role</th>
+                                                <th>Vote</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var player in waitlistPlayersManage)
+                                            {
+                                                var waitlistPlayerVoteManage = player.DateVotes
+                                                    ?.FirstOrDefault(dv => dv.ProposedDateId == waitlistFinalizedProposedDateManage?.Id)?.Vote;
+                                                <tr>
+                                                    <td>@player.Player.Name</td>
+                                                    <td>
+                                                        @if (player.Character != null)
+                                                        {
+                                                            <div class="d-flex align-items-center">
+                                                                <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
+                                                                     alt="@player.Character.Name"
+                                                                     class="character-mini-avatar me-2"
+                                                                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                                                <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
+                                                                    <i class="fas fa-user"></i>
+                                                                </span>
+                                                                <span>@player.Character.Name</span>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted fst-italic">No character</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-user me-1"></i>Player (Waitlist)
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        @if (waitlistPlayerVoteManage == VoteType.Yes)
+                                                        {
+                                                            <span class="badge bg-success">
+                                                                <i class="fas fa-check me-1"></i>Yes
+                                                            </span>
+                                                        }
+                                                        else if (waitlistPlayerVoteManage == VoteType.Maybe)
+                                                        {
+                                                            <span class="badge bg-warning text-dark">
+                                                                <i class="fas fa-question me-1"></i>Maybe
+                                                            </span>
+                                                        }
+                                                        else if (waitlistPlayerVoteManage == VoteType.No)
+                                                        {
+                                                            <span class="badge bg-danger">
+                                                                <i class="fas fa-times me-1"></i>No
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">
+                                                                <i class="fas fa-minus me-1"></i>No Vote
+                                                            </span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
                             }
 
                             <hr>
