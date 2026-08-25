@@ -146,3 +146,12 @@ None - no external service configuration required.
 ---
 *Phase: 72-change-character-on-an-existing-signup*
 *Completed: 2026-08-25*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/Views/Quest/Details.Mobile.cshtml
+- FOUND: QuestBoard.IntegrationTests/Mobile/QuestDetailsMobileCharacterControlTests.cs
+- FOUND: .planning/phases/72-change-character-on-an-existing-signup/72-04-SUMMARY.md
+- FOUND commit: b9e487e (Task 1)
+- FOUND commit: 7b46f82 (Task 2)
+- FOUND commit: 5d438ab (Task 3)
