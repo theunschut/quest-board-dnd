@@ -15,10 +15,19 @@ files_reviewed_list:
   - QuestBoard.IntegrationTests/Helpers/TestDataHelper.cs
   - QuestBoard.UnitTests/Extensions/CharacterDisplayExtensionsTests.cs
 findings:
+  critical: 0
+  warning: 6
+  info: 4
+  total: 10
+findings_as_reviewed:
   critical: 2
   warning: 7
   info: 4
   total: 13
+resolved:
+  - CR-01
+  - CR-02
+  - WR-03
 status: issues_found
 ---
 
@@ -380,3 +389,22 @@ caller's full character roster with no control that can use it.
 _Reviewed: 2026-08-25T13:59:48Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+## Resolution
+
+Both blockers were fixed before the phase closed. Counts in `findings` above reflect what
+remains open; `findings_as_reviewed` preserves the original review outcome.
+
+| ID | Status | How |
+|----|--------|-----|
+| CR-01 | Resolved | Added `IPlayerSignupRepository.UpdateCharacterAsync`, a targeted scalar write that leaves the date-vote collection untouched, and routed `PlayerSignupService.UpdateSignupCharacterAsync` through it. Loading the votes first was tried and rejected: re-adding id-bearing vote entities after `Clear()` raises a delete/insert conflict. |
+| CR-02 | Resolved | Dropped the `CharacterStatus.Active` clause from both signup-time save paths in `QuestController`, leaving ownership as the only gate — matching the change path and the full list the pickers offer. |
+| WR-03 | Resolved | `UpdateSignupCharacter_Post_WhenSignupHasDateVotes_LeavesThoseVotesIntact` seeds a date vote, changes the character, and asserts the vote survives. Verified to fail against the pre-fix implementation. |
+
+CR-02 coverage lives in `QuestBoard.IntegrationTests/Controllers/QuestSignupCharacterStatusTests.cs`:
+Retired at signup, Retired and Dead at join, plus one pinning that ownership is still enforced.
+The first three were verified to fail against the pre-fix implementation; the ownership test
+passes either way, confirming it discriminates the right thing.
+
+Still open: WR-01, WR-02, WR-04, WR-05, WR-06, WR-07 and all four Info findings.
+Full suite after the fixes: 313 unit + 431 integration, 0 failures.
