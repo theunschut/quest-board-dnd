@@ -2,16 +2,17 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase_name: defining requirements
+current_phase: 72
+current_phase_name: change-character-on-an-existing-signup
 status: executing
 stopped_at: Phase 72 context gathered
-last_updated: "2026-08-25T13:14:55.082Z"
+last_updated: "2026-08-25T13:18:03.595Z"
 last_activity: 2026-08-25
-last_activity_desc: Milestone v9.0 started
+last_activity_desc: Phase 72 execution started
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -23,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** v9.0 Rolling Improvements — rolling bucket for ad-hoc features and fixes; branch `milestone/v9-rolling-improvements`
+**Current focus:** Phase 72 — change-character-on-an-existing-signup
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-08-25 — Milestone v9.0 started
+Phase: 72 (change-character-on-an-existing-signup) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 72
+Last activity: 2026-08-25 — Phase 72 execution started
 
 ## Performance Metrics
 
