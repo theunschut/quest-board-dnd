@@ -405,11 +405,13 @@ public class QuestController(
         signup.Role = (SignupRole)selectedRole; // Set role from form
 
         
-        // Validate character if selected
+        // Validate character if selected. Ownership is the only gate — a player may bring a
+        // Retired or Dead character to a signup, matching the character-change path and the
+        // full list the pickers offer.
         if (signup.CharacterId.HasValue)
         {
             var character = await characterService.GetCharacterWithDetailsAsync(signup.CharacterId.Value);
-            if (character == null || character.OwnerId != user.Id || character.Status != CharacterStatus.Active)
+            if (character == null || character.OwnerId != user.Id)
             {
                 ModelState.AddModelError("", "Invalid character selection.");
                 return await Details(questId);
@@ -450,11 +452,13 @@ public class QuestController(
         var isPlayerRoleWithSpace = role != SignupRole.Player
             || quest.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() < quest.TotalPlayerCount;
 
-        // Validate character if selected
+        // Validate character if selected. Ownership is the only gate — a player may bring a
+        // Retired or Dead character to a signup, matching the character-change path and the
+        // full list the pickers offer.
         if (characterId.HasValue)
         {
             var character = await characterService.GetCharacterWithDetailsAsync(characterId.Value);
-            if (character == null || character.OwnerId != user.Id || character.Status != CharacterStatus.Active)
+            if (character == null || character.OwnerId != user.Id)
             {
                 ModelState.AddModelError("", "Invalid character selection.");
                 return RedirectToAction("Details", new { id = questId });
