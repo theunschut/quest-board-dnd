@@ -2,11 +2,14 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
+current_phase_name: defining requirements
 status: planning
-last_updated: "2026-08-25T07:23:57.274Z"
+stopped_at: Phase 72 context gathered
+last_updated: "2026-08-25T11:14:47.562Z"
 last_activity: 2026-08-25
+last_activity_desc: Milestone v9.0 started
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -83,9 +86,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-11 — milestone close (`/gsd-complete-milestone 8`)
-Stopped at: v8.0 archived; awaiting `/gsd-new-milestone` to start v9.0
-Resume file: none — no phase in progress
+Last session: 2026-08-25T11:14:47.548Z
+Stopped at: Phase 72 context gathered
+Resume file: .planning/phases/72-change-character-on-an-existing-signup/72-CONTEXT.md
 
 ## Operator Next Steps
 
