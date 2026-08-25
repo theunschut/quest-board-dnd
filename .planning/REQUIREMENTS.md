@@ -27,10 +27,48 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **SECALERT-04**: The investigation and its outcome are recorded in `.planning/PROJECT.md`, so a future reviewer can distinguish a genuine triage from a rubber stamp without relying on GitHub's UI history
 - [ ] **SECALERT-05**: The GitHub Security tab shows zero open HIGH alerts for this repository once the phase closes
 
+### Calendar Events — Foundation
+
+- [ ] **EVENT-01**: A DM can create an event on their board with a title, an optional description, a date, and an optional start time
+- [ ] **EVENT-02**: A DM can edit and delete events on their own board; events are scoped to that board and never visible to another
+- [ ] **EVENT-03**: Events appear on the desktop calendar page, visually distinguishable from quests at a glance
+- [ ] **EVENT-04**: Events appear on the mobile calendar page, which today lists only days that have quests
+- [ ] **EVENT-05**: Events never appear on the quest board main page and never block or constrain quest creation — they are informational only
+- [ ] **EVENT-06**: "Create Event" sits in the same navbar category as "Create Quest" and is available to all DM roles
+
+### Calendar Events — Availability
+
+- [ ] **EVTAVAIL-01**: On a One-Shot board, a player can optionally sign up to an event and record their availability as Yes, Maybe, or No — with no signup created unless they choose to
+- [ ] **EVTAVAIL-02**: On a Campaign board, every board member is automatically signed up to each event with availability Yes, and opts out by changing their own answer to No rather than by removing the signup
+- [ ] **EVTAVAIL-03**: A player can change their availability on an event at any time
+- [ ] **EVTAVAIL-04**: A member who joins a Campaign board after events already exist is auto-signed-up to the future events, and a member who leaves keeps their past answers while their future auto-signups are removed
+- [ ] **EVTAVAIL-05**: A player cannot see or change availability for an event on a board they are not a member of, proven by an automated test using two distinct groups
+
+### Calendar Events — Recurrence
+
+- [ ] **EVTRECUR-01**: A DM can make an event recur by setting a base cadence (every N weeks on a given weekday), an anchor date, and a repeating on/off cycle mask — so "two sessions on, two off" is expressible directly
+- [ ] **EVTRECUR-02**: While configuring a series, the DM sees a live preview of the next ~10 dates it will generate, before saving
+- [ ] **EVTRECUR-03**: Occurrences are generated ahead of time on a rolling window and topped up automatically, so an open-ended campaign never needs manual re-extension
+- [ ] **EVTRECUR-04**: A DM can cancel a single occurrence without affecting the rest of the series
+- [ ] **EVTRECUR-05**: A DM can move a single occurrence to a different date without affecting the rest of the series
+- [ ] **EVTRECUR-06**: A DM can edit a single occurrence's details without affecting the rest of the series
+- [ ] **EVTRECUR-07**: Re-running the occurrence generator never duplicates an existing occurrence, resurrects a cancelled one, or overwrites one that was moved or edited
+- [ ] **EVTRECUR-08**: Two boards can be configured with mirrored cycle masks on the same cadence and anchor so their sessions interleave rather than collide
+
+### Calendar Events — Availability Overview
+
+- [ ] **EVTVIEW-01**: A new page shows upcoming events for the current board as a grid of events against players, with each player's availability
+- [ ] **EVTVIEW-02**: The overview visually distinguishes an untouched default from an answer the player actually gave, so "available" is not confused with "never looked"
+- [ ] **EVTVIEW-03**: The overview shows a per-event availability count, so a poorly-attended date is obvious at a glance
+- [ ] **EVTVIEW-04**: The overview never displays events or members from another board
+
 ## Future Requirements
 
 Deferred — revisit if the need becomes real.
 
+- [ ] **EVTNOTIFY-01**: Notify board members by email when an event occurrence is cancelled or moved — deliberately deferred out of the opening scope. This is a genuine two-sided trade-off, not an obvious no: `QuestDateChangedEmailJob` is direct precedent *for* notifying on a moved date, while Phase 36 deliberately engineered Campaign boards to fire no scheduling email at all. Decide once real Campaign usage exists rather than guessing at rate-limit impact up front.
+- [ ] **EVTRECUR-09**: Regenerate untouched future occurrences when a series rule is edited. Initial behaviour is additive-only — an edited rule never retroactively deletes or rewrites occurrences that already exist, especially ones people have voted on.
+- [ ] **EVENT-07**: A Campaign-board event that skips auto-signup (e.g. "holiday, no session") — a mixed-purpose board case outside the current scope
 - [ ] **SIGNCHAR-08**: A "recently changed" indicator on the DM's Manage page, showing that a player swapped character since finalization — surfaced during research as the cheap alternative to an email notification; the operator chose no notification for v9.0, and this edges toward the audit-trail exclusion below
 - [ ] Digest batching for session reminders — single combined email when a player has multiple same-day quests (EMAIL-04 / REMIND-02, deferred since v4.0; same-day quests have never occurred in over a year)
 - [ ] Markdown toolbar extras — strikethrough, horizontal rule, cheatsheet link (EDITOR-07/08/09, deferred at v8.0 close; add only if users ask)
@@ -47,29 +85,59 @@ Explicit exclusions for v9.0, with reasoning.
 - **Auto-clearing an inactive character server-side** — surprising and undiscoverable. SIGNCHAR-04 keeps the decision with the player instead.
 - **Adding a `.github/dependabot.yml`** — none exists today. It governs Dependabot *version-update PRs*, not *alerts*, so it would have no effect on alert staleness.
 - **Bumping or adding any NuGet package for the security alerts** — `System.Security.Cryptography.Xml` is absent from every tracked `.csproj` and from the transitive graph. There is nothing to bump.
+- **An `EventType` field on events** — the distinction between "a day is blocked" and "this is a play session" derives entirely from the board's already-immutable `BoardType`. A second discriminator would duplicate it and let the two disagree. Matches the existing `CloseQuestAsync`/`ReopenQuestAsync` vs `FinalizeQuestAsync`/`OpenQuestAsync` split.
+- **Any relation between an Event and a Quest entity** — events are informational by definition. A foreign key would invite exactly the blocking semantics that were explicitly ruled out.
+- **An RRULE / iCalendar library for recurrence** — RFC 5545's `BYSETPOS` selects only within a single interval, not across periods, so a repeating on/off mask riding a base cadence is not expressible. Any library would need post-filtering anyway, adding a dependency for negative benefit.
+- **`DateTimeOffset` or UTC storage for occurrence dates** — an event date is a calendar date, not an instant. `DateOnly` makes the DST bug class structurally impossible and avoids introducing a second timezone strategy alongside the existing `FinalizedDate` convention.
+- **A client-side calendar component or JS calendar library** — the existing hand-rolled Razor month grid is fused with quest vote-button and signup rendering, not a generic widget. Events extend it; they do not justify replacing it.
+- **Cross-board collision warnings when configuring a recurring series** — flagging that a generated date collides with an event on another board would be noise for boards that have nothing to do with each other, and would train people to ignore the warning. The date preview covers the real need.
+- **A shared cadence entity spanning two boards** — this would make interleaving structurally correct rather than configuration-dependent, but a board *is* a group, so it would cut through the tenant isolation model that has already leaked twice (v7.0, Phases 49/55). Not worth the trade.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIGNCHAR-01 | — | Pending roadmap |
-| SIGNCHAR-02 | — | Pending roadmap |
-| SIGNCHAR-03 | — | Pending roadmap |
-| SIGNCHAR-04 | — | Pending roadmap |
-| SIGNCHAR-05 | — | Pending roadmap |
-| SIGNCHAR-06 | — | Pending roadmap |
-| SIGNCHAR-07 | — | Pending roadmap |
-| SECALERT-01 | — | Pending roadmap |
-| SECALERT-02 | — | Pending roadmap |
-| SECALERT-03 | — | Pending roadmap |
-| SECALERT-04 | — | Pending roadmap |
-| SECALERT-05 | — | Pending roadmap |
+| SIGNCHAR-01 | Phase 72 | Not started |
+| SIGNCHAR-02 | Phase 72 | Not started |
+| SIGNCHAR-03 | Phase 72 | Not started |
+| SIGNCHAR-04 | Phase 72 | Not started |
+| SIGNCHAR-05 | Phase 72 | Not started |
+| SIGNCHAR-06 | Phase 72 | Not started |
+| SIGNCHAR-07 | Phase 72 | Not started |
+| SECALERT-01 | Phase 73 | Not started |
+| SECALERT-02 | Phase 73 | Not started |
+| SECALERT-03 | Phase 73 | Not started |
+| SECALERT-04 | Phase 73 | Not started |
+| SECALERT-05 | Phase 73 | Not started |
+| EVENT-01 | Phase 74 | Not started |
+| EVENT-02 | Phase 74 | Not started |
+| EVENT-03 | Phase 74 | Not started |
+| EVENT-04 | Phase 74 | Not started |
+| EVENT-05 | Phase 74 | Not started |
+| EVENT-06 | Phase 74 | Not started |
+| EVTAVAIL-01 | Phase 75 | Not started |
+| EVTAVAIL-02 | Phase 75 | Not started |
+| EVTAVAIL-03 | Phase 75 | Not started |
+| EVTAVAIL-04 | Phase 75 | Not started |
+| EVTAVAIL-05 | Phase 75 | Not started |
+| EVTRECUR-01 | Phase 76 | Not started |
+| EVTRECUR-02 | Phase 76 | Not started |
+| EVTRECUR-03 | Phase 76 | Not started |
+| EVTRECUR-04 | Phase 76 | Not started |
+| EVTRECUR-05 | Phase 76 | Not started |
+| EVTRECUR-06 | Phase 76 | Not started |
+| EVTRECUR-07 | Phase 76 | Not started |
+| EVTRECUR-08 | Phase 76 | Not started |
+| EVTVIEW-01 | Phase 77 | Not started |
+| EVTVIEW-02 | Phase 77 | Not started |
+| EVTVIEW-03 | Phase 77 | Not started |
+| EVTVIEW-04 | Phase 77 | Not started |
 
 **Coverage:**
 
-- v1 requirements: 12 total
-- Mapped to phases: 0/12 (roadmap pending)
-- Unmapped: 12
+- v1 requirements: 35 total
+- Mapped to phases: 35/35 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-08-25*
