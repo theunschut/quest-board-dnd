@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
 
@@ -448,5 +449,61 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
             // tests in this class are unaffected by execution order.
             factory.TestGroupContext.ActiveGroupId = 1;
         }
+    }
+    // A character change is a scalar edit, but the repository update rewrites the signup's
+    // whole date-vote collection from the model it is handed. If the signup is loaded without
+    // its votes, saving a new character silently deletes them — which drops the player from
+    // reminder eligibility and waitlist promotion while telling them the change succeeded.
+    [Fact]
+    public async Task UpdateSignupCharacter_Post_WhenSignupHasDateVotes_LeavesThoseVotesIntact()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(factory.Services, "charvotedm", "charvotedm@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(factory.Services, dm.Id, "Vote Preserving Quest");
+        var proposedDate = await TestDataHelper.CreateProposedDateAsync(factory.Services, quest.Id, DateTime.UtcNow.AddDays(5));
+
+        var (playerClient, player) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "charvote", "charvote@example.com");
+
+        var firstCharacter = await TestDataHelper.CreateTestCharacterAsync(factory.Services, player.Id, "Vote First");
+        var secondCharacter = await TestDataHelper.CreateTestCharacterAsync(factory.Services, player.Id, "Vote Second");
+
+        var signup = await TestDataHelper.CreatePlayerSignupAsync(factory.Services, quest.Id, player.Id, characterId: firstCharacter.Id);
+
+        using (var seedScope = factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            seedContext.Set<PlayerDateVoteEntity>().Add(
+                new PlayerDateVoteEntity { PlayerSignupId = signup.Id, ProposedDateId = proposedDate.Id, Vote = (int)VoteType.Yes });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["questId"] = quest.Id.ToString(),
+            ["characterId"] = secondCharacter.Id.ToString()
+        });
+
+        // Act
+        var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var savedSignup = await context.PlayerSignups
+            .FirstOrDefaultAsync(s => s.QuestId == quest.Id && s.PlayerId == player.Id, TestContext.Current.CancellationToken);
+        savedSignup.Should().NotBeNull();
+        savedSignup!.CharacterId.Should().Be(secondCharacter.Id);
+
+        var votes = await context.Set<PlayerDateVoteEntity>()
+            .Where(v => v.PlayerSignupId == signup.Id)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        votes.Should().ContainSingle("changing a character must not disturb the player's date votes");
+        votes[0].ProposedDateId.Should().Be(proposedDate.Id);
+        votes[0].Vote.Should().Be((int)VoteType.Yes);
     }
 }

@@ -20,6 +20,17 @@ internal class PlayerSignupRepository(QuestBoardContext dbContext, IMapper mappe
     }
 
     /// <inheritdoc/>
+    public async Task<bool> UpdateCharacterAsync(int playerSignupId, int? characterId, CancellationToken cancellationToken = default)
+    {
+        var entity = await DbSet.FirstOrDefaultAsync(ps => ps.Id == playerSignupId, cancellationToken);
+        if (entity == null) return false;
+
+        entity.CharacterId = characterId;
+        await DbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <inheritdoc/>
     public async Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default)
     {
         var entity = await DbSet
