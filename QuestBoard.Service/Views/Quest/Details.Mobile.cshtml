@@ -212,7 +212,24 @@
                             <span class="badge bg-info ms-1">You</span>
                         }
                         <br>
-                        <small class="text-muted">@(participant.Character?.Name ?? "No character")</small>
+                        <small class="text-muted">
+                            @if (participant.Character != null)
+                            {
+                                @participant.Character.Name
+                                if (isCurrentUser)
+                                {
+                                    <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-info" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="@participant.Character.Id" data-current-character-label="@participant.Character.ToSelectLabel()" title="Change character"><i class="fas fa-edit fa-xs"></i></button>
+                                }
+                            }
+                            else
+                            {
+                                @:No character
+                                if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                {
+                                    <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
+                                }
+                            }
+                        </small>
                     </div>
                     <span class="badge @roleBadge">@roleText</span>
                 </div>
@@ -240,7 +257,24 @@
                             <span class="badge bg-info ms-1">You</span>
                         }
                         <br>
-                        <small class="text-muted">@(player.Character?.Name ?? "No character")</small>
+                        <small class="text-muted">
+                            @if (player.Character != null)
+                            {
+                                @player.Character.Name
+                                if (isCurrentUser)
+                                {
+                                    <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-info" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="@player.Character.Id" data-current-character-label="@player.Character.ToSelectLabel()" title="Change character"><i class="fas fa-edit fa-xs"></i></button>
+                                }
+                            }
+                            else
+                            {
+                                @:No character
+                                if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                {
+                                    <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
+                                }
+                            }
+                        </small>
                     </div>
                     @if (playerVote == VoteType.Yes)
                     {
@@ -383,6 +417,8 @@
             </button>
         }
     }
+
+    @{ await Html.RenderPartialAsync("_CharacterSelectModal"); }
 
 </div>
 
