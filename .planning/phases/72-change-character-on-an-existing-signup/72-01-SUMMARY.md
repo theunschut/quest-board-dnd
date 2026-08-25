@@ -172,3 +172,11 @@ None - no external service configuration required.
 ---
 *Phase: 72-change-character-on-an-existing-signup*
 *Completed: 2026-08-25*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.IntegrationTests/Controllers/QuestUpdateSignupCharacterTests.cs
+- FOUND: .planning/phases/72-change-character-on-an-existing-signup/72-01-SUMMARY.md
+- FOUND commit: c6952cd (Task 1)
+- FOUND commit: 580fddf (Task 2)
+- FOUND commit: de70110 (Task 3)
