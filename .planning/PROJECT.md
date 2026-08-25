@@ -14,9 +14,17 @@
 
 </details>
 
-## Next Milestone
+## Current Milestone: v9.0 Rolling Improvements
 
-Not yet planned. Run `/gsd-new-milestone` to begin questioning → research → requirements → roadmap.
+**Goal:** An open-ended bucket milestone for small, ad-hoc features and bug fixes — phases are appended as items come up rather than scoped up front.
+
+**Target features:**
+- Change the character selected on an existing quest signup (desktop + mobile quest Details, including clearing back to no character)
+- Investigate and resolve the 5 open HIGH GitHub security alerts
+
+**Working branch:** `milestone/v9-rolling-improvements`
+
+**Note:** Unlike v1.0–v8.0, this milestone has no fixed end-state. Additional phases will be added via `/gsd-phase` as ad-hoc work arrives, and the milestone closes when the operator decides to cut it.
 
 ---
 
@@ -245,4 +253,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-11 after v8.0 milestone close.*
+*Last updated: 2026-08-25 at v9.0 Rolling Improvements milestone start.*

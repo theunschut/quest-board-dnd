@@ -1,39 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.0
-milestone_name: Markdown Support
-current_phase: null
-status: shipped
-stopped_at: v8.0 milestone complete — archived and closed
-last_updated: "2026-07-11T00:00:00.000Z"
-last_activity: 2026-07-11
-last_activity_desc: v8.0 Markdown Support milestone shipped and archived
+milestone: v9.0
+milestone_name: Rolling Improvements
+status: planning
+last_updated: "2026-08-25T07:23:57.274Z"
+last_activity: 2026-08-25
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
-current_phase_name: null
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-11 — v8.0 milestone close)
+See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Planning next milestone — run `/gsd-new-milestone`
+**Current focus:** v9.0 Rolling Improvements — rolling bucket for ad-hoc features and fixes; branch `milestone/v9-rolling-improvements`
 
 ## Current Position
 
-Phase: None (between milestones)
-Plan: None
-Status: v8.0 shipped; no active milestone
-Last activity: 2026-07-14 - Completed quick task 260714-b0w: Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist
-
-Progress: [██████████] 100% (v8.0, 7/7 phases)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-08-25 — Milestone v9.0 started
 
 ## Performance Metrics
 
