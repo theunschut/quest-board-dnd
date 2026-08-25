@@ -48,7 +48,8 @@ public static class TestDataHelper
         int questId,
         int playerId,
         int signupRole = 0,
-        bool isSelected = false)
+        bool isSelected = false,
+        int? characterId = null)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -59,7 +60,8 @@ public static class TestDataHelper
             PlayerId = playerId,
             SignupRole = signupRole,
             IsSelected = isSelected,
-            SignupTime = DateTime.UtcNow
+            SignupTime = DateTime.UtcNow,
+            CharacterId = characterId
         };
 
         context.PlayerSignups.Add(signup);

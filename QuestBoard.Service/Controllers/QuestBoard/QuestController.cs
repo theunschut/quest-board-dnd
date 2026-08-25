@@ -323,11 +323,13 @@ public class QuestController(
             {
                 currentUser = await userService.GetByIdAsync(userEntity.Id, token);
                 
-                // Get user's active characters
+                // Every character the caller owns on the board they are currently viewing,
+                // whatever its status, so the signup/change pickers offer exactly what the
+                // save path will accept. Board scoping comes from the entity's global query
+                // filter, not from this method.
                 if (currentUser != null)
                 {
-                    var allCharacters = await characterService.GetCharactersByOwnerIdAsync(currentUser.Id, token);
-                    userCharacters = allCharacters.Where(c => c.Status == CharacterStatus.Active).ToList();
+                    userCharacters = await characterService.GetCharactersByOwnerIdAsync(currentUser.Id, token);
                 }
             }
         }
@@ -531,18 +533,34 @@ public class QuestController(
         if (user == null)
             return Challenge();
 
-        // Find the user's signup for this quest
+        // Find the user's signup for this quest. Losing your signup between opening the
+        // picker and submitting it is something a player can hit without tampering — a
+        // stale modal left open after revoking in another tab, or being dropped from a
+        // finalized quest — so it gets a friendly redirect with a message rather than a
+        // raw error response.
         var playerSignup = quest.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == user.Id);
         if (playerSignup == null)
         {
-            return BadRequest("You are not signed up for this quest.");
+            TempData["Error"] = "You are no longer signed up for this quest.";
+            return RedirectToAction("Details", new { id = questId });
         }
 
-        // Validate character if provided
+        // Validate character if provided. Ownership and board scope are the only gates —
+        // a player may bring a Retired or Dead character to a signup.
         if (characterId.HasValue)
         {
             var character = await characterService.GetCharacterWithDetailsAsync(characterId.Value);
-            if (character == null || character.OwnerId != user.Id || character.Status != CharacterStatus.Active)
+            if (character == null || character.OwnerId != user.Id)
+            {
+                return BadRequest("Invalid character selection.");
+            }
+
+            // Characters are already scoped to the viewer's board one layer down by a
+            // model-level query filter, so this comparison exists purely as insurance: if a
+            // future query ever opts out of that filter, this is what keeps the action safe.
+            // A character from another board cannot be produced by any legitimate interaction
+            // with the picker, so this stays a hard rejection rather than a redirect.
+            if (activeGroupContext.ActiveGroupId is not { } groupId || character.GroupId != groupId)
             {
                 return BadRequest("Invalid character selection.");
             }
@@ -550,6 +568,10 @@ public class QuestController(
 
         // Update the character
         await playerSignupService.UpdateSignupCharacterAsync(playerSignup.Id, characterId);
+
+        TempData["Success"] = characterId.HasValue
+            ? "Character updated."
+            : "Character removed from your signup.";
 
         return RedirectToAction("Details", new { id = questId });
     }
