@@ -125,6 +125,18 @@
                                                                         <i class="fas fa-user"></i>
                                                                     </span>
                                                                     <span>@participant.Character.Name</span>
+                                                                    @if (isCurrentUser)
+                                                                    {
+                                                                        <button type="button" class="btn btn-sm btn-primary ms-2"
+                                                                                data-bs-toggle="modal"
+                                                                                data-bs-target="#characterSelectModal"
+                                                                                data-quest-id="@Model.Quest?.Id"
+                                                                                data-current-character-id="@participant.Character.Id"
+                                                                                data-current-character-label="@participant.Character.ToSelectLabel()"
+                                                                                title="Change character">
+                                                                            <i class="fas fa-edit"></i>
+                                                                        </button>
+                                                                    }
                                                                 </div>
                                                             }
                                                             else
@@ -135,7 +147,10 @@
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-success"
                                                                                 data-bs-toggle="modal"
-                                                                                data-bs-target="#addCharacterModal"
+                                                                                data-bs-target="#characterSelectModal"
+                                                                                data-quest-id="@Model.Quest?.Id"
+                                                                                data-current-character-id=""
+                                                                                data-current-character-label=""
                                                                                 title="Add character">
                                                                             <i class="fas fa-plus"></i>
                                                                         </button>
@@ -241,6 +256,18 @@
                                                                         <i class="fas fa-user"></i>
                                                                     </span>
                                                                     <span>@player.Character.Name</span>
+                                                                    @if (isCurrentUser)
+                                                                    {
+                                                                        <button type="button" class="btn btn-sm btn-primary ms-2"
+                                                                                data-bs-toggle="modal"
+                                                                                data-bs-target="#characterSelectModal"
+                                                                                data-quest-id="@Model.Quest?.Id"
+                                                                                data-current-character-id="@player.Character.Id"
+                                                                                data-current-character-label="@player.Character.ToSelectLabel()"
+                                                                                title="Change character">
+                                                                            <i class="fas fa-edit"></i>
+                                                                        </button>
+                                                                    }
                                                                 </div>
                                                             }
                                                             else
@@ -251,7 +278,10 @@
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-success"
                                                                                 data-bs-toggle="modal"
-                                                                                data-bs-target="#addCharacterModal"
+                                                                                data-bs-target="#characterSelectModal"
+                                                                                data-quest-id="@Model.Quest?.Id"
+                                                                                data-current-character-id=""
+                                                                                data-current-character-label=""
                                                                                 title="Add character">
                                                                             <i class="fas fa-plus"></i>
                                                                         </button>
@@ -816,51 +846,7 @@
     </div>
 </div>
 
-<!-- Add Character Modal -->
-<div class="modal fade" id="addCharacterModal" tabindex="-1" aria-labelledby="addCharacterModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-light">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title" id="addCharacterModalLabel">
-                    <i class="fas fa-user-plus me-2"></i>Add Character to Signup
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form asp-action="UpdateSignupCharacter" method="post" id="addCharacterForm">
-                <div class="modal-body">
-                    <input type="hidden" name="questId" value="@Model.Quest?.Id" />
-
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Select a character to add to your quest signup. This character will be saved to the database.
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="characterSelect" class="form-label">Select Character <span class="text-danger">*</span></label>
-                        <select name="characterId" id="characterSelect" class="form-select" required>
-                            <option value="">-- Select a character --</option>
-                            @foreach (var character in ViewBag.UserCharacters as List<Character> ?? new List<Character>())
-                            {
-                                var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
-                                <option value="@character.Id">
-                                    @character.Name - Level @character.Level (@classList)
-                                </option>
-                            }
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check me-2"></i>Add Character
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+@{ await Html.RenderPartialAsync("_CharacterSelectModal"); }
 
 <script>
     function revokeSignup(questId) {
