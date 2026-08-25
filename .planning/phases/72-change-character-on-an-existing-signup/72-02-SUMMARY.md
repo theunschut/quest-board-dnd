@@ -130,3 +130,12 @@ None - no external service configuration required.
 ---
 *Phase: 72-change-character-on-an-existing-signup*
 *Completed: 2026-08-25*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/Extensions/CharacterDisplayExtensions.cs
+- FOUND: QuestBoard.UnitTests/Extensions/CharacterDisplayExtensionsTests.cs
+- FOUND: QuestBoard.Service/Views/Shared/_CharacterSelectModal.cshtml
+- FOUND: 707ae11 (Task 1 commit)
+- FOUND: d26cbf1 (Task 2 commit)
+- FOUND: 24dc8d7 (Task 3 commit)
