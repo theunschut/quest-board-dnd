@@ -362,10 +362,7 @@
                                                 <option value="">-- Join without character --</option>
                                                 @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
                                                 {
-                                                    var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
-                                                    <option value="@character.Id">
-                                                        @character.Name - Level @character.Level (@classList)
-                                                    </option>
+                                                    <option value="@character.Id">@character.ToSelectLabel()</option>
                                                 }
                                             </select>
                                             <small class="form-text">Choose which character you'll be playing, or join without one.</small>
@@ -448,10 +445,7 @@
                                                 <option value="">-- Sign up without character --</option>
                                                 @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
                                                 {
-                                                    var classList = string.Join(", ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"));
-                                                    <option value="@character.Id">
-                                                        @character.Name - Level @character.Level (@classList)
-                                                    </option>
+                                                    <option value="@character.Id">@character.ToSelectLabel()</option>
                                                 }
                                             </select>
                                             <small class="form-text">Choose which character you'll be playing, or sign up without one.</small>
