@@ -1,184 +1,110 @@
 # Stack Research
 
-**Domain:** Markdown authoring + rendering for an ASP.NET Core 10 MVC/Razor app with zero client-side build tooling
-**Researched:** 2026-07-09
-**Confidence:** HIGH — versions and APIs verified directly against NuGet's v3 API, npm's registry API, and the libraries' own GitHub source/readme files (not training-data recall). Context7 MCP tools were not present in this session's toolset; primary-source verification (registry APIs + GitHub source) was used instead and carries equivalent or higher confidence for version numbers.
+**Domain:** Small ad-hoc rolling-improvements milestone (v9.0) on a mature ASP.NET Core 10 MVC app — 2 items: (1) UI-only quest-signup character change, (2) stale GitHub Dependabot alert cleanup
+**Researched:** 2026-08-25
+**Confidence:** HIGH
+
+## Executive Summary
+
+**Item 1 needs zero new packages, JS libraries, or tooling.** The existing Bootstrap 5.3.0 modal (`#addCharacterModal`) + plain `<form asp-action="UpdateSignupCharacter">` POST pattern already in `Details.cshtml` is sufficient and should simply be reused/extended. Bootstrap's full bundle (including Popper) is already loaded on both `_Layout.cshtml` and `_Layout.Mobile.cshtml`, so the identical modal markup works unmodified on mobile — no separate mobile-specific JS is needed.
+
+**Item 2 needs no NuGet package or code change at all** — `System.Security.Cryptography.Xml` is confirmed absent from every tracked `.csproj` in the solution (verified independently in this research: `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` was deleted 2026-06-29 in commit `a477ab9`). This is a **GitHub-platform-side cleanup task**, not a code/dependency task. Live-checked against the actual repo via `gh api`: the 5 open alerts (#17–#21) were all *created* 2026-08-10 — over 6 weeks **after** the manifest was deleted — confirming GitHub's dependency graph is serving alerts from a stale cached snapshot of the deleted manifest rather than re-scanning it. This matches a long-standing, unresolved class of upstream bug (`dependabot/dependabot-core` issues #4129, #2041, #4951: "Should not generate alerts on deleted manifest files") that GitHub has closed as "not planned" — there is no reliable automatic-close mechanism to wait for. The fix is a direct REST API call (documented below) to dismiss each alert with `dismissed_reason: "not_used"`.
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Technologies (unchanged — existing stack, confirmed sufficient)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| **Markdig** | **1.3.2** (NuGet, published 2026-06-18) | Server-side Markdown → HTML conversion | The de facto standard .NET Markdown processor (67M+ downloads, actively maintained, CommonMark-compliant with GFM extensions). Multi-targets `netstandard2.0`, `net462`, and `net8.0` — no `net10.0`-specific build exists or is needed; .NET 10 consumes the `net8.0`/`netstandard2.0` assemblies transparently. Pure managed code, zero native dependencies (unlike the project's paused SkiaSharp plan) — safe for the Linux LXC deployment target. |
-| **HtmlSanitizer** (package id `HtmlSanitizer`, namespace `Ganss.Xss`) | **9.0.892** (NuGet, published 2026-02-02) | Whitelist-based HTML sanitization of Markdig's output before it is stored/rendered | Markdig is explicitly **not** a sanitizer (see Gotchas below) — it needs a paired sanitizer for untrusted input. `Ganss.Xss.HtmlSanitizer` is the standard .NET pairing for Markdig in every credible source found (Rick Strahl's ASP.NET Core Markdown writeup, Westwind.AspNetCore.Markdown's own internal wiring, general .NET XSS guidance). AngleSharp-based, whitelists tags/attributes/URL schemes, and its `Sanitize()`/`SanitizeDocument()` methods are documented thread-safe for a single shared/singleton instance — cheap to register once in DI and reuse. Multi-targets `netstandard2.0`, `net462`, `net8.0` — same .NET 10 compatibility story as Markdig. |
-| **EasyMDE** | **2.21.0** (npm, current `latest`) | Client-side textarea → toolbar (Bold/Italic/Heading/List) + built-in Preview toggle, zero build step | Ships a single self-contained UMD bundle (`easymde.min.js`, 327 KB; `easymde.min.css`, 13 KB — measured via CDN `Content-Length`) that works as a plain `<script>`/`<link>` include, exactly like the Cropper.js v2.1.1 precedent this app already follows. Its **default toolbar already includes a `preview` button** (`bold`, `italic`, `heading`, `unordered-list`, `ordered-list`, `preview`, …) — no custom toolbar-button JS needs to be written, only a `toolbar: [...]` array trimmed to the 5 buttons this milestone needs. Actively maintained fork of the abandoned SimpleMDE (SimpleMDE has had no releases since 2017 — do not use it, see below). MIT licensed. |
+| Bootstrap (bundle, incl. Popper) | 5.3.0 (CDN, `bootstrap.bundle.min.js`) | Modal component for character select/change | Already loaded app-wide (`_Layout.cshtml` line 12/189-equivalent and `_Layout.Mobile.cshtml` lines 12, 189); reusing it means zero new script tags on either desktop or mobile |
+| ASP.NET Core MVC form POST + `[ValidateAntiForgeryToken]` | 10 (existing) | Submits the character change | `QuestController.UpdateSignupCharacter(int questId, int? characterId)` already exists, already validates ownership + `CharacterStatus.Active`, already accepts `null` to clear — the view is the only gap |
+
+**No new package, CDN script, or npm/JS dependency is warranted for Item 1.** The task is markup-only: (a) render the same "change character" trigger in the `Character != null` branch of `Details.cshtml` (currently only rendered when `Character == null`, lines ~130-144 and ~246-260), reusing `#addCharacterModal`/`UpdateSignupCharacter` verbatim; (b) add the equivalent trigger + modal to `Details.Mobile.cshtml`, which today has no add/change UI at all (only a read-only `@(participant.Character?.Name ?? "No character")` string, lines ~215/243); (c) add a "Clear (no character)" option to the existing `<select>`/its submit path so posting `characterId=null` is reachable from the UI, not just the controller contract. A plain full-page-reload form POST (the existing pattern — `RedirectToAction("Details", ...)`) is consistent with how every other mutation on this page already works (`revokeSignup` is the one exception, and it already uses vanilla `fetch()`, not a library) — no progressive-enhancement/AJAX layer is needed since the page already reloads on every other signup mutation.
 
 ### Supporting Libraries
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Font Awesome | already present (`_Layout.cshtml` line 13, loaded via `cdnjs` CDN v6.4.0) | Icons for EasyMDE's toolbar buttons | EasyMDE depends on Font Awesome glyph classes for its toolbar icons and by default auto-detects/auto-loads Font Awesome if not already present (`autoDownloadFontAwesome` option). Since this app already loads Font Awesome app-wide, set `autoDownloadFontAwesome: false` explicitly in the EasyMDE config to skip its detection logic entirely — zero new network dependency introduced. |
-| CodeMirror 5.65.x | bundled inside `easymde.min.js` | Textarea replacement / syntax-aware editing surface EasyMDE is built on | Not a separate install — it ships pre-bundled inside the single minified EasyMDE file (no way to slim this down without a build step; see "What NOT to Use" for the size trade-off discussion). |
-| Marked.js 4.1.x | bundled inside `easymde.min.js` | EasyMDE's *default* client-side preview renderer | **Do not use this for the actual preview** — see "Client-side vs server-side preview rendering" below. It ships inside the bundle regardless (no build step to tree-shake it out), but this milestone should override `previewRender` so Marked.js's output is never what the user actually sees. |
+None needed for Item 1. None needed for Item 2 (no library involved — the vulnerable package `System.Security.Cryptography.Xml` is a phantom entry from a deleted `.csproj`, not a real dependency of any current project).
 
-### Development Tools
+### Development / Platform Tooling (Item 2)
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| *(none — by design)* | N/A | This milestone explicitly adds **zero** client-side build tooling (no npm, no bundler). EasyMDE's pre-built `dist/easymde.min.js` + `dist/easymde.min.css` are downloaded once and either (a) vendored as static files under `wwwroot/lib/easymde/` and referenced with `<script src="~/lib/easymde/easymde.min.js">`, or (b) referenced directly from a CDN with a Subresource Integrity hash, matching the actual pattern already used for both Cropper.js and Font Awesome in this codebase today (see Gotcha note below). |
+| GitHub REST API — `PATCH /repos/{owner}/{repo}/dependabot/alerts/{alert_number}` | Dismiss each of the 5 stale alerts directly | See exact fields below. This is the only reliable path — auto-close-on-manifest-deletion is not a behavior GitHub's dependency graph guarantees or currently performs correctly (see Pitfalls). |
+| `gh api` (GitHub CLI, already installed — v2.89.0 confirmed in this environment) | Thin wrapper to call the REST endpoint without writing a script | `gh` has **no** native `gh dependabot` or `gh alert` subcommand (verified: `gh alert` → "unknown command"); use the generic `gh api` passthrough |
+| `dependabot.yml` | Governs *future* update PRs/scan config | **Does not help here.** It has no field to acknowledge/close/suppress an existing alert for a manifest that no longer exists — it only configures `package-ecosystem`/`directory` targets going forward |
 
-## Server-Side Pipeline Configuration
+## GitHub REST API surface for Item 2
 
-Build **one** `MarkdownPipeline` (via `MarkdownPipelineBuilder`) as a singleton — `MarkdownPipelineBuilder.Build()` is not free, and the resulting pipeline is safe to reuse and pass into every `Markdown.ToHtml(text, pipeline)` call. Recommended shape, deliberately **not** `.UseAdvancedExtensions()` (see Gotchas):
+**Endpoint (per official docs, `docs.github.com/en/rest/dependabot/alerts`, API version `2022-11-28`):**
 
-```csharp
-var pipeline = new MarkdownPipelineBuilder()
-    .UseAutoLinks()                        // bare URLs pasted into descriptions become clickable
-    .DisableHtml()                         // encode raw HTML as text instead of passing it through
-    // .UseSoftlineBreakAsHardlineBreak()  // OPTIONAL — see "Stack Patterns by Variant" below
-    .Build();
-
-var rawHtml = Markdown.ToHtml(markdownText, pipeline);
-var safeHtml = sanitizer.Sanitize(rawHtml);   // Ganss.Xss.HtmlSanitizer instance, see below
+```
+PATCH /repos/{owner}/{repo}/dependabot/alerts/{alert_number}
 ```
 
-Configure the `HtmlSanitizer` instance narrowly rather than trusting its ~82-tag default allowlist (which includes `form`, `input`, `button`, `textarea`, etc. — irrelevant and unnecessarily permissive for rendered prose):
+**Request body fields:**
 
-```csharp
-var sanitizer = new HtmlSanitizer();
-sanitizer.AllowedTags.Clear();
-sanitizer.AllowedTags.UnionWith(new[] {
-    "p", "br", "strong", "em", "del", "code", "pre",
-    "h1", "h2", "h3", "h4", "h5", "h6",
-    "ul", "ol", "li", "blockquote", "a", "hr"
-});
-sanitizer.AllowedSchemes.Clear();
-sanitizer.AllowedSchemes.UnionWith(new[] { "http", "https", "mailto" });
-```
+| Field | Type | Values | Notes |
+|-------|------|--------|-------|
+| `state` | string | `dismissed`, `open` | Set to `dismissed` to close |
+| `dismissed_reason` | string | `fix_started`, `inaccurate`, `no_bandwidth`, `not_used`, `tolerable_risk` | **Required** when `state=dismissed`. For this scenario (manifest deleted, package literally not present anywhere in the codebase) `not_used` is the semantically correct reason — the dependency isn't used by the project |
+| `dismissed_comment` | string | free text, ≤280 chars | Optional; recommended here to record *why*, e.g. "Manifest deleted in a477ab9 (EuphoriaInn→QuestBoard rename); package confirmed absent from all tracked .csproj files and `dotnet list package --include-transitive`" |
+| `assignees` | array of strings | GitHub usernames | Not needed for this task |
 
-Register both the built `MarkdownPipeline` and the configured `HtmlSanitizer` as singletons, wrapped by one small `IMarkdownRenderer`/`MarkdownRenderer` service in **`QuestBoard.Domain`** (business-logic layer, per this repo's Service → Domain → Repository dependency rule) with a single `ToSafeHtml(string? markdown) : string` method. This is the one piece of plumbing that makes "identical rendering everywhere" actually true — see next section.
+**Auth:** requires `security_events` scope on a classic PAT, or a fine-grained token with **"Dependabot alerts" repository permission: Read and write**; `gh api` inherits the CLI's existing auth so no separate token setup is needed in this environment (already authenticated, confirmed via successful `gh api repos/.../dependabot/alerts` read above).
 
-## Reuse Across `.cshtml` Pages and `.razor` Email Components
-
-Both rendering surfaces already resolve services through the same DI container (the `.razor` email templates are rendered via `HtmlRenderer` inside Hangfire jobs using `IServiceScopeFactory`, matching the existing `IEmailService` pattern this app already uses in all 4 email jobs). Inject the same `IMarkdownRenderer` into both:
-
-- In a `.cshtml` view: `@Html.Raw(Model.DescriptionHtml)` where `DescriptionHtml` was set by a controller/service call to `markdownRenderer.ToSafeHtml(quest.Description)`.
-- In a `.razor` email component: `@((MarkupString)MarkdownRenderer.ToSafeHtml(Quest.Description))` — Razor Components use `MarkupString` (not `Html.Raw`) to opt out of Blazor's default HTML-encoding of interpolated strings.
-
-Because it is the exact same `MarkdownPipeline` + `HtmlSanitizer` instance invoked through the exact same method in both cases, there is **no** possibility of the two surfaces drifting — this directly satisfies the milestone's "formatting is guaranteed consistent everywhere it appears" goal, and is strictly safer than maintaining two separate rendering code paths (one for MVC, one for Blazor-style components).
-
-## Client-Side Preview: AJAX Round-Trip vs Client-Side Parser (Explicit Recommendation)
-
-**Recommendation: AJAX round-trip to the server, reusing the exact `IMarkdownRenderer` pipeline. Do not trust EasyMDE's bundled Marked.js output as the real preview.**
-
-This is a genuine architecture risk worth calling out explicitly, as requested:
-
-- EasyMDE's default `previewRender` calls **Marked.js 4.1.x**, a *different* CommonMark/GFM implementation than the server's Markdig 1.3.2. The two parsers have different extension defaults (autolink detection heuristics, table dialects, how raw HTML is treated, edge-case list/paragraph handling). They will not always agree byte-for-byte, and for prose like "Session Recap" or "Quest Description" the mismatches that do occur (e.g. a soft-break rendering as `<br>` client-side but not server-side, or vice versa) would be exactly the kind of "preview lied to me" bug that erodes trust in a Preview button.
-- EasyMDE's `previewRender` option is documented to accept an **async** implementation: `previewRender(plainText, previewElement)` may return a placeholder synchronously and later set `previewElement.innerHTML` once an async fetch resolves. This is the exact hook needed to swap in a server round-trip with no other EasyMDE internals touched:
-
-```javascript
-const easyMDE = new EasyMDE({
-  element: document.getElementById('descriptionInput'),
-  autoDownloadFontAwesome: false,
-  toolbar: ["bold", "italic", "heading", "|", "unordered-list", "ordered-list", "|", "preview"],
-  previewRender: function (plainText, previewElement) {
-    fetch('/markdown/preview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgeryToken },
-      body: JSON.stringify({ markdown: plainText })
-    })
-      .then(r => r.text())
-      .then(html => { previewElement.innerHTML = html; });
-    return previewElement.innerHTML; // shown until the fetch resolves
-  }
-});
-```
-
-- The `POST /markdown/preview` endpoint is a few lines: accept the raw Markdown, call the same `IMarkdownRenderer.ToSafeHtml(...)` used for final storage/display, return the HTML fragment. It must require authentication (not anonymous) and carry the standard antiforgery token like every other POST in this app, but needs no database access and no new EF entity — it's a pure pass-through render call with no database access — a single extra HTTP request per preview click has negligible latency impact regardless of how many people are using the app.
-- This also means the client never needs its **own** correct Markdown parser at all — Marked.js still ships inside the EasyMDE bundle (no build step to remove it), but nothing in the trust boundary depends on its output being correct. That is the safest place to be for a requirement that explicitly says formatting must be "guaranteed consistent."
-
-If bundle size (not correctness) were the overriding concern, TinyMDE (see Alternatives) avoids shipping a second parser entirely — but it has no built-in Preview toggle to hook into, so the round-trip wiring becomes fully hand-rolled instead of a one-option override. For this milestone's explicit "Preview toggle + 4-button toolbar" scope, EasyMDE + the `previewRender` override is less custom code overall.
-
-## Installation
+**Concrete `gh` invocation per alert:**
 
 ```bash
-# Server-side — from QuestBoard.Domain (business-logic layer; the renderer
-# service belongs here per this repo's Service → Domain → Repository rule,
-# so it's reachable from both MVC controllers/views and Hangfire email jobs)
-dotnet add QuestBoard.Domain package Markdig --version 1.3.2
-dotnet add QuestBoard.Domain package HtmlSanitizer --version 9.0.892
+gh api --method PATCH \
+  repos/theunschut/quest-board/dependabot/alerts/{alert_number} \
+  -f state=dismissed \
+  -f dismissed_reason=not_used \
+  -f dismissed_comment="Manifest deleted in a477ab9 (EuphoriaInn->QuestBoard rename); package confirmed absent from all .csproj files."
 ```
 
-```bash
-# Client-side — no npm, no package.json. Download the two built files once
-# and commit them as static assets (matches the Cropper.js precedent):
-#   https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.js   (327 KB)
-#   https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.css  (13 KB)
-# → QuestBoard.Service/wwwroot/lib/easymde/easymde.min.js
-# → QuestBoard.Service/wwwroot/lib/easymde/easymde.min.css
+Repeat for alert numbers **17, 18, 19, 20, 21** (the 5 confirmed-open HIGH alerts, live-verified in this research — all created 2026-08-10, all target the deleted `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` manifest, all `System.Security.Cryptography.Xml` CVEs patched at 8.0.4). There is no batch/bulk PATCH endpoint — the REST API is one alert per call (the GitHub *web UI* supports multi-select dismissal, but that is a UI convenience layered over the same per-alert calls, not a distinct API).
+
+**List endpoint (for verification before/after):**
+
 ```
+GET /repos/{owner}/{repo}/dependabot/alerts
+```
+Supports a `state` filter accepting a comma-separated list of `auto_dismissed`, `dismissed`, `fixed`, `open` — useful to confirm all 5 move out of `open` after dismissal, and a `scope` filter (`development`/`runtime`) not relevant here.
 
-**Note on "vendored" vs CDN:** the milestone context describes Cropper.js as "vendored... zero build step," but the actual code in this repo (`Views/Characters/Edit.cshtml`) loads Cropper.js from `cdn.jsdelivr.net` with a `<script integrity="sha384-..." crossorigin="anonymous">` SRI tag, not a locally-committed file — and Font Awesome is loaded from `cdnjs.cloudflare.com` with no SRI hash at all. If the actual goal is "zero build step" (true either way) rather than strictly "zero external network dependency" (not actually true for the two existing libraries), CDN + SRI for EasyMDE is a legitimate, precedent-matching alternative to committing the files locally. Given the question explicitly asked for self-hosted candidates, the recommendation above defaults to committing the static files — but flag this discrepancy to whoever owns REQUIREMENTS.md so the decision is made consciously rather than by accident.
+## Why NOT to wait for auto-close, and why NOT a `dependabot.yml` change
 
-## Alternatives Considered
+| Approach | Why it doesn't apply here |
+|----------|---------------------------|
+| Wait for GitHub to auto-close on manifest deletion | **Not a guaranteed behavior.** GitHub's dependency graph is documented to scan only the **default branch**, and it snapshots per-manifest — but deleting a manifest is not documented to reliably purge or invalidate that snapshot. Live evidence from this repo: alerts #17–#21 were newly *created* 2026-08-10, six weeks after the manifest's 2026-06-29 deletion, meaning GitHub is still minting fresh alerts against a manifest path that no longer exists on `main`. This matches a known, long-standing upstream limitation tracked in `dependabot/dependabot-core` (issues #4129 "Should not generate alerts on deleted manifest files", #2041, #4951) — GitHub has closed at least one of these as "not planned" with no fix committed. Do not build a phase around "wait and it'll clear itself." |
+| Push a `dependabot.yml` change to fix it | `dependabot.yml` only configures **future** dependency-update scanning (which ecosystems/directories to watch, schedule, grouping). It has no directive that targets or dismisses an *existing* alert tied to a path Dependabot no longer scans. Irrelevant to closing #17–#21. |
+| Trigger a manual re-scan / re-submit the dependency graph | There is no documented, supported user-facing "re-scan now" action for Dependabot alerts (unlike code scanning, which can be re-triggered via a workflow re-run). Even if the dependency graph were refreshed, refreshing a *deleted* manifest produces nothing to reconcile against — there is no live manifest data for GitHub to compare and auto-resolve the alert to `fixed`. Manual dismissal via the API is the documented, correct mechanism for exactly this case. |
+| Bump `System.Security.Cryptography.Xml` to 8.0.4 in the solution | **Not applicable / would be a no-op.** The package is not referenced by any current `.csproj` (verified: zero tracked references, zero transitive references via `dotnet list package --include-transitive` across `QuestBoard.slnx`). There is nothing to patch — the alert is a phantom pointing at deleted code. |
 
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|--------------------------|
-| Markdig + Ganss.Xss.HtmlSanitizer (composed manually) | `Westwind.AspNetCore.Markdown` (wraps Markdig + a sanitizer + adds TagHelpers/a page-handler middleware for serving whole `.md` files as pages) | If the app needed to serve entire Markdown *files* as pages (a docs/wiki-style site). This milestone needs a plain, narrowly-scoped `string → string` render call reused identically from MVC controllers and Blazor-style email components — the extra middleware/TagHelper surface `Westwind.AspNetCore.Markdown` adds is unneeded abstraction here, and its opinionated default pipeline is harder to align exactly with the DisableHtml + custom-sanitizer configuration this app needs. |
-| EasyMDE 2.21.0 | TinyMDE 0.2.31 | If minimizing client payload matters more than shipping speed: TinyMDE is ~96 KB total (JS+CSS) vs EasyMDE's ~340 KB, has zero bundled Markdown-parser dependency, and is dependency-free. Trade-off: TinyMDE has no built-in Preview-toggle mode (only live inline formatting while typing) and no built-in toolbar "preview" action — both would need to be hand-built, including the show/hide-textarea and AJAX-preview wiring EasyMDE gives for free via `previewRender`. |
-| EasyMDE's default toolbar trimmed to 5 buttons | Hand-rolled toolbar (plain `<button>`s that insert `**`/`*`/`#`/`-` at the textarea cursor via `selectionStart`/`selectionEnd`) | If even EasyMDE's 327 KB felt too heavy and CodeMirror's editing affordances (syntax highlighting while typing, keyboard shortcuts) aren't wanted. This is a viable, genuinely zero-dependency option — a `document.execCommand`-free cursor-insertion helper is ~40 lines of vanilla JS — but it re-implements exactly what EasyMDE already ships, and the Preview toggle would still need to be built by hand either way. |
+## Non-default-branch scanning
 
-## What NOT to Use
-
-| Avoid | Why | Use Instead |
-|-------|-----|--------------|
-| SimpleMDE | The original library EasyMDE forked from — no releases since 2017, unmaintained, and the search results above confirm EasyMDE is the maintained continuation of the exact same API surface | EasyMDE 2.21.0 |
-| Any React/Vue-based Markdown editor (Toast UI Editor's modern ESM builds, Milkdown, `react-md-editor`, `@uiw/react-markdown-editor`, etc.) | All require an npm install + a bundler (webpack/vite/rollup) to consume sanely; several ship ESM-only with no usable single-file UMD/CDN build. This app has zero client-side build pipeline by design (no `package.json`, no `node_modules`) — introducing one is exactly the kind of scope creep this research question was designed to head off | EasyMDE's pre-built UMD `dist/easymde.min.js`, a plain `<script>` tag |
-| `MarkdownPipelineBuilder().UseAdvancedExtensions()` as a reflexive default | Bundles `UseGenericAttributes()`, which parses `{#id .class attr=value}` syntax and lets a markdown author attach **arbitrary HTML attributes** — including event-handler attributes like `onmouseover="..."` — to rendered elements. This is attribute injection, not raw-HTML pass-through, so `.DisableHtml()` does **not** block it | Opt into only the specific extensions the 9 target fields actually need (e.g. `.UseAutoLinks()`); if a broader extension set is ever wanted, keep the mandatory `HtmlSanitizer` pass afterward regardless — treat sanitization as the actual security boundary, never the pipeline choice |
-| Trusting `.DisableHtml()` alone as "this is now XSS-safe" | `DisableHtml()` only stops raw HTML blocks/inline HTML from passing through unescaped. It does **not** validate or block dangerous URL schemes in ordinary Markdown link syntax — `[click me](javascript:alert(1))` and the autolink form `<javascript:alert(1)>` both still render as a live `<a href="javascript:...">` unless something downstream strips the scheme. This is not hypothetical: NuGetGallery shipped and patched exactly this class of bug in its Markdown autolink handling (GHSA-gwjh-c548-f787) | Always finish with `HtmlSanitizer`'s `AllowedSchemes` allowlist (`http`, `https`, `mailto` — no `javascript:`, no `data:`) as the actual enforcement point, independent of whatever the Markdown pipeline does |
-| Shipping EasyMDE's default `previewRender` (Marked.js) as the real Preview | Marked.js and Markdig are different parsers with different defaults; the two will diverge on some inputs, breaking the "consistent everywhere" requirement and eroding trust in the Preview button specifically | Override `previewRender` with an async function that calls a small server-side `POST /markdown/preview` endpoint backed by the same `IMarkdownRenderer` used for final storage/display (see dedicated section above) |
+Per GitHub's official docs (`about-dependabot-alerts`): *"Dependabot scans your repository's default branch..."* — Dependabot alerts (and the dependency graph that powers them) are generated **only from the default branch** (`main` in this repo, confirmed via `gh repo view`). Non-default branches are not scanned for alert purposes, so a feature/milestone branch cannot itself trigger, and cannot itself resolve, these alerts — the dismissal must happen via the API/UI regardless of which branch the surrounding phase work lands on.
 
 ## Stack Patterns by Variant
 
-**If REQUIREMENTS.md finalizes strict CommonMark paragraph rules** (this is what `PROJECT.md`'s current v8.0 milestone text already states as the target — "blank line separates paragraphs, replacing today's line-break-preserving plain-text display"):
-- Leave `.UseSoftlineBreakAsHardlineBreak()` **out** of the pipeline builder
-- A single Enter press inside a paragraph is ignored by the renderer (folded into the same paragraph) exactly per CommonMark spec; only a blank line starts a new paragraph
-- This is a genuine behavior change from today's `white-space: pre-wrap` fields (Phase 64) — authors used to relying on single Enter presses for visual line breaks will need either two Enters (new paragraph) or a trailing double-space / explicit `<br>`-producing markdown (a backslash line-ending) for a hard break within a paragraph
+**If a future item needs to close a large batch of Dependabot alerts (not just 5):**
+- Still use `gh api` per-alert PATCH in a small loop/script (`for id in 17 18 19 20 21; do gh api --method PATCH ...; done`) rather than reaching for a third-party tool — no NuGet/npm package exists or is needed for this; it's a 5-line shell loop.
 
-**If a later decision reverses course and wants single Enter → visible line break** (matching today's pre-wrap behavior more closely, in case user testing during this milestone finds strict CommonMark surprising for casual authors):
-- Add `.UseSoftlineBreakAsHardlineBreak()` to the same pipeline builder — this is a single extension-method call, not a rewrite
-- Every soft line break (a newline that is not followed by a blank line) renders as `<br>` instead of being folded into the paragraph
-- Because this is a single toggle on the shared pipeline, switching between the two behaviors later costs one line of code, not a new library — this de-risks locking in strict CommonMark now while a later requirements pass could still cheaply reverse it
+**If this pattern recurs (stale alerts from other deleted historical projects, e.g. `EuphoriaInn.Service`/`EuphoriaInn.UnitTests`/`EuphoriaInn.IntegrationTests`):**
+- Same fix, same `dismissed_reason=not_used` — this repo's alert history (checked live) already shows most of those manifest paths resolved to `fixed`/`dismissed` naturally over time except this one HIGH batch, which is why it needs the manual push now rather than more waiting.
 
 ## Version Compatibility
 
-| Package A | Compatible With | Notes |
-|-----------|------------------|-------|
-| Markdig 1.3.2 | .NET 10 / ASP.NET Core 10 | Multi-targets `netstandard2.0`, `net462`, `net8.0`; no `net10.0`-specific TFM exists or is required — .NET 10 projects consume the `net8.0`/`netstandard2.0` build transparently, same pattern already relied on elsewhere in this app's dependency set |
-| HtmlSanitizer 9.0.892 | .NET 10 / ASP.NET Core 10 | Same multi-target shape (`netstandard2.0`, `net462`, `net8.0`) as Markdig; AngleSharp-based parsing, no native/unmanaged dependency (unlike the project's currently-paused SkiaSharp plan) |
-| EasyMDE 2.21.0 | Any evergreen browser, no bundler required | Single self-contained minified UMD file; bundles CodeMirror ~5.65.x and Marked ~4.1.x internally — these are pinned by EasyMDE's own `package.json`, not something this app manages or updates independently |
-| EasyMDE 2.21.0 | Font Awesome 6.4.0 (already loaded app-wide) | EasyMDE's toolbar icon classes are Font-Awesome-5/6-style (`fas`/`far`); confirmed compatible with the already-loaded FA 6.4.0. Set `autoDownloadFontAwesome: false` to skip EasyMDE's own detection/injection logic since FA is already present on every page |
+Not applicable — no packages are being added, upgraded, or pinned by either item. `System.Security.Cryptography.Xml` 8.0.4 (the patched version referenced by the CVEs) never needs to be *installed* here since it is not a real dependency of the current codebase.
 
 ## Sources
 
-- https://www.nuget.org/packages/Markdig — NuGet package page, confirmed latest stable 1.3.2, published 2026-06-18
-- https://api.nuget.org/v3-flatcontainer/markdig/index.json — NuGet v3 flat-container API, full version list, confirms 1.3.2 is the newest entry (HIGH confidence, primary source)
-- https://github.com/xoofx/markdig — official repo readme; confirmed `UseAdvancedExtensions()`, `UseGenericAttributes()` composition, "Soft lines as hard lines" extension listing
-- https://github.com/xoofx/markdig/blob/master/src/Markdig/MarkdownExtensions.cs — confirmed exact method signature `UseSoftlineBreakAsHardlineBreak(this MarkdownPipelineBuilder)` and its XML-doc summary (HIGH confidence, source code)
-- https://xoofx.github.io/markdig/docs/usage/ — official usage docs; confirmed `DisableHtml()` code shape and `Markdown.ToHtml(text, pipeline)` call pattern
-- https://weblog.west-wind.com/posts/2018/Aug/31/Markdown-and-Cross-Site-Scripting — Rick Strahl (maintainer of Westwind.AspNetCore.Markdown), confirms `.DisableHtml()` purpose/limits and the ASP.NET Core `services.AddMarkdown(...).DisableHtml()` wiring pattern (MEDIUM→HIGH, respected .NET community source, cross-checked against official docs)
-- https://github.com/NuGet/NuGetGallery/security/advisories/GHSA-gwjh-c548-f787 — real-world confirmed vulnerability class: Markdown autolink `javascript:` scheme bypassing `DisableHtml()`-style raw-HTML defenses (HIGH confidence, official GitHub security advisory)
-- https://www.nuget.org/packages/htmlsanitizer / https://api.nuget.org/v3-flatcontainer/htmlsanitizer/index.json — confirmed latest stable 9.0.892 (2026-02-02); 9.1.x entries are `-beta` prereleases, correctly excluded
-- https://github.com/mganss/HtmlSanitizer — official repo; confirmed AngleSharp-based sanitization, default `AllowedSchemes` (http/https/protocol-relative), ~82-tag default `AllowedTags` list, thread-safety guarantee for a shared instance, and `netstandard2.0`/`net462`/`net8.0` target support
-- https://registry.npmjs.org/easymde/latest — npm registry API, confirmed latest `2.21.0`, dependencies `marked ^4.1.0` and `codemirror ^5.65.15` bundled into the dist build (HIGH confidence, primary source)
-- https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.js and .../easymde.min.css — measured actual `Content-Length` via CDN response headers: 327,475 bytes (JS) + 12,923 bytes (CSS)
-- https://github.com/Ionaru/easy-markdown-editor — official repo; confirmed default toolbar array includes `preview`/`side-by-side`, `previewRender` override API (sync and async signatures), Font Awesome auto-detection behavior, `toolbar` customization API
-- https://registry.npmjs.org/tiny-markdown-editor/latest — npm registry API, confirmed latest `0.2.31`, minimal dependency footprint (`core-js` only, no bundled Markdown parser)
-- https://cdn.jsdelivr.net/npm/tiny-markdown-editor@0.2.31/dist/tiny-mde.min.js and .../tiny-mde.min.css — measured actual `Content-Length`: 92,583 bytes (JS) + 3,481 bytes (CSS)
-- https://github.com/jefago/tiny-markdown-editor — official repo; confirmed no distinct Preview-toggle mode (inline live formatting only), customizable `commands` toolbar API
-- Local repo inspection (`QuestBoard.Service/Views/Shared/_Layout.cshtml`, `QuestBoard.Service/Views/Characters/Edit.cshtml`) — confirmed actual current precedent: Font Awesome 6.4.0 loaded via `cdnjs.cloudflare.com` (no SRI), Cropper.js 2.1.1 loaded via `cdn.jsdelivr.net` with an SRI `integrity` hash — both CDN-hosted, not locally vendored files, despite the milestone context's "vendored" framing
+- `docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28` — Update/List Dependabot alert endpoint fields, `state`/`dismissed_reason` enum values (HIGH confidence — official GitHub REST API reference)
+- `docs.github.com/en/code-security/dependabot/dependabot-alerts/about-dependabot-alerts` — "Dependabot scans your repository's default branch..." (HIGH confidence — official docs, direct quote)
+- `docs.github.com/en/code-security/dependabot/dependabot-alerts/viewing-and-updating-dependabot-alerts` — manual dismissal UI flow, GraphQL `dismissComment` field (HIGH confidence — official docs)
+- `github.com/dependabot/dependabot-core` issues #4129, #2041, #4951 — known unresolved upstream behavior re: alerts persisting/regenerating against deleted manifest files (MEDIUM confidence — community/maintainer issue tracker, not formal docs, but directly on-point and corroborated by this repo's own live data)
+- Live verification against `theunschut/quest-board` via `gh api repos/theunschut/quest-board/dependabot/alerts` (this research session, 2026-08-25) — confirmed exact alert numbers (17–21), manifest path, creation dates (2026-08-10, post-dating the 2026-06-29 manifest deletion), and current `state`/`dismissed_reason` for all 16 historical alerts in the repo (HIGH confidence — primary-source ground truth from the actual repository)
+- `QuestBoard.Service/Views/Quest/Details.cshtml` (lines ~100-270, 819-863) and `Details.Mobile.cshtml`, `_Layout.Mobile.cshtml` (lines 12, 189) — read directly in this research session to confirm existing Bootstrap 5.3.0 modal pattern and its absence on mobile (HIGH confidence — direct source read)
 
 ---
-*Stack research for: Markdown editing/rendering support across QuestBoard (v8.0 milestone)*
-*Researched: 2026-07-09*
+*Stack research for: v9.0 Rolling Improvements (quest signup character change + Dependabot alert cleanup)*
+*Researched: 2026-08-25*

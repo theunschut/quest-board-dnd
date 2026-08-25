@@ -1,200 +1,176 @@
-# Architecture Research: Markdown Integration
+# Architecture Research
 
-**Domain:** Markdown authoring + rendering integration into an existing 3-layer ASP.NET Core 10 MVC app (D&D Quest Board, v8.0 milestone)
-**Researched:** 2026-07-09
-**Confidence:** HIGH (integration points — verified directly against this codebase's source); MEDIUM (Markdig/HtmlSanitizer XSS specifics — verified via WebSearch against official GitHub/NuGet sources, no Context7 available in this environment)
+**Domain:** ASP.NET Core 10 MVC quest board — v9.0 "Rolling Improvements" (subsequent milestone, two small ad-hoc items)
+**Researched:** 2026-08-25
+**Confidence:** HIGH — every claim below was verified by opening the actual source file at the cited path/line, not inferred from naming conventions.
 
-## Summary / Recommendation
+This is not a greenfield-domain research doc — it is an integration analysis for two small changes against an established codebase. The generic "Standard Architecture / Scaling Considerations" template sections are omitted where they don't apply; the existing three-layer architecture (`Service → Domain → Repository`) is **not** being changed by either item.
 
-Put the actual Markdown→HTML conversion in **one new Domain-layer service, `IMarkdownService`**, exactly mirroring the `IImageValidationService` precedent already in this codebase (stateless, pure-transformation, zero infrastructure dependency, unit-testable in isolation). Wrap it with **two thin adapters**, one per rendering pipeline this project already runs side-by-side:
+---
 
-- **MVC pipeline (`.cshtml`):** a `Html.Markdown(text)` extension method (`IHtmlContent`), following the same "static extension class in `Extensions/`" convention as `ControllerExtensions` — not a TagHelper (this codebase has zero TagHelpers today; a HtmlHelper extension is the smaller, more idiomatic addition given existing conventions).
-- **Blazor component pipeline (`.razor` emails via `HtmlRenderer`):** the 3 email components `@inject IMarkdownService` directly and wrap the parameter in `(MarkupString)`. This works with **zero Hangfire-specific scope plumbing** — `IMarkdownService` is stateless, so unlike `ActiveGroupContextService` it needs no `HangfireJobHelper.RunInScopeAsync` bridge; ordinary constructor/`@inject` DI resolves it from whatever scope `HtmlRenderer`'s `IServiceProvider` was built from (request scope or job scope, doesn't matter).
+## Item 1 — Change character on an existing quest signup
 
-The **Preview toggle needs zero server round-trip.** This app already vendors all client JS via CDN `<script>` tags (Bootstrap, FontAwesome, jQuery, Cropper.js — no npm/libman/build step, matching the "no additional setup steps" deployment constraint). Add a CDN-loaded **`commonmark.js`** (the reference implementation of the same CommonMark spec Markdig implements server-side, chosen specifically to minimize preview/render drift given "Strict CommonMark paragraph rules" is a locked v8.0 decision) plus **DOMPurify** (client-side sanitizer, pairs with the server-side `HtmlSanitizer` pass — see Anti-Patterns) for the live preview pane. No new controller endpoint (`POST /markdown/preview`) is needed or recommended.
+### Verdict: Service-layer only
 
-The **9 read-side call sites** share logic via the single `Html.Markdown()` helper (one call replaces the current `<p style="white-space:pre-wrap">@Model.X</p>` pattern at each site). The **write-side editor UI** (textarea + Bold/Italic/Heading/List toolbar + Preview toggle) shares logic via one new `Views/Shared/_MarkdownEditor.cshtml` partial + one `wwwroot/js/markdown-editor.js` module, generalizing the existing `_QuestFormScripts.cshtml` "shared partial for form JS" pattern from single-feature to cross-feature scope.
+**No Domain or Repository changes are needed.** Confirmed end-to-end:
 
-## System Overview — Where Markdown Rendering Sits
+- `PlayerSignupService.UpdateSignupCharacterAsync(int playerSignupId, int? characterId, ...)` (`QuestBoard.Domain/Services/PlayerSignupService.cs:36-46`) already accepts a nullable `characterId`, loads the signup, sets `playerSignup.CharacterId = characterId;` (line 44 — no coercion, `null` assigns cleanly), and calls `repository.UpdateAsync`.
+- `PlayerSignupRepository` **overrides** the generic AutoMapper-based `BaseRepository.UpdateAsync` (`QuestBoard.Repository/PlayerSignupRepository.cs:112-130`) with an explicit scalar copy: `entity.CharacterId = model.CharacterId;` — this is a deliberate override (the base `BaseRepository.UpdateAsync` at `QuestBoard.Repository/BaseRepository.cs:63-69` would otherwise AutoMap-overwrite `DateVotes` too aggressively). It assigns `int? → int?` directly; nothing here coerces `null` to `0` or throws.
+- `PlayerSignupEntity.CharacterId` (`QuestBoard.Repository/Entities/PlayerSignupEntity.cs:31`) is `int?` with `[ForeignKey(nameof(CharacterId))]` — the DB column is already nullable (set by an existing migration; no new migration required).
+- `QuestController.UpdateSignupCharacter(int questId, int? characterId)` (`QuestBoard.Service/Controllers/QuestBoard/QuestController.cs:520-548`, verified) already:
+  - Is `[HttpPost] [ValidateAntiForgeryToken] [Authorize]`.
+  - Loads the quest, resolves the caller via `userService.GetUserAsync(User)`, finds *that user's own* signup (`quest.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == user.Id)`) — never trusts a client-supplied signup ID.
+  - Validates the character **only when `characterId.HasValue`** (lines 538-545): must belong to the caller (`character.OwnerId != user.Id`) and be `CharacterStatus.Active`. When `characterId` is `null`, this whole validation block is skipped — clearing is already a supported code path in the controller today.
+  - Calls `playerSignupService.UpdateSignupCharacterAsync(playerSignup.Id, characterId)` and redirects to `Details`.
+
+**Conclusion: the entire nullable-characterId plumbing from controller → domain service → repository → entity → DB is already correct and already handles clearing.** The only gap is in the **View layer**: no UI element currently posts `characterId=null` (see below), and no UI element lets a user change an *already-set* character at all.
+
+### Where a null `characterId` could be silently coerced — and where it is NOT
+
+The only place a coercion risk exists is client-side: the modal's `<select name="characterId" ... required>` (`Details.cshtml:840`) has an HTML5 `required` attribute, which blocks the browser from submitting an empty value at all. This is a **client-side UX blocker, not a server-side coercion** — if bypassed (e.g., a crafted request with `characterId=` empty string), ASP.NET Core's default model binder converts an empty string to `null` for a `int?` parameter without error (standard MVC behavior), so the server path was already safe. Nowhere in the verified chain (controller → `UpdateSignupCharacterAsync` → `PlayerSignupRepository.UpdateAsync` → `PlayerSignupEntity.CharacterId`) does `null` get coerced to `0` or an exception.
+
+**Clean way to support "-- No character --":** remove `required` from the `<select>`, add a first `<option value="">-- No character --</option>` (the code already has `<option value="">-- Select a character --</option>` at line 841 for the "add" case — reusable/renameable per context), and let empty-string → `int?` model binding do the rest. No controller change needed.
+
+### Files: modified vs new (exhaustive)
+
+**MODIFIED**
+
+| File | Change |
+|---|---|
+| `QuestBoard.Service/Views/Quest/Details.cshtml` | In the `Character != null` branches (participants table ~line 116-129, waitlist table ~line 232-244): add a "Change character" trigger button next to the character name (icon + `data-bs-toggle="modal" data-bs-target="#addCharacterModal" data-character-id="@participant.Character.Id"`), gated by the existing `isCurrentUser` check (mirrors the existing gate at line 134/250). Replace the inline `#addCharacterModal` block (lines ~819-863) with `@await Html.PartialAsync("_CharacterSelectModal", Model)`. |
+| `QuestBoard.Service/Views/Quest/Details.Mobile.cshtml` | Add the same character-name-plus-button UI to the two participant-row blocks (~line 215, ~243) — today these are plain `<small>@(participant.Character?.Name ?? "No character")</small>` with **no** affordance at all (add or change). Add the same trigger-button markup (adapted to the mobile row layout), gated on `isCurrentUser` (already computed at lines 200/232). Add `@await Html.PartialAsync("_CharacterSelectModal", Model)` once, near the bottom of the page (mobile already has a `@section Scripts` block at line 389 — the partial call itself goes in the body, not the script section). |
+
+**NEW**
+
+| File | Purpose |
+|---|---|
+| `QuestBoard.Service/Views/Quest/_CharacterSelectModal.cshtml` | `@model PlayerSignup` shared partial containing the modal markup (title/button text can stay static, e.g. "Manage Character" for both add/change) plus a self-contained `show.bs.modal` script (see below). Reads `ViewBag.UserCharacters` — ambient and automatically available inside the partial (Razor's 2-arg `Html.PartialAsync(name, model)` overload passes the current `ViewData` through unchanged, so no extra parameter plumbing is needed). Dropdown gets a `<option value="">-- No character --</option>` first entry (no `required` attribute) so clearing is a normal form submission. |
+
+No controller, Domain, or Repository files are modified or added for Item 1. This is confirmed Service-only (views + one new partial); the `[HttpPost]` action, its validation, and the full data path already support everything the UI needs to expose.
+
+### Why a shared partial, not duplicated markup — argued, not asserted
+
+Three independent, verified pieces of evidence support extracting a shared partial rather than triplicating the modal (once per: desktop-participants-context, desktop-waitlist-context, mobile):
+
+1. **This project has a documented, self-inflicted cost from exactly this kind of near-duplication.** `.planning/PROJECT.md` (line 153) records: *"`Characters/Edit.cshtml`'s 'Add Another Class' script is missing the empty-`Classes`-list `classIndex` guard the other 3 near-duplicate write-form copies (`Create.cshtml`, `Create.Mobile.cshtml`, `Edit.Mobile.cshtml`) all have"* — a real bug from four hand-copied blocks drifting apart, still unfixed as of this research. The `Details.cshtml` participants-table and waitlist-table character cells are already a byte-for-byte-near-duplicate pair (verified: lines 116-144 and 232-260 are structurally identical) with *zero* shared partial today — adding "change character" logic as a third hand-copy (desktop x2 inline + mobile) reproduces the exact failure mode this project has already been burned by once.
+2. **The codebase already has the precedent for sharing markup literally across the desktop/mobile boundary via `Html.PartialAsync`, invoked with the same `PlayerSignup` model both files already share.** `_Calendar.cshtml` (`QuestBoard.Service/Views/Shared/_Calendar.cshtml`) is called identically from both `Details.cshtml` (3 call sites) and `Details.Mobile.cshtml` (2 call sites) — proving partials are the established mechanism for exactly this kind of desktop+mobile parity, not something to be introduced here.
+3. **The dynamic-modal-content JS pattern this needs (`show.bs.modal` + `event.relatedTarget` reading a `data-*` attribute) is already an established, repeated idiom in this codebase** — `Shop/Index.cshtml:455`, `Shop/Index.Mobile.cshtml:262`, `ShopManagement/Index.cshtml:505`, `ShopManagement/Index.Mobile.cshtml:216` all use it. `ShopManagement/Index.cshtml`'s deny-modal variant (lines 501-517) is the closest structural match: it reads `data-item-id`/`data-item-name` off `event.relatedTarget` and rewrites the form's `action`/hidden field values before the modal opens — this is the exact shape needed here (`data-character-id` → set `#characterSelect`'s value).
+
+**Recommendation: extract `_CharacterSelectModal.cshtml` into `Views/Quest/`** (not `Views/Shared/` — `_Calendar.cshtml` sits in `Shared` because it's genuinely cross-feature, used by both the standalone `Calendar` feature and `Quest`; this new partial is Quest-only, so it belongs alongside the existing Quest-scoped partials `_QuestCard.cshtml` and `_QuestSection.cshtml`, matching the codebase's own "single-feature partials live with their feature" convention). One partial, called identically from both `Details.cshtml` and `Details.Mobile.cshtml` with `@model PlayerSignup` (both files already share this exact model type, so no ViewModel change is needed to pass it).
+
+### How the mobile variant shares the modal without a third copy
+
+Put the `show.bs.modal` JavaScript **inside the partial itself** as a plain inline `<script>` tag (not inside a `@section Scripts` block). This sidesteps a real, verified inconsistency between the two host files: `Details.cshtml` puts its existing modal-adjacent script directly in the page body (line 865 onward, no `@section Scripts` wrapper), while `Details.Mobile.cshtml` does use `@section Scripts { ... }` (starting line 389). Since the modal's `id="addCharacterModal"` is unique per rendered page regardless of which file included the partial, a self-contained `<script>` block inside `_CharacterSelectModal.cshtml` works correctly wherever the partial is rendered, without needing to reconcile the two files' differing script-placement conventions or duplicate the JS a third time.
+
+The script itself (new logic, following the `ShopManagement/Index.cshtml` `denyModal` precedent exactly):
+```javascript
+document.getElementById('addCharacterModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const characterId = button?.getAttribute('data-character-id') || '';
+    document.getElementById('characterSelect').value = characterId;
+});
+```
+
+Each trigger button (in both `Character != null` and `Character == null` branches, in both tables, on both desktop and mobile) sets `data-bs-toggle="modal" data-bs-target="#addCharacterModal" data-character-id="@(participant.Character?.Id.ToString() ?? "")"` — the empty case naturally resets the dropdown to "-- No character --" or the default placeholder, matching today's "Add" behavior with no special-casing needed.
+
+### Data flow (verified, end to end)
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│  WRITE PATH (unchanged data model — no schema/migration needed)        │
-│                                                                          │
-│  Create/Edit .cshtml (+.Mobile.cshtml)                                 │
-│    └─ <partial name="_MarkdownEditor" model="...">  ◄── NEW partial    │
-│         textarea (raw Markdown) + toolbar + Preview pane               │
-│         markdown-editor.js: commonmark.js + DOMPurify (CDN, client)    │
-│    └─ POST → Controller → Domain Service → Repository                 │
-│         (raw Markdown string persisted verbatim — SAME 9 columns)      │
-└────────────────────────────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────────────────────────────┐
-│  READ PATH — two independent rendering pipelines, ONE shared core      │
-│                                                                          │
-│   MVC Request Pipeline              Hangfire Background-Job Pipeline   │
-│   (.cshtml, request-scoped DI)      (.razor via HtmlRenderer, scoped-  │
-│                                       factory pattern)                 │
-│         │                                    │                        │
-│  @Html.Markdown(Model.X)          @inject IMarkdownService              │
-│  (Service/Extensions/                @((MarkupString)                 │
-│   HtmlHelperExtensions.cs — NEW)      MarkdownService                  │
-│         │                             .RenderToHtml(X)))               │
-│         │                            (QuestFinalized/SessionReminder/  │
-│         │                             WaitlistPromoted .razor — MOD)   │
-│         └────────────────┬───────────────────┘                        │
-│                           ▼                                           │
-│         QuestBoard.Domain/Services/MarkdownService.cs  ◄── NEW        │
-│         QuestBoard.Domain/Interfaces/IMarkdownService.cs               │
-│         Markdig (DisableHtml, base CommonMark) → HtmlSanitizer pass    │
-│         registered AddSingleton in ServiceExtensions.AddDomainServices │
-│         (stateless — no IServiceScopeFactory bridge needed, unlike     │
-│          ActiveGroupContextService)                                   │
-└────────────────────────────────────────────────────────────────────────┘
+Desktop or Mobile Details.cshtml
+  trigger button (data-character-id=<id or empty>)
+        │  show.bs.modal event
+        ▼
+_CharacterSelectModal.cshtml inline <script>
+  sets #characterSelect.value from event.relatedTarget's data-character-id
+        │  user submits <form asp-action="UpdateSignupCharacter" method="post">
+        ▼  POST /Quest/UpdateSignupCharacter  { questId, characterId: int|"" }
+QuestController.UpdateSignupCharacter(int questId, int? characterId)
+  - ASP.NET model binding: "" → null  (no coercion risk — verified default MVC behavior)
+  - loads quest, resolves caller, finds caller's OWN PlayerSignup (never trusts a signup id)
+  - if characterId.HasValue: validates owner + CharacterStatus.Active, else BadRequest
+  - if null: validation skipped entirely (pre-existing code path, already correct)
+        ▼
+playerSignupService.UpdateSignupCharacterAsync(playerSignup.Id, characterId)
+  QuestBoard.Domain/Services/PlayerSignupService.cs:36
+  - loads PlayerSignup by id, sets playerSignup.CharacterId = characterId (null-safe)
+        ▼
+repository.UpdateAsync(playerSignup)
+  QuestBoard.Repository/PlayerSignupRepository.cs:112 (override, not the generic base)
+  - entity.CharacterId = model.CharacterId  (direct scalar assign, no AutoMapper here)
+  - DbContext.SaveChangesAsync()
+        ▼
+RedirectToAction("Details", new { id = questId })
+        ▼
+QuestController.Details(int id) GET  (QuestController.cs:307-373)
+  - re-fetches quest with signups (now-updated Character reflected via nav property)
+  - re-populates ViewBag.UserCharacters (Active characters only, line 320)
+  - renders Details.cshtml or Details.Mobile.cshtml (view-location expander picks by IsMobile)
 ```
 
-This slots cleanly into the existing one-way layer rule: `MarkdownService` lives in `QuestBoard.Domain`, has **no dependency on `QuestBoard.Repository`** (it takes a `string?` in, returns a `string` out — no entities, no `DbContext`, no repository interface). Both adapters (`HtmlHelperExtensions` in Service, and the `.razor` components in Service) depend *down* into Domain, exactly like every other Service→Domain call in this app. Nothing here requires touching `QuestBoard.Repository` at all — confirming the milestone's framing that this is "a rendering-layer and editing-UX change, not a data-model change."
+No point in this chain silently coerces or loses a `null` `characterId` — verified by reading every hop, not assumed.
 
-## Component Responsibilities
+### `ViewBag.UserCharacters` availability
 
-| Component | Layer | New/Modified | Responsibility |
-|-----------|-------|---------------|-----------------|
-| `IMarkdownService` | `QuestBoard.Domain/Interfaces/` | New | Contract: `string RenderToHtml(string? markdown)` |
-| `MarkdownService` | `QuestBoard.Domain/Services/` | New | Markdig parse (`.DisableHtml()`, base CommonMark only) + `HtmlSanitizer` allowlist pass; the single source of truth both pipelines call into |
-| `Markdig` NuGet ref | `QuestBoard.Domain.csproj` | New | Parser — pure managed library, no ASP.NET/EF dependency, safe to add to Domain (same reasoning `AutoMapper` is already there) |
-| `HtmlSanitizer` (Ganss.Xss) NuGet ref | `QuestBoard.Domain.csproj` | New | Post-parse allowlist sanitizer (tags + `AllowedSchemes`) — closes a gap Markdig's `DisableHtml()` alone does not close (see Anti-Patterns) |
-| `ServiceExtensions.AddDomainServices` | `QuestBoard.Domain/Extensions/` | Modified | Register `IMarkdownService` — as **Singleton**, a deliberate one-line deviation from this file's otherwise-uniform `AddScoped` convention, justified because the service is stateless and the Markdig pipeline object is expensive-ish to build once and is documented thread-safe for reuse |
-| `HtmlHelperExtensions.Markdown()` | `QuestBoard.Service/Extensions/` | New | Read-side adapter: `IHtmlContent Markdown(this IHtmlHelper html, string? markdown)`, resolves `IMarkdownService` via `html.ViewContext.HttpContext.RequestServices` (standard ASP.NET Core idiom — no `_ViewImports` `@inject` needed per-view), wraps output in `<div class="markdown-content">...</div>` |
-| `Views/_ViewImports.cshtml` | `QuestBoard.Service/Views/` | Modified | Add `@using QuestBoard.Service.Extensions;` so all 9 read call sites can call `@Html.Markdown(...)` without per-view usings (mirrors how `ControllerExtensions` is already `using`-scoped per controller) |
-| `Views/Shared/_MarkdownEditor.cshtml` | `QuestBoard.Service/Views/Shared/` | New | Write-side reusable partial: textarea + toolbar buttons (Bold/Italic/Heading/List) + Preview toggle markup, parameterized by field id/name/rows |
-| `wwwroot/js/markdown-editor.js` | `QuestBoard.Service/wwwroot/js/` | New | Toolbar button logic (vanilla JS textarea-selection wrapping, no library) + Preview toggle (client-side `commonmark.js` render + `DOMPurify` sanitize) |
-| `commonmark.js` (CDN) | `_Layout.cshtml` / `_Layout.Mobile.cshtml` | New | Client-side CommonMark-spec parser for the Preview pane, matched to server-side Markdig's base ruleset |
-| `DOMPurify` (CDN) | `_Layout.cshtml` / `_Layout.Mobile.cshtml` | New | Client-side HTML sanitizer for the Preview pane, pairs with server-side `HtmlSanitizer` |
-| `.markdown-content` CSS class | `wwwroot/css/site.css` | New | One shared typography ruleset (headings/lists/bold/italic/links/code) for all 9 rendered-Markdown read views — desktop and mobile both load `site.css`, so one rule covers both |
-| 9 read call sites (Quest card partial, Quest Details ×2 fields, Quest Manage, Quest Log Details ×2 fields, Character Details ×2 fields, Contact Details + Notes loop, DM Profile, Shop Index/Details) | `QuestBoard.Service/Views/**` | Modified | Replace `<p style="white-space:pre-wrap">@Model.X</p>` with `@Html.Markdown(Model.X)` |
-| 9 fields' Create/Edit (+`EditRecap`) forms, desktop + mobile | `QuestBoard.Service/Views/**` | Modified | Replace plain `<textarea asp-for="X">` with `<partial name="_MarkdownEditor" model="...">` |
-| `QuestFinalized.razor`, `SessionReminder.razor`, `WaitlistPromoted.razor` | `QuestBoard.Service/Components/Emails/` | Modified | Add `@inject IMarkdownService MarkdownService`; change `@QuestDescription` → `@((MarkupString)MarkdownService.RenderToHtml(QuestDescription))` |
-
-## Why a Domain Service (not just a view helper)
-
-This project has an explicit, already-validated requirement: *"Business logic lives in services, not controllers"* (v1.x, Phase 02) — and the more recent `IImageValidationService` (v7.0, Phase 45) is the exact template to follow for "small, pure, cross-cutting transformation logic that several controllers/views need identically." Putting the actual Markdig/HtmlSanitizer logic only in a view helper would:
-
-1. Make it untestable without spinning up MVC's `IHtmlHelper` machinery (Domain-layer unit tests are cheap and already the norm — see `QuestBoard.UnitTests/`).
-2. Be unreachable from the `.razor` email pipeline, which has no `IHtmlHelper` at all — `HtmlRenderer` renders Blazor components via `IServiceProvider`, not MVC's view engine. A view-only helper would force the email adapter to duplicate the parsing/sanitizing logic, which is the "logic duplicated 9(+3) times" outcome the question explicitly wants avoided.
-
-So: **Domain owns the algorithm, Service-layer owns two thin per-pipeline adapters.** This is the "both" option the question raises, and it is the right call — not because "both" is safe/wishy-washy, but because the two adapters genuinely cannot be unified: MVC's `IHtmlContent`/`HtmlString` and Blazor's `MarkupString` are different rendering-pipeline primitives, which is inherent to this project already choosing to run two parallel Razor rendering engines (documented in this codebase's own `ARCHITECTURE.md`: *"IRazorViewEngine throws NullReferenceException in background job context, which is why HtmlRenderer was adopted"*). The adapters are unavoidable plumbing; the algorithm is not duplicated.
-
-## Why HtmlHelper, not a TagHelper
-
-Both are legitimate ASP.NET Core choices. This codebase currently has **zero TagHelpers** — `Views/_ViewImports.cshtml` only registers the built-in `@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers`. It does, however, have an established, repeatedly-used convention: a `internal static class ...Extensions` in `QuestBoard.Service/Extensions/` (see `ControllerExtensions.cs`, cited directly in the milestone context as the "extract shared logic into helpers when duplicated 3+ times" precedent). A `HtmlHelperExtensions.Markdown()` method is the same shape of thing, in the same folder, following the same naming convention — it is the smaller, more consistent addition. Introducing a TagHelper for the first time in this milestone would mean inventing a second reusable-view-logic convention where one already exists and fits.
-
-Concretely:
+Populated once, in `QuestController.Details(int id, ...)` GET (`QuestBoard.Service/Controllers/QuestBoard/QuestController.cs:317-320`):
 ```csharp
-// QuestBoard.Service/Extensions/HtmlHelperExtensions.cs
-internal static class HtmlHelperExtensions
-{
-    internal static IHtmlContent Markdown(this IHtmlHelper html, string? markdown)
-    {
-        var service = html.ViewContext.HttpContext.RequestServices.GetRequiredService<IMarkdownService>();
-        var rendered = service.RenderToHtml(markdown);
-        return new HtmlString($"<div class=\"markdown-content\">{rendered}</div>");
-    }
-}
+var allCharacters = await characterService.GetCharactersByOwnerIdAsync(currentUser.Id, token);
+userCharacters = allCharacters.Where(c => c.Status == CharacterStatus.Active).ToList();
+...
+ViewBag.UserCharacters = userCharacters ?? new List<Character>();
 ```
-Call site (all 9, desktop and mobile identically, since both share `Views/_ViewImports.cshtml`):
-```html
-@Html.Markdown(Model.Quest?.Description)
-```
-This one line replaces both the old inline `<p style="white-space:pre-wrap">@Model.X</p>` markup **and** the per-page CSS reliance on `white-space: pre-wrap` (which becomes obsolete for these fields once Markdown owns paragraph semantics — this is literally the "Strict CommonMark paragraph rules... replacing today's line-break-preserving plain-text display" requirement).
+This is a **single controller action** shared by both the desktop and mobile Details pages (view selection happens purely at the view-resolution layer via `MobileViewLocationExpander` + root `_ViewStart.cshtml`'s `IsMobile` branch — there is no separate `DetailsMobile` action). So yes: `ViewBag.UserCharacters` is already available identically on both render paths, already filtered to `CharacterStatus.Active` only (matching the server-side validation in `UpdateSignupCharacter`, so the dropdown never offers a character the POST would reject).
 
-## Preview Toggle — Zero Round-Trip, Not a New Endpoint
+---
 
-**Recommendation: no `POST /markdown/preview` controller.** Reasons, in order of weight:
+## Item 2 — Stale Dependabot alerts on the deleted `EuphoriaInn.Domain.csproj` manifest
 
-1. **Deployment constraint fit.** This app already vendors 100% of its client JS via CDN `<script>` tags in `_Layout.cshtml`/`_Layout.Mobile.cshtml` (Bootstrap, FontAwesome, jQuery, Cropper.js v2.1.1) with zero npm/libman/build tooling — matching the project's own "must remain deployable via `dotnet run` on LXC host; no additional setup steps" constraint. A CDN-loaded client Markdown parser is the same pattern, not a new one.
-2. **Fidelity, not just speed.** A round-trip endpoint's only real advantage over client rendering is guaranteeing the preview is byte-identical to the real render. That guarantee is achievable client-side instead by choosing a **spec-matched** parser: `commonmark.js` is the reference implementation of the same CommonMark spec Markdig implements, and "Strict CommonMark paragraph rules" is already a locked v8.0 decision — so keeping the server pipeline to base CommonMark (no extra Markdig extensions beyond what's needed) and pointing the client at the spec reference implementation gets near-identical output without a network hop.
-3. **No new attack surface / no antiforgery plumbing for a preview-only action.** A `POST /markdown/preview` endpoint accepting arbitrary raw text from any authenticated user is a new unauthenticated-content-reflection surface that then needs its own rate limiting, its own antiforgery token wiring in 9+ forms, and its own test coverage — for a feature (live preview) whose entire value proposition is "just show me what this looks like," where a slight parser-edge-case mismatch is a cosmetic risk, not a functional one.
+Keep short per the question's scope — this touches no application architecture.
 
-**One real, acknowledged gap:** the recommended client stack (`commonmark.js` + DOMPurify) cannot be made to exactly replicate the server's second-stage `HtmlSanitizer` allowlist pass (see Anti-Patterns below) without also shipping a client sanitizer configuration kept in lockstep with the server one. This is an accepted, narrow asymmetry — the client preview is only ever shown to the authoring user before they submit; the server-side sanitizer is what actually protects *other* users and the emailed HTML once the content is saved and re-rendered. Recommend pairing `commonmark.js` with **DOMPurify** (industry-standard, dependency-free, CDN-friendly) in the preview pane specifically so this gap is small (raw-tag injection is still stripped client-side too), not absent.
+**Verified:**
+- Commit `a477ab9` ("refactor: rename EuphoriaInn -> QuestBoard") deleted `EuphoriaInn.Domain.csproj` (and its 4 sibling `.csproj` files) from tracked source, confirmed via `git show --stat a477ab9`.
+- The `EuphoriaInn.Domain/`, `EuphoriaInn.Repository/`, `EuphoriaInn.Service/`, `EuphoriaInn.UnitTests/`, `EuphoriaInn.IntegrationTests/` directories still physically present in the working tree contain **only** `bin/` and `obj/` build-artifact subfolders (verified via `find`) — no `.csproj`, no source files. `git ls-files` returns nothing for any of them; they are not tracked, are covered by the standard `[Bb]in/`/`[Oo]bj/` rules already in `.gitignore`, and were never added deliberately (they're stale local build output from before the rename, sitting untouched on this machine). **They have zero bearing on the Dependabot alerts** — Dependabot/GitHub's dependency graph reads tracked manifests from the repository on GitHub, not local untracked build artifacts.
+- `QuestBoard.slnx` contains no reference to any `EuphoriaInn.*` project (confirmed — zero grep matches).
+- **There is no `.github/dependabot.yml` in this repository at all** (confirmed — `find .github -type f` lists only `ISSUE_TEMPLATE/*.md` and the 3 workflow YAMLs; no dependabot config). Dependabot *alerts* (as opposed to Dependabot *version-update PRs*, which do require a `dependabot.yml`) are generated from GitHub's native Dependency Graph feature against whatever manifests exist in the repo's history/current tree — this needs no config file to function, and adding one would not affect alert staleness.
 
-Toolbar buttons (Bold/Italic/Heading/List) need no library at all — pure vanilla JS wrapping of the current `textarea` selection with `**`/`_`/`## `/`- ` markers, consistent with this app's already-vanilla-JS front end (no SPA framework, no bundler anywhere in the codebase).
+**Conclusion:** this is purely a **GitHub-side stale-alert cleanup**, not a repo change. The 5 HIGH alerts reference a manifest path that no longer exists on `main`; GitHub's dependency graph should auto-close alerts tied to a removed manifest, but in practice this doesn't always happen promptly/automatically, especially if the alerts were opened before the manifest was removed. The correct resolution path is to open each alert in the repo's **Security → Dependabot alerts** tab on GitHub.com and manually **Dismiss** with reason "No longer used" / "Vulnerable dependency removed" (whichever GitHub's UI offers for this repo) — no code, config, `.gitignore`, or `dependabot.yml` change is warranted or would have any effect. Optionally, as unrelated hygiene (not required to close the alerts): the 5 untracked `EuphoriaInn.*/bin,obj` directories could be deleted locally to declutter the working tree, since they're dead build output with no source behind them — but this has no bearing on the Dependabot alerts themselves and is a one-line `rm -rf` a developer can do at their own discretion, not a phase deliverable.
 
-## Sharing Logic Across the 9 Write-Side Call Sites
+---
 
-This project already has the right precedent for this: `Views/Quest/_QuestFormScripts.cshtml`, a partial view holding JS shared across `Quest/Create(.Mobile)` and `Quest/Edit(.Mobile)`. The Markdown editor needs the same idea, generalized from one feature to five. New component:
+## Recommended build order
 
-- `Views/Shared/_MarkdownEditor.cshtml` — a partial view accepting the bound field's `id`/`name` (or a small parameter object), rendering the textarea + toolbar + preview-pane markup identically everywhere it's included.
-- `wwwroot/js/markdown-editor.js` — one shared script (loaded once via the layout, same as `site.js` — note this project already consolidated "4 duplicated toast-init scripts into one `site.js` listener" in Phase 42, the exact same kind of dedup this is), exposing an `initMarkdownEditor(...)` entry point the partial's inline script calls per-instance.
+**Phase A — Item 2 first (Dependabot alert dismissal).** Zero code risk, zero dependency on anything else, and it's pure GitHub UI interaction (no `git` commit even required). Doing it first clears it off the milestone's open list immediately and has no ordering constraint with Item 1 — sequencing it first is purely a "bank the easy win, unblock nothing" call, not a technical dependency.
 
-Each of the 9 fields' Create/Edit views (18 files counting desktop+mobile pairs, plus `QuestLog/EditRecap(.Mobile).cshtml` for Recap specifically) becomes a one-line `<partial name="_MarkdownEditor" model="...">` swap-in for what is today a plain `<textarea asp-for="Description" class="form-control" rows="6"></textarea>`. Because the partial is pure markup + client JS with no server dependency, mobile and desktop forms include the exact same partial and get identical behavior for free — there is nothing mobile-specific to re-implement, which matters given this project's own repeated lesson (flagged multiple times in `PROJECT.md`, e.g. Phase 43/54) that mobile parity gets missed when a feature is built desktop-only first.
+**Phase B — Item 1, single phase, ordered internally as:**
+1. New partial `_CharacterSelectModal.cshtml` (self-contained: modal markup + `show.bs.modal` script) — build and unit-verify it renders correctly with a stub model before wiring callers, since both host views depend on it existing first.
+2. `Details.cshtml` — replace inline modal with the partial call, add "Change" trigger buttons to the `Character != null` branches (both tables).
+3. `Details.Mobile.cshtml` — add the partial call, add matching trigger buttons/character display to the two participant-row blocks (this file currently has **no** character add/change affordance at all, so this is new UI, not a parity port of existing desktop-only UI — slightly more design latitude, but must match the desktop's data-flow contract exactly since both post to the same `UpdateSignupCharacter` action).
 
-## Anti-Patterns to Avoid
+**Why one phase, not split desktop/mobile across two phases:** this project's own retrospective notes (`.planning/PROJECT.md`, Phase 43/54 lesson, referenced directly in the v7.0 history: *"mobile-button-class mismatch... UI-SPEC review separately caught"* and *"mobile parity enforced by pairing desktop+mobile view edits into single tasks, per the Phase 43/54 lesson"*) establish a standing project convention that desktop+mobile edits for the same feature should land as **paired tasks within one phase**, specifically because splitting them across phases previously caused parity drift (Phase 54's mobile-only bug fix, Phase 43's Mobile-only fixes for #115/#116). Item 1 should follow that same paired-task discipline: one phase, with the partial as its own task/wave (dependency for both view edits), then desktop and mobile view edits as sibling tasks in the same phase — not two separate phases.
 
-### Relying on `Markdig.DisableHtml()` alone as "the" sanitizer
+**No Domain/Repository phase is needed for Item 1** — reiterated because it changes the usual phase shape for this project (most feature phases here touch all three layers): this one is Service/Views-only, so there's no "backend phase then frontend phase" split to plan for.
 
-**What people do:** Configure the Markdig pipeline with `.DisableHtml()` and consider the output safe to render as raw HTML, reasoning "no raw HTML in, no raw HTML out."
-
-**Why it's wrong:** `DisableHtml()` stops literal `<script>`/`<iframe>`/etc. tags typed *inside* the Markdown source from being echoed as live HTML (it encodes them as text instead) — but it does **not** restrict the URI scheme of a normal Markdown link. `[Click here](javascript:alert(document.cookie))` is completely valid CommonMark and Markdig will happily emit a live `<a href="javascript:...">`. This is a well-documented, real-world Markdown XSS vector (verified via Rick Strahl's "Markdown and Cross Site Scripting" writeup and Markdig's own usage docs — MEDIUM confidence, WebSearch-verified against primary sources, no Context7 available in this environment). Given these 9 fields are writable by ordinary group members (Contact Notes = any member, Character fields = the owning player) and the rendered output is injected as raw HTML into both pages *and* the 3 HTML email templates, this is not a theoretical risk.
-
-**Do this instead:** Pipe Markdig's HTML output through a second pass with **`HtmlSanitizer`** (Ganss.Xss NuGet package — pure managed, MIT-licensed, thread-safe `Sanitize()`), configured with:
-- An allowed-tag list matching exactly what Markdig's base CommonMark renderer can ever produce (`p, strong, em, h1–h6, ul, ol, li, a, code, pre, blockquote, br, hr, img` if images are ever allowed),
-- `AllowedSchemes` restricted to `http`, `https`, `mailto` — this is the specific configuration that closes the `javascript:` gap `DisableHtml()` leaves open.
-
-Both stages (`DisableHtml()` + `HtmlSanitizer`) belong inside `MarkdownService.RenderToHtml`, not scattered across call sites — this is precisely why the algorithm belongs in one Domain service rather than being reimplemented per adapter.
-
-### Persisting rendered HTML instead of rendering on read
-
-**What people do:** Since Markdown rendering has a cost, cache/store the rendered HTML alongside the raw Markdown (e.g., a new `DescriptionHtml` column) to avoid re-rendering on every page view.
-
-**Why it's wrong:** This milestone is explicitly scoped as "no schema change needed — this is a rendering-layer and editing-UX change, not a data-model change." Storing rendered HTML also creates a cache-invalidation problem (stale HTML if the sanitizer/renderer config ever changes) and doubles the surface that could drift from the source of truth. For description-length text, Markdig rendering is sub-millisecond regardless of request volume — there is no performance case for pre-rendering.
-
-**Do this instead:** Render on every read, in the adapter, from the always-current raw Markdown string. If profiling ever shows this matters (it won't at this scale), memoize per-request only, never persist.
-
-### Reflecting `IMarkdownService` through `IServiceScopeFactory`/`HangfireJobHelper` "for consistency" with other Hangfire-job services
-
-**What people do:** Because every existing Hangfire job resolves its scoped services via `HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, ...)`, it's tempting to route `IMarkdownService` through the same ceremony "to match the pattern."
-
-**Why it's wrong:** That ceremony exists specifically to bridge `HttpContext.Session`-dependent state (`ActiveGroupContextService.SetGroupId`) into a background thread that has no `HttpContext`. `IMarkdownService` has no such state — it is a pure function of its string input. Forcing it through the scope-factory dance adds indirection with no benefit, and — more importantly — the `.razor` email components render via `HtmlRenderer`'s own `IServiceProvider` (already the scoped provider from `RazorEmailRenderService`'s constructor), so `@inject IMarkdownService` on the component resolves it directly, no bridge needed at all.
-
-**Do this instead:** Register `IMarkdownService` as `AddSingleton` in `QuestBoard.Domain/Extensions/ServiceExtensions.cs` and let both pipelines resolve it through ordinary DI — MVC via `RequestServices` (inside the `Html.Markdown()` extension), Blazor via `@inject` on the 3 email components.
-
-## Integration Points
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `QuestBoard.Service` (Html.Markdown extension) → `QuestBoard.Domain` (IMarkdownService) | Direct DI resolution via `RequestServices` | Matches existing Service→Domain dependency direction; no new boundary type |
-| `QuestBoard.Service` (email `.razor` components) → `QuestBoard.Domain` (IMarkdownService) | `@inject`, resolved from `HtmlRenderer`'s scoped `IServiceProvider` | Same Domain service, second adapter — proves the "one core, two adapters" design under the project's own two-Razor-pipeline constraint |
-| `QuestBoard.Domain` (MarkdownService) → `QuestBoard.Repository` | **None** | Correctly respects the one-way layer rule — this service touches no entities, no `DbContext`; it is a pure string-transform, so there is nothing for it to depend on downward |
-| Write-side `_MarkdownEditor.cshtml` partial → existing Create/Edit controller actions | Unchanged — the partial only replaces the `<textarea>` markup; the posted field name/model binding is untouched, so no controller/ViewModel changes are needed beyond the view swap | Confirms "no data-model change" holds for the write path too, not just the read path |
-
-### External Services (CDN-vendored, matching existing convention)
-
-| Library | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| `commonmark.js` | `<script src="https://cdn.jsdelivr.net/...">` in `_Layout.cshtml`/`_Layout.Mobile.cshtml`, same tier as Bootstrap/FontAwesome/Cropper.js | Client-side Preview parser; chosen for spec parity with server-side Markdig, not for feature richness |
-| DOMPurify | Same CDN pattern | Client-side sanitizer for the Preview pane only — does not replace the server-side `HtmlSanitizer` pass, which remains authoritative |
-| `Markdig` (NuGet) | `QuestBoard.Domain.csproj` `PackageReference` | Server-side parser |
-| `HtmlSanitizer` (Ganss.Xss, NuGet) | `QuestBoard.Domain.csproj` `PackageReference` | Server-side sanitizer, second stage after Markdig |
-
-## Suggested Build Order
-
-1. **Foundation (no field wired yet).** `IMarkdownService`/`MarkdownService` in Domain (+ Markdig/HtmlSanitizer NuGet refs, unit tests covering the `javascript:`-scheme and raw-`<script>` cases specifically), `AddSingleton` registration, `HtmlHelperExtensions.Markdown()` in Service, the `.markdown-content` CSS class, and the `_ViewImports.cshtml` using-line. Nothing user-visible changes yet — this phase is pure plumbing and is fully unit-testable in isolation (Domain layer), matching this project's TDD-friendly phase pattern (see Phase 61's "Wave 1: failing tests, Wave 2: implementation" shape).
-
-2. **One feature end-to-end, proof-of-concept: Quest Description.** Wire `_MarkdownEditor.cshtml` + `markdown-editor.js` (toolbar + CDN preview) into `Quest/Create(.Mobile)` and `Quest/Edit(.Mobile)`; swap the Quest board card partial, `Quest/Details`, and `Quest/Manage` read call sites to `Html.Markdown()`; update `QuestFinalized.razor` to the `@inject`/`MarkupString` pattern. This single field is deliberately chosen as the proof-of-concept because it is the **one field that already flows into an email template today** — proving both adapters (MVC helper and Blazor component) and the full write→read→email loop in one phase directly retires the milestone's flagged cross-cutting risk ("emails need the same renderer as pages") early, rather than deferring it to a separate, later "email" phase where a design gap would be more expensive to unwind.
-
-3. **Remaining Quest fields (Rewards, Recap) + remaining 2 email templates.** `Quest/Details` (Rewards) and `QuestLog/Details` + `QuestLog/EditRecap(.Mobile)` (Recap) reuse the now-proven partial/helper with zero new plumbing. `SessionReminder.razor` and `WaitlistPromoted.razor` get the identical one-line adapter change already validated in step 2 — low-risk, mechanical.
-
-4. **Remaining 6 fields across 4 features.** Character (Description, Backstory), Contact (Description, Notes — note the Notes list needs `Html.Markdown()` called per-item inside the existing `@foreach`, not a special case), DM Profile (Bio), Shop Item (Description). Each is a mechanical repeat of the now-proven write/read pattern; a roadmapper can size this as one wide phase or split by feature (e.g., Characters+Contacts, then DM Profile+Shop) without any sequencing risk between them — none of these 6 fields depend on each other or on anything not already proven in steps 1–3.
+---
 
 ## Sources
 
-- This codebase, verified directly (HIGH confidence): `QuestBoard.Domain/Interfaces/IImageValidationService.cs`, `QuestBoard.Domain/Services/ImageValidationService.cs`, `QuestBoard.Domain/Extensions/ServiceExtensions.cs`, `QuestBoard.Service/Extensions/ControllerExtensions.cs`, `QuestBoard.Service/Services/RazorEmailRenderService.cs`, `QuestBoard.Domain/Interfaces/IEmailRenderService.cs`, `QuestBoard.Service/Jobs/HangfireJobHelper.cs`, `QuestBoard.Service/Jobs/QuestFinalizedEmailJob.cs`, `QuestBoard.Service/Components/Emails/{QuestFinalized,SessionReminder,WaitlistPromoted}.razor`, `QuestBoard.Service/Views/_ViewImports.cshtml`, `QuestBoard.Service/Views/Quest/_QuestFormScripts.cshtml`, `QuestBoard.Service/Views/Quest/{_QuestCard,Details,Manage}.cshtml`, `QuestBoard.Service/Views/Shared/_Layout.cshtml` (CDN vendoring pattern), `.planning/codebase/ARCHITECTURE.md`, `.planning/PROJECT.md`
-- [Markdown and Cross Site Scripting — Rick Strahl](https://weblog.west-wind.com/posts/2018/Aug/31/Markdown-and-Cross-Site-Scripting) — MEDIUM confidence, corroborates the `javascript:`-scheme gap in Markdown renderers generally, including Markdig-based ones
-- [Markdig usage docs — DisableHtml](https://xoofx.github.io/markdig/docs/usage/) — MEDIUM confidence, official project docs, confirms `DisableHtml()` behavior and scope
-- [HtmlSanitizer (Ganss.Xss) — GitHub](https://github.com/mganss/HtmlSanitizer) and [NuGet Gallery](https://www.nuget.org/packages/htmlsanitizer) — MEDIUM-HIGH confidence, official repo/package docs, confirms `AllowedSchemes`/`UriAttributes` configuration and thread-safety of `Sanitize()`
+All findings verified by direct file reads in this working tree (`C:\Repos\quest-board`), not inferred:
+
+- `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` (lines 307-373 `Details` GET, 520-548 `UpdateSignupCharacter`)
+- `QuestBoard.Service/Views/Quest/Details.cshtml` (lines 1-40, 95-284, 815-889)
+- `QuestBoard.Service/Views/Quest/Details.Mobile.cshtml` (lines 1-20, 195-264)
+- `QuestBoard.Service/Views/Quest/_QuestCard.cshtml`, `Views/Shared/_Calendar.cshtml` (partial-sharing precedent)
+- `QuestBoard.Service/Views/Shop/Index.cshtml`, `Views/Shop/Index.Mobile.cshtml`, `Views/ShopManagement/Index.cshtml`, `Views/ShopManagement/Index.Mobile.cshtml` (`show.bs.modal` precedent)
+- `QuestBoard.Service/Views/_ViewImports.cshtml`, `Views/_ViewStart.cshtml` (ambient usings, mobile view selection)
+- `QuestBoard.Domain/Services/PlayerSignupService.cs` (lines 36-46)
+- `QuestBoard.Domain/Interfaces/IPlayerSignupService.cs`
+- `QuestBoard.Repository/PlayerSignupRepository.cs` (lines 112-130, `UpdateAsync` override)
+- `QuestBoard.Repository/BaseRepository.cs` (lines 63-69, generic `UpdateAsync` being overridden)
+- `QuestBoard.Repository/Entities/PlayerSignupEntity.cs` (line 31, `CharacterId` FK)
+- `QuestBoard.Domain/Enums/CharacterStatus.cs`
+- `.planning/PROJECT.md` (Known issues section, line 153 — `Characters/Edit.cshtml` guard drift; Phase 43/54/54 mobile-parity history)
+- `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/CONVENTIONS.md` (baseline layer/convention confirmation)
+- `git show --stat a477ab9`, `git ls-files`, `find EuphoriaInn.*`, `.gitignore`, `.github/` directory listing, `QuestBoard.slnx` (Item 2 verification)
 
 ---
-*Architecture research for: Markdown editing/rendering integration, D&D Quest Board v8.0*
-*Researched: 2026-07-09*
+*Architecture research for: D&D Quest Board v9.0 "Rolling Improvements"*
+*Researched: 2026-08-25*
