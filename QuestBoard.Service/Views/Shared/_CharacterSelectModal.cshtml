@@ -9,6 +9,14 @@
      data-quest-id               -- the quest id
      data-current-character-id   -- the signup's current character id, or "" if none
      data-current-character-label -- that character's ToSelectLabel() text, or "" if none
+
+   Host contract -- the rendering view must put the viewer's own characters in
+   ViewBag.UserCharacters. A host that forgets renders an empty required select, and the
+   user is silently locked out of saving with nothing on screen explaining why.
+
+   The form names its controller explicitly rather than inheriting it from the ambient
+   ViewContext, so the post keeps targeting the right action when a view outside the Quest
+   controller renders this partial.
 *@
 <div class="modal fade" id="characterSelectModal" tabindex="-1" aria-labelledby="characterSelectModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -19,7 +27,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="UpdateSignupCharacter" method="post" id="characterSelectForm">
+            <form asp-controller="Quest" asp-action="UpdateSignupCharacter" method="post" id="characterSelectForm">
                 <div class="modal-body">
                     <input type="hidden" name="questId" id="characterSelectQuestId" value="" />
 
