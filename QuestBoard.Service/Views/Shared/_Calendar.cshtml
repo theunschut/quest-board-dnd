@@ -27,7 +27,27 @@
                 @if (!day.IsEmpty)
                 {
                     <div class="day-number">@day.Day</div>
-                    
+
+                    @* Renders only when the day actually has events, and the collection is *@
+                    @* empty by default, so the callers of this partial that build their own *@
+                    @* model and never populate events render nothing here without any flag *@
+                    @* to set. *@
+                    @if (day.EventsOnDay.Any())
+                    {
+                        <div class="calendar-events">
+                            @foreach (var eventOnDay in day.EventsOnDay.Take(3))
+                            {
+                                <div class="calendar-event" title="@eventOnDay.Event.Title - @eventOnDay.TimeLabel">
+                                    <a href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })"
+                                       class="quest-link">
+                                        <div class="calendar-event-title"><i class="fas fa-calendar-day me-1"></i>@eventOnDay.Event.Title</div>
+                                        <div class="calendar-event-time">@eventOnDay.TimeLabel</div>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    }
+
                     @if (day.QuestsOnDay.Any())
                     {
                         <div class="quest-events">
