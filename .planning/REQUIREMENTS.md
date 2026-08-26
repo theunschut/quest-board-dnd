@@ -97,13 +97,13 @@ Explicit exclusions for v9.0, with reasoning.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIGNCHAR-01 | Phase 72 | Not started |
-| SIGNCHAR-02 | Phase 72 | Not started |
-| SIGNCHAR-03 | Phase 72 | Not started |
-| SIGNCHAR-04 | Phase 72 | Not started |
-| SIGNCHAR-05 | Phase 72 | Not started |
-| SIGNCHAR-06 | Phase 72 | Not started |
-| SIGNCHAR-07 | Phase 72 | Not started |
+| SIGNCHAR-01 | Phase 72 | Complete |
+| SIGNCHAR-02 | Phase 72 | Complete |
+| SIGNCHAR-03 | Phase 72 | Complete |
+| SIGNCHAR-04 | Phase 72 | Complete |
+| SIGNCHAR-05 | Phase 72 | Complete |
+| SIGNCHAR-06 | Phase 72 | Complete |
+| SIGNCHAR-07 | Phase 72 | Complete |
 | SECALERT-01 | Phase 73 | Not started |
 | SECALERT-02 | Phase 73 | Not started |
 | SECALERT-03 | Phase 73 | Not started |
