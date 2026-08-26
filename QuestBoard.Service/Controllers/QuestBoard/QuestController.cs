@@ -405,17 +405,14 @@ public class QuestController(
         signup.Role = (SignupRole)selectedRole; // Set role from form
 
         
-        // Validate character if selected. Ownership is the only gate — a player may bring a
-        // Retired or Dead character to a signup, matching the character-change path and the
-        // full list the pickers offer.
-        if (signup.CharacterId.HasValue)
+        // Validate character if selected. Ownership and board scope are the only gates — a
+        // player may bring a Retired or Dead character to a signup, matching the
+        // character-change path and the full list the pickers offer.
+        if (signup.CharacterId.HasValue
+            && await ResolveCharacterAssignmentAsync(signup.CharacterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
-            var character = await characterService.GetCharacterWithDetailsAsync(signup.CharacterId.Value);
-            if (character == null || character.OwnerId != user.Id)
-            {
-                ModelState.AddModelError("", "Invalid character selection.");
-                return await Details(questId);
-            }
+            ModelState.AddModelError("", "Invalid character selection.");
+            return await Details(questId);
         }
 
         await playerSignupService.AddAsync(signup);
@@ -452,17 +449,14 @@ public class QuestController(
         var isPlayerRoleWithSpace = role != SignupRole.Player
             || quest.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() < quest.TotalPlayerCount;
 
-        // Validate character if selected. Ownership is the only gate — a player may bring a
-        // Retired or Dead character to a signup, matching the character-change path and the
-        // full list the pickers offer.
-        if (characterId.HasValue)
+        // Validate character if selected. Ownership and board scope are the only gates — a
+        // player may bring a Retired or Dead character to a signup, matching the
+        // character-change path and the full list the pickers offer.
+        if (characterId.HasValue
+            && await ResolveCharacterAssignmentAsync(characterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
-            var character = await characterService.GetCharacterWithDetailsAsync(characterId.Value);
-            if (character == null || character.OwnerId != user.Id)
-            {
-                ModelState.AddModelError("", "Invalid character selection.");
-                return RedirectToAction("Details", new { id = questId });
-            }
+            ModelState.AddModelError("", "Invalid character selection.");
+            return RedirectToAction("Details", new { id = questId });
         }
 
         // Find the finalized date's corresponding proposed date for vote creation
@@ -551,23 +545,10 @@ public class QuestController(
 
         // Validate character if provided. Ownership and board scope are the only gates —
         // a player may bring a Retired or Dead character to a signup.
-        if (characterId.HasValue)
+        if (characterId.HasValue
+            && await ResolveCharacterAssignmentAsync(characterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
-            var character = await characterService.GetCharacterWithDetailsAsync(characterId.Value);
-            if (character == null || character.OwnerId != user.Id)
-            {
-                return BadRequest("Invalid character selection.");
-            }
-
-            // Characters are already scoped to the viewer's board one layer down by a
-            // model-level query filter, so this comparison exists purely as insurance: if a
-            // future query ever opts out of that filter, this is what keeps the action safe.
-            // A character from another board cannot be produced by any legitimate interaction
-            // with the picker, so this stays a hard rejection rather than a redirect.
-            if (activeGroupContext.ActiveGroupId is not { } groupId || character.GroupId != groupId)
-            {
-                return BadRequest("Invalid character selection.");
-            }
+            return BadRequest("Invalid character selection.");
         }
 
         // Update the character
@@ -1061,6 +1042,39 @@ public class QuestController(
 
         var group = await groupService.GetByIdAsync(groupId, token);
         return group?.BoardType ?? BoardType.OneShot;
+    }
+
+    // The outcome of validating a character a player wants to put on a signup. Every action
+    // that writes the signup's CharacterId column runs the same gate, so the check lives in
+    // one place; the outcomes stay distinct because callers report a vanished character
+    // differently from one that was never theirs to assign.
+    private enum CharacterAssignment
+    {
+        Assignable,
+        NotFound,
+        NotAssignable
+    }
+
+    // Characters are already scoped to the viewer's board one layer down by a model-level
+    // query filter, so the board comparison here exists purely as insurance: if a future
+    // query ever opts out of that filter, this is what keeps every character write safe. A
+    // character from another board cannot be produced by any legitimate use of the pickers.
+    private async Task<CharacterAssignment> ResolveCharacterAssignmentAsync(int characterId, int userId)
+    {
+        var character = await characterService.GetCharacterWithDetailsAsync(characterId);
+        if (character == null)
+        {
+            return CharacterAssignment.NotFound;
+        }
+
+        if (character.OwnerId != userId
+            || activeGroupContext.ActiveGroupId is not { } groupId
+            || character.GroupId != groupId)
+        {
+            return CharacterAssignment.NotAssignable;
+        }
+
+        return CharacterAssignment.Assignable;
     }
 
     // Id-based identity comparison for "is this the quest's DM" — deliberately avoids
