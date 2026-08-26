@@ -27,7 +27,7 @@
                         <label for="characterSelect" class="form-label">Select Character <span class="text-danger">*</span></label>
                         <select name="characterId" id="characterSelect" class="form-select" required>
                             <option value="">-- Select a character --</option>
-                            @foreach (var character in ViewBag.UserCharacters as List<Character> ?? new List<Character>())
+                            @foreach (var character in ViewBag.UserCharacters as IEnumerable<Character> ?? new List<Character>())
                             {
                                 <option value="@character.Id">@character.ToSelectLabel()</option>
                             }

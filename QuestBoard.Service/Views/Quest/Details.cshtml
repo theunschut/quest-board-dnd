@@ -11,6 +11,11 @@
     ViewData["BodyClass"] = "quest-details-page";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
+    // Characters the viewer owns on the active board. ViewBag hands this over as a dynamic,
+    // so read it once through a widened, null-safe local rather than casting to a concrete
+    // list type at each use site -- a cast that would only hold as long as the mapper keeps
+    // choosing List<T> for its IList<T> destinations.
+    var ownedCharacters = ViewBag.UserCharacters as IEnumerable<Character> ?? new List<Character>();
 }
 
 <div class="quest-details-page">
@@ -143,7 +148,7 @@
                                                             {
                                                                 <div class="d-flex align-items-center gap-2">
                                                                     <span class="text-muted fst-italic">No character</span>
-                                                                    @if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                                                    @if (isCurrentUser && ownedCharacters.Any())
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-success"
                                                                                 data-bs-toggle="modal"
@@ -274,7 +279,7 @@
                                                             {
                                                                 <div class="d-flex align-items-center gap-2">
                                                                     <span class="text-muted fst-italic">No character</span>
-                                                                    @if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                                                    @if (isCurrentUser && ownedCharacters.Any())
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-success"
                                                                                 data-bs-toggle="modal"
@@ -360,7 +365,7 @@
                                             <label class="form-label">Select Character (Optional)</label>
                                             <select id="finalizedQuestCharacter" class="form-select">
                                                 <option value="">-- Join without character --</option>
-                                                @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
+                                                @foreach (var character in ownedCharacters)
                                                 {
                                                     <option value="@character.Id">@character.ToSelectLabel()</option>
                                                 }
@@ -443,7 +448,7 @@
                                             <label class="form-label">Select Character (Optional)</label>
                                             <select name="CharacterId" class="form-select">
                                                 <option value="">-- Sign up without character --</option>
-                                                @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
+                                                @foreach (var character in ownedCharacters)
                                                 {
                                                     <option value="@character.Id">@character.ToSelectLabel()</option>
                                                 }

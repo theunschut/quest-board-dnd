@@ -38,6 +38,12 @@
     var selectedPlayersCount = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() ?? 0;
     var hasSpace = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
     var userCanJoin = boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && !isPlayerSignedUp && Model.Quest?.IsFinalized == true;
+
+    // Characters the viewer owns on the active board. ViewBag hands this over as a dynamic,
+    // so read it once through a widened, null-safe local rather than casting to a concrete
+    // list type at each use site -- a cast that would only hold as long as the mapper keeps
+    // choosing List<T> for its IList<T> destinations.
+    var ownedCharacters = ViewBag.UserCharacters as IEnumerable<Character> ?? new List<Character>();
 }
 @section Styles {
     <link href="~/css/quests.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -224,7 +230,7 @@
                             else
                             {
                                 @:No character
-                                if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                if (isCurrentUser && ownedCharacters.Any())
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
                                 }
@@ -269,7 +275,7 @@
                             else
                             {
                                 @:No character
-                                if (isCurrentUser && ViewBag.UserCharacters != null && ((List<Character>)ViewBag.UserCharacters).Any())
+                                if (isCurrentUser && ownedCharacters.Any())
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
                                 }
@@ -326,7 +332,7 @@
                 <label class="form-label">Select Character (Optional)</label>
                 <select id="finalizedQuestCharacterMobile" class="form-select">
                     <option value="">-- Join without character --</option>
-                    @foreach (var character in ViewBag.UserCharacters as List<QuestBoard.Domain.Models.Character> ?? new List<QuestBoard.Domain.Models.Character>())
+                    @foreach (var character in ownedCharacters)
                     {
                         <option value="@character.Id">@character.ToSelectLabel()</option>
                     }

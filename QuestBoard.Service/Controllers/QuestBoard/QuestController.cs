@@ -336,7 +336,7 @@ public class QuestController(
 
         // Check if current user is signed up
         ViewBag.IsPlayerSignedUp = currentUser != null && quest.PlayerSignups.Any(ps => ps.Player.Id == currentUser.Id);
-        ViewBag.UserCharacters = userCharacters ?? new List<Character>();
+        ViewBag.UserCharacters = userCharacters?.ToList() ?? new List<Character>();
 
         // Check if current user can manage this quest (DM or admin)
         var isQuestDm = currentUser != null && IsQuestOwner(currentUser, quest.DungeonMaster);
