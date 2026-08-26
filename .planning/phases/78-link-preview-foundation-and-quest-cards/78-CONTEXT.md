@@ -49,7 +49,7 @@ Out of scope: per-quest generated card images, an interactive Spotify-style embe
 
   Rejected: tightening `AllowedHosts` to the production hostname. It is real defence in depth, but a wrong or unset value returns 400 for *every* request — a total outage rather than a degradation — and D-07 already removes host spoofing from the card path entirely.
 
-  **Verify during planning, do not assume:** the Phase 32 UAT deferred confirming `ReverseProxy__KnownProxies__0` was actually set on the App CT, and it has never been confirmed since (2026-07-01). If it is unset, forwarded headers are silently ignored and D-05 alone would be a no-op. D-07 is what stops that from becoming a no-card failure.
+  **Required pre-flight verification, not a deferred item — upgraded by research.** From ASP.NET Core 8.0.17/9.0.6 onward, and therefore in .NET 10 from GA, `ForwardedHeadersMiddleware` **fails closed**: with `KnownProxies` and `KnownNetworks` both empty it silently drops *every* `X-Forwarded-*` header rather than trusting them. The Phase 32 UAT deferred confirming `ReverseProxy__KnownProxies__0` was actually set on the App CT and it has never been confirmed since (2026-07-01). If it is unset, then D-05 is a no-op **and the `X-Forwarded-For`-based forgot-password rate limiting Phase 32 shipped is already silently broken in production today** — a pre-existing defect this phase would otherwise inherit blind. Confirming it must be an explicit task, and it is cheap: one `curl -A Discordbot` against the deployed host settles it. D-07 is what keeps a wrong answer from becoming a no-card failure.
 
 - **D-07: `EmailSettings:AppUrl` is the canonical base URL for card metadata and for the copied share link, with request-derived values as the fallback when it is absent.** It is already the application's single answer to "what is my public URL", it is already set correctly in the server's env file, and working production email links are standing proof of that. Reading it makes `og:url`, `og:image`, and the copied link deterministic even if D-06's proxy trust is misconfigured.
 
@@ -77,7 +77,9 @@ Out of scope: per-quest generated card images, an interactive Spotify-style embe
 
 - **D-10: The preview response is a standalone minimal HTML document that uses no application layout, and carries `<meta name="robots" content="noindex">`.**
 
-  **This deliberately overrides the ROADMAP's stated mechanism** ("a shared partial rendered into `_Layout.cshtml`'s `<head>` through a section"). Two scouted facts make that mechanism hazardous: `_Layout.cshtml` has no head section at all (only `Scripts` at line 225), and `MobileDetectionMiddleware` selects `_Layout.Mobile.cshtml` on a User-Agent containing `iPhone`/`iPad` — plausibly what Apple sends when fetching an iMessage preview. Meta tags added to the desktop layout alone would render no card for one of the three explicitly named target clients, silently. That is the same "mobile markup that was never selected" bug class PROJECT.md already records against `_Layout.Platform.Mobile.cshtml`.
+  **This deliberately overrides the ROADMAP's stated mechanism** ("a shared partial rendered into `_Layout.cshtml`'s `<head>` through a section"). `_Layout.cshtml` has no head section at all (only `Scripts` at line 225), so that mechanism is new plumbing in both layouts — and card presence would then depend on which layout `MobileDetectionMiddleware` picked from the caller's User-Agent, which is precisely the coupling the ROADMAP's own locked decision forbids ("card presence is decided by the signature, never by User-Agent"). A standalone view removes the coupling instead of mitigating it. Related bug class: the "mobile markup that was never selected" case PROJECT.md records against `_Layout.Platform.Mobile.cshtml`.
+
+  **Correction (Phase 78 research, 2026-08-26):** the original rationale for this decision claimed Apple's iMessage fetcher plausibly sends an `iPhone`/`iPad` User-Agent and would therefore be served the mobile layout. **That premise is wrong** — Apple's fetcher presents a desktop Mac Safari string carrying `facebookexternalhit`/`Twitterbot` signatures, and `MobileDetectionMiddleware` would not match it. The decision stands unchanged on the stronger grounds above; only the worked example was mistaken. See `78-RESEARCH.md` § Assumptions Log.
 
   The ROADMAP's *intent* — one shared markup surface that Phase 79 extends rather than copies — is fully preserved: Phase 79 extends this view. Only the host changes. As a bonus, no normal page carries a conditional meta block it never uses.
 
@@ -91,7 +93,7 @@ Out of scope: per-quest generated card images, an interactive Spotify-style embe
 
   **Writing the group id into Session would be a genuine privilege escalation** — it would hand an anonymous visitor a live group context for the remainder of their session, converting a metadata token into board access. `SetGroupId` sets a scoped in-memory override that dies with the request; that distinction is the whole point.
 
-  `IActiveGroupContext` may need widening to expose the setter, or the concrete service resolved directly — planner's choice.
+  **Settled by research, no longer discretionary: `IActiveGroupContext` must be widened with `SetGroupId(int?)`.** Resolving the concrete `ActiveGroupContextService` works in production but **silently no-ops under test** — `WebApplicationFactoryBase.cs` registers a singleton `MutableGroupContext` for `IActiveGroupContext`, a different object from the scoped service production delegates to. Widening the interface is the only shape that behaves identically in both, and the alternative fails in the worst possible way: green tests over a broken preview path.
 
 ### The card itself
 
@@ -120,7 +122,7 @@ Out of scope: per-quest generated card images, an interactive Spotify-style embe
 Not discussed — planner decides:
 - The exact preview route path and token format (the `/s/quest/{token}` shape above is illustrative, not locked).
 - The Data Protection purpose string, and whether the group id is part of the purpose or of the payload.
-- Whether `IActiveGroupContext` is widened to expose `SetGroupId` or the concrete `ActiveGroupContextService` is resolved directly.
+- ~~Whether `IActiveGroupContext` is widened to expose `SetGroupId` or the concrete service is resolved directly.~~ **Settled by research — the interface must be widened; see D-12.**
 - Button placement, iconography, and wording on desktop and mobile, and the copy-confirmation mechanism (toast vs inline). The project's `_Toasts.cshtml` is available in both layouts.
 - Exact fallback description wording, exact truncation length, and the ellipsis character.
 - The meta-refresh delay, and the wording of the visible fallback link.
@@ -186,7 +188,8 @@ Not discussed — planner decides:
 
 ### Landmines
 - **No `AddDataProtection()` exists**, and the app service mounts no volume — the key ring is ephemeral across container recreation. D-03 exists because of this.
-- **`MobileDetectionMiddleware` switches layout on `iPhone`/`iPad`** — an Apple link-preview fetcher may therefore be served the mobile layout. D-10 sidesteps this rather than mitigating it.
+- **`MobileDetectionMiddleware` switches layout on `iPhone`/`iPad`** — so any markup placed in a layout has its presence decided by the caller's User-Agent. Research confirmed Apple's iMessage fetcher does *not* match these keywords (it sends a desktop Mac Safari string), so no currently-known target crawler trips this. D-10 removes the coupling anyway rather than depending on that staying true.
+- **The integration-test harness does not reproduce production group scoping** — `WebApplicationFactoryBase.cs` registers a singleton `MutableGroupContext` defaulting `ActiveGroupId = 1` for every test regardless of auth state. This is why `Details_Anonymous_...` currently returns 200, and it means a preview path that resolved the concrete `ActiveGroupContextService` would pass its tests while doing nothing. See D-12.
 - **`_Layout.cshtml` has no head/`Styles` section** — only `Scripts` at line 225. `_Layout.Mobile.cshtml` has both.
 - **`Details` GET is not `[Authorize]`d** — anonymous access is blocked only by the query filter returning nothing. D-09 exists because this phase removes that accidental protection.
 - **`ReverseProxy__KnownProxies__0` has never been confirmed set in production** (deferred at the Phase 32 UAT, 2026-07-01). If unset, forwarded headers are silently ignored.
