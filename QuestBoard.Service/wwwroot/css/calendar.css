@@ -35,7 +35,9 @@
 .calendar-body {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    grid-auto-rows: 120px;
+    /* A day cell can now stack an events block above the quest list, and the cell clips
+       its overflow, so the row must be able to grow instead of clipping content. */
+    grid-auto-rows: minmax(120px, auto);
 }
 
 .calendar-day {
@@ -180,6 +182,65 @@
     .quest-event:hover .quest-time {
         display: block !important;
         font-size: 8px !important;
+    }
+
+/* Board Event Chip System - mirrors the quest chip system above, distinguished by an
+   unclaimed accent color and its own icon rather than by position alone. */
+.calendar-events {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+    margin-bottom: 1px;
+}
+
+.calendar-event {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 9px;
+    line-height: 1.2;
+    border-left: 3px solid #6f42c1;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 24px;
+    display: flex;
+    align-items: flex-start;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+    .calendar-event:hover {
+        background-color: rgba(255, 255, 255, 1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 10;
+        min-height: 48px;
+    }
+
+.calendar-event-title {
+    font-weight: 600;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    margin-bottom: 2px;
+    line-height: 1.2;
+    width: 100%;
+    max-width: 100%;
+}
+
+.calendar-event-time {
+    font-size: 8px;
+    color: #666;
+    display: none;
+    flex-shrink: 0;
+    font-style: italic;
+}
+
+    .calendar-event:hover .calendar-event-time {
+        display: block !important;
     }
 
 /* Status Icon Displays (Finalized & Warning) - Fixed positioning at top */
@@ -372,6 +433,10 @@
 
     .legend-item.finalized {
         border-left-color: #28a745;
+    }
+
+    .legend-item.event {
+        border-left-color: #6f42c1;
     }
 
 .legend-card {

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.QuestBoard;
 
 [Authorize]
-public class CalendarController(IQuestService questService) : Controller
+public class CalendarController(IQuestService questService, IEventService eventService) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int? year = null, int? month = null, CancellationToken token = default)
@@ -30,13 +30,15 @@ public class CalendarController(IQuestService questService) : Controller
 
         // Get all quests with their proposed dates
         var allQuests = await questService.GetQuestsForCalendarAsync(token);
+        var allEvents = await eventService.GetEventsForCalendarAsync(token);
 
         // Create calendar model
         var calendarModel = new CalendarViewModel
         {
             Year = selectedYear,
             Month = selectedMonth,
-            Quests = [.. allQuests]
+            Quests = [.. allQuests],
+            Events = [.. allEvents]
         };
 
         return View(calendarModel);
