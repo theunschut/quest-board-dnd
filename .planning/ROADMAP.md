@@ -258,7 +258,32 @@ Plans:
 **Goal**: A quest link shared through a new "Copy shareable link" control renders a rich preview card — image, title, description snippet — in Discord, Slack, and iMessage, while an ordinary quest URL behaves exactly as it does today and the page itself still requires login.
 **Depends on**: Nothing in this milestone (independent of 72–77; touches no event, signup, or calendar code)
 **Requirements**: LINKPREV-01, LINKPREV-02, LINKPREV-03, LINKPREV-04, LINKPREV-05, LINKPREV-06, LINKPREV-07, LINKPREV-08, LINKPREV-09
-**Plans**: TBD (run `/gsd-plan-phase 78`)
+**Plans**: 9 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 78-01-PLAN.md — Persist the Data Protection key ring to the database with a migration, and extend forwarded-header trust to scheme and host (wave 1)
+- [ ] 78-02-PLAN.md — Confirm the reverse-proxy trust and public base URL on the App CT, and complete the deployment doc's environment contract (wave 1, not autonomous)
+- [ ] 78-03-PLAN.md — Require a login on the quest Details GET and rewrite the anonymous-access regression test to assert the redirect (wave 1)
+- [ ] 78-04-PLAN.md — Widen IActiveGroupContext with SetGroupId and implement it across all thirteen implementations (wave 1)
+- [ ] 78-06-PLAN.md — Compose the branded 1200x630 card image from existing board art and prove it serves unauthenticated with no redirect (wave 1, not autonomous)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 78-05-PLAN.md — Link signing service, card description builder, and public absolute-URL builder, all unit-tested (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 78-07-PLAN.md — Anonymous signed preview route, standalone card view, group-session exemption, and the tamper/cross-board/token-scope tests (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 78-08-PLAN.md — Shared Copy shareable link partial, render-time minting, and both quest views (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 78-09-PLAN.md — Link-preview documentation and the deployed-host plus real-client acceptance pass (wave 5, not autonomous)
 
 **Success criteria:**
 
