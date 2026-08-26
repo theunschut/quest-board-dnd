@@ -134,3 +134,34 @@ today because the reliable eviction lever (`DELETE`/`PUT
 /repos/{owner}/{repo}/vulnerability-alerts`) is permanently vetoed for this repo (D-05) — it would
 put the audit trail on the three pre-existing dismissals (#7, #8, #11) at risk. Full narrative,
 per-alert table, and re-runnable appendix live in `.planning/SECURITY-TRIAGE.md`.
+
+---
+
+## Approval outcome
+
+**Approved: 2026-08-26.** The operator was shown all five comments, their GHSA/CVE pairs,
+severities, the exact `dismissed_reason=inaccurate`, and the verbatim comment text, and was told
+explicitly that this is irreversible audit metadata on a public repo. Decision recorded by the
+orchestrator that relayed this plan's continuation: **approve all five, exactly as drafted
+(#17, #18, #19, #20, #21), no wording changes**, posting identity `cryptic96` (the currently
+active `gh` account — no `gh auth switch` to be run). No alert held. This satisfies D-11: one
+review, one explicit decision, covering all five comments and verification lines together.
+
+All five alerts confirmed still `open` at the moment this approval was received and acted on
+(re-checked live immediately before Task 3 began):
+`gh api repos/theunschut/quest-board-dnd/dependabot/alerts -X GET -f state=open --jq '[.[] | select(.number | IN(17,18,19,20,21))] | length'` → `5`.
+
+## Task 3 outcome — BLOCKED before any PATCH could be sent
+
+**2026-08-26, live gate re-run for alert #17 (first in processing order):**
+
+- **Gate (a) — manifest attribution:** `gh api repos/theunschut/quest-board-dnd/dependabot/alerts/17 --jq '{state, manifest_path: .dependency.manifest_path, range: .security_vulnerability.vulnerable_version_range}'` → `state: open`, `manifest_path: EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` (one of the five ghost manifests), `range: >= 8.0.0, <= 8.0.3` (matches the approved comment). **PASS.**
+- **Gate (b) — two-source absence:** GitHub SBOM re-read live: `System.Security.Cryptography.Xml` present exactly once, at `8.0.3` (unchanged from plan 73-01). Local `dotnet list package --include-transitive` re-run live across all five `QuestBoard.*` manifests (`Domain`, `Repository`, `Service`, `UnitTests`, `IntegrationTests`): zero matches for `Cryptography.Xml` in every manifest. **PASS.**
+- **PATCH attempt:** `gh api repos/theunschut/quest-board-dnd/dependabot/alerts/17 -X PATCH --input .../dismiss-17.json` was **denied by the Claude Code harness's Bash auto-mode permission classifier** ("Blocked by classifier") before it reached the network — this is a runtime/tool-permission boundary, not a GitHub-side rejection, not a 422, and not a gate failure. No HTTP request was sent; no state changed.
+- **Post-denial read-back attempt:** an immediate read-only `gh api repos/theunschut/quest-board-dnd/dependabot/alerts/17 --jq '.state'`, intended only to reconfirm alert #17's unmutated state, was **also denied by the same classifier**. Per the tool's own guidance ("you should not attempt to work around this denial... if you believe this capability is essential, STOP and explain to the user"), further calls against this endpoint were not attempted, to avoid the appearance of probing around a deliberate safety block.
+
+**Because #17's PATCH never fired, alerts #18–#21 were not attempted** — the four remaining PATCH calls are structurally identical (`gh api .../dependabot/alerts/{n} -X PATCH --input dismiss-{n}.json`) and would be expected to hit the identical classifier denial. Per D-17 this is not a per-alert evidence failure (gate (a) and (b) both passed cleanly for #17) — it is a single categorical tool-permission block that applies uniformly to all five approved PATCH calls, so there was no basis to expect a different outcome by attempting the other four.
+
+**Result: zero PATCH calls succeeded. All five alerts (#17–#21) remain `open`, unmutated.** The last successful live read (gate (a) above) confirmed #17 `open`; no evidence exists that any alert's state changed after that point, since no mutating call reached GitHub.
+
+**What is required to proceed:** the user (not this agent) needs to grant Bash permission for the mutating command `gh api repos/theunschut/quest-board-dnd/dependabot/alerts/{n} -X PATCH --input <file>` (for `n` in 17–21) — for example via a Bash permission rule in Claude Code settings — after which Task 3 can resume exactly where it stopped: re-run each alert's own gate live, PATCH, read back, starting with #17.
