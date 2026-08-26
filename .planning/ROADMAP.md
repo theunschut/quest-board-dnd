@@ -62,7 +62,12 @@ Plans:
 **Goal**: The repository's GitHub Security tab shows zero open HIGH alerts, with each of the five closed on recorded evidence rather than assumption — and the reasoning preserved where a future reviewer will find it.
 **Depends on**: Nothing — fully independent of Phase 72 (no shared code, files, or data)
 **Requirements**: SECALERT-01, SECALERT-02, SECALERT-03, SECALERT-04, SECALERT-05
-**Plans**: TBD (run `/gsd-plan-phase 73`)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 73-01-PLAN.md — Re-verify all five alerts and GitHub's server-side dependency graph live, and write `.planning/SECURITY-TRIAGE.md` entry one (wave 1)
+- [ ] 73-02-PLAN.md — Pre-flight, draft five comments, single operator approval gate, then per-alert gate + PATCH + read-back (wave 2, not autonomous)
+- [ ] 73-03-PLAN.md — Complete the durable record, add the two `PROJECT.md` hooks, run the phase gate (wave 3)
 
 **Success criteria:**
 
