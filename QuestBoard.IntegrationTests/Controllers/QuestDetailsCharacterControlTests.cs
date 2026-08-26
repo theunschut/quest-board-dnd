@@ -192,4 +192,35 @@ public class QuestDetailsCharacterControlTests(WebApplicationFactoryBase factory
         content.Should().Contain(otherCharacter.Name);
         content.Should().NotContain($"data-current-character-id=\"{otherCharacter.Id}\"");
     }
+
+    // Finalizing a quest auto-approves Spectators only, so an Assistant DM the DM did not
+    // tick stays IsSelected == false. That signup belongs to neither the participants table
+    // nor the Player-only waitlist, so without its own section its owner would see no
+    // character control at all.
+    [Fact]
+    public async Task Details_Get_WhenOwnAssistantDmSignupIsNotSelected_RendersTriggerCarryingThatCharacterId()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(factory.Services, "detailsdm8", "detailsdm8@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, "Trigger Quest 8", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(factory.Services, quest.Id, quest.FinalizedDate!.Value);
+
+        var (playerClient, player) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailsplayer8", "detailsplayer8@example.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(factory.Services, player.Id, "Trigger Character 8");
+        await TestDataHelper.CreatePlayerSignupAsync(
+            factory.Services, quest.Id, player.Id, signupRole: 2, isSelected: false, characterId: character.Id);
+
+        // Act
+        var response = await playerClient.GetAsync($"/Quest/Details/{quest.Id}", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain(character.Name);
+        var triggers = ExtractCharacterSelectTriggers(content);
+        triggers.Should().Contain(t => t.Contains($"data-current-character-id=\"{character.Id}\""));
+    }
 }

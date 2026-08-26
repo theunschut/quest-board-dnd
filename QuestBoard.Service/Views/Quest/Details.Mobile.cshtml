@@ -35,6 +35,14 @@
         ? Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderWaitlist(finalizedProposedDate.Id).ToList() ?? []
         : Model.Quest?.PlayerSignups.Where(ps => !ps.IsSelected && ps.Role == SignupRole.Player).OrderBy(ps => ps.SignupTime).ToList() ?? [];
 
+    // Finalization auto-approves Spectators only, so an Assistant DM the DM did not tick
+    // lands outside both the adventurer list and the waitlist. Collect them so every signup
+    // on a finalized quest is rendered with its character, and its owner keeps the control
+    // for changing that character.
+    var unselectedNonPlayers = Model.Quest?.PlayerSignups
+        .Where(ps => !ps.IsSelected && ps.Role != SignupRole.Player)
+        .OrderBy(ps => ps.SignupTime).ToList() ?? [];
+
     var selectedPlayersCount = Model.Quest?.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() ?? 0;
     var hasSpace = selectedPlayersCount < Model.Quest?.TotalPlayerCount;
     var userCanJoin = boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && !isPlayerSignedUp && Model.Quest?.IsFinalized == true;
@@ -298,6 +306,50 @@
                     {
                         <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>No Vote</span>
                     }
+                </div>
+            }
+        </div>
+    }
+
+    @* Signed up but not selected (finalized quests) - Assistant DMs and Spectators the DM did not tick *@
+    @if (Model.Quest?.IsFinalized == true && unselectedNonPlayers.Count > 0)
+    {
+        <div class="participant-list-mobile mb-3">
+            <h6 class="text-muted text-uppercase mb-2">
+                <i class="fas fa-user-clock me-1"></i>Not Selected
+            </h6>
+            @foreach (var signup in unselectedNonPlayers)
+            {
+                var isCurrentUser = signup.Player.Id == currentUserId;
+                var roleText = signup.Role == SignupRole.AssistantDM ? "Asst. DM" : "Spectator";
+                <div class="participant-row d-flex justify-content-between align-items-center py-2 border-bottom @(isCurrentUser ? "bg-dark rounded px-2" : "")">
+                    <div>
+                        <span class="fw-bold">@signup.Player.Name</span>
+                        @if (isCurrentUser)
+                        {
+                            <span class="badge bg-info ms-1">You</span>
+                        }
+                        <br>
+                        <small class="text-muted">
+                            @if (signup.Character != null)
+                            {
+                                @signup.Character.Name
+                                if (isCurrentUser)
+                                {
+                                    <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-info" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="@signup.Character.Id" data-current-character-label="@signup.Character.ToSelectLabel()" title="Change character"><i class="fas fa-edit fa-xs"></i></button>
+                                }
+                            }
+                            else
+                            {
+                                @:No character
+                                if (isCurrentUser && ownedCharacters.Any())
+                                {
+                                    <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
+                                }
+                            }
+                        </small>
+                    </div>
+                    <span class="badge bg-secondary">@roleText</span>
                 </div>
             }
         </div>

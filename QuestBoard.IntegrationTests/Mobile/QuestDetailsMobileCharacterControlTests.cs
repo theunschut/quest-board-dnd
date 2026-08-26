@@ -211,4 +211,31 @@ public class QuestDetailsMobileCharacterControlTests : IClassFixture<WebApplicat
         renderedCharacterIds.Should().NotContain(otherCharacter.Id);
         renderedCharacterIds.Should().Contain(viewerCharacter.Id);
     }
+
+    // Finalizing a quest auto-approves Spectators only, so an Assistant DM the DM did not
+    // tick stays IsSelected == false. That signup belongs to neither the adventurer list nor
+    // the Player-only waitlist, so without its own section its owner would see no character
+    // control at all on mobile.
+    [Fact]
+    public async Task Details_Mobile_WhenOwnAssistantDmSignupIsNotSelected_RendersTriggerCarryingThatCharacterId()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "mccdm8", "mccdm8@example.com");
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            _factory.Services, dm.Id, "Mobile Trigger Quest 8", isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(7));
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, quest.FinalizedDate!.Value);
+
+        var (authClient, player) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "mccplayer8", "mccplayer8@example.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, player.Id, "Mobile Assistant Character");
+        await TestDataHelper.CreatePlayerSignupAsync(
+            _factory.Services, quest.Id, player.Id, signupRole: 2, isSelected: false, characterId: character.Id);
+
+        var (response, html) = await GetQuestDetailsAsync(
+            quest.Id, MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(character.Name);
+        html.Should().Contain($"data-current-character-id=\"{character.Id}\"");
+    }
 }
