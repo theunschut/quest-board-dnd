@@ -140,3 +140,13 @@ None - no external service configuration required. The migration auto-applies on
 ---
 *Phase: 74-event-schema-crud-and-calendar-display*
 *Completed: 2026-08-26*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Repository/Entities/EventEntity.cs
+- FOUND: QuestBoard.Repository/Entities/EventSeriesEntity.cs
+- FOUND: QuestBoard.Repository/Entities/EventSignupEntity.cs
+- FOUND: QuestBoard.Repository/Migrations/20260826134133_AddCalendarEventsFeature.cs
+- FOUND commit 94046a6 (Task 1)
+- FOUND commit 8d388a9 (Task 2)
+- FOUND commit fbb9262 (Task 3)
