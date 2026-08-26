@@ -44,6 +44,12 @@ public class QuestBoardContext(
 
     public DbSet<ContactNoteEntity> ContactNotes { get; set; }
 
+    public DbSet<EventEntity> Events { get; set; }
+
+    public DbSet<EventSeriesEntity> EventSeries { get; set; }
+
+    public DbSet<EventSignupEntity> EventSignups { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
