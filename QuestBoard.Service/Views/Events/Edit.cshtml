@@ -1,0 +1,65 @@
+@using QuestBoard.Service.ViewModels.EventViewModels
+@using QuestBoard.Service.ViewModels.Shared
+@model EventViewModel
+@{
+    ViewData["Title"] = "Edit Event";
+}
+
+<div class="card modern-card">
+    <div class="card-header modern-card-header">
+        <h4 class="mb-0">
+            <i class="fas fa-pen me-2"></i>
+            Edit @Model.Title
+        </h4>
+    </div>
+    <div class="card-body modern-card-body">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label">Title <span class="text-danger">*</span></label>
+                <input asp-for="Title" class="form-control" placeholder="Enter event title" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Date" class="form-label">Date <span class="text-danger">*</span></label>
+                    <input asp-for="Date" type="date" class="form-control" />
+                    <span asp-validation-for="Date" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="StartTime" class="form-label">Start Time (optional)</label>
+                    <input asp-for="StartTime" type="time" class="form-control" />
+                    <span asp-validation-for="StartTime" class="text-danger"></span>
+                </div>
+            </div>
+
+            @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+               {
+                   FieldName = "Description",
+                   Value = Model.Description,
+                   Label = "Description",
+                   Required = false,
+                   Placeholder = "What's happening?"
+               }); }
+
+            <hr />
+
+            <div class="d-flex justify-content-between">
+                <a href="@Url.Action("Index", "Calendar", new { year = Model.Date.Year, month = Model.Date.Month })" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
+}
