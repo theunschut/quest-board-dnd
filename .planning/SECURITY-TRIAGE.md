@@ -79,15 +79,48 @@ manifest, at any version, today — corroborated by two independent sources (see
 
 | Alert | CVE | GHSA | CVSS | Class | `manifest_path` | `created_at` | Branch scope | Gate (a) | Gate (b) | Dismissed at | `dismissed_reason` |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| #17 | CVE-2026-47304 | GHSA-g8r8-53c2-pm3f | 8.1 | Security Feature Bypass | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:50Z | `inaccurate` |
-| #18 | CVE-2026-50525 | GHSA-8q5v-6pqq-x66h | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:52Z | `inaccurate` |
-| #19 | CVE-2026-47302 | GHSA-cvvh-rhrc-wg4q | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:54Z | `inaccurate` |
-| #20 | CVE-2026-50648 | GHSA-23rf-6693-g89p | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:56Z | `inaccurate` |
-| #21 | CVE-2026-50527 | GHSA-mmjf-rqrv-855v | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:58Z | `inaccurate` |
+| #17 | CVE-2026-47304 | GHSA-g8r8-53c2-pm3f | 8.1 | Security Feature Bypass | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) † | 2026-08-26T09:14:50Z | `inaccurate` |
+| #18 | CVE-2026-50525 | GHSA-8q5v-6pqq-x66h | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) † | 2026-08-26T09:14:52Z | `inaccurate` |
+| #19 | CVE-2026-47302 | GHSA-cvvh-rhrc-wg4q | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) † | 2026-08-26T09:14:54Z | `inaccurate` |
+| #20 | CVE-2026-50648 | GHSA-23rf-6693-g89p | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) † | 2026-08-26T09:14:56Z | `inaccurate` |
+| #21 | CVE-2026-50527 | GHSA-mmjf-rqrv-855v | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) † | 2026-08-26T09:14:58Z | `inaccurate` |
 
-No alert was held; no gate failed on any of the five. Every gate (a)/(b) pair above was re-run
-live in plan 73-02, immediately before that alert's own `PATCH`, per D-16/D-17 — not copied
-forward from plan 73-01's earlier evidence capture.
+No alert was held; no gate failed on any of the five.
+
+**† Correction to this table, added 2026-08-26 by the phase-73 security audit.** An earlier
+version of this paragraph stated that every gate (a)/(b) pair above was re-run live immediately
+before that alert's own `PATCH`, with nothing carried forward from the earlier evidence capture.
+That is true of gate (a) and of gate (b)'s local source; it overstated gate (b)'s GitHub-sourced
+half. What actually ran, in the loop that sent the five `PATCH` calls (09:14:50Z-09:14:58Z):
+
+- **Gate (a)** - re-read live per alert, immediately before that alert's own `PATCH`: `state`,
+  `manifest_path` and the alerted package and range. Five separate reads, one per alert, exactly
+  as the table says.
+- **Gate (b), local source** (`dotnet list package --include-transitive` - the source that is
+  independent of GitHub's dependency graph) - re-run live inside that same loop, but **once,
+  repo-wide across all five `QuestBoard.*` manifests**, returning 0 occurrences, rather than once
+  per alert. The check is package-scoped and identical for all five alerts, so a per-alert repeat
+  could not have returned a different answer - but the record should say once, not imply five.
+- **Gate (b), GitHub SBOM corroboration** - **not re-run inside that loop.** Its last live reads
+  were roughly 3.5 minutes earlier, at 09:11Z, in the gate run for #17 by the executor whose
+  `PATCH` was then denied by the harness permission classifier, and before that at 07:33Z in the
+  earlier evidence capture (appendix A5/A6). Both returned the same result the cells above
+  describe: exactly one `8.0.3` entry, reachable only through the ghost
+  `Microsoft.AspNetCore.Identity 2.3.1` node.
+
+This is recorded rather than smoothed over, and it does not weaken the dismissals. The two-source
+rule exists so that GitHub's dependency graph - the subsystem this entry proves stale - is never
+its own corroboration; the source carrying that burden is the local one, and the local one is what
+ran live in the sending loop. The omitted source is the suspect one, whose agreement corroborates
+but is not load-bearing. Both sources were re-run independently after the fact (2026-08-26, by the
+phase-73 security audit) and still agree: 0 local occurrences of `System.Security.Cryptography.Xml`
+across all five `QuestBoard.*` manifests, and exactly one SBOM entry at `8.0.3`
+(`SPDXRef-nuget-System.Security.Cryptography.Xml-8.0.3-84ce5b`) whose only incoming `DEPENDS_ON`
+edges are the ghost `Microsoft.AspNetCore.Identity 2.3.1` node and the repository root node.
+
+The rule applied per alert, stated in full so it survives archival of the phase directory: a gate
+failure stops that alert only and never the other four, and no `.csproj` is patched under any gate
+outcome - a reachability finding is written up for the operator, not fixed in place.
 
 All five share the same package, manifest, alerted range (`>= 8.0.0, <= 8.0.3` → patched
 `8.0.4`), and detection day — because the evidence is about the manifest, not about the CVE. The
