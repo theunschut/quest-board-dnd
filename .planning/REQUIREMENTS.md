@@ -104,11 +104,11 @@ Explicit exclusions for v9.0, with reasoning.
 | SIGNCHAR-05 | Phase 72 | Complete |
 | SIGNCHAR-06 | Phase 72 | Complete |
 | SIGNCHAR-07 | Phase 72 | Complete |
-| SECALERT-01 | Phase 73 | Not started |
-| SECALERT-02 | Phase 73 | Not started |
-| SECALERT-03 | Phase 73 | Not started |
-| SECALERT-04 | Phase 73 | Not started |
-| SECALERT-05 | Phase 73 | Not started |
+| SECALERT-01 | Phase 73 | Complete |
+| SECALERT-02 | Phase 73 | Complete |
+| SECALERT-03 | Phase 73 | Complete |
+| SECALERT-04 | Phase 73 | Complete |
+| SECALERT-05 | Phase 73 | Complete |
 | EVENT-01 | Phase 74 | Not started |
 | EVENT-02 | Phase 74 | Not started |
 | EVENT-03 | Phase 74 | Not started |
