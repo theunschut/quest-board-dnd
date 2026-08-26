@@ -112,7 +112,7 @@ Plans:
 **Goal**: A DM can put a dated event on their board's calendar — informational only — and everyone sees it on both the desktop and mobile calendar, clearly distinct from a quest.
 **Depends on**: Nothing in this milestone (independent of 72 and 73)
 **Requirements**: EVENT-01, EVENT-02, EVENT-03, EVENT-04, EVENT-05, EVENT-06
-**Plans**: 2/8 plans executed
+**Plans**: 3/8 plans executed
 
 Plans:
 **Wave 1**
@@ -122,7 +122,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 74-03-PLAN.md — Event domain model, repository/service interfaces and implementations, AutoMapper entity maps, DI registration (wave 2)
+- [x] 74-03-PLAN.md — Event domain model, repository/service interfaces and implementations, AutoMapper entity maps, DI registration (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
