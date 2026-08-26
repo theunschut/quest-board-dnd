@@ -112,13 +112,13 @@ Plans:
 **Goal**: A DM can put a dated event on their board's calendar — informational only — and everyone sees it on both the desktop and mobile calendar, clearly distinct from a quest.
 **Depends on**: Nothing in this milestone (independent of 72 and 73)
 **Requirements**: EVENT-01, EVENT-02, EVENT-03, EVENT-04, EVENT-05, EVENT-06
-**Plans**: 8 plans
+**Plans**: 2/8 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 74-01-PLAN.md — Wave 0 RED test scaffold: route-based Events CRUD facts, the quest-detail zero-event-markup assertion, and the quest-creation-unaffected negative (wave 1)
-- [ ] 74-02-PLAN.md — Three event entities, fail-closed query filters, delete behaviour, indexes, and one additive migration (wave 1)
+- [x] 74-01-PLAN.md — Wave 0 RED test scaffold: route-based Events CRUD facts, the quest-detail zero-event-markup assertion, and the quest-creation-unaffected negative (wave 1)
+- [x] 74-02-PLAN.md — Three event entities, fail-closed query filters, delete behaviour, indexes, and one additive migration (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
