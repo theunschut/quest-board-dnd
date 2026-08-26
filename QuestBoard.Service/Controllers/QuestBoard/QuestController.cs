@@ -392,11 +392,14 @@ public class QuestController(
         if (user == null)
             return Challenge();
 
-        // Check if user already signed up
+        // Check if user already signed up. Every failure below reports through TempData and a
+        // redirect: ModelState does not survive a redirect, and neither Details view renders a
+        // validation summary, so a model error here would leave the user staring at an
+        // unchanged page with no explanation.
         if (quest.PlayerSignups.Any(ps => ps.Player.Id == user.Id))
         {
-            ModelState.AddModelError("", "You have already signed up for this quest.");
-            return await Details(questId);
+            TempData["Error"] = "You have already signed up for this quest.";
+            return RedirectToAction("Details", new { id = questId });
         }
 
         // Use the authenticated user instead of form input
@@ -411,8 +414,8 @@ public class QuestController(
         if (signup.CharacterId.HasValue
             && await ResolveCharacterAssignmentAsync(signup.CharacterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
-            ModelState.AddModelError("", "Invalid character selection.");
-            return await Details(questId);
+            TempData["Error"] = "Invalid character selection.";
+            return RedirectToAction("Details", new { id = questId });
         }
 
         await playerSignupService.AddAsync(signup);
@@ -437,7 +440,7 @@ public class QuestController(
         // Check if user already signed up
         if (quest.PlayerSignups.Any(ps => ps.Player.Id == user.Id))
         {
-            ModelState.AddModelError("", "You have already signed up for this quest.");
+            TempData["Error"] = "You have already signed up for this quest.";
             return RedirectToAction("Details", new { id = questId });
         }
 
@@ -455,7 +458,7 @@ public class QuestController(
         if (characterId.HasValue
             && await ResolveCharacterAssignmentAsync(characterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
-            ModelState.AddModelError("", "Invalid character selection.");
+            TempData["Error"] = "Invalid character selection.";
             return RedirectToAction("Details", new { id = questId });
         }
 
@@ -465,7 +468,7 @@ public class QuestController(
 
         if (finalizedProposedDate == null)
         {
-            ModelState.AddModelError("", "Could not find the finalized date information.");
+            TempData["Error"] = "Could not find the finalized date information.";
             return RedirectToAction("Details", new { id = questId });
         }
 
