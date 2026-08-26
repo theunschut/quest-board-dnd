@@ -35,9 +35,10 @@
 .calendar-body {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    /* A day cell can now stack an events block above the quest list, and the cell clips
-       its overflow, so the row must be able to grow instead of clipping content. */
-    grid-auto-rows: minmax(120px, auto);
+    /* The row height stays fixed even though a day can stack an events block above the
+       quest list, because the developer does not want desktop cells to grow. The day's
+       items scroll inside the cell instead — see .day-cell-items below. */
+    grid-auto-rows: 120px;
 }
 
 .calendar-day {
@@ -70,7 +71,39 @@
     color: #F4E4BC;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
     margin-bottom: 4px;
+    /* Stays outside the scrolling item region below so the date never scrolls out of view. */
+    flex-shrink: 0;
 }
+
+/* Holds both the events block and the quest list as one scrolling region, so a day cell
+   with more items than fit in the fixed row height stays reachable through a single
+   scrollbar instead of growing the cell or clipping content. Applies at every breakpoint,
+   including the fixed-height mobile rows, so nothing is silently dropped on a small screen. */
+.day-cell-items {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(244, 228, 188, 0.5) transparent;
+}
+
+    .day-cell-items::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .day-cell-items::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .day-cell-items::-webkit-scrollbar-thumb {
+        background-color: rgba(244, 228, 188, 0.5);
+        border-radius: 2px;
+    }
+
+        .day-cell-items::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(244, 228, 188, 0.8);
+        }
 
 /* Quest Events in Calendar */
 .quest-events {
@@ -401,16 +434,6 @@
         white-space: nowrap;
     }
 
-/* More Events Indicator */
-.more-events {
-    font-size: 10px;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-    text-align: center;
-    margin-top: 2px;
-    font-style: italic;
-}
-
 /* Calendar Navigation */
 .calendar-navigation {
     display: flex;
@@ -468,7 +491,7 @@
 }
 
 .details-page .calendar-body {
-    grid-auto-rows: minmax(120px, auto);
+    grid-auto-rows: 120px;
 }
 
 .quest-details-page .calendar-grid {
@@ -476,7 +499,7 @@
 }
 
 .quest-details-page .calendar-body {
-    grid-auto-rows: minmax(120px, auto);
+    grid-auto-rows: 120px;
 }
 
 /* Calendar container styling for details page */
