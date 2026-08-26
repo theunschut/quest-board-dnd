@@ -187,6 +187,36 @@ Checked 2026-08-26: GHSA-mmjf-rqrv-855v / CVE-2026-50527, range >=8.0.0 <=8.0.3,
 still `fix_started` with their original June timestamps. No `DELETE`/`PUT` against
 `vulnerability-alerts` was ever issued, and no write touched any alert outside #17-#21.
 
+### Phase gate assertion (plan 73-03, run once after all PATCHes, 2026-08-26)
+
+Success criterion 5's literal command, old repo name and all (resolves via GitHub's rename
+redirect):
+```
+gh api repos/theunschut/quest-board/dependabot/alerts --jq '[.[] | select(.state=="open" and .security_vulnerability.severity=="high")] | length'
+```
+Result: `0`
+
+The scoped assertion for what this phase was actually chartered to handle:
+```
+gh api repos/theunschut/quest-board-dnd/dependabot/alerts --jq '[.[] | select(.state=="open" and (.number | IN(17,18,19,20,21)))] | length'
+```
+Result: `0`
+
+**Reading applied:** both commands return zero — the literal reading of success criterion 5 and
+the D-19 scoped reading coincide. No new out-of-scope HIGH alert exists at gate time, so no entry
+two is added to this log. `.planning/ROADMAP.md`'s success criterion 5 text is left unchanged
+(`git diff -- .planning/ROADMAP.md` shows no diff); the reading is recorded here, not by editing
+the roadmap.
+
+Audit-trail integrity re-confirmed at gate time (same command as A14, re-run here to pair with the
+gate):
+```
+gh api repos/theunschut/quest-board-dnd/dependabot/alerts -X GET -f state=dismissed --jq '[.[] | select(.number | IN(7,8,11))] | map(.dismissed_reason) | join(",")'
+```
+Result: `fix_started,fix_started,fix_started` — #7/#8/#11 intact. No `.csproj` changed anywhere in
+this phase (`git status --porcelain -- '*.csproj'` empty). Dependabot alerts remain enabled for
+the repository; the toggle was never invoked.
+
 ### Appendix - re-runnable commands
 
 Every command below is a read. None mutates anything. Run 2026-08-26 unless noted.
