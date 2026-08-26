@@ -1,0 +1,5 @@
+{
+  "state": "dismissed",
+  "dismissed_reason": "inaccurate",
+  "dismissed_comment": "Checked 2026-08-26: GHSA-mmjf-rqrv-855v / CVE-2026-50527, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj deleted 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md"
+}
