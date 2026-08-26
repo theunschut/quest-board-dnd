@@ -1,7 +1,7 @@
 ---
 phase: 72-change-character-on-an-existing-signup
 verified: 2026-08-25T00:00:00Z
-status: human_needed
+status: passed
 score: 12/12 truths verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -21,7 +21,7 @@ human_verification:
 
 **Phase Goal:** A player who has already signed up for a quest can change which character they are bringing — or clear it back to none — from both the desktop and mobile quest Details pages, without a DM having to intervene.
 **Verified:** 2026-08-25
-**Status:** human_needed
+**Status:** passed
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
@@ -144,3 +144,14 @@ No gaps. Both blockers found by the code review (CR-01: date-vote deletion on ch
 
 _Verified: 2026-08-25_
 _Verifier: Claude (gsd-verifier)_
+
+## Human Verification Outcome
+
+All three human verification items were run by the operator on 2026-08-26 and passed:
+
+1. Retired/Dead character pre-selects on modal open (desktop and mobile) — pass.
+2. Remove-character confirm() dialog and success toast — pass.
+3. Mobile participant/waitlist row height unchanged by the inline trigger — pass.
+
+Recorded in `72-UAT.md`. With the automated checks (12/12 truths) and these three items
+both satisfied, phase status moves from `human_needed` to `passed`.
