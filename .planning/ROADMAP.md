@@ -112,7 +112,34 @@ Plans:
 **Goal**: A DM can put a dated event on their board's calendar — informational only — and everyone sees it on both the desktop and mobile calendar, clearly distinct from a quest.
 **Depends on**: Nothing in this milestone (independent of 72 and 73)
 **Requirements**: EVENT-01, EVENT-02, EVENT-03, EVENT-04, EVENT-05, EVENT-06
-**Plans**: TBD (run `/gsd-plan-phase 74`)
+**Plans**: 8 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 74-01-PLAN.md — Wave 0 RED test scaffold: route-based Events CRUD facts, the quest-detail zero-event-markup assertion, and the quest-creation-unaffected negative (wave 1)
+- [ ] 74-02-PLAN.md — Three event entities, fail-closed query filters, delete behaviour, indexes, and one additive migration (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 74-03-PLAN.md — Event domain model, repository/service interfaces and implementations, AutoMapper entity maps, DI registration (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 74-04-PLAN.md — EventViewModel, view-model maps, and the DM-gated EventsController with server-side board stamping (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 74-05-PLAN.md — Events Create/Edit/Details views and the Create Event navbar entry on both layouts (wave 4)
+- [ ] 74-06-PLAN.md — Desktop calendar event block, chip styles, growable grid row, and Legend row (wave 4, not autonomous)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 74-07-PLAN.md — Mobile agenda filter, neutral empty state, event entries and their styles (wave 5, not autonomous)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 74-08-PLAN.md — Two-group tenant isolation suite plus desktop, mobile and navbar render assertions (wave 6)
 
 **Success criteria:**
 
