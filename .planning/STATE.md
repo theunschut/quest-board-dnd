@@ -10,11 +10,11 @@ last_updated: "2026-08-26T09:36:03.508Z"
 last_activity: 2026-08-26
 last_activity_desc: Phase 73 complete, transitioned to Phase 74
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 2
   total_plans: 7
   completed_plans: 7
-  percent: 33
+  percent: 25
 ---
 
 # Project State
@@ -54,6 +54,9 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 ### Roadmap Evolution
 
 v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100% requirement coverage (21/21), no orphans, no ad-hoc scope additions. Full evolution history archived in `.planning/milestones/v8.0-ROADMAP.md`.
+
+- Phase 78 added 2026-08-26: Link Preview Foundation and Quest Cards — Open Graph / Twitter Card unfurls for quest links, gated behind signed share links.
+- Phase 79 added 2026-08-26: Character and Contact Link Cards — extends the signed-link mechanism to characters and contacts, including portrait images and the `IsRevealed` spoiler gate.
 
 ### Pending Todos
 

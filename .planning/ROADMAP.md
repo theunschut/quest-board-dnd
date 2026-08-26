@@ -1,14 +1,16 @@
 # Milestone v9.0: Rolling Improvements
 
 **Status:** 🚧 IN PROGRESS
-**Phases:** 72–77 so far (open-ended)
+**Phases:** 72–79 so far (open-ended)
 **Working branch:** `milestone/v9-rolling-improvements`
 
 ## Overview
 
 A rolling bucket milestone for small, ad-hoc features and bug fixes. Unlike v1.0–v8.0, this milestone has no fixed end-state and no unifying theme — phases are appended as work arrives, and the milestone closes when the operator decides to cut it. Phase numbering continues from v8.0 (which ended at Phase 71).
 
-The opening scope is three items. Two are small and independent: closing a UX gap where a player cannot change the character on a quest they have already signed up for, and resolving five stale HIGH GitHub security alerts left behind by the v5.0 EuphoriaInn→QuestBoard rename. The third is substantial — Calendar Events, spanning four phases, which adds dated informational entries to the calendar with per-event player availability and an optional recurrence model.
+The opening scope was three items. Two are small and independent: closing a UX gap where a player cannot change the character on a quest they have already signed up for, and resolving five stale HIGH GitHub security alerts left behind by the v5.0 EuphoriaInn→QuestBoard rename. The third is substantial — Calendar Events, spanning four phases, which adds dated informational entries to the calendar with per-event player availability and an optional recurrence model.
+
+Appended 2026-08-26: **Link Previews**, spanning two phases, so that a quest, character, or contact link pasted into Discord or Slack renders a rich preview card instead of a bare URL. The cards are gated behind explicitly-minted signed share links rather than being public, because a board is private and external unfurl caches are permanent.
 
 ## Phases
 
@@ -224,6 +226,80 @@ Plans:
 
 - **A repeat of the tenant-scoping trap on an aggregating page.** This page joins across members and signups, which is exactly where `IgnoreQueryFilters()` gets reached for. It must not be.
 
+### Phase 78: Link Preview Foundation and Quest Cards
+
+**Goal**: A quest link shared through a new "Copy shareable link" control renders a rich preview card — image, title, description snippet — in Discord, Slack, and iMessage, while an ordinary quest URL behaves exactly as it does today and the page itself still requires login.
+**Depends on**: Nothing in this milestone (independent of 72–77; touches no event, signup, or calendar code)
+**Requirements**: LINKPREV-01, LINKPREV-02, LINKPREV-03, LINKPREV-04, LINKPREV-05, LINKPREV-06, LINKPREV-07, LINKPREV-08, LINKPREV-09
+**Plans**: TBD (run `/gsd-plan-phase 78`)
+
+**Success criteria:**
+
+1. Pasting a copied quest link into a real Discord channel shows a card carrying the quest title, a plain-text description snippet, and the site name — verified against Discord's own crawler, not a local `curl` that only proves the markup exists.
+2. Pasting the plain, uncopied quest URL shows no card at all, and the page itself still behaves exactly as it does today.
+3. Changing a single character of the signature renders no card — the request is rejected, not degraded to a generic card.
+4. `curl -A Discordbot` against a signed URL on the deployed host returns `og:url` and `og:image` as absolute `https://` URLs on the real hostname, not `http://localhost`.
+5. An integration test proves a signature minted for a quest in group A yields no data when replayed against a quest id in group B.
+6. Opening a signed link in a logged-out browser still lands on the login page — the token unlocks card metadata, never page access or the ability to sign up.
+
+**Scope notes:**
+
+- **Forwarded headers must be fixed first, or nothing else in this phase can work.** `Program.cs:103` sets `ForwardedHeaders.XForwardedFor` only — no `XForwardedProto`, no `XForwardedHost`. Behind Traefik that makes every absolute URL the app generates wrong in both scheme and host, and a crawler silently renders no card with no error anywhere. This is a prerequisite, not a nice-to-have.
+- Sign with ASP.NET Core Data Protection, which Identity already registers — no hand-rolled secret, no new key management, and keys already survive container restarts the same way auth cookies do.
+- The meta block ships as a shared partial rendered into `_Layout.cshtml`'s `<head>` through a section, so Phase 79 extends it rather than copying it. `_Layout.cshtml` currently has no OG tags at all — this is greenfield markup.
+- `Quest.Description` is Markdown (the Phase 66–71 rollout). The card description is derived plain text: Markdown stripped, whitespace collapsed, truncated to ~200 chars, HTML-escaped. Not the raw field.
+- `Quest` has no image field, so the card image is a single branded static asset served unauthenticated at an absolute URL. Per-quest generated images are explicitly out of scope.
+- Both desktop `Details.cshtml` and `Details.Mobile.cshtml` get the copy control — the same both-platforms-in-one-phase rule Phase 72 followed.
+
+**Decisions locked before planning:**
+
+- **Signed share links, not public cards and not a board-level toggle.** The card renders only for a URL carrying a valid signature minted by an authenticated member through an explicit "Copy shareable link" action. Sharing therefore requires a deliberate act, and an ordinary URL leaks nothing. Operator decision, taken 2026-08-26.
+- **The signature covers entity type, entity id, and group id together** — never the id alone. A signature that authenticates only "some quest, id 47" is replayable across boards the moment two boards both have a quest 47.
+- **Card presence is decided by the signature, never by User-Agent.** Crawler sniffing would make the card's behaviour depend on a header the sender controls, and would put this feature in the same bug class as the mobile-markup-that-never-renders case PROJECT.md already records.
+- **An interactive Spotify-style iframe widget is not achievable and is not the target.** Those come from Discord's and Slack's hardcoded provider allowlists, which a self-hosted app cannot join. The deliverable is the standard rich card.
+
+**Requires a discuss-phase decision:** whether the signature carries an expiry — and if so, whether an expired link degrades to no card or to a generic one — and whether a minted link can be revoked after the fact.
+
+**Risks this phase must actively avoid:**
+
+- **Reaching for `IgnoreQueryFilters()`.** The preview read path must serve a quest whose group the caller has no session for, which is exactly the shape that invites bypassing the fail-closed filter at `QuestBoardContext.cs:281`. This app has shipped two real cross-tenant leaks (Phases 49/55); the filter is the remedy. The correct move is to set the group context from the *signature's* verified group id, not to switch the filter off.
+- **A card that quietly never appears.** A wrong scheme, a relative `og:image`, or a redirect on the image URL each produce silence rather than an error — crawlers send no cookies and do not reliably follow redirects. Acceptance has to be an actual paste into Discord, not markup inspection.
+- **Leaking more than the sender intended.** Truncation must happen on the rendered plain text; truncating the Markdown source can strip a fence and expose text the author had hidden inside it.
+- **Treating the token as an access grant.** The signature must unlock metadata only. If it is ever accepted as authentication for the page or for a POST, a shared link becomes a permanent unauthenticated door into a private board.
+- **External unfurl caches are permanent.** Discord and Slack cache a card server-side; deleting the quest or rotating the key does not retract a card already posted in a channel. That is a real limit of the feature and belongs in the docs, not in an assumption.
+
+### Phase 79: Character and Contact Link Cards
+
+**Goal**: The same signed-link mechanism extends to characters and contacts — portraits included — with an unrevealed contact never previewable, checked at the moment the card is served rather than the moment the link was made.
+**Depends on**: Phase 78 (inherits the signing scheme, the meta partial, the absolute-URL helper, and the plain-text summarizer)
+**Requirements**: LINKCARD-01, LINKCARD-02, LINKCARD-03, LINKCARD-04, LINKCARD-05, LINKCARD-06
+**Plans**: TBD (run `/gsd-plan-phase 79`)
+
+**Success criteria:**
+
+1. A copied character link pasted into Discord shows a card with the character's name, level, and class, and their portrait as the image.
+2. A copied link for a revealed contact shows name and location with the contact's image; the copy control is unavailable while a contact is unrevealed.
+3. Reveal a contact, copy its link, un-reveal it, then re-fetch the signed URL: no card renders. The gate is evaluated at serve time, not baked into the token.
+4. The signed image endpoint returns the stored bytes with an explicit correct `Content-Type` and `X-Content-Type-Options: nosniff`, is fetchable with no cookies, and falls back to the branded image when the entity has no portrait.
+5. A two-group integration test proves a signature minted in group A returns nothing when replayed against a character or contact id in group B.
+6. No `ContactNote` text ever reaches a card or an image response.
+
+**Scope notes:**
+
+- Both controllers are `[Authorize]` at class level (`CharactersController.cs:12`, `ContactsController.cs:13`), unlike `Quest/Details`. The preview path is therefore a narrow anonymous-allowed addition alongside them, not a relaxation of the existing attribute.
+- Portrait bytes already exist on the entities — `Character.ProfilePicture` and `Contact.ContactImageData` — but today's serving endpoints sit behind `[Authorize]`. The signed image endpoint is net-new and must not widen the existing ones.
+- `Character.HasProfilePicture` / `Contact.HasContactImage` already exist precisely so a view can branch on presence without loading the bytes; the fallback decision should use those, not a byte-length check.
+- Card fields are deliberately narrow: name, level, and class for a character; name and location for a contact. `Backstory`, `Description`, and notes stay off the card.
+
+**Requires a discuss-phase decision:** whether any board member can mint a share link for a character they do not own, or only the character's owner.
+
+**Risks this phase must actively avoid:**
+
+- **`IsRevealed` checked at mint time only.** This is the sharpest risk in the phase and the reason contacts are separated from quests. `Contact.IsRevealed` is a DM-controlled spoiler gate; a token that captured "revealed" when it was minted turns un-revealing into a no-op and leaks an NPC into party chat. The check belongs on the serve path, every time.
+- **Un-revealing cannot retract an already-posted card.** Discord and Slack cache unfurls server-side. Serve-time checking stops *new* leaks; it does not undo one already sitting in a channel. This must be stated in the UI or docs rather than assumed away, because it changes how a DM should treat the copy button.
+- **Serving unauthenticated bytes from the database.** Without an explicit `Content-Type` and `nosniff`, an uploaded file that is not really an image becomes a content-sniffing vector on a path that requires no login at all. A size cap matters for the same reason — this endpoint is reachable by anyone holding the link, and by every crawler that sees it.
+- **A third copy of the card markup.** Quests, characters, and contacts across desktop and mobile is six call sites. Extend Phase 78's partial; do not hand-copy it — the exact drift class PROJECT.md blames for the `Characters/Edit.cshtml` `classIndex` bug.
+
 ## Phase Ordering Rationale
 
 - Phases 72 and 73 share no code, no files, and no data — either order works, and neither blocks the other.
@@ -232,6 +308,9 @@ Plans:
 - The events feature (74–77) is a strict dependency chain: schema → signups → recurrence → overview. Each phase ships a usable increment rather than scaffolding.
 - Recurrence (76) is sequenced *after* signups (75) rather than before, because materialized occurrences must carry availability from the moment they exist.
 - **If scope needs cutting mid-milestone**, stopping after 75 leaves a complete, usable non-recurring events feature. Recurrence and the overview grid are separable value-adds, not blocking dependencies.
+- Phases 78 and 79 (link previews) were appended on 2026-08-26 and are independent of the events chain — they touch no event, signup, or calendar code, so they can run before, after, or alongside 74–77.
+- 78 must precede 79: it owns the signing scheme, the meta partial, the absolute-URL helper, and the Markdown-to-plain-text summarizer that 79 consumes. It also ships usable value on its own (quest cards), so stopping after 78 leaves a complete feature.
+- Splitting 78 from 79 is a decision-boundary split, not a size split. 78 settles what a share link exposes and proves it on quests, the least sensitive entity. 79 inherits that mechanism and adds the rules unique to the sensitive ones — the `IsRevealed` spoiler gate and unauthenticated image serving.
 
 ## Requirements Coverage
 
@@ -272,12 +351,29 @@ Plans:
 | EVTVIEW-02 | Phase 77 |
 | EVTVIEW-03 | Phase 77 |
 | EVTVIEW-04 | Phase 77 |
+| LINKPREV-01 | Phase 78 |
+| LINKPREV-02 | Phase 78 |
+| LINKPREV-03 | Phase 78 |
+| LINKPREV-04 | Phase 78 |
+| LINKPREV-05 | Phase 78 |
+| LINKPREV-06 | Phase 78 |
+| LINKPREV-07 | Phase 78 |
+| LINKPREV-08 | Phase 78 |
+| LINKPREV-09 | Phase 78 |
+| LINKCARD-01 | Phase 79 |
+| LINKCARD-02 | Phase 79 |
+| LINKCARD-03 | Phase 79 |
+| LINKCARD-04 | Phase 79 |
+| LINKCARD-05 | Phase 79 |
+| LINKCARD-06 | Phase 79 |
 
-**Coverage:** 35/35 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
+**Coverage:** 50/50 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
 
 ## Research Flags
 
-Neither phase needs a research step during planning — both were researched to implementation-ready depth with verified file paths and line numbers. See `.planning/research/SUMMARY.md`.
+Phases 72 and 73 needed no research step — both were researched to implementation-ready depth with verified file paths and line numbers. See `.planning/research/SUMMARY.md`.
+
+**Phase 78 needs a research step.** Open Graph and Twitter Card behaviour is defined by each consumer, not by a spec: Discord, Slack, iMessage, and WhatsApp differ on description length, image aspect ratio and size limits, redirect handling, and cache invalidation. Getting those wrong produces a silently absent card rather than an error, so the limits must be established before planning rather than discovered by trial. Phase 79 inherits the findings and needs no separate research pass.
 
 ---
 *Roadmap created: 2026-08-25*

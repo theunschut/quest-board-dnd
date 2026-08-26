@@ -62,6 +62,27 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **EVTVIEW-03**: The overview shows a per-event availability count, so a poorly-attended date is obvious at a glance
 - [ ] **EVTVIEW-04**: The overview never displays events or members from another board
 
+### Link Previews — Foundation and Quests
+
+- [ ] **LINKPREV-01**: The app generates correct absolute URLs behind the reverse proxy, honouring forwarded scheme and host
+- [ ] **LINKPREV-02**: A "Copy shareable link" control on the quest Details page, desktop and mobile, mints a signed link and copies it to the clipboard
+- [ ] **LINKPREV-03**: A quest URL carrying a valid signature serves Open Graph and Twitter Card meta tags so Discord, Slack, and iMessage render a rich card
+- [ ] **LINKPREV-04**: A quest URL with no signature behaves exactly as it does today — no card, no quest data served to an unauthenticated caller
+- [ ] **LINKPREV-05**: A tampered, malformed, or otherwise invalid signature is rejected and renders no card
+- [ ] **LINKPREV-06**: The card description is plain text derived from the quest's Markdown — syntax stripped, whitespace collapsed, truncated, HTML-escaped
+- [ ] **LINKPREV-07**: The signed preview read path is scoped to the signature's own verified group and cannot serve data from any other board
+- [ ] **LINKPREV-08**: A branded fallback card image is served unauthenticated at an absolute URL, with no redirect
+- [ ] **LINKPREV-09**: A valid signature grants card metadata only — never page access, never the ability to sign up or post
+
+### Link Previews — Characters and Contacts
+
+- [ ] **LINKCARD-01**: A "Copy shareable link" control on the character Details page, desktop and mobile
+- [ ] **LINKCARD-02**: A "Copy shareable link" control on the contact Details page, unavailable while the contact is unrevealed
+- [ ] **LINKCARD-03**: A signed contact link renders no card while the contact is unrevealed, evaluated when the card is served rather than when the link was minted
+- [ ] **LINKCARD-04**: Character and contact portraits are served at a signed, unauthenticated image endpoint with an explicit content type and `X-Content-Type-Options: nosniff`
+- [ ] **LINKCARD-05**: The signed image endpoint enforces a size cap and cache headers, and falls back to the branded image when the entity has no portrait
+- [ ] **LINKCARD-06**: The character card shows name, level, and class; the contact card shows name and location — and neither exposes backstory, description, or notes
+
 ## Future Requirements
 
 Deferred — revisit if the need becomes real.
@@ -92,6 +113,11 @@ Explicit exclusions for v9.0, with reasoning.
 - **A client-side calendar component or JS calendar library** — the existing hand-rolled Razor month grid is fused with quest vote-button and signup rendering, not a generic widget. Events extend it; they do not justify replacing it.
 - **Cross-board collision warnings when configuring a recurring series** — flagging that a generated date collides with an event on another board would be noise for boards that have nothing to do with each other, and would train people to ignore the warning. The date preview covers the real need.
 - **A shared cadence entity spanning two boards** — this would make interleaving structurally correct rather than configuration-dependent, but a board *is* a group, so it would cut through the tenant isolation model that has already leaked twice (v7.0, Phases 49/55). Not worth the trade.
+- **A Spotify-style interactive iframe embed** — Discord and Slack render interactive players only for providers on their own hardcoded allowlists. A self-hosted app cannot join one at any effort level. The achievable target is the standard rich card, and scoping toward an embed would be chasing something that does not exist for us.
+- **Public, unsigned link previews** — a card that renders for any URL would make every quest title and description snippet readable by anyone holding a link, and Discord and Slack cache the result server-side. Considered and rejected in favour of signed share links, which make sharing a deliberate act.
+- **A board-level "allow link previews" toggle** — one switch governing every quest on a board is coarser than the risk warrants, and the link itself would carry no evidence that anyone meant to share it.
+- **Server-generated per-quest card images** — rendering title, challenge rating, and date onto a parchment background needs a new imaging dependency for pure polish. A branded static fallback carries the feature; revisit only if the cards prove useful.
+- **Accepting a preview signature as authentication** — the token unlocks card metadata and nothing else. Honouring it for page access or any POST would turn a shared link into a permanent unauthenticated door into a private board.
 
 ## Traceability
 
@@ -132,11 +158,26 @@ Explicit exclusions for v9.0, with reasoning.
 | EVTVIEW-02 | Phase 77 | Not started |
 | EVTVIEW-03 | Phase 77 | Not started |
 | EVTVIEW-04 | Phase 77 | Not started |
+| LINKPREV-01 | Phase 78 | Not started |
+| LINKPREV-02 | Phase 78 | Not started |
+| LINKPREV-03 | Phase 78 | Not started |
+| LINKPREV-04 | Phase 78 | Not started |
+| LINKPREV-05 | Phase 78 | Not started |
+| LINKPREV-06 | Phase 78 | Not started |
+| LINKPREV-07 | Phase 78 | Not started |
+| LINKPREV-08 | Phase 78 | Not started |
+| LINKPREV-09 | Phase 78 | Not started |
+| LINKCARD-01 | Phase 79 | Not started |
+| LINKCARD-02 | Phase 79 | Not started |
+| LINKCARD-03 | Phase 79 | Not started |
+| LINKCARD-04 | Phase 79 | Not started |
+| LINKCARD-05 | Phase 79 | Not started |
+| LINKCARD-06 | Phase 79 | Not started |
 
 **Coverage:**
 
-- v1 requirements: 35 total
-- Mapped to phases: 35/35 ✓
+- v1 requirements: 50 total
+- Mapped to phases: 50/50 ✓
 - Unmapped: 0
 
 ---
