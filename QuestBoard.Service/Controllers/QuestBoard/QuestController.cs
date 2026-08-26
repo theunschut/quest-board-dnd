@@ -547,11 +547,26 @@ public class QuestController(
         }
 
         // Validate character if provided. Ownership and board scope are the only gates —
-        // a player may bring a Retired or Dead character to a signup.
-        if (characterId.HasValue
-            && await ResolveCharacterAssignmentAsync(characterId.Value, user.Id) != CharacterAssignment.Assignable)
+        // a player may bring a Retired or Dead character to a signup. A character that no
+        // longer resolves is the same stale-modal race the missing-signup branch above
+        // handles — deleted in another tab while the picker sat open — so it gets the same
+        // friendly redirect rather than a raw error page. A character that does resolve but
+        // is not the caller's to assign cannot come from any legitimate use of the picker,
+        // so that stays a hard rejection.
+        if (characterId.HasValue)
         {
-            return BadRequest("Invalid character selection.");
+            var assignment = await ResolveCharacterAssignmentAsync(characterId.Value, user.Id);
+
+            if (assignment == CharacterAssignment.NotFound)
+            {
+                TempData["Error"] = "That character no longer exists.";
+                return RedirectToAction("Details", new { id = questId });
+            }
+
+            if (assignment == CharacterAssignment.NotAssignable)
+            {
+                return BadRequest("Invalid character selection.");
+            }
         }
 
         // Update the character

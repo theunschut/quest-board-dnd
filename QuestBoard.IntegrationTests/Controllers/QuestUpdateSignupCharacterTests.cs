@@ -392,14 +392,16 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
 
     /// <summary>
     /// Proves the board boundary holds for this action end to end: a character seeded under a
-    /// different board than the caller's active one is rejected. It cannot distinguish which of
-    /// the two layers rejected the request, because the entity's model-level board filter
-    /// resolves the foreign character to null before the action's own comparison is ever
-    /// reached. The same-board, different-owner test above is the isolatable ownership case —
-    /// this one only proves the boundary holds, not which check inside it fired.
+    /// different board than the caller's active one never lands on the signup. It cannot
+    /// distinguish which of the two layers rejected the request, because the entity's
+    /// model-level board filter resolves the foreign character to null before the action's own
+    /// comparison is ever reached — which is also why the response is the "that character no
+    /// longer exists" redirect rather than the hard 400 an owned-but-foreign character would
+    /// draw. The same-board, different-owner test above is the isolatable ownership case; this
+    /// one only proves the boundary holds, not which check inside it fired.
     /// </summary>
     [Fact]
-    public async Task UpdateSignupCharacter_Post_WithCharacterFromAnotherBoard_ReturnsBadRequestAndLeavesCharacterUnchanged()
+    public async Task UpdateSignupCharacter_Post_WithCharacterFromAnotherBoard_RejectsAndLeavesCharacterUnchanged()
     {
         // Arrange
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
@@ -434,7 +436,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
             var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
             // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            response.StatusCode.Should().Be(HttpStatusCode.Found);
+            response.Headers.Location.Should().NotBeNull();
+            response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
             using var scope = factory.Services.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
