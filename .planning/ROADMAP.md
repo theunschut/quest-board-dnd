@@ -112,7 +112,7 @@ Plans:
 **Goal**: A DM can put a dated event on their board's calendar — informational only — and everyone sees it on both the desktop and mobile calendar, clearly distinct from a quest.
 **Depends on**: Nothing in this milestone (independent of 72 and 73)
 **Requirements**: EVENT-01, EVENT-02, EVENT-03, EVENT-04, EVENT-05, EVENT-06
-**Plans**: 3/8 plans executed
+**Plans**: 4/8 plans executed
 
 Plans:
 **Wave 1**
@@ -126,7 +126,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 74-04-PLAN.md — EventViewModel, view-model maps, and the DM-gated EventsController with server-side board stamping (wave 3)
+- [x] 74-04-PLAN.md — EventViewModel, view-model maps, and the DM-gated EventsController with server-side board stamping (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
