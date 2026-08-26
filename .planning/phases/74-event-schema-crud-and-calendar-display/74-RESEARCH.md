@@ -438,7 +438,7 @@ public class EventEntity : IEntity
 
 **If this table is empty:** N/A — one low-risk assumption logged above; everything else in this research was verified directly against the codebase (grep/read) or cited from Microsoft's own EF Core documentation.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `EventsController.GetEventsForCalendarAsync` fetch all events (like `QuestRepository.GetQuestsForCalendarAsync` fetches all quests, unfiltered by date) or scope to a date range?**
    - What we know: The existing Quest calendar read fetches every quest for the active group with no date-range `.Where()` — `CalendarViewModel.GetCalendarDays()` does the month-filtering client-side in memory.

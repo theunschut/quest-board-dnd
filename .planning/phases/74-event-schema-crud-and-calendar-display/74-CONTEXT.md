@@ -42,7 +42,7 @@ Not in this phase: player availability signups (Phase 75), recurring series gene
 
 ### Desktop calendar rendering
 
-- **D-08: Events render in their own block *above* the quest list inside a day cell**, with their own CSS class — not as a third variant interleaved into `.quest-events`. Position carries the "different kind of thing" signal before colour does, and it keeps the event cap independent of the quests' existing `Take(3)`.
+- **D-08: Events render in their own block _above_ the quest list inside a day cell**, with their own CSS class — not as a third variant interleaved into `.quest-events`. Position carries the "different kind of thing" signal before colour does, and it keeps the event cap independent of the quests' existing `Take(3)`.
 
   **Accepted cost:** a day holding both gets taller. The grid row height must cope — check this, don't assume it.
 
@@ -66,7 +66,7 @@ Not in this phase: player availability signups (Phase 75), recurring series gene
 
 ### Mobile agenda
 
-- **D-13: Widen the filter *and* rewrite the empty state — both halves are required.** `Views/Calendar/Index.Mobile.cshtml:9` filters `.Where(d => !d.IsEmpty && d.QuestsOnDay.Any())`, so a day with only an event is invisible. The filter becomes has-quests **or** has-events. The empty state (currently "No Quests This Month" / "No adventures are planned for {month}") becomes month-neutral. Widening the filter alone would leave an events-only month showing "No Quests This Month" above a list of events — worse than the current state, and a live failure of EVENT-04's intent.
+- **D-13: Widen the filter _and_ rewrite the empty state — both halves are required.** `Views/Calendar/Index.Mobile.cshtml:9` filters `.Where(d => !d.IsEmpty && d.QuestsOnDay.Any())`, so a day with only an event is invisible. The filter becomes has-quests **or** has-events. The empty state (currently "No Quests This Month" / "No adventures are planned for {month}") becomes month-neutral. Widening the filter alone would leave an events-only month showing "No Quests This Month" above a list of events — worse than the current state, and a live failure of EVENT-04's intent.
 
 - **D-14: An event with no start time renders as "All day"** — on mobile, where every agenda entry prints `HH:mm` in a right-hand slot, and on desktop for consistency. An empty slot reads as a rendering bug and is indistinguishable from a data-loading failure.
 
@@ -82,7 +82,7 @@ Not in this phase: player availability signups (Phase 75), recurring series gene
 
 - **D-19: No date restriction — an event can be created or edited onto a past date.** An event is a record, not a booking: backfilling last month's session and correcting a typo on an event that already happened are both legitimate. A future-only rule would also collide with Phase 76's moved/edited occurrences. **Accepted cost:** no guard against a fat-fingered year.
 
-- **D-20: After Create, Edit, and Delete, redirect to the calendar at the *event's* month**, using the existing `CalendarController.Index(year, month)` route — not the current month. A January event created in August must not dump the DM on August; that reads as a silent failure. All three actions set `TempData["Success"]`, which `_Toasts.cshtml` picks up automatically in every layout with no view changes (Phase 72 D-14).
+- **D-20: After Create, Edit, and Delete, redirect to the calendar at the _event's_ month**, using the existing `CalendarController.Index(year, month)` route — not the current month. A January event created in August must not dump the DM on August; that reads as a silent failure. All three actions set `TempData["Success"]`, which `_Toasts.cshtml` picks up automatically in every layout with no view changes (Phase 72 D-14).
 
 ### Tenant scoping and testing (locked by ROADMAP — restated because D-04 raises the stakes)
 
