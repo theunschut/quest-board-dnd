@@ -150,3 +150,11 @@ None - no external service configuration required.
 ---
 *Phase: 74-event-schema-crud-and-calendar-display*
 *Completed: 2026-08-26*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/ViewModels/EventViewModels/EventViewModel.cs
+- FOUND: QuestBoard.Service/Controllers/Events/EventsController.cs
+- FOUND: .planning/phases/74-event-schema-crud-and-calendar-display/74-04-SUMMARY.md
+- FOUND commit 110d6ea (Task 1)
+- FOUND commit 6c1cef2 (Task 2)
