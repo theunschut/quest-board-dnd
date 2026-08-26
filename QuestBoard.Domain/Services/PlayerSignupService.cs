@@ -35,14 +35,15 @@ internal class PlayerSignupService(IPlayerSignupRepository repository, IMapper m
     /// <inheritdoc/>
     public async Task UpdateSignupCharacterAsync(int playerSignupId, int? characterId, CancellationToken cancellationToken = default)
     {
-        var playerSignup = await repository.GetByIdAsync(playerSignupId, cancellationToken);
-        if (playerSignup == null)
+        // Write only the character. The general update replaces the signup's whole date-vote
+        // collection from the model it is handed, so routing a scalar edit through it would
+        // destroy the player's votes — dropping them from reminder eligibility and waitlist
+        // promotion — while reporting success.
+        var updated = await repository.UpdateCharacterAsync(playerSignupId, characterId, cancellationToken);
+        if (!updated)
         {
             throw new ArgumentException("Player signup not found", nameof(playerSignupId));
         }
-
-        playerSignup.CharacterId = characterId;
-        await repository.UpdateAsync(playerSignup, cancellationToken);
     }
 
     /// <inheritdoc/>

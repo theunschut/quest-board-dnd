@@ -323,18 +323,20 @@ public class QuestController(
             {
                 currentUser = await userService.GetByIdAsync(userEntity.Id, token);
                 
-                // Get user's active characters
+                // Every character the caller owns on the board they are currently viewing,
+                // whatever its status, so the signup/change pickers offer exactly what the
+                // save path will accept. Board scoping comes from the entity's global query
+                // filter, not from this method.
                 if (currentUser != null)
                 {
-                    var allCharacters = await characterService.GetCharactersByOwnerIdAsync(currentUser.Id, token);
-                    userCharacters = allCharacters.Where(c => c.Status == CharacterStatus.Active).ToList();
+                    userCharacters = await characterService.GetCharactersByOwnerIdAsync(currentUser.Id, token);
                 }
             }
         }
 
         // Check if current user is signed up
         ViewBag.IsPlayerSignedUp = currentUser != null && quest.PlayerSignups.Any(ps => ps.Player.Id == currentUser.Id);
-        ViewBag.UserCharacters = userCharacters ?? new List<Character>();
+        ViewBag.UserCharacters = userCharacters?.ToList() ?? new List<Character>();
 
         // Check if current user can manage this quest (DM or admin)
         var isQuestDm = currentUser != null && IsQuestOwner(currentUser, quest.DungeonMaster);
@@ -390,11 +392,14 @@ public class QuestController(
         if (user == null)
             return Challenge();
 
-        // Check if user already signed up
+        // Check if user already signed up. Every failure below reports through TempData and a
+        // redirect: ModelState does not survive a redirect, and neither Details view renders a
+        // validation summary, so a model error here would leave the user staring at an
+        // unchanged page with no explanation.
         if (quest.PlayerSignups.Any(ps => ps.Player.Id == user.Id))
         {
-            ModelState.AddModelError("", "You have already signed up for this quest.");
-            return await Details(questId);
+            TempData["Error"] = "You have already signed up for this quest.";
+            return RedirectToAction("Details", new { id = questId });
         }
 
         // Use the authenticated user instead of form input
@@ -403,15 +408,14 @@ public class QuestController(
         signup.Role = (SignupRole)selectedRole; // Set role from form
 
         
-        // Validate character if selected
-        if (signup.CharacterId.HasValue)
+        // Validate character if selected. Ownership and board scope are the only gates — a
+        // player may bring a Retired or Dead character to a signup, matching the
+        // character-change path and the full list the pickers offer.
+        if (signup.CharacterId.HasValue
+            && await ResolveCharacterAssignmentAsync(signup.CharacterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
-            var character = await characterService.GetCharacterWithDetailsAsync(signup.CharacterId.Value);
-            if (character == null || character.OwnerId != user.Id || character.Status != CharacterStatus.Active)
-            {
-                ModelState.AddModelError("", "Invalid character selection.");
-                return await Details(questId);
-            }
+            TempData["Error"] = "Invalid character selection.";
+            return RedirectToAction("Details", new { id = questId });
         }
 
         await playerSignupService.AddAsync(signup);
@@ -436,7 +440,7 @@ public class QuestController(
         // Check if user already signed up
         if (quest.PlayerSignups.Any(ps => ps.Player.Id == user.Id))
         {
-            ModelState.AddModelError("", "You have already signed up for this quest.");
+            TempData["Error"] = "You have already signed up for this quest.";
             return RedirectToAction("Details", new { id = questId });
         }
 
@@ -448,15 +452,14 @@ public class QuestController(
         var isPlayerRoleWithSpace = role != SignupRole.Player
             || quest.PlayerSignups.Where(ps => ps.IsSelected && ps.Role == SignupRole.Player).Count() < quest.TotalPlayerCount;
 
-        // Validate character if selected
-        if (characterId.HasValue)
+        // Validate character if selected. Ownership and board scope are the only gates — a
+        // player may bring a Retired or Dead character to a signup, matching the
+        // character-change path and the full list the pickers offer.
+        if (characterId.HasValue
+            && await ResolveCharacterAssignmentAsync(characterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
-            var character = await characterService.GetCharacterWithDetailsAsync(characterId.Value);
-            if (character == null || character.OwnerId != user.Id || character.Status != CharacterStatus.Active)
-            {
-                ModelState.AddModelError("", "Invalid character selection.");
-                return RedirectToAction("Details", new { id = questId });
-            }
+            TempData["Error"] = "Invalid character selection.";
+            return RedirectToAction("Details", new { id = questId });
         }
 
         // Find the finalized date's corresponding proposed date for vote creation
@@ -465,7 +468,7 @@ public class QuestController(
 
         if (finalizedProposedDate == null)
         {
-            ModelState.AddModelError("", "Could not find the finalized date information.");
+            TempData["Error"] = "Could not find the finalized date information.";
             return RedirectToAction("Details", new { id = questId });
         }
 
@@ -531,25 +534,58 @@ public class QuestController(
         if (user == null)
             return Challenge();
 
-        // Find the user's signup for this quest
+        // Find the user's signup for this quest. Losing your signup between opening the
+        // picker and submitting it is something a player can hit without tampering — a
+        // stale modal left open after revoking in another tab, or being dropped from a
+        // finalized quest — so it gets a friendly redirect with a message rather than a
+        // raw error response.
         var playerSignup = quest.PlayerSignups.FirstOrDefault(ps => ps.Player.Id == user.Id);
         if (playerSignup == null)
         {
-            return BadRequest("You are not signed up for this quest.");
+            TempData["Error"] = "You are no longer signed up for this quest.";
+            return RedirectToAction("Details", new { id = questId });
         }
 
-        // Validate character if provided
+        // Validate character if provided. Ownership and board scope are the only gates —
+        // a player may bring a Retired or Dead character to a signup. A character that no
+        // longer resolves is the same stale-modal race the missing-signup branch above
+        // handles — deleted in another tab while the picker sat open — so it gets the same
+        // friendly redirect rather than a raw error page. A character that does resolve but
+        // is not the caller's to assign cannot come from any legitimate use of the picker,
+        // so that stays a hard rejection.
         if (characterId.HasValue)
         {
-            var character = await characterService.GetCharacterWithDetailsAsync(characterId.Value);
-            if (character == null || character.OwnerId != user.Id || character.Status != CharacterStatus.Active)
+            var assignment = await ResolveCharacterAssignmentAsync(characterId.Value, user.Id);
+
+            if (assignment == CharacterAssignment.NotFound)
+            {
+                TempData["Error"] = "That character no longer exists.";
+                return RedirectToAction("Details", new { id = questId });
+            }
+
+            if (assignment == CharacterAssignment.NotAssignable)
             {
                 return BadRequest("Invalid character selection.");
             }
         }
 
-        // Update the character
-        await playerSignupService.UpdateSignupCharacterAsync(playerSignup.Id, characterId);
+        // Update the character. The signup was read a few statements ago, so it can still be
+        // revoked in another tab before the write lands — this action is built around users
+        // leaving a picker open, so treat losing that race as the same "you are no longer
+        // signed up" state the check above reports rather than letting it surface as a crash.
+        try
+        {
+            await playerSignupService.UpdateSignupCharacterAsync(playerSignup.Id, characterId);
+        }
+        catch (ArgumentException)
+        {
+            TempData["Error"] = "You are no longer signed up for this quest.";
+            return RedirectToAction("Details", new { id = questId });
+        }
+
+        TempData["Success"] = characterId.HasValue
+            ? "Character updated."
+            : "Character removed from your signup.";
 
         return RedirectToAction("Details", new { id = questId });
     }
@@ -1035,6 +1071,39 @@ public class QuestController(
 
         var group = await groupService.GetByIdAsync(groupId, token);
         return group?.BoardType ?? BoardType.OneShot;
+    }
+
+    // The outcome of validating a character a player wants to put on a signup. Every action
+    // that writes the signup's CharacterId column runs the same gate, so the check lives in
+    // one place; the outcomes stay distinct because callers report a vanished character
+    // differently from one that was never theirs to assign.
+    private enum CharacterAssignment
+    {
+        Assignable,
+        NotFound,
+        NotAssignable
+    }
+
+    // Characters are already scoped to the viewer's board one layer down by a model-level
+    // query filter, so the board comparison here exists purely as insurance: if a future
+    // query ever opts out of that filter, this is what keeps every character write safe. A
+    // character from another board cannot be produced by any legitimate use of the pickers.
+    private async Task<CharacterAssignment> ResolveCharacterAssignmentAsync(int characterId, int userId)
+    {
+        var character = await characterService.GetCharacterWithDetailsAsync(characterId);
+        if (character == null)
+        {
+            return CharacterAssignment.NotFound;
+        }
+
+        if (character.OwnerId != userId
+            || activeGroupContext.ActiveGroupId is not { } groupId
+            || character.GroupId != groupId)
+        {
+            return CharacterAssignment.NotAssignable;
+        }
+
+        return CharacterAssignment.Assignable;
     }
 
     // Id-based identity comparison for "is this the quest's DM" — deliberately avoids

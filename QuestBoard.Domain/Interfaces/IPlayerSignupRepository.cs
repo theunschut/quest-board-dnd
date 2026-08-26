@@ -11,6 +11,13 @@ public interface IPlayerSignupRepository : IBaseRepository<PlayerSignup>
     Task<PlayerSignup?> GetByIdWithDateVotesAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sets only the character on a signup, leaving its date votes untouched. Exists because
+    /// the general update replaces the whole date-vote collection from the model it is given,
+    /// which is the wrong shape for a scalar edit. Returns false when no such signup exists.
+    /// </summary>
+    Task<bool> UpdateCharacterAsync(int playerSignupId, int? characterId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns a signup with its parent Quest loaded, or null.
     /// </summary>
     Task<PlayerSignup?> GetByIdWithQuestAsync(int id, CancellationToken cancellationToken = default);

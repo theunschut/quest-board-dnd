@@ -1,39 +1,37 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.0
-milestone_name: Markdown Support
-current_phase: null
-status: shipped
-stopped_at: v8.0 milestone complete — archived and closed
-last_updated: "2026-07-11T00:00:00.000Z"
-last_activity: 2026-07-11
-last_activity_desc: v8.0 Markdown Support milestone shipped and archived
+milestone: v9.0
+milestone_name: Rolling Improvements
+current_phase: 73
+current_phase_name: Resolve Stale HIGH Security Alerts
+status: executing
+stopped_at: Phase 72 context gathered
+last_updated: "2026-08-26T05:55:52.143Z"
+last_activity: 2026-08-26
+last_activity_desc: Phase 72 complete, transitioned to Phase 73
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
-current_phase_name: null
+  total_phases: 6
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
+  percent: 17
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-11 — v8.0 milestone close)
+See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Planning next milestone — run `/gsd-new-milestone`
+**Current focus:** Phase 72 — change-character-on-an-existing-signup
 
 ## Current Position
 
-Phase: None (between milestones)
-Plan: None
-Status: v8.0 shipped; no active milestone
-Last activity: 2026-07-14 - Completed quick task 260714-b0w: Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist
-
-Progress: [██████████] 100% (v8.0, 7/7 phases)
+Phase: 73 — Resolve Stale HIGH Security Alerts
+Plan: Not started
+Status: Executing Phase 72
+Last activity: 2026-08-26 — Phase 72 complete, transitioned to Phase 73
 
 ## Performance Metrics
 
@@ -89,9 +87,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-07-11 — milestone close (`/gsd-complete-milestone 8`)
-Stopped at: v8.0 archived; awaiting `/gsd-new-milestone` to start v9.0
-Resume file: none — no phase in progress
+Last session: 2026-08-25T11:14:47.548Z
+Stopped at: Phase 72 context gathered
+Resume file: .planning/phases/72-change-character-on-an-existing-signup/72-CONTEXT.md
 
 ## Operator Next Steps
 

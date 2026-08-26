@@ -1,0 +1,143 @@
+@using QuestBoard.Service.Extensions
+@* The single character add/change/clear modal shared by the desktop and mobile quest
+   Details views. Exactly one instance of this partial is rendered per page, no matter
+   how many rows offer a trigger for it -- every trigger primes this same modal from its
+   own data-* attributes on open, instead of each row carrying its own copy of the modal.
+
+   Trigger contract -- any element that opens this modal must carry:
+     data-bs-toggle="modal" data-bs-target="#characterSelectModal"
+     data-quest-id               -- the quest id
+     data-current-character-id   -- the signup's current character id, or "" if none
+     data-current-character-label -- that character's ToSelectLabel() text, or "" if none
+
+   Host contract -- the rendering view must put the viewer's own characters in
+   ViewBag.UserCharacters. A host that forgets renders an empty required select, and the
+   user is silently locked out of saving with nothing on screen explaining why.
+
+   The form names its controller explicitly rather than inheriting it from the ambient
+   ViewContext, so the post keeps targeting the right action when a view outside the Quest
+   controller renders this partial.
+*@
+<div class="modal fade" id="characterSelectModal" tabindex="-1" aria-labelledby="characterSelectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="characterSelectModalLabel">
+                    <i class="fas fa-user-edit me-2"></i><span id="characterSelectModalTitle">Add Character to Signup</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Quest" asp-action="UpdateSignupCharacter" method="post" id="characterSelectForm">
+                <div class="modal-body">
+                    <input type="hidden" name="questId" id="characterSelectQuestId" value="" />
+
+                    <div class="mb-3">
+                        <label for="characterSelect" class="form-label">Select Character <span class="text-danger">*</span></label>
+                        <select name="characterId" id="characterSelect" class="form-select" required>
+                            <option value="">-- Select a character --</option>
+                            @foreach (var character in ViewBag.UserCharacters as IEnumerable<Character> ?? new List<Character>())
+                            {
+                                <option value="@character.Id">@character.ToSelectLabel()</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger d-none" id="characterSelectRemoveBtn">
+                        <i class="fas fa-user-minus me-2"></i>Remove Character
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-success" id="characterSelectSaveBtn">
+                            <i class="fas fa-check me-2"></i>Save
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const characterSelectModal = document.getElementById('characterSelectModal');
+        if (!characterSelectModal) {
+            return;
+        }
+
+        characterSelectModal.addEventListener('show.bs.modal', function (event) {
+            const trigger = event.relatedTarget;
+            if (!trigger) {
+                return;
+            }
+
+            const questId = trigger.dataset.questId || '';
+            const currentCharacterId = trigger.dataset.currentCharacterId || '';
+            const currentCharacterLabel = trigger.dataset.currentCharacterLabel || '';
+
+            document.getElementById('characterSelectQuestId').value = questId;
+
+            const select = document.getElementById('characterSelect');
+
+            // A previous invocation may have left the select disabled/non-required from the
+            // Remove path, and may have injected a stand-in option for a different row's
+            // current character. Reset both before priming for this trigger, since one modal
+            // instance is reused by every row on the page.
+            select.disabled = false;
+            select.required = true;
+            const previousCurrentOption = document.getElementById('characterSelectCurrentOption');
+            if (previousCurrentOption) {
+                previousCurrentOption.remove();
+            }
+
+            if (currentCharacterId) {
+                let matchingOption = Array.from(select.options).find(function (option) {
+                    return option.value === currentCharacterId;
+                });
+
+                if (!matchingOption) {
+                    // The signup's current character is not in the option list (for example,
+                    // it belongs to another group's roster or was excluded some other way).
+                    // Inject it as a real option rather than assigning select.value with no
+                    // matching option, which would silently fall back to the placeholder and
+                    // make an untouched Save wipe the player's character.
+                    matchingOption = document.createElement('option');
+                    matchingOption.id = 'characterSelectCurrentOption';
+                    matchingOption.value = currentCharacterId;
+                    matchingOption.textContent = currentCharacterLabel || 'Current character';
+                    select.options[0].after(matchingOption);
+                }
+
+                select.value = currentCharacterId;
+            } else {
+                select.value = '';
+            }
+
+            document.getElementById('characterSelectRemoveBtn').classList.toggle('d-none', !currentCharacterId);
+            document.getElementById('characterSelectModalTitle').textContent = currentCharacterId
+                ? 'Change Character on Your Signup'
+                : 'Add Character to Signup';
+        });
+
+        document.getElementById('characterSelectRemoveBtn').addEventListener('click', function () {
+            if (!confirm('Remove this character from your signup?')) {
+                return;
+            }
+
+            const select = document.getElementById('characterSelect');
+            select.required = false;
+            select.value = '';
+            // A disabled control is excluded from form submission entirely, so characterId
+            // arrives absent on the server and binds to null -- the existing clear path.
+            // This also sidesteps the select's required attribute without editing it back
+            // and forth around the submit call.
+            select.disabled = true;
+
+            // Submitting the form directly (rather than clicking Save) bypasses the browser's
+            // constraint validation, so a disabled required-looking select can never block it.
+            document.getElementById('characterSelectForm').submit();
+        });
+    });
+</script>

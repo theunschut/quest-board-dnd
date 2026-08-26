@@ -1,148 +1,253 @@
 # Pitfalls Research
 
-**Domain:** Retrofitting Markdown authoring/rendering onto existing plain-text fields with real production data (D&D Quest Board, v8.0 Markdown Support)
-**Researched:** 2026-07-09
-**Confidence:** HIGH (grounded directly in this codebase's email templates, entity schemas, and CSS; external claims corroborated by the CommonMark spec, Markdig's own docs, and multiple independent sources)
+**Domain:** Rolling-improvements milestone (v9.0) on a mature ASP.NET Core 10 MVC app (D&D Quest Board, ~60-70k LOC, 17 users, self-hosted LXC)
+**Researched:** 2026-08-25
+**Confidence:** HIGH (grounded directly in the current source tree and the project's own documented incident history in `.planning/PROJECT.md`)
+
+This research covers two unrelated items in the same milestone:
+- **Item 1** — add a "change character" affordance to an existing quest signup (desktop `Views/Quest/Details.cshtml` + mobile `Views/Quest/Details.Mobile.cshtml`), including clearing back to "no character," backed by the already-existing `QuestController.UpdateSignupCharacter(int questId, int? characterId)`.
+- **Item 2** — resolve 5 stale HIGH Dependabot alerts for `System.Security.Cryptography.Xml` 8.0.0-8.0.3, all pointing at `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj`, a manifest deleted in commit `a477ab9`.
 
 ## Critical Pitfalls
 
-### Pitfall 1: Removing Razor's automatic HTML-encoding to show rendered Markdown reopens an XSS hole that has never existed in this codebase
+### Pitfall 1: Third near-duplicate character-cell block, not a second one
 
 **What goes wrong:**
-Today, every read view and all 3 target email Razor components (`QuestFinalized.razor`, `SessionReminder.razor`, `WaitlistPromoted.razor`) echo these fields via plain `@FieldName` interpolation, which Razor auto-HTML-encodes. Even though these fields are already user-authored and cross-viewed within the group, this app has never had a stored-HTML-injection surface on them. The instant this milestone switches Description/Notes/Bio/etc. from `@Field` to `@Html.Raw(RenderedHtml)` / `MarkupString` — unavoidable, since you cannot show a rendered `<strong>`/`<ul>` without disabling encoding on that output — the safety net Razor was silently providing disappears everywhere at once: 9 fields simultaneously, plus 3 emails, not one field at a time.
+`Details.cshtml` already has the character-cell markup duplicated twice: the finalized-participants table (`~L108-145`, loop variable `participant`) and the waitlist table (`~L219-259`, loop variable `player`). Both blocks are structurally identical — same avatar `<img>`/placeholder/`onerror` fallback, same "No character" + conditional "Add character" plus-button that opens `#addCharacterModal`. Adding a "change character" control means editing **both** blocks in `Details.cshtml`, and a **third**, independent copy in `Details.Mobile.cshtml` — which today has **no character-cell UI at all** for participants (confirmed: `Details.Mobile.cshtml` has zero references to `addCharacterModal` or `UpdateSignupCharacter`). A developer who patches only the finalized-participants block (the one they're staring at when the ticket says "quest details") and misses the waitlist block reproduces this project's own most-cited failure mode: `Characters/Edit.cshtml` shipped for an entire phase (68) missing the `classIndex` guard its 3 siblings had, because nobody grepped for every copy before calling it done.
 
 **Why it happens:**
-Teams treat "switch to `Html.Raw`" as a trivial view-layer rendering change rather than recognizing it as removing the only XSS control this data has ever had. The Markdown library gets evaluated for "does it render correctly," not "what happens when the input is `<img src=x onerror=alert(1)>` or `[link](javascript:alert(1))`."
+The task is framed as "add change-character to the Details page" (singular), but the page contains two independent per-row renderings of the same concept, plus a third page for mobile. Nothing in the file signals that these blocks must stay in lockstep — no shared partial, no comment cross-referencing the sibling block.
 
 **How to avoid:**
-Build the sanitization step as its own Domain-layer service (e.g. `IMarkdownRenderingService.ToSafeHtml(string markdown)`) before any view is touched, and route every call site — all 9 read views AND all 3 email components — through that single service, never a raw `Markdown.ToHtml()` call in a view or controller. Pipe the Markdig output through an allowlist sanitizer (HtmlSanitizer / Ganss.XSS is the standard .NET pairing — Markdig's own `.DisableHtml()` extension only encodes literal HTML typed into the Markdown source; it does not validate `javascript:`/`data:` URI schemes in `<a href>`/`<img src>` attributes that Markdig legitimately generates from valid `[text](url)`/`![alt](url)` syntax). Enable Markdig's `nofollow`/`noopener`/`noreferrer` link-rel extensions so Markdown-authored links can't be used for tabnabbing.
+- Before writing any markup, `grep -n "participant.Character\|player.Character" Views/Quest/Details.cshtml Views/Quest/Details.Mobile.cshtml` to enumerate every character-cell instance (currently: 2 in desktop, 0 in mobile — 3 total sites needing the new control).
+- Extract the character-cell markup (avatar + name + "no character" + action button) into one shared `_QuestSignupCharacterCell.cshtml` partial parameterized on `(PlayerSignup signup, bool isCurrentUser, bool canChange, List<Character> userCharacters)`. This turns "keep 3 copies in sync" into "call one partial 3 times" — the actual fix this codebase needed for `Characters/Edit.cshtml` but never got (that fix is still an open, unactioned item in Known Issues).
+- If a shared partial is out of scope for this small phase, at minimum write the change as a single task touching all 3 sites together (desktop finalized table + desktop waitlist table + mobile), per the "Mobile parity enforced by pairing desktop+mobile edits into the SAME task" lesson this project already learned the hard way in Phase 43 and Phase 54 (see Key Decisions).
 
 **Warning signs:**
-Any code path where a `Markdown.ToHtml(...)`-equivalent result reaches a view without a sanitizer call in the same method; a PR adding `MarkupString`/`Html.Raw` without a corresponding sanitizer dependency; sanitization applied only to Contact Notes "because that's the collaborative one" while the other 8 fields are treated as lower-risk (all 9 are rendered to other group members' browsers — none should get a "trusted author" exemption).
+- A diff that touches only one of `Details.cshtml`'s two character-cell blocks.
+- A diff that touches `Details.cshtml` but not `Details.Mobile.cshtml`.
+- Code review or manual test shows "change character" works in the finalized-participants table but the waitlist row (or mobile) still shows the old static "No character"/plus-button-only markup.
 
 **Phase to address:**
-The rendering-service phase — build the shared sanitizing renderer before any field is wired to it, not re-solved per field.
+The Item-1 implementation phase itself (view-layer work) — this is not a follow-up concern, it is the core risk of the phase.
 
 ---
 
-### Pitfall 2: Email HTML output isn't validated as email-safe just because it's XSS-safe
+### Pitfall 2: Reusing the existing "Add character" modal breaks "clear back to no character"
 
 **What goes wrong:**
-A sanitizer answers "is this HTML safe to inject into a DOM," not "will this HTML render legibly in Outlook/Gmail/Apple Mail." Markdig's default HTML output for headings/lists/blockquotes relies on browser-default CSS spacing with no inline styles — fine for the main app (which loads `site.css`), but the 3 email templates are self-contained documents sent through Postfix/Resend where CSS support is inconsistent per client. A `<ul>` dropped unmodified into `QuestFinalized.razor` shows correctly in Apple Mail/most webmail but silently loses its bullets in Outlook desktop (the Word rendering engine does not support `<ul>`/`<li>` bullets without the proprietary `mso-special-format:bullet` CSS hack), and `<style>` blocks are inconsistently honored across clients (Gmail webmail strips `<style>` tags and requires inline styles — this app's own `_EmailLayout.razor` already relies entirely on inline `style=` attributes for exactly this reason). A naive Markdig HTML dump breaks that existing inline-styling convention.
+The only existing character-selection UI is `#addCharacterModal` (`Details.cshtml` ~L820-848), a Bootstrap modal with `<form asp-action="UpdateSignupCharacter" method="post">` and `<select name="characterId" id="characterSelect" class="form-select" required>`. It is only rendered when `participant.Character == null` (the "no character yet" branch) and its `<select>` is marked `required`, with no blank/"No Character" `<option>`. If the new "change character" work is implemented by naively copy-pasting this modal into the "character already assigned" branch, the `required` attribute silently makes "clear back to no character" impossible through that form — the browser blocks submission of an empty selection.
 
 **Why it happens:**
-"XSS-safe" and "looks right in the email" get conflated into one checkbox. The team's only existing precedent for HTML-in-email is the hand-crafted, fully-inline-styled `_EmailLayout.razor` family — there is no existing pattern in this codebase for injecting a variable-shape HTML fragment (arbitrary mix of headings/lists/paragraphs/blockquotes/code) into that layout.
+The existing modal was built for the single case of "add a character where none exists," where `required` is correct. Reusing it verbatim for "change/clear an existing selection" carries that constraint along without anyone re-examining whether it still applies.
 
 **How to avoid:**
-Do not pipe raw sanitized Markdig HTML directly into the email templates. Add an email-specific post-processing step (custom Markdig `HtmlRenderer`/`ObjectRenderer` overrides, or a CSS-inlining pass after sanitization) that emits inline `style=` attributes on every block element Markdig can produce (`p`, `ul`, `ol`, `li`, `blockquote`, `h1`-`h6`, `strong`, `em`, `a`, `code`) matching the visual language already used in `_EmailLayout.razor` (Georgia serif, `#1a0f08` text color, consistent margins). Add the MSO conditional-comment bullet fix for lists. Verify all 3 templates in a real Outlook desktop instance and Gmail webmail — not just a browser preview of the raw HTML — before considering the phase done.
+- Explicitly decide, per requirement ("clear back to no character" is called out in the milestone target), that the change-character control needs a `<option value="">-- No character --</option>` and **no** `required` attribute, or a separate explicit "Clear" action.
+- The controller/service already support this cleanly: `UpdateSignupCharacter(int questId, int? characterId)` takes a nullable `characterId` with no `[Required]`, and `PlayerSignupService.UpdateSignupCharacterAsync` does a bare `playerSignup.CharacterId = characterId;` — a null assignment already round-trips correctly. This is purely a view/markup gap, not a backend one — do not add backend work that already exists.
 
 **Warning signs:**
-Templates render correctly when previewed in a browser (opening the raw HTML file, or a local `dotnet run` preview) but the milestone is marked done without ever opening a sent test email in real Outlook desktop or Gmail webmail; every test Quest Description used during verification is a single short paragraph (same shape as today's data) rather than genuine Markdown structure (heading + list + blockquote).
+- Attempting to submit the change form with no character selected does nothing (browser-native validation blocking submission), rather than clearing the character.
 
 **Phase to address:**
-A dedicated email-integration phase, sequenced after the rendering-service phase is stable. Do not fold email HTML-safety into the same phase as the core Markdig pipeline — it needs its own template-level styling work and its own non-automatable manual multi-client check.
+Item-1 implementation phase, view layer only.
 
 ---
 
-### Pitfall 3: The 3 email templates' fixed-height, `overflow:hidden` description card was tuned for one short italic paragraph — Markdown block content can silently overflow or get clipped, especially in Outlook
+### Pitfall 3: Trusting "the controller already validates ownership" without re-verifying the layered defense is actually intact
 
 **What goes wrong:**
-`QuestFinalized.razor`, `SessionReminder.razor`, and `WaitlistPromoted.razor` all wrap the content in `<td style="height:840px;overflow:hidden;">` with the description itself in `<div style="height:100%;overflow-y:auto;padding-right:6px;">` around a single `<p>@QuestDescription</p>`. This was built assuming `QuestDescription` is one flowing paragraph — its current production shape, and there's no length ceiling forcing brevity either (`QuestEntity.Description`/`.Rewards` carry no `[StringLength]` attribute, so EF Core maps them to unbounded `nvarchar(max)`). Once Description is Markdown-rendered, a DM writing a heading + a bulleted loot list + a blockquote for read-aloud text produces meaningfully taller content (extra margin between block elements) than the same word count as one paragraph ever did. `overflow-y:auto` is a browser scrolling affordance that most email clients — Outlook desktop chief among them — do not honor; Outlook will either clip the overflow at 840px with no way to see it, or push content past the "Poster1.png" background frame, breaking the card's visual design.
+This app has shipped **two real cross-tenant security leaks discovered mid-milestone in v7.0** (Phase 49's `GuildMembersController`/`DungeonMasterController`/`PlayerSignupEntity` leak, and Phase 55's `GroupSessionMiddleware` SuperAdmin fail-open leak affecting 7 entity query filters including `PlayerSignupEntity`). `UpdateSignupCharacter` today reads as safe: `characterService.GetCharacterWithDetailsAsync(characterId.Value)` is scoped by `CharacterEntity`'s fail-closed `HasQueryFilter` (added Phase 49, hardened Phase 55) to `ActiveGroupId`, `questService.GetQuestWithDetailsAsync(questId)` is scoped by `QuestEntity`'s equivalent filter, and `character.OwnerId != user.Id` blocks assigning someone else's character. **But this project's own recorded lesson (Key Decisions, Phase 49) is explicitly: "Authorization checks must validate the TARGET resource's group, not just the caller's role" and "'Reached only through an already-filtered navigation' code comments must be empirically verified, not trusted."** The safety of this action currently depends entirely on two EF Core query filters and `GroupSessionMiddleware`'s `ActiveGroupId` resolution being correct at the same time — exactly the multi-layer setup that has already silently regressed once (Phase 55: SuperAdmin's null-`ActiveGroupId` escape hatch stayed live across `Quest`/`ShopItem`/`ProposedDate`/`PlayerDateVote`/`PlayerSignup`/`ReminderLog`/`UserTransaction` for an entire prior milestone before being caught by a user bug report, not by tests).
 
 **Why it happens:**
-The card layout was designed and tuned against the historical shape of the data. Nobody revisits fixed-height/overflow CSS when the feature that changes the content's *shape* (Markdown) is designed and reviewed independently of the emails that consume it — the rendering-service phase's own test data will almost certainly be a few sentences of prose (matching every other test in the 600+ suite) and will never surface this, because it will "fit."
+"It already exists and works" (per the milestone's own framing of `UpdateSignupCharacter`) is read as "already verified safe," when in fact no dedicated cross-tenant regression test exists for this specific action today — the general fail-closed filters were verified for other call sites (Phase 49/55), not this one.
 
 **How to avoid:**
-Treat the email description card as needing an explicit design decision, not an inherited one: either (a) render only a truncated excerpt of the Markdown server-side with a "View full quest details" link back into the app, sidestepping unbounded-height content in email entirely, or (b) remove the fixed `840px`/`overflow:hidden` and accept a taller, variable-height email. Whichever is chosen, test with a realistic worst-case Markdown Quest Description (heading + list + blockquote + several paragraphs) in real Outlook and Gmail before shipping.
+- Before adding UI on top of `UpdateSignupCharacter`, add (or confirm the existence of) an integration test asserting: a user in Group A cannot set `characterId` to a character owned by a same-named user in Group B, even when that character's numeric ID is guessable/sequential. This is the exact test shape Phase 49/55 used to close prior leaks.
+- Do not add a redundant manual group-membership check inside the action if the query filters already guarantee scoping — that duplicates logic the codebase deliberately consolidated onto the EF filter layer (see Phase 55 Key Decision: "Fail-closed query filters treated as defense-in-depth, layered on top of \[not instead of\] the middleware gate fix"). The correct fix if a gap is found is to hold the filter/middleware layer accountable, not to bolt on a third redundant check.
+- Confirm `GetQuestWithDetailsAsync`/`GetCharacterWithDetailsAsync` are not accidentally called with `IgnoreQueryFilters()` anywhere in this path (one documented `IgnoreQueryFilters` usage already exists elsewhere in `QuestRepository.cs:267` for a deliberate cross-group admin case — verify `UpdateSignupCharacter`'s call path does not share that code path).
 
 **Warning signs:**
-Email templates verified only with a one-sentence placeholder string identical in shape to today's data; no test quest description used during manual verification contains an actual heading, list, or blockquote.
+- No test in the repo exercises `UpdateSignupCharacter` with cross-group IDs.
+- Any new code path that resolves `characterId` via a repository method not already covered by `CharacterEntity`'s `HasQueryFilter` (e.g., a raw SQL query, a `.IgnoreQueryFilters()` call, or a new lookup added "for convenience" in the dropdown-population code).
 
 **Phase to address:**
-Email-integration phase — this is a layout redesign decision that should be made explicitly (with the user, since it changes visual design) rather than discovered as a bug during human verification.
+Item-1 implementation phase — add the regression test as part of the same phase, not deferred. Optionally run `/gsd:secure-phase` on this phase given the project's established practice of independently re-verifying threat mitigations after auth-adjacent changes (used for Phases 52, 55, 56).
 
 ---
 
-### Pitfall 4: Live client-side preview and final server-rendered HTML will disagree unless the SAME parser produces both
+### Pitfall 4: Silent inconsistency between `UpdateSignupCharacter` (no finalized guard) and `UpdateSignup` (hard finalized guard)
 
 **What goes wrong:**
-If the editor's "Preview" toggle uses a JavaScript Markdown library — the natural choice for instant, no-round-trip preview, e.g. EasyMDE, the most common toolbar+preview editor, which ships `marked.js` as its bundled renderer — while the server renders final HTML with Markdig (the standard CommonMark-compliant .NET library), the two will not agree on every input. `marked.js` fails roughly a quarter of the official CommonMark spec test suite (157 of 624 tests per the library's own maintainers), with documented gaps specifically in nested lists, blockquotes, and lazy paragraph continuation — exactly the constructs a D&D-flavored quest description (nested loot lists, blockquoted read-aloud boxes) is likely to use. A user could see a correctly nested list in live preview, save, and see it render differently (or flatten) on the actual Details page and in the email.
+`QuestController.UpdateSignup` (date votes, `~L496-518`) explicitly returns `NotFound()` when `quest.IsFinalized`. `UpdateSignupCharacter` (`~L523-555`) has no such check — a character can be changed on a finalized quest's signup today, silently. If Item 1 ships a UI that surfaces this control on the finalized-participants table (which it must, since that's one of the two places the character cell lives), users will be able to swap characters *after* the DM has already finalized the roster and (for One-Shot boards) already sent the "Quest Finalized" email listing the original character. Whatever the milestone decides — allow it, or lock it down to match `UpdateSignup` — the actual bug is if nobody makes the decision explicitly and the UI just inherits whatever the untouched controller already does.
 
 **Why it happens:**
-Client-side Markdown editors are chosen for their toolbar UX (bold/italic/heading/list buttons, keyboard shortcuts), and their bundled preview renderer is treated as an implementation detail rather than a second parser that must be spec-matched against the server's.
+Two sibling actions on the same signup drifted independently over the app's history; nothing enforces they share a validation rule, and the milestone's own framing ("the controller action already exists and works") discourages touching it.
 
 **How to avoid:**
-This app has no SPA/bundler — Bootstrap/jQuery/Cropper.js are all loaded from CDN in `_Layout.cshtml`, no npm build step exists — so the lowest-risk option is to skip a second JS parser entirely: wire the editor's "Preview" toggle to a small debounced AJAX call to a server endpoint running the exact same `IMarkdownRenderingService` used for final rendering, and swap the preview pane's `innerHTML` with the response. This guarantees byte-for-byte parity by construction instead of by testing. If a bundled JS parser is used anyway (e.g. for offline/instant preview), prefer a CommonMark-compliant engine (`markdown-it` passes 100% of the CommonMark spec suite, unlike `marked`) and add integration tests feeding a shared corpus of edge-case Markdown (nested lists, mixed HTML+Markdown, unusual whitespace, the D&D-prose gotchas in Pitfall 5) through both parsers, asserting equal output — this codebase has zero precedent for that kind of test (greenfield), so budget explicit time for it.
+- Force an explicit decision during discuss-phase: does changing character after finalization (a) work silently as today, (b) get blocked to match `UpdateSignup`'s `NotFound()`, or (c) work but re-trigger no email (since Finalized/SessionReminder/WaitlistPromoted emails already render the participant list with character at *send* time, not signup time — verify whether any email caches character name at finalization vs. reading live at send time before assuming "no consequence").
+- Whatever is decided, gate the *UI control's visibility* to match the *controller's actual enforcement* — do not show a "Change" button that then silently fails (or silently succeeds with no visible effect) because the two layers disagree.
+- If leaving current (unguarded) behavior, document it as a deliberate decision in CONTEXT.md, not an oversight, per this project's own established practice of recording every locked-vs-deferred call (see the "Key Decisions" table's density in PROJECT.md).
 
 **Warning signs:**
-Editor library chosen primarily because "it has a preview toggle," without checking which parser powers it; no test in the plan compares client preview output to server output for the same input; manual QA only exercises simple bold/italic/single-level-list cases (which virtually every parser agrees on) and never nested lists or blockquotes-containing-lists.
+- A "Change character" button appears on a finalized quest's Details page, and clicking it either does nothing (if wired against `UpdateSignup`'s guard by mistake) or works fine but no one verified an email wasn't supposed to be resent/regenerated.
 
 **Phase to address:**
-Editor/toolbar phase — the preview mechanism choice (server round-trip vs. bundled JS parser) is an architectural decision that should be locked before toolbar buttons are wired, since it determines what JS dependency (if any) gets added.
+Item-1 discuss-phase (decision), Item-1 implementation phase (enforcement + view gating).
 
 ---
 
-### Pitfall 5: Existing plain-text data contains characters that are valid Markdown syntax today and will silently change MEANING, not just layout, beyond the already-accepted paragraph-reflow trade-off
+### Pitfall 5: The "change character" dropdown silently hides — or silently discards — a deactivated character already on the signup
 
 **What goes wrong:**
-The milestone has already accepted that single line breaks will reflow paragraphs. What hasn't been surfaced is that several characters casual D&D prose uses routinely are *also* CommonMark syntax with side effects beyond spacing:
-
-- **Asterisks for old-fashioned emphasis or multiplication/dice notation.** CommonMark's delimiter-flanking rule explicitly allows `*` to open/close emphasis *mid-word* (unlike `_`, which cannot — `un_believ_able` stays literal but `un*believ*able` italicizes "believ"). A DM who wrote "roll 2*4 damage," "AC 15*2 vs the shield spell," or genuinely used IRC-style `*emphasis*` gets real, sometimes lopsided, italics — `5*10*20` becomes "5" + italic("10") + "20", silently consuming one asterisk and altering what reads as a multiplication expression.
-- **A leading `#` on a line becomes a real heading.** ATX headings require `#` followed by a space, so "#3 on the priority list" (no space) stays literal — safe. But "# 3rd floor landing" or any casual "# " prefix used as an aside in old free-text notes becomes an oversized `<h1>`.
-- **A line of `---`, `***`, or `___`** used as a visual section divider (plausible in Recap/Notes fields separating scenes) becomes a harmless `<hr>` — unless it directly follows a text line with no blank line between them, in which case CommonMark instead treats it as a **setext heading underline**, silently promoting the preceding prose line into a giant `<h1>`/`<h2>`.
-- **Text pasted from Word/Google Docs with residual leading whitespace** (plausible for copy-pasted read-aloud boxes or stat blocks) that happens to carry 4+ leading spaces becomes an **indented code block** — rendered in monospace, and critically, Markdown inside it is no longer parsed at all, producing inconsistent formatting versus the rest of the same field.
-- **Angle-bracket placeholders and stage directions** like `<insert PC name>` or `<gasps>` (plausible in freeform DM notes) are inline raw HTML by CommonMark's rules. Markdig either passes them through as literal (invisible, since browsers ignore unknown tags) or — once a sanitizer is added per Pitfall 1 — strips them outright, silently deleting that bracketed text from the visible render even though it's still present in the stored Markdown source.
-- **A line starting with `-`/`*`/`+ ` immediately after a paragraph with no blank line** converts the rest of that paragraph into a real bulleted list — CommonMark's documented exception that lists (unlike every other block type) CAN interrupt a paragraph without a preceding blank line. A Rewards field like "The party gets:\n- 50 gold\n- a magic ring" (no blank line, exactly the old typing habit) actually renders as intended bullets — a rare case where the "accidental Markdown" outcome is desirable. But this is inconsistent with nearby numbered-list habits: CommonMark only lets an *ordered* list interrupt a paragraph when the first number is exactly `1`, so results are unpredictable per-entry rather than one simple learnable rule.
+Confirmed in `QuestController`'s `Details` GET action: `userCharacters = allCharacters.Where(c => c.Status == CharacterStatus.Active).ToList();` — `ViewBag.UserCharacters` is filtered to `Active` only (Retired and the newer `Dead` status, added Phase 52, are excluded). A signup's `Character` navigation property has no such filter — it shows whatever character was assigned at signup time, active or not, by design (Character validation via `CharacterStatus.Active` only runs on *write*, per the milestone brief). If the new "change character" `<select>` is populated straight from `ViewBag.UserCharacters` and pre-selected to `participant.Character.Id`, the currently-assigned character (now Retired/Dead) **will not appear in the option list at all**. Depending on how the `<select>` is built:
+- If pre-selection is attempted via `asp-for`/`Selected` and the value isn't in the option list, browsers silently default to the first `<option>` in the list.
+- If the user doesn't notice, hits "Save" without touching the dropdown, they unintentionally change the signup's character to whatever the first Active character happens to be — a data-loss bug masquerading as "no-op."
 
 **Why it happens:**
-The team correctly identified and accepted the headline trade-off (paragraph reflow), but that was scoped to spacing/layout. Character-level reinterpretation is a distinct failure mode — it changes what the text *says*, and is much harder to spot in a quick re-read of an old entry, because the corrupted output still looks like plausible prose (a reader won't necessarily notice a missing asterisk or an unexpectedly bold/italic word).
+The dropdown's data source (`Active`-only characters) and the field being edited (`Character`, any status) were built for different purposes (create/join uses Active-only by design; the historical signup can hold any status) and were never reconciled because no UI previously needed to display both together.
 
 **How to avoid:**
-Before rollout, run every existing value of all 9 fields through the real rendering pipeline in a one-off script (not a UI flow) and diff the rendered *text content* (tags stripped) against the original plain text, flagging entries where the stripped text differs by more than whitespace — this isolates asterisk-consumption, angle-bracket-swallowing, and code-block whitespace cases specifically, distinct from the already-accepted harmless paragraph-boundary reflow. Extend the "reflow until re-edited" communication (e.g. a one-time in-app notice: "descriptions written before [date] may display differently — click Edit to review") explicitly to this class of issue rather than letting users discover silently altered old quest rewards/recaps on their own.
+- Build the option list as: the user's Active characters **plus** the currently-assigned character if it is not already Active (labeled distinctly, e.g. "Grimshaw the Bold (Retired) — current"), so the true current state is always representable and never silently defaults elsewhere.
+- Never rely on implicit browser first-option fallback for a field this consequential — explicitly render a disabled/labeled entry for the actual current value so "I didn't touch the dropdown" and "I explicitly selected this" are visually distinguishable states.
+- Add a regression test: a signup whose `Character.Status` is `Retired`/`Dead` renders the Details page without throwing and without silently pre-selecting a different character.
 
 **Warning signs:**
-The diff script above is skipped because "we already decided reflow is fine"; a user reports post-launch that an old Recap's dice-roll notation or gold-reward list "looks wrong" and nobody connects it to the Markdown migration.
+- QA/manual test: retire a character that's currently signed up to a quest, reload Details, observe the change dropdown's initial selection versus the character actually shown in the row.
 
 **Phase to address:**
-Field-migration phase, per field group — run the diff-and-flag step once per field type as that field's display switches over, not as one big-bang pass across all 9 at once, so any surprises are attributable to a specific field/phase.
+Item-1 implementation phase — this is a correctness bug in the new feature itself, not pre-existing debt.
 
 ---
 
-### Pitfall 6: Leftover `white-space: pre-wrap` from Phase 64 will double-space or misrender real Markdown-generated HTML if not removed
+### Pitfall 6: Adding a 4th interaction pattern into an already-inconsistent CSRF/redirect mix
 
 **What goes wrong:**
-Phase 64 added `white-space: pre-wrap` across at least 13 files covering several of these exact 9 fields (`character-detail.mobile.css`, `quests.css`'s `.quest-description-box`, Shop's inline styles on desktop+mobile, the shared quest-card `.card-text` in `site.css`, plus multiple Contacts/Characters/DungeonMaster Edit/Create/Details views) specifically to stop single line breaks from collapsing in *plain-text* rendering. Once these containers hold real block-level HTML (`<p>`, `<ul><li>`, `<blockquote>`) instead of a raw text node, `pre-wrap` no longer does anything useful and can actively hurt: it preserves *all* whitespace verbatim, including newlines Markdig commonly emits between sibling block elements in its HTML source (for readability of the HTML output) — newlines normally collapsed by default browser whitespace handling between block tags become visible extra vertical gaps once `pre-wrap` forces them to render, stacking on top of each element's own CSS margin. The visual symptom looks like a Markdown-renderer bug but is actually a leftover CSS rule predating this milestone.
+`Details.cshtml`/`Details.Mobile.cshtml` currently mix at least two patterns for mutating a signup: (a) plain `<form asp-action="...">` full-page POST-and-redirect (`UpdateSignupCharacter`'s existing add-character modal, `UpdateSignup`'s date-vote form), and (b) `fetch()` calls that manually append `__RequestVerificationToken` and hit `RevokeSignup`/`ChangeVote` directly (confirmed at `Details.cshtml:869-893` and mirrored in `Details.Mobile.cshtml:395-410`), returning `Ok()`/JSON rather than a redirect. If "change character" is implemented as a third variant — say, an inline dropdown with `fetch()` posting to `UpdateSignupCharacter` — note that `UpdateSignupCharacter` currently `return RedirectToAction("Details", ...)` on success, not `Ok()`. A `fetch()` call against an action that returns a `RedirectResult` gets a 302 response with `fetch`'s default `redirect: 'follow'` silently re-GETting the Details page and returning that HTML as the fetch response body — not a clean success signal the calling JS can branch on. Wiring `fetch()` UI against this action without changing its return type (or explicitly setting `redirect: 'manual'` and handling the resulting opaque-redirect response) produces a "works in testing, silently misbehaves for edge cases" bug (e.g., JS assumes success and updates the DOM optimistically even if the server actually rejected the character with `BadRequest`, since a `BadRequest` *does* reach `fetch` correctly but a redirect does not signal failure vs. success the way `ChangeVote`'s `Ok()`/error-status pattern does).
+Conversely, if the plain-form pattern is reused (like the existing add-character modal), it inherits a full-page reload for what should feel like a small, local action — inconsistent with the "chip"-style ChangeVote/RevokeSignup UX already on the page.
 
 **Why it happens:**
-`pre-wrap` is a container-level style, and field-migration work will likely focus on the *view template* (swapping `@Field` for `@Html.Raw(RenderedField)`) without necessarily touching the CSS file governing that container, since the two live in different files typically edited by different tasks.
+Two established but divergent patterns already coexist on this exact page; the milestone doesn't specify which one to extend, and the existing action's response type (`RedirectResult`) was written for the plain-form pattern, not the `fetch()` one.
 
 **How to avoid:**
-When each field's view is migrated to render HTML, explicitly audit and remove (or override) `white-space: pre-wrap` on that field's specific *display* container as a required companion edit in the same task, not a follow-up. The files identified via a repo-wide `pre-wrap` search: `site.css`, `quests.css`, `quest-log-detail.mobile.css`, `character-detail.mobile.css`, `quests.mobile.css`, `dm-profile.mobile.css`, the 3 `_Layout*.cshtml` files (verify whether this is a global textarea/`pre` rule before touching), `DungeonMaster/EditProfile(.Mobile).cshtml`, `Contacts/Edit(.Mobile).cshtml`, `Contacts/Create(.Mobile).cshtml`, `Characters/Edit(.Mobile).cshtml`, `Characters/Create(.Mobile).cshtml`, and the Details-page instances (`Shop/Details.Mobile.cshtml`, `_ShopItemDetailsContent.cshtml`, `Quest/Details.cshtml`, `Contacts/Details(.Mobile).cshtml`, `Characters/Details.cshtml`). Note that some of these are on the *editor's textarea* itself (Edit/Create views) — those should legitimately KEEP `pre-wrap` since a raw-Markdown-source textarea still benefits from visible line breaks while typing; only the *rendered-output* containers need the rule removed.
+- Decide explicitly which pattern "change character" follows, and if choosing the `fetch()`/inline pattern (to match `ChangeVote`'s already-established chip-like UX), change `UpdateSignupCharacter`'s success path to return `Ok()` (or a small JSON payload) consistently with `ChangeVote`, rather than leaving it returning `RedirectToAction` and papering over the mismatch client-side.
+- Any new `fetch()` call must copy the existing `__RequestVerificationToken` append pattern exactly (`Details.cshtml:869`/`890`) — do not assume the antiforgery cookie alone is sufficient; this codebase's own convention requires the token in the form body for these `fetch()`-based POSTs.
+- If keeping the plain-form pattern (simpler, lower risk given the milestone is "small"), that's an acceptable and consistent choice too — just don't mix `fetch()` targeting an action that still returns `RedirectToAction`.
 
 **Warning signs:**
-Post-migration visual QA shows "too much space" between list items or paragraphs that doesn't match the app's normal typography rhythm; the gap appears on some fields but not others, because pre-wrap removal was done ad hoc rather than systematically against the file list above.
+- Browser network tab shows a `fetch()` call to `UpdateSignupCharacter` returning a 200 response whose body is a full HTML page (the redirected-to Details page), not the JSON/empty body the calling JS expects.
+- Character-change UI appears to succeed (no console error) but the visible character doesn't actually update without a manual page refresh.
 
 **Phase to address:**
-Field-migration phase, one CSS audit per field as its view is converted — cross-reference against the file list above rather than rediscovering it from scratch.
+Item-1 implementation phase.
 
 ---
 
-### Pitfall 7: Rendering Contact Notes (or any future multi-entry aggregate view) at the wrong granularity lets one broken note's formatting bleed into another's
+### Pitfall 7: Assuming mobile markup renders just because it's in a `.Mobile.cshtml` file
 
 **What goes wrong:**
-`ContactNoteEntity.Text` (2000-char cap) stores one row per note, authored independently by potentially different group members at different times; `Contacts/Details` renders them as a list of separate entries. As long as each note's Markdown is parsed and rendered via its own independent `ToSafeHtml()` call, an unclosed marker in one note (e.g. `**bold text` with no closing `**`) safely self-terminates within that note's own render — CommonMark parsers don't error on unmatched delimiters, they fall back to literal text — and cannot affect a different note's formatting. The risk is a *future* feature (a "print/export this Contact" view, a digest email, anything that concatenates multiple notes' raw Markdown source into one string before calling the renderer once) built without preserving that per-note boundary: at that point, one note's unclosed code fence or unterminated blockquote genuinely can swallow and reformat every note that follows it in the concatenated blob, misattributing formatting across different authors' independent, timestamped entries.
+PROJECT.md documents a real, still-open case where mobile view files are dead code: `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` is never selected because the Platform area's own `_ViewStart.cshtml` doesn't branch on `IsMobile` the way the root `_ViewStart.cshtml` does — two CSS file header comments even incorrectly claim otherwise. `Views/Quest/Details.Mobile.cshtml` is **not** in the Platform area (the root `_ViewStart.cshtml`'s `IsMobile` branching does apply here, per the working Phase 12-19 mobile-view-location-expander pattern), so this specific trap does not directly apply to Item 1 — but the underlying discipline it teaches does: **never assume a `.Mobile.cshtml` edit is live without confirming it actually renders for a real mobile user-agent.** This app's mobile-view selection is User-Agent-based, not viewport-based (explicitly noted in Phase 48's shipped-item text) — browser devtools "mobile emulation" alone does not always reproduce the real UA-sniffing path; Phase 54 explicitly logged its real-device verification checkpoint as a user-approved deviation (browser emulation instead of a physical device) rather than silently treating it as equivalent.
 
 **Why it happens:**
-Concatenating strings before rendering "for convenience" (one `ToSafeHtml()` call instead of N) looks like a pure simplicity/performance win once the rendering service exists, with the cross-contamination risk invisible until a specific pathological note triggers it.
+The codebase already has one proven case of "the mobile file exists, is edited, and never renders" — treating "I edited the `.Mobile.cshtml` file" as equivalent to "I verified the change is visible on mobile" is an easy, previously-realized mistake here.
 
 **How to avoid:**
-When building the Contact Notes rendering path, render each `ContactNoteEntity.Text` through the shared rendering service independently, one call per note, never concatenated. Document the constraint (a code comment or a small unit test asserting per-note rendering equals what a naive concatenate-then-render-once approach would NOT produce) so a future feature doesn't silently regress it.
+- After implementing, load the quest Details page with a real mobile User-Agent (a real device over LAN, per this project's own standing requirement reaffirmed in Phase 43 — "verified on a real iPhone... not devtools emulation, per this project's own standing PITFALLS.md requirement") or, at minimum, confirm via `curl -A "<mobile UA string>"` or the root `_ViewStart.cshtml`'s actual `IsMobile` detection logic that `Details.Mobile.cshtml` is the file being selected for this specific route, not silently falling back to desktop.
+- Do not extrapolate "Platform area's mobile layout is broken" to "therefore Quest's mobile view is also broken" or vice versa — verify this specific route/area independently; they use different `_ViewStart.cshtml` files with different (and, per PROJECT.md, inconsistent) behavior.
 
 **Warning signs:**
-A future PR introduces a `string.Join(...)` or `StringBuilder` accumulation of multiple notes' raw `Text` before a single call into the Markdown renderer.
+- The "change character" control appears correctly in desktop devtools mobile emulation but a real phone shows unstyled/stale markup, or shows no control at all.
 
 **Phase to address:**
-Field-migration phase covering Contact Notes specifically — state the per-note rendering boundary explicitly in that phase's plan rather than leaving it an implicit assumption.
+Item-1 implementation phase — verification step, ideally with a real device per the project's own established (if inconsistently followed) bar.
+
+---
+
+### Pitfall 8: Green tests don't prove the real DI graph is safe for this change
+
+**What goes wrong:**
+PROJECT.md records, as a still-open Known Issue: "Integration tests always override `IActiveGroupContext`/`IBoardTypeResolver` with a test double (`MutableGroupContext`), so no automated test exercises `Program.cs`'s real production DI graph end-to-end — a regression of the circular DI cycle fixed in Phase 37 wouldn't be caught by the current suite." Pitfall 3 above depends on `IActiveGroupContext`'s real resolution being correct in production; the test suite that will be used to sign off on Item 1 structurally cannot detect a regression in that resolution, because it never runs through it. A fully green `dotnet test` run after adding the change-character feature is evidence the *feature logic* works against the test double's group context — it is not evidence the *authorization boundary* (Pitfall 3) holds in the real app.
+
+**Why it happens:**
+Test doubles for cross-cutting infrastructure (group context, board-type resolution) are the correct default for unit/integration test isolation and speed — but they mean this specific class of regression (session/DI-graph-level authorization bypass) has a structural blind spot the suite itself can't close, a fact this project has already explicitly named as a known gap rather than accidentally overlooked.
+
+**How to avoid:**
+- Don't treat "544/609+ tests green" as sufficient sign-off for the character-change feature's authorization safety. Pair it with a manual, live-app smoke test (a real `dotnet run` against the real DI graph, logging in as two different-group users, confirming cross-group character IDs are rejected) — the same mitigation this project already uses elsewhere for this exact gap ("mitigated once by a live `dotnet run` smoke test during verification, no permanent guard" — Phase 37).
+- If this phase adds meaningful new authorization surface (Pitfall 3's regression test), consider whether it's worth removing the `IActiveGroupContext` override for that one specific test, exercising the real service — a heavier but more conclusive test, consistent with the project's own unresolved wish to eventually close this gap.
+
+**Warning signs:**
+- Sign-off reasoning that cites "tests pass" as the sole evidence for the cross-tenant safety of the new dropdown, with no mention of manual verification against the real DI graph.
+
+**Phase to address:**
+Item-1 implementation phase, verification step.
+
+---
+
+### Pitfall 9: Dismissing the 5 Dependabot alerts on "the file is gone" alone, without ruling out a stale dependency graph
+
+**What goes wrong:**
+`git status`/`dotnet list package --include-transitive` correctly show the package is absent from every tracked project today — but that is necessary, not sufficient, evidence for dismissal. GitHub's Dependabot alerts are driven by its **dependency graph**, a separately-cached index of manifests that does not automatically re-scan on every push; per GitHub's own troubleshooting documentation, if the dependency graph doesn't accurately reflect the current repository, it must be **manually refreshed** ("Refresh Dependabot alerts," rate-limited to once per hour) — simply deleting the manifest file does not retroactively clear alerts already raised against it. Dismissing without first forcing and confirming a graph refresh risks two failure modes: (a) closing a real, still-valid alert while the underlying stale-graph entry silently persists and later resurfaces as "new" (confusing future audits), or (b) — the more dangerous case — assuming the alert is purely a graph artifact when it is in fact tracking a genuinely different location than assumed (a non-default branch, a fork, or an old cached commit), and a real vulnerable reference still exists somewhere reachable.
+
+**Why it happens:**
+"The package isn't in `dotnet list package`" feels like conclusive proof because it's the developer-facing view of dependencies — but Dependabot alerts are scoped to *GitHub's* dependency graph, which is a distinct, independently-refreshed system that can lag or point at a different ref entirely. Treating a local CLI check as equivalent to GitHub's remote index is the exact reflexive-dismissal trap this research question flags.
+
+**How to avoid — evidence that must actually be gathered before dismissal is defensible:**
+1. **Confirm scope per alert, not just per package.** Open each of the 5 alerts in GitHub's Security tab and record: which branch/ref it's attributed to, the manifest path shown (`EuphoriaInn.Domain/EuphoriaInn.Domain.csproj`), and the "detected" vs. "last updated" timestamps. If all 5 show a detection date at or before commit `a477ab9` (2026-06-29) and no update since, that's consistent with — but does not yet confirm — staleness.
+2. **Confirm the default branch is what's being scanned.** Dependabot's dependency graph tracks the repository's default branch (`main`) by default; verify in repo Settings that no non-default branch, and no fork, is separately configured as a dependency-graph source. This directly answers "can Dependabot be scanning a stale or non-default branch, a fork, or a cached dependency graph" — check, don't assume.
+3. **Force a graph refresh and re-check.** Trigger "Refresh Dependabot alerts" (Security → Dependabot alerts → the refresh action in the list header) and wait for the background task to complete (rate-limited to once/hour, so schedule this early in the phase, not as the last step). If the alerts auto-close after refresh, that is real, actionable evidence of staleness — not an assumption.
+4. **Only after 1-3 confirm staleness**, dismiss each alert individually with a reason (see Pitfall 11) rather than bulk-dismissing.
+
+**What a wrong dismissal would hide:**
+If any of the 5 alerts is actually tracking a currently-reachable reference — e.g., a forked/mirrored copy of the repo, a long-lived feature branch that still has the old `.csproj`, or (see Pitfall 10) a resurrected file from an accidental re-commit — dismissing on the "local check is clean" assumption would permanently suppress a real, exploitable `System.Security.Cryptography.Xml` XML-signature-wrapping vulnerability (the actual CVE class behind these advisories) with no further warning.
+
+**Warning signs:**
+- Dismissal reasoning that cites only `dotnet list package --include-transitive` output, with no mention of the GitHub alert UI, branch scoping, or a graph refresh.
+- All 5 alerts dismissed in a single bulk action with a generic reason rather than individually confirmed.
+
+**Phase to address:**
+Item-2 implementation phase — this IS the phase; do not treat evidence-gathering as optional overhead on top of the "real" fix.
+
+---
+
+### Pitfall 10: Leftover `EuphoriaInn.*` directories on disk are a live re-commit risk, confirmed present today
+
+**What goes wrong:**
+Verified directly in this repository's working tree: `git status --ignored` shows `EuphoriaInn.Domain/bin/`, `EuphoriaInn.Domain/obj/`, and the equivalent `bin/`/`obj/` subfolders for `EuphoriaInn.IntegrationTests`, `EuphoriaInn.Repository`, `EuphoriaInn.Service`, `EuphoriaInn.UnitTests` — meaning **all five `EuphoriaInn.*` top-level directories still physically exist on disk right now**, over a milestone after the rename commit. They're invisible to a plain `git status` only because `.gitignore`'s `bin/`/`obj/` patterns hide their contents — the directories themselves are not gitignored, only what's currently inside them. No `.csproj` currently exists in any of them (confirmed: only `bin/`/`obj/` subfolders present), so there is no *live* resurrection today — but this is a fragile absence, not a structural guarantee: a `git stash pop` from an old stash, a restored backup, an IDE "restore from local history," or a careless `git checkout a477ab9~1 -- EuphoriaInn.Domain/` could repopulate a real `.csproj` referencing the vulnerable package version into a directory `git add -A` would then happily stage (since only `bin/`/`obj/` are ignored, not the directory or a hypothetical `.csproj` placed directly in it).
+
+**Why it happens:**
+`.gitignore` patterns for build output (`bin/`, `obj/`) don't clean up the parent directory once its tracked contents are removed; a rename via `git mv` (or hand-editing paths, as this rename appears to have done non-mechanically per the commit's stated scope) leaves stale build artifacts behind since `dotnet clean`/`git clean -xdf` was evidently never run against the old directory names post-rename.
+
+**How to avoid:**
+- Delete the five leftover `EuphoriaInn.*` directories outright as part of this phase (`rm -rf EuphoriaInn.Domain EuphoriaInn.IntegrationTests EuphoriaInn.Repository EuphoriaInn.Service EuphoriaInn.UnitTests`, or the Windows equivalent) — there is nothing tracked or needed inside them; they are pure stale build cache.
+- After deleting, confirm the solution still builds clean (`dotnet build`) to prove nothing was silently referencing the leftover `obj/project.assets.json`/`.deps.json` files (unlikely, but cheap to verify given a `.slnx`-based solution).
+- This closes both the literal re-commit risk this pitfall names AND removes any chance that a future CI step or local tool that walks the full working directory (not just tracked files) could pick up the stale `obj/project.assets.json` inside `EuphoriaInn.Domain/obj/` and misattribute a dependency-graph entry to it.
+
+**Warning signs:**
+- `git status --ignored` (not plain `git status`) still lists `EuphoriaInn.*` paths after this phase closes.
+- A future `dotnet build`/`dotnet restore` from repo root silently touches an `EuphoriaInn.*` directory.
+
+**Phase to address:**
+Item-2 implementation phase — cheap, concrete, and directly closes one of the plausible root causes for why the alerts still reference the old manifest path.
+
+---
+
+### Pitfall 11: Dismissing without recording why — the audit-trail gap
+
+**What goes wrong:**
+GitHub allows dismissing a Dependabot alert with a reason (e.g., "No bandwidth to fix," "Risk is tolerated," "Vulnerable code is not actually used," or a free-text note depending on the alert type) — but nothing forces a *specific, evidence-linked* reason. If these 5 alerts are dismissed with a generic or default reason (or worse, bulk-dismissed with no individual reasoning), a future reviewer — including a future audit, a future security-focused contributor, or the project owner themself six months later — cannot distinguish "this was genuinely investigated and confirmed dead" from "someone rubber-stamped 5 alerts to make the Security tab green." This project has an explicit, repeatedly-demonstrated norm of recording *why*, not just *what* (see the density of the "Key Decisions" table's rationale column throughout PROJECT.md, and the standing CLAUDE.md rule against untracked/unexplained changes) — a silent bulk dismissal breaks that norm specifically in the one place (security alerts) where it matters most.
+
+**Why it happens:**
+GitHub's dismiss UI makes bulk-dismiss with a dropdown reason fast and low-friction; the evidence-gathering (Pitfall 9) happens in a terminal/browser session that leaves no trace inside GitHub's own alert history unless someone deliberately writes it into the dismissal comment.
+
+**How to avoid:**
+- Dismiss each of the 5 alerts individually (not via a bulk action) with a reason that references the actual evidence gathered: e.g., "Manifest `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` removed in commit a477ab9 (EuphoriaInn→QuestBoard rename); confirmed absent from `dotnet list package --include-transitive` across all 5 current `.csproj` files as of \<date\>; dependency graph refreshed \<date\> and alert did not reappear; stale build artifacts at repo root deleted (Pitfall 10)."
+- Additionally record the same summary once in `.planning/PROJECT.md`'s Known Issues or Key Decisions table (consistent with how e.g. the Phase 34 "clean dependency vulnerability scan captured as evidence" was logged) — GitHub's own audit trail is sufficient for GitHub's UI, but this project's own convention is to also make security posture visible in its own planning docs, not solely in a third-party tool's history.
+
+**Warning signs:**
+- All 5 alerts show the same generic dismissal reason with an identical timestamp (bulk action).
+- No corresponding entry in PROJECT.md documenting the investigation.
+
+**Phase to address:**
+Item-2 implementation phase — the dismissal step itself.
 
 ---
 
@@ -150,85 +255,90 @@ Field-migration phase covering Contact Notes specifically — state the per-note
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|-----------------|------------------|
-| Reuse Markdig's raw sanitized HTML output directly in emails without a dedicated email-styling pass | Ships email support fast, one code path for browser + email | Emails look broken in Outlook/Gmail (missing bullets, inconsistent spacing) — a user-visible regression versus today's reliably plain-text emails | Never — email HTML needs its own inline-styled render path (Pitfall 2) |
-| Skip a client/server parser-parity test corpus, rely on manual click-testing of the preview toggle | Faster to ship the editor/preview phase | Silent preview-vs-final-render mismatches surface as user-reported bugs post-launch; no regression net if the JS or Markdig library is upgraded later | Only acceptable if the server-round-trip preview approach (Pitfall 4) is used, which removes the need for parity tests entirely |
-| Sanitize at write-time and store already-sanitized HTML, instead of storing raw Markdown and sanitizing at read-time | Simpler read path, no re-render cost per view | Loses the original Markdown source (can't re-render if sanitizer rules improve, can't re-diff old data later); a HtmlSanitizer version bump can't retroactively fix already-stored HTML | Never for this milestone — store raw Markdown, sanitize at render time, so future sanitizer improvements apply automatically to all historical data |
-| Leave Phase 64's `white-space: pre-wrap` in place "just in case" instead of auditing container-by-container | Avoids touching CSS during the field-migration phase | Doubled/inconsistent spacing bugs (Pitfall 6) that look like renderer bugs and cost more time to diagnose later than to prevent | Never — the audit is cheap; do it as part of each field's migration task |
+| Reuse the existing `#addCharacterModal` markup verbatim for "change," keeping its `required` `<select>` | Fastest path to a working "change" UI | Silently blocks the "clear to no character" requirement the milestone explicitly asks for | Never for this milestone — the requirement explicitly includes clearing |
+| Skip extracting a shared character-cell partial, hand-edit all 3 sites identically | Smaller diff, faster to plan | Becomes the 4th documented instance of this exact drift class (`Characters/Edit.cshtml`, `Characters/Create.cshtml`'s dead branch, triple `BoardType` lookup, `.quest-description-mobile`) | Acceptable only if the 3 sites are edited in one atomic task with an explicit post-diff grep verifying all 3 changed identically |
+| Leave `UpdateSignupCharacter` without a finalized-quest guard, matching neither `UpdateSignup`'s block nor an explicit "allowed" decision | Zero controller changes needed | Ships an undecided, undocumented behavior difference between two sibling actions on the same signup | Never — must be an explicit, documented decision either way |
+| Bulk-dismiss all 5 Dependabot alerts with the same one-line reason | Fast, clears the Security tab in one click | No individual audit trail; can't distinguish real triage from rubber-stamping later (Pitfall 11) | Never |
+| Skip forcing a Dependabot dependency-graph refresh before dismissing | Saves ~1 hour of rate-limit wait | Dismissal isn't grounded in confirmed-current GitHub state, only local CLI output (Pitfall 9) | Never — the refresh is cheap and the single most conclusive piece of evidence available |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
-|-------------|-----------------|-------------------|
-| Outlook desktop (Word rendering engine) | Assuming `<ul>`/`<li>` renders with visible bullets like a browser | Add `mso-special-format:bullet` MSO-conditional CSS or a manual inline-styled bullet fallback; verify visually in real Outlook, not a browser preview |
-| Gmail webmail | Assuming a `<style>` block in the email `<head>` (like `_EmailLayout.razor`'s current one) will style Markdown-generated tags | Gmail strips `<style>` blocks in many contexts; every Markdown-generated tag needs inline `style=` styling, matching the convention already used elsewhere in `_EmailLayout.razor` |
-| CDN-loaded JS Markdown editor (no npm/bundler in this app — Bootstrap/jQuery/Cropper.js v2.1.1 are all CDN-pinned per Phase 46) | Pinning the editor/parser script to `@latest` or an unversioned CDN URL | Pin an exact version in the CDN URL, mirroring how Cropper.js was pinned, and note the version explicitly in a code comment so a future upgrade is a deliberate, tested decision, not silent drift |
-| HtmlSanitizer / Markdig NuGet packages | Building the sanitizer allowlist ad hoc, per field | One shared allowlist configuration (tags: `p, ul, ol, li, blockquote, h1-h6, strong, em, a, code, pre, br, hr`; attributes: `href`/`title` on `a` only, scheme-restricted to http/https/mailto) reused by the single rendering service from Pitfall 1 |
+|-------------|------------------|-------------------|
+| `fetch()` vs. `RedirectToAction` mismatch on `UpdateSignupCharacter` | Wiring a `fetch()`-based inline control against an action that still returns `RedirectToAction`, silently swallowing the 302-followed HTML response as if it were a success signal | Change the action's success return to `Ok()`/JSON if adopting the `fetch()` pattern (matching `ChangeVote`), or keep the plain-form pattern consistently — don't mix without adjusting the response type |
+| GitHub Dependabot dependency graph | Treating a local `dotnet list package` check as equivalent to GitHub's own graph state | Force "Refresh Dependabot alerts" (Security tab, once/hour) and re-check before dismissing (Pitfall 9) |
+| `ViewBag.UserCharacters` (Active-only) vs. `PlayerSignup.Character` (any status) | Populating the change-character dropdown solely from the Active-only list, silently excluding the signup's actual current (possibly Retired/Dead) character | Explicitly include the currently-assigned character in the option list regardless of its status, labeled distinctly (Pitfall 5) |
 
 ## Performance Traps
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|-----------------|
-| Rebuilding a `MarkdownPipeline` on every render call instead of once, shared | Slight per-request CPU/GC overhead building the pipeline's extension graph on every Description/Note render | Build the `MarkdownPipeline` once (singleton or static readonly field) — Markdig's own docs state the pipeline is thread-safe and meant to be shared, not rebuilt per call | Negligible given these fields' typical text length and request volume; worth doing correctly anyway since it's zero extra effort at initial implementation |
-| Rendering full Markdown HTML on every read of a list view (quest board card previews, Contact Notes list) instead of only where full formatting is shown | Repeated sanitize+render cost on pages showing many truncated previews | For truncated/preview contexts (quest board cards), consider a plain-text-stripped excerpt instead of full rendered HTML, reserving full rendering for Details pages | Only matters if list views grow large; unmeasurable at current data volumes, but avoids unnecessary work on every board-list request as the quest/note count grows |
+Not applicable at meaningful scale for either item — 17 users, a single-signup dropdown edit, and a 5-alert manual security review carry no performance-scale dimension worth tracking here.
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Sanitizing only Contact Notes because it's "the collaborative one," treating DM-authored fields (Quest Description, Rewards, Recap, DM Bio) as lower-risk | Every one of the 9 fields is rendered to other group members' browsers; a compromised or copy-paste-tricked DM/Admin account is just as capable of injecting `<img onerror>` as any player | Apply the same sanitizing rendering service to all 9 fields uniformly — no field gets a "trusted author" exemption |
-| Allowing `javascript:`/`data:` URI schemes through in Markdown-authored links/images | `[click](javascript:alert(document.cookie))` executes in-browser on click if the sanitizer's `href` allowlist doesn't validate URI schemes | Explicitly configure the sanitizer's allowed URI schemes (http/https/mailto only); most sanitizer libraries default-block `javascript:` but verify rather than assume |
-| Treating sanitization as optional for the email path because "email clients don't run JavaScript" | Even without script execution, un-sanitized HTML in an email can carry tracking-pixel `<img>` tags or malformed markup some clients mishandle — and the SAME rendered fragment is typically reused for the in-app browser view, where XSS very much does execute | Sanitize once, centrally, and feed identical sanitized HTML into both the browser view and the email template — never weaken sanitization because "it's just an email" |
+| Assuming `UpdateSignupCharacter`'s existing ownership/query-filter checks are sufficient without a dedicated cross-tenant regression test | Silent reopening of the exact class of leak already shipped twice in v7.0 (Phase 49, Phase 55), specifically on `PlayerSignupEntity`/`CharacterEntity` — the very entities this action touches | Add an explicit cross-group integration test for this action as part of Item 1 (Pitfall 3) |
+| No finalized-quest guard on `UpdateSignupCharacter`, inconsistent with sibling `UpdateSignup` | Not itself a cross-tenant leak, but an undecided authorization-adjacent inconsistency that could let a player retroactively alter the finalized roster's character record after DM sign-off | Explicit decision + matching guard, gated in phase scope (Pitfall 4) |
+| Dismissing Dependabot alerts on incomplete evidence | A real, exploitable `System.Security.Cryptography.Xml` vulnerability (XML signature wrapping class) could remain reachable via a branch/fork/stale-graph the local check never examined | Full evidence chain per Pitfall 9 before any dismissal |
+| Leftover `EuphoriaInn.*` directories creating a re-commit surface for the exact vulnerable manifest | A future accidental `git add -A`/restore could resurrect the flagged `.csproj`, reopening the alerts for real this time | Delete the leftover directories now (Pitfall 10) |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|--------------|-------------------|
-| Editor gives no visual cue that a single Enter no longer starts a new paragraph (new strict-CommonMark *authoring* behavior going forward, distinct from the accepted historical-data reflow trade-off) | Non-technical players hit Enter once out of habit — every other textarea in the app treats one Enter as a new line — and are confused when their next sentence visually runs into the previous one on save | Toolbar/editor should auto-insert a blank line on Enter, or show a subtle inline hint ("Press Enter twice for a new paragraph") near the textarea |
-| Toolbar designed for one desktop width, then simply shrunk for `.Mobile.cshtml` | Given this project's repeated mobile-parity misses (Phase 43/54/64 all required after-the-fact fixes for mobile-specific gaps), a cramped or overflowing Bold/Italic/Heading/List/Preview toolbar on mobile is a near-certain repeat of that pattern | Design the mobile toolbar layout as its own explicit task (icon-only buttons, horizontal scroll, or a collapsed "more" menu) rather than assuming the desktop toolbar's CSS reflows acceptably |
-| Preview toggle shows fully-rendered HTML while the textarea still shows raw `**`/`#`/`-` syntax with no in-context guidance | First-time Markdown authors (this group has never used Markdown syntax in these fields before) don't know what triggers what until they experiment and get surprised | Toolbar buttons should insert the correct syntax around the current selection on click (not just act as a static cheat-sheet), so most authoring never requires knowing raw syntax at all |
+| Change-character dropdown pre-selects a different character than the one actually shown in the row, because the current (Retired/Dead) character isn't in the Active-only option list | Player thinks they're keeping their assigned character but silently reassigns to whatever the browser defaulted the `<select>` to | Always render the true current value as a distinct, present option (Pitfall 5) |
+| A "Change" control appears on a finalized quest's row but silently does nothing (or nothing visible) because of an unresolved guard mismatch | Confusing dead-end interaction, erodes trust in the control | Resolve Pitfall 4 explicitly before shipping the UI |
+| Mobile users see no character-change control at all because the new markup landed only in `Details.cshtml` | Feature parity gap directly contradicting the milestone's stated scope ("desktop + mobile") | Verify all 3 sites (Pitfall 1) and real mobile-UA rendering (Pitfall 7) |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Sanitization coverage:** Often verified only for Contact Notes (the "obviously risky" field) — verify all 9 fields route through the same sanitizing rendering service, including DM Profile Bio and Quest Recap
-- [ ] **Email visual QA:** Often verified only via a local `dotnet run` preview or opening the raw HTML file in a browser — verify by opening a real sent test email in actual Outlook desktop and Gmail webmail with Markdown-structured (not single-paragraph) test content
-- [ ] **Mobile toolbar parity:** Often the desktop toolbar ships and mobile is assumed "close enough" — verify the toolbar is usable (not overflowing/cramped) on an actual narrow mobile viewport for all 9 fields' Create/Edit forms, both `.cshtml` and `.Mobile.cshtml`
-- [ ] **Pre-wrap CSS removal:** Often the view template is migrated to render HTML but the companion CSS file is left untouched — verify `white-space: pre-wrap` was removed from every rendered-*output* container (not the editor textareas, which should keep it) across the files listed in Pitfall 6
-- [ ] **Old-data corruption sweep:** Often "reflow is expected" is used to wave off all rendering differences — verify a diff pass distinguished harmless paragraph-boundary reflow from actual content-altering cases (dropped asterisks, swallowed angle-bracket text, unintended headings) per Pitfall 5
-- [ ] **Client/server parser parity:** Often assumed correct because "the preview looked right during manual testing" — verify either a server-round-trip preview is used (no second parser exists) or an explicit edge-case test corpus (nested lists, blockquotes, mixed whitespace) was run through both parsers with an equality assertion
+- [ ] **Change character on finalized-participants table:** Often the only place tested — verify the waitlist table's identical block was also updated (Pitfall 1).
+- [ ] **Change character on mobile:** Often skipped because desktop "already works" — verify `Details.Mobile.cshtml` was touched at all, since it currently has zero character-cell UI, and verify with a real mobile User-Agent, not just devtools emulation (Pitfall 1, Pitfall 7).
+- [ ] **Clear back to "no character":** Often silently blocked by a copy-pasted `required` `<select>` — verify submitting with no selection actually clears `CharacterId` to null server-side (Pitfall 2).
+- [ ] **Cross-group character assignment:** Often assumed safe because "the query filters already handle it" — verify with an actual integration test using two different groups' character IDs (Pitfall 3).
+- [ ] **Retired/Dead character on the signup:** Often invisible until manually tested — verify the dropdown correctly represents (not silently swaps away from) a currently-assigned inactive character (Pitfall 5).
+- [ ] **Dependabot alert dismissal:** Often done from local evidence alone — verify each alert individually against GitHub's own dependency-graph refresh, branch scope, and a written per-alert reason (Pitfall 9, Pitfall 11).
+- [ ] **Leftover `EuphoriaInn.*` directories:** Often left alone as "harmless clutter" — verify they're actually deleted, not just ignored by git (Pitfall 10).
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
-|---------|-----------------|------------------|
-| XSS gap discovered post-launch (Pitfall 1) | HIGH | Rotate session/auth tokens if exploitation is suspected; since sanitization happens at render time from stored raw Markdown (not at write time), a single fix to the shared rendering service retroactively protects all historical data — no data migration needed |
-| Email looks broken in Outlook/Gmail post-launch (Pitfall 2/3) | MEDIUM | Fix is contained to the 3 Razor email components plus the email-specific styling pass; no schema/data changes needed, redeploy is sufficient; consider a temporary rollback to plain-text `@QuestDescription` interpolation in emails only (keeping Markdown rendering live in the browser app) while the email-safe styling is reworked |
-| Old entry discovered with silently altered meaning (Pitfall 5) | LOW | Single-row data fix — the original plain text is still fully recoverable from the stored Markdown source (nothing was deleted, only mis-rendered); the DM/owner re-edits that one entry; escalate to a small one-off review script only if the diff-sweep reveals many affected rows |
-| Client/server preview mismatch reported by users (Pitfall 4) | MEDIUM | If using a bundled JS parser, either swap to the server-round-trip preview approach (removes the mismatch class entirely, no ongoing parser-parity maintenance) or add the specific failing edge case to the shared test corpus and pin/patch the JS parser's config to match |
+|---------|----------------|------------------|
+| Waitlist/mobile character-cell block missed | LOW | Grep for the sibling pattern, apply the same edit; if it recurs a second time, extract the shared partial instead of patching a 4th site by hand |
+| `required` attribute silently blocks clearing | LOW | Remove `required`, add a blank/"No character" option, add a regression test asserting null round-trips |
+| Cross-tenant gap found after ship | MEDIUM | Follow the Phase 49/55 precedent exactly: patch the specific gap, add the fail-closed regression test, run `/gsd:secure-phase` to independently re-verify, and log it in PROJECT.md's Key Decisions the same way those two incidents were |
+| Dependabot alert wrongly dismissed, later found still valid | MEDIUM | Re-open via GitHub's UI (dismissed alerts can be reopened), re-run the full evidence chain (Pitfall 9), document the correction in PROJECT.md |
+| Deleted `EuphoriaInn.*` directories broke something unexpected | LOW | `git status`/`dotnet build` immediately after deletion catches this before commit; nothing tracked lives in those directories so recovery is trivial (they were never referenced by the current solution) |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
-|---------|-------------------|----------------|
-| 1: Auto-encoding removal reopens XSS | Rendering-service phase | Unit tests feed `<script>`, `<img onerror>`, `javascript:` links through the service, asserting sanitized output; code review confirms no view/controller calls Markdig directly, only the shared service |
-| 2: Email HTML not email-client-safe | Email-integration phase | Manual verification in real Outlook desktop + Gmail webmail with Markdown-structured (not single-paragraph) test content |
-| 3: Fixed-height email card overflow | Email-integration phase | Manual verification with a worst-case Markdown Quest Description (heading + list + blockquote) in real Outlook |
-| 4: Client/server preview mismatch | Editor/toolbar phase | Either the architectural choice of server-round-trip preview (no test needed) or a parity test corpus comparing JS-parser and Markdig output on nested lists/blockquotes/mixed whitespace |
-| 5: Old-data character-level corruption | Field-migration phase (per field) | A one-off diff script run against a production data snapshot before each field's display switches over, flagging stripped-text differences beyond whitespace |
-| 6: Leftover pre-wrap CSS | Field-migration phase (per field) | Visual QA checklist item cross-referencing the Phase 64 file list; confirm rendered-output containers (not editor textareas) have pre-wrap removed |
-| 7: Contact Notes rendering-boundary bleed | Field-migration phase (Contact Notes specifically) | Unit test asserting per-note independent rendering is used, not batch-concatenate-then-render-once; code review of the Notes rendering call site |
+|---------|--------------------|----------------|
+| 1. Third near-duplicate character-cell block | Item-1 implementation | Grep confirms all 3 sites (desktop finalized table, desktop waitlist table, mobile) changed identically; manual test on both tables + mobile |
+| 2. `required` modal blocks clearing | Item-1 implementation | Manual test: submit change form with blank selection, confirm `CharacterId` becomes null in DB |
+| 3. Cross-tenant re-verification | Item-1 implementation | New integration test with cross-group character IDs passes; optionally `/gsd:secure-phase` |
+| 4. Finalized-quest guard inconsistency | Item-1 discuss-phase + implementation | CONTEXT.md records the explicit decision; controller behavior matches the decision; UI visibility matches controller behavior |
+| 5. Stale/inactive character in dropdown | Item-1 implementation | Manual test: retire a signed-up character, reload Details, confirm dropdown shows true current state |
+| 6. CSRF/fetch pattern mismatch | Item-1 implementation | Browser network-tab check: response type from the new control matches what the calling JS expects |
+| 7. Mobile view-selection trap | Item-1 implementation, verification step | Real mobile User-Agent (ideally real device) confirms `Details.Mobile.cshtml` renders the new control |
+| 8. Green tests ≠ real DI graph safety | Item-1 verification step | Manual live `dotnet run` smoke test with two real different-group users, alongside the automated suite |
+| 9. Reflexive Dependabot dismissal | Item-2 implementation | Per-alert branch/graph-refresh evidence gathered and recorded before any dismissal |
+| 10. Leftover `EuphoriaInn.*` re-commit risk | Item-2 implementation | `git status --ignored` shows zero `EuphoriaInn.*` paths after the phase closes |
+| 11. Missing audit trail on dismissal | Item-2 implementation | Each of the 5 alerts has an individual, evidence-referencing dismissal reason; PROJECT.md records the investigation once |
 
 ## Sources
 
-- CommonMark Spec 0.31.2 — https://spec.commonmark.org/0.31.2/ (ATX headings, setext headings, indented code blocks, thematic breaks) — HIGH confidence, official spec
-- CommonMark Discuss, intraword emphasis rule — https://talk.commonmark.org/t/single-asterisks-in-subsequent-words-should-not-lead-to-emphasis/1035 — MEDIUM-HIGH, corroborates spec-documented delimiter-run rules
-- Markdig (xoofx/markdig) — https://github.com/xoofx/markdig — HIGH, official repo/docs; confirms plain-CommonMark default pipeline, `UseAdvancedExtensions()` opt-in, `nofollow`/`noopener`/`noreferrer` link extensions, shared/thread-safe pipeline guidance
-- Rick Strahl, "Markdown and Cross Site Scripting" — https://weblog.west-wind.com/posts/2018/Aug/31/Markdown-and-Cross-Site-Scripting — MEDIUM, single blog source, corroborated by HtmlSanitizer's own positioning as the standard pairing
-- mganss/HtmlSanitizer — https://github.com/mganss/HtmlSanitizer — HIGH, official repo of the standard .NET HTML sanitizer library
-- marked.js CommonMark compliance discussion — https://github.com/markedjs/marked/discussions/1202 — MEDIUM-HIGH, maintainer-acknowledged compliance gap (157/624 failing spec tests)
-- Ionaru/easy-markdown-editor (EasyMDE) — https://github.com/ionaru/easy-markdown-editor — MEDIUM-HIGH, confirms marked.js as the bundled preview renderer
-- Email client CSS/list-support community sources (GetResponse, Litmus community discussion, others) — MEDIUM, general email-dev community knowledge, corroborated across multiple independent sources on Outlook's `<ul>`/`<li>` limitations
-- Direct codebase inspection (this repository, commit at time of research): `QuestBoard.Service/Components/Emails/{QuestFinalized,SessionReminder,WaitlistPromoted,_EmailLayout}.razor`, `QuestBoard.Repository/Entities/{QuestEntity,CharacterEntity,ContactEntity,ContactNoteEntity,DungeonMasterProfileEntity,ShopItemEntity}.cs`, repo-wide `pre-wrap` grep (13 files), `.planning/PROJECT.md`, `.planning/codebase/STACK.md` — HIGH confidence, first-party source verification
+- `.planning/PROJECT.md` — "Known issues / tech debt," "Constraints," and "Key Decisions" sections (primary source; this project's own documented incident history, read in full for this research)
+- `QuestBoard.Service/Controllers/QuestBoard/QuestController.cs` — `UpdateSignup` (L496-518), `UpdateSignupCharacter` (L523-555), `ChangeVote` (L557-596), and the `Details` GET action's `ViewBag.UserCharacters` population (Active-only filter)
+- `QuestBoard.Service/Views/Quest/Details.cshtml` — finalized-participants character cell (~L108-145), waitlist character cell (~L219-259), `fetch()`-based `RevokeSignup`/`ChangeVote` calls (~L869-893), `#addCharacterModal` (~L820-848)
+- `QuestBoard.Service/Views/Quest/Details.Mobile.cshtml` — confirmed absence of any character-cell/`addCharacterModal`/`UpdateSignupCharacter` reference; `fetch()`-based `RevokeSignup`/`ChangeVote` calls (~L395-410)
+- `QuestBoard.Domain/Services/PlayerSignupService.cs` — `UpdateSignupCharacterAsync` (L36-46), confirming null `characterId` already round-trips cleanly at the service layer
+- `QuestBoard.Service/Middleware/GroupSessionMiddleware.cs` — exempt-path list, membership revalidation interval, and its own extensive header-comment history of prior regressions
+- `QuestBoard.Repository/Entities/QuestBoardContext.cs` — confirmed `HasQueryFilter` present for `CharacterEntity`, `QuestEntity`, `PlayerSignupEntity`, and 4 others
+- Live repository inspection (2026-08-25): `git show --stat a477ab98363e54afc6e21f131aac0aef6c1d3f3d` (the EuphoriaInn→QuestBoard rename commit); `dotnet list package --include-transitive` across all 5 current `.csproj` files (no `System.Security.Cryptography.Xml` hits); `git status --ignored=matching` and direct `ls` confirming all 5 `EuphoriaInn.*` directories still exist on disk with only stale `bin/`/`obj/` contents; no `.github/dependabot.yml` or dependency-submission workflow present in `.github/workflows/`
+- [Troubleshooting the dependency graph — GitHub Docs](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/troubleshooting-the-dependency-graph) — confirms Dependabot alerts require a manual "Refresh Dependabot alerts" action (rate-limited to once/hour) to reflect a repository's current manifest state; deleting a manifest does not retroactively clear existing alerts
+- [Viewing and updating Dependabot alerts — GitHub Docs](https://docs.github.com/code-security/dependabot/dependabot-alerts/viewing-and-updating-dependabot-alerts) — per-alert dismissal reasons and dismissal-history visibility
 
 ---
-*Pitfalls research for: Markdown authoring/rendering retrofit onto existing plain-text fields (D&D Quest Board v8.0)*
-*Researched: 2026-07-09*
+*Pitfalls research for: v9.0 Rolling Improvements milestone (D&D Quest Board)*
+*Researched: 2026-08-25*
