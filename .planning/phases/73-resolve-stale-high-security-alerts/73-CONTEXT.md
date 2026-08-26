@@ -58,7 +58,7 @@ Not a code phase. Not in this phase: patching any package, evicting the stale ma
 
 - **D-13: `.planning/SECURITY-TRIAGE.md` is an append-only dated log, with this incident as entry one.** Because D-06 leaves the ghost manifests in place, a sixth alert is *expected*. The next reviewer then inherits the precedent and the reproduction queries instead of re-deriving them.
 
-- **D-14: PROJECT.md gets two hooks, satisfying SECALERT-04 without bulk:**
+- **D-14: PROJECT.md gets two hooks, satisfying SECALERT-04 without bulk.**
   - a **Known issues / tech debt** bullet under `## Context` for the ghost-manifest root cause, carrying the re-runnable reproduction query and noting the D-05 veto as the reason it stays unfixed;
   - a **Key Decisions** table row for the dismiss-not-patch call.
 
@@ -72,7 +72,7 @@ Not a code phase. Not in this phase: patching any package, evicting the stale ma
 
 - **D-17: A gate failure on one alert does not block the others.** The passing alerts are dismissed on their own evidence; the failing one stops and is written up as an open finding for the operator. Per-alert reasoning implies per-alert outcomes — holding four defensible dismissals hostage to one anomaly would be batch thinking wearing a different hat.
 
-- **D-18: If gate part (b) fails — the package is genuinely reachable from a `QuestBoard.*` manifest — patching is OUT of scope.** That outcome means the triage succeeded at its actual job. The fix is a code change with a build, a test run and a deploy: a different phase with different risks, no plan, no research and no tests. The executor writes up the finding, dismisses nothing for that alert, and the operator scopes the follow-up. Explicitly rejected: "patch only if trivial" — *trivial* is the judgement call that expands once someone is already mid-change.
+- **D-18: If gate part (b) fails, patching is OUT of scope.** Gate part (b) failing means the package is genuinely reachable from a `QuestBoard.*` manifest. That outcome means the triage succeeded at its actual job. The fix is a code change with a build, a test run and a deploy: a different phase with different risks, no plan, no research and no tests. The executor writes up the finding, dismisses nothing for that alert, and the operator scopes the follow-up. Explicitly rejected: "patch only if trivial" — *trivial* is the judgement call that expands once someone is already mid-change.
 
 - **D-19: Success criterion #5 is read as "alerts #17–#21 are dismissed and no HIGH alert this phase was scoped to handle remains open."** A sixth, unrelated HIGH alert landing mid-phase does not block closure — it becomes entry two in `.planning/SECURITY-TRIAGE.md` and gets its own triage. The literal "zero open HIGH alerts" reading would make closure hostage to GitHub's advisory feed, which nobody controls, and which D-06 guarantees will fire again. The ROADMAP text is not edited; this reading is recorded here instead.
 
