@@ -146,3 +146,12 @@ None - no external service configuration required.
 ---
 *Phase: 74-event-schema-crud-and-calendar-display*
 *Completed: 2026-08-26*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.IntegrationTests/Controllers/EventsControllerIntegrationTests.cs
+- FOUND: QuestBoard.IntegrationTests/Controllers/EventCalendarPartialTests.cs
+- FOUND: .planning/phases/74-event-schema-crud-and-calendar-display/74-01-SUMMARY.md
+- FOUND commit: 3657fb9 (Task 1)
+- FOUND commit: 494211b (Task 2)
+- FOUND commit: 21ed4f4 (docs: complete plan)
