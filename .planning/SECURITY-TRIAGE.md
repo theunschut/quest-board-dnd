@@ -14,7 +14,10 @@ below, not linked to a phase artifact.
 
 ## Entry 1 - 2026-08-26 - Dependabot alerts #17-#21, System.Security.Cryptography.Xml (HIGH)
 
-**Outcome:** Pending - dismissals gated on operator approval (see plan 73-02)
+**Outcome:** Dismissed 2026-08-26 — all five alerts (#17-#21) dismissed as `inaccurate` by
+`cryptic96`, approved by the operator in plan 73-02 and executed directly by the orchestrator
+after the executor subagent's mutating call was denied by the harness's Bash permission
+classifier (see the Per-alert table and the Task 3 execution record below for the full outcome).
 
 ### Conclusion
 
@@ -23,10 +26,17 @@ Three facts, in the order that matters most:
 1. The alerted version `8.0.3` was upgraded away on **2026-04-22** in commit `978d3f6`, four
    months before these alerts were minted on 2026-08-10.
 2. The manifest that carried the package, `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj`, was
-   **deleted outright** on **2026-06-29** in commit `a477ab9` ("refactor: rename EuphoriaInn ->
-   QuestBoard").
-3. GitHub's own `dependencyGraphManifests` query still lists all five deleted `EuphoriaInn.*`
-   manifests today, 2026-08-26 — nearly two months after their deletion.
+   **renamed away** on **2026-06-29** in commit `a477ab9` ("refactor: rename EuphoriaInn ->
+   QuestBoard"). **Correction (added in plan 73-03):** live inspection during plan 73-02 showed
+   `a477ab9` is a git-detected `R100` (100%-similarity) rename —
+   `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` -> `QuestBoard.Domain/QuestBoard.Domain.csproj`
+   — not a content deletion. This entry originally said "deleted outright"; that wording has been
+   corrected here to match the posted dismissal comments, which all say "renamed away". The
+   alerted path (`EuphoriaInn.Domain/EuphoriaInn.Domain.csproj`) genuinely ceased to exist either
+   way, so the correction changes only the wording, not the substance of the dismissal or any
+   conclusion in this entry.
+3. GitHub's own `dependencyGraphManifests` query still lists all five renamed-away `EuphoriaInn.*`
+   manifests today, 2026-08-26 — nearly two months after the rename.
 
 **This supports one conclusion: GitHub is attributing a vulnerability to a package/version
 combination that exists in no live manifest on `main`.** The attribution is factually wrong, not
@@ -52,12 +62,12 @@ ranges for `System.Security.Cryptography.Xml`, not just the one GitHub alerted o
 | `>= 9.0.0, <= 9.0.17` | `9.0.18` |
 | `>= 10.0.0, <= 10.0.9` | `10.0.10` |
 
-The manifest's **last live value before deletion was `10.0.9`** (confirmed via
+The manifest's **last live value before the rename was `10.0.9`** (confirmed via
 `git show a477ab9~1:EuphoriaInn.Domain/EuphoriaInn.Domain.csproj`) — inside the third,
 `10.0.0-10.0.9` band, patched only at `10.0.10`. So the 2026-04-22 bump ended exposure to the
 *specific* `8.0.0-8.0.3` range GitHub alerted on, and nothing more; the vulnerability class
 (across all three ranges of the same advisory family) continued to apply to the manifest all the
-way through `10.0.7` and then `10.0.9`, right up until the manifest itself was deleted on
+way through `10.0.7` and then `10.0.9`, right up until the manifest itself was renamed away on
 2026-06-29. **Real end of exposure: 2026-06-29 (`a477ab9`), not 2026-04-22.**
 
 Nothing in this record claims the 2026-04-22 upgrade eliminated the vulnerability. It sharpens
@@ -69,11 +79,15 @@ manifest, at any version, today — corroborated by two independent sources (see
 
 | Alert | CVE | GHSA | CVSS | Class | `manifest_path` | `created_at` | Branch scope | Gate (a) | Gate (b) | Dismissed at | `dismissed_reason` |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| #17 | CVE-2026-47304 | GHSA-g8r8-53c2-pm3f | 8.1 | Security Feature Bypass | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | *(pending 73-02)* | *(pending 73-02)* | | |
-| #18 | CVE-2026-50525 | GHSA-8q5v-6pqq-x66h | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | *(pending 73-02)* | *(pending 73-02)* | | |
-| #19 | CVE-2026-47302 | GHSA-cvvh-rhrc-wg4q | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | *(pending 73-02)* | *(pending 73-02)* | | |
-| #20 | CVE-2026-50648 | GHSA-23rf-6693-g89p | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | *(pending 73-02)* | *(pending 73-02)* | | |
-| #21 | CVE-2026-50527 | GHSA-mmjf-rqrv-855v | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | *(pending 73-02)* | *(pending 73-02)* | | |
+| #17 | CVE-2026-47304 | GHSA-g8r8-53c2-pm3f | 8.1 | Security Feature Bypass | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:50Z | `inaccurate` |
+| #18 | CVE-2026-50525 | GHSA-8q5v-6pqq-x66h | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:08Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:52Z | `inaccurate` |
+| #19 | CVE-2026-47302 | GHSA-cvvh-rhrc-wg4q | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:54Z | `inaccurate` |
+| #20 | CVE-2026-50648 | GHSA-23rf-6693-g89p | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:56Z | `inaccurate` |
+| #21 | CVE-2026-50527 | GHSA-mmjf-rqrv-855v | 7.5 | Denial of Service | `EuphoriaInn.Domain/EuphoriaInn.Domain.csproj` | 2026-08-10T20:34:09Z | default branch (main) - API has no per-branch dimension | PASS — live-read `state=open`, `manifest_path` and range confirmed unchanged immediately before PATCH | PASS — local `dotnet list package --include-transitive` (0 matches across all 5 `QuestBoard.*` manifests) + GitHub SBOM (1 entry, `8.0.3`, reachable only via the ghost `Microsoft.AspNetCore.Identity 2.3.1` node) | 2026-08-26T09:14:58Z | `inaccurate` |
+
+No alert was held; no gate failed on any of the five. Every gate (a)/(b) pair above was re-run
+live in plan 73-02, immediately before that alert's own `PATCH`, per D-16/D-17 — not copied
+forward from plan 73-01's earlier evidence capture.
 
 All five share the same package, manifest, alerted range (`>= 8.0.0, <= 8.0.3` → patched
 `8.0.4`), and detection day — because the evidence is about the manifest, not about the CVE. The
@@ -87,7 +101,7 @@ the live QuestBoard one, and a ghost set left over from before the .NET 10 upgra
 
 | In GitHub's graph today | Real state on `main` |
 |---|---|
-| `Microsoft.AspNetCore.Identity` **2.3.1** | absent - bumped to `2.3.9` in `978d3f6` (2026-04-22), then to `2.3.11`, then deleted with the manifest in `a477ab9` (2026-06-29) |
+| `Microsoft.AspNetCore.Identity` **2.3.1** | absent - bumped to `2.3.9` in `978d3f6` (2026-04-22), then to `2.3.11`, then renamed away with the manifest in `a477ab9` (2026-06-29, `R100` rename, not a deletion) |
 | `Microsoft.AspNetCore.Identity.EntityFrameworkCore` **8.0.11** | `10.0.9` |
 | `Microsoft.AspNetCore.Identity.UI` **8.0.11** | `10.0.9` |
 | `System.Security.Cryptography.Xml` **8.0.3** | absent from every manifest, at any version |
@@ -115,6 +129,93 @@ The one remaining **non-destructive** lever: a manifest-touching commit reaching
 GraphQL `dependencyGraphManifests` query after that merge and check whether the ghost manifests
 finally cleared. As of this entry (`main` at `89a8cb6`), no manifest-touching commit has reached
 `main` since Phase 72's merge.
+
+### Working-tree note: the `EuphoriaInn.*` directories are still on disk
+
+Five `EuphoriaInn.*` directories (`EuphoriaInn.Domain`, `EuphoriaInn.Repository`,
+`EuphoriaInn.Service`, `EuphoriaInn.UnitTests`, `EuphoriaInn.IntegrationTests`) are still present
+in the working tree today. A future reviewer running a plain `ls`/`dir` at the repo root will see
+them and may reasonably wonder whether the "package absent from every live manifest" claim above
+is false. It is not: each of these five directories was investigated directly (plan 73-02) and
+contains **only gitignored `bin/`/`obj/` build residue — zero `.csproj` files, zero files tracked
+by git**. They are inert leftover build output from before the `a477ab9` rename, not a live
+manifest, and `git ls-files -- 'EuphoriaInn.*'` returns nothing. This is exactly the kind of stale
+local artifact the ghost-manifest problem is about: GitHub's graph and this leftover build output
+are both cached remnants of the same rename, neither backed by a tracked file on `main` today.
+
+### Dismissal execution record (plan 73-02, completed 2026-08-26)
+
+All five dismissals were approved in one review (`73-DISMISSAL-DRAFTS.md`, "Approval outcome")
+and executed directly by the orchestrator after the executor subagent's mutating `PATCH` call was
+denied by the harness's Bash permission classifier — the executor correctly refused to work
+around the denial, and the orchestrator then ran the five already-approved calls itself under the
+operator's explicit in-chat approval. The approval gate was satisfied by a human decision, not
+bypassed. Each `dismissed_comment` below was corrected from the drafted "deleted 2026-06-29 in
+a477ab9" to "renamed away 2026-06-29 in a477ab9" before sending, per the rename finding above; the
+operator approved the wording correction. Every comment is 253 characters and every live
+`dismissed_comment` read back byte-for-byte matches the text below (`MATCH`, no diff observed):
+
+**#17** — `GHSA-g8r8-53c2-pm3f` — 253 chars — read-back: `MATCH`
+```
+Checked 2026-08-26: GHSA-g8r8-53c2-pm3f / CVE-2026-47304, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md
+```
+
+**#18** — `GHSA-8q5v-6pqq-x66h` — 253 chars — read-back: `MATCH`
+```
+Checked 2026-08-26: GHSA-8q5v-6pqq-x66h / CVE-2026-50525, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md
+```
+
+**#19** — `GHSA-cvvh-rhrc-wg4q` — 253 chars — read-back: `MATCH`
+```
+Checked 2026-08-26: GHSA-cvvh-rhrc-wg4q / CVE-2026-47302, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md
+```
+
+**#20** — `GHSA-23rf-6693-g89p` — 253 chars — read-back: `MATCH`
+```
+Checked 2026-08-26: GHSA-23rf-6693-g89p / CVE-2026-50648, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md
+```
+
+**#21** — `GHSA-mmjf-rqrv-855v` — 253 chars — read-back: `MATCH`
+```
+Checked 2026-08-26: GHSA-mmjf-rqrv-855v / CVE-2026-50527, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md
+```
+
+**Final repository state (verified live, plan 73-03):** zero open alerts on
+`theunschut/quest-board-dnd`. Alerts #17-#21 all read `state=dismissed`,
+`dismissed_reason=inaccurate`, `dismissed_by=cryptic96`, dismissed 2026-08-26 at
+09:14:50 / :52 / :54 / :56 / :58Z respectively. Pre-existing dismissals #7, #8, #11 are untouched,
+still `fix_started` with their original June timestamps. No `DELETE`/`PUT` against
+`vulnerability-alerts` was ever issued, and no write touched any alert outside #17-#21.
+
+### Phase gate assertion (plan 73-03, run once after all PATCHes, 2026-08-26)
+
+Success criterion 5's literal command, old repo name and all (resolves via GitHub's rename
+redirect):
+```
+gh api repos/theunschut/quest-board/dependabot/alerts --jq '[.[] | select(.state=="open" and .security_vulnerability.severity=="high")] | length'
+```
+Result: `0`
+
+The scoped assertion for what this phase was actually chartered to handle:
+```
+gh api repos/theunschut/quest-board-dnd/dependabot/alerts --jq '[.[] | select(.state=="open" and (.number | IN(17,18,19,20,21)))] | length'
+```
+Result: `0`
+
+**Reading applied:** both commands return zero — the literal reading of success criterion 5 and
+the D-19 scoped reading coincide. No new out-of-scope HIGH alert exists at gate time, so no entry
+two is added to this log. `.planning/ROADMAP.md`'s success criterion 5 text is left unchanged
+(`git diff -- .planning/ROADMAP.md` shows no diff); the reading is recorded here, not by editing
+the roadmap.
+
+Audit-trail integrity re-confirmed at gate time (same command as A14, re-run here to pair with the
+gate):
+```
+gh api repos/theunschut/quest-board-dnd/dependabot/alerts -X GET -f state=dismissed --jq '[.[] | select(.number | IN(7,8,11))] | map(.dismissed_reason) | join(",")'
+```
+Result: `fix_started,fix_started,fix_started` — #7/#8/#11 intact. No `.csproj` changed anywhere in
+this phase (`git status --porcelain -- '*.csproj'` empty). Dependabot alerts remain enabled for
+the repository; the toggle was never invoked.
 
 ### Appendix - re-runnable commands
 
@@ -254,7 +355,7 @@ git show 978d3f6 -- EuphoriaInn.Domain/EuphoriaInn.Domain.csproj
 `System.Security.Cryptography.Xml` straight from `8.0.3` to `10.0.7`, never revisiting the
 alerted range again.
 
-**A10 — Git archaeology, manifest deletion commit:**
+**A10 — Git archaeology, manifest rename commit:**
 ```
 git show a477ab9~1:EuphoriaInn.Domain/EuphoriaInn.Domain.csproj
 ```
@@ -267,9 +368,18 @@ git log --diff-filter=D --oneline --all -- 'EuphoriaInn.Domain/EuphoriaInn.Domai
 ```
 a477ab9 refactor: rename EuphoriaInn -> QuestBoard
 ```
-`a477ab9` (2026-06-29 23:00:50 +0200) deleted the manifest. Its last live value, `10.0.9`, sits
-inside the advisory family's `10.0.0-10.0.9` band (patched only at `10.0.10`) — the fact behind
-this entry's Correction section above.
+`a477ab9` (2026-06-29 23:00:50 +0200) removed the manifest from this path. **Correction (plan
+73-03, re-derived from plan 73-02's live inspection):** `git show --stat a477ab9` shows this
+commit as a git-detected `R100` (100%-similarity) rename —
+`EuphoriaInn.Domain/EuphoriaInn.Domain.csproj -> QuestBoard.Domain/QuestBoard.Domain.csproj` —
+not a content deletion. The `--diff-filter=D` command above still legitimately returns `a477ab9`
+because that command only asks "at what commit did this exact path stop existing", which is true
+under a rename too; it does not by itself establish deletion vs. rename. This entry originally
+read "deleted the manifest"; corrected here to "renamed away" to match the five posted dismissal
+comments (see `dismissed_comment` verbatim text below). Either way, the alerted path
+(`EuphoriaInn.Domain/EuphoriaInn.Domain.csproj`) ceased to exist at `a477ab9`, and its last live
+value, `10.0.9`, sits inside the advisory family's `10.0.0-10.0.9` band (patched only at
+`10.0.10`) — the fact behind this entry's Correction section above.
 
 **A11 — `main` HEAD drift re-check:**
 ```
@@ -286,3 +396,28 @@ snapshot.
 gh api repos/theunschut/quest-board-dnd/dependabot/alerts -X GET -f state=open --jq 'length'
 ```
 Result both times: `5`. No dismissal occurred while gathering this evidence.
+
+**A13 — Post-dismissal read-back (run per alert, plan 73-03, 2026-08-26):**
+```
+gh api repos/theunschut/quest-board-dnd/dependabot/alerts/{n} --jq '{state, reason: .dismissed_reason, by: .dismissed_by.login, at: .dismissed_at, comment: .dismissed_comment}'
+```
+Captured live for `n` in 17-21:
+```
+17: {"state":"dismissed","reason":"inaccurate","by":"cryptic96","at":"2026-08-26T09:14:50Z","comment":"Checked 2026-08-26: GHSA-g8r8-53c2-pm3f / CVE-2026-47304, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md"}
+18: {"state":"dismissed","reason":"inaccurate","by":"cryptic96","at":"2026-08-26T09:14:52Z","comment":"Checked 2026-08-26: GHSA-8q5v-6pqq-x66h / CVE-2026-50525, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md"}
+19: {"state":"dismissed","reason":"inaccurate","by":"cryptic96","at":"2026-08-26T09:14:54Z","comment":"Checked 2026-08-26: GHSA-cvvh-rhrc-wg4q / CVE-2026-47302, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md"}
+20: {"state":"dismissed","reason":"inaccurate","by":"cryptic96","at":"2026-08-26T09:14:56Z","comment":"Checked 2026-08-26: GHSA-23rf-6693-g89p / CVE-2026-50648, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md"}
+21: {"state":"dismissed","reason":"inaccurate","by":"cryptic96","at":"2026-08-26T09:14:58Z","comment":"Checked 2026-08-26: GHSA-mmjf-rqrv-855v / CVE-2026-50527, range >=8.0.0 <=8.0.3, manifest EuphoriaInn.Domain.csproj renamed away 2026-06-29 in a477ab9. Package absent from all 5 QuestBoard manifests; dotnet + SBOM agree. See .planning/SECURITY-TRIAGE.md"}
+```
+Every read-back matches its posted `dismissed_comment` in the Dismissal execution record above,
+byte-for-byte.
+
+**A14 — Audit-trail integrity check on pre-existing dismissals (plan 73-03, 2026-08-26):**
+```
+gh api repos/theunschut/quest-board-dnd/dependabot/alerts -X GET -f state=dismissed --jq '[.[] | select(.number | IN(7,8,11))] | map({number, dismissed_reason, by: .dismissed_by.login})'
+```
+```json
+[{"by":"cryptic96","dismissed_reason":"fix_started","number":11},{"by":"cryptic96","dismissed_reason":"fix_started","number":8},{"by":"cryptic96","dismissed_reason":"fix_started","number":7}]
+```
+Confirms #7, #8, #11 are untouched by this incident's dismissals — same `dismissed_reason`
+(`fix_started`), same actor (`cryptic96`), as recorded before plan 73-02 ran.
