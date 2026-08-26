@@ -135,6 +135,15 @@ public class EntityProfile : Profile
         CreateMap<ContactNoteEntity, ContactNote>()
             .ForMember(dest => dest.AuthorName, opt => opt.MapFrom(src => src.Author != null ? src.Author.Name : null));
 
+        // Event mapping. Group and Series are ignored on the reverse map so mapping a domain
+        // model onto an already-tracked entity during an update never replaces a loaded
+        // navigation with null.
+        CreateMap<EventEntity, Event>();
+
+        CreateMap<Event, EventEntity>()
+            .ForMember(dest => dest.Group, opt => opt.Ignore())
+            .ForMember(dest => dest.Series, opt => opt.Ignore());
+
         // DungeonMasterProfile mappings
         CreateMap<DungeonMasterProfileEntity, DungeonMasterProfile>()
             .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src =>
