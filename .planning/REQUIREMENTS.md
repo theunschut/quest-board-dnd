@@ -21,11 +21,11 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Security Alert Resolution
 
-- [ ] **SECALERT-01**: The five open HIGH GitHub security alerts (#17–#21, `System.Security.Cryptography.Xml`) are investigated individually — branch scope, manifest attribution, and dependency-graph freshness confirmed per alert — before any of them is closed
-- [ ] **SECALERT-02**: GitHub's dependency graph is force-refreshed and the alerts re-checked, so the staleness conclusion rests on GitHub's own re-scan rather than on local `dotnet list package` output alone
-- [ ] **SECALERT-03**: Each of the five alerts is closed individually with a dismissal reason that cites the actual evidence gathered — never a bulk action with a generic reason
-- [ ] **SECALERT-04**: The investigation and its outcome are recorded in `.planning/PROJECT.md`, so a future reviewer can distinguish a genuine triage from a rubber stamp without relying on GitHub's UI history
-- [ ] **SECALERT-05**: The GitHub Security tab shows zero open HIGH alerts for this repository once the phase closes
+- [x] **SECALERT-01**: The five open HIGH GitHub security alerts (#17–#21, `System.Security.Cryptography.Xml`) are investigated individually — branch scope, manifest attribution, and dependency-graph freshness confirmed per alert — before any of them is closed
+- [x] **SECALERT-02**: GitHub's dependency graph is force-refreshed and the alerts re-checked, so the staleness conclusion rests on GitHub's own re-scan rather than on local `dotnet list package` output alone
+- [x] **SECALERT-03**: Each of the five alerts is closed individually with a dismissal reason that cites the actual evidence gathered — never a bulk action with a generic reason
+- [x] **SECALERT-04**: The investigation and its outcome are recorded in `.planning/PROJECT.md`, so a future reviewer can distinguish a genuine triage from a rubber stamp without relying on GitHub's UI history
+- [x] **SECALERT-05**: The GitHub Security tab shows zero open HIGH alerts for this repository once the phase closes
 
 ### Calendar Events — Foundation
 
