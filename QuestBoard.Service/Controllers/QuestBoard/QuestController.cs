@@ -569,8 +569,19 @@ public class QuestController(
             }
         }
 
-        // Update the character
-        await playerSignupService.UpdateSignupCharacterAsync(playerSignup.Id, characterId);
+        // Update the character. The signup was read a few statements ago, so it can still be
+        // revoked in another tab before the write lands — this action is built around users
+        // leaving a picker open, so treat losing that race as the same "you are no longer
+        // signed up" state the check above reports rather than letting it surface as a crash.
+        try
+        {
+            await playerSignupService.UpdateSignupCharacterAsync(playerSignup.Id, characterId);
+        }
+        catch (ArgumentException)
+        {
+            TempData["Error"] = "You are no longer signed up for this quest.";
+            return RedirectToAction("Details", new { id = questId });
+        }
 
         TempData["Success"] = characterId.HasValue
             ? "Character updated."
