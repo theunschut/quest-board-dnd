@@ -46,7 +46,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -82,7 +84,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -120,7 +124,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert — no finalization cutoff applies to this action
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -157,7 +163,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert — waitlisted status is unrelated to whether the character swap is allowed
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -197,7 +205,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -270,7 +280,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert — a Retired character owned by the caller is a valid selection
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -306,7 +318,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert — a Dead character owned by the caller is a valid selection
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -342,7 +356,9 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await playerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
@@ -378,7 +394,7 @@ public class QuestUpdateSignupCharacterTests(WebApplicationFactoryBase factory)
         var response = await callerClient.PostAsync("/Quest/UpdateSignupCharacter", formContent, TestContext.Current.CancellationToken);
 
         // Assert — a friendly redirect back to Details, not a raw 400 body
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.StatusCode.Should().Be(HttpStatusCode.Found);
         response.Headers.Location.Should().NotBeNull();
         response.Headers.Location!.ToString().Should().Contain(quest.Id.ToString());
 
