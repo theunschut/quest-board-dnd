@@ -5,8 +5,8 @@ milestone_name: Rolling Improvements
 current_phase: 74
 current_phase_name: Event Schema, CRUD, and Calendar Display
 status: executing
-stopped_at: Phase 74 context gathered
-last_updated: "2026-08-26T11:05:13.468Z"
+stopped_at: Phase 74 UI-SPEC approved
+last_updated: "2026-08-26T12:35:47.675Z"
 last_activity: 2026-08-26
 last_activity_desc: Phase 73 complete, transitioned to Phase 74
 progress:
@@ -90,9 +90,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-08-26T11:05:13.455Z
-Stopped at: Phase 74 context gathered
-Resume file: .planning/phases/74-event-schema-crud-and-calendar-display/74-CONTEXT.md
+Last session: 2026-08-26T12:35:47.662Z
+Stopped at: Phase 74 UI-SPEC approved
+Resume file: .planning/phases/74-event-schema-crud-and-calendar-display/74-UI-SPEC.md
 
 ## Operator Next Steps
 
