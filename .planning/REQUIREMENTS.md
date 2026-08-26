@@ -11,13 +11,13 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Signup Character Selection
 
-- [ ] **SIGNCHAR-01**: A player viewing a quest they are signed up for can change the character on their signup, even when a character is already selected — on the desktop quest Details page, in both the finalized-participants table and the waitlist table
-- [ ] **SIGNCHAR-02**: A player can change the character on their signup from the mobile quest Details page, which today offers no way to set or change a character at all
-- [ ] **SIGNCHAR-03**: A player can clear their signup back to "no character" from the change UI, on both desktop and mobile
-- [ ] **SIGNCHAR-04**: When a player's signup holds a character that is no longer Active (Retired or Dead), the change UI shows that character as the current selection, clearly labelled with its status, so opening and saving the form cannot silently wipe the selection
-- [ ] **SIGNCHAR-05**: Changing the character remains possible after a quest is finalized, with no time cutoff — a player can still swap right up to and during game night
-- [ ] **SIGNCHAR-06**: Changing the character remains possible for waitlisted signups and for all three signup roles (Player, Spectator, AssistantDM), matching what signup-time character selection already allows
-- [ ] **SIGNCHAR-07**: A player cannot set their signup to a character owned by another user or belonging to another group, and this is proven by an automated cross-group regression test rather than assumed from the query filters
+- [x] **SIGNCHAR-01**: A player viewing a quest they are signed up for can change the character on their signup, even when a character is already selected — on the desktop quest Details page, in both the finalized-participants table and the waitlist table
+- [x] **SIGNCHAR-02**: A player can change the character on their signup from the mobile quest Details page, which today offers no way to set or change a character at all
+- [x] **SIGNCHAR-03**: A player can clear their signup back to "no character" from the change UI, on both desktop and mobile
+- [x] **SIGNCHAR-04**: When a player's signup holds a character that is no longer Active (Retired or Dead), the change UI shows that character as the current selection, clearly labelled with its status, so opening and saving the form cannot silently wipe the selection
+- [x] **SIGNCHAR-05**: Changing the character remains possible after a quest is finalized, with no time cutoff — a player can still swap right up to and during game night
+- [x] **SIGNCHAR-06**: Changing the character remains possible for waitlisted signups and for all three signup roles (Player, Spectator, AssistantDM), matching what signup-time character selection already allows
+- [x] **SIGNCHAR-07**: A player cannot set their signup to a character owned by another user or belonging to another group, and this is proven by an automated cross-group regression test rather than assumed from the query filters
 
 ### Security Alert Resolution
 
