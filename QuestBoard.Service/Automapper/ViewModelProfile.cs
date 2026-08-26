@@ -7,6 +7,7 @@ using QuestBoard.Service.ViewModels.ShopViewModels;
 using QuestBoard.Service.ViewModels.CharacterViewModels;
 using QuestBoard.Service.ViewModels.ContactViewModels;
 using QuestBoard.Service.ViewModels.DungeonMasterViewModels;
+using QuestBoard.Service.ViewModels.EventViewModels;
 
 namespace QuestBoard.Service.Automapper;
 
@@ -98,5 +99,18 @@ public class ViewModelProfile : Profile
         // Quest to QuestSummaryViewModel (for DM profile quest history)
         CreateMap<Quest, QuestSummaryViewModel>()
             .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.FinalizedDate));
+
+        // Event to EventViewModel
+        CreateMap<Event, EventViewModel>()
+            .ForMember(dest => dest.CanManage, opt => opt.Ignore());
+
+        // EventViewModel to Event
+        // GroupId, SeriesId, SeriesSlotIndex and CreatedAt are set server-side and are never
+        // taken from a submitted form, because a hidden field is not a security boundary.
+        CreateMap<EventViewModel, Event>()
+            .ForMember(dest => dest.GroupId, opt => opt.Ignore())
+            .ForMember(dest => dest.SeriesId, opt => opt.Ignore())
+            .ForMember(dest => dest.SeriesSlotIndex, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
     }
 }
