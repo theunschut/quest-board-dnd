@@ -176,13 +176,13 @@ Plans:
 **Goal**: Players can say whether they are available for an event, with the right default for the board type — opt-in on One-Shot boards, opt-out on Campaign boards.
 **Depends on**: Phase 74
 **Requirements**: EVTAVAIL-01, EVTAVAIL-02, EVTAVAIL-03, EVTAVAIL-04, EVTAVAIL-05
-**Plans:** 5 plans
+**Plans:** 2/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 75-01-PLAN.md — EventSignup domain model, repository, service, mapper and DI wiring, with the answered-marker stamping rule (wave 1)
-- [ ] 75-02-PLAN.md — Atomic campaign backfill on join and signup cleanup on leave, plus the Platform remove confirmation (wave 1)
+- [x] 75-01-PLAN.md — EventSignup domain model, repository, service, mapper and DI wiring, with the answered-marker stamping rule (wave 1)
+- [x] 75-02-PLAN.md — Atomic campaign backfill on join and signup cleanup on leave, plus the Platform remove confirmation (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
