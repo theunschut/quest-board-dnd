@@ -203,4 +203,61 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("Calendar");
     }
+
+    // -----------------------------------------------------------------------
+    // Create Event navbar entry — present for a Dungeon Master on both
+    // layouts and both board types, absent for a Player
+    // -----------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_DungeonMaster_CreateEventEntryPresent(string userAgent)
+    {
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            _factory, "navevent_dm", "navevent_dm@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Create Event");
+    }
+
+    [Fact]
+    public async Task Nav_Player_CreateEventEntryAbsent()
+    {
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "navevent_player", "navevent_player@test.com", roles: ["Player"]);
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("Create Event");
+        // Proves the navbar actually rendered rather than an error page the NotContain
+        // assertion above would otherwise pass against for free.
+        html.Should().Contain("Characters");
+    }
+
+    [Fact]
+    public async Task Nav_CampaignBoard_DungeonMaster_CreateEventEntryStillPresent()
+    {
+        var previousBoardType = _factory.TestGroupContext.BoardType;
+        try
+        {
+            // This entry sits alongside Create Quest, which is not board-type gated, so it
+            // must remain available on every board type.
+            _factory.TestGroupContext.BoardType = BoardType.Campaign;
+            var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+                _factory, "navevent_campaign_dm", "navevent_campaign_dm@test.com");
+
+            var (response, html) = await GetWithUserAgentAsync("/quests", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            html.Should().Contain("Create Event");
+        }
+        finally
+        {
+            _factory.TestGroupContext.BoardType = previousBoardType;
+        }
+    }
 }
