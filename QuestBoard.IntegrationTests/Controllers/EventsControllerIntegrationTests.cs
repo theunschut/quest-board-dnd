@@ -201,4 +201,130 @@ public class EventsControllerIntegrationTests(WebApplicationFactoryBase factory)
         response.Headers.Location!.OriginalString.Should().Contain("year=2026");
         response.Headers.Location!.OriginalString.Should().Contain("month=3");
     }
+
+    // A SuperAdmin has no active group by design. RequireActiveGroupId() previously threw
+    // unguarded for a SuperAdmin reaching these actions with no board selected — these tests
+    // pin down that every one of them now degrades gracefully (a redirect to the group picker
+    // on GET, or GroupSessionMiddleware's 409 Conflict on a non-idempotent verb) instead of an
+    // unhandled 500.
+
+    [Fact]
+    public async Task Create_Get_SuperAdminWithNoActiveGroup_DoesNotThrow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var response = await superAdminClient.GetAsync("/Events/Create", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+            var location = response.Headers.Location?.ToString() ?? string.Empty;
+            location.Should().Contain("/groups/pick");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task Create_Post_SuperAdminWithNoActiveGroup_DoesNotThrow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Title"] = "No Board Event",
+                ["Date"] = "2026-05-01"
+            });
+
+            var response = await superAdminClient.PostAsync("/Events/Create", formContent, TestContext.Current.CancellationToken);
+
+            // A non-idempotent request with no active group never gets silently redirected
+            // (that would drop the submitted body) — GroupSessionMiddleware returns 409 Conflict,
+            // and if that gate is ever bypassed, EventsController's own write-stamp guard
+            // redirects instead of throwing. Either way, it must never be a 500.
+            response.StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Conflict, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task Edit_Post_SuperAdminWithNoActiveGroup_DoesNotThrow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "event_dm_editnullgroup", "event_dm_editnullgroup@example.com", roles: ["DungeonMaster"]);
+
+        var createFormContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Title"] = "Event For No-Board Edit",
+            ["Date"] = "2026-05-02"
+        });
+        await dmClient.PostAsync("/Events/Create", createFormContent, TestContext.Current.CancellationToken);
+
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var editFormContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Title"] = "Edited By SuperAdmin With No Board",
+                ["Date"] = "2026-05-02"
+            });
+
+            var response = await superAdminClient.PostAsync("/Events/Edit/1", editFormContent, TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Conflict, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task Details_Get_SuperAdminWithNoActiveGroup_DoesNotThrow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "event_dm_detailsnullgroup", "event_dm_detailsnullgroup@example.com", roles: ["DungeonMaster"]);
+
+        var createFormContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Title"] = "Event For No-Board Details",
+            ["Date"] = "2026-05-03"
+        });
+        await dmClient.PostAsync("/Events/Create", createFormContent, TestContext.Current.CancellationToken);
+
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var response = await superAdminClient.GetAsync("/Events/Details/1", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+            var location = response.Headers.Location?.ToString() ?? string.Empty;
+            location.Should().Contain("/groups/pick");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
 }

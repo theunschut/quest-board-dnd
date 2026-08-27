@@ -943,4 +943,40 @@ public class CharactersControllerIntegrationTests(WebApplicationFactoryBase fact
         content.Should().NotBeEmpty();
         content.Should().Equal(croppedBytes);
     }
+
+    // A SuperAdmin has no active group by design. RequireActiveGroupId() previously threw
+    // unguarded when the Create POST write-stamp ran for a SuperAdmin with no board selected —
+    // this pins down that it now degrades gracefully instead of an unhandled 500.
+    [Fact]
+    public async Task Create_Post_SuperAdminWithNoActiveGroup_DoesNotThrow()
+    {
+        // Arrange
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Name"] = "No Board Character",
+                ["Level"] = "1",
+                ["Classes[0].ClassLevel"] = "1"
+            });
+
+            // Act
+            var response = await superAdminClient.PostAsync("/Characters/Create", formContent, TestContext.Current.CancellationToken);
+
+            // Assert — a non-idempotent request with no active group never gets silently
+            // redirected (that would drop the submitted body) — GroupSessionMiddleware returns
+            // 409 Conflict, and if that gate is ever bypassed, CharactersController's own
+            // write-stamp guard redirects instead of throwing. Either way, never a 500.
+            response.StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Conflict, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
 }
