@@ -171,6 +171,13 @@ None - no external service configuration required.
 - Manual verification still needed (per `75-VALIDATION.md`): confirm both Platform Members confirmation dialogs render with the intended wording in a real browser (native `confirm()` text is not assertable through the automated harness).
 - No blockers for sibling/dependent plans in this phase (EventSignup entity, controllers, and tenant-isolation tests are owned by other plans in the same wave/phase).
 
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.UnitTests/Repository/GroupRepositoryTests.cs
+- FOUND: commit c63d3b9 (Task 1)
+- FOUND: commit 8bc982a (Task 2)
+- FOUND: commit ad471ea (Task 3)
+
 ---
 *Phase: 75-event-availability-signups*
 *Completed: 2026-08-27*
