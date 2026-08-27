@@ -14,7 +14,9 @@ public class EventsController(
     IEventService eventService,
     IUserService userService,
     IActiveGroupContext activeGroupContext,
-    IMapper mapper) : Controller
+    IMapper mapper,
+    IEventSignupService eventSignupService,
+    IBoardTypeResolver boardTypeResolver) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Details(int id, CancellationToken token = default)
@@ -28,6 +30,15 @@ public class EventsController(
         var currentUser = await userService.GetUserAsync(User);
         var viewModel = mapper.Map<EventViewModel>(eventEntity);
         viewModel.CanManage = currentUser.Id != 0 && await IsDmTierAsync();
+
+        var roster = await eventSignupService.GetRosterForEventAsync(id, token);
+        viewModel.Roster = mapper.Map<IList<EventSignupViewModel>>(roster);
+        viewModel.IsOneShotBoard = await boardTypeResolver.GetBoardTypeAsync(token) == BoardType.OneShot;
+
+        // Derived from the roster we already fetched rather than a second query.
+        var ownSignup = roster.FirstOrDefault(s => s.UserId == currentUser.Id);
+        viewModel.HasOwnSignup = ownSignup != null;
+        viewModel.MyAvailability = ownSignup?.Availability;
 
         return View(viewModel);
     }
@@ -182,6 +193,87 @@ public class EventsController(
 
         var seriesGroupId = await eventService.GetSeriesGroupIdAsync(seriesId, token);
         return seriesGroupId.HasValue && seriesGroupId.Value == groupId;
+    }
+
+    // The read filter already hides another board's events, and this explicit comparison is a
+    // deliberate second layer so a weakened filter still cannot let a signup be written against
+    // another board's event. With no active board there is nothing to match, so this fails
+    // closed (not permitted) rather than throwing.
+    private bool EventIsOnActiveBoard(Event candidate) =>
+        activeGroupContext.ActiveGroupId is { } groupId && candidate.GroupId == groupId;
+
+    // A player changes their own answer and nobody else's, on either board type, with no
+    // Dungeon Master override -- the acting user comes only from currentUser.Id and there is
+    // deliberately no user id, member id or signup id parameter on this action.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetAvailability(int id, VoteType availability, CancellationToken token = default)
+    {
+        var existingEvent = await eventService.GetEventWithDetailsAsync(id, token);
+        if (existingEvent == null)
+        {
+            return NotFound();
+        }
+
+        var currentUser = await userService.GetUserAsync(User);
+        if (currentUser.Id == 0)
+        {
+            return Challenge();
+        }
+
+        if (!Enum.IsDefined(typeof(VoteType), availability))
+        {
+            return BadRequest("Invalid availability value.");
+        }
+
+        if (!EventIsOnActiveBoard(existingEvent))
+        {
+            return NotFound();
+        }
+
+        await eventSignupService.SetAvailabilityAsync(id, currentUser.Id, availability, token);
+
+        return Ok();
+    }
+
+    [HttpDelete]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Withdraw(int id, CancellationToken token = default)
+    {
+        var existingEvent = await eventService.GetEventWithDetailsAsync(id, token);
+        if (existingEvent == null)
+        {
+            return NotFound();
+        }
+
+        var currentUser = await userService.GetUserAsync(User);
+        if (currentUser.Id == 0)
+        {
+            return Challenge();
+        }
+
+        if (!EventIsOnActiveBoard(existingEvent))
+        {
+            return NotFound();
+        }
+
+        // On a campaign board opting out means changing your own answer to No, not deleting the
+        // row, so withdrawing only makes sense on a one-shot board. The board type is
+        // re-resolved here rather than trusted from whether the browser rendered the button; a
+        // null board type takes this branch too, which is the fail-closed outcome we want.
+        var boardType = await boardTypeResolver.GetBoardTypeAsync(token);
+        if (boardType != BoardType.OneShot)
+        {
+            return BadRequest("Withdrawing is only supported on one-shot boards.");
+        }
+
+        var removed = await eventSignupService.WithdrawAsync(id, currentUser.Id, token);
+        if (!removed)
+        {
+            return BadRequest("You have not recorded availability for this event.");
+        }
+
+        return Ok();
     }
 
     // The DungeonMasterOnly policy attribute is the security boundary for the write actions.
