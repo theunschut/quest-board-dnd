@@ -65,7 +65,7 @@ namespace QuestBoard.Service.Controllers.Characters
             GroupRole? role = null;
             if (currentUser.Id != 0)
             {
-                role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+                role = await GetEffectiveRoleAsync();
             }
 
             viewModel.IsOwner = isOwner;
@@ -108,6 +108,13 @@ namespace QuestBoard.Service.Controllers.Characters
             if (currentUser == null)
             {
                 return Challenge();
+            }
+
+            // A SuperAdmin has no active group by design, so there is no board to stamp onto
+            // the new character. Send them to pick one rather than letting the write throw.
+            if (activeGroupContext.ActiveGroupId is not { } activeGroupId)
+            {
+                return RedirectToAction("Index", "GroupPicker");
             }
 
             viewModel.OwnerId = currentUser.Id;
@@ -168,7 +175,7 @@ namespace QuestBoard.Service.Controllers.Characters
 
             // Tag the character to the active group so the character-roster scoping applies
             // (CharacterEntity is scoped by a global query filter on GroupId).
-            character.GroupId = activeGroupContext.RequireActiveGroupId();
+            character.GroupId = activeGroupId;
 
             await characterService.AddAsync(character, croppedImageData, token);
 
@@ -440,8 +447,15 @@ namespace QuestBoard.Service.Controllers.Characters
                 return true;
             }
 
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            var role = await GetEffectiveRoleAsync();
             return role == GroupRole.Admin;
         }
+
+        // SuperAdmin has no active group by design, so short-circuit to Admin here rather than
+        // calling RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+        private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+            User.IsInRole("SuperAdmin")
+                ? GroupRole.Admin
+                : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
     }
 }
