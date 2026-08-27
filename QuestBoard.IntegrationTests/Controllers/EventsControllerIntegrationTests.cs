@@ -3,10 +3,9 @@ using System.Net;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
-// This is an intentionally-failing scaffold: it targets the Events routes as plain string
-// literals so the test project keeps compiling before the controller behind those routes
-// exists. Every fact below is expected to return 404 (route not found) until that controller
-// lands — that is the deliberate starting state for this suite, not a bug in the tests.
+// Exercises EventsController's CRUD routes, its role-gated access checks, and the SuperAdmin
+// no-active-group edge case, all via plain string route literals rather than direct controller
+// references.
 public class EventsControllerIntegrationTests(WebApplicationFactoryBase factory) : IClassFixture<WebApplicationFactoryBase>
 {
     [Fact]
