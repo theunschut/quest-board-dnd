@@ -24,4 +24,11 @@ public interface IEventService : IBaseService<Event>
     /// treated as a rejection rather than as "no constraint".
     /// </summary>
     Task<int?> GetSeriesGroupIdAsync(int seriesId, CancellationToken token = default);
+
+    /// <summary>
+    /// Inserts the event together with one automatic signup per member id in a single save, so
+    /// a campaign board can never hold an event that some members have no row for. The
+    /// automatic rows deliberately leave the answered marker unset.
+    /// </summary>
+    Task AddWithCampaignFanOutAsync(Event newEvent, IEnumerable<int> memberIds, CancellationToken token = default);
 }

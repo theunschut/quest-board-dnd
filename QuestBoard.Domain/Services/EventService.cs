@@ -23,4 +23,10 @@ internal class EventService(IEventRepository repository, IMapper mapper) : BaseS
     {
         return await repository.GetSeriesGroupIdAsync(seriesId, token);
     }
+
+    /// <inheritdoc/>
+    public async Task AddWithCampaignFanOutAsync(Event newEvent, IEnumerable<int> memberIds, CancellationToken token = default)
+    {
+        await repository.AddWithCampaignFanOutAsync(newEvent, memberIds, token);
+    }
 }

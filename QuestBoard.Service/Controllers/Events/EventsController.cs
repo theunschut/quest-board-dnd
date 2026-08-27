@@ -80,7 +80,19 @@ public class EventsController(
         // insert.
         newEvent.GroupId = activeGroupId;
 
-        await eventService.AddAsync(newEvent, token);
+        var boardType = await boardTypeResolver.GetBoardTypeAsync(token);
+        if (boardType == BoardType.Campaign)
+        {
+            // Every member gets an automatic Yes row, Dungeon Masters and Admins included --
+            // a campaign board has no opt-in path, so a role filter would remove them from the
+            // feature entirely rather than merely omit them from this one event.
+            var members = await userService.GetAllGroupMembersAsync(activeGroupId, token);
+            await eventService.AddWithCampaignFanOutAsync(newEvent, members.Select(m => m.Id).ToList(), token);
+        }
+        else
+        {
+            await eventService.AddAsync(newEvent, token);
+        }
 
         TempData["Success"] = "Event created successfully.";
 
