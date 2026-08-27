@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 78
-current_phase_name: Link Preview Foundation and Quest Cards
+current_phase: 75
+current_phase_name: event-availability-signups
 status: executing
 stopped_at: Phase 75 context gathered
-last_updated: "2026-08-27T11:04:17.722Z"
+last_updated: "2026-08-27T13:25:32.673Z"
 last_activity: 2026-08-27
-last_activity_desc: Phase 74 complete, transitioned to Phase 78
+last_activity_desc: Phase 75 execution started
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 24
+  total_plans: 29
   completed_plans: 15
   percent: 38
 ---
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 74 — event-schema-crud-and-calendar-display
+**Current focus:** Phase 75 — event-availability-signups
 
 ## Current Position
 
-Phase: 78 — Link Preview Foundation and Quest Cards
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-27 — Phase 74 complete, transitioned to Phase 78
+Phase: 75 (event-availability-signups) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 75
+Last activity: 2026-08-27 — Phase 75 execution started
 
 ## Performance Metrics
 
@@ -57,6 +57,8 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 
 - Phase 78 added 2026-08-26: Link Preview Foundation and Quest Cards — Open Graph / Twitter Card unfurls for quest links, gated behind signed share links.
 - Phase 79 added 2026-08-26: Character and Contact Link Cards — extends the signed-link mechanism to characters and contacts, including portrait images and the `IsRevealed` spoiler gate.
+- Phase 80 added 2026-08-27: Contact Categories — group NPCs under named headings on the Contacts index. From a board user's feature request relayed by the operator.
+- Phase 81 added 2026-08-27: Contact Tags and Filtering — many-to-many free-form tags on contacts plus a filter on the index. Same request; the requester staged it after categories, so it is a separate phase and may stay unplanned.
 
 ### Pending Todos
 

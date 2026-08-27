@@ -1,7 +1,7 @@
 # Milestone v9.0: Rolling Improvements
 
 **Status:** 🚧 IN PROGRESS
-**Phases:** 72–79 so far (open-ended)
+**Phases:** 72–81 so far (open-ended)
 **Working branch:** `milestone/v9-rolling-improvements`
 
 ## Overview
@@ -11,6 +11,8 @@ A rolling bucket milestone for small, ad-hoc features and bug fixes. Unlike v1.0
 The opening scope was three items. Two are small and independent: closing a UX gap where a player cannot change the character on a quest they have already signed up for, and resolving five stale HIGH GitHub security alerts left behind by the v5.0 EuphoriaInn→QuestBoard rename. The third is substantial — Calendar Events, spanning four phases, which adds dated informational entries to the calendar with per-event player availability and an optional recurrence model.
 
 Appended 2026-08-26: **Link Previews**, spanning two phases, so that a quest, character, or contact link pasted into Discord or Slack renders a rich preview card instead of a bare URL. The cards are gated behind explicitly-minted signed share links rather than being public, because a board is private and external unfurl caches are permanent.
+
+Appended 2026-08-27: **NPC Contact Organisation**, spanning two phases, from a board user's request — categories first, so a long flat Contacts list can be broken into named headings, then free-form tags with a filter on top. The two are split because the requester staged them that way and because they are different data models: a category is a single grouping a contact sits under, a tag is a many-to-many label it carries. Phase 81 can sit unplanned indefinitely without blocking 80.
 
 ## Phases
 
@@ -367,12 +369,50 @@ Plans:
 - **Serving unauthenticated bytes from the database.** Without an explicit `Content-Type` and `nosniff`, an uploaded file that is not really an image becomes a content-sniffing vector on a path that requires no login at all. A size cap matters for the same reason — this endpoint is reachable by anyone holding the link, and by every crawler that sees it.
 - **A third copy of the card markup.** Quests, characters, and contacts across desktop and mobile is six call sites. Extend Phase 78's partial; do not hand-copy it — the exact drift class PROJECT.md blames for the `Characters/Edit.cshtml` `classIndex` bug.
 
+### Phase 80: Contact Categories
+
+**Goal**: A DM can group the board's NPCs under named categories — "Corridor", "Guild Members", "Last Bastion" — and the Contacts index renders them under those headings instead of one flat list, on both desktop and mobile.
+**Depends on**: Nothing (independent of the events chain 74–77 and the link-preview chain 78–79; touches only the Contacts feature)
+**Requirements**: TBD
+**Plans**: TBD (run `/gsd-plan-phase 80`)
+
+**Origin:** operator-relayed feature request from a board user, 2026-08-27 — "Misschien leuk … om NPC's in categorieën te kunnen onderverdelen? Dat ik verschillende kopjes/categorieën kan maken om de boel wat overzichtelijk te houden."
+
+**Scope notes:**
+
+- NPCs are `Contact` in this codebase (`QuestBoard.Domain/Models/Contact.cs`, `QuestBoard.Service/Controllers/Contacts/ContactsController.cs`). Categories are a Contacts-only concern; nothing about Characters or Quests changes.
+- Categories are per-group data, not global. Every read must sit behind the existing fail-closed group query filter (`QuestBoardContext.cs`) — this app has shipped two real cross-tenant leaks (Phases 49/55), and a category name is itself campaign-revealing.
+- The index already carries two visibility gates that grouping must not disturb: `IsRevealed` (the DM spoiler gate) and the per-group "show hidden" toggle. A category heading must never disclose the existence of a contact the viewer cannot see — including an empty-looking or count-bearing heading.
+- Uncategorised contacts need a defined home. Whether that is an "Ungrouped" heading or a flat remainder block is a discuss-phase decision, not an implementation detail.
+- Both the desktop and mobile Contacts index views render the list — two call sites that should share one partial rather than diverge (the drift class PROJECT.md blames for the `Characters/Edit.cshtml` `classIndex` bug).
+
+**Requires a discuss-phase decision:** whether a contact belongs to exactly one category (a single heading, matching how the requester described it) or to several, and who may create or rename categories — any DM-tier user, or admins only.
+
+### Phase 81: Contact Tags and Filtering
+
+**Goal**: Contacts can carry free-form tags — "shopkeeper", "quest giver" — independently of which category they sit under, and the Contacts index offers a filter that narrows the list to the selected tags.
+**Depends on**: Phase 80 (shares the Contacts index rendering surface and whatever grouping partial that phase establishes)
+**Requirements**: TBD
+**Plans**: TBD (run `/gsd-plan-phase 81`)
+
+**Origin:** same request as Phase 80 — "Misschien later nog een filter optie, dat ik tags kan maken op bv shopkeeper en dat er dan gefilterd kan worden erop." The requester explicitly staged this after categories; it is separated here for that reason and can stay unplanned until wanted.
+
+**Scope notes:**
+
+- Tags are many-to-many and orthogonal to Phase 80's category — a contact in "Last Bastion" can also be tagged `shopkeeper`. Do not model tags as a second category column.
+- Filtering must compose with the existing visibility gates rather than route around them: a tag filter narrows what the viewer could already see, never widens it. The filtered query has to run through the same group filter and reveal/hidden logic as the unfiltered index.
+- Tag vocabulary is per-group. A tag list rendered in the filter UI leaks the group's tag names, so the vocabulary read needs the same tenancy treatment as the contacts themselves.
+- Filter state belongs in the URL query string, not in session — the "show hidden" toggle's per-group session scoping (`ToggleShowHidden`) exists for a different reason and is not the pattern to copy here.
+
+**Requires a discuss-phase decision:** whether multi-tag selection is AND or OR, and whether players may create tags or only DM-tier users.
+
 ## Phase Ordering Rationale
 
 - Phases 72 and 73 share no code, no files, and no data — either order works, and neither blocks the other.
 - 72 is sequenced first because it is the operator's driving request and carries the user-visible value; 73 is maintenance. Research suggested the reverse (bank the zero-risk win first, and start the rate-limited graph refresh early), so flipping them costs nothing if preferred.
 - Within Phase 72, the shared partial must exist before either host view can call it.
 - The events feature (74–77) is a strict dependency chain: schema → signups → recurrence → overview. Each phase ships a usable increment rather than scaffolding.
+- Phases 80 and 81 share no code or data with the events chain or the link-preview chain and can be scheduled at any point. 80 must precede 81 only because 81 filters the list 80 reorganises; if categories are ever dropped, 81 stands on its own against a flat list.
 - Recurrence (76) is sequenced *after* signups (75) rather than before, because materialized occurrences must carry availability from the moment they exist.
 - **If scope needs cutting mid-milestone**, stopping after 75 leaves a complete, usable non-recurring events feature. Recurrence and the overview grid are separable value-adds, not blocking dependencies.
 - Phases 78 and 79 (link previews) were appended on 2026-08-26 and are independent of the events chain — they touch no event, signup, or calendar code, so they can run before, after, or alongside 74–77.
@@ -441,6 +481,8 @@ Plans:
 Phases 72 and 73 needed no research step — both were researched to implementation-ready depth with verified file paths and line numbers. See `.planning/research/SUMMARY.md`.
 
 **Phase 78 needs a research step.** Open Graph and Twitter Card behaviour is defined by each consumer, not by a spec: Discord, Slack, iMessage, and WhatsApp differ on description length, image aspect ratio and size limits, redirect handling, and cache invalidation. Getting those wrong produces a silently absent card rather than an error, so the limits must be established before planning rather than discovered by trial. Phase 79 inherits the findings and needs no separate research pass.
+
+**Phases 80 and 81 need no external research.** Both are ordinary EF Core schema-plus-CRUD work against a feature that already exists in this codebase; what they need is a discuss-phase pass on the modelling questions noted under each phase, not a web search.
 
 ---
 *Roadmap created: 2026-08-25*
