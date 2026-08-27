@@ -1,4 +1,5 @@
 using AutoMapper;
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Repository.Entities;
@@ -41,5 +42,31 @@ internal class EventRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         // if the filter is ever weakened.
         var series = await DbContext.EventSeries.FirstOrDefaultAsync(s => s.Id == seriesId, token);
         return series?.GroupId;
+    }
+
+    /// <inheritdoc/>
+    public async Task AddWithCampaignFanOutAsync(Event newEvent, IEnumerable<int> memberIds, CancellationToken token = default)
+    {
+        var entity = Mapper.Map<EventEntity>(newEvent);
+
+        // Distinct so a duplicated id in the caller's member list can never violate the
+        // signup table's unique (EventId, UserId) pair index. Each automatic row leaves
+        // Availability at Yes and its answered-marker column at its default (unset) -- that
+        // default is what keeps an automatic row distinguishable from a real answer later.
+        foreach (var memberId in memberIds.Distinct())
+        {
+            entity.Signups.Add(new EventSignupEntity
+            {
+                UserId = memberId,
+                Availability = (int)VoteType.Yes
+            });
+        }
+
+        // One save for the whole graph -- the relationship supplies EventId to every signup
+        // row when the event itself is saved, so there is never a moment where the event
+        // exists without every member's row.
+        await DbSet.AddAsync(entity, token);
+        await DbContext.SaveChangesAsync(token);
+        newEvent.Id = entity.Id;
     }
 }
