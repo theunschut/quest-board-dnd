@@ -142,7 +142,20 @@ public class EntityProfile : Profile
 
         CreateMap<Event, EventEntity>()
             .ForMember(dest => dest.Group, opt => opt.Ignore())
-            .ForMember(dest => dest.Series, opt => opt.Ignore());
+            .ForMember(dest => dest.Series, opt => opt.Ignore())
+            .ForMember(dest => dest.Signups, opt => opt.Ignore());
+
+        // EventSignup mapping — Availability is stored as int and cast to/from VoteType,
+        // matching the PlayerSignup enum-cast pattern. UserName is a display-only projection
+        // from the signup's User navigation.
+        CreateMap<EventSignupEntity, EventSignup>()
+            .ForMember(dest => dest.Availability, opt => opt.MapFrom(src => (VoteType)src.Availability))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.Name : string.Empty));
+
+        CreateMap<EventSignup, EventSignupEntity>()
+            .ForMember(dest => dest.Availability, opt => opt.MapFrom(src => (int)src.Availability))
+            .ForMember(dest => dest.Event, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore());
 
         // DungeonMasterProfile mappings
         CreateMap<DungeonMasterProfileEntity, DungeonMasterProfile>()

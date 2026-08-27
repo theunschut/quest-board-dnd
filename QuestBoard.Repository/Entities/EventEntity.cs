@@ -39,6 +39,11 @@ public class EventEntity : IEntity
     [ForeignKey(nameof(GroupId))]
     public virtual GroupEntity Group { get; set; } = null!;
 
+    // Exists so an event and its automatic board-wide signups can be written in a single
+    // save. The matching domain model deliberately has no counterpart, so mapping a domain
+    // model onto a tracked entity can never replace this navigation.
+    public virtual ICollection<EventSignupEntity> Signups { get; set; } = [];
+
     // There is deliberately no author column (no CreatedByUserId, no DungeonMasterId): an
     // event is board-level information rather than one person's item, so any Dungeon Master
     // on the board may edit or delete it.
