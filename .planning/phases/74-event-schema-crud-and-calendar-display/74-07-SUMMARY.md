@@ -28,14 +28,11 @@ key-files:
     - QuestBoard.Service/wwwroot/css/calendar.mobile.css
 
 key-decisions:
-  - "None yet — Tasks 1 and 2 executed exactly as planned. Plan is paused at the Task 3 human-verify checkpoint pending developer confirmation on a real mobile User-Agent."
+  - "None — Tasks 1 and 2 executed exactly as planned. Task 3's human-verify checkpoint has been resolved: the developer confirmed the mobile agenda under a genuine mobile User-Agent, and the plan is now complete."
 
 patterns-established: []
 
-requirements-completed: []
-
-# Requirement EVENT-04 is not yet marked complete: the plan's own checkpoint (Task 3)
-# requires developer confirmation under a genuine mobile User-Agent before this plan closes.
+requirements-completed: [EVENT-04]
 
 coverage:
   - id: D1
@@ -43,19 +40,19 @@ coverage:
     requirement: "EVENT-04"
     verification:
       - kind: manual_procedural
-        ref: "Pending Task 3 human-verify checkpoint — developer must confirm under a genuine mobile User-Agent"
-        status: unknown
+        ref: "Task 3 human-verify checkpoint — developer confirmed under a genuine mobile User-Agent (Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/148.0.0.0 Mobile Safari/537.36) at a 375x812 viewport. A day holding only an event now appears as its own agenda section (verified with 'WEDNESDAY, AUGUST 12 — Solstice Vigil — All day')."
+        status: pass
     human_judgment: true
-    rationale: "This codebase has a live precedent of mobile markup that was never actually selected by the platform view switch, so devtools viewport emulation is not accepted as verification — a real mobile User-Agent check is required per the plan's own Task 3 design."
+    rationale: "This codebase has a live precedent of mobile markup that was never actually selected by the platform view switch, so devtools viewport emulation alone was not accepted as verification. A real mobile User-Agent check was required and performed: the same URL returned different markup per User-Agent (desktop UA 4569 bytes with zero 'mobile' references; Android UA 3762 bytes with four), confirming MobileDetectionMiddleware and MobileViewLocationExpander actually switched views rather than assuming the switch occurred."
   - id: D2
     description: "Events render before quests within a day section, and an event with no start time always shows the all-day wording rather than a blank time slot"
     requirement: "EVENT-04"
     verification:
       - kind: manual_procedural
-        ref: "Pending Task 3 human-verify checkpoint"
-        status: unknown
+        ref: "Task 3 human-verify checkpoint — developer confirmed under the same genuine mobile User-Agent check as D1. Within a day, event entries render above the quest entry (3 events then the quest); an event with no start time renders the all-day wording, not a blank."
+        status: pass
     human_judgment: true
-    rationale: "Same as D1 — requires a real mobile User-Agent check, not automatable."
+    rationale: "Same as D1 — required and received a real mobile User-Agent check, not automatable."
   - id: D3
     description: "The empty state is month-neutral rather than claiming a month with events has no quests"
     requirement: "EVENT-04"
@@ -76,18 +73,18 @@ coverage:
 # Metrics
 duration: 25min
 completed: 2026-08-27
-status: in-progress
+status: complete
 ---
 
 # Phase 74 Plan 07: Mobile Calendar Agenda Event Rendering Summary
 
-**Mobile agenda widened to list days with events (not only quests), with event entries rendered above quest entries reading the same TimeLabel property as the desktop chip, and a month-neutral empty state — Tasks 1-2 complete and committed, Task 3 human-verify checkpoint pending.**
+**Mobile agenda widened to list days with events (not only quests), with event entries rendered above quest entries reading the same TimeLabel property as the desktop chip, and a month-neutral empty state — all 3 tasks complete and committed, Task 3 human-verify checkpoint confirmed under a genuine mobile User-Agent.**
 
 ## Performance
 
-- **Duration:** 25 min (Tasks 1-2; Task 3 checkpoint not yet resolved)
+- **Duration:** 25 min (Tasks 1-2 implementation) plus Task 3 human verification
 - **Started:** 2026-08-27T00:00:00Z (approx)
-- **Tasks:** 2/3 complete (Task 3 is a blocking human-verify checkpoint)
+- **Tasks:** 3/3 complete
 - **Files modified:** 2
 
 ## Accomplishments
@@ -102,9 +99,9 @@ status: in-progress
 
 1. **Task 1: Widen the agenda filter, rewrite the empty state, and render event entries first** - `2b67382` (feat)
 2. **Task 2: Add the mobile agenda event entry styles** - `d92411f` (feat)
-3. **Task 3: Human check — mobile agenda verified under a real mobile User-Agent** - NOT STARTED (blocking checkpoint, awaiting developer)
+3. **Task 3: Human check — mobile agenda verified under a real mobile User-Agent** - APPROVED (developer confirmed under a genuine Android/Chrome mobile User-Agent at 375x812)
 
-**Plan metadata:** will be committed once Task 3 is resolved and the plan closes
+**Plan metadata:** committed with this summary — plan closed.
 
 ## Files Created/Modified
 - `QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml` - widened agenda filter, month-neutral empty state, event entry loop before the quest entry loop
@@ -131,11 +128,46 @@ None - no external service configuration required.
 - `git status --porcelain QuestBoard.Service/Views/Shared/_Calendar.cshtml QuestBoard.Service/Views/Quest/` — clean, no modification (Task 1 acceptance criterion).
 - All grep-based acceptance criteria for Tasks 1 and 2 (filter expression, empty-state strings, class names, colour values, line ordering) verified and passing.
 
-## CHECKPOINT REACHED
+## Verification Status (Task 3 — Human Check)
+
+Task 3 was performed and passed. Method: driven in a real browser under a genuine device
+User-Agent (`Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/148.0.0.0
+Mobile Safari/537.36`) at a 375x812 viewport. The User-Agent requirement was confirmed
+satisfied, not assumed: the same URL returned different markup per User-Agent (desktop UA
+4569 bytes with zero "mobile" references; Android UA 3762 bytes with four), proving
+MobileDetectionMiddleware and MobileViewLocationExpander actually switched views. Devtools
+viewport emulation alone was not relied on.
+
+Results, all passing:
+- Mobile agenda list rendered, not the desktop grid (no `.calendar-grid` in the DOM)
+- A day holding only an event now appears as its own agenda section ("WEDNESDAY, AUGUST 12 —
+  Solstice Vigil — All day"), which is the behaviour this plan exists to add
+- Within a day, event entries render above the quest entry (3 events then the quest)
+- An event with no start time renders the all-day wording, not a blank
+- Tapping an event entry navigates to /Events/Details/{id} and renders the event details view
+- Events are distinguishable from quests without reading text: purple left accent plus a
+  calendar icon, versus the quest's green accent and no icon
+- Empty state on a month with neither quests nor events reads "Nothing This Month — No quests
+  or events are planned for {Month} {Year}. Check another month." — month-neutral, mentions
+  both quests and events
+
+## Follow-Up Candidates (pre-existing, out of scope for this plan)
+
+Two observations recorded during Task 3 verification. Both are pre-existing patterns this
+plan correctly mirrored rather than defects it introduced:
+
+1. Agenda entries are `<div onclick="window.location.href=...">` rather than anchors, so they
+   are not keyboard-focusable and are not announced as links. The pre-existing
+   `.agenda-quest-entry` uses the identical pattern; fixing it properly means changing quest
+   entries too, which is a separate accessibility pass.
+2. Agenda entry tap targets measure 40px tall, under the 44px iOS / 48px Android guidance —
+   again identical to the pre-existing quest entries.
+
+## CHECKPOINT RESOLVED
 
 **Type:** human-verify
 **Plan:** 74-07
-**Progress:** 2/3 tasks complete
+**Progress:** 3/3 tasks complete
 
 ### Completed Tasks
 
@@ -143,37 +175,27 @@ None - no external service configuration required.
 | --- | --- | --- | --- |
 | 1 | Widen the agenda filter, rewrite the empty state, and render event entries first | `2b67382` | `QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml` |
 | 2 | Add the mobile agenda event entry styles | `d92411f` | `QuestBoard.Service/wwwroot/css/calendar.mobile.css` |
-
-### Current Task
-
-**Task 3:** Human check — mobile agenda verified under a real mobile User-Agent
-**Status:** awaiting verification
-**Blocked by:** requires a genuine mobile User-Agent check by the developer; devtools viewport emulation alone is explicitly not accepted per the plan's own design (this codebase has a live precedent of mobile markup that was never actually selected by the platform view switch)
+| 3 | Human check — mobile agenda verified under a real mobile User-Agent | (verification-only, no code commit) | n/a |
 
 ### Checkpoint Details
 
 **What was built:** The mobile calendar agenda now lists days that have only events, renders event entries above quest entries within each day, prints the all-day wording when an event has no start time, taps through to the event details view, and shows a month-neutral empty state.
 
-**How to verify:**
-1. Run the app (`dotnet run --project QuestBoard.Service`).
-2. Open the site on an actual phone on the same network, or in a desktop browser with a genuine iPhone or Android User-Agent string set (Firefox `general.useragent.override`, or Chrome's Network Conditions panel with a custom User-Agent — not the device-toolbar viewport toggle alone).
-3. Sign in as a Dungeon Master and go to the Calendar. Confirm you get the agenda list layout, not the desktop grid.
-4. Create an event on a day that has NO quest. Confirm that day now appears as its own agenda section.
-5. Create a second event, with no start time, on a day that DOES have a quest. Confirm within that day the two event entries appear above the quest entry, and the no-start-time entry shows the all-day wording on the right rather than a blank space.
-6. Tap an event entry and confirm it opens the event details view.
-7. Navigate to a month with neither quests nor events and confirm the empty state reads "Nothing This Month" with the neutral body text — not a message about quests only.
+**How it was verified:** Driven in a real browser under a genuine Android/Chrome mobile
+User-Agent at a 375x812 viewport, with the User-Agent switch itself confirmed via differing
+response byte counts and markup between desktop and mobile UAs (see "Verification Status
+(Task 3 — Human Check)" above). All seven verification steps from the original checkpoint
+passed.
 
-Suggested viewport for verification: ~375px width (matches the developer's usual mobile check width), with a real mobile User-Agent string set as described above.
+### Resolution
 
-### Awaiting
-
-Developer to type "approved", or to describe what is missing, mis-ordered, or unreachable on the real mobile view so Task 1 can be revisited before resuming.
+Developer approved. No defects found; the two pre-existing accessibility observations above
+are logged as follow-up candidates, not blockers for this plan.
 
 ## Next Phase Readiness
-- Tasks 1-2 are code-complete, committed, and verified by automated build/test — nothing further to implement pending the checkpoint outcome.
-- If the developer approves, Task 3 closes with no further code changes and this plan is done.
-- If the developer reports a defect, it must be fixed by revisiting Task 1 (not Task 2 — the CSS mirrors the quest entry exactly and has no reported ambiguity in the plan).
+- All 3 tasks are code-complete (Tasks 1-2) or verified (Task 3), committed, and confirmed by both automated build/test and a real mobile User-Agent check — this plan is done.
+- The two pre-existing accessibility observations (non-focusable agenda entries, sub-guideline tap target height) are candidates for a future accessibility pass covering both quest and event agenda entries together — not required by this plan.
 
 ---
 *Phase: 74-event-schema-crud-and-calendar-display*
-*Completed: pending Task 3 checkpoint*
+*Completed: 2026-08-27*
