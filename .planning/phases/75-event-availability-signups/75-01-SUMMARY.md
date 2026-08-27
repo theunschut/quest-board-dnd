@@ -169,3 +169,7 @@ None - no external service configuration required.
 ---
 *Phase: 75-event-availability-signups*
 *Completed: 2026-08-27*
+
+## Self-Check: PASSED
+
+All 6 created/modified files verified present on disk (EventSignup.cs, IEventSignupRepository.cs, IEventSignupService.cs, EventSignupService.cs, EventSignupRepository.cs, EventSignupRepositoryTests.cs) and all 3 task commits (`e125f57`, `3cd1efc`, `bd20522`) confirmed in `git log --oneline`.
