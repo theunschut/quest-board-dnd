@@ -113,6 +113,15 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
             .FirstOrDefaultAsync(ug => ug.UserId == userId && ug.GroupId == groupId, token);
         if (ug == null) return;
         DbContext.UserGroups.Remove(ug);
+
+        // Everything this member holds on this board goes, past and future, whether the row
+        // was automatic or deliberate. A campaign row is mostly an automatic default recording
+        // nothing, so erasing it loses far less than erasing a record of something that
+        // happened. Quest signups, date votes, characters, gold and transactions deliberately
+        // survive a member leaving; extending this cleanup to them is out of scope.
+        var signups = await GetEventSignupsForMemberIgnoringActiveBoardAsync(groupId, userId, token);
+        DbContext.EventSignups.RemoveRange(signups);
+
         await DbContext.SaveChangesAsync(token);
     }
 
@@ -126,6 +135,17 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
             .IgnoreQueryFilters()
             .Where(e => e.GroupId == groupId && e.Date >= today)
             .Select(e => e.Id)
+            .ToListAsync(token);
+    }
+
+    // Same reasoning as GetFutureEventIdsForGroupIgnoringActiveBoardAsync: the ambient filter
+    // scopes to the caller's selected board, while this operation targets the board named by
+    // the groupId argument, so scope is re-imposed explicitly from that argument.
+    private async Task<List<EventSignupEntity>> GetEventSignupsForMemberIgnoringActiveBoardAsync(int groupId, int userId, CancellationToken token)
+    {
+        return await DbContext.EventSignups
+            .IgnoreQueryFilters()
+            .Where(es => es.UserId == userId && es.Event.GroupId == groupId)
             .ToListAsync(token);
     }
 

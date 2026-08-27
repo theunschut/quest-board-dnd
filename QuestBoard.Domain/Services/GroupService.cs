@@ -20,10 +20,20 @@ internal class GroupService(IGroupRepository repository, IMapper mapper)
     public async Task<bool> HasMembersAsync(int groupId, CancellationToken token = default)
         => await repository.HasMembersAsync(groupId, token);
 
+    /// <summary>
+    /// The single chokepoint every membership addition funnels through — the Platform group
+    /// page and the invite flow via the user service both call this and nowhere else. Anything
+    /// that must happen when a member joins a board belongs behind it.
+    /// </summary>
     /// <inheritdoc/>
     public async Task AddMemberAsync(int groupId, int userId, GroupRole groupRole, CancellationToken token = default)
         => await repository.AddMemberAsync(groupId, userId, groupRole, token);
 
+    /// <summary>
+    /// The single chokepoint every membership removal funnels through — the Platform group
+    /// page and admin user removal both call this and nowhere else. Anything that must happen
+    /// when a member leaves a board belongs behind it.
+    /// </summary>
     /// <inheritdoc/>
     public async Task RemoveMemberAsync(int groupId, int userId, CancellationToken token = default)
         => await repository.RemoveMemberAsync(groupId, userId, token);
