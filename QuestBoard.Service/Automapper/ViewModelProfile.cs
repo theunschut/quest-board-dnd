@@ -102,7 +102,18 @@ public class ViewModelProfile : Profile
 
         // Event to EventViewModel
         CreateMap<Event, EventViewModel>()
-            .ForMember(dest => dest.CanManage, opt => opt.Ignore());
+            .ForMember(dest => dest.CanManage, opt => opt.Ignore())
+            // Roster, IsOneShotBoard, HasOwnSignup and MyAvailability are all computed
+            // server-side per request, exactly like CanManage above.
+            .ForMember(dest => dest.Roster, opt => opt.Ignore())
+            .ForMember(dest => dest.IsOneShotBoard, opt => opt.Ignore())
+            .ForMember(dest => dest.HasOwnSignup, opt => opt.Ignore())
+            .ForMember(dest => dest.MyAvailability, opt => opt.Ignore());
+
+        // EventSignup to EventSignupViewModel -- property names line up so no member
+        // configuration is needed. There is no reverse map: the roster is read-only, and the
+        // write actions take primitive route/form values rather than a bound model.
+        CreateMap<EventSignup, EventSignupViewModel>();
 
         // EventViewModel to Event
         // GroupId, SeriesId, SeriesSlotIndex and CreatedAt are set server-side and are never
