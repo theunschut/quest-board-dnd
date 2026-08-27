@@ -31,6 +31,8 @@ public class EventSignupEntity : IEntity
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // A null value means the answer has never been changed since it was created.
+    // A null value means no person has ever set this answer - the row was created by an
+    // automatic signup pass. Any non-null value means a person deliberately chose this
+    // answer, including when they chose it on the click that created the row.
     public DateTime? UpdatedAt { get; set; }
 }
