@@ -27,7 +27,7 @@ Not in this phase: the cross-event availability grid and its untouched-vs-real r
 
 - **D-03: On a One-Shot board the roster lists only members who actually have a row.** No "hasn't answered yet" group, no count of the silent, and therefore no second query for board membership on that path. **Accepted cost:** on a One-Shot board you cannot tell "nobody else has looked" from "this is a small board".
 
-- **D-04: The roster shows plain Yes / Maybe / No and does *not* mark an untouched Campaign default.** That distinction is Phase 77's job (EVTVIEW-02). **Accepted cost:** until Phase 77 ships, a fresh Campaign event's roster reads as unanimous agreement that nobody actually gave. This is the ROADMAP's named "Yes by default read as a real answer" risk, knowingly left in presentation — which is exactly where the ROADMAP says the fix belongs.
+- **D-04: The roster shows plain Yes / Maybe / No and does not mark an untouched Campaign default.** That distinction is Phase 77's job (EVTVIEW-02). **Accepted cost:** until Phase 77 ships, a fresh Campaign event's roster reads as unanimous agreement that nobody actually gave. This is the ROADMAP's named "Yes by default read as a real answer" risk, knowingly left in presentation — which is exactly where the ROADMAP says the fix belongs.
 
 - **D-05: Nothing about availability appears on the calendar.** No marker on the desktop chip, no marker on the mobile agenda entry, no count. `Views/Shared/_Calendar.cshtml` and `Views/Calendar/Index.Mobile.cshtml` are **untouched this phase**, which keeps the five out-of-scope `Quest/Details(.Mobile).cshtml` call sites that Phase 74 D-09 protects entirely outside this phase's blast radius. The chip already links to the details view, so no information is unreachable.
 
@@ -87,7 +87,7 @@ Not in this phase: the cross-event availability grid and its untouched-vs-real r
 
 - **D-25: The existing native `confirm()` gains a count of the signup rows that will be destroyed** — e.g. *"Delete this event? N people have signed up and their availability will be lost."* This closes Phase 74 D-17, which explicitly deferred the question to this phase. The dialog stays a native `confirm()`: it is the app's delete idiom throughout (`revokeSignup`, the event delete itself), and a Bootstrap modal or type-to-confirm would be a new pattern on one page.
 
-- **D-26: The count is of *all* signup rows, not only real answers.** **Explicitly chosen with the cost stated: on a Campaign board every member holds a row, so the dialog always reports the full member count and always fires at maximum volume, including on a freshly created event where nothing of value would be lost.** Do not "correct" this to count `HasAnswered` rows — it is a deliberate decision, not an oversight.
+- **D-26: The count is of all signup rows, not only real answers.** **Explicitly chosen with the cost stated: on a Campaign board every member holds a row, so the dialog always reports the full member count and always fires at maximum volume, including on a freshly created event where nothing of value would be lost.** Do not "correct" this to count `HasAnswered` rows — it is a deliberate decision, not an oversight.
 
 - **D-27: No DB-side work is needed for the delete itself.** `FK_EventSignups_Events_EventId` is already `ReferentialAction.Cascade` in the shipped migration, so removing an event removes its signups.
 

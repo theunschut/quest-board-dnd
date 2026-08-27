@@ -177,9 +177,17 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 75-01-PLAN.md — EventSignup domain model, repository, service, mapper and DI wiring, with the answered-marker stamping rule (wave 1)
 - [ ] 75-02-PLAN.md — Atomic campaign backfill on join and signup cleanup on leave, plus the Platform remove confirmation (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 75-03-PLAN.md — Availability write actions, roster view models, and the atomic create-time campaign fan-out (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 75-04-PLAN.md — Event details availability surface: answer buttons, withdraw control, roster, and the signup-aware delete confirmation (wave 3)
 - [ ] 75-05-PLAN.md — Lifecycle, ownership and two-group tenant isolation integration tests, and the validation sign-off (wave 3)
 
