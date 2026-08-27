@@ -5,8 +5,8 @@ milestone_name: Rolling Improvements
 current_phase: 78
 current_phase_name: Link Preview Foundation and Quest Cards
 status: executing
-stopped_at: Phase 78 UI-SPEC approved
-last_updated: "2026-08-27T07:24:10.834Z"
+stopped_at: Phase 75 context gathered
+last_updated: "2026-08-27T09:17:23.026Z"
 last_activity: 2026-08-27
 last_activity_desc: Phase 74 complete, transitioned to Phase 78
 progress:
@@ -90,9 +90,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-08-26T14:13:27.400Z
-Stopped at: Phase 78 UI-SPEC approved
-Resume file: .planning/phases/78-link-preview-foundation-and-quest-cards/78-UI-SPEC.md
+Last session: 2026-08-27T09:17:23.000Z
+Stopped at: Phase 75 context gathered
+Resume file: .planning/phases/75-event-availability-signups/75-CONTEXT.md
 
 ## Operator Next Steps
 
