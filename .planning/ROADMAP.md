@@ -181,7 +181,7 @@ Plans:
 1. On a One-Shot board, no signup exists for an event until a player creates one, and they can record Yes, Maybe, or No.
 2. On a Campaign board, every member has a signup on each event with availability Yes from the moment the event exists, and opting out flips their own answer to No rather than deleting the signup.
 3. A player can change their own availability at any time, and cannot change anyone else's.
-4. A member joining a Campaign board is auto-signed-up to future events; a member leaving keeps their past answers while their future auto-signups are removed.
+4. A member joining a Campaign board is auto-signed-up to every event dated today or later; a member leaving has all of their event signups on that board removed, past and future.
 5. An integration test using two distinct groups proves a player cannot read or write availability on another board's event.
 
 **Scope notes:**

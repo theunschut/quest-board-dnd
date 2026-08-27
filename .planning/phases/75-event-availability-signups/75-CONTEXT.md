@@ -73,7 +73,7 @@ Not in this phase: the cross-event availability grid and its untouched-vs-real r
 
 - **D-20: Leaving deletes every event signup row that member holds on that board — past and future, auto-created and deliberate.** No date boundary, no touched-versus-untouched branch.
 
-- **D-21: This amends EVTAVAIL-04, which must be updated.** The requirement currently reads *"a member who leaves keeps their past answers while their future auto-signups are removed."* Under D-20 the first clause is false. `.planning/REQUIREMENTS.md:44` needs rewording so the requirement and the code do not silently diverge — this is a roadmap/requirements action, not something to change quietly during implementation.
+- **D-21: This amended EVTAVAIL-04 and the roadmap criterion that mirrored it — already done, no action needed.** The requirement previously read *"a member who leaves keeps their past answers while their future auto-signups are removed"*, which D-20 makes false. Both `.planning/REQUIREMENTS.md` (EVTAVAIL-04) and `.planning/ROADMAP.md` (Phase 75 success criterion 4) were reworded on 2026-08-27 to match D-20, so the requirement, the acceptance bar, and this context now agree. Treat the updated wording as canonical.
 
 - **D-22: Accepted inconsistency with the rest of the app, chosen knowingly.** `GroupRepository.RemoveMemberAsync` (`QuestBoard.Repository/GroupRepository.cs:78`) deletes exactly one row — the `UserGroups` membership — and nothing else. So today a departing member keeps their `PlayerSignupEntity` rows, their `PlayerDateVoteEntity` votes, their `CharacterEntity` records (which carry their own `GroupId` and stay visible on the board), and their gold and `UserTransactionEntity` history. Their account survives too — `AdminController.DeleteUser` is membership-removal only. Event availability therefore becomes the **only** thing erased on leave.
 
@@ -123,7 +123,7 @@ Not discussed — planner decides:
 
 ### Phase scope and requirements
 - `.planning/ROADMAP.md` — the Phase 75 entry (goal, 5 success criteria, scope notes, and the 2 named risks). Also read the **Phase 76** entry, which inherits D-13 and D-15, and the **Phase 77** entry, whose EVTVIEW-02 depends entirely on D-10/D-11 and whose open "DM-only or all members?" question is pre-answered by D-02.
-- `.planning/REQUIREMENTS.md:41–45` — EVTAVAIL-01 … EVTAVAIL-05 in full. **Note D-21: line 44 (EVTAVAIL-04) needs amending** — its "keeps their past answers" clause is superseded by D-20.
+- `.planning/REQUIREMENTS.md:41–45` — EVTAVAIL-01 … EVTAVAIL-05 in full. EVTAVAIL-04 was amended on 2026-08-27 to match D-20 (see D-21); read the current wording, not the version quoted in older artifacts.
 - `.planning/phases/74-event-schema-crud-and-calendar-display/74-CONTEXT.md` — the direct dependency. D-01 (`DateOnly`/`TimeOnly?`), D-02 (all three tables shipped in one migration, so Phase 75 is meant to be pure code), D-04 (tenant scoping shape), D-09 (the five protected `_Calendar.cshtml` call sites), D-10 (details view is the one event surface), **D-17 (the delete-confirmation question explicitly deferred to this phase → D-25/D-26)**, D-19 (past dates allowed → D-16).
 
 ### Project conventions
