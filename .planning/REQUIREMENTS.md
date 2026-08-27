@@ -29,12 +29,12 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Calendar Events — Foundation
 
-- [ ] **EVENT-01**: A DM can create an event on their board with a title, an optional description, a date, and an optional start time
-- [ ] **EVENT-02**: A DM can edit and delete events on their own board; events are scoped to that board and never visible to another
-- [ ] **EVENT-03**: Events appear on the desktop calendar page, visually distinguishable from quests at a glance
-- [ ] **EVENT-04**: Events appear on the mobile calendar page, which today lists only days that have quests
-- [ ] **EVENT-05**: Events never appear on the quest board main page and never block or constrain quest creation — they are informational only
-- [ ] **EVENT-06**: "Create Event" sits in the same navbar category as "Create Quest" and is available to all DM roles
+- [x] **EVENT-01**: A DM can create an event on their board with a title, an optional description, a date, and an optional start time
+- [x] **EVENT-02**: A DM can edit and delete events on their own board; events are scoped to that board and never visible to another
+- [x] **EVENT-03**: Events appear on the desktop calendar page, visually distinguishable from quests at a glance
+- [x] **EVENT-04**: Events appear on the mobile calendar page, which today lists only days that have quests
+- [x] **EVENT-05**: Events never appear on the quest board main page and never block or constrain quest creation — they are informational only
+- [x] **EVENT-06**: "Create Event" sits in the same navbar category as "Create Quest" and is available to all DM roles
 
 ### Calendar Events — Availability
 
@@ -135,12 +135,12 @@ Explicit exclusions for v9.0, with reasoning.
 | SECALERT-03 | Phase 73 | Complete |
 | SECALERT-04 | Phase 73 | Complete |
 | SECALERT-05 | Phase 73 | Complete |
-| EVENT-01 | Phase 74 | Not started |
-| EVENT-02 | Phase 74 | Not started |
-| EVENT-03 | Phase 74 | Not started |
-| EVENT-04 | Phase 74 | Not started |
-| EVENT-05 | Phase 74 | Not started |
-| EVENT-06 | Phase 74 | Not started |
+| EVENT-01 | Phase 74 | Complete |
+| EVENT-02 | Phase 74 | Complete |
+| EVENT-03 | Phase 74 | Complete |
+| EVENT-04 | Phase 74 | Complete |
+| EVENT-05 | Phase 74 | Complete |
+| EVENT-06 | Phase 74 | Complete |
 | EVTAVAIL-01 | Phase 75 | Not started |
 | EVTAVAIL-02 | Phase 75 | Not started |
 | EVTAVAIL-03 | Phase 75 | Not started |
