@@ -7,10 +7,8 @@ namespace QuestBoard.IntegrationTests.Controllers;
 // This file proves two negatives that are easy to lose silently as later plans in this feature
 // land: that the quest detail pages never render event markup even when an event exists on the
 // same board and same day, and that quest creation is completely untouched by the presence of
-// events. Both facts POST to /Events/Create as a plain route literal, so this file has no
-// compile-time dependency on the controller behind it and is expected to fail (404) until that
-// controller exists — that is the deliberate starting state for this suite, not a bug in the
-// tests.
+// events. Both facts POST to /Events/Create as a plain route literal rather than a direct
+// controller reference.
 public class EventCalendarPartialTests(WebApplicationFactoryBase factory) : IClassFixture<WebApplicationFactoryBase>
 {
     // Single source of truth for the calendar event chip's markup identity, so a rename of

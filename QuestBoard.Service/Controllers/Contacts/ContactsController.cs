@@ -93,6 +93,13 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return Challenge();
             }
 
+            // A SuperAdmin has no active group by design, so there is no board to stamp onto
+            // the new contact. Send them to pick one rather than letting the write throw.
+            if (activeGroupContext.ActiveGroupId is not { } activeGroupId)
+            {
+                return RedirectToAction("Index", "GroupPicker");
+            }
+
             if (!ModelState.IsValid)
             {
                 return View(viewModel);
@@ -140,7 +147,7 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             // Tag the contact to the active group so the group-scoped roster query filter
             // applies (ContactEntity is scoped by a global query filter on GroupId).
-            contact.GroupId = activeGroupContext.RequireActiveGroupId();
+            contact.GroupId = activeGroupId;
             contact.CreatedByUserId = currentUser.Id;
             contact.IsRevealed = false;
 
@@ -293,7 +300,13 @@ namespace QuestBoard.Service.Controllers.Contacts
         [ValidateAntiForgeryToken]
         public IActionResult ToggleShowHidden()
         {
-            var groupId = activeGroupContext.RequireActiveGroupId();
+            // A SuperAdmin has no active group by design, so there is no per-board toggle to
+            // flip. Send them to pick one rather than letting the write throw.
+            if (activeGroupContext.ActiveGroupId is not { } groupId)
+            {
+                return RedirectToAction("Index", "GroupPicker");
+            }
+
             var key = SessionKeys.ShowHiddenContactsKey(groupId);
             var current = HttpContext.Session.GetInt32(key) == 1;
 
@@ -426,13 +439,27 @@ namespace QuestBoard.Service.Controllers.Contacts
         // resolves the same way GetEffectiveGroupRoleAsync does, but never gates an action.
         private async Task<bool> IsDmTierAsync()
         {
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            var role = await GetEffectiveRoleAsync();
             return role == GroupRole.Admin || role == GroupRole.DungeonMaster;
         }
 
+        // SuperAdmin has no active group by design, so short-circuit to Admin here rather than
+        // calling RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+        private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+            User.IsInRole("SuperAdmin")
+                ? GroupRole.Admin
+                : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+        // No active group means there is nothing to key the hidden-contacts toggle by. Failing
+        // closed (never showing hidden contacts) is safe here since this only relaxes visibility
+        // when true — it never widens what a SuperAdmin without a selected board can see.
         private bool ReadShowHiddenToggle()
         {
-            var groupId = activeGroupContext.RequireActiveGroupId();
+            if (activeGroupContext.ActiveGroupId is not { } groupId)
+            {
+                return false;
+            }
+
             return HttpContext.Session.GetInt32(SessionKeys.ShowHiddenContactsKey(groupId)) == 1;
         }
 
