@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-08-27T14:16:24.791Z",
+  "phase": "75",
+  "phase_name": "event-availability-signups",
+  "phase_dir": ".planning/phases/75-event-availability-signups",
+  "plan": 4,
+  "task": 0,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "75-01", "name": "Event signup data tier", "status": "done", "commit": "3056b30", "wave": 1},
+    {"id": "75-02", "name": "Campaign membership availability sync", "status": "done", "commit": "e7b1ce7", "wave": 1},
+    {"id": "75-03", "name": "EventsController availability writes and campaign fan-out", "status": "done", "commit": "5b9868c", "wave": 2}
+  ],
+  "remaining_tasks": [
+    {"id": "75-04", "name": "Event details availability surface (view)", "status": "not_started", "wave": 3, "task_count": 3},
+    {"id": "75-05", "name": "Requirement test suite and validation contract", "status": "not_started", "wave": 3, "task_count": 3}
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {"decision": "Stopped the in-flight 75-04 executor rather than letting it run unattended", "rationale": "It had produced zero commits; leaving it running would have created commits with no orchestrator present to merge its worktree. Its worktree and branch were auto-removed cleanly, so nothing was lost.", "phase": "75"},
+    {"decision": "Used a 9-minute budget for the post-merge test gate instead of the workflow default of 5", "rationale": "The suite is ~805 tests and a 300s timeout returns exit 124 (inconclusive), which blocks the tracking update. The longer budget yields a conclusive pass/fail.", "phase": "75"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run /gsd-execute-phase 75 --wave 3 to execute plans 75-04 and 75-05. Waves 1 and 2 are complete and merged; the wave filter is safe because no lower wave has incomplete plans.",
+  "context_notes": "Phase 75 was running under wave-based parallel execution with git worktree isolation. Waves 1 and 2 are fully merged into milestone/v9-rolling-improvements at 642d021, with post-merge build and test gates green both times (805 tests, 0 failures). Wave 3 is the last wave: 75-04 (Details.cshtml availability UI) and 75-05 (integration tests + 75-VALIDATION.md) have no files_modified overlap and can run in parallel. After wave 3 the workflow still owes: code-review gate, regression gate, gsd-verifier phase verification, and phase completion in ROADMAP/STATE."
+}
