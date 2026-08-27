@@ -50,6 +50,13 @@ public class EventsController(
             return Challenge();
         }
 
+        // A SuperAdmin has no active group by design, so there is no board to stamp onto the
+        // new event. Send them to pick one rather than letting the write throw.
+        if (activeGroupContext.ActiveGroupId is not { } activeGroupId)
+        {
+            return RedirectToAction("Index", "GroupPicker");
+        }
+
         if (!ModelState.IsValid)
         {
             return View(viewModel);
@@ -60,7 +67,7 @@ public class EventsController(
         // The board is taken from the active group context rather than from anything the
         // browser sent, because the read-side query filter offers no protection at all on an
         // insert.
-        newEvent.GroupId = activeGroupContext.RequireActiveGroupId();
+        newEvent.GroupId = activeGroupId;
 
         await eventService.AddAsync(newEvent, token);
 
@@ -101,6 +108,13 @@ public class EventsController(
             return NotFound();
         }
 
+        // A SuperAdmin has no active group by design, so there is no board to re-stamp onto
+        // this event. Send them to pick one rather than letting the write throw.
+        if (activeGroupContext.ActiveGroupId is not { } activeGroupId)
+        {
+            return RedirectToAction("Index", "GroupPicker");
+        }
+
         if (!ModelState.IsValid)
         {
             viewModel.CanManage = true;
@@ -118,7 +132,7 @@ public class EventsController(
         existingEvent.StartTime = viewModel.StartTime;
 
         // The board is re-derived on every write rather than round-tripped through the form.
-        existingEvent.GroupId = activeGroupContext.RequireActiveGroupId();
+        existingEvent.GroupId = activeGroupId;
 
         await eventService.UpdateAsync(existingEvent, token);
 
@@ -157,18 +171,31 @@ public class EventsController(
 
     // The read filter already hides another board's schedule, and this explicit comparison is
     // a deliberate second layer so a weakened filter still cannot let an event be saved against
-    // another board's schedule.
+    // another board's schedule. With no active group there is no board the series could match,
+    // so this fails closed (not permitted) rather than throwing.
     private async Task<bool> SeriesIsOnActiveBoardAsync(int seriesId, CancellationToken token)
     {
+        if (activeGroupContext.ActiveGroupId is not { } groupId)
+        {
+            return false;
+        }
+
         var seriesGroupId = await eventService.GetSeriesGroupIdAsync(seriesId, token);
-        return seriesGroupId.HasValue && seriesGroupId.Value == activeGroupContext.RequireActiveGroupId();
+        return seriesGroupId.HasValue && seriesGroupId.Value == groupId;
     }
 
     // The DungeonMasterOnly policy attribute is the security boundary for the write actions.
     // This helper only computes a display flag.
     private async Task<bool> IsDmTierAsync()
     {
-        var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+        var role = await GetEffectiveRoleAsync();
         return role == GroupRole.Admin || role == GroupRole.DungeonMaster;
     }
+
+    // SuperAdmin has no active group by design, so short-circuit to Admin here rather than
+    // calling RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+    private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+        User.IsInRole("SuperAdmin")
+            ? GroupRole.Admin
+            : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 }
