@@ -78,3 +78,24 @@
     color: #F4E4BC;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
+
+/* Board-event agenda entry — mirrors the quest entry's surface and geometry,
+   distinguished by a fixed accent colour since an event has no status variants */
+.agenda-event-entry {
+    background-color: #343a40;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border-left: 3px solid #6f42c1;
+}
+
+.agenda-event-entry:active {
+    background-color: #495057;
+}
+
+.agenda-event-title {
+    font-size: 1rem;
+    color: #F4E4BC;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
