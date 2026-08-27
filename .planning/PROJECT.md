@@ -1,6 +1,6 @@
 # D&D Quest Board
 
-## Current State: v9.0 Rolling Improvements in progress — Phase 73 shipped (2026-08-26)
+## Current State: v9.0 Rolling Improvements in progress — Phase 74 shipped (2026-08-27)
 
 **Latest:** Players can now change or clear the character on an existing quest signup from both the desktop and mobile quest Details pages (Phase 72, SIGNCHAR-01–07). Shipped with two blocker-class defects found by post-execution code review and fixed before close — one of which was silently deleting players’ date votes on every character change.
 
@@ -259,4 +259,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-08-26 after Phase 73 (Resolve Stale HIGH Security Alerts) completed.*
+*Last updated: 2026-08-27 after Phase 74 (Event Schema, CRUD, and Calendar Display) completed.*
