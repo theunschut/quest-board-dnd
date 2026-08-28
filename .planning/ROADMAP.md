@@ -216,7 +216,7 @@ Plans:
 **Goal**: A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
 **Depends on**: Phase 75 (materialized occurrences must carry availability from the moment they exist)
 **Requirements**: EVTRECUR-01, EVTRECUR-02, EVTRECUR-03, EVTRECUR-04, EVTRECUR-05, EVTRECUR-06, EVTRECUR-07, EVTRECUR-08
-**Plans**: 10/12 plans executed
+**Plans**: 11/12 plans executed
 
 Plans:
 **Wave 1**
@@ -249,7 +249,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 76-11-PLAN.md — Two-board series tenant isolation and refusal integration tests, plus full-suite coverage sign-off (wave 7)
+- [x] 76-11-PLAN.md — Two-board series tenant isolation and refusal integration tests, plus full-suite coverage sign-off (wave 7)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
