@@ -3,6 +3,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Services;
 using QuestBoard.Service.ViewModels.EventViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,8 @@ public class EventsController(
     IActiveGroupContext activeGroupContext,
     IMapper mapper,
     IEventSignupService eventSignupService,
-    IBoardTypeResolver boardTypeResolver) : Controller
+    IBoardTypeResolver boardTypeResolver,
+    IEventSeriesService eventSeriesService) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Details(int id, CancellationToken token = default)
@@ -73,6 +75,11 @@ public class EventsController(
             return View(viewModel);
         }
 
+        if (viewModel.IsRecurring)
+        {
+            return await CreateSeriesAsync(viewModel, activeGroupId, token);
+        }
+
         var newEvent = mapper.Map<Event>(viewModel);
 
         // The board is taken from the active group context rather than from anything the
@@ -97,6 +104,87 @@ public class EventsController(
         TempData["Success"] = "Event created successfully.";
 
         return RedirectToCalendarMonth(newEvent.Date);
+    }
+
+    // Split out of the one-off Create branch so that branch stays byte-for-byte the simple
+    // path -- a recurring save validates the cadence server-side (the browser's cell cap is
+    // convenience, not enforcement) and creates the series plus its whole first generation pass
+    // in one transaction, so a mid-save failure leaves nothing behind.
+    private async Task<IActionResult> CreateSeriesAsync(EventViewModel viewModel, int activeGroupId, CancellationToken token)
+    {
+        if (!EventSeriesDateGenerator.TryParseMask(viewModel.CycleMask, out var parsedMask, out var maskError))
+        {
+            ModelState.AddModelError(nameof(EventViewModel.CycleMask), maskError!);
+            return View(viewModel);
+        }
+
+        if (viewModel.IntervalWeeks is < 1 or > 52)
+        {
+            ModelState.AddModelError(nameof(EventViewModel.IntervalWeeks), "Repeat every must be between 1 and 52 weeks");
+            return View(viewModel);
+        }
+
+        var series = new EventSeries
+        {
+            Title = viewModel.Title,
+            Description = viewModel.Description,
+            StartTime = viewModel.StartTime,
+            AnchorDate = viewModel.Date,
+            IntervalWeeks = viewModel.IntervalWeeks,
+            // Normalized through FormatMask so the persisted form is canonical regardless of
+            // how the browser wrote the comma-delimited value.
+            CycleMask = EventSeriesDateGenerator.FormatMask(parsedMask),
+            EndDate = viewModel.SeriesEndDate,
+            GroupId = activeGroupId
+        };
+
+        try
+        {
+            var created = await eventSeriesService.CreateWithFirstPassAsync(series, token);
+            var occurrences = await eventSeriesService.GetOccurrencesAsync(created.Id, token);
+            var redirectDate = occurrences.Count > 0 ? occurrences.Min(occurrence => occurrence.Date) : created.AnchorDate;
+
+            TempData["Success"] = "Series created successfully.";
+
+            return RedirectToCalendarMonth(redirectDate);
+        }
+        catch (Exception)
+        {
+            ModelState.AddModelError(string.Empty, "Couldn't create the series. Nothing was saved — check your cadence and try again.");
+            return View(viewModel);
+        }
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "DungeonMasterOnly")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PreviewSeries(SeriesPreviewRequestViewModel request, CancellationToken token = default)
+    {
+        if (!EventSeriesDateGenerator.TryParseMask(request.CycleMask, out _, out var maskError))
+        {
+            return Json(new { success = false, error = maskError });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var intervalError = ModelState[nameof(SeriesPreviewRequestViewModel.IntervalWeeks)]?.Errors.FirstOrDefault()?.ErrorMessage
+                ?? "Repeat every must be between 1 and 52 weeks.";
+            return Json(new { success = false, error = intervalError });
+        }
+
+        var (dates, anchorFullyInPast) = await eventSeriesService.PreviewAsync(
+            request.AnchorDate, request.IntervalWeeks, request.CycleMask, request.EndDate, token);
+
+        return Json(new
+        {
+            success = true,
+            dates = dates.Select(date => new
+            {
+                value = date.ToString("yyyy-MM-dd"),
+                label = date.ToDateTime(TimeOnly.MinValue).ToString("dddd, d MMMM yyyy")
+            }),
+            anchorFullyInPast
+        });
     }
 
     [HttpGet]
