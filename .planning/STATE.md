@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 75
-current_phase_name: event-availability-signups
+current_phase: 78
+current_phase_name: Link Preview Foundation and Quest Cards
 status: executing
 stopped_at: Phase 80 context gathered
-last_updated: "2026-08-27T14:18:47.593Z"
-last_activity: 2026-08-27
-last_activity_desc: Phase 75 execution started
+last_updated: "2026-08-28T09:12:24.647Z"
+last_activity: 2026-08-28
+last_activity_desc: Phase 75 complete, transitioned to Phase 78
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 29
-  completed_plans: 18
-  percent: 30
+  completed_plans: 20
+  percent: 40
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 75 — event-availability-signups
+**Current focus:** Phase 78 — Link Preview Foundation and Quest Cards
 
 ## Current Position
 
-Phase: 75 (event-availability-signups) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 75
-Last activity: 2026-08-27 — Phase 75 execution started
+Phase: 78 — Link Preview Foundation and Quest Cards
+Plan: Not started
+Status: Phase 78 planned (9 plans), not started
+Last activity: 2026-08-28 — Phase 75 complete, transitioned to Phase 78
 
 ## Performance Metrics
 

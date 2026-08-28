@@ -1,7 +1,7 @@
 ---
 phase: 75-event-availability-signups
 verified: 2026-08-28T00:00:00Z
-status: human_needed
+status: passed
 score: 8/8 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0

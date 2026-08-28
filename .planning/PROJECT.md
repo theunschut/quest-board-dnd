@@ -1,8 +1,8 @@
 # D&D Quest Board
 
-## Current State: v9.0 Rolling Improvements in progress — Phase 74 shipped (2026-08-27)
+## Current State: v9.0 Rolling Improvements in progress — Phase 75 shipped (2026-08-28)
 
-**Latest:** Players can now change or clear the character on an existing quest signup from both the desktop and mobile quest Details pages (Phase 72, SIGNCHAR-01–07). Shipped with two blocker-class defects found by post-execution code review and fixed before close — one of which was silently deleting players’ date votes on every character change.
+**Latest:** Board members can now answer Yes/Maybe/No on an event, with the default matching the board type - opt-in on One-Shot boards (no row until you answer), opt-out on Campaign boards (joining backfills a Yes on every event dated today or later, and leaving removes your answers). The event details page is the single availability surface: three answer buttons, a withdraw control on one-shot boards, and a named roster (Phase 75, EVTAVAIL-01-05). Four defects were found and fixed after execution: a member-removal confirmation that never compiled and so submitted with no prompt at all, an EF relationship misconfiguration that made the campaign fan-out insert rows with EventId=0, a missing ModelState check that let out-of-range answers default to No, and mobile cards rendering opaque white because .modern-card was defined only in the desktop stylesheet - the last found by manual testing after automated structural checks passed.
 
 **Baseline (v8.0 Markdown Support, shipped 2026-07-11):** A shared, secure Markdig+HtmlSanitizer rendering pipeline (RENDER-01/02/03) now backs a Markdown editor (toolbar + Preview toggle) across all 9 free-text fields in the app — Quest Description/Rewards/Recap, Character Description/Backstory, Contact Description/Notes, DM Profile Bio, Shop Item Description — replacing the old line-break-preserving plain-text display with strict CommonMark paragraph rules. All 3 quest-related HTML email templates (Quest Finalized, Session Reminder, Waitlist Promoted) render the same formatted Markdown, hardened with inline styles + Outlook MSO bullet-fallback + server-side block-boundary truncation so long or heavily-structured content can't silently break email layout. 7 phases, 26 plans, ~2 days, 73 code files changed (+2,469/−318 lines). A milestone-close audit found and fixed one last cross-phase gap (QuestLog Details still rendering Description raw) before shipping. Full detail: `.planning/milestones/v8.0-ROADMAP.md`.
 
@@ -259,4 +259,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-08-27 after Phase 74 (Event Schema, CRUD, and Calendar Display) completed.*
+*Last updated: 2026-08-28 after Phase 75 (Event Availability Signups) completed.*
