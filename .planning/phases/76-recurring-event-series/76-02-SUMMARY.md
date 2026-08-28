@@ -164,3 +164,15 @@ None - no external service configuration required. Migrations are auto-applied o
 ---
 *Phase: 76-recurring-event-series*
 *Completed: 2026-08-28*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Domain/Models/EventSeries.cs
+- FOUND: QuestBoard.Domain/Models/SeriesRunwayStatus.cs
+- FOUND: QuestBoard.Domain/Models/SeriesRemovalImpact.cs
+- FOUND: QuestBoard.Domain/Models/EventSeriesOptions.cs
+- FOUND: QuestBoard.Domain/Enums/EventEditScope.cs
+- FOUND: QuestBoard.Repository/Migrations/20260828130415_AddSeriesRecurrence.cs
+- FOUND: commit 27b3ee2 (Task 1)
+- FOUND: commit 79838c2 (Task 2)
+- FOUND: commit e8b7d6b (docs: complete plan)
