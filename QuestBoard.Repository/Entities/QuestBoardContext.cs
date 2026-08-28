@@ -308,6 +308,26 @@ public class QuestBoardContext(
         modelBuilder.Entity<EventEntity>()
             .HasIndex(e => new { e.GroupId, e.Date });
 
+        // The FK's own conventional index, declared explicitly so the composite index below
+        // (which also starts with SeriesId) does not make EF Core's migration tooling treat
+        // it as redundant and drop it.
+        modelBuilder.Entity<EventEntity>()
+            .HasIndex(e => e.SeriesId)
+            .HasDatabaseName("IX_Events_SeriesId");
+
+        // The database-level guarantee that two rows can never claim the same slot of the
+        // same series. The filter keeps one-off events — which carry null in both columns —
+        // entirely out of it, and the filter string is written explicitly rather than relying
+        // on the provider's implicit handling of nullable columns in a unique index. The
+        // application-level existence check alone is not sufficient: the app registers a
+        // global automatic retry policy, so a job that dies partway re-runs from the top and
+        // reproduces exactly the check-then-insert race this index closes.
+        modelBuilder.Entity<EventEntity>()
+            .HasIndex(e => new { e.SeriesId, e.SeriesSlotIndex })
+            .IsUnique()
+            .HasFilter("[SeriesId] IS NOT NULL")
+            .HasDatabaseName("IX_Events_SeriesId_SeriesSlotIndex");
+
         // One answer per person per event, mirroring the existing unique vote index.
         modelBuilder.Entity<EventSignupEntity>()
             .HasIndex(es => new { es.EventId, es.UserId })

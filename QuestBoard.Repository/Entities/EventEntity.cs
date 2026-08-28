@@ -32,6 +32,11 @@ public class EventEntity : IEntity
     // for a one-off event.
     public int? SeriesSlotIndex { get; set; }
 
+    // A cancelled occurrence is a tombstone: its row and its availability answers survive,
+    // but every read surface that renders events must account for it. Null means the
+    // occurrence is live; un-cancelling is a single write of null with no data loss.
+    public DateTime? CancelledAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public int GroupId { get; set; }

@@ -145,6 +145,14 @@ public class EntityProfile : Profile
             .ForMember(dest => dest.Series, opt => opt.Ignore())
             .ForMember(dest => dest.Signups, opt => opt.Ignore());
 
+        // EventSeries mapping. Group is ignored on the reverse map for the same reason as
+        // Event above - it stops mapping a domain model onto a tracked entity from replacing
+        // a loaded navigation with null.
+        CreateMap<EventSeriesEntity, EventSeries>();
+
+        CreateMap<EventSeries, EventSeriesEntity>()
+            .ForMember(dest => dest.Group, opt => opt.Ignore());
+
         // EventSignup mapping — Availability is stored as int and cast to/from VoteType,
         // matching the PlayerSignup enum-cast pattern. UserName is a display-only projection
         // from the signup's User navigation.

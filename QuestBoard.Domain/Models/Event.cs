@@ -24,6 +24,12 @@ public class Event : IModel
     // for a one-off event.
     public int? SeriesSlotIndex { get; set; }
 
+    public DateTime? CancelledAt { get; set; }
+
+    // Get-only so it can never be mapped or bound from a form; the only way to change
+    // cancellation state is by writing CancelledAt itself.
+    public bool IsCancelled => CancelledAt != null;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public int GroupId { get; set; }
