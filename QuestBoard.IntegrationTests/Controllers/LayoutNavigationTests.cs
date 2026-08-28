@@ -51,19 +51,60 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // NAV-01: Campaign+DM — Calendar link absent
+    // Campaign+DM — Calendar link present. The calendar carries the
+    // recurring-session surfaces campaign boards depend on, so it stays in
+    // the navigation on both board types rather than being hidden.
     // -----------------------------------------------------------------------
 
     [Theory]
     [InlineData(DesktopUserAgent)]
     [InlineData(MobileUserAgent)]
-    public async Task Nav_CampaignDm_CalendarLinkAbsent(string userAgent)
+    public async Task Nav_CampaignDm_CalendarLinkPresent(string userAgent)
     {
         _factory.TestGroupContext.BoardType = BoardType.Campaign;
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
-            _factory, "nav01_dm", "nav01_dm@test.com");
+            _factory, "navcal_dm", "navcal_dm@test.com");
 
         var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Calendar");
+    }
+
+    // -----------------------------------------------------------------------
+    // Campaign+player — Calendar link present. The entry is gated on being
+    // logged in, not on being a manager, so an ordinary player sees it too.
+    // -----------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignPlayer_CalendarLinkPresent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "navcal_player", "navcal_player@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Calendar");
+    }
+
+    // -----------------------------------------------------------------------
+    // Campaign+anonymous — Calendar link absent. Regression guard for the
+    // real risk in widening the board-type half of the condition: it must
+    // not relax the logged-in half that sits alongside it.
+    // -----------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignAnonymous_CalendarLinkAbsent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+
+        var (response, html) = await GetWithUserAgentAsync("/", userAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("Calendar");

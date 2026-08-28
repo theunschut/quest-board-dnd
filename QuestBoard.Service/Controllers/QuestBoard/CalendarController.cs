@@ -1,6 +1,7 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Service.ViewModels.CalendarViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,8 @@ public class CalendarController(
     IEventService eventService,
     IEventSeriesService eventSeriesService,
     IUserService userService,
-    IActiveGroupContext activeGroupContext) : Controller
+    IActiveGroupContext activeGroupContext,
+    IBoardTypeResolver boardTypeResolver) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int? year = null, int? month = null, CancellationToken token = default)
@@ -35,8 +37,19 @@ public class CalendarController(
             return BadRequest("Invalid year. Year must be between 1900 and 2100.");
         }
 
+        // A campaign board's calendar is an events-only surface, so its quests are never
+        // loaded rather than loaded and hidden -- a quest that is never fetched cannot leak
+        // through a view, a partial or a future caller. A board type that cannot be resolved
+        // keeps the both-kinds behaviour rather than guessing: an unresolved board type means
+        // no active board is selected, in which case the fail-closed board query filter
+        // already returns no rows, so keeping the behaviour cannot expose anything.
+        var activeBoardType = await boardTypeResolver.GetBoardTypeAsync(token);
+        var includeQuests = activeBoardType != BoardType.Campaign;
+
         // Get all quests with their proposed dates
-        var allQuests = await questService.GetQuestsForCalendarAsync(token);
+        IList<Quest> allQuests = includeQuests
+            ? await questService.GetQuestsForCalendarAsync(token)
+            : [];
         var allEvents = await eventService.GetEventsForCalendarAsync(token);
 
         // Create calendar model
