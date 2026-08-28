@@ -14,6 +14,8 @@
     var deleteConfirmMessage = Model.SignupCount == 0
         ? "Delete this event? This action cannot be undone."
         : $"Delete this event? {Model.SignupCount} {(Model.SignupCount == 1 ? "person has" : "people have")} signed up and their availability will be lost. This action cannot be undone.";
+    var cancelConfirmMessage = $"Cancel this session on {Model.Date:dddd, MMMM d, yyyy}? It stays on the calendar, struck through, so everyone can see it's off instead of missing. This does not delete any availability answers already given.";
+    var restoreConfirmMessage = $"Restore this session on {Model.Date:dddd, MMMM d, yyyy}? It will show as scheduled again.";
 }
 
 <div class="row">
@@ -40,12 +42,42 @@
                     <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning w-100 mb-2">
                         <i class="fas fa-pen me-2"></i>Edit Event
                     </a>
-                    <form asp-action="Delete" method="post" onsubmit="return confirm('@deleteConfirmMessage');">
-                        <input type="hidden" name="id" value="@Model.Id" />
-                        <button type="submit" class="btn btn-danger w-100">
-                            <i class="fas fa-trash me-2"></i>Delete Event
-                        </button>
-                    </form>
+                    @if (Model.SeriesId.HasValue)
+                    {
+                        <a href="@Url.Action("Details", "Series", new { id = Model.SeriesId })" class="btn btn-outline-secondary w-100 mb-2">
+                            <i class="fas fa-repeat me-2"></i>View Series Details
+                        </a>
+                    }
+                    @if (Model.SeriesId.HasValue)
+                    {
+                        @if (Model.IsCancelled)
+                        {
+                            <form asp-action="Restore" method="post" onsubmit="return confirm(`@restoreConfirmMessage`);">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <button type="submit" class="btn btn-outline-success w-100">
+                                    <i class="fas fa-undo me-2"></i>Restore Occurrence
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="Cancel" method="post" onsubmit="return confirm(`@cancelConfirmMessage`);">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <button type="submit" class="btn btn-outline-warning w-100">
+                                    <i class="fas fa-ban me-2"></i>Cancel Occurrence
+                                </button>
+                            </form>
+                        }
+                    }
+                    else
+                    {
+                        <form asp-action="Delete" method="post" onsubmit="return confirm('@deleteConfirmMessage');">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="fas fa-trash me-2"></i>Delete Event
+                            </button>
+                        </form>
+                    }
                 </div>
             </div>
         }
@@ -67,6 +99,13 @@
                 }
             </div>
         </div>
+
+        @if (Model.IsCancelled)
+        {
+            <div class="alert alert-secondary mb-3">
+                <i class="fas fa-ban me-2"></i>This session has been cancelled.
+            </div>
+        }
 
         <div class="card modern-card mb-3">
             <div class="card-header modern-card-header">
@@ -93,62 +132,72 @@
                         }
                     </p>
                 }
+                else if (Model.IsCancelled)
+                {
+                    <p class="mb-0 text-muted">You did not answer before this session was cancelled.</p>
+                }
                 else
                 {
                     <p class="mb-0 text-muted">You haven't answered yet. Choosing an answer below signs you up.</p>
                 }
-                <hr>
-                <div class="d-flex justify-content-between">
-                    <div>
-                        @* The withdraw control's visibility is a convenience only -- the server re-checks
-                           the board type on the request itself. On a campaign board opting out means
-                           answering No, not deleting the row, and a deleted row there would be recreated
-                           by the next automatic pass anyway. *@
-                        @if (Model.IsOneShotBoard && Model.HasOwnSignup)
-                        {
-                            <button type="button" class="btn btn-outline-danger" onclick="withdrawAvailability(@Model.Id)">
-                                <i class="fas fa-user-slash me-2"></i>Withdraw
-                            </button>
-                            @* The handler lives beside its only caller rather than in the shared Scripts
-                               section below, so a page where the control never rendered never defines a
-                               function with nothing valid to call it. *@
-                            <script>
-                                function withdrawAvailability(eventId) {
-                                    if (confirm("Withdrawing removes your answer entirely and returns you to not having responded. Continue?")) {
-                                        const formData = new FormData();
-                                        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+                @* A cancelled occurrence removes the answer controls entirely rather than disabling
+                   them -- the answers already given stay visible as historical record, but there is
+                   nothing left to answer for a session that is off. *@
+                @if (!Model.IsCancelled)
+                {
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            @* The withdraw control's visibility is a convenience only -- the server re-checks
+                               the board type on the request itself. On a campaign board opting out means
+                               answering No, not deleting the row, and a deleted row there would be recreated
+                               by the next automatic pass anyway. *@
+                            @if (Model.IsOneShotBoard && Model.HasOwnSignup)
+                            {
+                                <button type="button" class="btn btn-outline-danger" onclick="withdrawAvailability(@Model.Id)">
+                                    <i class="fas fa-user-slash me-2"></i>Withdraw
+                                </button>
+                                @* The handler lives beside its only caller rather than in the shared Scripts
+                                   section below, so a page where the control never rendered never defines a
+                                   function with nothing valid to call it. *@
+                                <script>
+                                    function withdrawAvailability(eventId) {
+                                        if (confirm("Withdrawing removes your answer entirely and returns you to not having responded. Continue?")) {
+                                            const formData = new FormData();
+                                            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
 
-                                        fetch(`/Events/Withdraw/${eventId}`, {
-                                            method: "DELETE",
-                                            body: formData
-                                        }).then(res => {
-                                            if (res.ok) {
-                                                location.reload();
-                                            } else {
-                                                res.text().then(text => {
-                                                    alert(`Failed to withdraw availability: ${text}`);
-                                                });
-                                            }
-                                        }).catch(err => {
-                                            alert("An error occurred while withdrawing availability.");
-                                        });
+                                            fetch(`/Events/Withdraw/${eventId}`, {
+                                                method: "DELETE",
+                                                body: formData
+                                            }).then(res => {
+                                                if (res.ok) {
+                                                    location.reload();
+                                                } else {
+                                                    res.text().then(text => {
+                                                        alert(`Failed to withdraw availability: ${text}`);
+                                                    });
+                                                }
+                                            }).catch(err => {
+                                                alert("An error occurred while withdrawing availability.");
+                                            });
+                                        }
                                     }
-                                }
-                            </script>
-                        }
+                                </script>
+                            }
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-success" onclick="setAvailability(@Model.Id, @((int)VoteType.Yes))">
+                                <i class="fas fa-check me-2"></i>Yes
+                            </button>
+                            <button type="button" class="btn btn-warning" onclick="setAvailability(@Model.Id, @((int)VoteType.Maybe))">
+                                <i class="fas fa-question me-2"></i>Maybe
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="setAvailability(@Model.Id, @((int)VoteType.No))">
+                                <i class="fas fa-times me-2"></i>No
+                            </button>
+                        </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-success" onclick="setAvailability(@Model.Id, @((int)VoteType.Yes))">
-                            <i class="fas fa-check me-2"></i>Yes
-                        </button>
-                        <button type="button" class="btn btn-warning" onclick="setAvailability(@Model.Id, @((int)VoteType.Maybe))">
-                            <i class="fas fa-question me-2"></i>Maybe
-                        </button>
-                        <button type="button" class="btn btn-danger" onclick="setAvailability(@Model.Id, @((int)VoteType.No))">
-                            <i class="fas fa-times me-2"></i>No
-                        </button>
-                    </div>
-                </div>
+                }
             </div>
         </div>
 
