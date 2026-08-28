@@ -190,3 +190,10 @@ None - no external service configuration required. No migration in this plan.
 ---
 *Phase: 76-recurring-event-series*
 *Completed: 2026-08-28*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.IntegrationTests/Tests/EventSeriesTenantIsolationTests.cs
+- FOUND: QuestBoard.IntegrationTests/Controllers/EventsControllerIntegrationTests.cs
+- FOUND: commit ae949162 (Task 1)
+- FOUND: commit 7c2fc0e6 (Task 2)
