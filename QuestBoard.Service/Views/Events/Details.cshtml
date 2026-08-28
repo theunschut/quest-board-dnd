@@ -11,6 +11,7 @@
 @{
     ViewData["Title"] = Model.Title;
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var deleteConfirmMessage = $"Delete this event? {Model.SignupCount} people have signed up and their availability will be lost. This action cannot be undone.";
 }
 
 <div class="row">
@@ -37,7 +38,7 @@
                     <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning w-100 mb-2">
                         <i class="fas fa-pen me-2"></i>Edit Event
                     </a>
-                    <form asp-action="Delete" method="post" onsubmit="return confirm('Are you sure you want to delete this event? This action cannot be undone.');">
+                    <form asp-action="Delete" method="post" onsubmit="return confirm('@deleteConfirmMessage');">
                         <input type="hidden" name="id" value="@Model.Id" />
                         <button type="submit" class="btn btn-danger w-100">
                             <i class="fas fa-trash me-2"></i>Delete Event
@@ -120,6 +121,55 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-users me-2"></i>Who's Coming
+                </h4>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (Model.Roster.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Availability</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var signup in Model.Roster)
+                                {
+                                    <tr>
+                                        <td>@signup.UserName</td>
+                                        <td>
+                                            @if (signup.Availability == VoteType.Yes)
+                                            {
+                                                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+                                            }
+                                            else if (signup.Availability == VoteType.Maybe)
+                                            {
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+                                            }
+                                            else if (signup.Availability == VoteType.No)
+                                            {
+                                                <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Nobody has answered yet -- be the first.</p>
+                }
             </div>
         </div>
     </div>
