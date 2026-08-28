@@ -356,6 +356,14 @@ if (!app.Environment.IsEnvironment("Testing"))
         "daily-session-reminders",
         job => job.ExecuteAsync(CancellationToken.None),
         "0 9 * * *");
+
+    // Register nightly recurring-series top-up sweep — runs at 03:00 server local time, a
+    // distinct off-peak hour from the reminder sweep above so neither job's failure can affect
+    // the other. Daily rather than weekly so a failed run self-heals the next night.
+    RecurringJob.AddOrUpdate<RecurringOccurrenceTopUpJob>(
+        "recurring-occurrence-top-up",
+        job => job.ExecuteAsync(CancellationToken.None),
+        "0 3 * * *");
 }
 
 // Fail fast in Production if email delivery is unconfigured — without this, SmtpClient creation
