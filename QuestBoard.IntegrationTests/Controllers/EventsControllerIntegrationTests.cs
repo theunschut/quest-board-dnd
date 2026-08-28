@@ -682,4 +682,72 @@ public class EventsControllerIntegrationTests(WebApplicationFactoryBase factory)
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await GetSignupAsync(eventId, user.Id)).Should().BeNull();
     }
+
+    [Fact]
+    public async Task PreviewSeries_Post_ValidCadence_ReturnsSuccessWithGeneratedDates()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "event_dm_previewseries_valid", "event_dm_previewseries_valid@example.com", roles: ["DungeonMaster"]);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["AnchorDate"] = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"),
+            ["IntervalWeeks"] = "1",
+            ["CycleMask"] = "1"
+        });
+
+        var response = await dmClient.PostAsync("/Events/PreviewSeries", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var json = System.Text.Json.JsonDocument.Parse(body);
+        json.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        json.RootElement.GetProperty("dates").GetArrayLength().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task PreviewSeries_Post_InvalidMask_ReturnsSuccessFalseWithError()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "event_dm_previewseries_invalidmask", "event_dm_previewseries_invalidmask@example.com", roles: ["DungeonMaster"]);
+
+        // An all-zero mask never fires, so it is rejected by the same parser the create path
+        // uses -- this proves the endpoint surfaces that rejection rather than silently
+        // returning an empty date list.
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["AnchorDate"] = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"),
+            ["IntervalWeeks"] = "1",
+            ["CycleMask"] = "0"
+        });
+
+        var response = await dmClient.PostAsync("/Events/PreviewSeries", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var json = System.Text.Json.JsonDocument.Parse(body);
+        json.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+        json.RootElement.GetProperty("error").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task PreviewSeries_Post_PlayerAccess_ShouldBeBlocked()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "event_player_previewseries", "event_player_previewseries@example.com", roles: ["Player"]);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["AnchorDate"] = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"),
+            ["IntervalWeeks"] = "1",
+            ["CycleMask"] = "1"
+        });
+
+        var response = await playerClient.PostAsync("/Events/PreviewSeries", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+    }
 }
