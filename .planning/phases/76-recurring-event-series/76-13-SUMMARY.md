@@ -129,6 +129,14 @@ None - no external service configuration required.
 - The verification report's second gap (Campaign boards cannot reach the calendar through normal navigation, per `76-VERIFICATION.md`) is out of scope for this plan and is handled by a sibling gap-closure plan in the same wave.
 - `QuestBoard.Service/Views/Calendar/Index.cshtml` (desktop) was not touched — confirmed via `git diff` — so the already-verified desktop behavior carries no risk from this change.
 
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.IntegrationTests/Controllers/CalendarHorizonBannerTests.cs
+- FOUND: QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml
+- FOUND: .planning/phases/76-recurring-event-series/76-13-SUMMARY.md
+- FOUND commit: d6c884a (test: horizon banner tests, RED)
+- FOUND commit: ae8e345 (feat: mobile banner render, GREEN)
+
 ---
 *Phase: 76-recurring-event-series*
 *Completed: 2026-08-28*
