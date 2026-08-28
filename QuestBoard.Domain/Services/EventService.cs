@@ -29,4 +29,10 @@ internal class EventService(IEventRepository repository, IMapper mapper) : BaseS
     {
         await repository.AddWithCampaignFanOutAsync(newEvent, memberIds, token);
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> SetCancelledAsync(int eventId, DateTime? cancelledAt, CancellationToken token = default)
+    {
+        return await repository.SetCancelledAsync(eventId, cancelledAt, token);
+    }
 }

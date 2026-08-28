@@ -69,4 +69,62 @@ internal class EventRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         await DbContext.SaveChangesAsync(token);
         newEvent.Id = entity.Id;
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> SetCancelledAsync(int eventId, DateTime? cancelledAt, CancellationToken token = default)
+    {
+        // A narrow scalar write on purpose: EventEntity carries a Signups navigation
+        // collection, and mapping a domain model over this tracked entity through the
+        // generic update path would drop that collection.
+        var entity = await DbSet.FirstOrDefaultAsync(e => e.Id == eventId, token);
+        if (entity == null) return false;
+
+        entity.CancelledAt = cancelledAt;
+        await DbContext.SaveChangesAsync(token);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> ApplyTemplateToOccurrencesAsync(IReadOnlyCollection<int> eventIds, string title, string? description, TimeOnly? startTime, CancellationToken token = default)
+    {
+        if (eventIds.Count == 0) return 0;
+
+        var entities = await DbSet.Where(e => eventIds.Contains(e.Id)).ToListAsync(token);
+        foreach (var entity in entities)
+        {
+            entity.Title = title;
+            entity.Description = description;
+            entity.StartTime = startTime;
+        }
+
+        await DbContext.SaveChangesAsync(token);
+        return entities.Count;
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> CountLiveSiblingsOnDateAsync(int seriesId, DateOnly date, int excludeEventId, CancellationToken token = default)
+    {
+        // A cancelled sibling deliberately does not count -- this backs a notice, not a
+        // block, so a double session on the same date is legitimate and must not be hidden.
+        return await DbSet.CountAsync(e =>
+            e.SeriesId == seriesId &&
+            e.Date == date &&
+            e.Id != excludeEventId &&
+            e.CancelledAt == null, token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<Event>> GetOccurrencesForSeriesAsync(int seriesId, CancellationToken token = default)
+    {
+        // No date predicate -- this backs both the series page's occurrence table and the
+        // eligibility decision for the template sweep, which needs every occurrence to work
+        // out what it can safely touch.
+        var entities = await DbSet
+            .Where(e => e.SeriesId == seriesId)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.StartTime)
+            .ToListAsync(token);
+
+        return Mapper.Map<IList<Event>>(entities);
+    }
 }
