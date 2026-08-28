@@ -162,7 +162,10 @@
                     <ul class="navbar-nav ms-auto">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            if (activeBoardType == BoardType.OneShot)
+                            @* The calendar carries the recurring-session surfaces both board types depend
+                               on, so it is available whenever a board type has actually resolved; an
+                               unresolved board type is deliberately excluded rather than guessed at. *@
+                            if (activeBoardType is BoardType.OneShot or BoardType.Campaign)
                             {
                                 <li class="nav-item">
                                     <a class="nav-link" asp-controller="Calendar" asp-action="Index">
