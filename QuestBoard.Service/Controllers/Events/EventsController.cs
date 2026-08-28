@@ -221,6 +221,15 @@ public class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetAvailability(int id, VoteType availability, CancellationToken token = default)
     {
+        // The framework's own enum model binder rejects a numeric value with no matching
+        // named member and leaves the parameter at its type's default (No) rather than
+        // throwing -- without this check, an out-of-range post would silently record a "No"
+        // answer nobody actually gave instead of being refused.
+        if (!ModelState.IsValid)
+        {
+            return BadRequest("Invalid availability value.");
+        }
+
         var existingEvent = await eventService.GetEventWithDetailsAsync(id, token);
         if (existingEvent == null)
         {
