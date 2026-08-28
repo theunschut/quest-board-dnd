@@ -15,6 +15,14 @@ public class CalendarViewModel
     // and any future caller inherits the same safe default.
     public List<Event> Events { get; set; } = new();
 
+    // Both default empty/false on purpose, for the same reason as Events above: the shared
+    // calendar partial is rendered from several places that build their own instance of this
+    // model and never set these, so those places carry no runway state and no manager flag
+    // with nothing to remember and no flag to switch off, and any future caller inherits the
+    // same safe default.
+    public List<SeriesRunwayStatus> SeriesBelowRunway { get; set; } = [];
+    public bool CanManage { get; set; }
+
     public DateTime FirstDayOfMonth => new(Year, Month, 1);
     public DateTime LastDayOfMonth => FirstDayOfMonth.AddMonths(1).AddDays(-1);
 
