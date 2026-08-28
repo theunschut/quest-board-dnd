@@ -284,10 +284,14 @@ public class QuestBoardContext(
             .IsRequired(false);
 
         // EventSignup → Event: Cascade — a signup is an owned child of its event, so a
-        // hard-deleted event takes its signups with it
+        // hard-deleted event takes its signups with it. The inverse is spelled out explicitly
+        // (rather than a bare WithMany()) so it binds to EventEntity.Signups instead of a
+        // second, disconnected shadow relationship -- without this, staging a signup through
+        // that navigation and saving once (the campaign fan-out's whole point) inserts every
+        // row with its EventId left at its default value instead of the new event's real id.
         modelBuilder.Entity<EventSignupEntity>()
             .HasOne(es => es.Event)
-            .WithMany()
+            .WithMany(e => e.Signups)
             .HasForeignKey(es => es.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 
