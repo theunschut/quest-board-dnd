@@ -38,9 +38,9 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Calendar Events — Availability
 
-- [ ] **EVTAVAIL-01**: On a One-Shot board, a player can optionally sign up to an event and record their availability as Yes, Maybe, or No — with no signup created unless they choose to
+- [x] **EVTAVAIL-01**: On a One-Shot board, a player can optionally sign up to an event and record their availability as Yes, Maybe, or No — with no signup created unless they choose to
 - [x] **EVTAVAIL-02**: On a Campaign board, every board member is automatically signed up to each event with availability Yes, and opts out by changing their own answer to No rather than by removing the signup
-- [ ] **EVTAVAIL-03**: A player can change their availability on an event at any time
+- [x] **EVTAVAIL-03**: A player can change their availability on an event at any time
 - [x] **EVTAVAIL-04**: A member who joins a Campaign board after events already exist is auto-signed-up to every event dated today or later, and a member who leaves has all of their event signups on that board removed — past and future, automatic and deliberate
 - [ ] **EVTAVAIL-05**: A player cannot see or change availability for an event on a board they are not a member of, proven by an automated test using two distinct groups
 
