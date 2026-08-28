@@ -1,68 +1,36 @@
 ---
 phase: 76-recurring-event-series
-verified: 2026-08-28T20:55:24Z
-status: gaps_found
-score: 6/8 must-haves verified
+verified: 2026-08-28T22:10:00Z
+status: passed
+score: 8/8 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
-gaps:
-  - truth: "A DM sees a banner on the calendar when any active series on the board is running low on upcoming sessions, which is the one place the silent-job failure becomes visible (D-26 / EVTRECUR-03)"
-    status: failed
-    reason: >
-      The horizon banner exists and works correctly on the desktop calendar (Index.cshtml),
-      confirmed by 76-12's human verification and by static code review of
-      CalendarController.Index and Index.cshtml. It does not exist on the mobile calendar view.
-      QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml has zero references to
-      SeriesBelowRunway (grep confirmed). 76-10-SUMMARY.md's claim that "the calendar and mobile
-      agenda surfaces are fully wired for the cancelled state and the horizon banner" is false for
-      the banner half of that sentence -- the cancelled state IS wired on both surfaces (verified
-      independently), the banner is not. A DM who works from a phone gets no signal at all when
-      the rolling window stops advancing, reproducing exactly the silent failure D-26 exists to
-      prevent.
-    artifacts:
-      - path: "QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml"
-        issue: "No SeriesBelowRunway block; the DM-gated horizon banner from Index.cshtml has no mobile counterpart"
-    missing:
-      - "Port the SeriesBelowRunway banner block from Index.cshtml into Index.Mobile.cshtml, gated the same way (Model.CanManage, Model.SeriesBelowRunway.Any())"
-  - truth: "An open-ended campaign never needs manual re-extension, and a DM can observe that fact where they actually look (EVTRECUR-03, D-26)"
-    status: failed
-    reason: >
-      Confirmed in code: the Calendar nav entry is gated to BoardType.OneShot in both
-      _Layout.cshtml (line 165ish) and _Layout.Mobile.cshtml (line 141ish) -- a Phase 37 decision
-      (NAV-01, commit f7a31fa9) locked by LayoutNavigationTests.Nav_CampaignDm_CalendarLinkAbsent.
-      Phase 76's two calendar-hosted read surfaces (the horizon banner and the cancelled-occurrence
-      chip) are therefore unreachable through normal navigation on Campaign boards -- which is
-      exactly the open-ended, indefinite-recurrence use case EVTRECUR-03's own wording targets
-      ("an open-ended campaign never needs manual re-extension"). CalendarController itself carries
-      no board-type gate (grep for BoardType/OneShot in CalendarController.cs returns zero
-      matches), so /Calendar is already reachable by direct URL on a Campaign board and currently
-      renders campaign quests alongside events -- an unrelated data-exposure wrinkle the developer
-      also flagged. This is a real, code-confirmed gap, but the fix is cross-phase: it supersedes
-      part of Phase 37's NAV-01 decision and requires replacing the test that locks it, plus adding
-      board-type-aware filtering to CalendarController (events only on Campaign boards, both on
-      OneShot boards). Recommendation: close it as part of this phase's gap-closure plan rather
-      than opening a separate later phase, because it blocks EVTRECUR-03's user-visible completeness
-      for its primary target audience -- but expect the fix to touch and formally amend NAV-01.
-    artifacts:
-      - path: "QuestBoard.Service/Views/Shared/_Layout.cshtml"
-        issue: "Calendar nav link gated to BoardType.OneShot only (line ~165-169)"
-      - path: "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml"
-        issue: "Same OneShot-only gate (line ~141-145)"
-      - path: "QuestBoard.Service/Controllers/QuestBoard/CalendarController.cs"
-        issue: "No board-type gating at all -- fetches and renders all quests and events unconditionally, so /Calendar already leaks campaign quests onto what should become an events-only Campaign calendar"
-    missing:
-      - "Board-type-aware CalendarController.Index: Campaign boards see events only (quests excluded); OneShot boards keep showing both"
-      - "Un-gate (or re-gate to include Campaign) the Calendar nav link in both layouts"
-      - "Replace LayoutNavigationTests.Nav_CampaignDm_CalendarLinkAbsent, which currently locks in the behaviour being changed"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 6/8
+  gaps_closed:
+    - "A DM sees a banner on the calendar when any active series on the board is running low on upcoming sessions, on both desktop AND mobile (Gap 1 — mobile horizon banner)"
+    - "An open-ended campaign never needs manual re-extension, and a DM can observe that fact where they actually look — including on Campaign boards, which previously could not reach the calendar at all (Gap 2 — nav gate + CalendarController board-type leak)"
+  gaps_remaining: []
+  regressions: []
 human_verification: []
 ---
 
 # Phase 76: Recurring Event Series Verification Report
 
 **Phase Goal:** A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
-**Verified:** 2026-08-28T20:55:24Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-08-28T22:10:00Z
+**Status:** passed
+**Re-verification:** Yes — after gap closure (plans 76-13, 76-14, 76-15)
+
+## Prior Verification Context
+
+The initial verification pass (2026-08-28T20:55:24Z) found `status: gaps_found`, 6/8 must-haves, with EVTRECUR-03 blocked by two code-confirmed gaps:
+
+1. The horizon banner (`SeriesBelowRunway`) existed on the desktop calendar but had zero presence in `Index.Mobile.cshtml` — a mobile DM got no signal at all when the rolling window stopped advancing.
+2. The Calendar nav entry was gated to `BoardType.OneShot` in both layouts (a Phase 37 NAV-01 decision), and `CalendarController` had no board-type gate at all — so Campaign boards couldn't reach the calendar through navigation, and `/Calendar` reached by direct URL on a Campaign board leaked campaign quests it shouldn't render.
+
+That record is preserved here, not rewritten, per instruction. This report documents independent re-verification that both gaps are now closed, and that no sibling behavior regressed in closing them.
 
 ## Goal Achievement
 
@@ -70,94 +38,116 @@ human_verification: []
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Cadence (interval + weekday) + anchor date + repeating on/off cycle mask generate dates that match the mask exactly (EVTRECUR-01) | ✓ VERIFIED | `EventSeriesDateGenerator.GenerateSlots`/`DateForSlot` implement `date(N)=Anchor+(N×IntervalWeeks)wks`, `fires(N)=mask[N mod len]`. `EventSeriesDateGeneratorTests` (21/21 pass, independently re-run with `--no-build`). |
-| 2 | The setup screen previews the next ~10 generated dates live, before saving, and the previewed dates are exactly the dates created (EVTRECUR-02, D-05) | ✓ VERIFIED | `EventsController.PreviewSeries` calls `IEventSeriesService.PreviewAsync`, the same Domain generator the create path and top-up job use. `_SeriesFormScripts.cshtml` wires `fetch('/Events/PreviewSeries')` with debounce/re-render. 76-12 human verification: previewed dates (Sep 5, 12, Oct 3, 10, 31, Nov 7, 28, Dec 5, 26, Jan 2) exactly matched the dates the calendar showed after saving. `EventsControllerIntegrationTests.PreviewSeries_*` (3/3) pass. **Not yet marked complete in REQUIREMENTS.md** — implementation and behavioral evidence both support marking it satisfied. |
-| 3 | Occurrences exist ahead of time on a rolling window and are topped up automatically — an open-ended campaign never needs manual re-extension (EVTRECUR-03) | ✗ FAILED | Materializer and job are correct (`EventSeriesService.TopUpAsync`, `RecurringOccurrenceTopUpJob` registered nightly at 03:00, per-board scoped via `HangfireJobHelper.RunInScopeAsync`). But the requirement's *observable, user-facing* half — a DM being able to tell the rolling window is/isn't working — fails twice: the horizon banner is absent from the mobile calendar (D1, confirmed in code), and the calendar (where both the banner and cancelled-chip live) is unreachable through nav on Campaign boards, the primary open-ended use case (O2, confirmed in code). See Gaps. |
-| 4 | A single occurrence can be cancelled, moved, or edited without affecting the rest of the series (EVTRECUR-04, 05, 06) | ✓ VERIFIED | `EventsController.Cancel`/`Restore` set/clear `CancelledAt` as a tombstone; `Delete` refuses series occurrences server-side (`SeriesId.HasValue` check, re-resolved on POST, not just hidden in markup); `Edit` POST branches on `EventEditScope`, sweeps only `ThisAndFutureEvents` via `ApplyTemplateToFutureAsync`. Cancelled state renders (struck-through, muted) on desktop calendar chip, mobile agenda entry, and occurrence details page — confirmed both by grep (`cancelled` class present in `_Calendar.cshtml`, `Index.Mobile.cshtml`, `calendar.css`, `calendar.mobile.css`) and by 76-12 human UAT. Edit-scope sweep correctly skips a cancelled sibling (76-12 UAT: events 22/23/25/26 renamed, cancelled event 24 untouched). |
-| 5 | Re-running the generator never duplicates, resurrects, or overwrites an occurrence (EVTRECUR-07) | ✓ VERIFIED | Filtered unique index `IX_Events_SeriesId_SeriesSlotIndex` (`filter: "[SeriesId] IS NOT NULL"`, confirmed in migration `20260828130415_AddSeriesRecurrence.cs`) is the DB backstop. `GetSlotIndexesForSeriesAsync` reads every slot ever produced with no date predicate, so a moved occurrence still reads as handled. `EventSeriesMaterializationTests` (14/14 pass, independently re-run). |
-| 6 | Two boards with mirrored cycle masks on the same cadence and anchor produce interleaved, non-colliding dates (EVTRECUR-08) | ✓ VERIFIED | `GenerateSlots_MirroredMasksOnSameAnchorAndInterval_ShareNoFiringDate` exists and passes (part of the 21/21 generator test run). |
-| 7 | A series and its occurrences on one board are invisible from another board, on every read/write surface (D-18, cross-cutting) | ✓ VERIFIED | `EventSeriesTenantIsolationTests` (12 facts) proves this end-to-end through the real request pipeline: desktop calendar, mobile agenda, occurrence Details, series Details, and every mutating action (Cancel, End, Delete, Detach, future-scope Edit), plus the server-side stamp on a spoofed board id at create. Spot-run independently (`GroupFilter_HidesSeriesFromOtherGroupOnDesktopCalendar` — pass). |
-| 8 | The series detail page shows the rule and template read-only, with no way to edit the cadence, and offers End (date-based) and Remove (delete-vs-detach with split past/future/answer counts) (D-06, D-07, D-10, D-11, D-12, D-13) | ✓ VERIFIED | `SeriesController.Details/End/Delete/Detach` implement the read-only rule display and the two-outcome removal. `Edit.cshtml` for an occurrence carries no cadence/anchor/mask fields (grep: zero matches). 76-12 UAT: "Delete Series" dialog reported real counts (20 sessions, 0 past/20 upcoming, 1 answer). |
+| 1 | Cadence (interval + weekday) + anchor date + repeating on/off cycle mask generate dates that match the mask exactly (EVTRECUR-01) | ✓ VERIFIED | Unchanged since prior pass. `EventSeriesDateGeneratorTests` re-run in this pass as part of the full unit suite: 385/385 pass. |
+| 2 | The setup screen previews the next ~10 generated dates live, before saving, and the previewed dates are exactly the dates created (EVTRECUR-02, D-05) | ✓ VERIFIED | Unchanged since prior pass (already functionally verified; only its REQUIREMENTS.md checkbox was stale). Now correctly marked complete — confirmed by direct read of `.planning/REQUIREMENTS.md` line 50 (`[x] EVTRECUR-02`) and traceability table row `Complete`. |
+| 3 | Occurrences exist ahead of time on a rolling window and are topped up automatically — an open-ended campaign never needs manual re-extension (EVTRECUR-03) | ✓ VERIFIED | Both gaps closed and independently re-confirmed in code (see Gap Closure Verification below). Materializer/job unchanged from prior pass; the user-facing observability half now works on both calendar surfaces and both board types. |
+| 4 | A single occurrence can be cancelled, moved, or edited without affecting the rest of the series (EVTRECUR-04, 05, 06) | ✓ VERIFIED | Unchanged since prior pass. Not touched by gap-closure plans; re-confirmed via full suite pass (913/913). |
+| 5 | Re-running the generator never duplicates, resurrects, or overwrites an occurrence (EVTRECUR-07) | ✓ VERIFIED | Unchanged since prior pass. `EventSeriesMaterializationTests` re-confirmed passing as part of the full unit suite. |
+| 6 | Two boards with mirrored cycle masks on the same cadence and anchor produce interleaved, non-colliding dates (EVTRECUR-08) | ✓ VERIFIED | Unchanged since prior pass, re-confirmed as part of the full unit suite. |
+| 7 | A series and its occurrences on one board are invisible from another board, on every read/write surface (D-18, cross-cutting) | ✓ VERIFIED | Directly re-run in this pass: `dotnet test QuestBoard.IntegrationTests --no-build --filter FullyQualifiedName~EventSeriesTenantIsolationTests` → 12/12 passed, matching the prior count exactly. The gap-closure controller/nav change did not touch this test's code paths (`CalendarController.Index` change is additive board-type filtering, not a group-scoping change) and the count regression check confirms no weakening. |
+| 8 | The series detail page shows the rule and template read-only, with no way to edit the cadence, and offers End (date-based) and Remove (delete-vs-detach with split past/future/answer counts) (D-06, D-07, D-10, D-11, D-12, D-13) | ✓ VERIFIED | Unchanged since prior pass. Not touched by gap-closure plans. |
 
-**Score:** 6/8 truths verified (2 present-and-partially-working but user-facing guarantee failed — counted as FAILED per the gaps above, not UNCERTAIN, because the code paths that would need to change are identified and the absence is directly observable, not ambiguous)
+**Score:** 8/8 truths verified.
+
+### Gap Closure Verification (Direct Code Inspection, Not Summary Trust)
+
+**Gap 1 — mobile horizon banner:**
+
+- `QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml` line 35: `@if (Model.CanManage && Model.SeriesBelowRunway.Any())` — identical gate expression to `Index.cshtml` line 29. Same single/multi-series branching copy, same `Url.Action("Details", "Series", ...)` links, confirmed by direct diff-read of both files side by side.
+- Desktop view (`Index.cshtml`) confirmed untouched by this change (only the mobile file and a new test file were added/modified per `git log`).
+
+**Gap 2 — nav gate + controller board-type leak:**
+
+- `CalendarController.cs` line 46-52: resolves `activeBoardType` once via `IBoardTypeResolver`, sets `includeQuests = activeBoardType != BoardType.Campaign`, and only calls `questService.GetQuestsForCalendarAsync` when `includeQuests` is true — otherwise `Quests = []`. Events are always loaded regardless of board type. This is a load-time exclusion (quest never fetched), not a filter-after-fetch, so it cannot be bypassed by a shared partial.
+- `_Layout.cshtml` line 168 and `_Layout.Mobile.cshtml` line 144: Calendar nav condition widened from `activeBoardType == BoardType.OneShot` to `activeBoardType is BoardType.OneShot or BoardType.Campaign`. Confirmed this is the *only* changed nav condition in both files — the other four `BoardType`-gated entries (Manage Shop, Edit My Profile, Shop, Players) still read `activeBoardType == BoardType.OneShot`, byte-identical to before, confirmed by grepping every `BoardType.` occurrence in both layout files.
+
+**Check 3 (authentication gate not weakened):** `_Layout.cshtml` line 163 wraps the entire nav block (including the widened Calendar condition) in `@if (User.Identity?.IsAuthenticated == true)`, unchanged. `_Layout.Mobile.cshtml` line 144 keeps the authentication check inline in the same condition: `User.Identity?.IsAuthenticated == true && activeBoardType is BoardType.OneShot or BoardType.Campaign`. Confirmed by direct read — only the board-type half of the condition changed in either file. Behaviorally re-proven by `Nav_CampaignAnonymous_CalendarLinkAbsent` and `Nav_Anonymous_CalendarLinkAbsent`, both passing (see Behavioral Spot-Checks).
+
+**Check 4 (NAV-01's other clauses survived):** Confirmed in code — `Nav_CampaignAuthenticated_ShopLinkAbsent`, `Nav_CampaignDm_ManageShopLinkAbsent`, `Nav_CampaignDm_EditMyProfileLinkAbsent`, and `Nav_CampaignAuthenticated_PlayersLinkAbsent` all still exist in `LayoutNavigationTests.cs` and pass. Shop/Manage Shop/Edit My Profile/Players nav conditions in both layout files are unchanged.
+
+**Check 5 (tenant isolation intact):** `EventSeriesTenantIsolationTests` re-run independently in this pass: 12/12 pass — same count as the prior verification pass, no regression.
+
+**Check 6 (red-then-green):** Confirmed via `git log`:
+- Gap 1: `d6c884ab` `test(76-13): add horizon banner render tests, proving mobile facts fail` → `ae8e3459` `feat(76-13): render horizon banner on mobile calendar`. 76-13-SUMMARY.md's own claim of which facts failed pre-fix is consistent with the test file's design (anchor markers prevent false-pass), though this verifier did not re-run the pre-fix state to reproduce the specific red output — the commit sequence and test design are sufficient corroboration.
+- Gap 2: `219a9f00` `test(76-14): replace superseded nav fact and add campaign calendar scope tests` (includes the new `Nav_CampaignAnonymous_CalendarLinkAbsent` regression guard and `CalendarBoardTypeScopeTests`, reproducing the quest leak as a failing test per commit message) → `5e69507c` `feat(76-14): make calendar an events-only surface on campaign boards` → `e6f2b3c0` `feat(76-14): show calendar nav entry on campaign boards in both layouts`. Test file was not modified between the test commit and either feat commit.
+
+**Check 7 (`.planning/milestones/` untouched):** `git status --short .planning/milestones/` returns empty. `git log -1 -- .planning/milestones/v6.0-phases/37-navigation-access-control/` shows the archive's last touch was `1bf03eec` on 2026-07-03, well before this gap-closure work (2026-08-28) — the Phase 37 archive was not modified. The supersession is recorded only in the live `REQUIREMENTS.md` and `ROADMAP.md`, as a forward-pointing note naming NAV-01, commit `f7a31fa9`, and the replacement test.
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `QuestBoard.Domain/Services/EventSeriesDateGenerator.cs` | Pure cycle-mask generator + mask parser | ✓ VERIFIED | Present, substantive, no DI, static, no clock read. |
-| `QuestBoard.Repository/Migrations/20260828130415_AddSeriesRecurrence.cs` | Template fields, EndDate, CancelledAt, filtered unique index | ✓ VERIFIED | All four present; index confirmed `unique: true, filter: "[SeriesId] IS NOT NULL"`. |
-| `QuestBoard.Domain/Services/EventSeriesService.cs` / `IEventSeriesService.cs` | Materializer, top-up, preview, lifecycle, edit-scope | ✓ VERIFIED | `TopUpAsync`, `PreviewAsync`, `ApplyTemplateToFutureAsync`, `CountLiveSiblingsOnDateAsync`, `EndAsync`, `DeleteAsync` all present and called from controllers. |
-| `QuestBoard.Service/Jobs/RecurringOccurrenceTopUpJob.cs` | Nightly per-group top-up | ✓ VERIFIED | Registered in `Program.cs` (`"0 3 * * *"`), iterates real groups, per-group scope, reports failure without stopping other boards. |
-| `QuestBoard.Service/Controllers/Events/EventsController.cs` (Cancel/Restore/Delete/Edit) | Tombstone cancel, Delete refusal, scope-aware edit | ✓ VERIFIED | All server-side, re-resolved on POST. |
-| `QuestBoard.Service/Controllers/Events/SeriesController.cs` | Series lifecycle page | ✓ VERIFIED | Details/End/Delete/Detach present. |
-| `QuestBoard.Service/Views/Calendar/Index.cshtml` | Cancelled chip + horizon banner (desktop) | ✓ VERIFIED | Both present, `CanManage`-gated. |
-| `QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml` | Cancelled chip + horizon banner (mobile) | ⚠️ PARTIAL | Cancelled chip present; horizon banner **absent** — see Gap 1. |
-| `QuestBoard.IntegrationTests/Tests/EventSeriesTenantIsolationTests.cs` | Two-board isolation + refusal proof | ✓ VERIFIED | 12 facts, spot-run passing. |
+| `QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml` | Cancelled chip + horizon banner (mobile) | ✓ VERIFIED | Both present and `CanManage`-gated, confirmed by direct read. Previously ⚠️ PARTIAL — banner now present. |
+| `QuestBoard.Service/Controllers/QuestBoard/CalendarController.cs` | Board-type-aware quest load | ✓ VERIFIED | `IBoardTypeResolver` injected; quest load skipped entirely on Campaign boards; events always loaded. |
+| `QuestBoard.Service/Views/Shared/_Layout.cshtml` / `_Layout.Mobile.cshtml` | Calendar nav reachable on Campaign boards, auth gate intact, sibling restrictions untouched | ✓ VERIFIED | Confirmed by direct read of every `BoardType.` condition in both files. |
+| `QuestBoard.IntegrationTests/Controllers/CalendarHorizonBannerTests.cs` | Behavioral coverage of the banner on both surfaces, both roles, both board types | ✓ VERIFIED | 6 facts, real DB seeding, real HTTP requests, anchor-marker assertions. All pass (re-run independently: 6/6). |
+| `QuestBoard.IntegrationTests/Controllers/CalendarBoardTypeScopeTests.cs` | Behavioral coverage of quest exclusion on Campaign boards, both surfaces, unresolved-type fallback | ✓ VERIFIED | 5 facts, real DB seeding (event + finalized quest on the same date), anchor-marker assertions on title text. All pass (re-run independently: 5/5). |
+| `QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs` | Superseded fact replaced (not deleted), new regression guards added, sibling facts untouched | ✓ VERIFIED | 24 facts total, re-run independently: 24/24 pass, 0 failing. |
+| `.planning/REQUIREMENTS.md` | All 8 EVTRECUR checked and Complete, EVTRECUR-09 (deferred) correctly still unchecked, supersession note present | ✓ VERIFIED | Confirmed by direct read: 8/8 checkboxes checked, 8/8 traceability rows read `Complete`, `EVTRECUR-09` unchecked (correct — distinct deferred requirement), supersession blockquote present naming NAV-01, `f7a31fa9`, `76-14`, and the replacement test. |
+| `.planning/ROADMAP.md` | Decisions-amended and gap-closure record for Phase 76 | ✓ VERIFIED | Confirmed by direct read: both blocks present, naming NAV-01, the replacement test, and plans 76-13/76-14/76-15. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| `_SeriesFormScripts.cshtml` | `POST /Events/PreviewSeries` | `fetch('/Events/PreviewSeries', ...)` | ✓ WIRED | Debounced, re-renders on response. |
-| `EventsController.PreviewSeries` | `EventSeriesService.PreviewAsync` | Direct call | ✓ WIRED | Same generator path as create/top-up. |
-| `RecurringOccurrenceTopUpJob` | `EventSeriesService.TopUpAsync` | Direct call, per-group scope | ✓ WIRED | Confirmed in job source. |
-| `CalendarController.Index` | `Index.cshtml` `SeriesBelowRunway` banner | `Model.CanManage && Model.SeriesBelowRunway.Any()` | ✓ WIRED | Desktop only. |
-| `CalendarController.Index` | `Index.Mobile.cshtml` `SeriesBelowRunway` banner | — | ✗ NOT_WIRED | No such binding exists in the mobile view at all. |
-| `_Layout.cshtml` / `_Layout.Mobile.cshtml` nav | `CalendarController.Index` | `@if (activeBoardType == BoardType.OneShot)` | ⚠️ PARTIAL (by design, now a gap) | Nav link hidden on Campaign boards; controller itself has no matching gate, so the route is reachable directly but not discoverable, and currently renders quests it shouldn't on a Campaign board. |
-| `EventsController.Edit` (future scope) | `EventSeriesService.ApplyTemplateToFutureAsync` | Direct call, `EventEditScope.ThisAndFutureEvents` branch | ✓ WIRED | Confirmed skip-cancelled-sibling behavior in 76-12 UAT. |
-| `EventsController.CheckOccurrenceCollision` | Edit.cshtml collision notice | AJAX call feeding `#saveScopeCollisionNotice` | ✓ WIRED | Confirmed in view script. |
+| `CalendarController.Index` | `Index.Mobile.cshtml` `SeriesBelowRunway` banner | `Model.CanManage && Model.SeriesBelowRunway.Any()` | ✓ WIRED | Now identical to the desktop link. Previously NOT_WIRED. |
+| `CalendarController.Index` (Campaign board) | Quest load | `includeQuests = activeBoardType != BoardType.Campaign` gates the fetch call itself | ✓ WIRED | Load-time exclusion, not post-fetch filtering; confirmed by direct code read. |
+| `_Layout.cshtml` / `_Layout.Mobile.cshtml` nav | `CalendarController.Index` | `User.Identity?.IsAuthenticated == true && activeBoardType is BoardType.OneShot or BoardType.Campaign` | ✓ WIRED | Auth clause confirmed unchanged in both files; board-type clause widened as intended. Previously PARTIAL (by design, now a gap) — now fully wired for both board types with auth intact. |
 
-### Behavioral Spot-Checks
+### Behavioral Spot-Checks (Independently Re-Run This Pass)
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Cycle-mask arithmetic incl. mirrored-mask interleave | `dotnet test QuestBoard.UnitTests --no-build --filter FullyQualifiedName~EventSeriesDateGeneratorTests` | 21/21 passed | ✓ PASS |
-| Idempotent materialization (no dup/resurrect/overwrite) | `dotnet test QuestBoard.UnitTests --no-build --filter FullyQualifiedName~EventSeriesMaterializationTests` | 14/14 passed | ✓ PASS |
-| Cross-board isolation, desktop calendar | `dotnet test QuestBoard.IntegrationTests --no-build --filter FullyQualifiedName~EventSeriesTenantIsolationTests.GroupFilter_HidesSeriesFromOtherGroupOnDesktopCalendar` | 1/1 passed | ✓ PASS |
-| Full unit suite (existence proof for the 385 claim) | `dotnet test QuestBoard.UnitTests --no-build` | 385/385 passed | ✓ PASS |
-| Full integration suite (existence proof for the 513 claim) | `dotnet test QuestBoard.IntegrationTests --no-build` | 513/513 passed | ✓ PASS |
-| Mobile calendar view renders `SeriesBelowRunway` banner | `grep -n "SeriesBelowRunway" QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml` | 0 matches | ✗ FAIL — confirms Gap 1 |
-| `CalendarController` gates by `BoardType` | `grep -n "BoardType\|OneShot" QuestBoard.Service/Controllers/QuestBoard/CalendarController.cs` | 0 matches | ✗ FAIL — confirms Gap 2 |
+| Build clean after gap-closure merge | `dotnet build` | 6 projects, 0 errors, 20 pre-existing package-version warnings (unrelated) | ✓ PASS |
+| Horizon banner + campaign scope + nav facts, combined | `dotnet test QuestBoard.IntegrationTests --no-build --filter "FullyQualifiedName~CalendarHorizonBannerTests\|FullyQualifiedName~CalendarBoardTypeScopeTests\|FullyQualifiedName~LayoutNavigationTests\|FullyQualifiedName~EventSeriesTenantIsolationTests"` | 47/47 passed (6 + 5 + 24 + 12) | ✓ PASS |
+| Tenant isolation regression check (isolated re-run) | `dotnet test QuestBoard.IntegrationTests --no-build --filter FullyQualifiedName~EventSeriesTenantIsolationTests` | 12/12 passed | ✓ PASS |
+| Full unit suite | `dotnet test QuestBoard.UnitTests --no-build` | 385/385 passed | ✓ PASS |
+| Full integration suite | `dotnet test QuestBoard.IntegrationTests --no-build` | 528/528 passed | ✓ PASS (913 total, matches the orchestrator-reported figure exactly, not merely approximated) |
+| `.planning/milestones/` untouched | `git status --short .planning/milestones/` | empty | ✓ PASS |
+| Debt markers in gap-closure files | `grep -inE "TBD\|FIXME\|XXX\|TODO\|HACK\|PLACEHOLDER"` across all 7 modified/created files | 0 matches | ✓ PASS |
 
-Note: `dotnet build`/`dotnet test` with a fresh build failed in this session because `QuestBoard.Service.exe` (pid 7608) is running under the debugger and holds a lock on `QuestBoard.Domain.dll`/`QuestBoard.Repository.dll` — a known environment constraint documented in CLAUDE.md. Worked around by running `dotnet test --no-build` against already-built test binaries, which independently reproduces the 385/513 counts reported in 76-11-SUMMARY.md rather than merely trusting the prose.
+No server start or app run was required — all checks are static code reads plus `dotnet build`/`dotnet test` against the compiled test binaries.
 
 ### Requirements Coverage
 
 | Requirement | Source Plan(s) | Description | Status | Evidence |
 |---|---|---|---|---|
-| EVTRECUR-01 | 76-01, 76-06 | Base cadence + anchor + cycle mask | ✓ SATISFIED (marked complete) | Generator + Create form wiring, confirmed. |
-| EVTRECUR-02 | 76-04, 76-06 | Live preview of next ~10 dates before saving | ✓ SATISFIED — **should be marked complete, currently unchecked in REQUIREMENTS.md** | Preview endpoint, wiring, tests, and 76-12 UAT all confirm exact date match. No code gap found; this is a tracking-doc gap, not a functionality gap. |
-| EVTRECUR-03 | 76-04, 76-05, 76-09, 76-10 | Rolling window topped up automatically, no manual re-extension needed | ✗ BLOCKED (correctly left unmarked) | Mechanism is correct and tested; the user-visible "it's working / it's not working" signal fails on mobile (Gap 1) and is unreachable via nav on Campaign boards, the primary open-ended target (Gap 2). Confirms the developer's judgement in 76-12-SUMMARY.md — do not mark complete yet. |
-| EVTRECUR-04 | 76-02, 76-03, 76-07, 76-10 | Cancel a single occurrence, rest unaffected | ✓ SATISFIED (marked complete) | Tombstone cancel, three-surface rendering, Delete refusal, all confirmed in code and UAT. |
-| EVTRECUR-05 | 76-03, 76-08 | Move a single occurrence, rest unaffected | ✓ SATISFIED (marked complete) | Edit POST + collision notice confirmed. |
-| EVTRECUR-06 | 76-03, 76-08, 76-09 | Edit a single occurrence's details, rest unaffected | ✓ SATISFIED (marked complete) | Scope-aware Edit POST + this-and-future sweep confirmed, including cancelled-sibling skip in UAT. |
-| EVTRECUR-07 | 76-03, 76-04, 76-05 | Generator re-run never duplicates/resurrects/overwrites | ✓ SATISFIED (marked complete) | Filtered unique index + slot-existence query + idempotency tests confirmed. |
-| EVTRECUR-08 | 76-01, 76-03 | Mirrored masks on two boards interleave without collision | ✓ SATISFIED (marked complete) | Dedicated unit test confirmed passing. |
+| EVTRECUR-01 | 76-01, 76-06 | Base cadence + anchor + cycle mask | ✓ SATISFIED | Unchanged. |
+| EVTRECUR-02 | 76-04, 76-06, 76-15 (tracking fix) | Live preview of next ~10 dates before saving | ✓ SATISFIED, now correctly marked complete | Functionality unchanged since prior pass; REQUIREMENTS.md checkbox corrected by 76-15, confirmed by direct read. |
+| EVTRECUR-03 | 76-04, 76-05, 76-09, 76-10, 76-13, 76-14 | Rolling window topped up automatically, no manual re-extension needed | ✓ SATISFIED — both gaps closed | Mobile banner ported (76-13); Campaign board nav + controller quest exclusion (76-14). Both independently re-verified in code and via passing tests in this pass, not merely by re-reading summaries. |
+| EVTRECUR-04 | 76-02, 76-03, 76-07, 76-10 | Cancel a single occurrence, rest unaffected | ✓ SATISFIED | Unchanged. |
+| EVTRECUR-05 | 76-03, 76-08 | Move a single occurrence, rest unaffected | ✓ SATISFIED | Unchanged. |
+| EVTRECUR-06 | 76-03, 76-08, 76-09 | Edit a single occurrence's details, rest unaffected | ✓ SATISFIED | Unchanged. |
+| EVTRECUR-07 | 76-03, 76-04, 76-05 | Generator re-run never duplicates/resurrects/overwrites | ✓ SATISFIED | Unchanged. |
+| EVTRECUR-08 | 76-01, 76-03 | Mirrored masks on two boards interleave without collision | ✓ SATISFIED | Unchanged. |
 
-No orphaned requirements found — all eight IDs declared in plan frontmatter map 1:1 to the eight IDs REQUIREMENTS.md assigns to Phase 76.
+All eight EVTRECUR requirements now read `Complete` in both the checkbox list and the traceability table, confirmed by direct read of `.planning/REQUIREMENTS.md` (not by trusting 76-15-SUMMARY.md's claim). `EVTRECUR-09` (deferred, Future Requirements section) correctly remains unchecked — it is out of Phase 76's eight-requirement scope.
+
+No orphaned requirements found.
 
 ### Anti-Patterns Found
 
-None found in the files this phase modified beyond the two gaps already tracked above (missing mobile banner block; unfiltered `CalendarController`). No `TBD`/`FIXME`/`XXX` markers, no stub returns, no hardcoded empty data flowing to rendering.
+None. Scanned all 7 files touched by the three gap-closure plans (`Index.Mobile.cshtml`, `CalendarController.cs`, `_Layout.cshtml`, `_Layout.Mobile.cshtml`, `CalendarHorizonBannerTests.cs`, `CalendarBoardTypeScopeTests.cs`, `LayoutNavigationTests.cs`) for `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER` and stub-return patterns — zero matches.
 
 ### Human Verification Required
 
-None outstanding — 76-12 already completed the four manual-only checks this phase's validation strategy named (live preview re-render, three-surface cancelled state, mobile agenda on a genuine mobile UA, horizon banner). The one item 76-12 left unexercised (the amber collision-notice strip appearing) was confirmed present in code by this verification (`Edit.cshtml`'s `showCollisionNotice`/`CheckOccurrenceCollision` wiring) — low risk, does not warrant a second human pass.
+None. All eight observable truths are verifiable via static code inspection plus automated, behaviorally-real integration tests (real HTTP requests through the full ASP.NET Core pipeline, real database seeding, anchor-marker assertions that cannot pass against an error page or login redirect). No visual, real-time, or external-service behavior remains unverified for this phase.
 
 ### Gaps Summary
 
-Two gaps block full completion of EVTRECUR-03, both already identified by the developer during 76-12 and independently confirmed in code by this verification:
+Both gaps from the initial verification pass are closed, confirmed by independent code inspection and independently re-run tests — not by trusting the gap-closure SUMMARY.md claims:
 
-1. **The horizon banner does not render on the mobile calendar.** `Index.Mobile.cshtml` has no `SeriesBelowRunway` reference at all, while `Index.cshtml` has full, correct, `CanManage`-gated banner logic. 76-10-SUMMARY.md's claim that both surfaces are "fully wired for the cancelled state and the horizon banner" is false for the banner. Fix is scoped and small: port the block into the mobile view.
+1. **Mobile horizon banner** — `Index.Mobile.cshtml` now carries the identical `CanManage`-gated `SeriesBelowRunway` block the desktop view has. Confirmed present in code; 6 new behavioral tests pass.
+2. **Campaign board calendar reachability + quest leak** — `CalendarController` now excludes quests (never fetches them) on Campaign boards while continuing to fetch events for both board types; both layouts' Calendar nav entries admit `BoardType.OneShot or BoardType.Campaign` while the authentication clause and all four sibling campaign restrictions (Shop, Manage Shop, Edit My Profile, Players) remain untouched. Confirmed present in code; 5 new behavioral tests plus 3 new/replaced nav facts pass; the superseded `Nav_CampaignDm_CalendarLinkAbsent` fact was replaced (not silently deleted) by `Nav_CampaignDm_CalendarLinkPresent`, matching the documented supersession of NAV-01's calendar clause only.
 
-2. **Campaign boards cannot reach the calendar through normal navigation**, so neither the horizon banner nor the cancelled-occurrence chip (both calendar-hosted) is discoverable on the board type EVTRECUR-03's own "open-ended campaign" language targets. `CalendarController` itself has zero board-type gating, so `/Calendar` is already reachable by direct URL on a Campaign board and currently renders campaign quests alongside events — an unrelated but real data-exposure issue. This gap's root cause is a deliberate Phase 37 decision (NAV-01, locked by a test), so its fix necessarily amends that decision rather than being pure Phase 76 code. Recommend closing it in this phase's gap-closure plan (it blocks EVTRECUR-03 for the primary use case) while explicitly noting in the closure plan that it supersedes and must replace `LayoutNavigationTests.Nav_CampaignDm_CalendarLinkAbsent`.
+Tracking documents (`REQUIREMENTS.md`, `ROADMAP.md`) were also corrected by plan 76-15 and independently re-confirmed accurate in this pass. `.planning/milestones/v6.0-phases/37-navigation-access-control/` (Phase 37's archive) was confirmed untouched.
 
-Both gaps are scoped, well-understood, and testable — no ambiguity requiring human judgment beyond confirming the fix direction (events-only Campaign calendar) the developer already stated as desired end state.
+No regressions found: tenant isolation (12/12), the four other campaign navigation restrictions, and the anonymous-visitor rule on both board types all re-verified passing. Full suite: 385 unit + 528 integration = 913/913, matching the reported figure exactly on independent re-run.
 
-One non-blocking documentation item: EVTRECUR-02 is functionally complete and UAT-confirmed but is not yet checked off in REQUIREMENTS.md. Recommend marking it complete alongside EVTRECUR-03 once the gap-closure plan lands, per 76-12-SUMMARY.md's own stated intent.
+**Phase 76 goal is achieved.** A DM can set up a repeating schedule with an arbitrary on/off cycle mask, get correct dates generated indefinitely with automatic rolling top-up, observe that fact from wherever they actually work (desktop or mobile, One-Shot or Campaign board), and cancel, move, or edit any single occurrence without affecting the rest of the series — all confirmed against the codebase, not against summary prose.
 
 ---
 
-_Verified: 2026-08-28T20:55:24Z_
+_Verified: 2026-08-28T22:10:00Z_
 _Verifier: Claude (gsd-verifier)_
+_Re-verification of: 2026-08-28T20:55:24Z (status: gaps_found, 6/8) — gaps closed by plans 76-13, 76-14, 76-15_
