@@ -30,6 +30,33 @@
         </a>
     </div>
 
+    @* Low-runway warning — a player has no action to take on a scheduling warning, so this
+       block is gated to managers only, matching the desktop calendar's banner. *@
+    @if (Model.CanManage && Model.SeriesBelowRunway.Any())
+    {
+        <div class="alert alert-warning mb-3" role="alert">
+            @if (Model.SeriesBelowRunway.Count == 1)
+            {
+                var series = Model.SeriesBelowRunway[0];
+                <text>The '</text><a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a><text>' series is running low — only @series.UpcomingCount upcoming session(s) left. Visit its series page to check the cadence.</text>
+            }
+            else
+            {
+                <text>@Model.SeriesBelowRunway.Count recurring series are running low on upcoming sessions: </text>
+                @for (var i = 0; i < Model.SeriesBelowRunway.Count; i++)
+                {
+                    var series = Model.SeriesBelowRunway[i];
+                    <a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a>
+                    if (i < Model.SeriesBelowRunway.Count - 1)
+                    {
+                        <text>, </text>
+                    }
+                }
+                <text>. Visit each series page to check its cadence.</text>
+            }
+        </div>
+    }
+
     @* Agenda list — one section per day that has at least one quest or event *@
     @if (!agendaDays.Any())
     {
