@@ -107,6 +107,32 @@
                             <button type="button" class="btn btn-outline-danger" onclick="withdrawAvailability(@Model.Id)">
                                 <i class="fas fa-user-slash me-2"></i>Withdraw
                             </button>
+                            @* The handler lives beside its only caller rather than in the shared Scripts
+                               section below, so a page where the control never rendered never defines a
+                               function with nothing valid to call it. *@
+                            <script>
+                                function withdrawAvailability(eventId) {
+                                    if (confirm("Withdrawing removes your answer entirely and returns you to not having responded. Continue?")) {
+                                        const formData = new FormData();
+                                        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+
+                                        fetch(`/Events/Withdraw/${eventId}`, {
+                                            method: "DELETE",
+                                            body: formData
+                                        }).then(res => {
+                                            if (res.ok) {
+                                                location.reload();
+                                            } else {
+                                                res.text().then(text => {
+                                                    alert(`Failed to withdraw availability: ${text}`);
+                                                });
+                                            }
+                                        }).catch(err => {
+                                            alert("An error occurred while withdrawing availability.");
+                                        });
+                                    }
+                                }
+                            </script>
                         }
                     </div>
                     <div class="d-flex gap-2">
@@ -196,28 +222,6 @@
             }).catch(err => {
                 alert("An error occurred while setting availability.");
             });
-        }
-
-        function withdrawAvailability(eventId) {
-            if (confirm("Withdrawing removes your answer entirely and returns you to not having responded. Continue?")) {
-                const formData = new FormData();
-                formData.append('__RequestVerificationToken', '@tokens.RequestToken');
-
-                fetch(`/Events/Withdraw/${eventId}`, {
-                    method: "DELETE",
-                    body: formData
-                }).then(res => {
-                    if (res.ok) {
-                        location.reload();
-                    } else {
-                        res.text().then(text => {
-                            alert(`Failed to withdraw availability: ${text}`);
-                        });
-                    }
-                }).catch(err => {
-                    alert("An error occurred while withdrawing availability.");
-                });
-            }
         }
     </script>
 }
