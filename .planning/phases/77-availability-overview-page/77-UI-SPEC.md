@@ -112,7 +112,7 @@ All four vote-bearing states render as a Bootstrap `badge`; the fifth (Empty) de
 | 1 | Confirmed Yes | pill badge | solid `bg-success` | none | `fa-check` | "Yes" | normal |
 | 2 | Confirmed Maybe | pill badge | solid `bg-warning` | none | `fa-question` | "Maybe" | normal |
 | 3 | Confirmed No | pill badge | solid `bg-danger` | none | `fa-times` | "No" | normal |
-| 4 | Muted Yes (Campaign default, `HasAnswered == false`) | pill badge | `bg-success-subtle` (hollow/pale) | **1px dashed**, `border-success-emphasis` | `fa-clock` (never `fa-check`) | "Yes" | **italic** |
+| 4 | Muted Yes (Campaign default, `HasAnswered == false`) | pill badge | `bg-success-subtle` (hollow/pale) | **1px dashed**, `var(--bs-success-text-emphasis)` | `fa-clock` (never `fa-check`) | "Yes" | **italic** |
 | 5 | Empty (no signup row) | bare text, no pill | none | none | none | "—" (em dash) | normal, `text-muted` / reduced opacity |
 
 Markup:
@@ -149,8 +149,8 @@ New CSS (`events-overview.css`, and its rules duplicated verbatim into `events-o
    both survive greyscale and a colour-blind viewer, which fill alone would not. */
 .avail-cell-yes-muted {
     background-color: var(--bs-success-bg-subtle);
-    color: var(--bs-success-emphasis-color, var(--bs-success-text-emphasis));
-    border: 1px dashed var(--bs-success-emphasis-color, var(--bs-success-text-emphasis)) !important;
+    color: var(--bs-success-text-emphasis);
+    border: 1px dashed var(--bs-success-text-emphasis) !important;
 }
 
 .avail-cell-yes-muted em {
