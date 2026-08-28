@@ -171,3 +171,11 @@ None - no external service configuration required.
 ---
 *Phase: 75-event-availability-signups*
 *Completed: 2026-08-28*
+
+## Self-Check: PASSED
+
+- FOUND: `QuestBoard.Service/Views/Events/Details.cshtml`
+- FOUND: `QuestBoard.IntegrationTests/Controllers/EventDetailsAvailabilityRenderTests.cs`
+- FOUND commit `a06ce61` (Task 1)
+- FOUND commit `57a6d20` (Task 2)
+- FOUND commit `075a60c` (Task 3)
