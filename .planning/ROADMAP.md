@@ -216,7 +216,7 @@ Plans:
 **Goal**: A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
 **Depends on**: Phase 75 (materialized occurrences must carry availability from the moment they exist)
 **Requirements**: EVTRECUR-01, EVTRECUR-02, EVTRECUR-03, EVTRECUR-04, EVTRECUR-05, EVTRECUR-06, EVTRECUR-07, EVTRECUR-08
-**Plans**: 7/12 plans executed
+**Plans**: 9/12 plans executed
 
 Plans:
 **Wave 1**
@@ -239,8 +239,8 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 76-07-PLAN.md — Occurrence cancel and restore, the server-side Delete refusal, cancelled banner and series link (wave 5)
-- [ ] 76-09-PLAN.md — Series detail page with read-only rule, occurrence table, End and the delete-or-detach removal (wave 5)
+- [x] 76-07-PLAN.md — Occurrence cancel and restore, the server-side Delete refusal, cancelled banner and series link (wave 5)
+- [x] 76-09-PLAN.md — Series detail page with read-only rule, occurrence table, End and the delete-or-detach removal (wave 5)
 - [x] 76-10-PLAN.md — Cancelled chip and agenda styling, Legend row, and the DM-gated horizon banner (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
