@@ -216,7 +216,7 @@ Plans:
 **Goal**: A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
 **Depends on**: Phase 75 (materialized occurrences must carry availability from the moment they exist)
 **Requirements**: EVTRECUR-01, EVTRECUR-02, EVTRECUR-03, EVTRECUR-04, EVTRECUR-05, EVTRECUR-06, EVTRECUR-07, EVTRECUR-08
-**Plans**: 15 plans (12 complete, 3 gap closure)
+**Plans**: 14/15 plans executed
 
 Plans:
 **Wave 1**
@@ -257,8 +257,8 @@ Plans:
 
 **Wave 9** *(gap closure — blocked on the phase verification that found the gaps)*
 
-- [ ] 76-13-PLAN.md — Mobile calendar horizon banner, with the first automated coverage of the banner on either surface (wave 9, gap closure)
-- [ ] 76-14-PLAN.md — Campaign calendar navigation entry and events-only quest filtering, superseding the calendar clause of NAV-01 (wave 9, gap closure)
+- [x] 76-13-PLAN.md — Mobile calendar horizon banner, with the first automated coverage of the banner on either surface (wave 9, gap closure)
+- [x] 76-14-PLAN.md — Campaign calendar navigation entry and events-only quest filtering, superseding the calendar clause of NAV-01 (wave 9, gap closure)
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
