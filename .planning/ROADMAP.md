@@ -285,6 +285,28 @@ Plans:
 - **Idempotency keys on `(EventSeriesId, SeriesSlotIndex)`, never on date.** A date-keyed check resurrects moved occurrences and cannot distinguish "cancelled" from "never created".
 - **Rule edits are additive only.** Editing a series never retroactively deletes or rewrites occurrences that already exist — especially ones people have voted on. More aggressive regeneration is deferred (EVTRECUR-09).
 
+**Decisions amended by this phase:**
+
+- **The calendar clause of NAV-01 (Phase 37) is superseded.** Campaign boards regain the Calendar
+  navigation entry on both layouts, because this phase put two campaign-relevant read surfaces on
+  the calendar — the DM horizon banner and the cancelled-occurrence chip — and neither was
+  reachable by navigation before. The campaign calendar is events-only: quests are excluded in
+  `CalendarController` rather than hidden in a view, which also closed a leak present in shipped
+  code — the calendar route never had a board-type gate at all. The four other campaign navigation
+  restrictions (shop, manage shop, edit my profile, players) and the logged-out-visitor rule are
+  untouched. `LayoutNavigationTests.Nav_CampaignDm_CalendarLinkAbsent` was replaced by
+  `LayoutNavigationTests.Nav_CampaignDm_CalendarLinkPresent` in plan `76-14`.
+
+**Gap closure:**
+
+- Verification found two gaps against success criterion 3 (rolling occurrences topped up
+  automatically): the horizon banner was missing from the mobile calendar, and the calendar was
+  unreachable by navigation on campaign boards. Plans `76-13`, `76-14`, and `76-15` closed them —
+  `76-13` ported the banner to the mobile calendar view, `76-14` restored campaign-board navigation
+  and made the calendar events-only, and `76-15` corrected the tracking documents to match. The
+  banner defect survived to verification because no automated test asserted the banner rendered on
+  either calendar surface; both surfaces now have that coverage (`CalendarHorizonBannerTests`).
+
 **Risks this phase must actively avoid:**
 
 - **The stale `ActiveGroupContextService` doc comment.** It claims a null `ActiveGroupId` means "see all"; the Phase 55 filters are fail-closed and return **zero** rows. The job runs outside `GroupSessionMiddleware`, so it must call `SetGroupId()` per group and iterate — never `IgnoreQueryFilters()`.

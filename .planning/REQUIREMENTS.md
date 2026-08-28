@@ -47,13 +47,25 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 ### Calendar Events — Recurrence
 
 - [x] **EVTRECUR-01**: A DM can make an event recur by setting a base cadence (every N weeks on a given weekday), an anchor date, and a repeating on/off cycle mask — so "two sessions on, two off" is expressible directly
-- [ ] **EVTRECUR-02**: While configuring a series, the DM sees a live preview of the next ~10 dates it will generate, before saving
-- [ ] **EVTRECUR-03**: Occurrences are generated ahead of time on a rolling window and topped up automatically, so an open-ended campaign never needs manual re-extension
+- [x] **EVTRECUR-02**: While configuring a series, the DM sees a live preview of the next ~10 dates it will generate, before saving
+- [x] **EVTRECUR-03**: Occurrences are generated ahead of time on a rolling window and topped up automatically, so an open-ended campaign never needs manual re-extension
 - [x] **EVTRECUR-04**: A DM can cancel a single occurrence without affecting the rest of the series
 - [x] **EVTRECUR-05**: A DM can move a single occurrence to a different date without affecting the rest of the series
 - [x] **EVTRECUR-06**: A DM can edit a single occurrence's details without affecting the rest of the series
 - [x] **EVTRECUR-07**: Re-running the occurrence generator never duplicates an existing occurrence, resurrects a cancelled one, or overwrites one that was moved or edited
 - [x] **EVTRECUR-08**: Two boards can be configured with mirrored cycle masks on the same cadence and anchor so their sessions interleave rather than collide
+
+> **Supersession note (recorded by plan 76-15).** Closing EVTRECUR-03 gave the campaign calendar
+> two campaign-relevant read surfaces — the DM horizon banner and the cancelled-occurrence chip —
+> that did not exist when Phase 37 decided to hide the Calendar nav entry on campaign boards. Plan
+> `76-14` therefore supersedes **only the calendar clause** of NAV-01, the Phase 37 decision
+> (shipped in commit `f7a31fa9`), archived under
+> `.planning/milestones/v6.0-phases/37-navigation-access-control/`: campaign boards now show the
+> Calendar nav entry on both layouts, and the campaign calendar itself is an events-only surface
+> (quests are excluded in `CalendarController`, never hidden in a view). NAV-02 (shop), NAV-04
+> (manage shop), NAV-05 (edit my profile), NAV-06 (players), and the logged-out-visitor rule are all
+> untouched and remain in force. `LayoutNavigationTests.Nav_CampaignDm_CalendarLinkAbsent` was
+> replaced by `LayoutNavigationTests.Nav_CampaignDm_CalendarLinkPresent` rather than deleted.
 
 ### Calendar Events — Availability Overview
 
@@ -146,14 +158,14 @@ Explicit exclusions for v9.0, with reasoning.
 | EVTAVAIL-03 | Phase 75 | Complete |
 | EVTAVAIL-04 | Phase 75 | Complete |
 | EVTAVAIL-05 | Phase 75 | Complete |
-| EVTRECUR-01 | Phase 76 | Not started |
-| EVTRECUR-02 | Phase 76 | Not started |
-| EVTRECUR-03 | Phase 76 | Not started |
-| EVTRECUR-04 | Phase 76 | Not started |
-| EVTRECUR-05 | Phase 76 | Not started |
-| EVTRECUR-06 | Phase 76 | Not started |
-| EVTRECUR-07 | Phase 76 | Not started |
-| EVTRECUR-08 | Phase 76 | Not started |
+| EVTRECUR-01 | Phase 76 | Complete |
+| EVTRECUR-02 | Phase 76 | Complete |
+| EVTRECUR-03 | Phase 76 | Complete |
+| EVTRECUR-04 | Phase 76 | Complete |
+| EVTRECUR-05 | Phase 76 | Complete |
+| EVTRECUR-06 | Phase 76 | Complete |
+| EVTRECUR-07 | Phase 76 | Complete |
+| EVTRECUR-08 | Phase 76 | Complete |
 | EVTVIEW-01 | Phase 77 | Not started |
 | EVTVIEW-02 | Phase 77 | Not started |
 | EVTVIEW-03 | Phase 77 | Not started |
