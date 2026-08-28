@@ -27,6 +27,7 @@ public static class ServiceExtensions
         services.AddScoped<IReminderLogRepository, ReminderLogRepository>();
         services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IEventSeriesRepository, EventSeriesRepository>();
         services.AddScoped<IEventSignupRepository, EventSignupRepository>();
 
         // Register IdentityService (wraps UserManager/SignInManager; depends on UserEntity)

@@ -31,4 +31,10 @@ public interface IEventService : IBaseService<Event>
     /// automatic rows deliberately leave the answered marker unset.
     /// </summary>
     Task AddWithCampaignFanOutAsync(Event newEvent, IEnumerable<int> memberIds, CancellationToken token = default);
+
+    /// <summary>
+    /// Sets or clears the cancelled marker on a single event by id. A null argument un-cancels.
+    /// Returns false when the event does not exist or belongs to another board.
+    /// </summary>
+    Task<bool> SetCancelledAsync(int eventId, DateTime? cancelledAt, CancellationToken token = default);
 }
