@@ -42,7 +42,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **EVTAVAIL-02**: On a Campaign board, every board member is automatically signed up to each event with availability Yes, and opts out by changing their own answer to No rather than by removing the signup
 - [x] **EVTAVAIL-03**: A player can change their availability on an event at any time
 - [x] **EVTAVAIL-04**: A member who joins a Campaign board after events already exist is auto-signed-up to every event dated today or later, and a member who leaves has all of their event signups on that board removed — past and future, automatic and deliberate
-- [ ] **EVTAVAIL-05**: A player cannot see or change availability for an event on a board they are not a member of, proven by an automated test using two distinct groups
+- [x] **EVTAVAIL-05**: A player cannot see or change availability for an event on a board they are not a member of, proven by an automated test using two distinct groups
 
 ### Calendar Events — Recurrence
 
@@ -141,11 +141,11 @@ Explicit exclusions for v9.0, with reasoning.
 | EVENT-04 | Phase 74 | Complete |
 | EVENT-05 | Phase 74 | Complete |
 | EVENT-06 | Phase 74 | Complete |
-| EVTAVAIL-01 | Phase 75 | Not started |
-| EVTAVAIL-02 | Phase 75 | Not started |
-| EVTAVAIL-03 | Phase 75 | Not started |
-| EVTAVAIL-04 | Phase 75 | Not started |
-| EVTAVAIL-05 | Phase 75 | Not started |
+| EVTAVAIL-01 | Phase 75 | Complete |
+| EVTAVAIL-02 | Phase 75 | Complete |
+| EVTAVAIL-03 | Phase 75 | Complete |
+| EVTAVAIL-04 | Phase 75 | Complete |
+| EVTAVAIL-05 | Phase 75 | Complete |
 | EVTRECUR-01 | Phase 76 | Not started |
 | EVTRECUR-02 | Phase 76 | Not started |
 | EVTRECUR-03 | Phase 76 | Not started |
