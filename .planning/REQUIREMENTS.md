@@ -46,14 +46,14 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Calendar Events — Recurrence
 
-- [ ] **EVTRECUR-01**: A DM can make an event recur by setting a base cadence (every N weeks on a given weekday), an anchor date, and a repeating on/off cycle mask — so "two sessions on, two off" is expressible directly
+- [x] **EVTRECUR-01**: A DM can make an event recur by setting a base cadence (every N weeks on a given weekday), an anchor date, and a repeating on/off cycle mask — so "two sessions on, two off" is expressible directly
 - [ ] **EVTRECUR-02**: While configuring a series, the DM sees a live preview of the next ~10 dates it will generate, before saving
 - [ ] **EVTRECUR-03**: Occurrences are generated ahead of time on a rolling window and topped up automatically, so an open-ended campaign never needs manual re-extension
 - [ ] **EVTRECUR-04**: A DM can cancel a single occurrence without affecting the rest of the series
 - [ ] **EVTRECUR-05**: A DM can move a single occurrence to a different date without affecting the rest of the series
 - [ ] **EVTRECUR-06**: A DM can edit a single occurrence's details without affecting the rest of the series
 - [ ] **EVTRECUR-07**: Re-running the occurrence generator never duplicates an existing occurrence, resurrects a cancelled one, or overwrites one that was moved or edited
-- [ ] **EVTRECUR-08**: Two boards can be configured with mirrored cycle masks on the same cadence and anchor so their sessions interleave rather than collide
+- [x] **EVTRECUR-08**: Two boards can be configured with mirrored cycle masks on the same cadence and anchor so their sessions interleave rather than collide
 
 ### Calendar Events — Availability Overview
 
