@@ -216,7 +216,7 @@ Plans:
 **Goal**: A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
 **Depends on**: Phase 75 (materialized occurrences must carry availability from the moment they exist)
 **Requirements**: EVTRECUR-01, EVTRECUR-02, EVTRECUR-03, EVTRECUR-04, EVTRECUR-05, EVTRECUR-06, EVTRECUR-07, EVTRECUR-08
-**Plans**: 3/12 plans executed
+**Plans**: 4/12 plans executed
 
 Plans:
 **Wave 1**
@@ -230,7 +230,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 76-04-PLAN.md — Domain series service: idempotent materializer, runway top-up, preview, lifecycle and edit-scope eligibility, with idempotency tests (wave 3)
+- [x] 76-04-PLAN.md — Domain series service: idempotent materializer, runway top-up, preview, lifecycle and edit-scope eligibility, with idempotency tests (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
