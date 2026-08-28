@@ -216,13 +216,13 @@ Plans:
 **Goal**: A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
 **Depends on**: Phase 75 (materialized occurrences must carry availability from the moment they exist)
 **Requirements**: EVTRECUR-01, EVTRECUR-02, EVTRECUR-03, EVTRECUR-04, EVTRECUR-05, EVTRECUR-06, EVTRECUR-07, EVTRECUR-08
-**Plans**: 12 plans
+**Plans**: 2/12 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 76-01-PLAN.md — Pure cycle-mask date generator with mask parsing, validation and unit tests (wave 1)
-- [ ] 76-02-PLAN.md — Series template fields, end date, cancelled marker, domain models and the filtered unique idempotency index migration (wave 1)
+- [x] 76-01-PLAN.md — Pure cycle-mask date generator with mask parsing, validation and unit tests (wave 1)
+- [x] 76-02-PLAN.md — Series template fields, end date, cancelled marker, domain models and the filtered unique idempotency index migration (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
