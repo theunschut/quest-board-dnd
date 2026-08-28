@@ -51,4 +51,29 @@ public class EventViewModel
     // ones created by campaign membership, deliberately -- this is what the delete
     // confirmation reports to the acting Dungeon Master.
     public int SignupCount => Roster.Count;
+
+    // The four recurrence inputs below are read only when the repeats toggle is on and are
+    // never round-tripped for a one-off event -- the mapping profile ignores them on the way
+    // back out of the domain model.
+    public bool IsRecurring { get; set; }
+
+    [Range(1, 52, ErrorMessage = "Repeat every must be between 1 and 52 weeks")]
+    public int IntervalWeeks { get; set; } = 1;
+
+    public string CycleMask { get; set; } = "1";
+
+    [DataType(DataType.Date)]
+    public DateOnly? SeriesEndDate { get; set; }
+
+    // Display and scope members used by the details, edit and series surfaces.
+    public int? SeriesId { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    // Computed rather than stored on the view model, so a form post can never set it.
+    public bool IsCancelled => CancelledAt != null;
+
+    // The hidden field the save-scope dialog sets; defaults to the safe choice if the dialog
+    // never ran.
+    public EventEditScope EditScope { get; set; }
 }
