@@ -165,3 +165,13 @@ None - no external service configuration required. No migration in this plan (sc
 ---
 *Phase: 76-recurring-event-series*
 *Completed: 2026-08-28*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/ViewModels/EventViewModels/SeriesPreviewRequestViewModel.cs
+- FOUND: QuestBoard.Service/Views/Events/_SeriesFormScripts.cshtml
+- FOUND: .planning/phases/76-recurring-event-series/76-06-SUMMARY.md
+- FOUND: commit 61a81f4 (Task 1)
+- FOUND: commit 21168fb (Task 2)
+- FOUND: commit 1e901f0 (Task 3)
+- FOUND: commit 9c7348f (Summary)
