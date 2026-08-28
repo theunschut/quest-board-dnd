@@ -42,7 +42,7 @@
                         <div class="calendar-events">
                             @foreach (var eventOnDay in day.EventsOnDay)
                             {
-                                <div class="calendar-event" title="@eventOnDay.Event.Title - @eventOnDay.TimeLabel">
+                                <div class="calendar-event @(eventOnDay.Event.IsCancelled ? "cancelled" : "")" title="@eventOnDay.Event.Title - @eventOnDay.TimeLabel">
                                     <a href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })"
                                        class="quest-link">
                                         <div class="calendar-event-title"><i class="fas fa-calendar-day me-1"></i>@eventOnDay.Event.Title</div>

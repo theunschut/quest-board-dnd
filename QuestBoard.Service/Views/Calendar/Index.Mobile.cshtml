@@ -54,7 +54,7 @@
                    slot is indistinguishable from a loading failure. *@
                 @foreach (var eventOnDay in day.EventsOnDay)
                 {
-                    <div class="agenda-event-entry"
+                    <div class="agenda-event-entry @(eventOnDay.Event.IsCancelled ? "cancelled" : "")"
                          onclick="window.location.href='@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })'">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="agenda-event-title fw-bold"><i class="fas fa-calendar-day me-2"></i>@eventOnDay.Event.Title</span>
