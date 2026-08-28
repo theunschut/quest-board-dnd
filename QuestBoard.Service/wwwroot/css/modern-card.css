@@ -1,0 +1,297 @@
+/* Modern semi-transparent card styling.
+   Shared by the desktop and mobile layouts. The mobile layout loads mobile.css
+   instead of site.css, so these rules must live in their own file - otherwise
+   .modern-card falls back to Bootstrap's opaque white .card on phones. */
+
+/* Modern Semi-Transparent Card Styling */
+.modern-card {
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+    transition: all 0.3s ease;
+}
+
+.modern-card:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
+    transform: translateY(-2px);
+}
+
+.modern-card-header {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 12px 12px 0 0 !important;
+    color: #1a1a1a !important;
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
+}
+
+.modern-card-header h1,
+.modern-card-header h2,
+.modal-body h1,
+.modal-body h2 {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 
+                 -1px -1px 2px rgba(0, 0, 0, 0.9), 
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+}
+
+.modern-card-body {
+    background: transparent !important;
+    color: #1a1a1a !important;
+    padding: 1.5rem;
+}
+
+.modern-card-footer {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 0 0 12px 12px !important;
+}
+
+/* Modern text styling */
+.modern-card h1,
+.modern-card h2,
+.modern-card h3,
+.modern-card h4,
+.modern-card h5,
+.modern-card h6 {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+    font-weight: 600;
+}
+
+.modern-card p,
+.modern-card li,
+.modern-card span,
+.modern-card small {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+    font-weight: 500;
+}
+
+.modern-card .text-muted {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+}
+
+.modern-card .form-label {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+    font-weight: 600;
+}
+
+.modern-card .form-text {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+    font-weight: 400;
+}
+
+/* Modern form styling within cards */
+.modern-card .form-control,
+.modern-card .form-select {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.3) !important;
+    border-radius: 8px;
+    color: #1a1a1a !important;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.modern-card .form-control:focus,
+.modern-card .form-select:focus {
+    background-color: rgba(255, 255, 255, 1) !important;
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25) !important;
+    color: #1a1a1a !important;
+}
+
+/* Disabled fields must read as non-interactive, not just be non-interactive */
+.modern-card .form-control:disabled,
+.modern-card .form-select:disabled {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    color: rgba(26, 26, 26, 0.55) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+    cursor: not-allowed;
+}
+
+/* Modern alert styling */
+.modern-card .alert {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.3) !important;
+    border-radius: 8px;
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+    font-weight: 500;
+}
+
+.modern-card .alert-info {
+    background-color: rgba(52, 152, 219, 0.9) !important;
+    border-color: rgba(52, 152, 219, 1) !important;
+    color: #ffffff !important;
+}
+
+.modern-card .alert-success {
+    background-color: rgba(39, 174, 96, 0.9) !important;
+    border-color: rgba(39, 174, 96, 1) !important;
+    color: #ffffff !important;
+}
+
+.modern-card .alert-warning {
+    background-color: rgba(241, 196, 15, 0.9) !important;
+    border-color: rgba(241, 196, 15, 1) !important;
+    color: #1a1a1a !important;
+}
+
+.modern-card .alert-danger {
+    background-color: rgba(220, 53, 69, 0.9) !important;
+    border-color: rgba(220, 53, 69, 1) !important;
+    color: #ffffff !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Modern badge styling */
+.modern-card .badge {
+    border-radius: 6px;
+    font-weight: 500;
+    text-shadow: none !important;
+}
+
+/* Modern button styling within cards */
+.modern-card .btn {
+    border-radius: 8px;
+    font-weight: 500;
+    text-shadow: none !important;
+    transition: all 0.3s ease;
+}
+
+.modern-card .btn-primary {
+    background: linear-gradient(135deg, #3498db, #2980b9) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.modern-card .btn-primary:hover {
+    background: linear-gradient(135deg, #2980b9, #1e6091) !important;
+    transform: translateY(-1px);
+}
+
+
+.modern-card .btn-success {
+    background: linear-gradient(135deg, #27ae60, #219a52) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.modern-card .btn-success:hover {
+    background: linear-gradient(135deg, #219a52, #1e8449) !important;
+    transform: translateY(-1px);
+}
+
+/* Modern table styling within cards */
+.modern-card .table {
+    color: #F4E4BC !important;
+    background-color: transparent !important;
+}
+
+.modern-card .table th {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #1a1a1a !important;
+    border-color: rgba(0, 0, 0, 0.2) !important;
+    font-weight: 600;
+    text-shadow: none !important;
+}
+
+.modern-card .table td {
+    border-color: rgba(244, 228, 188, 0.3) !important;
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Enhanced table styling for better readability */
+.modern-card .table {
+    color: #1a0f08 !important;
+    margin-bottom: 0;
+}
+
+.modern-card .table th {
+    background-color: rgba(139, 69, 19, 0.8) !important;
+    color: #F4E4BC !important;
+    border-color: #8B4513 !important;
+    font-weight: bold !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9) !important;
+    padding: 12px 8px !important;
+}
+
+.modern-card .table td {
+    background-color: rgba(244, 228, 188, 0.85) !important;
+    color: #1a0f08 !important;
+    border-color: rgba(139, 69, 19, 0.3) !important;
+    font-weight: 600 !important;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.9) !important;
+    padding: 12px 8px !important;
+}
+
+.modern-card .table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: rgba(244, 228, 188, 0.7) !important;
+}
+
+.modern-card .table-hover > tbody > tr:hover > td {
+    background-color: rgba(255, 215, 0, 0.4) !important;
+    transition: background-color 0.2s ease !important;
+}
+
+/* Email link styling for tables */
+.modern-card .table .email-link {
+    color: #8B4513 !important;
+    text-decoration: none !important;
+    font-weight: 700 !important;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.9) !important;
+    transition: color 0.2s ease !important;
+}
+
+.modern-card .table .email-link:hover {
+    color: #654321 !important;
+    text-decoration: underline !important;
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Scrollable quest details for modern cards */
+.modern-card .card-text {
+    max-height: 125px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(244, 228, 188, 0.7) rgba(255, 255, 255, 0.1);
+    white-space: pre-wrap;
+}
+
+.modern-card .card-text::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modern-card .card-text::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.modern-card .card-text::-webkit-scrollbar-thumb {
+    background: rgba(244, 228, 188, 0.7);
+    border-radius: 3px;
+}
+
