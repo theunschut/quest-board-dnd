@@ -263,6 +263,16 @@ public class EventsController(
             return NotFound();
         }
 
+        // A hard delete on a series occurrence would remove the only record that its slot was
+        // ever handled, so the nightly generator would recreate it on the next run. Cancel is
+        // the only supported way to take a single occurrence off the board -- this refusal is
+        // enforced here rather than by hiding the Delete button in the view, because a posted
+        // request is not evidence of which button the browser rendered.
+        if (existingEvent.SeriesId.HasValue)
+        {
+            return BadRequest("Delete is not supported for an occurrence of a recurring series. Cancel it instead.");
+        }
+
         // Captured before removal since the redirect target needs the event's date.
         var eventDate = existingEvent.Date;
 
@@ -271,6 +281,68 @@ public class EventsController(
         TempData["Success"] = "Event deleted successfully.";
 
         return RedirectToCalendarMonth(eventDate);
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "DungeonMasterOnly")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(int id, CancellationToken token = default)
+    {
+        var existingEvent = await eventService.GetEventWithDetailsAsync(id, token);
+        if (existingEvent == null)
+        {
+            return NotFound();
+        }
+
+        // Re-resolve the condition on the POST itself rather than trusting which button the
+        // browser rendered.
+        if (!existingEvent.SeriesId.HasValue)
+        {
+            return BadRequest("Cancel is only supported for an occurrence of a recurring series.");
+        }
+
+        if (!await SeriesIsOnActiveBoardAsync(existingEvent.SeriesId.Value, token))
+        {
+            return BadRequest();
+        }
+
+        await eventService.SetCancelledAsync(id, DateTime.UtcNow, token);
+
+        TempData["Success"] = "Event cancelled.";
+
+        return RedirectToAction("Details", new { id });
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "DungeonMasterOnly")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restore(int id, CancellationToken token = default)
+    {
+        var existingEvent = await eventService.GetEventWithDetailsAsync(id, token);
+        if (existingEvent == null)
+        {
+            return NotFound();
+        }
+
+        // Re-resolve the condition on the POST itself rather than trusting which button the
+        // browser rendered.
+        if (!existingEvent.SeriesId.HasValue)
+        {
+            return BadRequest("Restore is only supported for an occurrence of a recurring series.");
+        }
+
+        if (!await SeriesIsOnActiveBoardAsync(existingEvent.SeriesId.Value, token))
+        {
+            return BadRequest();
+        }
+
+        // Un-cancelling is a single write of null and loses nothing, which is the whole reason
+        // the cancelled state is a timestamp on the row rather than a deletion.
+        await eventService.SetCancelledAsync(id, null, token);
+
+        TempData["Success"] = "Event restored.";
+
+        return RedirectToAction("Details", new { id });
     }
 
     // After any change the Dungeon Master lands on the calendar showing the month the event is
