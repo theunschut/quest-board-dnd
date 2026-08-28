@@ -216,7 +216,7 @@ Plans:
 **Goal**: A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
 **Depends on**: Phase 75 (materialized occurrences must carry availability from the moment they exist)
 **Requirements**: EVTRECUR-01, EVTRECUR-02, EVTRECUR-03, EVTRECUR-04, EVTRECUR-05, EVTRECUR-06, EVTRECUR-07, EVTRECUR-08
-**Plans**: 2/12 plans executed
+**Plans**: 3/12 plans executed
 
 Plans:
 **Wave 1**
@@ -226,7 +226,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 76-03-PLAN.md — Series repository plus the narrow occurrence-write methods, with repository constraint tests (wave 2)
+- [x] 76-03-PLAN.md — Series repository plus the narrow occurrence-write methods, with repository constraint tests (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
