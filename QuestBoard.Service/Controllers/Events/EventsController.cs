@@ -247,9 +247,65 @@ public class EventsController(
 
         await eventService.UpdateAsync(existingEvent, token);
 
-        TempData["Success"] = "Event updated successfully.";
+        if (viewModel.EditScope == EventEditScope.ThisAndFutureEvents)
+        {
+            // A future-scope save is meaningless for a one-off event -- a posted value that
+            // cannot be honoured is a malformed request, not something to silently downgrade
+            // to the single-event save that already ran above.
+            if (!existingEvent.SeriesId.HasValue)
+            {
+                return BadRequest();
+            }
+
+            // Only the title, description and start time propagate forward. The edited
+            // occurrence's own date is never pushed onto its siblings, because moving one
+            // session must never drag the rest of the series with it.
+            await eventSeriesService.ApplyTemplateToFutureAsync(
+                existingEvent.SeriesId.Value, id, viewModel.Title, viewModel.Description, viewModel.StartTime, token);
+
+            TempData["Success"] = "This event and all future sessions in the series were updated.";
+        }
+        else
+        {
+            TempData["Success"] = "Event updated successfully.";
+        }
 
         return RedirectToCalendarMonth(existingEvent.Date);
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "DungeonMasterOnly")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckOccurrenceCollision(int id, DateOnly date, CancellationToken token = default)
+    {
+        var existingEvent = await eventService.GetEventWithDetailsAsync(id, token);
+        if (existingEvent == null)
+        {
+            return NotFound();
+        }
+
+        if (!existingEvent.SeriesId.HasValue)
+        {
+            // A one-off event has no siblings to collide with.
+            return Json(new { collision = false });
+        }
+
+        if (!await SeriesIsOnActiveBoardAsync(existingEvent.SeriesId.Value, token))
+        {
+            return BadRequest();
+        }
+
+        // Cancelled siblings are deliberately excluded -- a session that is off is not a
+        // double booking. The result is advisory only: the move is always allowed, because a
+        // double session is legitimate and blocking it would be wrong.
+        var collisionCount = await eventSeriesService.CountLiveSiblingsOnDateAsync(
+            existingEvent.SeriesId.Value, date, id, token);
+
+        return Json(new
+        {
+            collision = collisionCount > 0,
+            date = date.ToDateTime(TimeOnly.MinValue).ToString("d MMMM")
+        });
     }
 
     [HttpPost]

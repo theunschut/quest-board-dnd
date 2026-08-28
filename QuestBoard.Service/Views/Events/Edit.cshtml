@@ -3,6 +3,7 @@
 @model EventViewModel
 @{
     ViewData["Title"] = "Edit Event";
+    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
 }
 
 <div class="card modern-card">
@@ -13,8 +14,16 @@
         </h2>
     </div>
     <div class="card-body modern-card-body">
-        <form asp-action="Edit" method="post">
+        <form asp-action="Edit" method="post" id="editEventForm">
             <input type="hidden" asp-for="Id" />
+            @if (Model.SeriesId != null)
+            {
+                @* The scope dialog is the only place this field is set. It defaults to the
+                   safe single-event outcome so a form submitted without the dialog running
+                   (should the intercept ever fail to attach) never silently sweeps the series. *@
+                <input type="hidden" name="EditScope" id="EditScope" value="@((int)EventEditScope.OnlyThisEvent)" />
+                <input type="hidden" id="originalDate" value="@Model.Date.ToString("yyyy-MM-dd")" />
+            }
             <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
             <div class="mb-3">
@@ -52,7 +61,7 @@
                 <a href="@Url.Action("Index", "Calendar", new { year = Model.Date.Year, month = Model.Date.Month })" class="btn btn-secondary">
                     <i class="fas fa-times me-2"></i>Cancel
                 </a>
-                <button type="submit" class="btn btn-warning">
+                <button type="submit" class="btn btn-warning" id="saveChangesBtn">
                     <i class="fas fa-save me-2"></i>Save Changes
                 </button>
             </div>
@@ -60,6 +69,110 @@
     </div>
 </div>
 
+@if (Model.SeriesId != null)
+{
+    @* A custom two-button modal, not the app's usual native confirm(), because this prompt
+       has two affirmative outcomes and a native dialog is binary. *@
+    <div class="modal fade" id="saveScopeModal" tabindex="-1" aria-labelledby="saveScopeModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="saveScopeModalLabel">Save this change</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Update just this event, or this event and every future session in the series?</p>
+                    <div class="alert alert-warning d-none" id="saveScopeCollisionNotice" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" id="saveScopeFutureBtn">This and all future events</button>
+                    <button type="button" class="btn btn-primary" id="saveScopeOnlyBtn">Only this event</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
+
+    @if (Model.SeriesId != null)
+    {
+        <script>
+            (function () {
+                var form = document.getElementById('editEventForm');
+                var saveBtn = document.getElementById('saveChangesBtn');
+                var scopeInput = document.getElementById('EditScope');
+                var originalDateInput = document.getElementById('originalDate');
+                var collisionNotice = document.getElementById('saveScopeCollisionNotice');
+                var modalEl = document.getElementById('saveScopeModal');
+                var modal = new bootstrap.Modal(modalEl);
+
+                function hideCollisionNotice() {
+                    collisionNotice.classList.add('d-none');
+                    collisionNotice.textContent = '';
+                }
+
+                function showCollisionNotice(dateLabel) {
+                    collisionNotice.textContent = 'Another session in this series already falls on ' + dateLabel + '. Saving will not merge or block it — both will exist.';
+                    collisionNotice.classList.remove('d-none');
+                }
+
+                function openModalWithCollisionCheck() {
+                    hideCollisionNotice();
+
+                    var dateValue = document.getElementById('Date').value;
+
+                    // Only check the server when the date actually changed -- an unchanged
+                    // date cannot create a new collision.
+                    if (dateValue === originalDateInput.value) {
+                        modal.show();
+                        return;
+                    }
+
+                    var formData = new FormData();
+                    formData.append('id', '@Model.Id');
+                    formData.append('date', dateValue);
+                    formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+
+                    fetch('/Events/CheckOccurrenceCollision', {
+                        method: 'POST',
+                        body: formData
+                    }).then(function (res) {
+                        return res.json();
+                    }).then(function (data) {
+                        if (data.collision) {
+                            showCollisionNotice(data.date);
+                        }
+                        modal.show();
+                    }).catch(function () {
+                        // A failed advisory lookup must never stop a DM from saving.
+                        modal.show();
+                    });
+                }
+
+                saveBtn.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    openModalWithCollisionCheck();
+                });
+
+                document.getElementById('saveScopeOnlyBtn').addEventListener('click', function () {
+                    scopeInput.value = '@((int)EventEditScope.OnlyThisEvent)';
+                    modal.hide();
+                    form.submit();
+                });
+
+                document.getElementById('saveScopeFutureBtn').addEventListener('click', function () {
+                    scopeInput.value = '@((int)EventEditScope.ThisAndFutureEvents)';
+                    modal.hide();
+                    form.submit();
+                });
+
+                modalEl.addEventListener('shown.bs.modal', function () {
+                    document.getElementById('saveScopeOnlyBtn').focus();
+                });
+            })();
+        </script>
+    }
 }
