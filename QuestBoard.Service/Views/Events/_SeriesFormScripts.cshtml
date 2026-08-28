@@ -1,0 +1,225 @@
+@*
+    All of the recurrence-form behaviour for the Create Event page, kept out of Create.cshtml
+    so the markup stays readable. This partial reads and writes only the recurrence inputs
+    (IsRecurring, IntervalWeeks, CycleMask, SeriesEndDate) and the shared Date field -- it never
+    touches the rest of the form. window.seriesAntiforgeryToken is set by the page that renders
+    this partial, immediately before it.
+*@
+<script>
+    (function () {
+        let cycleMaskPositions = [];
+        let previewRequestCounter = 0;
+        let previewDebounceTimer = null;
+
+        function parseCycleMask(value) {
+            if (!value) {
+                return [true];
+            }
+
+            var positions = value.split(',').map(function (token) {
+                return token.trim() === '1';
+            });
+
+            return positions.length > 0 ? positions : [true];
+        }
+
+        function formatCycleMask(positions) {
+            return positions.map(function (on) {
+                return on ? '1' : '0';
+            }).join(',');
+        }
+
+        function renderCycleMaskStrip() {
+            var strip = document.getElementById('seriesCycleMaskStrip');
+            strip.innerHTML = '';
+
+            cycleMaskPositions.forEach(function (on, index) {
+                var cell = document.createElement('button');
+                cell.type = 'button';
+                cell.className = on ? 'cycle-mask-cell on' : 'cycle-mask-cell';
+                cell.setAttribute('aria-pressed', on ? 'true' : 'false');
+                cell.title = on ? 'Session on this position' : 'No session on this position';
+                if (on) {
+                    cell.innerHTML = '<i class="fas fa-check"></i>';
+                }
+                cell.addEventListener('click', function () {
+                    cycleMaskPositions[index] = !cycleMaskPositions[index];
+                    syncCycleMask();
+                });
+                strip.appendChild(cell);
+            });
+
+            document.getElementById('seriesCycleLengthLabel').textContent = 'Cycle length: ' + cycleMaskPositions.length;
+
+            var addBtn = document.getElementById('seriesCycleAddBtn');
+            if (cycleMaskPositions.length >= 24) {
+                addBtn.disabled = true;
+                addBtn.title = 'Maximum cycle length reached.';
+            } else {
+                addBtn.disabled = false;
+                addBtn.title = 'Add a cycle position';
+            }
+
+            var removeBtn = document.getElementById('seriesCycleRemoveBtn');
+            removeBtn.disabled = cycleMaskPositions.length <= 1;
+        }
+
+        function syncCycleMask() {
+            document.getElementById('CycleMask').value = formatCycleMask(cycleMaskPositions);
+            renderCycleMaskStrip();
+            scheduleSeriesPreview();
+        }
+
+        function updateDerivedWeekday() {
+            var dateValue = document.getElementById('Date').value;
+            var intervalValue = document.getElementById('IntervalWeeks').value || '1';
+            var label = document.getElementById('seriesDerivedWeekday');
+
+            if (!dateValue) {
+                label.textContent = 'Every ' + intervalValue + ' week(s) on --';
+                return;
+            }
+
+            var parts = dateValue.split('-');
+            var parsedDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            var weekdayName = parsedDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+            label.textContent = 'Every ' + intervalValue + ' week(s) on ' + weekdayName;
+        }
+
+        function renderPreviewMessage(message, isError) {
+            var list = document.getElementById('seriesPreviewList');
+            list.innerHTML = '';
+            var li = document.createElement('li');
+            li.className = isError ? 'text-danger' : 'text-muted';
+            li.textContent = message;
+            list.appendChild(li);
+        }
+
+        function renderPreviewDates(dates, anchorFullyInPast) {
+            var list = document.getElementById('seriesPreviewList');
+            list.innerHTML = '';
+
+            if (!dates || dates.length === 0) {
+                renderPreviewMessage('Enter a start date and cadence to see the dates this series will generate.', false);
+                return;
+            }
+
+            if (anchorFullyInPast) {
+                var notice = document.createElement('li');
+                notice.className = 'text-muted mb-1';
+                notice.textContent = "Every date this cadence produces so far is in the past. Showing the next 10 dates from today onward — these are the ones that will actually be created.";
+                list.appendChild(notice);
+            }
+
+            dates.forEach(function (date) {
+                var li = document.createElement('li');
+                li.textContent = date.label;
+                list.appendChild(li);
+            });
+        }
+
+        function refreshSeriesPreview() {
+            var anchorDate = document.getElementById('Date').value;
+            var intervalWeeks = document.getElementById('IntervalWeeks').value;
+            var cycleMask = document.getElementById('CycleMask').value;
+            var endDate = document.getElementById('SeriesEndDate').value;
+
+            if (!anchorDate || !cycleMask) {
+                renderPreviewMessage('Enter a start date and cadence to see the dates this series will generate.', false);
+                return;
+            }
+
+            var requestId = ++previewRequestCounter;
+            renderPreviewMessage('Calculating…', false);
+
+            var formData = new FormData();
+            formData.append('AnchorDate', anchorDate);
+            formData.append('IntervalWeeks', intervalWeeks);
+            formData.append('CycleMask', cycleMask);
+            if (endDate) {
+                formData.append('EndDate', endDate);
+            }
+            formData.append('__RequestVerificationToken', window.seriesAntiforgeryToken);
+
+            fetch('/Events/PreviewSeries', {
+                method: 'POST',
+                body: formData
+            }).then(function (res) {
+                return res.json();
+            }).then(function (data) {
+                // A newer keystroke may have started a later request while this one was in
+                // flight -- a naive last-response-wins would let this stale response overwrite
+                // that newer answer, so any response whose counter no longer matches is dropped.
+                if (requestId !== previewRequestCounter) {
+                    return;
+                }
+
+                if (!data.success) {
+                    renderPreviewMessage("Couldn't generate a preview — check your cadence and mask, then try again.", true);
+                    return;
+                }
+
+                renderPreviewDates(data.dates, data.anchorFullyInPast);
+            }).catch(function () {
+                if (requestId !== previewRequestCounter) {
+                    return;
+                }
+                renderPreviewMessage("Couldn't generate a preview — check your cadence and mask, then try again.", true);
+            });
+        }
+
+        function scheduleSeriesPreview() {
+            clearTimeout(previewDebounceTimer);
+            previewDebounceTimer = setTimeout(refreshSeriesPreview, 400);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            cycleMaskPositions = parseCycleMask(document.getElementById('CycleMask').value);
+            renderCycleMaskStrip();
+            updateDerivedWeekday();
+
+            var enableCheckbox = document.getElementById('enableRecurrence');
+            var section = document.getElementById('recurrenceSection');
+
+            enableCheckbox.addEventListener('change', function () {
+                if (enableCheckbox.checked) {
+                    section.classList.remove('d-none');
+                    scheduleSeriesPreview();
+                } else {
+                    section.classList.add('d-none');
+                }
+            });
+
+            document.getElementById('Date').addEventListener('change', function () {
+                updateDerivedWeekday();
+                scheduleSeriesPreview();
+            });
+
+            document.getElementById('IntervalWeeks').addEventListener('input', function () {
+                updateDerivedWeekday();
+                scheduleSeriesPreview();
+            });
+
+            document.getElementById('SeriesEndDate').addEventListener('change', function () {
+                scheduleSeriesPreview();
+            });
+
+            document.getElementById('seriesCycleAddBtn').addEventListener('click', function () {
+                if (cycleMaskPositions.length >= 24) {
+                    return;
+                }
+                cycleMaskPositions.push(true);
+                syncCycleMask();
+            });
+
+            document.getElementById('seriesCycleRemoveBtn').addEventListener('click', function () {
+                if (cycleMaskPositions.length <= 1) {
+                    return;
+                }
+                cycleMaskPositions.pop();
+                syncCycleMask();
+            });
+        });
+    })();
+</script>

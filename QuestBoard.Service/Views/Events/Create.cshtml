@@ -3,6 +3,7 @@
 @model EventViewModel
 @{
     ViewData["Title"] = "Create Event";
+    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
 }
 
 <div class="card modern-card">
@@ -45,6 +46,60 @@
                    Placeholder = "What's happening?"
                }); }
 
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" asp-for="IsRecurring" id="enableRecurrence" />
+                <label class="form-check-label" asp-for="IsRecurring">Make this a recurring series</label>
+                <div class="form-text">Generates future occurrences automatically on a repeating schedule.</div>
+            </div>
+
+            <div id="recurrenceSection" class="d-none">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="IntervalWeeks" class="form-label">Repeat every</label>
+                        <div class="input-group">
+                            <input asp-for="IntervalWeeks" type="number" min="1" class="form-control" />
+                            <span class="input-group-text">week(s)</span>
+                        </div>
+                        <span asp-validation-for="IntervalWeeks" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3 d-flex align-items-end">
+                        @* Presentation only -- the actual dates always come from the server preview below. *@
+                        <p class="mb-0" id="seriesDerivedWeekday">Every 1 week(s) on --</p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" id="seriesCycleLengthLabel">Cycle length: 1</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="cycle-mask-strip" id="seriesCycleMaskStrip"></div>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="seriesCycleAddBtn" title="Add a cycle position">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="seriesCycleRemoveBtn" title="Remove a cycle position">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" asp-for="CycleMask" />
+                    <span asp-validation-for="CycleMask" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SeriesEndDate" class="form-label">End after (optional)</label>
+                    <input asp-for="SeriesEndDate" type="date" class="form-control" />
+                    <span asp-validation-for="SeriesEndDate" class="text-danger"></span>
+                    <div class="form-text">Leave blank for an open-ended series. You can end it later from the series page.</div>
+                </div>
+
+                <div class="mb-3">
+                    <h5 class="mb-2">Next occurrences</h5>
+                    <ul id="seriesPreviewList" class="mb-0">
+                        <li class="text-muted">Enter a start date and cadence to see the dates this series will generate.</li>
+                    </ul>
+                </div>
+            </div>
+
             <hr />
 
             <div class="d-flex justify-content-between">
@@ -61,4 +116,8 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
+    <script>
+        window.seriesAntiforgeryToken = '@tokens.RequestToken';
+    </script>
+    @{ await Html.RenderPartialAsync("_SeriesFormScripts"); }
 }

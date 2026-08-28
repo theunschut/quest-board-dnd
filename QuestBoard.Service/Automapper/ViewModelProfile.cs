@@ -108,7 +108,16 @@ public class ViewModelProfile : Profile
             .ForMember(dest => dest.Roster, opt => opt.Ignore())
             .ForMember(dest => dest.IsOneShotBoard, opt => opt.Ignore())
             .ForMember(dest => dest.HasOwnSignup, opt => opt.Ignore())
-            .ForMember(dest => dest.MyAvailability, opt => opt.Ignore());
+            .ForMember(dest => dest.MyAvailability, opt => opt.Ignore())
+            // The recurrence form inputs and the save-scope field are never read back off a
+            // domain model -- they only ever flow from a submitted form into a write action.
+            // SeriesId and CancelledAt map by convention and must not be ignored: the details,
+            // calendar and edit surfaces all read them.
+            .ForMember(dest => dest.IsRecurring, opt => opt.Ignore())
+            .ForMember(dest => dest.IntervalWeeks, opt => opt.Ignore())
+            .ForMember(dest => dest.CycleMask, opt => opt.Ignore())
+            .ForMember(dest => dest.SeriesEndDate, opt => opt.Ignore())
+            .ForMember(dest => dest.EditScope, opt => opt.Ignore());
 
         // EventSignup to EventSignupViewModel -- property names line up so no member
         // configuration is needed. There is no reverse map: the roster is read-only, and the
@@ -116,12 +125,15 @@ public class ViewModelProfile : Profile
         CreateMap<EventSignup, EventSignupViewModel>();
 
         // EventViewModel to Event
-        // GroupId, SeriesId, SeriesSlotIndex and CreatedAt are set server-side and are never
-        // taken from a submitted form, because a hidden field is not a security boundary.
+        // GroupId, SeriesId, SeriesSlotIndex, CreatedAt and CancelledAt are set server-side and
+        // are never taken from a submitted form, because a hidden field is not a security
+        // boundary -- without ignoring CancelledAt here, a crafted post through the ordinary
+        // edit path could clear or set a cancellation.
         CreateMap<EventViewModel, Event>()
             .ForMember(dest => dest.GroupId, opt => opt.Ignore())
             .ForMember(dest => dest.SeriesId, opt => opt.Ignore())
             .ForMember(dest => dest.SeriesSlotIndex, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.CancelledAt, opt => opt.Ignore());
     }
 }
