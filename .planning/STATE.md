@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 78
-current_phase_name: Link Preview Foundation and Quest Cards
-status: executing
-stopped_at: Phase 76 UI-SPEC approved
-last_updated: "2026-08-28T11:02:24.367Z"
+current_phase: 76
+current_phase_name: Recurring Event Series
+status: ready to execute
+stopped_at: Phase 76 planned (12 plans)
+last_updated: "2026-08-28T00:00:00.000Z"
 last_activity: 2026-08-28
-last_activity_desc: Phase 75 complete, transitioned to Phase 78
+last_activity_desc: Phase 76 planned (12 plans, 8 waves)
 progress:
   total_phases: 10
   completed_phases: 4
-  total_plans: 29
+  total_plans: 41
   completed_plans: 20
   percent: 40
 ---
@@ -24,14 +24,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 78 — Link Preview Foundation and Quest Cards
+**Current focus:** Phase 76 — Recurring Event Series
 
 ## Current Position
 
-Phase: 78 — Link Preview Foundation and Quest Cards
+Phase: 76 — Recurring Event Series
 Plan: Not started
-Status: Phase 78 planned (9 plans), not started
-Last activity: 2026-08-28 — Phase 75 complete, transitioned to Phase 78
+Status: Phase 76 planned (12 plans across 8 waves), ready to execute
+Last activity: 2026-08-28 — Phase 76 planned (research, patterns, validation strategy, 12 plans)
+
+Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
 ## Performance Metrics
 
@@ -93,8 +95,8 @@ Items acknowledged and carried forward across milestone closes.
 ## Session Continuity
 
 Last session: 2026-08-28T11:02:24.339Z
-Stopped at: Phase 76 UI-SPEC approved
-Resume file: .planning/phases/76-recurring-event-series/76-UI-SPEC.md
+Stopped at: Phase 76 planned (12 plans)
+Resume file: .planning/phases/76-recurring-event-series/76-01-PLAN.md
 
 ## Operator Next Steps
 
