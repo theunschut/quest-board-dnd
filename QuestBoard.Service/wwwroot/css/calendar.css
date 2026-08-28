@@ -467,6 +467,11 @@
         border-left-color: #6f42c1;
     }
 
+    .legend-item.cancelled {
+        border-left-color: #6f42c1;
+        opacity: 0.55;
+    }
+
 .legend-card {
     height: fit-content;
 }
