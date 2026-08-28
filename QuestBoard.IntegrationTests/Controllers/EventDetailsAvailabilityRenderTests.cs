@@ -189,4 +189,38 @@ public class EventDetailsAvailabilityRenderTests(WebApplicationFactoryBase facto
 
         body.Should().Contain("2 people have signed up");
     }
+
+    [Fact]
+    public async Task Details_DeleteConfirmation_UsesSingularWordingForOneSignup()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync();
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtavail_dm_one", "evtavail_dm_one@example.com", roles: ["DungeonMaster"]);
+
+        await SeedSignupAsync(eventId, dmUser.Id, VoteType.Yes);
+
+        var response = await dmClient.GetAsync($"/Events/Details/{eventId}", TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("1 person has signed up");
+        body.Should().NotContain("1 people have signed up");
+    }
+
+    [Fact]
+    public async Task Details_DeleteConfirmation_PromisesNoLostAvailabilityWhenNobodySignedUp()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync();
+
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtavail_dm_zero", "evtavail_dm_zero@example.com", roles: ["DungeonMaster"]);
+
+        var response = await dmClient.GetAsync($"/Events/Details/{eventId}", TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().NotContain("0 people have signed up");
+        body.Should().Contain("Delete this event? This action cannot be undone.");
+    }
 }

@@ -11,7 +11,9 @@
 @{
     ViewData["Title"] = Model.Title;
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
-    var deleteConfirmMessage = $"Delete this event? {Model.SignupCount} people have signed up and their availability will be lost. This action cannot be undone.";
+    var deleteConfirmMessage = Model.SignupCount == 0
+        ? "Delete this event? This action cannot be undone."
+        : $"Delete this event? {Model.SignupCount} {(Model.SignupCount == 1 ? "person has" : "people have")} signed up and their availability will be lost. This action cannot be undone.";
 }
 
 <div class="row">
