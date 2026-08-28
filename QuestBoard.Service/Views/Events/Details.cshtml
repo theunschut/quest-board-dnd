@@ -1,13 +1,17 @@
 @*
-    This is the only place a Dungeon Master edits or deletes an event. The calendar chip links
-    here rather than carrying its own controls, so the shared calendar partial stays free of
-    write actions.
+    This is the only place a Dungeon Master edits or deletes an event, and also the only place
+    any board member answers an event's availability. The calendar chip links here rather than
+    carrying its own controls, so the shared calendar partial stays free of both write actions
+    and availability state.
 *@
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.EventViewModels
 @model EventViewModel
 @{
     ViewData["Title"] = Model.Title;
+    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var deleteConfirmMessage = $"Delete this event? {Model.SignupCount} people have signed up and their availability will be lost. This action cannot be undone.";
 }
 
 <div class="row">
@@ -34,7 +38,7 @@
                     <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning w-100 mb-2">
                         <i class="fas fa-pen me-2"></i>Edit Event
                     </a>
-                    <form asp-action="Delete" method="post" onsubmit="return confirm('Are you sure you want to delete this event? This action cannot be undone.');">
+                    <form asp-action="Delete" method="post" onsubmit="return confirm('@deleteConfirmMessage');">
                         <input type="hidden" name="id" value="@Model.Id" />
                         <button type="submit" class="btn btn-danger w-100">
                             <i class="fas fa-trash me-2"></i>Delete Event
@@ -61,5 +65,163 @@
                 }
             </div>
         </div>
+
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-calendar-check me-2"></i>Your Availability
+                </h4>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (Model.HasOwnSignup)
+                {
+                    <p class="mb-0">
+                        Your current answer:
+                        @if (Model.MyAvailability == VoteType.Yes)
+                        {
+                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+                        }
+                        else if (Model.MyAvailability == VoteType.Maybe)
+                        {
+                            <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+                        }
+                        else if (Model.MyAvailability == VoteType.No)
+                        {
+                            <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+                        }
+                    </p>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">You haven't answered yet. Choosing an answer below signs you up.</p>
+                }
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <div>
+                        @* The withdraw control's visibility is a convenience only -- the server re-checks
+                           the board type on the request itself. On a campaign board opting out means
+                           answering No, not deleting the row, and a deleted row there would be recreated
+                           by the next automatic pass anyway. *@
+                        @if (Model.IsOneShotBoard && Model.HasOwnSignup)
+                        {
+                            <button type="button" class="btn btn-outline-danger" onclick="withdrawAvailability(@Model.Id)">
+                                <i class="fas fa-user-slash me-2"></i>Withdraw
+                            </button>
+                            @* The handler lives beside its only caller rather than in the shared Scripts
+                               section below, so a page where the control never rendered never defines a
+                               function with nothing valid to call it. *@
+                            <script>
+                                function withdrawAvailability(eventId) {
+                                    if (confirm("Withdrawing removes your answer entirely and returns you to not having responded. Continue?")) {
+                                        const formData = new FormData();
+                                        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+
+                                        fetch(`/Events/Withdraw/${eventId}`, {
+                                            method: "DELETE",
+                                            body: formData
+                                        }).then(res => {
+                                            if (res.ok) {
+                                                location.reload();
+                                            } else {
+                                                res.text().then(text => {
+                                                    alert(`Failed to withdraw availability: ${text}`);
+                                                });
+                                            }
+                                        }).catch(err => {
+                                            alert("An error occurred while withdrawing availability.");
+                                        });
+                                    }
+                                }
+                            </script>
+                        }
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="setAvailability(@Model.Id, @((int)VoteType.Yes))">
+                            <i class="fas fa-check me-2"></i>Yes
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="setAvailability(@Model.Id, @((int)VoteType.Maybe))">
+                            <i class="fas fa-question me-2"></i>Maybe
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="setAvailability(@Model.Id, @((int)VoteType.No))">
+                            <i class="fas fa-times me-2"></i>No
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-users me-2"></i>Who's Coming
+                </h4>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (Model.Roster.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Availability</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var signup in Model.Roster)
+                                {
+                                    <tr>
+                                        <td>@signup.UserName</td>
+                                        <td>
+                                            @if (signup.Availability == VoteType.Yes)
+                                            {
+                                                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+                                            }
+                                            else if (signup.Availability == VoteType.Maybe)
+                                            {
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+                                            }
+                                            else if (signup.Availability == VoteType.No)
+                                            {
+                                                <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Nobody has answered yet -- be the first.</p>
+                }
+            </div>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function setAvailability(eventId, availability) {
+            const formData = new FormData();
+            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+            formData.append('availability', availability);
+
+            fetch(`/Events/SetAvailability/${eventId}`, {
+                method: "POST",
+                body: formData
+            }).then(res => {
+                if (res.ok) {
+                    location.reload();
+                } else {
+                    res.text().then(text => {
+                        alert(`Failed to set availability: ${text}`);
+                    });
+                }
+            }).catch(err => {
+                alert("An error occurred while setting availability.");
+            });
+        }
+    </script>
+}
