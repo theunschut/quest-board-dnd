@@ -7,6 +7,10 @@ namespace QuestBoard.Service.Services;
 /// <summary>
 /// Reads ActiveGroupId from ASP.NET Core Session for HTTP requests.
 /// In Hangfire background threads (no HttpContext), returns null or the override set via SetGroupId.
+/// A null value means no board is selected: every tenant-scoped query filter requires a
+/// non-null value that exactly matches a row's group id, so a null value yields zero rows
+/// rather than every board's rows. A background job must call SetGroupId with a real board id
+/// before making any repository call.
 /// </summary>
 public class ActiveGroupContextService(IHttpContextAccessor httpContextAccessor) : IActiveGroupContext
 {
@@ -16,7 +20,8 @@ public class ActiveGroupContextService(IHttpContextAccessor httpContextAccessor)
     /// <summary>
     /// Returns the overridden group ID (set by Hangfire jobs via SetGroupId),
     /// or reads from Session for normal HTTP requests.
-    /// Returns null when no override is set and HttpContext is absent — null means "see all".
+    /// Returns null when no override is set and HttpContext is absent. A null value yields
+    /// zero rows from every tenant-scoped query filter, not every board's rows.
     /// </summary>
     public int? ActiveGroupId =>
         _groupIdOverridden
