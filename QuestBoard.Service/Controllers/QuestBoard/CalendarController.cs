@@ -1,3 +1,5 @@
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Service.ViewModels.CalendarViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.QuestBoard;
 
 [Authorize]
-public class CalendarController(IQuestService questService, IEventService eventService) : Controller
+public class CalendarController(
+    IQuestService questService,
+    IEventService eventService,
+    IEventSeriesService eventSeriesService,
+    IUserService userService,
+    IActiveGroupContext activeGroupContext) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int? year = null, int? month = null, CancellationToken token = default)
@@ -38,9 +45,30 @@ public class CalendarController(IQuestService questService, IEventService eventS
             Year = selectedYear,
             Month = selectedMonth,
             Quests = [.. allQuests],
-            Events = [.. allEvents]
+            Events = [.. allEvents],
+            CanManage = await IsDmTierAsync()
         };
+
+        // A player never triggers the runway query and never receives series titles they
+        // have no action to take on.
+        if (calendarModel.CanManage)
+        {
+            calendarModel.SeriesBelowRunway = [.. await eventSeriesService.GetSeriesBelowRunwayAsync(token)];
+        }
 
         return View(calendarModel);
     }
+
+    private async Task<bool> IsDmTierAsync()
+    {
+        var role = await GetEffectiveRoleAsync();
+        return role == GroupRole.Admin || role == GroupRole.DungeonMaster;
+    }
+
+    // SuperAdmin has no active group by design, so short-circuit to Admin here rather than
+    // calling RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+    private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+        User.IsInRole("SuperAdmin")
+            ? GroupRole.Admin
+            : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 }

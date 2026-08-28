@@ -90,6 +90,11 @@
     border-left: 3px solid #6f42c1;
 }
 
+.agenda-event-entry.cancelled {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
 .agenda-event-entry:active {
     background-color: #495057;
 }

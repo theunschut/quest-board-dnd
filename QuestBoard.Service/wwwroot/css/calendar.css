@@ -244,6 +244,11 @@
     box-sizing: border-box;
 }
 
+.calendar-event.cancelled {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
     .calendar-event:hover {
         background-color: rgba(255, 255, 255, 1);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -460,6 +465,11 @@
 
     .legend-item.event {
         border-left-color: #6f42c1;
+    }
+
+    .legend-item.cancelled {
+        border-left-color: #6f42c1;
+        opacity: 0.55;
     }
 
 .legend-card {
