@@ -178,3 +178,11 @@ None - no external service configuration required. No migration in this plan (sc
 ---
 *Phase: 76-recurring-event-series*
 *Completed: 2026-08-28*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Domain/Interfaces/IEventSeriesService.cs
+- FOUND: QuestBoard.Domain/Services/EventSeriesService.cs
+- FOUND: QuestBoard.UnitTests/Repository/EventSeriesMaterializationTests.cs
+- FOUND: commit f745a41 (Task 1)
+- FOUND: commit 19db969 (Task 2)
