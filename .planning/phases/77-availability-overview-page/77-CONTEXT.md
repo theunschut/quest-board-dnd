@@ -19,7 +19,7 @@ Not in this phase: any write to availability (the existing `Events/Details` surf
 
 ### The cell — telling a real answer from an untouched default (EVTVIEW-02)
 
-- **D-01: An untouched Campaign default renders as a *muted* Yes chip; a confirmed answer renders solid.** Not a neutral mark. The distinction is deliberately one of emphasis rather than of meaning, because on a Campaign board the stored Yes is not a lie — that member *will* be counted as available if nobody chases them. The cell must say both things: "counted as available" and "nobody confirmed it".
+- **D-01: An untouched Campaign default renders as a muted Yes chip; a confirmed answer renders solid.** Not a neutral mark. The distinction is deliberately one of emphasis rather than of meaning, because on a Campaign board the stored Yes is not a lie — that member *will* be counted as available if nobody chases them. The cell must say both things: "counted as available" and "nobody confirmed it".
 
   Rejected: a neutral dash claiming no vote at all (loses the fact that they are counted); a Yes chip with a `?` badge (busiest option, in the densest region of the page).
 
@@ -35,11 +35,11 @@ Not in this phase: any write to availability (the existing `Events/Details` surf
 
 ### The count (EVTVIEW-03)
 
-- **D-05: The headline figure is total Yes *including* untouched defaults.** The big, glanceable number answers "who is expected at this session", which is what a DM planning a date actually needs — and on a Campaign board the default genuinely *is* the plan until someone changes it.
+- **D-05: The headline figure is total Yes including untouched defaults.** The big, glanceable number answers "who is expected at this session", which is what a DM planning a date actually needs — and on a Campaign board the default genuinely *is* the plan until someone changes it.
 
 - **D-06: The confirmed portion is shown alongside it as secondary detail.** The headline is the figure that can mislead, so it never stands alone. Both facts are on the row: how many are counted, and how much of that anyone vouched for. This is what keeps D-05 from reintroducing the "yes by default read as a real answer" risk one line above the cells that just fixed it.
 
-- **D-07: Maybe is counted and shown *separately*, never folded into Yes and never omitted.** A session with 2 Yes and 4 Maybe is not a dead date, and it is not a healthy one either — collapsing them would destroy the distinction the three-value vote exists to record. No is not counted anywhere; it is visible in its cell.
+- **D-07: Maybe is counted and shown separately, never folded into Yes and never omitted.** A session with 2 Yes and 4 Maybe is not a dead date, and it is not a healthy one either — collapsing them would destroy the distinction the three-value vote exists to record. No is not counted anywhere; it is visible in its cell.
 
 - **D-08: Format is the planner's call, but all three figures must be readable in one glance.** That is up to four numbers per row (total yes, confirmed, maybe — plus board size if the planner wants a denominator). If a compact format cannot carry them without becoming noise, the *format* gives way, not D-05/D-06/D-07.
 

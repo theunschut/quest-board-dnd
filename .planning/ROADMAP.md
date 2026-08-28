@@ -321,9 +321,17 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 77-01-PLAN.md — Bounded aggregate read path and in-memory availability aggregation (wave 1)
 - [ ] 77-02-PLAN.md — Cell/count stylesheets, navigation entries and calendar cross-links (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 77-03-PLAN.md — View models, desktop grid, mobile cards and the clamped controller action (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 77-04-PLAN.md — Two-group tenant isolation test and phase-wide filter-bypass audit (wave 3)
 
 **Success criteria:**
