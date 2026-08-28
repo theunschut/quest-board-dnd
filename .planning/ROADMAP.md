@@ -216,7 +216,44 @@ Plans:
 **Goal**: A DM can set up a repeating schedule — including "two sessions on, two off" — and get correct dates generated indefinitely, while still being able to cancel, move, or edit any single occurrence.
 **Depends on**: Phase 75 (materialized occurrences must carry availability from the moment they exist)
 **Requirements**: EVTRECUR-01, EVTRECUR-02, EVTRECUR-03, EVTRECUR-04, EVTRECUR-05, EVTRECUR-06, EVTRECUR-07, EVTRECUR-08
-**Plans**: TBD (run `/gsd-plan-phase 76`)
+**Plans**: 12 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 76-01-PLAN.md — Pure cycle-mask date generator with mask parsing, validation and unit tests (wave 1)
+- [ ] 76-02-PLAN.md — Series template fields, end date, cancelled marker, domain models and the filtered unique idempotency index migration (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 76-03-PLAN.md — Series repository plus the narrow occurrence-write methods, with repository constraint tests (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 76-04-PLAN.md — Domain series service: idempotent materializer, runway top-up, preview, lifecycle and edit-scope eligibility, with idempotency tests (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 76-05-PLAN.md — Nightly per-group rolling-window top-up job, its registration, and the corrected group-context documentation (wave 4)
+- [ ] 76-06-PLAN.md — Repeats toggle, cycle-mask strip and live server-computed preview on the Create Event form (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 76-07-PLAN.md — Occurrence cancel and restore, the server-side Delete refusal, cancelled banner and series link (wave 5)
+- [ ] 76-09-PLAN.md — Series detail page with read-only rule, occurrence table, End and the delete-or-detach removal (wave 5)
+- [ ] 76-10-PLAN.md — Cancelled chip and agenda styling, Legend row, and the DM-gated horizon banner (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 76-08-PLAN.md — Save-scope prompt, this-and-future template sweep and the live-sibling collision notice on Edit (wave 6)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 76-11-PLAN.md — Two-board series tenant isolation and refusal integration tests, plus full-suite coverage sign-off (wave 7)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 76-12-PLAN.md — Developer verification of the four manual-only behaviours (wave 8, not autonomous)
 
 **Success criteria:**
 
