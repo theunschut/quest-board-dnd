@@ -474,6 +474,30 @@ Plans:
 
 **Requires a discuss-phase decision:** whether multi-tag selection is AND or OR, and whether players may create tags or only DM-tier users.
 
+### Phase 82: Personal Cross-Board Event Agenda
+
+**Goal**: A member who belongs to more than one board can see, in one place, every upcoming event they are expected at across all of their boards — with the board each event belongs to named on every row.
+**Depends on**: Phase 77 (inherits its cell vocabulary, its next-N-with-paging window, and its date-only lower bound; the aggregate read is a different query and a different tenancy mechanism)
+**Requirements**: TBD
+**Plans**: TBD (run `/gsd-plan-phase 82`)
+
+**Origin:** raised by the operator during Phase 77's discuss pass (2026-08-29) and deliberately not folded into it. Phase 77's EVTVIEW-04 is *"never displays events or members from another board"*, and its success criterion 4 requires a two-group integration test proving exactly that. A cross-board mode on the same page would make one test both prove and disprove the same property depending on a toggle, so this is a separate surface rather than a flag.
+
+**Scope notes:**
+
+- **This is a personal agenda, not a grid.** Across boards there is no single membership set, so the events × members matrix does not generalise. The row is one event; the payload is the viewer's own availability plus which board it is on. Do not port Phase 77's member axis.
+- **It must not default to replacing the board-scoped view.** Every other surface in this app is board-scoped — quests, characters, shop, gold, nav. Phase 77's overview stays the board-scoped page it was built as.
+- **It cannot live behind the Calendar nav gate.** That entry is gated on `activeBoardType is BoardType.OneShot or BoardType.Campaign`; a cross-board page has no active board type. It belongs beside **Switch Group** in the user dropdown — the control that exists because a user has more than one board.
+- **Two safe cross-group mechanisms already exist, and both follow the same rule: bypass the ambient filter only while supplying the group explicitly.** Pick one, do not invent a third — `EventSeriesGenerationJob`'s per-group `SetGroupId()` iteration (Phase 76 D-126), and `GroupRepository.GetEventSignupsForMemberIgnoringActiveBoardAsync`, which uses `IgnoreQueryFilters()` but pins `es.Event.GroupId == groupId` in the predicate and is `private`.
+- Quests are explicitly out of scope. This is events only.
+
+**Risks this phase must actively avoid:**
+
+- **A bare `IgnoreQueryFilters()` with no group predicate.** This is the single highest-risk read in the application — it is an aggregating page whose whole purpose is to cross the tenancy boundary safely. The app has shipped two real cross-tenant leaks (Phases 49/55) and a third live gap was found during Phase 72's discussion. The scoping must be *by the viewer's own memberships*, never by "no filter".
+- **Leaking board names or event titles from a board the viewer has left.** Membership is the authorisation, and it is checked at read time — not inferred from the existence of a signup row. Phase 75 D-20 deletes signup rows on leave, but that is a cleanup, not an access control.
+
+**Requires a discuss-phase decision:** whether the agenda shows only events the viewer has answered, or every upcoming event on every board they belong to; and whether it replaces or supplements the board-scoped overview as the default landing place for a multi-board user.
+
 ## Phase Ordering Rationale
 
 - Phases 72 and 73 share no code, no files, and no data — either order works, and neither blocks the other.
@@ -485,6 +509,7 @@ Plans:
 - **If scope needs cutting mid-milestone**, stopping after 75 leaves a complete, usable non-recurring events feature. Recurrence and the overview grid are separable value-adds, not blocking dependencies.
 - Phases 78 and 79 (link previews) were appended on 2026-08-26 and are independent of the events chain — they touch no event, signup, or calendar code, so they can run before, after, or alongside 74–77.
 - 78 must precede 79: it owns the signing scheme, the meta partial, the absolute-URL helper, and the Markdown-to-plain-text summarizer that 79 consumes. It also ships usable value on its own (quest cards), so stopping after 78 leaves a complete feature.
+- Phase 82 was appended on 2026-08-29 out of Phase 77's discuss pass. It must follow 77 — not because it needs 77's code, but because 77 settles the cell vocabulary, the window, and the date boundary that 82 should reuse rather than re-decide. It is the last phase in the milestone by value density, not by dependency: nothing blocks on it, and dropping it leaves the events feature complete.
 - Splitting 78 from 79 is a decision-boundary split, not a size split. 78 settles what a share link exposes and proves it on quests, the least sensitive entity. 79 inherits that mechanism and adds the rules unique to the sensitive ones — the `IsRevealed` spoiler gate and unauthenticated image serving.
 
 ## Requirements Coverage
@@ -551,6 +576,8 @@ Phases 72 and 73 needed no research step — both were researched to implementat
 **Phase 78 needs a research step.** Open Graph and Twitter Card behaviour is defined by each consumer, not by a spec: Discord, Slack, iMessage, and WhatsApp differ on description length, image aspect ratio and size limits, redirect handling, and cache invalidation. Getting those wrong produces a silently absent card rather than an error, so the limits must be established before planning rather than discovered by trial. Phase 79 inherits the findings and needs no separate research pass.
 
 **Phases 80 and 81 need no external research.** Both are ordinary EF Core schema-plus-CRUD work against a feature that already exists in this codebase; what they need is a discuss-phase pass on the modelling questions noted under each phase, not a web search.
+
+**Phase 82 needs no external research.** The two safe cross-group read mechanisms it must choose between already exist in this codebase and are named in its scope notes; what it needs is a discuss-phase pass, not a web search.
 
 ---
 *Roadmap created: 2026-08-25*
