@@ -176,7 +176,7 @@ Plans:
 **Goal**: Players can say whether they are available for an event, with the right default for the board type — opt-in on One-Shot boards, opt-out on Campaign boards.
 **Depends on**: Phase 74
 **Requirements**: EVTAVAIL-01, EVTAVAIL-02, EVTAVAIL-03, EVTAVAIL-04, EVTAVAIL-05
-**Plans:** 3/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -190,8 +190,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 75-04-PLAN.md — Event details availability surface: answer buttons, withdraw control, roster, and the signup-aware delete confirmation (wave 3)
-- [ ] 75-05-PLAN.md — Lifecycle, ownership and two-group tenant isolation integration tests, and the validation sign-off (wave 3)
+- [x] 75-04-PLAN.md — Event details availability surface: answer buttons, withdraw control, roster, and the signup-aware delete confirmation (wave 3)
+- [x] 75-05-PLAN.md — Lifecycle, ownership and two-group tenant isolation integration tests, and the validation sign-off (wave 3)
 
 **Success criteria:**
 
