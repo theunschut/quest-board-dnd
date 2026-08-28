@@ -11,6 +11,10 @@ public static class ServiceExtensions
     public static IServiceCollection AddDomainServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<EmailSettings>().BindConfiguration("EmailSettings");
+        // A code default (runway 20, preview 10) keeps the feature working on a deployment with
+        // no matching configuration section -- nothing has to change on a server environment
+        // file for it to work.
+        services.AddOptions<EventSeriesOptions>().BindConfiguration(EventSeriesOptions.SectionName);
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IEmailService, EmailService>();
@@ -23,6 +27,7 @@ public static class ServiceExtensions
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IEventSignupService, EventSignupService>();
+        services.AddScoped<IEventSeriesService, EventSeriesService>();
         services.AddScoped<IImageValidationService, ImageValidationService>();
         // Singleton, not Scoped like everything above: this service is stateless -- it only holds
         // an immutable pre-built Markdig pipeline and two immutable sanitizer instances -- so it is
