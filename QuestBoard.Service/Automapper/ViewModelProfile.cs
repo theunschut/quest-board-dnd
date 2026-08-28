@@ -8,6 +8,7 @@ using QuestBoard.Service.ViewModels.CharacterViewModels;
 using QuestBoard.Service.ViewModels.ContactViewModels;
 using QuestBoard.Service.ViewModels.DungeonMasterViewModels;
 using QuestBoard.Service.ViewModels.EventViewModels;
+using QuestBoard.Service.ViewModels.SeriesViewModels;
 
 namespace QuestBoard.Service.Automapper;
 
@@ -135,5 +136,21 @@ public class ViewModelProfile : Profile
             .ForMember(dest => dest.SeriesSlotIndex, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CancelledAt, opt => opt.Ignore());
+
+        // EventSeries to SeriesDetailsViewModel -- deliberately no reverse map: the series page
+        // is read-only and its two write actions take primitive route and form values rather
+        // than a bound model. CyclePositions, Occurrences, CanManage and the removal-impact
+        // counts are all filled per request by the controller, not from the domain row.
+        CreateMap<EventSeries, SeriesDetailsViewModel>()
+            .ForMember(dest => dest.CyclePositions, opt => opt.Ignore())
+            .ForMember(dest => dest.Occurrences, opt => opt.Ignore())
+            .ForMember(dest => dest.CanManage, opt => opt.Ignore())
+            .ForMember(dest => dest.PastCount, opt => opt.Ignore())
+            .ForMember(dest => dest.FutureCount, opt => opt.Ignore())
+            .ForMember(dest => dest.AnsweredCount, opt => opt.Ignore());
+
+        // Event to SeriesOccurrenceViewModel -- maps by convention, including IsCancelled,
+        // which is computed on the source model from CancelledAt.
+        CreateMap<Event, SeriesOccurrenceViewModel>();
     }
 }
