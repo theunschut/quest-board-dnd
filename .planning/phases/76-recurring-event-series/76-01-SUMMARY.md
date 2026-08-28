@@ -137,3 +137,11 @@ None - no external service configuration required.
 ---
 *Phase: 76-recurring-event-series*
 *Completed: 2026-08-28*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Domain/Services/EventSeriesDateGenerator.cs
+- FOUND: QuestBoard.UnitTests/Services/EventSeriesDateGeneratorTests.cs
+- FOUND: .planning/phases/76-recurring-event-series/76-01-SUMMARY.md
+- FOUND commit: 54ae8e3 (Task 1)
+- FOUND commit: d1bac17 (Task 2)
