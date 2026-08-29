@@ -62,7 +62,7 @@
             <div class="avail-card mb-3" onclick="window.location.href='@Url.Action("Details", "Events", new { id = row.EventId })'">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="fw-bold avail-card-title">@row.Title</div>
+                        <div class="fw-bold avail-card-title"><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></div>
                         <small class="text-muted">
                             @row.Date.ToString("ddd, MMM d")
                             @if (row.StartTime.HasValue)
