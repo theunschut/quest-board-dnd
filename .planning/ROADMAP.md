@@ -508,7 +508,7 @@ Plans:
 **Goal**: A member who belongs to more than one board can see, in one place, every upcoming event they are expected at across all of their boards — with the board each event belongs to named on every row.
 **Depends on**: Phase 77 (inherits its cell vocabulary, its next-N-with-paging window, and its date-only lower bound; the aggregate read is a different query and a different tenancy mechanism)
 **Requirements**: EVTAGENDA-01, EVTAGENDA-02, EVTAGENDA-03, EVTAGENDA-04, EVTAGENDA-05, EVTAGENDA-06, EVTAGENDA-07, EVTAGENDA-08, EVTAGENDA-09, EVTAGENDA-10
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -518,7 +518,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 82-03-PLAN.md — Agenda controller with the session-remembered board filter, desktop view with inline rosters, and the no-active-board middleware exemption
+- [x] 82-03-PLAN.md — Agenda controller with the session-remembered board filter, desktop view with inline rosters, and the no-active-board middleware exemption
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
