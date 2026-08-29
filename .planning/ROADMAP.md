@@ -318,7 +318,7 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 12 plans (10 complete, 2 open from UAT gap closure)
+**Plans**: 11/12 plans executed
 
 Plans:
 **Wave 1**
@@ -351,7 +351,7 @@ Plans:
 
 **UAT gap closure — Wave 1** *(from `77-UAT.md` test 1; run with `/gsd-execute-phase 77 --gaps-only`)*
 
-- [ ] 77-11-PLAN.md — Mobile card glass surface, WCAG-AA count contrast and filled controls (UAT gap wave 1)
+- [x] 77-11-PLAN.md — Mobile card glass surface, WCAG-AA count contrast and filled controls (UAT gap wave 1)
 
 **UAT gap closure — Wave 2** *(blocked on UAT gap Wave 1)*
 
