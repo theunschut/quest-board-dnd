@@ -137,6 +137,14 @@ None - no external service configuration required.
 - Sibling plans (77-01/77-03/77-04) still need to land `EventsController.Index`, the aggregating query, and the two Razor views (`Events/Index.cshtml` / `Index.Mobile.cshtml`) that consume the classes and markup shipped here.
 - Manual mobile verification (real user agent, not devtools emulation) of the offcanvas two-entry layout and the calendar cross-link is still open — flagged as `human_judgment: true` in the coverage block above.
 
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/wwwroot/css/events-overview.css
+- FOUND: QuestBoard.Service/wwwroot/css/events-overview.mobile.css
+- FOUND: 627cb8dd (Task 1 commit)
+- FOUND: efe59f09 (Task 2 commit)
+- FOUND: 1e54808f (Task 3 commit)
+
 ---
 *Phase: 77-availability-overview-page*
 *Completed: 2026-08-29*
