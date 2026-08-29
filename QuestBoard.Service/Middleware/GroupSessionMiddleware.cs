@@ -58,7 +58,14 @@ public class GroupSessionMiddleware(RequestDelegate next)
         $"/{ControllerNameOf<GroupPickerController>()}",
         $"/{ControllerNameOf<AccountController>()}",
         "/platform",
-        "/Error"
+        "/Error",
+        // The agenda is scoped entirely by the viewer's own board memberships and needs no
+        // active board, so sending it to the board picker would make it unreachable in
+        // exactly the situation it exists to cover -- a viewer with no board selected.
+        // Skipping the periodic membership revalidation below on this path costs nothing,
+        // because the page re-reads the viewer's memberships from the database on every
+        // single request.
+        $"/{ControllerNameOf<AgendaController>()}"
     ];
 
     private static string ControllerNameOf<TController>() where TController : Microsoft.AspNetCore.Mvc.Controller
