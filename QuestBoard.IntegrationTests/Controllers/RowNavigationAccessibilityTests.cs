@@ -39,6 +39,23 @@ public class RowNavigationAccessibilityTests(WebApplicationFactoryBase factory)
         return eventEntity.Id;
     }
 
+    private async Task<int> SeedQuestAsync(int dungeonMasterId, string title)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var questEntity = new QuestEntity
+        {
+            Title = title,
+            Description = "Test description",
+            ChallengeRating = 5,
+            DungeonMasterId = dungeonMasterId,
+            GroupId = 1,
+            CreatedAt = DateTime.UtcNow
+        };
+        ctx.Quests.Add(questEntity);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return questEntity.Id;
+    }
+
     // Attaches the mobile user agent header to a request and sends it through the supplied
     // authenticated client, so the client's default authorization header still applies.
     private async Task<(HttpResponseMessage Response, string Html)> GetMobileAsync(HttpClient client, string url)
@@ -88,5 +105,141 @@ public class RowNavigationAccessibilityTests(WebApplicationFactoryBase factory)
         html.Should().MatchRegex($"""<a class="row-nav-link" href="[^"]*Events/Details/{eventId}[^"]*">""");
         // Confirms the mobile view actually rendered rather than the desktop one.
         html.Should().Contain("avail-card");
+    }
+
+    [Fact]
+    public async Task Desktop_QuestCard_QuestOwnerSeesManageLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "quest_owner", "quest_owner@example.com", roles: ["Player"]);
+
+        // Ensure the owner is in group 1
+        await using var ctx = factory.Database.CreateContext();
+        ctx.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = owner.Id,
+            GroupId = 1,
+            GroupRole = (int)GroupRole.Player
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var questId = await SeedQuestAsync(owner.Id, "Quest Owned By Player");
+
+        var response = await ownerClient.GetAsync("/quests", TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The anchor's href must point to the Manage action for the quest owner.
+        html.Should().MatchRegex($"""<a class="row-nav-link" href="[^"]*Quest/Manage/{questId}[^"]*">""");
+    }
+
+    [Fact]
+    public async Task Desktop_QuestCard_NonOwnerSeesDetailsLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "quest_owner2", "quest_owner2@example.com", roles: ["Player"]);
+
+        // Ensure the owner is in group 1
+        await using var ctx = factory.Database.CreateContext();
+        ctx.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = owner.Id,
+            GroupId = 1,
+            GroupRole = (int)GroupRole.Player
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var questId = await SeedQuestAsync(owner.Id, "Quest Owned By Other Player");
+
+        // Create a different user (non-owner)
+        var (viewerClient, viewer) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "quest_viewer", "quest_viewer@example.com", roles: ["Player"]);
+
+        // Ensure the viewer is in group 1
+        ctx.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = viewer.Id,
+            GroupId = 1,
+            GroupRole = (int)GroupRole.Player
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var response = await viewerClient.GetAsync("/quests", TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The anchor's href must point to the Details action for non-owners.
+        html.Should().MatchRegex($"""<a class="row-nav-link" href="[^"]*Quest/Details/{questId}[^"]*">""");
+    }
+
+    [Fact]
+    public async Task Mobile_QuestCard_QuestOwnerSeesManageLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "quest_owner_mobile", "quest_owner_mobile@example.com", roles: ["Player"]);
+
+        // Ensure the owner is in group 1
+        await using var ctx = factory.Database.CreateContext();
+        ctx.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = owner.Id,
+            GroupId = 1,
+            GroupRole = (int)GroupRole.Player
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var questId = await SeedQuestAsync(owner.Id, "Quest Owned By Player Mobile");
+
+        var (response, html) = await GetMobileAsync(ownerClient, "/quests");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The anchor's href must point to the Manage action for the quest owner on mobile.
+        html.Should().MatchRegex($"""<a class="row-nav-link" href="[^"]*Quest/Manage/{questId}[^"]*">""");
+        // Confirms the mobile view rendered.
+        html.Should().Contain("quest-list-mobile");
+    }
+
+    [Fact]
+    public async Task Mobile_QuestCard_NonOwnerSeesDetailsLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (ownerClient, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "quest_owner_mobile2", "quest_owner_mobile2@example.com", roles: ["Player"]);
+
+        // Ensure the owner is in group 1
+        await using var ctx = factory.Database.CreateContext();
+        ctx.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = owner.Id,
+            GroupId = 1,
+            GroupRole = (int)GroupRole.Player
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var questId = await SeedQuestAsync(owner.Id, "Quest Owned By Other Player Mobile");
+
+        // Create a different user (non-owner)
+        var (viewerClient, viewer) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "quest_viewer_mobile", "quest_viewer_mobile@example.com", roles: ["Player"]);
+
+        // Ensure the viewer is in group 1
+        ctx.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = viewer.Id,
+            GroupId = 1,
+            GroupRole = (int)GroupRole.Player
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (response, html) = await GetMobileAsync(viewerClient, "/quests");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The anchor's href must point to the Details action for non-owners on mobile.
+        html.Should().MatchRegex($"""<a class="row-nav-link" href="[^"]*Quest/Details/{questId}[^"]*">""");
+        // Confirms the mobile view rendered.
+        html.Should().Contain("quest-list-mobile");
     }
 }
