@@ -79,3 +79,19 @@
     display: inline-flex;
     align-items: center;
 }
+
+/* The mobile layout does not load calendar.css, so the legend card's compact sizing is
+   duplicated here rather than shared -- the same duplication policy documented at the top
+   of this file. */
+.legend-card {
+    height: fit-content;
+}
+
+.legend-card .card-body {
+    padding: 0.75rem !important;
+}
+
+.legend-card small {
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
