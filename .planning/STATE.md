@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 78
-current_phase_name: Link Preview Foundation and Quest Cards
+current_phase: 83
+current_phase_name: Availability Surface Naming and Placement
 status: executing
 stopped_at: Phase 80 UI-SPEC approved
-last_updated: "2026-08-29T22:57:59.375Z"
+last_updated: "2026-08-29T23:00:48.246Z"
 last_activity: 2026-08-29
-last_activity_desc: Phase 77 complete, transitioned to Phase 78
+last_activity_desc: Phase 82 complete, transitioned to Phase 83
 progress:
   total_phases: 12
   completed_phases: 7
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 ## Current Position
 
-Phase: 78 — Link Preview Foundation and Quest Cards
+Phase: 83 — Availability Surface Naming and Placement
 Plan: Not started
 Status: Executing Phase 77
-Last activity: 2026-08-29 — Phase 77 complete, transitioned to Phase 78
+Last activity: 2026-08-29 — Phase 82 complete, transitioned to Phase 83
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
