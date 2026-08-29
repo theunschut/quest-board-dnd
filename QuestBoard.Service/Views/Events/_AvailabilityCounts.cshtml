@@ -1,0 +1,16 @@
+@using QuestBoard.Service.ViewModels.EventViewModels
+@model EventOverviewRowViewModel
+@*
+    All three figures always render, on both the desktop grid and the mobile card list. The
+    headline is the total that includes unconfirmed defaults and is the figure that can
+    mislead, so the confirmed subset sits next to it and never disappears; Maybe is shown
+    separately and is never folded into Yes.
+*@
+<div class="avail-count-summary">
+    <span class="avail-count-headline">
+        <i class="fas fa-users me-1"></i><strong>@Model.YesCount</strong> Yes
+    </span>
+    <span class="avail-count-detail text-muted">
+        (@Model.ConfirmedYesCount confirmed) &middot; @Model.MaybeCount Maybe
+    </span>
+</div>
