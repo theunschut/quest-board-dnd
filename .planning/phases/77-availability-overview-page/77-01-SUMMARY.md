@@ -156,3 +156,7 @@ None - no external service configuration required.
 ---
 *Phase: 77-availability-overview-page*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+All 7 created files verified present on disk (AvailabilityCellState.cs, AvailabilityMember.cs, EventWithSignups.cs, EventAvailabilityRow.cs, EventAvailabilityOverview.cs, EventsOverviewOptions.cs, EventsOverviewAggregationTests.cs). All 4 task commits verified present in git log (24244785, e184bbe5, e9926518, e70845ec).
