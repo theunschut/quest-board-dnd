@@ -88,6 +88,41 @@ public class AgendaTenantIsolationTests(WebApplicationFactoryBase factory)
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
+    // Removes every membership row a user holds, so a SuperAdmin whose account was seeded with
+    // a default board-one membership can be put back to a genuine zero-membership state.
+    private async Task RemoveAllMembershipsAsync(int userId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var memberships = ctx.UserGroups.Where(ug => ug.UserId == userId);
+        ctx.UserGroups.RemoveRange(memberships);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Removes a user's membership from a board through the real domain service, the same path
+    // production code uses when a member leaves. A silent no-op here would let every fact that
+    // depends on this helper pass for the wrong reason, so the row's removal is confirmed
+    // directly against the unfiltered seeding context afterward rather than trusted from the
+    // service call alone.
+    private async Task LeaveBoardAsync(int groupId, int userId)
+    {
+        var previousActiveGroupId = factory.TestGroupContext.ActiveGroupId;
+        factory.TestGroupContext.ActiveGroupId = groupId;
+        try
+        {
+            using var scope = factory.Services.CreateScope();
+            var groupService = scope.ServiceProvider.GetRequiredService<IGroupService>();
+            await groupService.RemoveMemberAsync(groupId, userId, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = previousActiveGroupId;
+        }
+
+        await using var verifyCtx = factory.Database.CreateContext();
+        var stillMember = verifyCtx.UserGroups.Any(ug => ug.UserId == userId && ug.GroupId == groupId);
+        stillMember.Should().BeFalse();
+    }
+
     [Fact]
     public async Task Agenda_ForMemberOfOneBoard_ShowsNothingFromANonMemberBoard()
     {
@@ -195,5 +230,189 @@ public class AgendaTenantIsolationTests(WebApplicationFactoryBase factory)
         boardTwoIndex.Should().BeGreaterThan(-1);
         boardOneIndex.Should().BeGreaterThan(-1);
         boardTwoIndex.Should().BeLessThan(boardOneIndex);
+    }
+
+    [Fact]
+    public async Task Agenda_AfterLeavingABoard_ShowsNothingFromItOnTheNextRequest()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        await SeedBoardAsync(2, "Leave Suite Board Two");
+
+        var (client, viewer) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "isoagenda_leave", "isoagenda_leave@example.com", roles: []);
+        await SeedMembershipAsync(viewer.Id, 1);
+        await SeedMembershipAsync(viewer.Id, 2);
+
+        var boardOneEventId = await SeedEventAsync(1, "Leave Suite Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedSignupAsync(boardOneEventId, viewer.Id, VoteType.Yes);
+
+        var boardTwoEventId = await SeedEventAsync(2, "Leave Suite Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var boardTwoMember = await SeedMemberAsync(2, "isoagenda_leave_member", "isoagenda_leave_member@example.com", "Leave Suite Board Two Member");
+        await SeedSignupAsync(boardTwoEventId, boardTwoMember.Id, VoteType.Yes);
+        await SeedSignupAsync(boardTwoEventId, viewer.Id, VoteType.Yes);
+
+        var before = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        before.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bodyBefore = await before.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        // Proves a change happened rather than an absence that was always true.
+        bodyBefore.Should().Contain("Leave Suite Board Two Session");
+
+        // The signup rows this deletes are cleanup, not access control -- the event row itself
+        // still exists and still matches the date predicate. The only reason board two
+        // disappears below is that the page re-reads the viewer's memberships on this request.
+        await LeaveBoardAsync(2, viewer.Id);
+
+        var after = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        after.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bodyAfter = await after.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        bodyAfter.Should().NotContain("Leave Suite Board Two Session");
+        bodyAfter.Should().NotContain("Leave Suite Board Two Member");
+        bodyAfter.Should().NotContain("Leave Suite Board Two");
+        bodyAfter.Should().Contain("Leave Suite Board One Session");
+    }
+
+    [Fact]
+    public async Task Agenda_FilterNamingANonMemberBoard_DoesNotWidenTheSet()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        await SeedBoardAsync(2, "Non Widen Suite Board Two");
+
+        var (client, viewer) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "isoagenda_non_widen", "isoagenda_non_widen@example.com", roles: []);
+        await SeedMembershipAsync(viewer.Id, 1);
+
+        await SeedEventAsync(1, "Non Widen Suite Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedEventAsync(2, "Non Widen Suite Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        var unfiltered = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        var unfilteredBody = await unfiltered.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // The filter narrows the viewer's own memberships; it is never an input that can add to
+        // them, so naming both boards must produce exactly the same rows as naming none.
+        var filtered = await client.GetAsync("/Agenda?boards=1&boards=2", TestContext.Current.CancellationToken);
+        var filteredBody = await filtered.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        filtered.StatusCode.Should().Be(HttpStatusCode.OK);
+        unfilteredBody.Should().Contain("Non Widen Suite Board One Session");
+        unfilteredBody.Should().NotContain("Non Widen Suite Board Two Session");
+        filteredBody.Should().Contain("Non Widen Suite Board One Session");
+        filteredBody.Should().NotContain("Non Widen Suite Board Two Session");
+        filteredBody.Should().NotContain("Non Widen Suite Board Two");
+    }
+
+    [Fact]
+    public async Task Agenda_StaleSessionFilterNamingALeftBoard_IsIgnored()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        await SeedBoardAsync(2, "Stale Filter Suite Board Two");
+
+        var (client, viewer) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "isoagenda_stale_filter", "isoagenda_stale_filter@example.com", roles: []);
+        await SeedMembershipAsync(viewer.Id, 1);
+        await SeedMembershipAsync(viewer.Id, 2);
+
+        await SeedEventAsync(1, "Stale Filter Suite Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedEventAsync(2, "Stale Filter Suite Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        // One client so the session persists across requests -- this is the regression guard
+        // for trusting a stored value as more than a hint.
+        var selectBoth = await client.GetAsync("/Agenda?boards=1&boards=2", TestContext.Current.CancellationToken);
+        var selectBothBody = await selectBoth.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        selectBothBody.Should().Contain("Stale Filter Suite Board One Session");
+        selectBothBody.Should().Contain("Stale Filter Suite Board Two Session");
+
+        await LeaveBoardAsync(2, viewer.Id);
+
+        var afterLeave = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        afterLeave.StatusCode.Should().Be(HttpStatusCode.OK);
+        var afterLeaveBody = await afterLeave.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        afterLeaveBody.Should().NotContain("Stale Filter Suite Board Two Session");
+        afterLeaveBody.Should().NotContain("Stale Filter Suite Board Two");
+        afterLeaveBody.Should().Contain("Stale Filter Suite Board One Session");
+    }
+
+    [Fact]
+    public async Task Agenda_SuperAdminWithNoMemberships_SeesNoBoards()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, superAdmin) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "isoagenda_superadmin_empty", "isoagenda_superadmin_empty@example.com");
+        // The default seeding for a non-empty-roles caller puts this account on board one --
+        // remove it so this SuperAdmin genuinely has zero memberships, which is the case this
+        // fact exists to prove.
+        await RemoveAllMembershipsAsync(superAdmin.Id);
+
+        await SeedBoardAsync(2, "SuperAdmin Empty Suite Board Two");
+        await SeedBoardAsync(3, "SuperAdmin Empty Suite Board Three");
+
+        var boardOneEventId = await SeedEventAsync(1, "SuperAdmin Empty Suite Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var boardOneMember = await SeedMemberAsync(1, "isoagenda_sa_empty_one", "isoagenda_sa_empty_one@example.com", "SuperAdmin Empty Board One Member");
+        await SeedSignupAsync(boardOneEventId, boardOneMember.Id, VoteType.Yes);
+
+        var boardTwoEventId = await SeedEventAsync(2, "SuperAdmin Empty Suite Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var boardTwoMember = await SeedMemberAsync(2, "isoagenda_sa_empty_two", "isoagenda_sa_empty_two@example.com", "SuperAdmin Empty Board Two Member");
+        await SeedSignupAsync(boardTwoEventId, boardTwoMember.Id, VoteType.Yes);
+
+        var boardThreeEventId = await SeedEventAsync(3, "SuperAdmin Empty Suite Board Three Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var boardThreeMember = await SeedMemberAsync(3, "isoagenda_sa_empty_three", "isoagenda_sa_empty_three@example.com", "SuperAdmin Empty Board Three Member");
+        await SeedSignupAsync(boardThreeEventId, boardThreeMember.Id, VoteType.Yes);
+
+        // The board picker hands a SuperAdmin every group; this page deliberately does not
+        // mirror that, because doing so would turn it into an unbounded read over every event
+        // in the application.
+        var response = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("No Boards Yet");
+        body.Should().NotContain("SuperAdmin Empty Suite Board One Session");
+        body.Should().NotContain("SuperAdmin Empty Suite Board Two Session");
+        body.Should().NotContain("SuperAdmin Empty Suite Board Three Session");
+        body.Should().NotContain("SuperAdmin Empty Board One Member");
+        body.Should().NotContain("SuperAdmin Empty Board Two Member");
+        body.Should().NotContain("SuperAdmin Empty Board Three Member");
+    }
+
+    [Fact]
+    public async Task Agenda_SuperAdminMemberOfOneBoard_SeesOnlyThatBoard()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, superAdmin) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "isoagenda_superadmin_one", "isoagenda_superadmin_one@example.com");
+        // The default seeding already puts this account on board one and nowhere else -- exactly
+        // the "member of exactly one of three boards" case this fact exists to prove.
+        await SeedBoardAsync(2, "SuperAdmin One Suite Board Two");
+        await SeedBoardAsync(3, "SuperAdmin One Suite Board Three");
+
+        var boardOneEventId = await SeedEventAsync(1, "SuperAdmin One Suite Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedSignupAsync(boardOneEventId, superAdmin.Id, VoteType.Yes);
+
+        var boardTwoEventId = await SeedEventAsync(2, "SuperAdmin One Suite Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var boardTwoMember = await SeedMemberAsync(2, "isoagenda_sa_one_two", "isoagenda_sa_one_two@example.com", "SuperAdmin One Board Two Member");
+        await SeedSignupAsync(boardTwoEventId, boardTwoMember.Id, VoteType.Yes);
+
+        var boardThreeEventId = await SeedEventAsync(3, "SuperAdmin One Suite Board Three Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var boardThreeMember = await SeedMemberAsync(3, "isoagenda_sa_one_three", "isoagenda_sa_one_three@example.com", "SuperAdmin One Board Three Member");
+        await SeedSignupAsync(boardThreeEventId, boardThreeMember.Id, VoteType.Yes);
+
+        var response = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("SuperAdmin One Suite Board One Session");
+        body.Should().NotContain("SuperAdmin One Suite Board Two Session");
+        body.Should().NotContain("SuperAdmin One Suite Board Three Session");
+        body.Should().NotContain("SuperAdmin One Board Two Member");
+        body.Should().NotContain("SuperAdmin One Board Three Member");
     }
 }
