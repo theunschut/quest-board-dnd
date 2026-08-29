@@ -5,7 +5,7 @@ using QuestBoard.Domain.Models;
 
 namespace QuestBoard.Domain.Services;
 
-internal class EventService(IEventRepository repository, IMapper mapper) : BaseService<Event>(repository, mapper), IEventService
+internal class EventService(IEventRepository repository, IMapper mapper, TimeProvider timeProvider) : BaseService<Event>(repository, mapper), IEventService
 {
     /// <inheritdoc/>
     public async Task<IList<Event>> GetEventsForCalendarAsync(CancellationToken token = default)
@@ -40,9 +40,10 @@ internal class EventService(IEventRepository repository, IMapper mapper) : BaseS
     /// <inheritdoc/>
     public async Task<EventAvailabilityOverview> GetAvailabilityOverviewAsync(int take, CancellationToken token = default)
     {
-        // Date-only, no time-of-day comparison -- the clock read lives here rather than in the
-        // repository so the repository stays testable against a fixed date.
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        // Date-only, no time-of-day comparison, and read in UTC from the injected clock so it
+        // lines up with the UTC timestamps this same feature already writes onto signups and
+        // cancellations.
+        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 
         // Asking for one more row than the caller wants is how the page learns there is more to
         // show without a second, separate count query.

@@ -16,4 +16,8 @@ public class EventsOverviewOptions
     public int MaxTake { get; set; } = 100;
 
     public int PageIncrement { get; set; } = 10;
+
+    // All three counts are page sizes; a value below one makes the page unservable, so the
+    // application refuses to start rather than failing per request.
+    public bool IsValid() => DefaultTake >= 1 && MaxTake >= 1 && PageIncrement >= 1 && DefaultTake <= MaxTake;
 }
