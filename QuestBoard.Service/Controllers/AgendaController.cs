@@ -60,17 +60,21 @@ public class AgendaController(
         // sentinel arrives from a URL a reader can type or edit, so it is matched
         // case-insensitively; the "none" marker is only ever written by the session write
         // further down, so an exact ordinal match is both sufficient and stricter.
+        var isReset = boardsProvided
+            && string.Equals(rawBoards, SessionKeys.AgendaBoardFilterResetSentinel, StringComparison.OrdinalIgnoreCase);
+
+        string? stored = null;
         List<int> requestedIds;
         if (!boardsProvided)
         {
-            var stored = HttpContext.Session.GetString(SessionKeys.AgendaBoardFilter);
+            stored = HttpContext.Session.GetString(SessionKeys.AgendaBoardFilter);
             requestedIds = stored == null
                 ? memberGroupIds
                 : string.Equals(stored, SessionKeys.AgendaBoardFilterNoneSentinel, StringComparison.Ordinal)
                     ? []
                     : ParseBoardIds(stored);
         }
-        else if (string.Equals(rawBoards, SessionKeys.AgendaBoardFilterResetSentinel, StringComparison.OrdinalIgnoreCase))
+        else if (isReset)
         {
             // The reset control on the all-filtered-out empty state: clear the remembered
             // selection and fall back to showing every board again.
@@ -82,6 +86,14 @@ public class AgendaController(
             requestedIds = ParseBoardIds(rawBoards);
         }
 
+        // Whether a selection the viewer actually made is in force, as opposed to the default
+        // "show everything I belong to". The two are indistinguishable by board ids alone --
+        // a viewer who ticks every one of their boards produces the same effective set as a
+        // viewer who never opened the filter -- and conflating them is what would let the
+        // paging link below hand back a board list that then gets stored as a real filter.
+        // A board joined afterwards would silently never appear again.
+        var hasExplicitSelection = (boardsProvided && !isReset) || stored != null;
+
         // The stored or supplied selection is only ever a hint about which of the viewer's
         // *current* memberships to show -- it narrows, it can never widen, and a stale id
         // left over from a board the viewer has since left is silently dropped rather than
@@ -90,7 +102,7 @@ public class AgendaController(
         // query, and do not skip it on any branch.
         var effectiveGroupIds = requestedIds.Intersect(memberGroupIds).Distinct().ToList();
 
-        if (boardsProvided && !string.Equals(rawBoards, SessionKeys.AgendaBoardFilterResetSentinel, StringComparison.OrdinalIgnoreCase))
+        if (boardsProvided && !isReset)
         {
             // Store the intersected set, never the raw request, so a foreign id can never be
             // parked in session.
@@ -154,7 +166,13 @@ public class AgendaController(
             AvailableBoards = availableBoards,
             SelectedCount = effectiveGroupIds.Count,
             TotalCount = memberships.Count,
-            SelectedBoardIds = string.Join(',', effectiveGroupIds),
+            // Only a selection the viewer actually made travels with the paging link. With no
+            // selection in force the link carries the reset sentinel instead, which round-trips
+            // through the reset branch above as a no-op -- so growing the window can never
+            // manufacture a filter the viewer never chose.
+            SelectedBoardIds = hasExplicitSelection
+                ? string.Join(',', effectiveGroupIds)
+                : SessionKeys.AgendaBoardFilterResetSentinel,
             HasMore = agenda.HasMore,
             Take = effectiveTake,
             NextTake = Math.Min(effectiveTake + options.PageIncrement, options.MaxTake),
