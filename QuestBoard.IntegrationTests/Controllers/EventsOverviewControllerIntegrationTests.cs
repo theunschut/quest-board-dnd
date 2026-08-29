@@ -177,11 +177,12 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var eventOneId = await SeedEventAsync("Empty Cell Session One", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
-        var eventTwoId = await SeedEventAsync("Empty Cell Session Two", DateOnly.FromDateTime(DateTime.Today.AddDays(2)));
+        // Seeded purely for its side effect -- the second event is what makes the member's
+        // row on the first event a partial roster rather than a complete one.
+        await SeedEventAsync("Empty Cell Session Two", DateOnly.FromDateTime(DateTime.Today.AddDays(2)));
         var memberId = await SeedMemberAsync("evtoverview_partial", "Partial Roster Member");
         // Member holds a row on event one only.
         await SeedSignupAsync(eventOneId, memberId, VoteType.Yes, confirmed: true);
-        _ = eventTwoId;
 
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "evtoverview_viewer4", "evtoverview_viewer4@example.com");
@@ -292,9 +293,12 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
         var response = await client.GetAsync("/Events", TestContext.Current.CancellationToken);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-        html.Should().Contain("avail-count-headline");
-        html.Should().Contain("confirmed");
-        html.Should().Contain("Maybe");
+        // Asserts the three rendered figures themselves -- the headline total including the
+        // unconfirmed default, the parenthesised confirmed subset, and the separately tracked
+        // maybe figure -- rather than substrings the legend also renders unconditionally.
+        html.Should().Contain("<strong>3</strong> Yes");
+        html.Should().Contain("(2 confirmed)");
+        html.Should().Contain("2 Maybe");
     }
 
     [Fact]
@@ -346,13 +350,10 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
     }
 
     [Fact]
-    public async Task Index_TakeAboveMax_IsClampedAndStillReturnsOk()
+    public async Task Index_TakeAboveMax_IsClampedToMaxTake()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
-        for (var i = 0; i < 5; i++)
-        {
-            await SeedEventAsync($"Clamp Session {i}", DateOnly.FromDateTime(DateTime.Today.AddDays(i + 1)));
-        }
+        await SeedEventsAsync("Clamp Session", 105);
 
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "evtoverview_viewer9", "evtoverview_viewer9@example.com");
@@ -362,23 +363,35 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var rowCount = html.Split("avail-row-clickable").Length - 1;
-        rowCount.Should().BeLessThanOrEqualTo(100);
+        // Exactly the configured ceiling, not merely no greater than it -- with 105 events
+        // seeded, deleting the clamp would render 105 rows and fail this assertion.
+        rowCount.Should().Be(100);
+        // The window is already clamped to the ceiling while further events still exist, so
+        // the paging control must be absent -- it would otherwise link back to this same page.
+        html.Should().NotContain("Show More Events");
     }
 
     [Fact]
     public async Task Index_TakeZeroOrNegative_StillReturnsOk()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
-        await SeedEventAsync("Zero Take Session", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+        await SeedEventsAsync("Zero Take Session", 3);
 
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "evtoverview_viewer10", "evtoverview_viewer10@example.com");
 
         var zeroResponse = await client.GetAsync("/Events?take=0", TestContext.Current.CancellationToken);
+        var zeroHtml = await zeroResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var negativeResponse = await client.GetAsync("/Events?take=-5", TestContext.Current.CancellationToken);
+        var negativeHtml = await negativeResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         zeroResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         negativeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        // With three events seeded, exactly one rendered row proves the clamp-to-one lower
+        // bound actually ran -- with only one event seeded this would be indistinguishable
+        // from no clamp at all.
+        (zeroHtml.Split("avail-row-clickable").Length - 1).Should().Be(1);
+        (negativeHtml.Split("avail-row-clickable").Length - 1).Should().Be(1);
     }
 
     [Fact]
