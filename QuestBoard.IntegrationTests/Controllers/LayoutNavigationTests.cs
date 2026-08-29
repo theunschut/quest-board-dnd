@@ -6,9 +6,9 @@ using QuestBoard.IntegrationTests.Helpers;
 namespace QuestBoard.IntegrationTests.Controllers;
 
 /// <summary>
-/// Nav-visibility tests for NAV-01..06 and D-04 (anonymous Calendar link).
-/// Tests start RED — the layout gating does not exist until Plan 02 wires
-/// GetBoardTypeAsync into _Layout.cshtml/_Layout.Mobile.cshtml.
+/// Asserts which navigation entries each role sees on each board type, on both the desktop and
+/// the mobile layout. Anonymous visitors are covered too, so an entry that should only exist for
+/// a signed-in board member cannot silently leak into the public navigation.
 /// </summary>
 public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
 {
@@ -111,7 +111,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // NAV-02: Campaign+authenticated — Shop link absent
+    // Campaign+authenticated — Shop link absent
     // -----------------------------------------------------------------------
 
     [Theory]
@@ -149,7 +149,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // NAV-04: Campaign+DM — Manage Shop link absent
+    // Campaign+DM — Manage Shop link absent
     // -----------------------------------------------------------------------
 
     [Theory]
@@ -168,7 +168,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // NAV-05: Campaign+DM — Edit My Profile link absent
+    // Campaign+DM — Edit My Profile link absent
     // -----------------------------------------------------------------------
 
     [Theory]
@@ -187,7 +187,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // NAV-06: Campaign+authenticated — Players link absent
+    // Campaign+authenticated — Players link absent
     // -----------------------------------------------------------------------
 
     [Theory]
@@ -229,7 +229,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // D-04: anonymous visitor — Calendar link absent (both layouts)
+    // Anonymous visitor — Calendar link absent (both layouts)
     // -----------------------------------------------------------------------
 
     [Theory]
