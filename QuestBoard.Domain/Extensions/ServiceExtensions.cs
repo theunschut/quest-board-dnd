@@ -15,6 +15,9 @@ public static class ServiceExtensions
         // no matching configuration section -- nothing has to change on a server environment
         // file for it to work.
         services.AddOptions<EventSeriesOptions>().BindConfiguration(EventSeriesOptions.SectionName);
+        // Same code-default-plus-configuration shape as EventSeriesOptions above: a
+        // deployment with no matching configuration section still works.
+        services.AddOptions<EventsOverviewOptions>().BindConfiguration(EventsOverviewOptions.SectionName);
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IEmailService, EmailService>();
