@@ -10,7 +10,7 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// the mobile layout. Anonymous visitors are covered too, so an entry that should only exist for
 /// a signed-in board member cannot silently leak into the public navigation.
 /// </summary>
-public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
+public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>, IAsyncLifetime
 {
     private const string MobileUserAgent =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
@@ -25,6 +25,18 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     {
         _factory = factory;
         _client = factory.CreateClient();
+    }
+
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+
+    // The board context is shared across the whole class fixture, so each test below sets the
+    // board type it needs and this restores the baseline afterwards so no test's premise depends
+    // on which test ran before it.
+    public ValueTask DisposeAsync()
+    {
+        _factory.TestGroupContext.BoardType = BoardType.OneShot;
+        _factory.TestGroupContext.ActiveGroupId = 1;
+        return ValueTask.CompletedTask;
     }
 
     private async Task<(HttpResponseMessage Response, string Html)> GetWithUserAgentAsync(string url, string userAgent)
@@ -255,6 +267,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     [InlineData(MobileUserAgent)]
     public async Task Nav_DungeonMaster_CreateEventEntryPresent(string userAgent)
     {
+        _factory.TestGroupContext.BoardType = BoardType.OneShot;
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
             _factory, "navevent_dm", "navevent_dm@test.com");
 
@@ -267,6 +280,7 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
     [Fact]
     public async Task Nav_Player_CreateEventEntryAbsent()
     {
+        _factory.TestGroupContext.BoardType = BoardType.OneShot;
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "navevent_player", "navevent_player@test.com", roles: ["Player"]);
 
