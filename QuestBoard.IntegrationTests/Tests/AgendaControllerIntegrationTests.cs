@@ -226,6 +226,39 @@ public class AgendaControllerIntegrationTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
+    public async Task Agenda_ForeignBoardIdInFilter_NeverWidensTheResult()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_foreign_id", "agenda_foreign_id@example.com");
+
+        await SeedGroupAsync(2, "Foreign Board The Viewer Is Not In");
+        await SeedEventAsync(1, "Own Board Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var foreignEventId = await SeedEventAsync(2, "Foreign Board Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        var (_, foreignMember) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_foreign_member", "agenda_foreign_member@example.com", name: "Foreign Board Member", roles: []);
+        await SeedMembershipAsync(foreignMember.Id, 2);
+        await SeedSignupAsync(foreignEventId, foreignMember.Id, VoteType.Yes);
+
+        // Requesting a board the viewer does not belong to must never reach the query, and
+        // must never widen the result to include that board's rows or names -- the
+        // intersection against a fresh membership read drops it silently instead.
+        var response = await client.GetAsync("/Agenda?boards=2", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain("Foreign Board Session");
+        body.Should().NotContain("Foreign Board The Viewer Is Not In");
+        body.Should().NotContain(foreignMember.Name);
+        // The foreign id is dropped rather than substituted, so the effective selection
+        // becomes empty -- the viewer's own board is filtered out too, not silently kept.
+        body.Should().Contain("All Boards Filtered Out");
+        body.Should().NotContain("Own Board Session");
+    }
+
+    [Fact]
     public async Task Agenda_SuperAdminWithNoMemberships_ShowsNoBoardsEmptyState_NotOtherBoardsEvents()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
