@@ -39,7 +39,7 @@
                 <div class="quest-log-item"
                      onclick="window.location.href='@Url.Action("Details", "QuestLog", new { id = quest.Id })'">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <h6 class="quest-log-item-title mb-0 me-2">@quest.Title</h6>
+                        <h6 class="quest-log-item-title mb-0 me-2"><a class="row-nav-link" href="@Url.Action("Details", "QuestLog", new { id = quest.Id })">@quest.Title</a></h6>
                         @if (boardType != BoardType.Campaign)
                         {
                             <span class="badge bg-secondary flex-shrink-0">CR @quest.ChallengeRating</span>

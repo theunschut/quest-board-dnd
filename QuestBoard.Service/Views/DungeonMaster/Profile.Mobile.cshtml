@@ -67,7 +67,7 @@
                 <div class="dm-quest-history-item"
                      onclick="window.location.href='@Url.Action("Details", "Quest", new { id = quest.Id })'">
                     <div class="d-flex justify-content-between align-items-start">
-                        <span class="dm-quest-history-title fw-bold">@quest.Title</span>
+                        <span class="dm-quest-history-title fw-bold"><a class="row-nav-link" href="@Url.Action("Details", "Quest", new { id = quest.Id })">@quest.Title</a></span>
                         <span class="badge bg-secondary ms-2 flex-shrink-0">
                             CR @quest.ChallengeRating
                         </span>
