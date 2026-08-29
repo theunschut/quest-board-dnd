@@ -335,4 +335,212 @@ public class AgendaControllerIntegrationTests(WebApplicationFactoryBase factory)
         body.Should().Contain("data-group-id=\"2\"");
         body.Should().Contain($"/Events/Details/{otherEventId}?from=agenda");
     }
+
+    [Fact]
+    public async Task Agenda_FilteringToOneBoard_PullsFurtherEventsIntoTheWindow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_window_filter", "agenda_window_filter@example.com");
+
+        await SeedGroupAsync(2, "Window Filter Board Two");
+        await SeedMembershipAsync(user.Id, 2);
+
+        // Board one's single event occupies one of the default window's five slots in the
+        // unfiltered request, which is exactly what pushes board two's fifth-earliest event out
+        // of that window -- filtering to board two alone is what pulls it back in. Filtering
+        // after the window was taken would instead return a short list drawn from an
+        // already-narrowed set, and could never surface it at all.
+        await SeedEventAsync(1, "Window Filter Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        for (var i = 1; i <= 6; i++)
+        {
+            await SeedEventAsync(2, $"Window Filter Board Two Session {i}", DateOnly.FromDateTime(DateTime.Today).AddDays(1 + i));
+        }
+
+        var unfiltered = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        var unfilteredBody = await unfiltered.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        unfilteredBody.Should().NotContain("Window Filter Board Two Session 5");
+
+        var response = await client.GetAsync("/Agenda?boards=2", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("Window Filter Board Two Session 1");
+        body.Should().Contain("Window Filter Board Two Session 4");
+        // Never present in the unfiltered request above -- present here only because the filter
+        // narrowed the query before the window was taken.
+        body.Should().Contain("Window Filter Board Two Session 5");
+        // The window is still bounded to five even once filtered -- narrowing is not the same
+        // as removing the ceiling.
+        body.Should().NotContain("Window Filter Board Two Session 6");
+        body.Should().NotContain("Window Filter Board One Session");
+    }
+
+    [Fact]
+    public async Task Agenda_FilterSelection_PersistsAcrossRequestsWithNoFilterParameter()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_persist_filter", "agenda_persist_filter@example.com");
+
+        await SeedGroupAsync(2, "Persist Filter Board Two");
+        await SeedMembershipAsync(user.Id, 2);
+
+        await SeedEventAsync(1, "Persist Filter Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedEventAsync(2, "Persist Filter Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        var applied = await client.GetAsync("/Agenda?boards=1", TestContext.Current.CancellationToken);
+        var appliedBody = await applied.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        appliedBody.Should().Contain("Persist Filter Board One Session");
+        appliedBody.Should().NotContain("Persist Filter Board Two Session");
+
+        // No filter parameter at all on this request -- the remembered selection from the
+        // previous request is what has to drive it.
+        var next = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        next.StatusCode.Should().Be(HttpStatusCode.OK);
+        var nextBody = await next.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        nextBody.Should().Contain("Persist Filter Board One Session");
+        nextBody.Should().NotContain("Persist Filter Board Two Session");
+    }
+
+    [Fact]
+    public async Task Agenda_ResetSentinel_ClearsStoredSelection_AndShowsEveryBoardAgain()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_reset_filter", "agenda_reset_filter@example.com");
+
+        await SeedGroupAsync(2, "Reset Filter Board Two");
+        await SeedMembershipAsync(user.Id, 2);
+
+        await SeedEventAsync(1, "Reset Filter Board One Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedEventAsync(2, "Reset Filter Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        await client.GetAsync("/Agenda?boards=1", TestContext.Current.CancellationToken);
+
+        var reset = await client.GetAsync("/Agenda?boards=all", TestContext.Current.CancellationToken);
+        reset.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resetBody = await reset.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        resetBody.Should().Contain("Reset Filter Board One Session");
+        resetBody.Should().Contain("Reset Filter Board Two Session");
+
+        // The reset has to clear the stored value, not just answer this one request with every
+        // board -- a later plain request has to keep showing everything too.
+        var afterReset = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        var afterResetBody = await afterReset.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        afterResetBody.Should().Contain("Reset Filter Board One Session");
+        afterResetBody.Should().Contain("Reset Filter Board Two Session");
+    }
+
+    [Fact]
+    public async Task Agenda_DeselectingEveryBoard_PersistsAcrossNextPlainRequest()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_persist_deselect", "agenda_persist_deselect@example.com");
+
+        await SeedEventAsync(1, "Persist Deselect Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        var deselected = await client.GetAsync("/Agenda?boards=", TestContext.Current.CancellationToken);
+        var deselectedBody = await deselected.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        deselectedBody.Should().Contain("All Boards Filtered Out");
+
+        // No filter parameter this time -- the stored "none" selection is what has to keep the
+        // page in the filtered-out state rather than silently reverting to every board.
+        var next = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+        next.StatusCode.Should().Be(HttpStatusCode.OK);
+        var nextBody = await next.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        nextBody.Should().Contain("All Boards Filtered Out");
+        nextBody.Should().NotContain("Persist Deselect Session");
+    }
+
+    [Fact]
+    public async Task Agenda_ShowMoreLink_CarriesEnlargedWindowAndCurrentSelection()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_show_more", "agenda_show_more@example.com");
+
+        await SeedGroupAsync(2, "Show More Board Two");
+        await SeedMembershipAsync(user.Id, 2);
+
+        // More upcoming events on board one than the default window, so HasMore is true and the
+        // Show More control actually renders.
+        for (var i = 1; i <= 6; i++)
+        {
+            await SeedEventAsync(1, $"Show More Board One Session {i}", DateOnly.FromDateTime(DateTime.Today).AddDays(i));
+        }
+        await SeedEventAsync(2, "Show More Board Two Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        var response = await client.GetAsync("/Agenda?boards=1", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("Show More Events");
+        // A link that silently dropped the filter and reloaded every board would carry no
+        // "boards=1" segment at all.
+        body.Should().Contain("take=10");
+        body.Should().Contain("boards=1");
+    }
+
+    [Fact]
+    public async Task Agenda_WindowSizeAboveCeiling_IsClampedDown()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_clamp_ceiling", "agenda_clamp_ceiling@example.com");
+
+        // One more than the configured ceiling, so a clamp failure would be visible as a 51st
+        // row rather than merely a large number that happens to fit.
+        for (var i = 1; i <= 51; i++)
+        {
+            await SeedEventAsync(1, $"Clamp Ceiling Session {i}", DateOnly.FromDateTime(DateTime.Today).AddDays(i));
+        }
+
+        var response = await client.GetAsync("/Agenda?take=100000", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var occurrences = body.Split("Clamp Ceiling Session", StringSplitOptions.None).Length - 1;
+        occurrences.Should().Be(50);
+    }
+
+    [Fact]
+    public async Task Agenda_WindowSizeOfZero_IsClampedUp()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_clamp_floor", "agenda_clamp_floor@example.com");
+
+        for (var i = 1; i <= 3; i++)
+        {
+            await SeedEventAsync(1, $"Clamp Floor Session {i}", DateOnly.FromDateTime(DateTime.Today).AddDays(i));
+        }
+
+        // A literal zero would render nothing at all if it reached the query unclamped -- the
+        // floor is what guarantees at least one row instead.
+        var response = await client.GetAsync("/Agenda?take=0", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var occurrences = body.Split("Clamp Floor Session", StringSplitOptions.None).Length - 1;
+        occurrences.Should().Be(1);
+        body.Should().Contain("Show More Events");
+        body.Should().Contain("take=6");
+    }
 }
