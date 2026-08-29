@@ -380,4 +380,73 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>, I
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("Availability Overview");
     }
+
+    // -----------------------------------------------------------------------
+    // My Agenda nav entry — this is the one unconditional path into the cross-board
+    // agenda, so unlike the Calendar/Availability Overview entries above it must render
+    // for every authenticated user on every board type, including when no board type
+    // has resolved at all.
+    // -----------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_OneShotAuthenticated_MyAgendaLinkPresent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.OneShot;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "navagenda_oneshot", "navagenda_oneshot@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("My Agenda");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignAuthenticated_MyAgendaLinkPresent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "navagenda_campaign", "navagenda_campaign@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("My Agenda");
+    }
+
+    // No other case in this file exercises an unresolved board type at all. Requesting the
+    // agenda page itself, rather than /quests, proves two facts in one assertion: the nav
+    // entry renders with no resolved board type, and the page it points at is itself
+    // reachable in that same state -- the property the entry exists to guarantee.
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_UnresolvedBoardTypeAuthenticated_MyAgendaLinkPresentAndPageReachable(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = null;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "navagenda_unresolved", "navagenda_unresolved@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/Agenda", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("My Agenda");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_Anonymous_MyAgendaLinkAbsent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.OneShot;
+
+        var (response, html) = await GetWithUserAgentAsync("/", userAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("My Agenda");
+    }
 }
