@@ -19,7 +19,7 @@
     </div>
 
     <div class="mb-3">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#avail-legend" aria-expanded="false">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="collapse" data-bs-target="#avail-legend" aria-expanded="false">
             What do these mean?
         </button>
         <div class="collapse mt-2" id="avail-legend">
@@ -66,7 +66,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="fw-bold avail-card-title"><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></div>
-                        <small class="text-muted">
+                        <small class="text-muted avail-card-meta">
                             @row.Date.ToString("ddd, MMM d")
                             @if (row.StartTime.HasValue)
                             {
@@ -76,7 +76,7 @@
                     </div>
                     @await Html.PartialAsync("_AvailabilityCounts", row)
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 avail-expand-toggle"
+                <button type="button" class="btn btn-sm btn-secondary mt-2 avail-expand-toggle"
                         data-bs-toggle="collapse" data-bs-target="#roster-@row.EventId"
                         onclick="event.stopPropagation();" aria-expanded="false">
                     <i class="fas fa-chevron-down me-1"></i>Show players
@@ -88,7 +88,7 @@
                             var member = Model.Members[i];
                             var cell = i < row.Cells.Count ? row.Cells[i] : AvailabilityCellState.Empty;
                             <li class="d-flex justify-content-between">
-                                <span>@member.Name@(member.UserId == Model.CurrentUserId ? " (you)" : "")</span>
+                                <span class="avail-roster-name">@member.Name@(member.UserId == Model.CurrentUserId ? " (you)" : "")</span>
                                 @await Html.PartialAsync("_AvailabilityCell", cell)
                             </li>
                         }
