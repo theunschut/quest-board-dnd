@@ -69,9 +69,9 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Calendar Events — Availability Overview
 
-- [ ] **EVTVIEW-01**: A new page shows upcoming events for the current board as a grid of events against players, with each player's availability
-- [ ] **EVTVIEW-02**: The overview visually distinguishes an untouched default from an answer the player actually gave, so "available" is not confused with "never looked"
-- [ ] **EVTVIEW-03**: The overview shows a per-event availability count, so a poorly-attended date is obvious at a glance
+- [x] **EVTVIEW-01**: A new page shows upcoming events for the current board as a grid of events against players, with each player's availability
+- [x] **EVTVIEW-02**: The overview visually distinguishes an untouched default from an answer the player actually gave, so "available" is not confused with "never looked"
+- [x] **EVTVIEW-03**: The overview shows a per-event availability count, so a poorly-attended date is obvious at a glance
 - [ ] **EVTVIEW-04**: The overview never displays events or members from another board
 
 ### Link Previews — Foundation and Quests
