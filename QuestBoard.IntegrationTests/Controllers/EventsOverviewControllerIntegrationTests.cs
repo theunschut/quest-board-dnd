@@ -10,6 +10,11 @@ namespace QuestBoard.IntegrationTests.Controllers;
 public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase factory)
     : IClassFixture<WebApplicationFactoryBase>, IAsyncLifetime
 {
+    // Mobile views in this app are selected from the request's user agent, so a request
+    // without this header renders the desktop view instead.
+    private const string MobileUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
     public ValueTask DisposeAsync()
@@ -37,6 +42,24 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
         return eventEntity.Id;
     }
 
+    // Seeds many events in a single context and one SaveChangesAsync, since seeding a
+    // hundred-plus events one context at a time is slow enough to matter for a clamp test.
+    private async Task SeedEventsAsync(string titlePrefix, int count)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        for (var i = 0; i < count; i++)
+        {
+            ctx.Events.Add(new EventEntity
+            {
+                Title = $"{titlePrefix} {i}",
+                GroupId = 1,
+                Date = DateOnly.FromDateTime(DateTime.Today.AddDays(i + 1)),
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     // Seeds a member on group 1 (not a client of their own) so the axis has someone besides
     // the acting caller.
     private async Task<int> SeedMemberAsync(string userNamePrefix, string name)
@@ -62,6 +85,17 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
             UpdatedAt = confirmed ? DateTime.UtcNow : null
         });
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Attaches the mobile user agent header to a request and sends it through the supplied
+    // authenticated client, so the client's default authorization header still applies.
+    private async Task<(HttpResponseMessage Response, string Html)> GetMobileAsync(HttpClient client, string url)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        return (response, html);
     }
 
     [Fact]
@@ -156,6 +190,84 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         html.Should().Contain("avail-cell-empty");
+    }
+
+    [Fact]
+    public async Task Index_MobileUserAgent_RendersCardList()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventOneId = await SeedEventAsync("Mobile Card Session One", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+        await SeedEventAsync("Mobile Card Session Two", DateOnly.FromDateTime(DateTime.Today.AddDays(2)));
+        var memberId = await SeedMemberAsync("evtoverview_mobilecard", "Mobile Card Member");
+        await SeedSignupAsync(eventOneId, memberId, VoteType.Yes, confirmed: true);
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtoverview_mobile1", "evtoverview_mobile1@example.com");
+
+        var (response, html) = await GetMobileAsync(client, "/Events");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("avail-card");
+        html.Should().Contain("avail-card-title");
+        html.Should().Contain("Mobile Card Session One");
+        html.Should().Contain("Mobile Card Session Two");
+        // The negative half is what proves the mobile view rendered rather than the desktop one.
+        html.Should().NotContain("avail-grid");
+    }
+
+    [Fact]
+    public async Task Index_MobileUserAgent_RendersRosterToggle()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync("Mobile Roster Session", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+        var memberId = await SeedMemberAsync("evtoverview_mobileroster", "Mobile Roster Member");
+        await SeedSignupAsync(eventId, memberId, VoteType.Yes, confirmed: true);
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtoverview_mobile2", "evtoverview_mobile2@example.com");
+
+        var (response, html) = await GetMobileAsync(client, "/Events");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("avail-expand-toggle");
+        html.Should().Contain($"roster-{eventId}");
+        // One guard on the toggle button and one on the collapse container it opens, so a tap
+        // inside an expanded roster cannot bubble up to the card's navigation handler.
+        var guardCount = html.Split("event.stopPropagation()").Length - 1;
+        guardCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Index_MobileUserAgent_NoEvents_RendersEmptyState()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtoverview_mobile3", "evtoverview_mobile3@example.com");
+
+        var (response, html) = await GetMobileAsync(client, "/Events");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("No Upcoming Events");
+        html.Should().NotContain("avail-card");
+    }
+
+    [Fact]
+    public async Task Index_MobileUserAgent_MoreEventsThanTake_ShowsShowMoreControl()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await SeedEventAsync("Mobile Paging Session One", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+        await SeedEventAsync("Mobile Paging Session Two", DateOnly.FromDateTime(DateTime.Today.AddDays(2)));
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtoverview_mobile4", "evtoverview_mobile4@example.com");
+
+        var (response, html) = await GetMobileAsync(client, "/Events?take=1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Show More Events");
+        // The window size (1) plus the configured page increment (10).
+        html.Should().Contain("take=11");
     }
 
     [Fact]
