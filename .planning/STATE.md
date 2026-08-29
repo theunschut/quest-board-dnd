@@ -61,6 +61,8 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 79 added 2026-08-26: Character and Contact Link Cards — extends the signed-link mechanism to characters and contacts, including portrait images and the `IsRevealed` spoiler gate.
 - Phase 80 added 2026-08-27: Contact Categories — group NPCs under named headings on the Contacts index. From a board user's feature request relayed by the operator.
 - Phase 81 added 2026-08-27: Contact Tags and Filtering — many-to-many free-form tags on contacts plus a filter on the index. Same request; the requester staged it after categories, so it is a separate phase and may stay unplanned.
+- Phase 82 added 2026-08-29: Personal Cross-Board Event Agenda — every upcoming event across all boards a member belongs to, board named on every row. Raised during Phase 77's discuss pass and deliberately kept off that page.
+- Phase 83 added 2026-08-30: Availability Surface Naming and Placement — rename the pair to "My Agenda" / "Board Availability" and move the board-scoped overview's nav entry under the Dungeon Master menu. Naming and discoverability only; a DM-only permission gate was considered and rejected because it would hide less than the agenda already shows.
 
 ### Pending Todos
 

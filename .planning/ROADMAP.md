@@ -645,5 +645,34 @@ Phases 72 and 73 needed no research step — both were researched to implementat
 
 **Phase 82 needs no external research.** The two safe cross-group read mechanisms it must choose between already exist in this codebase and are named in its scope notes; what it needs is a discuss-phase pass, not a web search.
 
+### Phase 83: Availability Surface Naming and Placement
+
+**Goal**: The two availability surfaces say what they are and sit where the people who need them will look — the cross-board personal view and the board-scoped grid stop competing for the same reader.
+**Requirements**: TBD
+**Depends on**: Phase 82 (both surfaces must exist before they can be named against each other)
+**Plans**: TBD (run `/gsd-plan-phase 83`)
+
+**Origin:** raised by the operator on 2026-08-30, immediately after Phase 82's UAT. Once the personal agenda shipped, the board-scoped overview from Phase 77 felt redundant to players, and its name — "Availability Overview" — reads as though it covers everything on the board rather than events only.
+
+**Scope notes:**
+
+- **This is a naming and discoverability phase, not an authorization phase.** No permission gate is added to either surface.
+- **Rename the pair so each says whose availability it shows.** "My Agenda" (the viewer's own, across every board they belong to) and "Board Availability" (this board, every member). The current name does not say whose availability or which board, which is the actual defect — the events-versus-quests ambiguity is secondary.
+- **Move the board-scoped overview's navigation entry under the Dungeon Master menu.** It stays reachable by URL and by the existing calendar cross-link; only its default discoverability changes. Players stop tripping over a page whose remaining value to them is a duplicate of what the agenda already shows.
+- Both surfaces keep their current visibility to all board members. Nothing becomes unreachable to anyone who can reach it today.
+
+**Why not make the overview DM-only** (considered and rejected, 2026-08-30): gating it would hide strictly *less* than the personal agenda already reveals. Phase 82 D-02 puts the full roster on every agenda row, across every board the viewer belongs to, on an unrestricted page — so restricting the grid while the list shows the same facts one click away buys no privacy and costs a regression for anyone using it. The legibility concern that motivates gating (an aggregate makes "who never answers" visible in a way per-event views do not) applies at least as strongly to the agenda, so a gate on the overview alone does not address it.
+
+**Reopen condition:** if the agenda's per-row roster is ever reduced to counts, the two surfaces stop overlapping and a DM-only gate on the overview becomes coherent. That is a scope change to Phase 82's D-02, not a permission tweak, and would need its own decision.
+
+**Risks this phase must actively avoid:**
+
+- **Breaking navigation.** This touches both layouts, and navigation regressions have bitten this codebase before — a prior phase shipped a nav entry on desktop but not mobile, and another gated a nav entry to the wrong board type and made a whole surface unreachable. `LayoutNavigationTests` asserts on strings rather than markup structure, so a move can pass existing tests while leaving the entry unreachable in practice. New cases are needed for the moved entry on both layouts.
+- **Renaming only the visible label.** The route, controller, view folder, page title, cross-link copy, nav entry, and the tests that assert on the old string all carry the name. A partial rename leaves two names for one page.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 83 to break down)
+
 ---
 *Roadmap created: 2026-08-25*
