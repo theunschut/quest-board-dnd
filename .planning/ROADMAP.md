@@ -508,7 +508,7 @@ Plans:
 **Goal**: A member who belongs to more than one board can see, in one place, every upcoming event they are expected at across all of their boards — with the board each event belongs to named on every row.
 **Depends on**: Phase 77 (inherits its cell vocabulary, its next-N-with-paging window, and its date-only lower bound; the aggregate read is a different query and a different tenancy mechanism)
 **Requirements**: EVTAGENDA-01, EVTAGENDA-02, EVTAGENDA-03, EVTAGENDA-04, EVTAGENDA-05, EVTAGENDA-06, EVTAGENDA-07, EVTAGENDA-08, EVTAGENDA-09, EVTAGENDA-10
-**Plans**: 3/6 plans executed
+**Plans**: 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -522,8 +522,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 82-04-PLAN.md — Mobile agenda view with tap-to-reveal rosters, its stylesheet, and mobile render tests
-- [ ] 82-05-PLAN.md — Unconditional nav entries on both layouts, cross-links from the overview and calendar, and the details back-link
+- [x] 82-04-PLAN.md — Mobile agenda view with tap-to-reveal rosters, its stylesheet, and mobile render tests
+- [x] 82-05-PLAN.md — Unconditional nav entries on both layouts, cross-links from the overview and calendar, and the details back-link
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
