@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 77
-current_phase_name: availability-overview-page
+current_phase: 82
+current_phase_name: personal-cross-board-event-agenda
 status: executing
 stopped_at: Phase 82 UI-SPEC approved
-last_updated: "2026-08-29T12:01:09.956Z"
+last_updated: "2026-08-29T12:03:49.903Z"
 last_activity: 2026-08-29
-last_activity_desc: Phase 77 execution started
+last_activity_desc: Phase 82 execution started
 progress:
   total_phases: 11
-  completed_phases: 5
-  total_plans: 54
-  completed_plans: 44
-  percent: 45
+  completed_phases: 6
+  total_plans: 60
+  completed_plans: 45
+  percent: 55
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 77 — availability-overview-page
+**Current focus:** Phase 82 — personal-cross-board-event-agenda
 
 ## Current Position
 
-Phase: 77 (availability-overview-page) — EXECUTING
-Plan: 1 of 10
-Status: Ready to execute
-Last activity: 2026-08-29 — Phase 77 execution started
+Phase: 82 (personal-cross-board-event-agenda) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 82
+Last activity: 2026-08-29 — Phase 82 execution started
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 

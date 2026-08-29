@@ -508,13 +508,13 @@ Plans:
 **Goal**: A member who belongs to more than one board can see, in one place, every upcoming event they are expected at across all of their boards — with the board each event belongs to named on every row.
 **Depends on**: Phase 77 (inherits its cell vocabulary, its next-N-with-paging window, and its date-only lower bound; the aggregate read is a different query and a different tenancy mechanism)
 **Requirements**: EVTAGENDA-01, EVTAGENDA-02, EVTAGENDA-03, EVTAGENDA-04, EVTAGENDA-05, EVTAGENDA-06, EVTAGENDA-07, EVTAGENDA-08, EVTAGENDA-09, EVTAGENDA-10
-**Plans**: 6 plans
+**Plans**: 2/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 82-01-PLAN.md — Mint the EVTAGENDA requirement family into REQUIREMENTS.md and ROADMAP.md, and complete the phase validation contract
-- [ ] 82-02-PLAN.md — Membership-pinned cross-board query, agenda service with its second-layer re-check, and the unit suite
+- [x] 82-01-PLAN.md — Mint the EVTAGENDA requirement family into REQUIREMENTS.md and ROADMAP.md, and complete the phase validation contract
+- [x] 82-02-PLAN.md — Membership-pinned cross-board query, agenda service with its second-layer re-check, and the unit suite
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
