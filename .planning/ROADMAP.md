@@ -614,6 +614,16 @@ Plans:
 | LINKCARD-04 | Phase 79 |
 | LINKCARD-05 | Phase 79 |
 | LINKCARD-06 | Phase 79 |
+| EVTAGENDA-01 | Phase 82 |
+| EVTAGENDA-02 | Phase 82 |
+| EVTAGENDA-03 | Phase 82 |
+| EVTAGENDA-04 | Phase 82 |
+| EVTAGENDA-05 | Phase 82 |
+| EVTAGENDA-06 | Phase 82 |
+| EVTAGENDA-07 | Phase 82 |
+| EVTAGENDA-08 | Phase 82 |
+| EVTAGENDA-09 | Phase 82 |
+| EVTAGENDA-10 | Phase 82 |
 
 **Coverage:** 50/50 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
 

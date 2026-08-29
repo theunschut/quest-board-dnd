@@ -2,7 +2,7 @@
 phase: 82
 slug: personal-cross-board-event-agenda
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-08-29
 ---
@@ -49,20 +49,19 @@ bypass; this phase inverts it and must prove the bypass is **bounded to exactly 
 
 > Filled by the planner once PLAN.md task IDs exist. The requirement → test-type
 > mapping below is fixed by `82-RESEARCH.md` § Validation Architecture and must be preserved.
-> Requirement IDs are the `EVTAGENDA-*` family proposed in `82-RESEARCH.md` § Phase Requirements —
-> the planner mints the final IDs into `.planning/REQUIREMENTS.md` (Phase 82 is `Requirements: TBD`
-> in ROADMAP.md today) and updates this table to match.
 
-| Requirement | Behavior | Test Type | Automated Command | File Exists |
-|-------------|----------|-----------|-------------------|-------------|
-| EVTAGENDA-01 / -03 | Cross-board rows carry the full roster; events with no signup row for the viewer still appear (D-01 starts the query from `Events`, not `EventSignups`) | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaControllerIntegrationTests"` | ❌ Wave 0 — new file |
-| EVTAGENDA-02 | Every row names its board; the name resolves from the membership read, not from an `Event.Group` include (no such navigation exists on the domain model) | integration | same class as above | ❌ Wave 0 |
-| EVTAGENDA-04 | Board filter applied **before** the take, defaults to all, remembered for the session | integration | same class as above, additional `[Fact]`s | ❌ Wave 0 |
-| EVTAGENDA-05 | Nav entry present for every authenticated user, **including when the board type is unresolved** | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~LayoutNavigationTests"` | ✅ extends existing file — but the unresolved-board-type case is new (every current case sets `OneShot` or `Campaign` explicitly) |
-| EVTAGENDA-06 | Switch-prompt posts to `GroupPickerController.SelectGroup` with a local `returnUrl`; a row already on the active board skips the prompt | integration | new test class | ❌ Wave 0 |
-| EVTAGENDA-07 / -09 | A left board disappears on the next request; the filter cannot widen the set beyond the viewer's memberships | integration | new class generalising `EventAvailabilityTenantIsolationTests.cs`'s seeding helpers to **three** boards | ❌ Wave 0 — D-17 mandates this |
-| EVTAGENDA-08 | SuperAdmin is scoped by their own `UserGroups` rows, not `GetAllWithMemberCountAsync` | integration | `[Fact]` using `CreateAuthenticatedSuperAdminClientAsync` with zero seeded memberships | ❌ Wave 0 |
-| EVTAGENDA-09 | The four-case tenant isolation test (D-17): non-member board absent; **two joined boards both present and a third absent**; left board gone; filter cannot widen | integration | dedicated isolation test class | ❌ Wave 0 |
+| Requirement | Behavior | Task(s) | Test Type | Automated Command | Status |
+|-------------|----------|---------|-----------|-------------------|--------|
+| EVTAGENDA-01 | Cross-board rows start from events, not signups; an event with no signup row for the viewer still appears | 82-02 T2, 82-02 T3, 82-03 T3 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaControllerIntegrationTests"` | ⬜ |
+| EVTAGENDA-02 | Every row names its board, resolved from the membership read rather than an event-to-group include | 82-03 T2, 82-03 T3, 82-04 T1 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaControllerIntegrationTests"` | ⬜ |
+| EVTAGENDA-03 | Own availability plus the full roster on every row, rendered through the shared cell partial | 82-02 T3, 82-03 T3, 82-04 T1 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaControllerIntegrationTests"` and `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaMobileRenderTests"` | ⬜ |
+| EVTAGENDA-04 | Filter applied before the take, defaults to all, remembered for the session | 82-03 T2, 82-06 T3 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~Agenda"` | ⬜ |
+| EVTAGENDA-05 | Nav entry present for every authenticated user including when the board type is unresolved | 82-05 T3 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~LayoutNavigationTests"` | ⬜ |
+| EVTAGENDA-06 | Switch prompt posts to the existing board-selection action with a local return url; an active-board row skips the prompt | 82-03 T3, 82-04 T1, 82-05 T2 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~Agenda"` | ⬜ |
+| EVTAGENDA-07 | A left board disappears on the next request | 82-06 T2 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaTenantIsolationTests"` | ⬜ |
+| EVTAGENDA-08 | SuperAdmin scoped by their own memberships, empty state with none | 82-02 T3, 82-03 T3, 82-06 T2 | integration + unit | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~Agenda"` and `dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj --filter "FullyQualifiedName~CrossBoardAgenda"` | ⬜ |
+| EVTAGENDA-09 | The four-case isolation suite: non-member board absent; two joined boards both present and a third absent; left board gone; filter cannot widen | 82-02 T2, 82-02 T3, 82-06 T1, 82-06 T2 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaTenantIsolationTests"` | ⬜ |
+| EVTAGENDA-10 | The page loads with no active board instead of redirecting to the picker | 82-03 T2, 82-03 T3 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaControllerIntegrationTests"` | ⬜ |
 
 *Status column added by the planner alongside task IDs: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -76,12 +75,12 @@ bypass; this phase inverts it and must prove the bypass is **bounded to exactly 
 > exercises, written before the implementation within that task. Every task still carries a real
 > `<automated>` command and no three consecutive tasks lack one.
 
-- [ ] A new agenda controller/integration test class — covers EVTAGENDA-01/-02/-03/-04/-06/-08, happy path plus empty states (no boards, no upcoming events, everything filtered out)
-- [ ] A new cross-board tenant isolation test class — covers EVTAGENDA-07/-09, generalising `EventAvailabilityTenantIsolationTests.cs`'s `SeedOtherBoardEventAsync` / `SeedSignupAsync` helpers to a **third** board and a viewer holding memberships in two of three. The harness supports this today via direct `factory.Database.CreateContext()` writes — **no harness change needed**. Must reset `ActiveGroupId` to `1` in `DisposeAsync`; `WebApplicationFactoryBase.TestGroupContext` is a shared singleton `MutableGroupContext` defaulting to 1, so the standard harness is structurally blind to this bug class without it.
-- [ ] A "leave a board" test helper — no existing test calls `IGroupService.RemoveMemberAsync` / `GroupRepository.RemoveMemberAsync`. It is reachable via `scope.ServiceProvider.GetRequiredService<IGroupService>()` inside a test, following the DI-scope pattern `EventAvailabilityTenantIsolationTests.Roster_ForGroupOneEvent_ContainsOnlyGroupOneMembers` already uses for `IEventSignupService`.
-- [ ] `QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs` (extend existing file) — a case with `MutableGroupContext.BoardType` left `null`/unresolved asserting the agenda entry is still present. The field is nullable (`BoardType?`) so this is directly settable; no current case exercises it. Existing Calendar/Availability-Overview cases must stay green.
-- [ ] A unit test for the membership-set intersection (EVTAGENDA-04/-09) — the stored filter selection intersected against the freshly-read membership set, including the empty-membership case. **Do not assume** EF Core's InMemory provider handles `Contains` over an empty `List<int>` identically to SQL Server (open question 2 in `82-RESEARCH.md`); test it explicitly rather than relying on provider behaviour.
-- [ ] No framework install needed — xUnit v3 + FluentAssertions already referenced by both test projects.
+- [x] A new agenda controller/integration test class — covers EVTAGENDA-01/-02/-03/-04/-06/-08, happy path plus empty states (no boards, no upcoming events, everything filtered out) [82-03 T3 (extended by 82-06 T3)]
+- [x] A new cross-board tenant isolation test class — covers EVTAGENDA-07/-09, generalising `EventAvailabilityTenantIsolationTests.cs`'s `SeedOtherBoardEventAsync` / `SeedSignupAsync` helpers to a **third** board and a viewer holding memberships in two of three. The harness supports this today via direct `factory.Database.CreateContext()` writes — **no harness change needed**. Must reset `ActiveGroupId` to `1` in `DisposeAsync`; `WebApplicationFactoryBase.TestGroupContext` is a shared singleton `MutableGroupContext` defaulting to 1, so the standard harness is structurally blind to this bug class without it. [82-06 T1/T2]
+- [x] A "leave a board" test helper — no existing test calls `IGroupService.RemoveMemberAsync` / `GroupRepository.RemoveMemberAsync`. It is reachable via `scope.ServiceProvider.GetRequiredService<IGroupService>()` inside a test, following the DI-scope pattern `EventAvailabilityTenantIsolationTests.Roster_ForGroupOneEvent_ContainsOnlyGroupOneMembers` already uses for `IEventSignupService`. [82-06 T2]
+- [x] `QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs` (extend existing file) — a case with `MutableGroupContext.BoardType` left `null`/unresolved asserting the agenda entry is still present. The field is nullable (`BoardType?`) so this is directly settable; no current case exercises it. Existing Calendar/Availability-Overview cases must stay green. [82-05 T3]
+- [x] A unit test for the membership-set intersection (EVTAGENDA-04/-09) — the stored filter selection intersected against the freshly-read membership set, including the empty-membership case. **Do not assume** EF Core's InMemory provider handles `Contains` over an empty `List<int>` identically to SQL Server (open question 2 in `82-RESEARCH.md`); test it explicitly rather than relying on provider behaviour. [82-02 T3]
+- [x] No framework install needed — xUnit v3 + FluentAssertions already referenced by both test projects.
 
 ---
 
@@ -97,12 +96,12 @@ bypass; this phase inverts it and must prove the bypass is **bounded to exactly 
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s (filtered runs; full suite reserved for wave merges)
-- [ ] Phase-gate static audit recorded: exactly one `IgnoreQueryFilters` call site, repository-layer only
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s (filtered runs; full suite reserved for wave merges)
+- [x] Phase-gate static audit recorded: exactly one `IgnoreQueryFilters` call site, repository-layer only
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending — planner signs after mapping to 82-NN task ids
+**Approval:** signed by planner — mapped to 82-01 … 82-06 task ids
