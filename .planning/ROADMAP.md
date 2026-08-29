@@ -318,7 +318,7 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 9/10 plans executed
+**Plans**: 10/10 plans complete
 
 Plans:
 **Wave 1**
@@ -347,7 +347,7 @@ Plans:
 
 **Gap closure — Wave 3** *(blocked on gap Wave 2)*
 
-- [ ] 77-10-PLAN.md — Keyboard-accessible row and card navigation across all thirteen clickable sites (gap wave 3)
+- [x] 77-10-PLAN.md — Keyboard-accessible row and card navigation across all thirteen clickable sites (gap wave 3)
 
 **Success criteria:**
 
