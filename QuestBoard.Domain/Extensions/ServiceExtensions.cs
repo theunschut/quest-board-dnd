@@ -26,6 +26,12 @@ public static class ServiceExtensions
             .BindConfiguration(EventsOverviewOptions.SectionName)
             .Validate(o => o.IsValid(), "EventsOverview DefaultTake, MaxTake and PageIncrement must each be at least 1, and DefaultTake must not exceed MaxTake.")
             .ValidateOnStart();
+        // Same code-default-plus-configuration shape as EventsOverviewOptions above: a
+        // deployment with no matching configuration section still works.
+        services.AddOptions<AgendaOptions>()
+            .BindConfiguration(AgendaOptions.SectionName)
+            .Validate(o => o.IsValid(), "Agenda DefaultTake, MaxTake and PageIncrement must each be at least 1, and DefaultTake must not exceed MaxTake.")
+            .ValidateOnStart();
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IEmailService, EmailService>();
