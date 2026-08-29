@@ -19,7 +19,7 @@
     </div>
 
     <div class="mb-3">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#avail-legend" aria-expanded="false">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="collapse" data-bs-target="#avail-legend" aria-expanded="false">
             What do these mean?
         </button>
         <div class="collapse mt-2" id="avail-legend">
@@ -76,7 +76,7 @@
                     </div>
                     @await Html.PartialAsync("_AvailabilityCounts", row)
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 avail-expand-toggle"
+                <button type="button" class="btn btn-sm btn-secondary mt-2 avail-expand-toggle"
                         data-bs-toggle="collapse" data-bs-target="#roster-@row.EventId"
                         onclick="event.stopPropagation();" aria-expanded="false">
                     <i class="fas fa-chevron-down me-1"></i>Show players
