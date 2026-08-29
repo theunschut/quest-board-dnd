@@ -1,4 +1,5 @@
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Service.Constants
 @using QuestBoard.Service.ViewModels.AgendaViewModels
 @model AgendaViewModel
 @{
@@ -31,7 +32,7 @@
                 else
                 {
                     <div class="dropdown mb-3">
-                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button"
                                 data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                             <i class="fas fa-filter me-1"></i>Filter Boards
                             <span class="badge bg-secondary ms-1">@Model.SelectedCount of @Model.TotalCount</span>
@@ -41,6 +42,11 @@
                                 Choose which of your own boards to show. This never adds boards you don't belong to -- only narrows the ones shown.
                             </p>
                             <form asp-action="Index" method="get">
+                                @* A GET submission replaces the whole querystring, so without this
+                                   the current window collapses back to the default page size the
+                                   moment a reader narrows the filter. Model.Take is the value the
+                                   server already clamped, so round-tripping it cannot widen it. *@
+                                <input type="hidden" name="take" value="@Model.Take" />
                                 <input type="hidden" name="boards" value="" />
                                 @foreach (var board in Model.AvailableBoards)
                                 {
@@ -70,7 +76,7 @@
                             <i class="fas fa-filter-circle-xmark fa-3x mb-3"></i>
                             <h5>All Boards Filtered Out</h5>
                             <p class="mb-2">You've hidden every board from view. Adjust the filter above, or</p>
-                            <a asp-action="Index" asp-route-boards="all" class="btn btn-outline-secondary btn-sm">
+                            <a asp-action="Index" asp-route-boards="@SessionKeys.AgendaBoardFilterResetSentinel" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-rotate-left me-1"></i>Show All Boards
                             </a>
                         </div>

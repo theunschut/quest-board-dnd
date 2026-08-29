@@ -15,6 +15,20 @@ namespace QuestBoard.IntegrationTests.Tests;
 /// seed a genuine third board and hold the two-joined-boards case as its own fact, alongside a
 /// board the viewer leaves mid-suite and a filter selection that can never widen what it started
 /// with.
+///
+/// What these facts do NOT establish, and must not be read as establishing: end-to-end isolation
+/// against the database the application actually runs on. The shared harness backs this suite
+/// with the EF Core InMemory provider, which evaluates every predicate as ordinary
+/// LINQ-to-Objects. Three properties the repository query depends on therefore never reach a
+/// relational query compiler here:
+///   - the board containment test over an *empty* id collection is exercised only as
+///     List.Contains, never as its SQL translation;
+///   - the row limit is composed before the includes, so a translation failure of that shape
+///     would throw in production while this suite stays green;
+///   - the filter bypass interacting with the signup entity's own filter -- which navigates
+///     through the event to its board -- generates no join at all in memory.
+/// The facts below are about the application's own scoping logic. Proving the query translates
+/// and behaves the same way on a relational provider needs a separate, relational test.
 /// </summary>
 public class AgendaTenantIsolationTests(WebApplicationFactoryBase factory)
     : IClassFixture<WebApplicationFactoryBase>, IAsyncLifetime

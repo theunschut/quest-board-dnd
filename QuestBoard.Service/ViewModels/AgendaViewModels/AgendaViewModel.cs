@@ -13,8 +13,11 @@ public class AgendaViewModel
 
     public int TotalCount { get; set; }
 
-    // The comma-separated effective selection, carried into the paging link so growing
-    // the window never silently resets the filter.
+    // What the paging link carries in its "boards" parameter. When the viewer has a selection
+    // of their own in force this is that selection as a comma-separated list, so growing the
+    // window never silently resets the filter. When no selection is in force it is the reset
+    // sentinel instead -- never the full board list, which the next request would be unable to
+    // tell apart from a deliberate choice and would store as one.
     public string SelectedBoardIds { get; set; } = string.Empty;
 
     public bool HasMore { get; set; }

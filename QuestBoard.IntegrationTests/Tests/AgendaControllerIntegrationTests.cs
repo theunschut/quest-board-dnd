@@ -1,5 +1,6 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
+using QuestBoard.Service.Constants;
 using System.Net;
 
 namespace QuestBoard.IntegrationTests.Tests;
@@ -492,6 +493,76 @@ public class AgendaControllerIntegrationTests(WebApplicationFactoryBase factory)
         // "boards=1" segment at all.
         body.Should().Contain("take=10");
         body.Should().Contain("boards=1");
+    }
+
+    [Fact]
+    public async Task Agenda_PagingWithNoSelectionOfTheViewersOwn_DoesNotTurnPagingIntoAStoredFilter()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_implicit_all", "agenda_implicit_all@example.com");
+
+        await SeedGroupAsync(2, "Implicit All Board Two");
+        await SeedMembershipAsync(user.Id, 2);
+
+        // More upcoming events than the default window, so the Show More control renders on a
+        // request that carried no filter of its own.
+        for (var i = 1; i <= 6; i++)
+        {
+            await SeedEventAsync(1, $"Implicit All Board One Session {i}", DateOnly.FromDateTime(DateTime.Today).AddDays(i));
+        }
+
+        var first = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        var firstBody = await first.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        firstBody.Should().Contain("Show More Events");
+        // The viewer chose nothing, so the paging link has to carry the reset sentinel. Handing
+        // back the current board set here is indistinguishable from a deliberate choice on the
+        // next request, and would be stored as one.
+        firstBody.Should().Contain($"boards={SessionKeys.AgendaBoardFilterResetSentinel}");
+        firstBody.Should().NotContain("boards=1");
+
+        // Follow the paging link exactly as a reader would.
+        var paged = await client.GetAsync(
+            $"/Agenda?take=10&boards={SessionKeys.AgendaBoardFilterResetSentinel}", TestContext.Current.CancellationToken);
+        paged.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // A board joined after that click has to appear on the very next plain request. If
+        // paging had written the older board set into session, this event would be invisible on
+        // the one page whose whole purpose is to show every board's events.
+        await SeedGroupAsync(3, "Implicit All Board Three");
+        await SeedMembershipAsync(user.Id, 3);
+        await SeedEventAsync(3, "Implicit All Board Three Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        var afterJoin = await client.GetAsync("/Agenda", TestContext.Current.CancellationToken);
+
+        afterJoin.StatusCode.Should().Be(HttpStatusCode.OK);
+        var afterJoinBody = await afterJoin.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        afterJoinBody.Should().Contain("Implicit All Board Three Session");
+        afterJoinBody.Should().Contain("Implicit All Board Three");
+    }
+
+    [Fact]
+    public async Task Agenda_FilterForm_CarriesTheCurrentWindowSize()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_form_take", "agenda_form_take@example.com");
+
+        await SeedEventAsync(1, "Form Take Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        var response = await client.GetAsync("/Agenda?take=10", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        // A GET form replaces the whole querystring, so without this hidden field a reader who
+        // has paged out and then narrows the filter is thrown back to the default page size.
+        body.Should().Contain("name=\"take\" value=\"10\"");
     }
 
     [Fact]

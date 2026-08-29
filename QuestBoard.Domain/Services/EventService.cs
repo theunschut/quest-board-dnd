@@ -1,11 +1,16 @@
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 
 namespace QuestBoard.Domain.Services;
 
-internal class EventService(IEventRepository repository, IMapper mapper, TimeProvider timeProvider) : BaseService<Event>(repository, mapper), IEventService
+internal class EventService(
+    IEventRepository repository,
+    IMapper mapper,
+    TimeProvider timeProvider,
+    ILogger<EventService> logger) : BaseService<Event>(repository, mapper), IEventService
 {
     /// <inheritdoc/>
     public async Task<IList<Event>> GetEventsForCalendarAsync(CancellationToken token = default)
@@ -92,6 +97,21 @@ internal class EventService(IEventRepository repository, IMapper mapper, TimePro
         // trust the same input. It is deliberately weaker than the active-board guard used on
         // the write paths, which compares against independent session state.
         var checkedRows = fetched.Where(row => memberGroupIds.Contains(row.Event.GroupId)).ToList();
+
+        // Dropping the row keeps the viewer safe, but on its own it keeps nobody informed: the
+        // page would render one row shorter and a genuine cross-tenant leak in the data layer
+        // could sit in production indefinitely, visible only as an occasionally short agenda.
+        // The query pins GroupId to this same set, so a surviving foreign row means the
+        // predicate or its translation was lost -- that is an invariant violation and the
+        // operator has to hear about it even though the reader never does.
+        if (checkedRows.Count != fetched.Count)
+        {
+            logger.LogError(
+                "Cross-board agenda dropped {DroppedCount} of {FetchedCount} row(s) falling outside the caller's board set. " +
+                "The query is built from the same set, so this indicates a lost or mistranslated board predicate.",
+                fetched.Count - checkedRows.Count,
+                fetched.Count);
+        }
 
         var hasMore = checkedRows.Count > take;
         var windowed = hasMore ? checkedRows.Take(take).ToList() : checkedRows;

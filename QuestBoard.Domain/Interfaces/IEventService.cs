@@ -56,7 +56,9 @@ public interface IEventService : IBaseService<Event>
     /// viewer's own memberships -- an empty set is a legitimate input yielding an empty agenda,
     /// not a short-circuited call. Every fetched row is re-checked against
     /// <paramref name="memberGroupIds"/> before the window is trimmed, and any row outside that
-    /// set is dropped rather than surfaced.
+    /// set is dropped rather than surfaced -- and logged at Error, because a surviving foreign
+    /// row can only mean the query's own board predicate was lost, which an operator has to hear
+    /// about even though the reader is already protected by the drop.
     /// </summary>
     Task<CrossBoardAgenda> GetCrossBoardAgendaAsync(IReadOnlyCollection<int> memberGroupIds, int currentUserId, int take, CancellationToken token = default);
 }
