@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
@@ -23,9 +24,27 @@ public class EventsOverviewAggregationTests
         public override DateTimeOffset GetUtcNow() => now;
     }
 
+    // Hand-rolled rather than substituted: EventService is internal, so a dynamic proxy over
+    // ILogger<EventService> cannot be generated. Nothing in this class asserts on logging.
+    private sealed class SilentLogger : ILogger<EventService>
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => false;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+        }
+    }
+
     private static EventService CreateService(IEventRepository repository, DateTimeOffset? now = null)
     {
-        return new EventService(repository, Substitute.For<IMapper>(), new FixedTimeProvider(now ?? DefaultClockInstant));
+        return new EventService(
+            repository,
+            Substitute.For<IMapper>(),
+            new FixedTimeProvider(now ?? DefaultClockInstant),
+            new SilentLogger());
     }
 
     private static EventSignup Signup(int userId, string userName, VoteType availability, bool hasAnswered)

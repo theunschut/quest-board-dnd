@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
@@ -24,9 +25,34 @@ public class CrossBoardAgendaTests
         public override DateTimeOffset GetUtcNow() => now;
     }
 
-    private static EventService CreateService(IEventRepository repository, DateTimeOffset? now = null)
+    // Hand-rolled rather than substituted: EventService is internal, so a dynamic proxy over
+    // ILogger<EventService> cannot be generated, and recording the entries directly is what the
+    // assertions below actually want anyway.
+    private sealed class RecordingLogger : ILogger<EventService>
     {
-        return new EventService(repository, Substitute.For<IMapper>(), new FixedTimeProvider(now ?? DefaultClockInstant));
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((logLevel, formatter(state, exception)));
+        }
+    }
+
+    private static EventService CreateService(
+        IEventRepository repository,
+        DateTimeOffset? now = null,
+        RecordingLogger? logger = null)
+    {
+        return new EventService(
+            repository,
+            Substitute.For<IMapper>(),
+            new FixedTimeProvider(now ?? DefaultClockInstant),
+            logger ?? new RecordingLogger());
     }
 
     private static EventSignup Signup(int userId, string userName, VoteType availability, bool hasAnswered)
@@ -111,6 +137,45 @@ public class CrossBoardAgendaTests
         // Assert
         agenda.Rows.Should().ContainSingle();
         agenda.Rows[0].Event.Id.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CrossBoardAgenda_DroppedRow_IsLoggedAsAnError_NotSilentlySwallowed()
+    {
+        // Arrange: dropping the row protects the reader, but on its own it tells nobody. The
+        // query is built from the same board set the re-check uses, so a surviving foreign row
+        // can only mean the predicate was lost -- an operator has to be able to see that
+        // happening rather than infer it from an occasionally short agenda.
+        var repository = Substitute.For<IEventRepository>();
+        repository.GetUpcomingAcrossGroupsWithSignupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([EventWith(1, groupId: 1), EventWith(2, groupId: 99)]);
+        var logger = new RecordingLogger();
+        var service = CreateService(repository, logger: logger);
+
+        // Act
+        await service.GetCrossBoardAgendaAsync([1], currentUserId: 1, take: 10, TestContext.Current.CancellationToken);
+
+        // Assert
+        logger.Entries.Should().ContainSingle();
+        logger.Entries[0].Level.Should().Be(LogLevel.Error);
+        logger.Entries[0].Message.Should().Contain("1").And.Contain("2");
+    }
+
+    [Fact]
+    public async Task CrossBoardAgenda_NoDroppedRows_LogsNothing()
+    {
+        // Arrange: the ordinary case must stay quiet, or the signal above is worthless.
+        var repository = Substitute.For<IEventRepository>();
+        repository.GetUpcomingAcrossGroupsWithSignupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([EventWith(1, groupId: 1), EventWith(2, groupId: 1)]);
+        var logger = new RecordingLogger();
+        var service = CreateService(repository, logger: logger);
+
+        // Act
+        await service.GetCrossBoardAgendaAsync([1], currentUserId: 1, take: 10, TestContext.Current.CancellationToken);
+
+        // Assert
+        logger.Entries.Should().BeEmpty();
     }
 
     [Fact]
