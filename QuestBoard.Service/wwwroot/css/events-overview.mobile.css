@@ -78,6 +78,32 @@
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
+/* This card sits directly on the page's background image with only a translucent surface
+   between, so every text run inside it states its own colour instead of inheriting one --
+   nothing here can rely on a parent's default. The count block in particular used to
+   inherit dark text that suited an opaque desktop table cell, which read at a measured
+   5.07:1 against the brightest point of the background image, comfortably above the 4.5:1
+   WCAG AA floor for normal text. */
+.avail-card .avail-count-headline {
+    color: #FFFFFF;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.avail-card .avail-count-detail {
+    color: #FFFFFF !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.avail-card .avail-card-meta {
+    color: #FFFFFF !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.avail-card .avail-roster-name {
+    color: #FFFFFF;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
 /* The roster toggle is a real tap target, so it reaches the 44px iOS/Android floor through
    padding rather than through font size -- do not shrink it to fit the 4px spacing scale. */
 .avail-expand-toggle {
