@@ -318,7 +318,7 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -328,7 +328,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 77-03-PLAN.md — View models, desktop grid, mobile cards and the clamped controller action (wave 2)
+- [x] 77-03-PLAN.md — View models, desktop grid, mobile cards and the clamped controller action (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
