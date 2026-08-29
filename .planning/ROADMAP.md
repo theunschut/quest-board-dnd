@@ -511,11 +511,22 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 82-01-PLAN.md — Mint the EVTAGENDA requirement family into REQUIREMENTS.md and ROADMAP.md, and complete the phase validation contract
 - [ ] 82-02-PLAN.md — Membership-pinned cross-board query, agenda service with its second-layer re-check, and the unit suite
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 82-03-PLAN.md — Agenda controller with the session-remembered board filter, desktop view with inline rosters, and the no-active-board middleware exemption
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 82-04-PLAN.md — Mobile agenda view with tap-to-reveal rosters, its stylesheet, and mobile render tests
 - [ ] 82-05-PLAN.md — Unconditional nav entries on both layouts, cross-links from the overview and calendar, and the details back-link
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 82-06-PLAN.md — Four-case cross-board tenant isolation suite, filter behaviour facts, and the phase-gate static audit
 
 **Origin:** raised by the operator during Phase 77's discuss pass (2026-08-29) and deliberately not folded into it. Phase 77's EVTVIEW-04 is *"never displays events or members from another board"*, and its success criterion 4 requires a two-group integration test proving exactly that. A cross-board mode on the same page would make one test both prove and disprove the same property depending on a toggle, so this is a separate surface rather than a flag.
