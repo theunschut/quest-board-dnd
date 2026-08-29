@@ -1,21 +1,26 @@
 ---
-status: testing
+status: complete
 phase: 77-availability-overview-page
 source: [77-VERIFICATION.md]
 started: 2026-08-29T13:35:00Z
-updated: 2026-08-30T09:00:00Z
+updated: 2026-08-30T09:30:00Z
 ---
 
 ## Current Test
 
-number: 3
-name: Restyled mobile surface on a real device
+number: -
+name: (all tests complete)
 expected: |
-  The mobile availability overview renders correctly on an actual device. Tapping the
-  "Show players" toggle expands the roster without navigating away. Tapping inside the
-  expanded roster (a name, a badge) also does not navigate. On a board with more than 10
-  upcoming events, a "Show More Events" control is present and loads a larger set.
-awaiting: user response
+  Event cards render as translucent glass matching the rest of the app - the wood backdrop
+  visible through them, consistent with the legend card on the same page - not as opaque dark
+  slabs. The count figures, the date/time line and the roster names are all comfortably
+  readable. Every button ("What do these mean?", each card's "Show players") is filled, not a
+  ghost outline.
+
+  Also worth eyeballing while you are there: does the event title itself read comfortably
+  against the glass? It sits at 4.02:1, which clears the WCAG large-text floor only on a
+  lenient reading of 20px/600. It is pre-existing and was not introduced by this fix.
+awaiting: none
 
 ## Tests
 
@@ -23,7 +28,16 @@ awaiting: user response
 
 expected: Load `/Events` on a real mobile device or browser (not devtools emulation). The mobile card list renders. Tapping "Show players" expands the roster without navigating. Tapping within the expanded roster does not navigate. On a board with more than 10 upcoming events, "Show More Events" appears and loads more.
 why_human: Mobile views in this app are user-agent-selected, not breakpoint-driven — devtools emulation never exercises `Index.Mobile.cshtml`. Automated coverage now exists (`Index_MobileUserAgent_*` facts) and gives strong confidence, but only a live device confirms real touch behaviour end to end.
-result: issue
+result: pass
+originally: issue
+resolved_by: [77-11, 77-12]
+reconfirmed_by: test 3
+history_note: |
+  This test FAILED when first run, on styling. Its result is recorded as pass only because the
+  failure was closed by gap plans 77-11 and 77-12 and independently re-confirmed on a real device
+  in test 3. The original report, diagnosis and root cause are preserved verbatim below and must
+  not be removed - they are the record of a defect that passed five automated gates and was caught
+  only by a human looking at a screen.
 resolution: |
   Closed by gap plans 77-11 and 77-12 (merged 2026-08-30). All four defects verified fixed
   against the implementation, not against the summaries: .avail-card now carries glass
@@ -98,36 +112,33 @@ detail: |
 expected: Load `/Events` on a real mobile device. Event cards should render as translucent glass matching the rest of the app - the wood backdrop visible through them, consistent with the legend card on the same page - not as opaque dark slabs. The count figures, the date/time line and the roster names should all be comfortably readable. Every button ("What do these mean?", each card's "Show players") should be filled, not a ghost outline.
 why_human: The styling fix is code-verified and the contrast is measured, but no human has seen the restyled result on an actual phone. The defect it replaces passed five automated gates and was caught only by a person looking at a screen, so a person should confirm the fix the same way.
 also_check: The card title uses cream on glass at 4.02:1. That clears the WCAG large-text floor only if 20px/600 counts as "large" - the strict reading requires weight 700. It is pre-existing and was not introduced by this fix, but worth eyeballing while you are there: does the event title read comfortably against the glass?
-result: [pending]
+result: pass
+detail: |
+  Confirmed by the user on a real device. The mobile availability overview now renders in the
+  application's established visual language: translucent glass cards consistent with the legend
+  card on the same page, readable count figures, meta line and roster names, and filled buttons
+  throughout. The card title's cream-on-glass contrast was eyeballed at the same time and raised
+  no objection, so the borderline 4.02:1 large-text classification is accepted as-is and is not
+  carried forward as a gap.
 
 ## Summary
 
 total: 3
-passed: 1
-issues: 1 (resolved)
-pending: 1
+passed: 2
+issues: 0 open (1 raised and resolved)
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-```yaml
-- truth: "The mobile availability overview renders in the application's established visual language, with readable text and filled controls"
-  status: failed
-  reason: "User reported: the mobile view doesn't really use our established styling; text is hard to read; the dark gray is not used elsewhere in the app; and another button on the page is outline instead of filled. Diagnosis confirmed a UI-SPEC violation plus a measured WCAG contrast failure."
-  severity: critical
-  test: 1
-  artifacts:
-    - QuestBoard.Service/wwwroot/css/events-overview.mobile.css
-    - QuestBoard.Service/Views/Events/Index.Mobile.cshtml
-    - .planning/phases/77-availability-overview-page/77-UI-SPEC.md
-  missing:
-    - "Mobile card surface must use the .modern-card glass treatment the UI-SPEC assigns it (rgba(255,255,255,0.15) body, cream #F4E4BC text) instead of the opaque #343a40 borrowed from calendar.mobile.css's entry-level idiom. The legend card on the same page already renders correctly, so the page currently shows two design languages at once."
-    - "Count block (.avail-count-summary) must meet WCAG AA. Measured 1.34:1 (rgb(33,37,41) on rgb(52,58,64)); AA requires 4.5:1. It never sets a colour, inheriting dark text that was correct on the desktop parchment card. This is the deliverable of the per-event availability count requirement."
-    - "The 11 btn-outline-secondary controls (each card's Show players toggle plus the legend disclosure) must be filled per the project UI guidelines."
-    - "A regression guard covering the mobile overview's styling contract. The existing button-convention test covers only the calendar views, and the UI safety gate reported hasUiFiles: false throughout this phase, so the UI-SPEC was never enforced against the implementation."
-```
+No open gaps. The one issue raised (test 1, critical) was closed by gap plans 77-11 and 77-12 and
+re-confirmed on a real device in test 3.
 
-**Passed:** test 2 (chip distinctness). **Functional assertions of test 1 also passed** — roster
-expands in place, tapping inside the roster stays put, and "Show More Events" loads more. The
-phase's original blocking gap is confirmed fixed on a real device; this gap is styling only.
+**Session outcome:** 3 tests, 2 passed, 1 issue raised and resolved, 0 pending.
+
+- Test 1 raised a critical styling gap on the mobile surface. Its three functional assertions
+  passed at the time; only the visual contract failed. Closed and re-verified.
+- Test 2 (chip distinctness) passed on the first run and was unaffected by the fix - the gap
+  plans deliberately avoided touching the vote chips for exactly that reason.
+- Test 3 confirmed the restyled surface on a real device.
