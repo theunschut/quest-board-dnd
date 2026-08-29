@@ -328,3 +328,23 @@
     color: #6f42c1 !important;
 }
 
+/* Clickable rows and cards across the app carry a mouse click handler on a non-interactive
+   element. This class styles the real link placed inside them so keyboard and assistive-
+   technology users can reach the same destination without changing how the row looks. */
+.row-nav-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.row-nav-link:hover,
+.row-nav-link:focus {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.row-nav-link:focus-visible {
+    outline: 2px solid #F4E4BC;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+

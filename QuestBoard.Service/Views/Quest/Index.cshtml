@@ -112,7 +112,7 @@
             <div class="quest-content">
                 <!-- Title at top -->
                 <div class="quest-top">
-                    <h3 class="quest-title">@quest.Title</h3>
+                    <h3 class="quest-title"><a class="row-nav-link" href="@(currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id ? Url.Action("Manage", "Quest", new { id = quest.Id }) : Url.Action("Details", "Quest", new { id = quest.Id }))">@quest.Title</a></h3>
                 </div>
 
                 <!-- Description fills middle space -->

@@ -22,7 +22,7 @@
             {
                 <div class="players-row"
                      onclick="window.location.href='@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })'">
-                    <span class="players-name">@dm.Name</span>
+                    <span class="players-name"><a class="row-nav-link" href="@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })">@dm.Name</a></span>
                     <i class="fas fa-chevron-right ms-auto" style="color: rgba(244,228,188,0.5);"></i>
                 </div>
             }
