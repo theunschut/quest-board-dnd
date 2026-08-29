@@ -1,0 +1,50 @@
+/* ========================================
+   MY AGENDA STYLES (MOBILE)
+   ======================================== */
+
+/* This stylesheet and its desktop sibling (agenda.css) are a duplicated pair, not a shared
+   file: the mobile layout loads its own stylesheet set through each page's own @section
+   Styles block, so the availability cell-state rules below are copied verbatim into both
+   files rather than factored out -- the same reason calendar.css and calendar.mobile.css
+   already exist side by side. Without this duplication the availability chips on this page
+   would render unstyled, because the mobile layout links no page stylesheet of its own
+   beyond what each view opts into. */
+
+/* The unconfirmed-Yes chip carries the same solid green as a confirmed Yes, so the
+   distinction between "counted by default" and "a real answer" is carried entirely by
+   signals that survive greyscale and colour-blindness: a dashed border here, plus the clock
+   icon and italic label in the markup that uses this class. */
+.avail-cell-yes-muted {
+    background-color: var(--bs-success);
+    color: #fff;
+    border: 1px dashed rgba(255, 255, 255, 0.85) !important;
+}
+
+.avail-cell-yes-muted em {
+    font-style: italic;
+}
+
+/* The empty cell is deliberately not a badge at all, so its shape alone already separates
+   "no signup exists" from every vote-bearing state before color is read. */
+.avail-cell-empty {
+    opacity: 0.55;
+    font-weight: 400;
+}
+
+.agenda-card {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.agenda-card-title {
+    color: #F4E4BC;
+}
+
+/* This is a real tap target, so it reaches the 44px iOS/Android floor through padding rather
+   than through font size -- do not shrink it to fit the 4px spacing scale. */
+.agenda-roster-toggle {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
