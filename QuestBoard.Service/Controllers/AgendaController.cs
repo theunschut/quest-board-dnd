@@ -43,8 +43,21 @@ public class AgendaController(
         var memberships = await groupService.GetGroupsForUserAsync(currentUser.Id, token);
         var memberGroupIds = memberships.Select(m => m.Id).ToList();
 
+        // The desktop filter form carries a leading empty hidden field with the same name as
+        // every checkbox, so unticking every box still submits the parameter -- that is how
+        // "no boards selected" is expressible at all. ASP.NET Core's ordinary model binding
+        // into a scalar `string?` parameter only keeps the *first* value of a repeated query
+        // key and coerces an empty value to null, which would silently discard every checked
+        // box behind that leading hidden field. Reading the raw query collection instead
+        // keeps every repeated value: StringValues.ToString() joins them with commas, which
+        // ParseBoardIds already tolerates via RemoveEmptyEntries. The `boards` parameter
+        // above documents the querystring key's shape for callers; this raw read is what the
+        // three-state contract below actually branches on.
+        var boardsProvided = Request.Query.TryGetValue("boards", out var rawBoardsValues);
+        var rawBoards = rawBoardsValues.ToString();
+
         List<int> requestedIds;
-        if (boards == null)
+        if (!boardsProvided)
         {
             var stored = HttpContext.Session.GetString(SessionKeys.AgendaBoardFilter);
             requestedIds = stored == null
@@ -53,7 +66,7 @@ public class AgendaController(
                     ? []
                     : ParseBoardIds(stored);
         }
-        else if (string.Equals(boards, "all", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(rawBoards, "all", StringComparison.OrdinalIgnoreCase))
         {
             // The reset control on the all-filtered-out empty state: clear the remembered
             // selection and fall back to showing every board again.
@@ -62,10 +75,7 @@ public class AgendaController(
         }
         else
         {
-            // The desktop filter form carries a leading empty hidden field with the same
-            // name, so unticking every box still submits the parameter -- that is how "no
-            // boards selected" is expressible at all.
-            requestedIds = ParseBoardIds(boards);
+            requestedIds = ParseBoardIds(rawBoards);
         }
 
         // The stored or supplied selection is only ever a hint about which of the viewer's
@@ -76,7 +86,7 @@ public class AgendaController(
         // query, and do not skip it on any branch.
         var effectiveGroupIds = requestedIds.Intersect(memberGroupIds).Distinct().ToList();
 
-        if (boards != null && !string.Equals(boards, "all", StringComparison.OrdinalIgnoreCase))
+        if (boardsProvided && !string.Equals(rawBoards, "all", StringComparison.OrdinalIgnoreCase))
         {
             // Store the intersected set, never the raw request, so a foreign id can never be
             // parked in session.
