@@ -78,18 +78,27 @@
                         onclick="event.stopPropagation();" aria-expanded="false">
                     <i class="fas fa-chevron-down me-1"></i>Show players
                 </button>
-                <div class="collapse mt-2" id="roster-@row.EventId">
+                <div class="collapse mt-2" id="roster-@row.EventId" onclick="event.stopPropagation();">
                     <ul class="list-unstyled mb-0 small">
                         @for (var i = 0; i < Model.Members.Count; i++)
                         {
                             var member = Model.Members[i];
+                            var cell = i < row.Cells.Count ? row.Cells[i] : AvailabilityCellState.Empty;
                             <li class="d-flex justify-content-between">
                                 <span>@member.Name@(member.UserId == Model.CurrentUserId ? " (you)" : "")</span>
-                                @await Html.PartialAsync("_AvailabilityCell", row.Cells[i])
+                                @await Html.PartialAsync("_AvailabilityCell", cell)
                             </li>
                         }
                     </ul>
                 </div>
+            </div>
+        }
+        @if (Model.CanShowMore)
+        {
+            <div class="d-grid mb-3">
+                <a href="@Url.Action("Index", new { take = Model.NextTake })" class="btn btn-primary">
+                    <i class="fas fa-chevron-down me-2"></i>Show More Events
+                </a>
             </div>
         }
     }
