@@ -33,7 +33,7 @@ Resolved by `(plan, threat_id)` pair, **not** by `threat_id` alone — see findi
 
 | Threat ID | Plan | Category | Component | Severity | Disposition | Mitigation | Status |
 |-----------|------|----------|-----------|----------|-------------|------------|--------|
-| T-77-01 | 77-01/03/04/05/07/09/10 | Information Disclosure | Aggregating read across events × signups × users | critical | mitigate | No `IgnoreQueryFilters()` and no manual `GroupId` predicate; the read rides the fail-closed filters in `QuestBoardContext.cs:448-451` / `:462-465`. Grep = 0 in `EventRepository.cs`, `EventService.cs`, `EventsController.cs`. Proven end-to-end by `EventsOverviewTenantIsolationTests` | closed |
+| T-77-01 | 77-01/03/04/05/07/09/10 | Information Disclosure | Aggregating read across events × signups × users | critical | mitigate | No `IgnoreQueryFilters()` and no manual `GroupId` predicate **in this phase's read**; it rides the fail-closed filters in `QuestBoardContext.cs:448-451` / `:462-465`. Method-scoped grep over `GetUpcomingWithSignupsAsync` = 0; grep = 0 in `EventService.cs` and `EventsController.cs`. Proven end-to-end by `EventsOverviewTenantIsolationTests` (5/5). **Evidence corrected 2026-08-29** — the original file-level claim ("grep = 0 in `EventRepository.cs`") went stale when a later, unrelated phase added a membership-pinned cross-board read to the same file; see the note below the register | closed |
 | T-77-01 | 77-06/08 | Information Disclosure | (same, disposition recorded as `accept` in these two plans — see F1) | critical | accept | Neither plan touches the read path; the control above applies | closed |
 | T-77-02 | 77-01/03/05/06/07/09 | Denial of Service | `.Take(take)` page size | high (medium in some plans — see F1) | mitigate | `EventsController.Index:37` — `Math.Clamp(take ?? options.DefaultTake, 1, Math.Max(1, options.MaxTake))`; `EventsOverviewOptions.IsValid()` wired via `.Validate(...).ValidateOnStart()` so a bad ceiling fails at boot | closed |
 | T-77-03 | 77-01 | Tampering | Package installs | high | accept | Zero `.csproj`/lockfile changes across the entire phase. See Accepted Risks R-01 | closed |
@@ -55,6 +55,21 @@ Resolved by `(plan, threat_id)` pair, **not** by `threat_id` alone — see findi
 | T-77-17 | 77-10 | Elevation of Privilege | Ownership-conditional quest navigation | high | mitigate | Desktop `Quest/Index.cshtml`: `onclick` (L83) and `href` (L115) expressions are **byte-identical** (verified by string equality, not inspection). Mobile `Quest/Index.Mobile.cshtml`: `navUrl` computed once (L32-34) and read by both `onclick` (L75) and `href` (L78) — single source of truth. Of the 13 new anchors, exactly 2 are ownership-conditional; the other 11 target read surfaces. `QuestController.cs` untouched, so `[Authorize(Policy = "DungeonMasterOnly")]` and the `IsQuestOwner` check remain the real control. Residual regression risk — see F5 | closed |
 | T-77-18 | 77-10 | Denial of Service (usability) | Anchor added inside clickable rows | low | mitigate | Anchors are additive; all 13 original `onclick` handlers preserved; no nested interactive element (the outer element is a `div`/`tr` with a handler, not a focusable control) | closed |
 | T-77-SC | 77-02..77-10 | Tampering | Supply chain (package installs) | high | accept (mitigate in 77-07) | Zero `.csproj`/lockfile changes across the entire phase. 77-07 deliberately hand-wrote a 9-line `FixedTimeProvider` double rather than adding `Microsoft.Extensions.TimeProvider.Testing`. See Accepted Risks R-01 | closed |
+
+> **Note on T-77-01's evidence (added 2026-08-29, after the audit).**
+> `QuestBoard.Repository/EventRepository.cs` is no longer owned by this phase alone. A later
+> phase added `GetUpcomingAcrossGroupsWithSignupsAsync`, a user-facing cross-board read that
+> deliberately calls `IgnoreQueryFilters()` and immediately re-imposes scope with a
+> caller-supplied `memberGroupIds.Contains(e.GroupId)` predicate. That read is **out of scope
+> for this phase** and is not assessed here — it belongs to the owning phase's own security
+> pass, where the load-bearing question is whether `memberGroupIds` is always derived from the
+> caller's own membership.
+>
+> Consequence for this phase: the original file-level assertion "grep = 0 in
+> `EventRepository.cs`" is no longer true and must not be cited. This phase's guarantee is
+> unchanged — `GetUpcomingWithSignupsAsync` still contains no bypass and no manual group
+> predicate — but the evidence is now **method-scoped**, and the validation gate in
+> `77-VALIDATION.md` (task 01-T2) was narrowed to match.
 
 *Status: open · closed · open — below high threshold (non-blocking)*
 *Severity: critical > high > medium > low — only open threats at or above `workflow.security_block_on` (high) count toward `threats_open`*
