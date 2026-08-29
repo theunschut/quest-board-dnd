@@ -318,13 +318,13 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 4 plans
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 77-01-PLAN.md — Bounded aggregate read path and in-memory availability aggregation (wave 1)
-- [ ] 77-02-PLAN.md — Cell/count stylesheets, navigation entries and calendar cross-links (wave 1)
+- [x] 77-01-PLAN.md — Bounded aggregate read path and in-memory availability aggregation (wave 1)
+- [x] 77-02-PLAN.md — Cell/count stylesheets, navigation entries and calendar cross-links (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
