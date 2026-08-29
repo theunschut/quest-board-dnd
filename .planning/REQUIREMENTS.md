@@ -74,6 +74,19 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **EVTVIEW-03**: The overview shows a per-event availability count, so a poorly-attended date is obvious at a glance
 - [x] **EVTVIEW-04**: The overview never displays events or members from another board
 
+### Personal Cross-Board Event Agenda
+
+- [ ] **EVTAGENDA-01**: The agenda lists every upcoming, non-cancelled event across every board the viewer is a member of, one row per event, ordered chronologically and interleaved across boards, whether or not a signup row already exists for the viewer
+- [ ] **EVTAGENDA-02**: Every agenda row names the board its event belongs to
+- [ ] **EVTAGENDA-03**: Every agenda row carries the viewer's own availability and the event's complete roster, using the same five-state cell vocabulary the board-scoped surfaces already use
+- [ ] **EVTAGENDA-04**: A board-selection filter narrows the agenda, defaults to all of the viewer's boards, is remembered for the session, and is applied before the next-N window is taken
+- [ ] **EVTAGENDA-05**: The agenda is reachable from the user menu beside Switch Group on both the desktop and the mobile layout, for every authenticated user, with no board-type gate and no board-count gate
+- [ ] **EVTAGENDA-06**: Acting on a row whose event is on a board other than the viewer's active board prompts to switch before continuing to that event's details; a row already on the active board goes straight through
+- [ ] **EVTAGENDA-07**: A board the viewer has left never appears on their agenda on the very next request, because membership is read fresh on every request rather than from session or claims
+- [ ] **EVTAGENDA-08**: A SuperAdmin's agenda is scoped by their own board memberships exactly like any other user's, with no wider cross-board read
+- [ ] **EVTAGENDA-09**: The agenda never shows another board's events or members, and the board filter can only narrow the viewer's own memberships, never widen them
+- [ ] **EVTAGENDA-10**: The agenda page loads for an authenticated user who has no active board selected, rather than diverting them to the board picker
+
 ### Link Previews — Foundation and Quests
 
 - [ ] **LINKPREV-01**: The app generates correct absolute URLs behind the reverse proxy, honouring forwarded scheme and host
@@ -185,11 +198,21 @@ Explicit exclusions for v9.0, with reasoning.
 | LINKCARD-04 | Phase 79 | Not started |
 | LINKCARD-05 | Phase 79 | Not started |
 | LINKCARD-06 | Phase 79 | Not started |
+| EVTAGENDA-01 | Phase 82 | Not started |
+| EVTAGENDA-02 | Phase 82 | Not started |
+| EVTAGENDA-03 | Phase 82 | Not started |
+| EVTAGENDA-04 | Phase 82 | Not started |
+| EVTAGENDA-05 | Phase 82 | Not started |
+| EVTAGENDA-06 | Phase 82 | Not started |
+| EVTAGENDA-07 | Phase 82 | Not started |
+| EVTAGENDA-08 | Phase 82 | Not started |
+| EVTAGENDA-09 | Phase 82 | Not started |
+| EVTAGENDA-10 | Phase 82 | Not started |
 
 **Coverage:**
 
-- v1 requirements: 50 total
-- Mapped to phases: 50/50 ✓
+- v1 requirements: 60 total
+- Mapped to phases: 60/60 ✓
 - Unmapped: 0
 
 ---
