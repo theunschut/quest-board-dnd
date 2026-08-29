@@ -72,7 +72,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **EVTVIEW-01**: A new page shows upcoming events for the current board as a grid of events against players, with each player's availability
 - [x] **EVTVIEW-02**: The overview visually distinguishes an untouched default from an answer the player actually gave, so "available" is not confused with "never looked"
 - [x] **EVTVIEW-03**: The overview shows a per-event availability count, so a poorly-attended date is obvious at a glance
-- [ ] **EVTVIEW-04**: The overview never displays events or members from another board
+- [x] **EVTVIEW-04**: The overview never displays events or members from another board
 
 ### Link Previews — Foundation and Quests
 
@@ -166,10 +166,10 @@ Explicit exclusions for v9.0, with reasoning.
 | EVTRECUR-06 | Phase 76 | Complete |
 | EVTRECUR-07 | Phase 76 | Complete |
 | EVTRECUR-08 | Phase 76 | Complete |
-| EVTVIEW-01 | Phase 77 | Not started |
-| EVTVIEW-02 | Phase 77 | Not started |
-| EVTVIEW-03 | Phase 77 | Not started |
-| EVTVIEW-04 | Phase 77 | Not started |
+| EVTVIEW-01 | Phase 77 | Complete |
+| EVTVIEW-02 | Phase 77 | Complete |
+| EVTVIEW-03 | Phase 77 | Complete |
+| EVTVIEW-04 | Phase 77 | Complete |
 | LINKPREV-01 | Phase 78 | Not started |
 | LINKPREV-02 | Phase 78 | Not started |
 | LINKPREV-03 | Phase 78 | Not started |
