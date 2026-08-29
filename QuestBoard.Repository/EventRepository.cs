@@ -127,4 +127,32 @@ internal class EventRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
 
         return Mapper.Map<IList<Event>>(entities);
     }
+
+    /// <inheritdoc/>
+    public async Task<IList<EventWithSignups>> GetUpcomingWithSignupsAsync(DateOnly today, int take, CancellationToken token = default)
+    {
+        // Scoping comes entirely from EventEntity's and EventSignupEntity's fail-closed query
+        // filters -- no manual GroupId predicate is added here. The ordering has to stay fully
+        // deterministic (hence the Id tiebreaker) because Take is applied before the signup
+        // collection is materialised, and an unstable sort could truncate the window
+        // unpredictably when two events share a date and start time.
+        var entities = await DbContext.Events
+            .Where(e => e.Date >= today && e.CancelledAt == null)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.StartTime)
+            .ThenBy(e => e.Id)
+            .Take(take)
+            .Include(e => e.Signups)
+                .ThenInclude(s => s.User)
+            .AsNoTracking()
+            .ToListAsync(token);
+
+        return entities
+            .Select(entity => new EventWithSignups
+            {
+                Event = Mapper.Map<Event>(entity),
+                Signups = Mapper.Map<List<EventSignup>>(entity.Signups)
+            })
+            .ToList();
+    }
 }
