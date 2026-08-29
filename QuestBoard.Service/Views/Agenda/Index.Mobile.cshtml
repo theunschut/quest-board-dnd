@@ -31,7 +31,7 @@
     else
     {
         <div class="mb-3">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#agenda-filter" aria-expanded="false">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="collapse" data-bs-target="#agenda-filter" aria-expanded="false">
                 <i class="fas fa-filter me-1"></i>Filter Boards
                 <span class="badge bg-secondary ms-1">@Model.SelectedCount of @Model.TotalCount</span>
             </button>
@@ -78,7 +78,7 @@
                 <i class="fas fa-filter-circle-xmark fa-3x mb-3"></i>
                 <h5>All Boards Filtered Out</h5>
                 <p class="mb-2">You've hidden every board from view. Adjust the filter above, or</p>
-                <a asp-action="Index" asp-route-boards="@SessionKeys.AgendaBoardFilterResetSentinel" class="btn btn-outline-secondary btn-sm">
+                <a asp-action="Index" asp-route-boards="@SessionKeys.AgendaBoardFilterResetSentinel" class="btn btn-secondary btn-sm">
                     <i class="fas fa-rotate-left me-1"></i>Show All Boards
                 </a>
             </div>
@@ -125,7 +125,7 @@
                         @await Html.PartialAsync("~/Views/Events/_AvailabilityCell.cshtml", row.MyCell)
                     </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2 agenda-roster-toggle"
+                    <button type="button" class="btn btn-sm btn-secondary mt-2 agenda-roster-toggle"
                             data-bs-toggle="collapse" data-bs-target="#roster-@row.EventId"
                             onclick="event.stopPropagation();" aria-expanded="false">
                         <i class="fas fa-chevron-down me-1"></i>Show Roster
