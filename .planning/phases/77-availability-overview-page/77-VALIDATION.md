@@ -80,6 +80,31 @@ created: 2026-08-29
 
 *Status: ✅ green · ✅ green · ❌ red · ⚠️ flaky*
 
+### Gap closure tasks (plans 77-11..77-12)
+
+> Added after `/gsd-verify-work` returned a critical styling gap on a real mobile device while
+> every automated assertion in the phase was green. This wave is numbered independently of the
+> gap wave above.
+
+| Task ID | Plan | Gap wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
+|---------|------|----------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
+| 11-T1 | 77-11 | 1 | EVTVIEW-01 | T-77-19 | The mobile card is the shared glass surface rather than a bespoke opaque slab | static gate | the grep-based surface gate from 77-11 Task 1 | ✅ existing file | ✅ green |
+| 11-T2 | 77-11 | 1 | EVTVIEW-03 | T-77-20 | Every text run in the card states its own colour and clears the 4.5:1 floor | build + static gate | the build plus colour-rule gate from 77-11 Task 2 | ✅ existing files | ✅ green |
+| 11-T3 | 77-11 | 1 | EVTVIEW-01 | T-77-20 | Controls are filled, and the tap target and click-through guards are unchanged | build + static gate | the button gate from 77-11 Task 3 | ✅ existing file | ✅ green |
+| 12-T1 | 77-12 | 2 | EVTVIEW-01, EVTVIEW-03 | T-77-22 | The styling contract is sampled by tests rather than by eye | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~EventsOverviewMobileStyleTests"` | ❌ created by 12-T1 | ✅ green |
+| 12-T2 | 77-12 | 2 | EVTVIEW-01, EVTVIEW-03 | T-77-23 | The whole suite still passes with the new surface and the new facts | full suite | `dotnet test` | ✅ existing files | ✅ green |
+
+*Status: ✅ green · ✅ green · ❌ red · ⚠️ flaky*
+
+**Why this was missed:** two mechanisms let the defect ship. First, the UI safety gate's block
+condition fires only when a UI-SPEC is *absent* — it reported `hasUiFiles: false` on every run of
+this phase, including the waves that added two stylesheets and four Razor views, so it never
+compared the implementation against a UI-SPEC that in fact existed. Second, the only
+style-conformance tests in the repository before this wave (`CalendarButtonStyleTests`,
+`PlatformAreaLayoutTests`) covered the calendar and the Platform area only — nothing sampled the
+mobile availability overview's own surface, colours or button convention, so a visual regression
+there had no automated path to fail.
+
 ---
 
 ## Wave 0 Requirements
@@ -164,3 +189,24 @@ The corresponding evidence line in `77-SECURITY.md` was corrected to match.
 
 **Manual-only items unchanged:** real-device mobile behaviour, and perceived visual distinctness
 of the unconfirmed-default chip. Both are tracked in `77-UAT.md` for `/gsd-verify-work`.
+
+## Validation Audit — styling gap closure
+
+`/gsd-verify-work` returned a critical styling gap on a real mobile device: the card surface was
+an opaque slab instead of the app's shared glass treatment, the count block measured 1.34:1
+against the WCAG AA 4.5:1 floor, and the roster toggle used an outline button, all while every
+prior automated gate — including the retroactive Nyquist audit above — reported green. Plan 77-11
+fixed the three defects; plan 77-12 (this wave) adds `EventsOverviewMobileStyleTests`, a five-fact
+class that samples the styling contract directly instead of relying on a human looking at a
+device, and records why the two prior mechanisms (the UI safety gate's absent-only trigger, and a
+style-conformance suite that stopped at the calendar and Platform area) both missed it.
+
+**Suite after this wave:** 422 unit + 617 integration = 1039 tests, 0 failures — the 422 unit and
+612 integration recorded going into this wave (per `77-11-SUMMARY.md`), plus the 5 new facts in
+`EventsOverviewMobileStyleTests`.
+
+**Manual-only items unchanged:** the two rows in the "Manual-Only Verifications" table above
+remain manual. Real-device mobile behaviour and perceived visual distinctness of the
+unconfirmed-default chip are not, and are not intended to be, replaced by an automated fact —
+`EventsOverviewMobileStyleTests` samples the styling contract's *implementation* (the CSS
+declarations and the classes the view emits), not a human's perception of the rendered result.
