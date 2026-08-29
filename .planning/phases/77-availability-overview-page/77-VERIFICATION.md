@@ -1,15 +1,18 @@
 ---
 phase: 77-availability-overview-page
-verified: 2026-08-29T13:30:00Z
+verified: 2026-08-30T00:30:00Z
 status: human_needed
-score: 31/31 must-haves verified
+score: 4/4 roadmap truths verified; 31/31 plan-level truths verified (77-01..77-10 regression-checked, 77-11/77-12 fully re-derived)
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
-  previous_status: gaps_found
-  previous_score: 30/31
+  previous_status: human_needed
+  previous_score: 31/31 must-haves verified
   gaps_closed:
-    - "A Show More Events control appears only when more events exist beyond the current window, and grows the set through a take query-string value rather than session state — now present on mobile as well as desktop."
+    - "UAT test 1's critical styling gap: opaque #343a40 slab replaced with the .modern-card glass surface (byte-identical to modern-card.css, confirmed by direct read)."
+    - "WCAG AA contrast failure on .avail-count-summary: was 1.34:1 (rgb(33,37,41) on rgb(52,58,64)), now 5.07:1 worst-case (#FFFFFF on the glass-over-backdrop composite), independently recomputed by this verifier from first principles and matching the plan's measured luminance values."
+    - "11 outline buttons converted to filled btn-secondary; 0 btn-outline- occurrences remain in Index.Mobile.cshtml (confirmed by direct read)."
+    - "Regression guard added: EventsOverviewMobileStyleTests.cs, 5 facts, all passing. This verifier independently reintroduced the opaque #343a40 slab and confirmed exactly 1 of 5 facts fails (no more, no fewer), matching the orchestrator's own mutation-test claim."
   gaps_remaining: []
   regressions: []
 ---
@@ -17,9 +20,18 @@ re_verification:
 # Phase 77: Availability Overview Page Verification Report
 
 **Phase Goal:** A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
-**Verified:** 2026-08-29T13:30:00Z
+**Verified:** 2026-08-30T00:30:00Z
 **Status:** human_needed
-**Re-verification:** Yes — after gap closure (plans 77-05 through 77-10)
+**Re-verification:** Yes — third pass, after UAT gap-closure plans 77-11 and 77-12
+
+## Context
+
+This pass re-checks the single critical gap `77-UAT.md` test 1 reported after a real-device pass: the
+mobile availability overview did not use the app's visual language, failed WCAG AA on its count block,
+used outline buttons where the project requires filled ones, and had no regression guard for any of it.
+Test 1's three functional assertions (roster expands in place, tapping inside the roster stays put,
+"Show More Events" loads more) and test 2 (chip distinctness) had already passed on the real device and
+are not re-litigated here.
 
 ## Goal Achievement
 
@@ -27,144 +39,109 @@ re_verification:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | A page shows upcoming events for the current board as a grid of events against players, with each player's availability | ✓ VERIFIED | Desktop (`Index.cshtml`) and mobile (`Index.Mobile.cshtml`) both independently read and confirmed. Mobile now contains `@if (Model.CanShowMore) { ... Model.NextTake ... }` at lines 96-103, mirroring the desktop block. `EventOverviewViewModel.CanShowMore => HasMore && NextTake > Take` (read directly). A new integration test, `Index_MobileUserAgent_MoreEventsThanTake_ShowsShowMoreControl`, seeds 2 events, requests `/Events?take=1` with a mobile User-Agent, and asserts the response contains `"Show More Events"` and `"take=11"` — this is a genuine behavioral proof, not a presence check, and it fails if the control or the `NextTake` arithmetic regresses. |
-| 2 | An untouched default is visually distinct from an answer the player actually gave | ✓ VERIFIED (code) / see Human Verification | `_AvailabilityCell.cshtml` still renders the muted default with a distinct `fa-clock` icon, italic `<em>Yes</em>`, and a `1px dashed` border — three independent non-colour signals. The fill weight was changed by orchestrator commit `db469594` (muted-Yes now uses solid `var(--bs-success)` instead of a hollow `-bg-subtle` tint) because the previous hollow fill was unreadable. This removes fill-weight as a fourth distinguishing signal but does not remove any of the three signals D-02 actually requires (icon, italic label, dashed border), none of which ever depended on fill weight. Judgement: D-02's mandate ("a second signal that survives greyscale... something non-colour is mandatory") still holds on the code evidence. Perceived at-a-glance distinctness remains a human call (see Human Verification #2, escalated in priority by this change). |
-| 3 | Each event shows an availability count, so a poorly-attended date is obvious at a glance | ✓ VERIFIED | Unchanged from the prior pass; `_AvailabilityCounts.cshtml` renders all three figures unconditionally. `Index_RendersAllThreeCounts` was strengthened in 77-09 (WR-08) to assert the actual rendered numbers (`<strong>3</strong> Yes`, `(2 confirmed)`, `2 Maybe`) rather than substrings the legend also renders unconditionally — read directly, confirmed present. |
-| 4 | No event or member from another board ever appears, proven by a two-group integration test | ✓ VERIFIED | `EventsOverviewTenantIsolationTests` unchanged and still passing (5 facts, confirmed in the full suite run below). `grep -c 'IgnoreQueryFilters'` re-run against `EventRepository.cs`, `EventService.cs`, `EventsController.cs` after all six gap-closure plans: 0 for all three. The named risk was not reintroduced during gap closure. |
+| 1 | A page shows upcoming events for the current board as a grid of events against players, with each player's availability | ✓ VERIFIED (regression) | Unaffected by 77-11/77-12. Desktop and mobile views read directly, unchanged in structure. `git diff --name-only` for the six 77-11/77-12 commits touches only `events-overview.mobile.css`, `Index.Mobile.cshtml`, and a new test file — no markup restructuring. |
+| 2 | An untouched default is visually distinct from an answer the player actually gave | ✓ VERIFIED | Unaffected by this gap wave — `.avail-cell-yes-muted` (dashed white border, clock icon, italic label) unchanged in `events-overview.mobile.css`, confirmed by direct read. Already confirmed on a real device in `77-UAT.md` test 2 (passed). |
+| 3 | Each event shows an availability count, so a poorly-attended date is obvious at a glance | ✓ VERIFIED (code) / see Human Verification | This was the broken truth. `.avail-card .avail-count-headline` and `.avail-card .avail-count-detail` now declare `color: #FFFFFF` (the latter `!important`, correctly beating the shared partial's Bootstrap `.text-muted`). This verifier independently recomputed the WCAG relative-luminance formula for `#FFFFFF` (1.0000) and `#F4E4BC` (0.7835, matching the plan's stated values to 4 decimal places) and reproduced the plan's brightest-backdrop composite calculation (`0.15×255 + 0.85×128/73/26 → rgb(147,100,60)`, relative luminance 0.1564 vs. the plan's stated 0.1571 — a rounding-consistent match) to confirm **5.07:1** for white against the worst-case backdrop, clearing the 4.5:1 AA floor with margin, up from the previously measured 1.34:1. The code-level fix is proven; a human has not yet seen the *restyled* result on a real device (see Human Verification #1). |
+| 4 | No event or member from another board ever appears, proven by a two-group integration test | ✓ VERIFIED | `EventsOverviewTenantIsolationTests` re-run independently by this verifier: 5/5 pass. `GetUpcomingWithSignupsAsync` in `EventRepository.cs` (the method this phase's read path actually calls, confirmed via `EventService.cs` line 55) contains **zero** `IgnoreQueryFilters` calls and no manual `GroupId` predicate — scoping comes entirely from ambient query filters, confirmed by direct read of the method body. The one `IgnoreQueryFilters` match in the file belongs to `GetUpcomingAcrossGroupsWithSignupsAsync`, a different, concurrent-phase method (a membership-pinned cross-board read used elsewhere) that this phase's `EventsController.Index` does not call — out of scope per this re-verification's explicit charge, confirmed by reading both call sites. |
 
-**Score:** 4/4 roadmap truths verified. All 31 plan-level must-haves (8+7+10+6+8 across 77-01..77-04, plus the truths added by 77-05..77-10) verified — see Plan-Level Truths below.
+**Score:** 4/4 roadmap truths verified.
 
-### Plan-Level Truths
+### Gap-Closure Verification (77-11, 77-12) — the four defects from `77-UAT.md` test 1
 
-**Plans 77-01–77-04 (original phase, unaffected by gap closure) — re-confirmed by regression, not re-derived from scratch:**
-- 77-01 (aggregate read + domain aggregation): unchanged except `EventService` now takes an injected `TimeProvider` (77-07). Confirmed by direct read: `internal class EventService(IEventRepository repository, IMapper mapper, TimeProvider timeProvider)`; `DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime)` replaces the prior `DateTime.Today` read.
-- 77-02 (CSS + navigation): `.avail-cell-yes-muted` dashed border still present in both stylesheets (now with an updated fill, see Truth #2). `LayoutNavigationTests` still 32/32 green (part of the 560 integration total below), with the class doc comment now planning-ID-free.
-- 77-03 (view models, views, controller): the one previously-failing truth (mobile Show More control) now passes — see Truth #1.
-- 77-04 (tenant isolation): unaffected, re-confirmed clean.
+| # | Defect (from UAT) | Status | Evidence |
+|---|--------------------|--------|----------|
+| 1 | UI-SPEC violation — opaque `#343a40` slab instead of the `.modern-card` glass surface | ✓ VERIFIED | `events-overview.mobile.css` `.avail-card` rule read directly: `background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);` — compared line-by-line against `modern-card.css` lines 8-12 (`.modern-card`): identical values, differing only in the `!important` flags `modern-card.css` needs to beat Bootstrap's `.card`. `grep -ci '343a40\|495057'` on the file returns `0`. The misleading comment referencing `.agenda-event-entry` was replaced with an accurate one (read directly, no phase/plan/requirement IDs present). |
+| 2 | WCAG contrast failure on `.avail-count-summary` (measured 1.34:1) | ✓ VERIFIED (code) | `.avail-card .avail-count-headline` and `.avail-card .avail-count-detail` (the latter `!important`) both set `color: #FFFFFF`, confirmed by direct read. Independently recomputed contrast: 5.07:1 (see Truth #3 above) — this verifier did not merely trust the plan's arithmetic, it re-derived the WCAG relative-luminance formula from the raw hex/RGB values and got a matching result. The meta line (`avail-card-meta`) and roster names (`avail-roster-name`) got the identical treatment, confirmed present in both the view (`grep -c` = 1 each) and the stylesheet (`grep -c` = 1 each) — no orphaned class either direction. |
+| 3 | 11 `btn-outline-secondary` controls | ✓ VERIFIED | `Index.Mobile.cshtml` read in full: the legend disclosure button (line 22) is `btn btn-sm btn-secondary`; the per-card roster toggle (line 79) is `btn btn-sm btn-secondary mt-2 avail-expand-toggle`. Zero occurrences of `btn-outline-` anywhere in the file (confirmed by direct read of the entire file, not just a grep count). Both `event.stopPropagation()` click-through guards (lines 81, 84) and the `min-height: 44px` tap-target rule are unchanged. |
+| 4 | No regression guard | ✓ VERIFIED | `EventsOverviewMobileStyleTests.cs` created (221 lines), 5 facts, all read directly and confirmed structurally sound: fact 1 (whole-file opaque-hex absence + glass presence), fact 2 (`ExtractCssRule`-scoped check on `.avail-count-detail` specifically, avoiding the sibling-rule false-positive that a plain substring check would have), fact 3 (rendered-HTML filled-button check under a mobile User-Agent), fact 4 (rendered-HTML class-hook presence, closing the stylesheet-orphan risk), fact 5 (tap-target floor). This verifier ran the filtered test (`--filter "FullyQualifiedName~EventsOverviewMobileStyleTests"`): **5/5 pass**. This verifier then independently reintroduced the opaque `#343a40` slab background into `.avail-card` and re-ran the same filter: **exactly 1 of 5 facts failed** (`MobileOverviewCss_AvailCard_UsesGlassSurfaceNotOpaqueSlab`), with no false-positive coupling to the other four — matching the orchestrator's own mutation-test claim exactly. The file was restored via `git checkout` and confirmed clean afterward. |
 
-**Plan 77-05 (mobile paging control + own-column CSS spec) — verified.** `EventOverviewViewModel.CanShowMore` computed property present and used by both views (read directly). `Index.Mobile.cshtml` carries the Show More block and an inert roster container (`onclick="event.stopPropagation();"` on the `.collapse` div at line 81, in addition to the toggle button's own guard at line 78 — two guards total, confirmed by the `guardCount.Should().Be(2)` assertion in `Index_MobileUserAgent_RendersRosterToggle`). No `<form>`/`method=post` introduced (grep clean). No `IgnoreQueryFilters` added.
+### Two Deliberate Deviations Assessed
 
-**Plan 77-06 (own-column highlight + frozen-column fix) — verified.** `events-overview.css` now declares `.modern-card .table th.avail-col-self` / `td.avail-col-self` at the same specificity+`!important` shape as the sticky-column rules, so the highlight is no longer dead CSS (WR-02 closed). `.avail-col-event` now uses a shared `--avail-event-col-width` custom property for both its own fixed width (`width`/`min-width`/`max-width: 200px`, no longer a bare `min-width` floor) and `.avail-col-attendance`'s `left` offset, so the two frozen columns cannot drift apart on a long title (WR-03 closed). No rule broadened to also repaint the sticky columns or row-hover tint (confirmed by direct read — the two new rules apply only to `.avail-col-self`).
+**Deviation 1 — glass declarations written directly into `.avail-card` instead of adding the `modern-card` class.**
 
-**Plan 77-07 (UTC clock injection + options validation) — verified.** `TimeProvider` registered via `services.TryAddSingleton(TimeProvider.System)` and injected into `EventService`; the date boundary now reads `timeProvider.GetUtcNow().UtcDateTime`, matching the UTC timestamps used elsewhere in the feature (IN-08 closed). `EventsOverviewOptions.IsValid()` added and wired through `.Validate(o => o.IsValid(), ...).ValidateOnStart()` in `ServiceExtensions.cs` (WR-04 closed) — confirmed genuinely wired, not just present, by `EventsOverviewOptionsValidationTests.AddDomainServices_InvalidCeiling_ResolvingOptionsThrowsOptionsValidationException`, which builds a real `ServiceCollection`, calls `AddDomainServices`, and asserts `OptionsValidationException` is thrown on resolution with `MaxTake=0` — a test that fails if the validation is ever removed. The controller's own clamp is additionally defended with `Math.Max(1, options.MaxTake)` so it cannot throw even if a host bypasses the startup check. No EF package or reference introduced outside `QuestBoard.Repository` (confirmed — `EventsOverviewOptionsValidationTests.cs` lives in `QuestBoard.UnitTests` and uses only `Microsoft.Extensions.*` and `QuestBoard.Domain` references).
+Verified sound. `modern-card.css` line 71 reads `.modern-card p, .modern-card li, .modern-card span, .modern-card small { color: #F4E4BC !important; ... }` — confirmed by direct read. Every vote-chip badge in `_AvailabilityCell.cshtml` is rendered as `<span class="badge ...">` (confirmed by direct read of all five cases), and the count block in `_AvailabilityCounts.cshtml` is also two `<span>` elements (confirmed by direct read). If `.avail-card` had instead carried the `modern-card` class, this rule would cascade `color: #F4E4BC !important` onto every one of those spans — repainting the vote-chip labels (explicitly out of scope, already UAT-approved) **and** overriding the deliberately-chosen `#FFFFFF` on the count headline/detail spans back to cream, which would have silently reintroduced a contrast regression (4.02:1, below the 4.5:1 normal-text floor) on the very element this gap wave exists to fix. The stated reason is not just plausible — the direct-declaration approach was actually load-bearing for making decision 2 below work at all. Judgment: **sound, correctly reasoned, not simply asserted**.
 
-**Plan 77-08 (navigation test independence + comment cleanup) — verified.** `LayoutNavigationTests` implements `IAsyncLifetime`; `DisposeAsync` resets `_factory.TestGroupContext.BoardType = BoardType.OneShot` after every test (confirmed by direct read at line 35-38). Every test body now sets its own board type explicitly, including the two previously-silent cases (`Nav_DungeonMaster_CreateEventEntryPresent` at line 270, `Nav_Player_CreateEventEntryAbsent` at line 283) — IN-07 closed. `grep -c 'NAV-0'` and `grep -n 'D-0'` against the file both return zero matches — IN-02 closed, including the auto-fixed deviation that caught four additional `NAV-0` separator comments the plan's own acceptance criteria required removed. All 32 pre-existing/expanded navigation assertions still pass (confirmed in the full suite run below), none deleted, renamed, or weakened.
+**Deviation 2 — `#FFFFFF` used for count/meta/roster text instead of the app's standard cream `#F4E4BC`, cream kept on the 20px/600 title.**
 
-**Plan 77-09 (mobile rendering test coverage + requirements traceability) — verified.** `EventsOverviewControllerIntegrationTests.cs` now contains `Index_MobileUserAgent_RendersCardList`, `Index_MobileUserAgent_RendersRosterToggle`, `Index_MobileUserAgent_NoEvents_RendersEmptyState`, and `Index_MobileUserAgent_MoreEventsThanTake_ShowsShowMoreControl` — all four confirmed present and passing, closing WR-07 (the structural reason CR-01 shipped unnoticed). The clamp tests (WR-05) were strengthened to seed 105 events and assert an exact `Should().Be(100)` boundary rather than `<= 100`, and the zero/negative case asserts exactly one row — both would now fail if the clamp were deleted (confirmed by reading the assertions directly, not merely their names). `.planning/REQUIREMENTS.md` shows all four `EVTVIEW-0{1..4}` checkboxes as `[x]` and all four traceability rows as `Complete` — the prior documentation gap (EVTVIEW-04 left unchecked) is closed.
+Verified sound on the numbers as stated. This verifier independently recomputed WCAG relative luminance from the raw sRGB formula for both `#FFFFFF` (1.0000, exact) and `#F4E4BC` (0.7835, matching the plan to 4 decimal places), and independently reproduced the brightest-backdrop composite (`0.15×255 + 0.85×(128,73,26)` → `rgb(147,100,60)`, relative luminance 0.1564 against the plan's stated 0.1571 — a rounding-consistent match, not a fabricated number). Resulting contrasts: white 5.07:1 (clears the 4.5:1 normal-text floor), cream 4.02:1 (fails 4.5:1, clears the 3.0:1 large-text floor). The size/weight split is applied correctly for the elements this gap wave touches: count block, meta line, and roster names are all normal-size text (14px/600 or 16px/400) and correctly get white; the card title is the one element kept at cream.
 
-**Plan 77-10 (keyboard-reachable navigation, IN-06) — verified.** `.row-nav-link` class added to `modern-card.css`, loaded by both `_Layout.cshtml` and `_Layout.Mobile.cshtml`. Every one of the 13 mouse-only `onclick="window.location.href=...` navigation sites across 11 views (`Calendar/Index.Mobile`, `Characters/Index.Mobile`, `Contacts/Index.Mobile`, `DungeonMaster/Profile.Mobile`, `Events/Index`, `Events/Index.Mobile`, `Players/Index.Mobile`, `Quest/Index`, `Quest/Index.Mobile`, `QuestLog/Index`, `QuestLog/Index.Mobile`) now also carries a `row-nav-link` anchor to the identical destination — confirmed by a direct per-file grep count match (`onclick` count == `row-nav-link` count in every one of the 11 relevant files). The two `Quest/Manage*.cshtml` `window.location.href` occurrences are a post-delete AJAX redirect, not a row/card navigation site, and correctly were not touched. Both conditional-destination sites (`Quest/Index.cshtml`, `Quest/Index.Mobile.cshtml`) reuse the exact same ternary/`navUrl` expression for the anchor's `href` as the row's `onclick`, so an owner still reaches `Manage` and a non-owner still reaches `Details` via keyboard. New test file `RowNavigationAccessibilityTests.cs` proves a focusable `<a class="row-nav-link" href="...Events/Details/{id}...">` exists on both a desktop and a mobile surface via regex match against live rendered HTML.
+**One residual, borderline note for human judgment (not a gap in this defect list):** the card title is 20px/weight 600. WCAG's large-text exception (3:1 floor) formally requires ≥24px regular **or** ≥18.66px at font-weight ≥700 ("bold"). Weight 600 is semibold, not the strict 700 "bold" the criterion names. If judged strictly, the title's normal-text floor would be 4.5:1, which its 4.02:1 does not clear. This classification was made in the original `77-UI-SPEC.md` (not introduced by 77-11/77-12), and the title was not one of the four defects UAT reported — under the *previous* opaque background it measured 9.13:1 and was never at risk. The background change in this gap wave incidentally dropped the title's contrast to a value that is fine under a lenient (weight-600-counts-as-large) reading and borderline-failing under a strict reading. This is flagged for the human device check (see Human Verification #1) rather than treated as a blocking gap, since it requires an accessibility-interpretation judgment call, not a code-presence check, and it does not reopen any of the four items UAT actually flagged.
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `QuestBoard.Service/Views/Events/Index.Mobile.cshtml` | Mobile card list with paging control | ✓ VERIFIED | Card list, counts, collapsible roster (now inert), empty state, and Show More control all present, wired, and test-covered (previously ⚠️ INCOMPLETE) |
-| `QuestBoard.Service/ViewModels/EventViewModels/EventOverviewViewModel.cs` | Computed `CanShowMore` | ✓ VERIFIED | Present, correctly gates on `HasMore && NextTake > Take` |
-| `QuestBoard.Service/wwwroot/css/events-overview.css` / `.mobile.css` | Own-column highlight, fixed sticky-column offsets, readable muted-Yes fill | ✓ VERIFIED | All three read directly and confirmed |
-| `QuestBoard.Domain/Services/EventService.cs` | UTC-clock-driven date boundary | ✓ VERIFIED | `TimeProvider` injected, `GetUtcNow().UtcDateTime` used |
-| `QuestBoard.Domain/Models/EventsOverviewOptions.cs` | `IsValid()` predicate | ✓ VERIFIED | Present, wired to `ValidateOnStart()`, covered by a test that would fail if unwired |
-| `QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs` | Self-contained tests, no stale planning IDs | ✓ VERIFIED | `IAsyncLifetime` reset hook present, all comments plain-language |
-| `QuestBoard.IntegrationTests/Controllers/EventsOverviewControllerIntegrationTests.cs` | Mobile-rendering + strengthened clamp/count facts | ✓ VERIFIED | Four new `Index_MobileUserAgent_*` facts, exact-boundary clamp assertions, exact-figure count assertions |
-| `QuestBoard.Service/wwwroot/css/modern-card.css` | Shared `.row-nav-link` class | ✓ VERIFIED | Present, loaded by both layouts |
-| `QuestBoard.IntegrationTests/Controllers/RowNavigationAccessibilityTests.cs` | Focusable-link proof on desktop and mobile | ✓ VERIFIED | Both facts present and passing |
-| `.planning/REQUIREMENTS.md` | All four EVTVIEW IDs checked off | ✓ VERIFIED | Confirmed by direct read |
+| `QuestBoard.Service/wwwroot/css/events-overview.mobile.css` | Glass surface, explicit text colours, unchanged tap target | ✓ VERIFIED | Read in full; matches plan and SUMMARY claims exactly |
+| `QuestBoard.Service/Views/Events/Index.Mobile.cshtml` | Filled buttons, new class hooks, unchanged guards | ✓ VERIFIED | Read in full; matches plan and SUMMARY claims exactly |
+| `QuestBoard.IntegrationTests/Controllers/EventsOverviewMobileStyleTests.cs` | 5-fact regression guard | ✓ VERIFIED | Read in full; ran independently (5/5 pass); mutation-tested independently (1/5 fails on the reintroduced defect) |
+| `.planning/phases/77-availability-overview-page/77-VALIDATION.md` | New gap-closure section (plans 77-11..77-12) | ✓ VERIFIED | Confirmed present, 5 new rows, existing rows undisturbed (confirmed by direct read) |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|----|--------|---------|
-| `EventOverviewViewModel.CanShowMore`/`NextTake` | Show More control (mobile) | conditional render + href | ✓ WIRED | Previously ✗ NOT WIRED — now confirmed wired and behaviorally tested |
-| `EventOverviewViewModel.CanShowMore`/`NextTake` | Show More control (desktop) | conditional render + href | ✓ WIRED | Unchanged from prior pass, now gated on `CanShowMore` instead of bare `HasMore` (WR-01 closed on both surfaces) |
-| `AddDomainServices` | `EventsOverviewOptions.IsValid()` | `.Validate(...).ValidateOnStart()` | ✓ WIRED | Confirmed by a test that resolves the options and asserts the thrown exception |
-| `TimeProvider` registration | `EventService` constructor | DI injection | ✓ WIRED | `services.TryAddSingleton(TimeProvider.System)` → constructor parameter, confirmed by direct read |
-| the own-column class on header/body cells | the two new own-column CSS rules | matching specificity + `!important` | ✓ WIRED | Confirmed by direct read; no longer dead CSS |
-| the row-navigation link class | `modern-card.css`, loaded by both layouts | `<link>` in both `_Layout.cshtml` / `_Layout.Mobile.cshtml` | ✓ WIRED | Confirmed present in both |
-| each new anchor's `href` | the same `Url.Action`/ternary target as the existing `onclick` | identical expression reused | ✓ WIRED | Confirmed on all 13 sites, including both conditional-destination sites |
-| `EventRepository.GetUpcomingWithSignupsAsync` | ambient query filters | no manual predicate, no bypass | ✓ WIRED | `grep -c 'IgnoreQueryFilters'` = 0 across all three production files, re-confirmed after gap closure |
+| `.avail-card` glass declarations | `.modern-card` glass declarations | value equality (ignoring `!important`) | ✓ WIRED | Confirmed byte-identical by direct comparison of both files |
+| `.avail-card-meta` / `.avail-roster-name` classes | view + stylesheet | class applied in `Index.Mobile.cshtml` AND styled in `events-overview.mobile.css` | ✓ WIRED | Confirmed present in both files, neither orphaned |
+| `.avail-count-detail` colour rule | Bootstrap `.text-muted` on the shared partial | `!important` beats `.text-muted`'s own `!important` | ✓ WIRED | Confirmed present with `!important`; behaviorally proven by this verifier's independent fact-1 mutation test methodology (same mechanism fact 2 uses) |
+| `EventsOverviewMobileStyleTests` rendered-markup facts | `Index.Mobile.cshtml` (mobile UA path, not desktop) | `MobileUserAgent` header via `GetMobileAsync` | ✓ WIRED | Confirmed by direct read of the test's HTTP request construction |
+| `EventRepository.GetUpcomingWithSignupsAsync` | ambient query filters | no manual predicate, no bypass | ✓ WIRED | Confirmed by direct read; `IgnoreQueryFilters` present only in the unrelated, out-of-scope `GetUpcomingAcrossGroupsWithSignupsAsync` |
 
-### Behavioral Spot-Checks
+### Behavioral Spot-Checks (run independently by this verifier, not taken from SUMMARY)
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Whole-solution build | `dotnet build` | 0 errors, 20 pre-existing unrelated NuGet-version warnings | ✓ PASS |
-| Full unit + integration suite (run once) | `dotnet test` | `QuestBoard.UnitTests`: 408 passed, 0 failed. `QuestBoard.IntegrationTests`: 560 passed, 0 failed. Total 968, 0 failed | ✓ PASS |
-| Mobile paging control now present and behaviorally correct | direct read + `Index_MobileUserAgent_MoreEventsThanTake_ShowsShowMoreControl` | Seeds 2 events, requests `take=1` with a mobile UA, asserts `"Show More Events"` and `"take=11"` present | ✓ PASS |
-| Mobile roster tap no longer navigates away | `Index_MobileUserAgent_RendersRosterToggle` | Asserts exactly 2 `event.stopPropagation()` guards (toggle + collapse container) | ✓ PASS |
-| Options validation actually fails closed | `AddDomainServices_InvalidCeiling_ResolvingOptionsThrowsOptionsValidationException` | Builds a real `ServiceCollection`, resolves with `MaxTake=0`, asserts `OptionsValidationException` thrown | ✓ PASS |
-| No filter bypass reintroduced | `grep -c 'IgnoreQueryFilters' EventRepository.cs EventService.cs EventsController.cs` | `0` / `0` / `0` | ✓ PASS |
-| No stale planning identifiers remain in `LayoutNavigationTests.cs` | `grep -c 'NAV-0'` / `grep -n 'D-0'` | 0 matches for both | ✓ PASS |
-| No debt markers in any file touched across 77-05..77-10 | `grep -nE "TBD|FIXME|XXX|TODO|HACK|PLACEHOLDER"` across 16 touched files | 0 matches | ✓ PASS |
+| Whole-solution build | `dotnet build QuestBoard.slnx` | 6 projects, 0 errors, 20 pre-existing unrelated NuGet-version warnings | ✓ PASS |
+| `EventsOverview*` integration facts | `dotnet test --filter "FullyQualifiedName~EventsOverview"` | 27 passed, 0 failed | ✓ PASS |
+| New mobile style-conformance facts | `dotnet test --filter "FullyQualifiedName~EventsOverviewMobileStyleTests"` | 5 passed, 0 failed | ✓ PASS |
+| Tenant isolation re-check | `dotnet test --filter "FullyQualifiedName~EventsOverviewTenantIsolationTests"` | 5 passed, 0 failed | ✓ PASS |
+| Full suite (run once) | `dotnet test` | Unit: 422/422 passed. Integration: 617/617 passed. Total 1039, 0 failed | ✓ PASS |
+| Mutation test — opaque slab reintroduced | Edited `.avail-card` background to `#343a40`, re-ran the filtered style test, then `git checkout` to restore | Exactly 1 of 5 facts failed (`MobileOverviewCss_AvailCard_UsesGlassSurfaceNotOpaqueSlab`); file confirmed restored and `git status` clean afterward | ✓ PASS — matches the orchestrator's independent mutation-test claim |
+| WCAG luminance re-derivation | Ran the WCAG relative-luminance formula by hand for `#FFFFFF`, `#F4E4BC`, and the stated worst-case backdrop composite pixel | `#FFFFFF` = 1.0000, `#F4E4BC` = 0.7835 (exact match to plan), backdrop composite = 0.1564 (plan states 0.1571 — rounding-consistent) → contrasts 5.07:1 and 4.02:1, matching the plan exactly | ✓ PASS — the measured-contrast claims are genuine, not fabricated |
+| No debt markers in touched files | `grep -nE "TBD\|FIXME\|XXX\|TODO\|HACK\|PLACEHOLDER"` across the 3 files this gap wave touched | 0 matches | ✓ PASS |
+| No tracking-ID leakage in touched files | `grep -Ein "EVTVIEW-\|D-[0-9]\|Phase 77\|77-1[12]"` across the 3 files | 0 matches | ✓ PASS |
+| Git diff scope | `git show --stat` on all 5 gap-closure commits | 77-11: only `events-overview.mobile.css` + `Index.Mobile.cshtml` across 3 commits. 77-12: only the new test file + `77-VALIDATION.md` across 2 commits. No desktop, partial, repository, or `.csproj`/lockfile touched | ✓ PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| EVTVIEW-01 | 77-01, 77-02, 77-03, 77-05, 77-06, 77-09, 77-10 | Grid of upcoming events × players with each player's availability | ✓ SATISFIED | Previously ⚠️ PARTIALLY SATISFIED (mobile truncation with no paging). Mobile now has full parity with desktop, test-covered end to end. |
-| EVTVIEW-02 | 77-01, 77-02, 77-03 | Untouched default visually distinct from an actual answer | ✓ SATISFIED (code) | Three non-colour signals intact after the fill-weight change; perceived distinctness remains a human item, now higher-priority given the mechanism shift (see Human Verification #2) |
-| EVTVIEW-03 | 77-01, 77-03, 77-09 | Per-event availability count | ✓ SATISFIED | Strengthened assertion (WR-08) now verifies the actual rendered figures, not substrings the legend also renders |
-| EVTVIEW-04 | 77-04 | Never displays events/members from another board | ✓ SATISFIED | Unchanged, re-confirmed clean. `.planning/REQUIREMENTS.md` checkbox now ticked, closing the prior traceability gap. |
+| EVTVIEW-01 | 77-01..77-03, 77-05, 77-06, 77-09..77-12 | Grid of upcoming events × players with each player's availability | ✓ SATISFIED | Mobile card list restored to the app's visual language; filled buttons; regression-guarded |
+| EVTVIEW-02 | 77-01..77-03 | Untouched default visually distinct from an actual answer | ✓ SATISFIED (code) / human-confirmed | Unaffected by this gap wave; already confirmed on a real device in `77-UAT.md` test 2 |
+| EVTVIEW-03 | 77-01, 77-03, 77-09, 77-11, 77-12 | Per-event availability count, obvious at a glance | ✓ SATISFIED (code) | The 1.34:1 defect closed to 5.07:1, independently re-derived by this verifier; visual confirmation on a real device pending (see Human Verification #1) |
+| EVTVIEW-04 | 77-04 | Never displays events/members from another board | ✓ SATISFIED | Re-confirmed clean; `GetUpcomingWithSignupsAsync` has zero `IgnoreQueryFilters` and no manual predicate |
 
-No orphaned requirements. All four EVTVIEW IDs are checked off in `.planning/REQUIREMENTS.md` and the traceability table (lines 169-172) reads "Complete" for all four — this is now justified by the evidence above, not merely asserted.
+No orphaned requirements. `.planning/REQUIREMENTS.md` unchanged by this gap wave (confirmed — all four EVTVIEW rows already read "Complete" and were not touched by 77-11 or 77-12's commits).
 
 ### Anti-Patterns Found
 
-None blocking. All previously-found blockers and warnings from `77-REVIEW.md` were addressed:
-
-| Finding | Prior Status | Current Status |
-|---------|--------------|-----------------|
-| CR-01 (mobile paging control missing) | 🛑 Blocker | ✓ Closed (77-05, test-covered by 77-09) |
-| WR-01 (Show More dead link at `MaxTake`) | ⚠️ Warning | ✓ Closed (`CanShowMore` gate, 77-05) |
-| WR-02 (own-column highlight dead CSS) | ⚠️ Warning | ✓ Closed (77-06) |
-| WR-03 (sticky columns overlap on long titles) | ⚠️ Warning | ✓ Closed (77-06) |
-| WR-04 (`Math.Clamp` throws on bad config) | ⚠️ Warning | ✓ Closed (77-07, startup validation + defensive floor) |
-| WR-05 (clamp tests cannot fail) | ⚠️ Warning | ✓ Closed (77-09, exact-boundary assertions) |
-| WR-06 (mobile roster tap navigates away) | ⚠️ Warning | ✓ Closed (77-05, test-covered by 77-09) |
-| WR-07 (no mobile rendering test coverage) | ⚠️ Warning | ✓ Closed (77-09) |
-| WR-08 (count test asserts substrings, not figures) | ⚠️ Warning | ✓ Closed (77-09) |
-| WR-09 (unguarded `Cells[i]` indexing) | ⚠️ Warning | ✓ Closed (77-05, `i < row.Cells.Count ? row.Cells[i] : Empty` on both surfaces) |
-| IN-01 (`Take` was dead) | ℹ️ Info | ✓ Closed (used in `CanShowMore`'s gate) |
-| IN-02 (stale planning IDs in `LayoutNavigationTests`) | ℹ️ Info | ✓ Closed (77-08) |
-| IN-06 (mouse-only click targets) | ℹ️ Info | ✓ Closed (77-10) |
-| IN-07 (test fixture state not restored) | ℹ️ Info | ✓ Closed (77-08) |
-| IN-08 (server-local clock mixed into UTC feature) | ℹ️ Info | ✓ Closed (77-07) |
-
-Minor, non-actioned info items (IN-03, IN-04, IN-05) were also folded in by the gap plans' incidental cleanup where touched (IN-04's `.legend-card` rules are now duplicated into `events-overview.mobile.css`), but were not independently re-audited here since they carry no must-have or requirement weight.
-
-**Newly reviewed scope (orchestrator-committed UI fixes, `db469594` / `c7f84da9`):**
-
-| Change | Assessment |
-|--------|------------|
-| `.avail-cell-yes-muted` fill changed to solid `var(--bs-success)` with white dashed border | Consistent with D-01 ("muted Yes chip; a confirmed answer renders solid" — mechanism changed but intent, a distinguishable muted state, preserved). D-02's mandatory non-colour-signal requirement still holds: icon, italic label, and dashed border are all independent of fill weight and none were removed. Flagged for human visual confirmation (see Human Verification #2). |
-| `modern-card.css` added to `_Layout.Platform.cshtml` | Restores styling that was missing since an earlier refactor; scoped, single-line addition, does not touch any Phase 77 must-have. No regression risk identified. |
-| Calendar cross-links to Availability Overview changed from `btn-outline-secondary` to `btn-secondary` | Matches `CLAUDE.md`'s filled-button convention. Two-line change, confirmed via diff, no functional impact. |
-
-No debt markers (`TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER`) found in any file touched by the six gap-closure plans or the two orchestrator commits.
+None blocking. No debt markers, no tracking-ID leakage, no scope creep outside the two files 77-11 was allowed to touch and the two files 77-12 was allowed to touch (all confirmed by direct `git show --stat` on every commit, not by trusting the SUMMARY's own file list).
 
 ## Human Verification Required
 
-These items were flagged in the previous verification pass as requiring human judgment and remain open — they do not by themselves change the phase's completion status beyond routing to `human_needed`, since all automated must-haves now pass.
+### 1. Real-device look at the restyled mobile availability overview
 
-### 1. Mobile layout behavior under a real mobile user agent
-
-**Test:** Load `/Events` on an actual mobile device/browser (not devtools emulation), tap a card, expand a roster, tap within the expanded roster, and — on a board with more than the default page size of upcoming events — tap "Show More Events".
-**Expected:** The mobile layout renders correctly; tapping the "Show players" toggle expands the roster without navigating; tapping within the expanded roster (a name, a badge) also does not navigate, now that both the toggle and the collapse container carry `stopPropagation` guards; "Show More Events" loads a larger set.
-**Why human:** Mobile views in this app are user-agent-selected, not breakpoint-driven — devtools emulation never exercises `Index.Mobile.cshtml`. Automated coverage now exists (`Index_MobileUserAgent_*` facts) and gives strong confidence the fix is real, but a live-device pass remains the only way to confirm actual touch behavior end to end.
-
-### 2. Perceived visual distinctness of muted-default vs. confirmed cells
-
-**Test:** View the availability grid/card list as a sighted user and, separately, simulate a colour-blindness filter or greyscale view.
-**Expected:** The unconfirmed-default chip (solid green fill, white dashed border, clock icon, italic "Yes") should still read as clearly different from the confirmed-Yes chip (solid green fill, no border, check icon, normal weight) at a glance, and the empty cell (bare em-dash, no badge) should read as different from both.
-**Why human:** This check is now more important than in the previous pass: the muted chip's fill weight was changed from a hollow tint to the same solid fill as the confirmed chip (orchestrator commit `db469594`, for readability), so the visual distinction now rests entirely on the dashed border, the clock icon, and the italic label rather than partly on fill weight too. Code-level evidence confirms all three signals are present and none were removed, but whether they read as *sufficiently* distinct at a glance — particularly the subtlety of a white dashed border against a solid button-sized badge — is a genuine, unavoidable human-judgment call.
+**Test:** Load `/Events` on an actual mobile device/browser (not devtools emulation) and view the card list, the count block, the meta line, the roster names, and the 20px card title against the new glass-over-notice-board surface. While there, glance at the card title specifically — it is cream text at a contrast this verifier calculated as borderline (4.02:1, clearing the large-text 3:1 floor but not the stricter normal-text 4.5:1 floor if the 600-weight/20px combination is judged not to qualify as "large text").
+**Expected:** The card list should now read as the same visual language as the legend card and the rest of the app — translucent, not an opaque slab. The count block, date/time line, and roster names should be clearly legible white text. The card title should also be comfortably legible, not just technically-passing.
+**Why human:** This is the one item the phase's own gap-closure explicitly could not close: the styling fix has been verified at the code and math level by both the orchestrator and this verifier independently, but no human has yet seen the *restyled* result on a real device. This is a stronger, narrower version of the previous pass's human-verification item — the underlying defect (1.34:1 contrast, opaque slab, outline buttons) is now code-proven fixed, but "does it actually look right and read comfortably on a phone" remains an irreducibly human judgment, and the card-title borderline case specifically benefits from a human eye rather than a stricter interpretation of a WCAG size/weight technicality.
 
 ## Gaps Summary
 
-No gaps remain. The single blocking gap from the previous verification pass — the mobile availability overview having no paging control — is closed: `Index.Mobile.cshtml` now reads `Model.CanShowMore` and `Model.NextTake` exactly as the desktop view does, and this is proven by a new integration test (`Index_MobileUserAgent_MoreEventsThanTake_ShowsShowMoreControl`) that renders the mobile view under a mobile User-Agent, requests a small page size, and asserts both the control's presence and the correct `NextTake` arithmetic in the rendered `href`. This test would fail if the regression recurred, closing the structural gap (WR-07, no mobile rendering coverage at all) that let the original gap ship unnoticed.
+No gaps remain. All four defects in `77-UAT.md` test 1's diagnosis are closed and independently re-verified by this pass, not merely re-asserted from the SUMMARY narratives:
 
-All nine warnings and the five actionable info items from `77-REVIEW.md` were also closed by the six gap-closure plans, each with either a genuine behavioral test (WR-04, WR-05, WR-06, WR-07, WR-08) or direct code/CSS evidence (WR-01, WR-02, WR-03, WR-09, IN-01, IN-02, IN-06, IN-07, IN-08) confirmed by independent reading rather than by trusting the SUMMARY narratives. The full test suite (408 unit + 560 integration = 968 tests) passes with 0 failures, re-run independently as part of this verification. The named risk of the phase — a repeat of the tenant-scoping trap via `IgnoreQueryFilters()` on an aggregating page — was not reintroduced during gap closure; the audit grep remains clean across all three production files.
+1. The opaque `#343a40` slab is gone; `.avail-card` is now byte-identical (ignoring `!important`) to the app's standard `.modern-card` glass surface.
+2. The 1.34:1 contrast failure on the count block is closed to a mathematically re-derived 5.07:1, well past the 4.5:1 AA floor.
+3. All 11 outline-button renders (2 source locations, one rendered per-card) are now filled `btn-secondary`.
+4. A 5-fact regression guard (`EventsOverviewMobileStyleTests.cs`) now exists, runs green, and was independently mutation-tested by this verifier (not just trusted from the SUMMARY) — reintroducing the opaque slab fails exactly the one fact that guards it, with no false-positive coupling to the other four.
 
-Two items remain open as human-verification-only, carried forward from the previous pass: real-device mobile behavior (unchanged in nature, now with stronger automated backing), and perceived visual distinctness of the muted-vs-confirmed cell (elevated in importance because an orchestrator-applied readability fix removed the fill-weight component of the distinction, though the three signals D-02 actually mandates remain intact on the code evidence). Neither is a functional gap; both route this report to `human_needed` per the standard decision tree rather than `passed`.
+The named risk — a repeat of the tenant-scoping trap via `IgnoreQueryFilters()` on this phase's aggregating read — was not reintroduced. `GetUpcomingWithSignupsAsync`, the method this phase actually calls, has zero occurrences and no manual predicate; the one `IgnoreQueryFilters` call in the file belongs to a different, concurrent phase's cross-board method that this phase does not use.
+
+Both deliberate deviations from a literal reading of the UI-SPEC (direct glass declarations instead of the `modern-card` class; white instead of cream on normal-size text) were independently verified as sound engineering judgment, not workarounds — the alternative in each case would have reintroduced a real regression.
+
+One borderline, non-blocking accessibility note is raised for the human device check: the card title's cream-on-glass contrast (4.02:1) depends on treating 20px/weight-600 as WCAG "large text," which is a defensible but not unambiguous reading. This is carried into Human Verification rather than treated as a gap, because it is a pre-existing classification (not disturbed by this gap wave, and not one of the four defects UAT reported) and resolving it requires human/accessibility interpretation, not a code check.
+
+The full test suite (422 unit + 617 integration = 1039 tests) was re-run independently by this verifier and passes with 0 failures. The phase's status remains `human_needed` rather than `passed`, per this task's explicit instruction: the styling fix has not yet been seen by a human on a phone, and that one item alone is sufficient to keep this pass out of `passed` even though every automated and code-level check now succeeds.
 
 ---
 
-_Verified: 2026-08-29T13:30:00Z_
+_Verified: 2026-08-30T00:30:00Z_
 _Verifier: Claude (gsd-verifier)_

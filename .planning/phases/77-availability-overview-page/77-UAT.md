@@ -1,21 +1,21 @@
 ---
-status: complete
+status: testing
 phase: 77-availability-overview-page
 source: [77-VERIFICATION.md]
 started: 2026-08-29T13:35:00Z
-updated: 2026-08-29T14:35:00Z
+updated: 2026-08-30T09:00:00Z
 ---
 
 ## Current Test
 
-number: -
-name: (all tests complete)
+number: 3
+name: Restyled mobile surface on a real device
 expected: |
   The mobile availability overview renders correctly on an actual device. Tapping the
   "Show players" toggle expands the roster without navigating away. Tapping inside the
   expanded roster (a name, a badge) also does not navigate. On a board with more than 10
   upcoming events, a "Show More Events" control is present and loads a larger set.
-awaiting: none
+awaiting: user response
 
 ## Tests
 
@@ -24,6 +24,15 @@ awaiting: none
 expected: Load `/Events` on a real mobile device or browser (not devtools emulation). The mobile card list renders. Tapping "Show players" expands the roster without navigating. Tapping within the expanded roster does not navigate. On a board with more than 10 upcoming events, "Show More Events" appears and loads more.
 why_human: Mobile views in this app are user-agent-selected, not breakpoint-driven — devtools emulation never exercises `Index.Mobile.cshtml`. Automated coverage now exists (`Index_MobileUserAgent_*` facts) and gives strong confidence, but only a live device confirms real touch behaviour end to end.
 result: issue
+resolution: |
+  Closed by gap plans 77-11 and 77-12 (merged 2026-08-30). All four defects verified fixed
+  against the implementation, not against the summaries: .avail-card now carries glass
+  declarations byte-identical to .modern-card; the count block, meta line and roster names set
+  white explicitly, measured at 5.07:1 worst case against the backdrop (was 1.34:1); zero
+  btn-outline- occurrences remain in the mobile view; and five regression facts now guard the
+  contract. The guard was mutation-tested twice independently - reintroducing the opaque slab
+  fails exactly one of the five facts with no false-positive coupling. Re-check on a real
+  device is recorded as test 3.
 severity: critical
 reported: |
   The mobile overview does not use the app's established styling. Event cards render as
@@ -84,12 +93,19 @@ detail: |
   readability fix that changed the muted chip to the same solid green therefore did not cost
   the distinction the accessibility requirement depends on.
 
+### 3. Restyled mobile surface on a real device
+
+expected: Load `/Events` on a real mobile device. Event cards should render as translucent glass matching the rest of the app - the wood backdrop visible through them, consistent with the legend card on the same page - not as opaque dark slabs. The count figures, the date/time line and the roster names should all be comfortably readable. Every button ("What do these mean?", each card's "Show players") should be filled, not a ghost outline.
+why_human: The styling fix is code-verified and the contrast is measured, but no human has seen the restyled result on an actual phone. The defect it replaces passed five automated gates and was caught only by a person looking at a screen, so a person should confirm the fix the same way.
+also_check: The card title uses cream on glass at 4.02:1. That clears the WCAG large-text floor only if 20px/600 counts as "large" - the strict reading requires weight 700. It is pre-existing and was not introduced by this fix, but worth eyeballing while you are there: does the event title read comfortably against the glass?
+result: [pending]
+
 ## Summary
 
-total: 2
+total: 3
 passed: 1
-issues: 1
-pending: 0
+issues: 1 (resolved)
+pending: 1
 skipped: 0
 blocked: 0
 
