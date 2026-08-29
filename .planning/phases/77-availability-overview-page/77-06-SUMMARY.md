@@ -138,3 +138,9 @@ None - no external service configuration required.
 ---
 *Phase: 77-availability-overview-page*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/wwwroot/css/events-overview.css
+- FOUND: commit 37d3a264 (Task 1)
+- FOUND: commit a89053a9 (Task 2)
