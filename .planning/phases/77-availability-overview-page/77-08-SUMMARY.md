@@ -122,3 +122,11 @@ None - no external service configuration required.
 ---
 *Phase: 77-availability-overview-page*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+- FOUND: `QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs`
+- FOUND: `.planning/phases/77-availability-overview-page/77-08-SUMMARY.md`
+- FOUND commit: `5c9fb81a`
+- FOUND commit: `adc6c76f`
+- FOUND commit: `1e39fe07`
