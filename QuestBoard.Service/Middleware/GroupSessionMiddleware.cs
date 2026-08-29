@@ -17,7 +17,11 @@ namespace QuestBoard.Service.Middleware;
 ///   2. Exempt paths (the picker itself, auth, platform, error routes) pass through for
 ///      every authenticated role, including SuperAdmin — these are the genuine
 ///      group-agnostic workflows (picking a group, managing the account, platform-wide
-///      administration) that must never be gated on having an active group.
+///      administration) that must never be gated on having an active group. Note the
+///      granularity: every entry is a path *prefix* matched with StartsWithSegments, so a
+///      controller-name entry exempts every action on that controller from both step 3 and
+///      step 4 -- including actions added to it later, and including non-idempotent ones.
+///      An exemption is a statement about the whole controller, not about one read.
 ///   3. Otherwise, resolve IActiveGroupContext; if ActiveGroupId is null, the request is
 ///      gated exactly the same way regardless of role — a null active group is ambiguous
 ///      (which group's data should render?) and must never be silently treated as "show
@@ -65,6 +69,17 @@ public class GroupSessionMiddleware(RequestDelegate next)
         // Skipping the periodic membership revalidation below on this path costs nothing,
         // because the page re-reads the viewer's memberships from the database on every
         // single request.
+        //
+        // Scope, stated plainly because the entry does not show it: this is a *controller*
+        // prefix, so it exempts every action on the agenda controller -- current and future,
+        // GET and otherwise -- from both the null-active-board gate and the periodic
+        // membership revalidation. Today the controller has exactly one action, a read that
+        // derives its own scope from a fresh membership read, which is what makes the blanket
+        // exemption safe. Any action added there must do the same and must not assume a
+        // non-null active board. If that ever stops being true, replace this entry with the
+        // explicit action paths instead -- and note that the bare controller path has to be
+        // listed alongside them, or the navigation links that rely on the default action
+        // break.
         $"/{ControllerNameOf<AgendaController>()}"
     ];
 
