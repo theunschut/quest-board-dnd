@@ -81,13 +81,23 @@
     background-color: rgba(244, 228, 188, 0.95) !important;
 }
 
+/* The event column's width and the attendance column's offset must stay equal -- one is the
+   other's starting edge -- so both read from a single declaration rather than repeating the
+   same number in two places where they could drift apart. */
+.avail-grid {
+    --avail-event-col-width: 200px;
+}
+
 .avail-col-event {
     left: 0;
-    min-width: 200px;
+    width: var(--avail-event-col-width);
+    min-width: var(--avail-event-col-width);
+    max-width: var(--avail-event-col-width);
+    overflow-wrap: anywhere;
 }
 
 .avail-col-attendance {
-    left: 200px;
+    left: var(--avail-event-col-width);
     min-width: 170px;
 }
 
