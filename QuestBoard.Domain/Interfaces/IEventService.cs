@@ -37,4 +37,14 @@ public interface IEventService : IBaseService<Event>
     /// Returns false when the event does not exist or belongs to another board.
     /// </summary>
     Task<bool> SetCancelledAsync(int eventId, DateTime? cancelledAt, CancellationToken token = default);
+
+    /// <summary>
+    /// Builds the availability overview for the next <paramref name="take"/> live upcoming
+    /// events in a single repository round trip: a member axis built from the union of members
+    /// holding a signup row (never a membership query), a five-state cell per member per event,
+    /// three per-row counts, and whether more events exist beyond the requested window. The
+    /// answered marker on each signup row is the only input to the confirmed/unconfirmed
+    /// distinction.
+    /// </summary>
+    Task<EventAvailabilityOverview> GetAvailabilityOverviewAsync(int take, CancellationToken token = default);
 }

@@ -35,4 +35,10 @@ internal class EventService(IEventRepository repository, IMapper mapper) : BaseS
     {
         return await repository.SetCancelledAsync(eventId, cancelledAt, token);
     }
+
+    /// <inheritdoc/>
+    public Task<EventAvailabilityOverview> GetAvailabilityOverviewAsync(int take, CancellationToken token = default)
+    {
+        throw new NotImplementedException();
+    }
 }
