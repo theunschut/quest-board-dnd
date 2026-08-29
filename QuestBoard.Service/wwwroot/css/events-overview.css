@@ -97,7 +97,17 @@
 
 /* A subtle highlight on the viewer's own column so a player can find themselves in a wide
    grid without disturbing the stable alphabetical column order. Applies to both the header
-   cell and every body cell of that column. */
-.avail-col-self {
-    background-color: rgba(255, 255, 255, 0.08);
+   cell and every body cell of that column. The base .modern-card .table th/td rules declare
+   background-color with !important, so these two rules match that specificity the same way
+   the sticky-column rules above do -- otherwise the base rule would win unconditionally and
+   the highlight would silently never paint. Each tint is one step lighter than its matching
+   sticky-column tint so the two affordances stay visually distinct, and both stay less
+   specific than the row-hover rule so hovering still tints the whole row, own column
+   included. */
+.modern-card .table th.avail-col-self {
+    background-color: rgba(139, 69, 19, 0.65) !important;
+}
+
+.modern-card .table td.avail-col-self {
+    background-color: rgba(255, 235, 180, 0.95) !important;
 }
