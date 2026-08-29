@@ -171,6 +171,16 @@
                             <i class="fas fa-arrows-rotate me-2"></i>@(string.IsNullOrEmpty(activeGroupName) ? "Switch Group" : activeGroupName)
                         </a>
                     </li>
+                    @* Deliberately outside every board-type condition: this page is scoped by the
+                       viewer's own board memberships, not by a resolved board type, and is the one
+                       surface that works with no board selected -- gating it here would hide it in
+                       exactly the situation it exists for. This is a flat sibling entry, matching
+                       every other item in this offcanvas list. *@
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Agenda" asp-action="Index">
+                            <i class="fas fa-calendar-days text-purple me-2"></i>My Agenda
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <form asp-controller="Account" asp-action="Logout" method="post">
                             <button type="submit" class="nav-link btn btn-link text-start w-100"

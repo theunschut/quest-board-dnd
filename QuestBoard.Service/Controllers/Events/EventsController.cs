@@ -53,7 +53,7 @@ public class EventsController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> Details(int id, CancellationToken token = default)
+    public async Task<IActionResult> Details(int id, string? from = null, CancellationToken token = default)
     {
         var eventEntity = await eventService.GetEventWithDetailsAsync(id, token);
         if (eventEntity == null)
@@ -73,6 +73,11 @@ public class EventsController(
         var ownSignup = roster.FirstOrDefault(s => s.UserId == currentUser.Id);
         viewModel.HasOwnSignup = ownSignup != null;
         viewModel.MyAvailability = ownSignup?.Availability;
+
+        // Display-only hint about where the request came from -- it grants no access of any
+        // kind. The event above was already fetched through the board-scoped read, so this
+        // marker on the query string cannot make another board's event visible.
+        ViewBag.ReturnedFromAgenda = string.Equals(from, "agenda", StringComparison.OrdinalIgnoreCase);
 
         return View(viewModel);
     }

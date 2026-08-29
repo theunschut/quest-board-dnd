@@ -18,6 +18,18 @@
     var restoreConfirmMessage = $"Restore this session on {Model.Date:dddd, MMMM d, yyyy}? It will show as scheduled again.";
 }
 
+@* Plain page-level breadcrumb navigation, not part of the event's own content -- the active
+   board is deliberately not switched back here. Switching twice per answer is state that is
+   easy to get wrong and hard to notice when it is, so this is a plain link, not a board switch. *@
+@if (ViewBag.ReturnedFromAgenda == true)
+{
+    <div class="mb-2">
+        <a asp-controller="Agenda" asp-action="Index" class="text-decoration-none small">
+            <i class="fas fa-arrow-left me-1"></i>Back to My Agenda
+        </a>
+    </div>
+}
+
 <div class="row">
     <div class="col-lg-4">
         <div class="card modern-card mb-3">
