@@ -42,6 +42,11 @@
                             Choose which of your own boards to show. This never adds boards you don't belong to -- only narrows the ones shown.
                         </p>
                         <form asp-action="Index" method="get">
+                            @* A GET submission replaces the whole querystring, so without this the
+                               current window collapses back to the default page size the moment a
+                               reader narrows the filter. Model.Take is the value the server
+                               already clamped, so round-tripping it cannot widen it. *@
+                            <input type="hidden" name="take" value="@Model.Take" />
                             <input type="hidden" name="boards" value="" />
                             @foreach (var board in Model.AvailableBoards)
                             {

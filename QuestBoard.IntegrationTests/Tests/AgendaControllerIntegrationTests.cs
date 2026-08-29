@@ -546,6 +546,26 @@ public class AgendaControllerIntegrationTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
+    public async Task Agenda_FilterForm_CarriesTheCurrentWindowSize()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "agenda_form_take", "agenda_form_take@example.com");
+
+        await SeedEventAsync(1, "Form Take Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+
+        var response = await client.GetAsync("/Agenda?take=10", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        // A GET form replaces the whole querystring, so without this hidden field a reader who
+        // has paged out and then narrows the filter is thrown back to the default page size.
+        body.Should().Contain("name=\"take\" value=\"10\"");
+    }
+
+    [Fact]
     public async Task Agenda_WindowSizeAboveCeiling_IsClampedDown()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
