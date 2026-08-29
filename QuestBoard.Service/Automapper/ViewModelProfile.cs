@@ -152,5 +152,20 @@ public class ViewModelProfile : Profile
         // Event to SeriesOccurrenceViewModel -- maps by convention, including IsCancelled,
         // which is computed on the source model from CancelledAt.
         CreateMap<Event, SeriesOccurrenceViewModel>();
+
+        // AvailabilityMember to OverviewMemberViewModel -- property names line up so no
+        // member configuration is needed.
+        CreateMap<AvailabilityMember, OverviewMemberViewModel>();
+
+        // EventAvailabilityRow to EventOverviewRowViewModel -- deliberately no reverse map:
+        // the availability overview page is read-only and takes no bound model, matching
+        // the EventSignup/EventSeries precedent above. There is no EventOverviewViewModel
+        // map either; the controller assembles the container directly, exactly as
+        // CalendarController assembles CalendarViewModel by hand.
+        CreateMap<EventAvailabilityRow, EventOverviewRowViewModel>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.Event.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Event.Title))
+            .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Event.Date))
+            .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.Event.StartTime));
     }
 }

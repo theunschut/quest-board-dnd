@@ -7,6 +7,7 @@ using QuestBoard.Domain.Services;
 using QuestBoard.Service.ViewModels.EventViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace QuestBoard.Service.Controllers.Events;
 
@@ -18,8 +19,37 @@ public class EventsController(
     IMapper mapper,
     IEventSignupService eventSignupService,
     IBoardTypeResolver boardTypeResolver,
-    IEventSeriesService eventSeriesService) : Controller
+    IEventSeriesService eventSeriesService,
+    IOptions<EventsOverviewOptions> overviewOptions) : Controller
 {
+    // Read-only and available to every board member: the same per-event availability is
+    // already visible one event at a time on Details, so gating the aggregate would make
+    // public information restricted only because it is shown together. The page size is
+    // clamped server-side so a client-supplied value can never turn into an unbounded
+    // query, and there is deliberately no active-group check here -- an authenticated
+    // request with no active group is already redirected to the group picker upstream.
+    [HttpGet]
+    public async Task<IActionResult> Index(int? take = null, CancellationToken token = default)
+    {
+        var options = overviewOptions.Value;
+        var effectiveTake = Math.Clamp(take ?? options.DefaultTake, 1, options.MaxTake);
+
+        var overview = await eventService.GetAvailabilityOverviewAsync(effectiveTake, token);
+        var currentUser = await userService.GetUserAsync(User);
+
+        var viewModel = new EventOverviewViewModel
+        {
+            Members = mapper.Map<IList<OverviewMemberViewModel>>(overview.Members),
+            Rows = mapper.Map<IList<EventOverviewRowViewModel>>(overview.Rows),
+            HasMore = overview.HasMore,
+            Take = effectiveTake,
+            NextTake = Math.Min(effectiveTake + options.PageIncrement, options.MaxTake),
+            CurrentUserId = currentUser.Id
+        };
+
+        return View(viewModel);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Details(int id, CancellationToken token = default)
     {
