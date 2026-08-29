@@ -318,7 +318,7 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 4/10 plans complete (77-01..77-04 shipped; 77-05..77-10 close verification and review gaps)
+**Plans**: 8/10 plans executed
 
 Plans:
 **Wave 1**
@@ -336,10 +336,10 @@ Plans:
 
 **Gap closure — Wave 1** *(run with `/gsd-execute-phase 77 --gaps-only`)*
 
-- [ ] 77-05-PLAN.md — Mobile paging control, growth-gated Show More, inert roster and bounded cells (gap wave 1)
-- [ ] 77-06-PLAN.md — Own-column highlight specificity and frozen-column overlap (gap wave 1)
-- [ ] 77-07-PLAN.md — Injected UTC clock for the upcoming window and validated overview options (gap wave 1)
-- [ ] 77-08-PLAN.md — Navigation test documentation and shared fixture state restore (gap wave 1)
+- [x] 77-05-PLAN.md — Mobile paging control, growth-gated Show More, inert roster and bounded cells (gap wave 1)
+- [x] 77-06-PLAN.md — Own-column highlight specificity and frozen-column overlap (gap wave 1)
+- [x] 77-07-PLAN.md — Injected UTC clock for the upcoming window and validated overview options (gap wave 1)
+- [x] 77-08-PLAN.md — Navigation test documentation and shared fixture state restore (gap wave 1)
 
 **Gap closure — Wave 2** *(blocked on gap Wave 1)*
 
