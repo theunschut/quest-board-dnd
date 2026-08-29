@@ -12,8 +12,10 @@
    switch rather than a plain navigation, so the target has to be a small, explicit control
    a reader cannot hit by accident. Do not "restore consistency" with the overview's pattern. *@
 
+@* Full width rather than the availability overview's nine-column split: that page reserves the
+   remaining columns for its legend, and this one has no legend to put there. *@
 <div class="row">
-    <div class="col-lg-9 col-md-8">
+    <div class="col-12">
         <div class="card modern-card">
             <div class="card-header modern-card-header">
                 <h2 class="mb-0">
@@ -110,7 +112,7 @@
                                             }
                                             @if (row.IsActiveBoard)
                                             {
-                                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
+                                                <span class="badge bg-secondary">
                                                     <i class="fas fa-check-circle me-1"></i>Active
                                                 </span>
                                             }

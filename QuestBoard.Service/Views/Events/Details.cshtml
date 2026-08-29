@@ -23,9 +23,11 @@
    easy to get wrong and hard to notice when it is, so this is a plain link, not a board switch. *@
 @if (ViewBag.ReturnedFromAgenda == true)
 {
-    <div class="mb-2">
-        <a asp-controller="Agenda" asp-action="Index" class="text-decoration-none small">
-            <i class="fas fa-arrow-left me-1"></i>Back to My Agenda
+    @* A filled control rather than a bare link: this sits directly on the page background,
+       where the default link colour has too little contrast to read. *@
+    <div class="mb-3">
+        <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left me-2"></i>Back to My Agenda
         </a>
     </div>
 }

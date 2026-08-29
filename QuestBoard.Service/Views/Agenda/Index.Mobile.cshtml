@@ -100,7 +100,7 @@
                             </small>
                         </div>
                         <div class="text-end small">
-                            <div class="fw-semibold">@row.BoardName</div>
+                            <div class="fw-semibold agenda-board-name">@row.BoardName</div>
                             <div>
                                 @if (row.BoardType == BoardType.Campaign)
                                 {
@@ -112,7 +112,7 @@
                                 }
                                 @if (row.IsActiveBoard)
                                 {
-                                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
+                                    <span class="badge bg-secondary">
                                         <i class="fas fa-check-circle me-1"></i>Active
                                     </span>
                                 }
