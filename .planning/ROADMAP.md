@@ -508,7 +508,7 @@ Plans:
 **Goal**: A member who belongs to more than one board can see, in one place, every upcoming event they are expected at across all of their boards — with the board each event belongs to named on every row.
 **Depends on**: Phase 77 (inherits its cell vocabulary, its next-N-with-paging window, and its date-only lower bound; the aggregate read is a different query and a different tenancy mechanism)
 **Requirements**: EVTAGENDA-01, EVTAGENDA-02, EVTAGENDA-03, EVTAGENDA-04, EVTAGENDA-05, EVTAGENDA-06, EVTAGENDA-07, EVTAGENDA-08, EVTAGENDA-09, EVTAGENDA-10
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 Plans:
 **Wave 1**
@@ -527,7 +527,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 82-06-PLAN.md — Four-case cross-board tenant isolation suite, filter behaviour facts, and the phase-gate static audit
+- [x] 82-06-PLAN.md — Four-case cross-board tenant isolation suite, filter behaviour facts, and the phase-gate static audit
 
 **Origin:** raised by the operator during Phase 77's discuss pass (2026-08-29) and deliberately not folded into it. Phase 77's EVTVIEW-04 is *"never displays events or members from another board"*, and its success criterion 4 requires a two-group integration test proving exactly that. A cross-board mode on the same page would make one test both prove and disprove the same property depending on a toggle, so this is a separate surface rather than a flag.
 
