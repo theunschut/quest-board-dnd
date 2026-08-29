@@ -47,4 +47,16 @@ public interface IEventService : IBaseService<Event>
     /// distinction.
     /// </summary>
     Task<EventAvailabilityOverview> GetAvailabilityOverviewAsync(int take, CancellationToken token = default);
+
+    /// <summary>
+    /// Builds the next <paramref name="take"/> upcoming events across the boards named in
+    /// <paramref name="memberGroupIds"/> into a single chronologically ordered agenda, each row
+    /// carrying the viewer's own cell and the event's complete roster. Scoping comes entirely
+    /// from <paramref name="memberGroupIds"/>, which the caller reads fresh per request from the
+    /// viewer's own memberships -- an empty set is a legitimate input yielding an empty agenda,
+    /// not a short-circuited call. Every fetched row is re-checked against
+    /// <paramref name="memberGroupIds"/> before the window is trimmed, and any row outside that
+    /// set is dropped rather than surfaced.
+    /// </summary>
+    Task<CrossBoardAgenda> GetCrossBoardAgendaAsync(IReadOnlyCollection<int> memberGroupIds, int currentUserId, int take, CancellationToken token = default);
 }

@@ -73,6 +73,66 @@ internal class EventService(IEventRepository repository, IMapper mapper, TimePro
         };
     }
 
+    /// <inheritdoc/>
+    public async Task<CrossBoardAgenda> GetCrossBoardAgendaAsync(IReadOnlyCollection<int> memberGroupIds, int currentUserId, int take, CancellationToken token = default)
+    {
+        // Same clock and date shape as the availability overview: date-only, read in UTC
+        // through the injected clock rather than the local system clock.
+        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+
+        // Called unconditionally, including when memberGroupIds is empty -- a short-circuit
+        // here would hide a predicate regression exactly for the caller with no rights, and the
+        // repository contract already requires zero rows back for an empty set.
+        var fetched = await repository.GetUpcomingAcrossGroupsWithSignupsAsync(memberGroupIds, today, take + 1, token);
+
+        // Second-layer re-check, applied before the window is trimmed so the more-rows flag is
+        // computed from surviving rows only. This reads the same memberGroupIds list the query
+        // itself was built from, so it catches a dropped predicate or a bad translation of the
+        // containment test -- it does not catch a wrong membership set, because both checks
+        // trust the same input. It is deliberately weaker than the active-board guard used on
+        // the write paths, which compares against independent session state.
+        var checkedRows = fetched.Where(row => memberGroupIds.Contains(row.Event.GroupId)).ToList();
+
+        var hasMore = checkedRows.Count > take;
+        var windowed = hasMore ? checkedRows.Take(take).ToList() : checkedRows;
+
+        var rows = windowed.Select(row => BuildAgendaRow(row, currentUserId)).ToList();
+
+        return new CrossBoardAgenda
+        {
+            Rows = rows,
+            HasMore = hasMore
+        };
+    }
+
+    private static AgendaRow BuildAgendaRow(EventWithSignups eventWithSignups, int currentUserId)
+    {
+        var viewerSignup = eventWithSignups.Signups.FirstOrDefault(s => s.UserId == currentUserId);
+        var myCell = viewerSignup == null ? AvailabilityCellState.Empty : ClassifyCell(viewerSignup);
+
+        // Ordered in memory rather than in the query: an ordered include across a take-limited
+        // root is not expressible in the single round trip this read is required to be, and
+        // this sort runs over a handful of already-materialized rows per row of the agenda.
+        var roster = eventWithSignups.Signups
+            .OrderBy(s => s.UserName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.UserId)
+            .Select(s => new AgendaRosterEntry
+            {
+                UserId = s.UserId,
+                Name = s.UserName,
+                Cell = ClassifyCell(s),
+                IsViewer = s.UserId == currentUserId
+            })
+            .ToList();
+
+        return new AgendaRow
+        {
+            Event = eventWithSignups.Event,
+            MyCell = myCell,
+            Roster = roster
+        };
+    }
+
     private static EventAvailabilityRow BuildRow(EventWithSignups eventWithSignups, IReadOnlyList<AvailabilityMember> members)
     {
         var signupsByUserId = eventWithSignups.Signups.ToDictionary(s => s.UserId);
