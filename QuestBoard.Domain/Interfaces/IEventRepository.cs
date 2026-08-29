@@ -73,4 +73,20 @@ public interface IEventRepository : IBaseRepository<Event>
     /// start time is never dropped.
     /// </summary>
     Task<IList<EventWithSignups>> GetUpcomingWithSignupsAsync(DateOnly today, int take, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns the next <paramref name="take"/> live events dated on or after
+    /// <paramref name="today"/> across the boards named in <paramref name="memberGroupIds"/>,
+    /// each paired with every signup row and the signing member's name, in a single round
+    /// trip, ordered by date then start time then id across all of those boards together.
+    /// Unlike every other member of this interface, scoping here is not enforced by the
+    /// entity's query filter -- it comes entirely from <paramref name="memberGroupIds"/>,
+    /// which the caller must derive from a membership read taken this same request. An empty
+    /// collection is a legitimate input and must yield zero rows, never every board's rows.
+    /// A cancelled occurrence is excluded even though its signup rows still exist, and the
+    /// lower bound is date-only, so an event keeps its place for the whole of today
+    /// regardless of its start time and an all-day event with a null start time is never
+    /// dropped.
+    /// </summary>
+    Task<IList<EventWithSignups>> GetUpcomingAcrossGroupsWithSignupsAsync(IReadOnlyCollection<int> memberGroupIds, DateOnly today, int take, CancellationToken token = default);
 }
