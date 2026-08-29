@@ -48,7 +48,7 @@
                                 {
                                     <tr class="avail-row-clickable" onclick="window.location.href='@Url.Action("Details", "Events", new { id = row.EventId })'">
                                         <td class="avail-sticky-col avail-col-event">
-                                            <strong>@row.Title</strong><br />
+                                            <strong><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></strong><br />
                                             <small class="text-muted">
                                                 @row.Date.ToString("ddd, MMM d")
                                                 @if (row.StartTime.HasValue)
