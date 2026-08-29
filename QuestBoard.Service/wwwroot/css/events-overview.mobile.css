@@ -11,15 +11,16 @@
    -- so that a reader who cannot rely on color still sees it is a default, not a real
    answer. */
 
-/* The muted-Yes chip. Bootstrap 5.3's "-subtle"/"-emphasis" pair is already the
-   accessible-on-purpose variant of the success palette, so the hollow fill alone clears
-   the contrast floor with room to spare. The dashed border is a second, non-color signal
-   that survives greyscale and colour-blindness, where a fill-weight-only difference would
-   not. */
+/* The unconfirmed-Yes chip carries the same solid green as a confirmed Yes, because the
+   earlier hollow fill left its label too faint to read comfortably at a glance. The
+   distinction is therefore carried entirely by signals that survive greyscale and
+   colour-blindness rather than by fill weight: a dashed border here, plus the clock icon
+   and italic label in the markup. The border is drawn in white so the dashes stay legible
+   against the solid fill. */
 .avail-cell-yes-muted {
-    background-color: var(--bs-success-bg-subtle);
-    color: var(--bs-success-text-emphasis);
-    border: 1px dashed var(--bs-success-text-emphasis) !important;
+    background-color: var(--bs-success);
+    color: #fff;
+    border: 1px dashed rgba(255, 255, 255, 0.85) !important;
 }
 
 .avail-cell-yes-muted em {
