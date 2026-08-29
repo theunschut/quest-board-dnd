@@ -318,7 +318,7 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -332,7 +332,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 77-04-PLAN.md — Two-group tenant isolation test and phase-wide filter-bypass audit (wave 3)
+- [x] 77-04-PLAN.md — Two-group tenant isolation test and phase-wide filter-bypass audit (wave 3)
 
 **Success criteria:**
 
