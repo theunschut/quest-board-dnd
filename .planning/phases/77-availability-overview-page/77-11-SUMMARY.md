@@ -117,6 +117,15 @@ None - no external service configuration required.
 - A regression guard covering this styling contract (the phase's earlier gap report noted the button-convention test covers only the calendar views, and the UI safety gate did not enforce the UI-SPEC against this implementation) is explicitly deferred to plan 77-12, per the plan's own artifacts note. No blockers for that follow-on plan.
 - Full solution build succeeded and the full test suite passed (422 unit + 612 integration = 1034 total, 0 failures) before the final task commit.
 
+## Self-Check: PASSED
+
+- FOUND: `QuestBoard.Service/wwwroot/css/events-overview.mobile.css`
+- FOUND: `QuestBoard.Service/Views/Events/Index.Mobile.cshtml`
+- FOUND: `.planning/phases/77-availability-overview-page/77-11-SUMMARY.md`
+- FOUND commit `bc249924` (Task 1)
+- FOUND commit `24fc518e` (Task 2)
+- FOUND commit `4219d1f6` (Task 3)
+
 ---
 *Phase: 77-availability-overview-page*
 *Completed: 2026-08-29*
