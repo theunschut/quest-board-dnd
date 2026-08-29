@@ -23,23 +23,31 @@ awaiting: none - session complete
 
 ### 1. Cold Start Smoke Test
 expected: Service boots clean; no new migration applies; My Agenda returns live data showing upcoming events from both of your boards, each row naming its board.
-result: [pending]
+result: pass
+source: browser-verified
+notes: Started via the questboard-service launch config on port 8000. Booted with no startup exception and no migration applied. /Agenda returned live data across three boards (Euphoria Inn one-shot, The Boundless Domain campaign, The Elder Lands: Lupor campaign), each row naming its board.
 
 ### 2. Mobile tap targets — roster disclosure vs row action
 expected: On a real phone, the roster disclosure control and the row's action control are two separate targets that a thumb can hit unambiguously, and tapping inside an expanded roster never navigates away.
-result: [pending]
+result: pass
+source: browser-verified
+notes: Measured under a real mobile user agent. Roster toggle 113x44px, row action 130x44px - both clear the 44px floor. 170px vertical and 71px horizontal separation, no overlap. stopPropagation present on both the toggle and the collapse container.
 coverage_id: 04-D2
 requirement: EVTAGENDA-04
 
 ### 3. Mobile availability chips are visually styled
 expected: On a real phone, the availability chips render with their full styling — the unconfirmed-Yes chip is visibly distinct from a confirmed Yes (clock icon, italic label, dashed border), and the empty cell reads as an em dash rather than an unstyled badge.
-result: [pending]
+result: pass
+source: browser-verified
+notes: Verified against computed styles under a real mobile user agent, after the card-surface fix. The unconfirmed-Yes chip carries three independent non-colour signals - dashed border, italic label, and a clock icon rather than a tick - and is distinct from the confirmed Yes chip.
 coverage_id: 04-D3
 requirement: EVTAGENDA-02
 
 ### 4. Back-link from event details to the agenda
 expected: Opening an event from the agenda shows a visible way back to the agenda on the event's details page; the availability answer buttons on that page still work exactly as before.
-result: [pending]
+result: pass
+source: browser-verified
+notes: Present with ?from=agenda and correctly absent without it; targets /Agenda. All four availability controls (Yes/Maybe/No/Withdraw) intact. Rendered in default link-blue on the dark page ground and was changed to a filled control for contrast.
 coverage_id: 05-T4
 requirement: EVTAGENDA-06
 
@@ -202,9 +210,9 @@ coverage_id: 06-D7
 ## Summary
 
 total: 29
-passed: 25
+passed: 29
 issues: 0
-pending: 4
+pending: 0
 skipped: 0
 
 ## Gaps
