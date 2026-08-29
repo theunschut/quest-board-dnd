@@ -1,0 +1,33 @@
+/* ========================================
+   MY AGENDA STYLES (DESKTOP)
+   ======================================== */
+
+/* This stylesheet and its mobile sibling are a duplicated pair, not a shared file: the
+   mobile layout loads its own stylesheet set, so these rules are copied verbatim into both
+   files rather than factored out, the same reason events-overview.css and its own mobile
+   sibling already exist side by side. The cell chips themselves are not restyled here --
+   on desktop those rules already arrive from the globally-linked availability
+   stylesheet. */
+
+.agenda-row {
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(244, 228, 188, 0.15);
+}
+
+.agenda-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.agenda-roster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.agenda-roster-entry {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

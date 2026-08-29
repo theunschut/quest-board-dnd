@@ -2,6 +2,7 @@
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Domain.Models.Shop;
+using QuestBoard.Service.ViewModels.AgendaViewModels;
 using QuestBoard.Service.ViewModels.QuestViewModels;
 using QuestBoard.Service.ViewModels.ShopViewModels;
 using QuestBoard.Service.ViewModels.CharacterViewModels;
@@ -167,5 +168,26 @@ public class ViewModelProfile : Profile
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Event.Title))
             .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Event.Date))
             .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.Event.StartTime));
+
+        // AgendaRosterEntry to AgendaRosterEntryViewModel -- property names line up so no
+        // member configuration is needed.
+        CreateMap<AgendaRosterEntry, AgendaRosterEntryViewModel>();
+
+        // AgendaRow to AgendaRowViewModel -- deliberately no reverse map: the agenda page is
+        // read-only and takes no bound model, matching the availability overview precedent
+        // above. There is no AgendaViewModel container map either; the controller assembles
+        // it directly, exactly as the overview and calendar containers already do.
+        // BoardName, BoardType and IsActiveBoard are explicitly ignored here rather than left
+        // to convention -- none of the three exists on the source row, and they are set by
+        // the controller after mapping from its own membership read.
+        CreateMap<AgendaRow, AgendaRowViewModel>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.Event.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Event.Title))
+            .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Event.Date))
+            .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.Event.StartTime))
+            .ForMember(dest => dest.BoardId, opt => opt.MapFrom(src => src.Event.GroupId))
+            .ForMember(dest => dest.BoardName, opt => opt.Ignore())
+            .ForMember(dest => dest.BoardType, opt => opt.Ignore())
+            .ForMember(dest => dest.IsActiveBoard, opt => opt.Ignore());
     }
 }

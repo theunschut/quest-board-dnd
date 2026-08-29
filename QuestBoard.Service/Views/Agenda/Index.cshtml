@@ -1,0 +1,236 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.AgendaViewModels
+@model AgendaViewModel
+@{
+    ViewData["Title"] = "My Agenda";
+    var hasOtherBoardRow = Model.Rows.Any(r => !r.IsActiveBoard);
+}
+@* This page's row action deliberately does not follow the availability overview's
+   whole-row click target. Each row here also carries a full roster, and a full-row target
+   would swallow text selection inside it -- and here the consequence of a click is a board
+   switch rather than a plain navigation, so the target has to be a small, explicit control
+   a reader cannot hit by accident. Do not "restore consistency" with the overview's pattern. *@
+
+<div class="row">
+    <div class="col-lg-9 col-md-8">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-calendar-days text-purple me-2"></i>@ViewData["Title"]
+                </h2>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (Model.EmptyState == AgendaEmptyState.NoBoards)
+                {
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-calendar-xmark fa-3x mb-3"></i>
+                        <h5>No Boards Yet</h5>
+                        <p class="mb-0">You're not a member of any board yet. Once you join one, your upcoming events will appear here.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="dropdown mb-3">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                            <i class="fas fa-filter me-1"></i>Filter Boards
+                            <span class="badge bg-secondary ms-1">@Model.SelectedCount of @Model.TotalCount</span>
+                        </button>
+                        <div class="dropdown-menu p-3" style="min-width: 260px;">
+                            <p class="small text-muted mb-2">
+                                Choose which of your own boards to show. This never adds boards you don't belong to -- only narrows the ones shown.
+                            </p>
+                            <form asp-action="Index" method="get">
+                                <input type="hidden" name="boards" value="" />
+                                @foreach (var board in Model.AvailableBoards)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="boards" value="@board.Id"
+                                               id="board-@board.Id" checked="@board.IsSelected" />
+                                        <label class="form-check-label small" for="board-@board.Id">@board.Name</label>
+                                    </div>
+                                }
+                                <hr class="my-2" />
+                                <button type="submit" class="btn btn-primary btn-sm w-100">Apply</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    @if (Model.EmptyState == AgendaEmptyState.NoUpcomingEvents)
+                    {
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-calendar-alt fa-3x mb-3"></i>
+                            <h5>No Upcoming Events</h5>
+                            <p class="mb-0">None of your boards have anything scheduled yet. Once a DM schedules a session, it will appear here.</p>
+                        </div>
+                    }
+                    else if (Model.EmptyState == AgendaEmptyState.AllBoardsFiltered)
+                    {
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-filter-circle-xmark fa-3x mb-3"></i>
+                            <h5>All Boards Filtered Out</h5>
+                            <p class="mb-2">You've hidden every board from view. Adjust the filter above, or</p>
+                            <a asp-action="Index" asp-route-boards="all" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-rotate-left me-1"></i>Show All Boards
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="agenda-list">
+                            @foreach (var row in Model.Rows)
+                            {
+                                <div class="agenda-row">
+                                    <div class="d-flex justify-content-between align-items-start flex-wrap">
+                                        <div>
+                                            <strong class="fs-6">@row.Title</strong>
+                                            <div class="small text-muted">
+                                                @row.Date.ToString("ddd, MMM d")
+                                                @if (row.StartTime.HasValue)
+                                                {
+                                                    @:&middot; @row.StartTime.Value.ToString("HH:mm")
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="fw-semibold">@row.BoardName</span>
+                                            @if (row.BoardType == BoardType.Campaign)
+                                            {
+                                                <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1"></i>Campaign</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1"></i>One-Shot</span>
+                                            }
+                                            @if (row.IsActiveBoard)
+                                            {
+                                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
+                                                    <i class="fas fa-check-circle me-1"></i>Active
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-2 d-flex align-items-center gap-2">
+                                        <span class="small text-muted">Your answer:</span>
+                                        @await Html.PartialAsync("~/Views/Events/_AvailabilityCell.cshtml", row.MyCell)
+                                    </div>
+
+                                    <div class="agenda-roster mt-2">
+                                        <span class="small text-muted me-1">Roster:</span>
+                                        @foreach (var member in row.Roster)
+                                        {
+                                            <span class="agenda-roster-entry">
+                                                <span class="small @(member.IsViewer ? "fw-semibold" : "")">
+                                                    @member.Name@(member.IsViewer ? " (you)" : "")
+                                                </span>
+                                                @await Html.PartialAsync("~/Views/Events/_AvailabilityCell.cshtml", member.Cell)
+                                            </span>
+                                        }
+                                    </div>
+
+                                    <hr class="my-2" />
+                                    <div class="text-end">
+                                        @if (row.IsActiveBoard)
+                                        {
+                                            <a asp-controller="Events" asp-action="Details" asp-route-id="@row.EventId" asp-route-from="agenda"
+                                               class="btn btn-primary btn-sm">
+                                                <i class="fas fa-arrow-right me-1"></i>Open Event
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-primary btn-sm"
+                                                    data-bs-toggle="modal" data-bs-target="#switchBoardModal"
+                                                    data-group-id="@row.BoardId"
+                                                    data-board-name="@row.BoardName"
+                                                    data-return-url="@Url.Action("Details", "Events", new { id = row.EventId, from = "agenda" })">
+                                                <i class="fas fa-right-left me-1"></i>Switch &amp; Open
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        @if (Model.CanShowMore)
+                        {
+                            <div class="text-center mt-3">
+                                <a href="@Url.Action("Index", new { take = Model.NextTake, boards = Model.SelectedBoardIds })"
+                                   class="btn btn-primary">
+                                    <i class="fas fa-chevron-down me-2"></i>Show More Events
+                                </a>
+                            </div>
+                        }
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (hasOtherBoardRow)
+{
+    <div class="modal fade" id="switchBoardModal" tabindex="-1"
+         aria-labelledby="switchBoardModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light">
+                <form id="switchBoardForm" asp-controller="GroupPicker" asp-action="SelectGroup" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="groupId" id="switchBoardGroupId" />
+                    <input type="hidden" name="returnUrl" id="switchBoardReturnUrl" />
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title" id="switchBoardModalLabel">
+                            <i class="fas fa-right-left me-2"></i>
+                            Switch to <span id="switchBoardName"></span>?
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (Model.ActiveBoardName != null)
+                        {
+                            <p class="mb-0">
+                                Your active board is currently <strong>@Model.ActiveBoardName</strong>.
+                                Switching to <strong id="switchBoardNameInline"></strong> will change what you
+                                see everywhere else in the app -- quests, shop, gold, characters, and navigation
+                                will all reflect it until you switch again.
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="mb-0">
+                                You have no active board selected right now. Switching to
+                                <strong id="switchBoardNameInline"></strong> will change what you see everywhere
+                                else in the app -- quests, shop, gold, characters, and navigation will all reflect
+                                it until you switch again.
+                            </p>
+                        }
+                    </div>
+                    <div class="modal-footer border-secondary d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-right-left me-2"></i>Switch &amp; Continue
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('switchBoardModal');
+            if (modal) {
+                modal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    document.getElementById('switchBoardGroupId').value = button.getAttribute('data-group-id');
+                    document.getElementById('switchBoardReturnUrl').value = button.getAttribute('data-return-url');
+                    document.getElementById('switchBoardName').textContent = button.getAttribute('data-board-name');
+                    document.getElementById('switchBoardNameInline').textContent = button.getAttribute('data-board-name');
+                });
+            }
+        });
+    </script>
+}
