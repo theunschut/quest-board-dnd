@@ -141,3 +141,7 @@ None - no external service configuration required.
 ---
 *Phase: 77-availability-overview-page*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+All created/modified files verified present on disk; commits `1d8a6553`, `0c348958` verified in git log.
