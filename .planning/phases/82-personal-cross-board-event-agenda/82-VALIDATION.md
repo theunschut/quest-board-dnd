@@ -63,7 +63,7 @@ bypass; this phase inverts it and must prove the bypass is **bounded to exactly 
 | EVTAGENDA-09 | The four-case isolation suite: non-member board absent; two joined boards both present and a third absent; left board gone; filter cannot widen | 82-02 T2, 82-02 T3, 82-06 T1, 82-06 T2 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaTenantIsolationTests"` | ⬜ |
 | EVTAGENDA-10 | The page loads with no active board instead of redirecting to the picker | 82-03 T2, 82-03 T3 | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~AgendaControllerIntegrationTests"` | ⬜ |
 
-*Status column added by the planner alongside task IDs: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status column added by the planner alongside task IDs: ✅ green · ✅ green · ❌ red · ⚠️ flaky*
 
 ---
 
