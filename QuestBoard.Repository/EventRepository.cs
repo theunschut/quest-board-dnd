@@ -155,4 +155,37 @@ internal class EventRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
             })
             .ToList();
     }
+
+    /// <inheritdoc/>
+    public async Task<IList<EventWithSignups>> GetUpcomingAcrossGroupsWithSignupsAsync(IReadOnlyCollection<int> memberGroupIds, DateOnly today, int take, CancellationToken token = default)
+    {
+        // Scope is re-imposed immediately by memberGroupIds, supplied by the caller from a
+        // fresh membership read taken this same request -- this bypass is therefore strictly
+        // narrower than the ambient filter for any single board, never broader. Stepping
+        // outside the ambient filter here disables it for the whole query, including the
+        // Signups and User includes below; that is intended, because every included row hangs
+        // off an event whose GroupId is already pinned to memberGroupIds. A variant of this
+        // shape with no group predicate at all would be a different and unsafe thing -- see
+        // QuestRepository.GetQuestsForTomorrowAllGroupsAsync, which is a background-job read
+        // with no such predicate and is not a precedent for a user-facing read like this one.
+        var entities = await DbContext.Events
+            .IgnoreQueryFilters()
+            .Where(e => memberGroupIds.Contains(e.GroupId) && e.Date >= today && e.CancelledAt == null)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.StartTime)
+            .ThenBy(e => e.Id)
+            .Take(take)
+            .Include(e => e.Signups)
+                .ThenInclude(s => s.User)
+            .AsNoTracking()
+            .ToListAsync(token);
+
+        return entities
+            .Select(entity => new EventWithSignups
+            {
+                Event = Mapper.Map<Event>(entity),
+                Signups = Mapper.Map<List<EventSignup>>(entity.Signups)
+            })
+            .ToList();
+    }
 }
