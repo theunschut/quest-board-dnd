@@ -62,4 +62,15 @@ public interface IEventRepository : IBaseRepository<Event>
     /// ordered by date then start time, with no date predicate.
     /// </summary>
     Task<IList<Event>> GetOccurrencesForSeriesAsync(int seriesId, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns the next <paramref name="take"/> live events dated on or after
+    /// <paramref name="today"/>, each paired with every signup row and the signing member's
+    /// name, in a single round trip. Group scoping is enforced by the entity's query filter,
+    /// not by a parameter on this method. A cancelled occurrence is excluded even though its
+    /// signup rows still exist, and the lower bound is date-only, so an event keeps its place
+    /// for the whole of today regardless of its start time and an all-day event with a null
+    /// start time is never dropped.
+    /// </summary>
+    Task<IList<EventWithSignups>> GetUpcomingWithSignupsAsync(DateOnly today, int take, CancellationToken token = default);
 }
