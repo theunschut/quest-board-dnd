@@ -128,7 +128,7 @@ Two weights only on every new element: **400** for helper/body copy, **600** for
         else
         {
             <div class="contact-grid">
-                <!-- existing flat .contact-card loop, unchanged — D-10 -->
+                <!-- existing flat .contact-card loop, unchanged: a board with no categories renders exactly today's list -->
             </div>
         }
     </div>
@@ -178,7 +178,7 @@ else
 {
     <div class="contact-section-card mb-4">
         <h2 class="contact-section-heading mb-2"><i class="fas fa-address-book me-2"></i>Contacts</h2>
-        <!-- existing flat .contact-member-row loop, unchanged — D-10 -->
+        <!-- existing flat .contact-member-row loop, unchanged: a board with no categories renders exactly today's list -->
     </div>
 }
 ```
