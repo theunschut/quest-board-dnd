@@ -232,7 +232,7 @@ else
 
                     <hr class="my-2" />
                     <div class="text-end">
-                        <!-- D-12 explicit control, Component Spec 3 -->
+                        <!-- The row's only click target: a small explicit control, never the whole row -->
                     </div>
                 </div>
             }
@@ -403,7 +403,7 @@ Real `Agenda/Index.Mobile.cshtml`, user-agent selected exactly like Phase 77's m
 
     <hr class="my-2" />
     <div class="text-end">
-        <!-- D-12 explicit control, Component Spec 3 -->
+        <!-- The row's only click target: a small explicit control, never the whole row -->
     </div>
 </div>
 ```
