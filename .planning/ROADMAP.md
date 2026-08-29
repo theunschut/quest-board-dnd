@@ -318,7 +318,7 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 11/12 plans executed
+**Plans**: 12/12 plans complete
 
 Plans:
 **Wave 1**
@@ -355,7 +355,7 @@ Plans:
 
 **UAT gap closure — Wave 2** *(blocked on UAT gap Wave 1)*
 
-- [ ] 77-12-PLAN.md — Mobile overview styling-contract regression guard and validation map (UAT gap wave 2)
+- [x] 77-12-PLAN.md — Mobile overview styling-contract regression guard and validation map (UAT gap wave 2)
 
 **Success criteria:**
 
