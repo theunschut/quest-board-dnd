@@ -128,3 +128,10 @@ None - no external service configuration required.
 ---
 *Phase: 82-personal-cross-board-event-agenda*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/82-personal-cross-board-event-agenda/82-01-SUMMARY.md`
+- FOUND commit: `af9890ff`
+- FOUND commit: `e0cf32c4`
+- FOUND commit: `c9a0d095`
