@@ -56,6 +56,30 @@ created: 2026-08-29
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
+### Gap closure tasks (plans 77-05..77-10)
+
+> Added after verification returned `gaps_found` and the code review returned 1 critical /
+> 9 warnings / 8 info. Gap waves are numbered independently of the original 1–3 waves above.
+
+| Task ID | Plan | Gap wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
+|---------|------|----------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
+| 05-T1 | 77-05 | 1 | EVTVIEW-01 | T-77-02 | Paging is offered only when the next window is genuinely larger, so a clamped window never links to itself | build + static gate | `dotnet build QuestBoard.Service/QuestBoard.Service.csproj` + `grep -c 'Model.CanShowMore' QuestBoard.Service/Views/Events/Index.cshtml` == 1 | ✅ existing files | ⬜ pending |
+| 05-T2 | 77-05 | 1 | EVTVIEW-01 | T-77-02, T-77-09 | The mobile surface can reach every upcoming event; the expanded roster is inert to click-through | build + static gate | `dotnet build QuestBoard.Service/QuestBoard.Service.csproj` + `grep -c 'event.stopPropagation' QuestBoard.Service/Views/Events/Index.Mobile.cshtml` == 2 | ✅ existing files | ⬜ pending |
+| 06-T1 | 77-06 | 1 | EVTVIEW-01 | — | The viewer's own column is visually attributable rather than silently overpainted | static gate | `grep -c 'modern-card .table td\.avail-col-self' QuestBoard.Service/wwwroot/css/events-overview.css` == 1 | ✅ existing file | ⬜ pending |
+| 06-T2 | 77-06 | 1 | EVTVIEW-01 | T-77-13 | Frozen columns cannot overlap and misattribute a chip to the wrong member | static gate | `grep -c 'left: 200px' QuestBoard.Service/wwwroot/css/events-overview.css` == 0 | ✅ existing file | ⬜ pending |
+| 07-T1 | 77-07 | 1 | EVTVIEW-01 | T-77-14 | The upcoming-window boundary is read from an injected UTC clock and is pinnable to an exact instant | unit | `dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj --filter "FullyQualifiedName~EventsOverviewAggregationTests"` | ✅ extends existing file | ⬜ pending |
+| 07-T2 | 77-07 | 1 | EVTVIEW-01 | T-77-02 | An out-of-range page-size ceiling fails at application start; the clamp itself cannot throw | unit | `dotnet test QuestBoard.UnitTests/QuestBoard.UnitTests.csproj --filter "FullyQualifiedName~EventsOverviewOptionsValidationTests"` | ❌ created by 07-T2 | ⬜ pending |
+| 08-T1 | 77-08 | 1 | EVTVIEW-01 | — | Test documentation stays true independent of phase state; no tracking ids in source | static gate | `grep -c 'NAV-0' QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs` == 0 | ✅ existing file | ⬜ pending |
+| 08-T2 | 77-08 | 1 | EVTVIEW-01 | T-77-05, T-77-15 | Navigation gating evidence is not order-dependent | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~LayoutNavigationTests"` | ✅ existing file | ⬜ pending |
+| 09-T1 | 77-09 | 2 | EVTVIEW-01, EVTVIEW-02 | T-77-16 | The user-agent-selected mobile surface is actually rendered by tests | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~EventsOverviewControllerIntegrationTests"` | ✅ extends existing file | ⬜ pending |
+| 09-T2 | 77-09 | 2 | EVTVIEW-01, EVTVIEW-03 | T-77-02 | The page-size clamp and the three per-event figures are covered by assertions that fail when the control is removed | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~EventsOverview"` | ✅ existing file | ⬜ pending |
+| 09-T3 | 77-09 | 2 | EVTVIEW-04 | T-77-01 | The requirements ledger matches the verified tenant-isolation evidence | static gate | `grep -Ec '\| EVTVIEW-0[1-4] \| Phase 77 \| Complete \|' .planning/REQUIREMENTS.md` == 4 | ✅ existing file | ⬜ pending |
+| 10-T1 | 77-10 | 3 | EVTVIEW-01 | T-77-17 | Ownership-conditional destinations keep their conditional on the keyboard path | build + static gate | `dotnet build QuestBoard.Service/QuestBoard.Service.csproj` + `grep -c 'currentUserId.Value == quest.DungeonMaster?.Id' QuestBoard.Service/Views/Quest/Index.cshtml` == 2 | ✅ existing files | ⬜ pending |
+| 10-T2 | 77-10 | 3 | EVTVIEW-01 | T-77-18 | Mobile rows expose a focusable link without disturbing the paging control or the roster guard | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~EventsOverview"` | ✅ existing files | ⬜ pending |
+| 10-T3 | 77-10 | 3 | EVTVIEW-01 | T-77-17 | A focusable link to the same destination exists on a representative desktop and mobile surface | integration | `dotnet test QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj --filter "FullyQualifiedName~RowNavigationAccessibilityTests"` | ❌ created by 10-T3 | ⬜ pending |
+
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
 ---
 
 ## Wave 0 Requirements
