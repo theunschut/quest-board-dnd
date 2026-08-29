@@ -22,7 +22,10 @@ public static class ServiceExtensions
         services.AddOptions<EventSeriesOptions>().BindConfiguration(EventSeriesOptions.SectionName);
         // Same code-default-plus-configuration shape as EventSeriesOptions above: a
         // deployment with no matching configuration section still works.
-        services.AddOptions<EventsOverviewOptions>().BindConfiguration(EventsOverviewOptions.SectionName);
+        services.AddOptions<EventsOverviewOptions>()
+            .BindConfiguration(EventsOverviewOptions.SectionName)
+            .Validate(o => o.IsValid(), "EventsOverview DefaultTake, MaxTake and PageIncrement must each be at least 1, and DefaultTake must not exceed MaxTake.")
+            .ValidateOnStart();
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IEmailService, EmailService>();

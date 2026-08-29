@@ -28,11 +28,13 @@ public class EventsController(
     // clamped server-side so a client-supplied value can never turn into an unbounded
     // query, and there is deliberately no active-group check here -- an authenticated
     // request with no active group is already redirected to the group picker upstream.
+    // The configured ceiling is validated at application start; the floor below is a second,
+    // defensive layer so this clamp still cannot throw even if a host somehow bypasses that.
     [HttpGet]
     public async Task<IActionResult> Index(int? take = null, CancellationToken token = default)
     {
         var options = overviewOptions.Value;
-        var effectiveTake = Math.Clamp(take ?? options.DefaultTake, 1, options.MaxTake);
+        var effectiveTake = Math.Clamp(take ?? options.DefaultTake, 1, Math.Max(1, options.MaxTake));
 
         var overview = await eventService.GetAvailabilityOverviewAsync(effectiveTake, token);
         var currentUser = await userService.GetUserAsync(User);
