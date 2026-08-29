@@ -56,17 +56,21 @@ public class AgendaController(
         var boardsProvided = Request.Query.TryGetValue("boards", out var rawBoardsValues);
         var rawBoards = rawBoardsValues.ToString();
 
+        // The two sentinels below are compared with deliberately different rules. The reset
+        // sentinel arrives from a URL a reader can type or edit, so it is matched
+        // case-insensitively; the "none" marker is only ever written by the session write
+        // further down, so an exact ordinal match is both sufficient and stricter.
         List<int> requestedIds;
         if (!boardsProvided)
         {
             var stored = HttpContext.Session.GetString(SessionKeys.AgendaBoardFilter);
             requestedIds = stored == null
                 ? memberGroupIds
-                : stored == "none"
+                : string.Equals(stored, SessionKeys.AgendaBoardFilterNoneSentinel, StringComparison.Ordinal)
                     ? []
                     : ParseBoardIds(stored);
         }
-        else if (string.Equals(rawBoards, "all", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(rawBoards, SessionKeys.AgendaBoardFilterResetSentinel, StringComparison.OrdinalIgnoreCase))
         {
             // The reset control on the all-filtered-out empty state: clear the remembered
             // selection and fall back to showing every board again.
@@ -86,13 +90,15 @@ public class AgendaController(
         // query, and do not skip it on any branch.
         var effectiveGroupIds = requestedIds.Intersect(memberGroupIds).Distinct().ToList();
 
-        if (boardsProvided && !string.Equals(rawBoards, "all", StringComparison.OrdinalIgnoreCase))
+        if (boardsProvided && !string.Equals(rawBoards, SessionKeys.AgendaBoardFilterResetSentinel, StringComparison.OrdinalIgnoreCase))
         {
             // Store the intersected set, never the raw request, so a foreign id can never be
             // parked in session.
             HttpContext.Session.SetString(
                 SessionKeys.AgendaBoardFilter,
-                effectiveGroupIds.Count == 0 ? "none" : string.Join(',', effectiveGroupIds));
+                effectiveGroupIds.Count == 0
+                    ? SessionKeys.AgendaBoardFilterNoneSentinel
+                    : string.Join(',', effectiveGroupIds));
         }
 
         var agenda = await eventService.GetCrossBoardAgendaAsync(effectiveGroupIds, currentUser.Id, effectiveTake, token);
