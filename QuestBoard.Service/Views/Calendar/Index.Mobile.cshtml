@@ -30,6 +30,12 @@
         </a>
     </div>
 
+    <div class="d-grid mb-3">
+        <a asp-controller="Events" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-calendar-check me-2"></i>Availability Overview
+        </a>
+    </div>
+
     @* Low-runway warning — a player has no action to take on a scheduling warning, so this
        block is gated to managers only, matching the desktop calendar's banner. *@
     @if (Model.CanManage && Model.SeriesBelowRunway.Any())

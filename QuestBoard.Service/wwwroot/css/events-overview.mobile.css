@@ -1,0 +1,81 @@
+/* ========================================
+   AVAILABILITY OVERVIEW STYLES (MOBILE)
+   ======================================== */
+
+/* This stylesheet and its desktop sibling are a duplicated pair, not a shared file: the
+   mobile layout loads its own stylesheet set, so the cell-state and count rules below are
+   copied verbatim into both files rather than factored out, the same reason calendar.css
+   and calendar.mobile.css already exist side by side. The unconfirmed-default chip in
+   particular carries its distinguishing signal on purpose in more than one place -- a
+   dashed border here, an italic label and a clock icon in the markup that uses this class
+   -- so that a reader who cannot rely on color still sees it is a default, not a real
+   answer. */
+
+/* The muted-Yes chip. Bootstrap 5.3's "-subtle"/"-emphasis" pair is already the
+   accessible-on-purpose variant of the success palette, so the hollow fill alone clears
+   the contrast floor with room to spare. The dashed border is a second, non-color signal
+   that survives greyscale and colour-blindness, where a fill-weight-only difference would
+   not. */
+.avail-cell-yes-muted {
+    background-color: var(--bs-success-bg-subtle);
+    color: var(--bs-success-text-emphasis);
+    border: 1px dashed var(--bs-success-text-emphasis) !important;
+}
+
+.avail-cell-yes-muted em {
+    font-style: italic;
+}
+
+/* The empty cell is deliberately not a badge at all, so its shape alone already separates
+   "no signup exists" from every vote-bearing state before color is read. */
+.avail-cell-empty {
+    opacity: 0.55;
+    font-weight: 400;
+}
+
+.avail-count-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.avail-count-headline {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.avail-count-detail {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* Mobile per-event card, following the same rounded, translucent, tappable idiom as
+   .agenda-event-entry in calendar.mobile.css. */
+.avail-card {
+    background-color: #343a40;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    border-left: 3px solid rgba(255, 255, 255, 0.15);
+}
+
+.avail-card:active {
+    background-color: #495057;
+}
+
+.avail-card-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #F4E4BC;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* The roster toggle is a real tap target, so it reaches the 44px iOS/Android floor through
+   padding rather than through font size -- do not shrink it to fit the 4px spacing scale. */
+.avail-expand-toggle {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}

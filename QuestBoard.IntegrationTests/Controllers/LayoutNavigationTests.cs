@@ -301,4 +301,69 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>
             _factory.TestGroupContext.BoardType = previousBoardType;
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Availability Overview nav entry — these assert the new entry itself,
+    // while the existing Calendar cases above assert the toggle label they
+    // sit beside is unchanged. Present for DM and player on both board
+    // types and both user agents, absent for an anonymous visitor.
+    // -----------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignDm_AvailabilityOverviewLinkPresent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            _factory, "navavail_dm", "navavail_dm@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Availability Overview");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignPlayer_AvailabilityOverviewLinkPresent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "navavail_player", "navavail_player@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Availability Overview");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_OneShotPlayer_AvailabilityOverviewLinkPresent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.OneShot;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "navavail_oneshot", "navavail_oneshot@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Availability Overview");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignAnonymous_AvailabilityOverviewLinkAbsent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+
+        var (response, html) = await GetWithUserAgentAsync("/", userAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("Availability Overview");
+    }
 }

@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/modern-card.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/events-overview.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/quests.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/characters.css" asp-append-version="true" />
@@ -167,10 +168,22 @@
                                unresolved board type is deliberately excluded rather than guessed at. *@
                             if (activeBoardType is BoardType.OneShot or BoardType.Campaign)
                             {
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-controller="Calendar" asp-action="Index">
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="calendarDropdown" role="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-calendar-alt me-1"></i>Calendar
                                     </a>
+                                    <ul class="dropdown-menu" aria-labelledby="calendarDropdown">
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Calendar" asp-action="Index">
+                                                <i class="fas fa-calendar-alt me-2"></i>Calendar
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Events" asp-action="Index">
+                                                <i class="fas fa-calendar-check me-2"></i>Availability Overview
+                                            </a>
+                                        </li>
+                                    </ul>
                                 </li>
                             }
 
