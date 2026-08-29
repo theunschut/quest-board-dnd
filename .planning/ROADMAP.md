@@ -318,7 +318,7 @@ Plans:
 **Goal**: A DM can see, in one place, who is available for which upcoming events — and tell a real answer apart from an untouched default.
 **Depends on**: Phase 75 (and most valuable once Phase 76 populates it with recurring sessions)
 **Requirements**: EVTVIEW-01, EVTVIEW-02, EVTVIEW-03, EVTVIEW-04
-**Plans**: 8/10 plans executed
+**Plans**: 9/10 plans executed
 
 Plans:
 **Wave 1**
@@ -343,7 +343,7 @@ Plans:
 
 **Gap closure — Wave 2** *(blocked on gap Wave 1)*
 
-- [ ] 77-09-PLAN.md — Mobile-user-agent rendering coverage, clamp/count assertions that can fail, requirements traceability (gap wave 2)
+- [x] 77-09-PLAN.md — Mobile-user-agent rendering coverage, clamp/count assertions that can fail, requirements traceability (gap wave 2)
 
 **Gap closure — Wave 3** *(blocked on gap Wave 2)*
 
