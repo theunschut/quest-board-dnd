@@ -163,6 +163,15 @@ None - no external service configuration required.
 - The `.row-nav-link` class and the wrap-only-the-primary-text-node pattern are available for any future clickable row/card so the mouse-only idiom is not reintroduced.
 - Human spot-check of keyboard tab order and focus-ring visibility on the availability overview and quest index is recorded for `/gsd-verify-work` per the plan's `<verification>` section; it does not block this plan's completion.
 
+## Self-Check: PASSED
+
+- FOUND: `QuestBoard.IntegrationTests/Controllers/RowNavigationAccessibilityTests.cs`
+- FOUND: `.planning/phases/77-availability-overview-page/77-10-SUMMARY.md`
+- FOUND: `row-nav-link` in `QuestBoard.Service/wwwroot/css/modern-card.css`
+- FOUND commit `8172e179` (Task 1)
+- FOUND commit `a146d8d3` (Task 2)
+- FOUND commit `32583cfa` (Task 3)
+
 ---
 *Phase: 77-availability-overview-page*
 *Completed: 2026-08-29*
