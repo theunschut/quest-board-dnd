@@ -14,9 +14,18 @@ namespace QuestBoard.UnitTests.Services;
 // each other, and HasMore never costs a second query.
 public class EventsOverviewAggregationTests
 {
-    private static EventService CreateService(IEventRepository repository)
+    private static readonly DateTimeOffset DefaultClockInstant = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    // Hand-written rather than a testing-time-provider package, so the fixed clock costs no
+    // new dependency: this phase's package legitimacy position is that it installs nothing.
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
-        return new EventService(repository, Substitute.For<IMapper>());
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private static EventService CreateService(IEventRepository repository, DateTimeOffset? now = null)
+    {
+        return new EventService(repository, Substitute.For<IMapper>(), new FixedTimeProvider(now ?? DefaultClockInstant));
     }
 
     private static EventSignup Signup(int userId, string userName, VoteType availability, bool hasAnswered)
@@ -243,20 +252,46 @@ public class EventsOverviewAggregationTests
     }
 
     [Fact]
-    public async Task EventsOverviewAggregation_RequestsTakePlusOneFromRepository_AndTodayDateOnly()
+    public async Task EventsOverviewAggregation_RequestsTakePlusOneFromRepository_AndUtcDateOnly()
     {
-        // Arrange
+        // Arrange: a fixed instant, so the assertion pins an exact DateOnly instead of
+        // recomputing the expression the implementation uses.
         var repository = Substitute.For<IEventRepository>();
         repository.GetUpcomingWithSignupsAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        var service = CreateService(repository);
-        var expectedToday = DateOnly.FromDateTime(DateTime.Today);
+        var fixedInstant = new DateTimeOffset(2026, 3, 15, 12, 0, 0, TimeSpan.Zero);
+        var service = CreateService(repository, fixedInstant);
 
         // Act
         await service.GetAvailabilityOverviewAsync(10, TestContext.Current.CancellationToken);
 
         // Assert
-        await repository.Received(1).GetUpcomingWithSignupsAsync(expectedToday, 11, Arg.Any<CancellationToken>());
+        await repository.Received(1).GetUpcomingWithSignupsAsync(new DateOnly(2026, 3, 15), 11, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EventsOverviewAggregation_UpcomingBoundary_AdvancesExactlyAtUtcMidnight()
+    {
+        // Arrange: one clock a minute before UTC midnight, one a minute after. If the service
+        // ever reverts to reading a non-UTC clock, this fails on any host whose local offset is
+        // non-zero.
+        var beforeMidnightRepository = Substitute.For<IEventRepository>();
+        beforeMidnightRepository.GetUpcomingWithSignupsAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        var beforeMidnightService = CreateService(beforeMidnightRepository, new DateTimeOffset(2026, 3, 1, 23, 59, 0, TimeSpan.Zero));
+
+        var afterMidnightRepository = Substitute.For<IEventRepository>();
+        afterMidnightRepository.GetUpcomingWithSignupsAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        var afterMidnightService = CreateService(afterMidnightRepository, new DateTimeOffset(2026, 3, 2, 0, 1, 0, TimeSpan.Zero));
+
+        // Act
+        await beforeMidnightService.GetAvailabilityOverviewAsync(10, TestContext.Current.CancellationToken);
+        await afterMidnightService.GetAvailabilityOverviewAsync(10, TestContext.Current.CancellationToken);
+
+        // Assert
+        await beforeMidnightRepository.Received(1).GetUpcomingWithSignupsAsync(new DateOnly(2026, 3, 1), 11, Arg.Any<CancellationToken>());
+        await afterMidnightRepository.Received(1).GetUpcomingWithSignupsAsync(new DateOnly(2026, 3, 2), 11, Arg.Any<CancellationToken>());
     }
 
     [Fact]

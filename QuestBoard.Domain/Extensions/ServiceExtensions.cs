@@ -3,6 +3,7 @@ using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace QuestBoard.Domain.Extensions;
 
@@ -10,6 +11,10 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddDomainServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // The system clock is registered here so the domain reads time through an injectable
+        // seam rather than a static call.
+        services.TryAddSingleton(TimeProvider.System);
+
         services.AddOptions<EmailSettings>().BindConfiguration("EmailSettings");
         // A code default (runway 20, preview 10) keeps the feature working on a deployment with
         // no matching configuration section -- nothing has to change on a server environment
