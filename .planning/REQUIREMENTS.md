@@ -108,6 +108,24 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **LINKCARD-05**: The signed image endpoint enforces a size cap and cache headers, and falls back to the branded image when the entity has no portrait
 - [ ] **LINKCARD-06**: The character card shows name, level, and class; the contact card shows name and location — and neither exposes backstory, description, or notes
 
+### Contact Categories
+
+- [ ] **CONTACTCAT-01**: A DungeonMaster-tier user can create a named category from a dedicated Manage Categories page reached from a button on the Contacts index, and the category belongs to the board it was created on
+- [ ] **CONTACTCAT-02**: A contact belongs to exactly one category or to none, assigned from a single dropdown with a blank "— None —" option on the contact Create and Edit forms on both desktop and mobile
+- [ ] **CONTACTCAT-03**: A DungeonMaster-tier user can rename and delete a category, and deleting a category that still holds contacts moves those contacts to Ungrouped rather than deleting them or blocking the delete
+- [ ] **CONTACTCAT-04**: Category names are unique per board, compared case-insensitively, and a duplicate submission returns a validation message on the form rather than an unhandled server error
+- [ ] **CONTACTCAT-05**: Every category read and write is scoped to the active board by the global query filter, a request with no active board resolves zero categories, and no application code path bypasses the filter
+- [ ] **CONTACTCAT-06**: Only DungeonMaster-tier users can create, rename, delete, or reorder categories, enforced server-side so a player who guesses the URL is refused
+- [ ] **CONTACTCAT-07**: A DungeonMaster-tier user can reorder categories with up and down controls on the Manage Categories page, and the Contacts index renders headings in that order rather than alphabetically
+- [ ] **CONTACTCAT-08**: The Manage Categories page ships as both a desktop and a mobile view, and the mobile view is proven to be the one actually selected under a real mobile User-Agent
+- [ ] **CONTACTCAT-09**: The Contacts index renders contacts under their category headings on both desktop and mobile, with contacts sorted alphabetically by name within each heading
+- [ ] **CONTACTCAT-10**: Contacts with no category render under a synthetic "Ungrouped" heading that is pinned after every real category and is neither renameable nor orderable
+- [ ] **CONTACTCAT-11**: A board with no categories renders the flat contact list exactly as it renders today, with no category headings at all including no Ungrouped heading
+- [ ] **CONTACTCAT-12**: A category heading renders only when at least one contact beneath it is visible to the viewer, and the heading carries the category name alone with no contact count
+- [ ] **CONTACTCAT-13**: A category name is stored with a 60-character cap and rendered as plain escaped text, never routed through the Markdown pipeline
+- [ ] **CONTACTCAT-14**: A contact's category is shown on the contact Details view on both desktop and mobile, and a contact with no category shows no category line at all
+- [ ] **CONTACTCAT-15**: On a board with no categories, the contact Create and Edit forms render the category select disabled with helper text linking to the Manage Categories page
+
 ## Future Requirements
 
 Deferred — revisit if the need becomes real.
@@ -208,11 +226,26 @@ Explicit exclusions for v9.0, with reasoning.
 | EVTAGENDA-08 | Phase 82 | Not started |
 | EVTAGENDA-09 | Phase 82 | Not started |
 | EVTAGENDA-10 | Phase 82 | Not started |
+| CONTACTCAT-01 | Phase 80 | Not started |
+| CONTACTCAT-02 | Phase 80 | Not started |
+| CONTACTCAT-03 | Phase 80 | Not started |
+| CONTACTCAT-04 | Phase 80 | Not started |
+| CONTACTCAT-05 | Phase 80 | Not started |
+| CONTACTCAT-06 | Phase 80 | Not started |
+| CONTACTCAT-07 | Phase 80 | Not started |
+| CONTACTCAT-08 | Phase 80 | Not started |
+| CONTACTCAT-09 | Phase 80 | Not started |
+| CONTACTCAT-10 | Phase 80 | Not started |
+| CONTACTCAT-11 | Phase 80 | Not started |
+| CONTACTCAT-12 | Phase 80 | Not started |
+| CONTACTCAT-13 | Phase 80 | Not started |
+| CONTACTCAT-14 | Phase 80 | Not started |
+| CONTACTCAT-15 | Phase 80 | Not started |
 
 **Coverage:**
 
-- v1 requirements: 60 total
-- Mapped to phases: 60/60 ✓
+- v1 requirements: 75 total
+- Mapped to phases: 75/75 ✓
 - Unmapped: 0
 
 ---

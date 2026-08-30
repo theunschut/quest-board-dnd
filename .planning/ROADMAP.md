@@ -478,8 +478,35 @@ Plans:
 
 **Goal**: A DM can group the board's NPCs under named categories — "Corridor", "Guild Members", "Last Bastion" — and the Contacts index renders them under those headings instead of one flat list, on both desktop and mobile.
 **Depends on**: Nothing (independent of the events chain 74–77 and the link-preview chain 78–79; touches only the Contacts feature)
-**Requirements**: TBD
-**Plans**: TBD (run `/gsd-plan-phase 80`)
+**Requirements**: CONTACTCAT-01, CONTACTCAT-02, CONTACTCAT-03, CONTACTCAT-04, CONTACTCAT-05, CONTACTCAT-06, CONTACTCAT-07, CONTACTCAT-08, CONTACTCAT-09, CONTACTCAT-10, CONTACTCAT-11, CONTACTCAT-12, CONTACTCAT-13, CONTACTCAT-14, CONTACTCAT-15
+**Plans**: 8 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 80-01-PLAN.md — Mint the CONTACTCAT requirement family and complete the phase validation contract (wave 1)
+- [ ] 80-02-PLAN.md — ContactCategory entity, schema, migration, and the test seeding helper (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 80-03-PLAN.md — Category repository, service, DI wiring, and the unit suite (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 80-04-PLAN.md — View models, AutoMapper wiring, and category CSS (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 80-05-PLAN.md — Manage Categories controller, desktop and mobile views, and the management integration suite (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 80-06-PLAN.md — Grouped Contacts index on both platforms plus the suppression and ordering suite (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 80-07-PLAN.md — Category assignment on the four Create/Edit forms plus the cross-group isolation suite (wave 6)
+- [ ] 80-08-PLAN.md — Category on both Details views plus the real-User-Agent mobile render suite (wave 6)
 
 **Origin:** operator-relayed feature request from a board user, 2026-08-27 — "Misschien leuk … om NPC's in categorieën te kunnen onderverdelen? Dat ik verschillende kopjes/categorieën kan maken om de boel wat overzichtelijk te houden."
 
@@ -650,6 +677,21 @@ Plans:
 | LINKCARD-04 | Phase 79 |
 | LINKCARD-05 | Phase 79 |
 | LINKCARD-06 | Phase 79 |
+| CONTACTCAT-01 | Phase 80 |
+| CONTACTCAT-02 | Phase 80 |
+| CONTACTCAT-03 | Phase 80 |
+| CONTACTCAT-04 | Phase 80 |
+| CONTACTCAT-05 | Phase 80 |
+| CONTACTCAT-06 | Phase 80 |
+| CONTACTCAT-07 | Phase 80 |
+| CONTACTCAT-08 | Phase 80 |
+| CONTACTCAT-09 | Phase 80 |
+| CONTACTCAT-10 | Phase 80 |
+| CONTACTCAT-11 | Phase 80 |
+| CONTACTCAT-12 | Phase 80 |
+| CONTACTCAT-13 | Phase 80 |
+| CONTACTCAT-14 | Phase 80 |
+| CONTACTCAT-15 | Phase 80 |
 | EVTAGENDA-01 | Phase 82 |
 | EVTAGENDA-02 | Phase 82 |
 | EVTAGENDA-03 | Phase 82 |
