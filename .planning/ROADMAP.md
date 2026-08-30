@@ -678,7 +678,7 @@ Phases 72 and 73 needed no research step — both were researched to implementat
 **Goal**: The two availability surfaces say what they are and sit where the people who need them will look — the cross-board personal view and the board-scoped grid stop competing for the same reader.
 **Requirements**: TBD
 **Depends on**: Phase 82 (both surfaces must exist before they can be named against each other)
-**Plans**: TBD (run `/gsd-plan-phase 83`)
+**Plans**: 1/4 plans executed
 
 **Origin:** raised by the operator on 2026-08-30, immediately after Phase 82's UAT. Once the personal agenda shipped, the board-scoped overview from Phase 77 felt redundant to players, and its name — "Availability Overview" — reads as though it covers everything on the board rather than events only.
 
@@ -701,6 +701,11 @@ Phases 72 and 73 needed no research step — both were researched to implementat
 - **Renaming only the visible label.** The route, controller, view folder, page title, cross-link copy, nav entry, and the tests that assert on the old string all carry the name. A partial rename leaves two names for one page.
 
 Plans:
+
+- [x] 83-01-PLAN.md
+- [ ] 83-02-PLAN.md
+- [ ] 83-03-PLAN.md
+- [ ] 83-04-PLAN.md
 
 - [ ] TBD (run /gsd-plan-phase 83 to break down)
 
