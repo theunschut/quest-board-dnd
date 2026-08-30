@@ -59,7 +59,7 @@ Out of scope: renaming or merging tags, any tag management page, tags on Charact
 
 ### Filter semantics and state
 
-- **D-08: OR semantics — a contact matches if it carries *any* selected tag.** Ticking "shopkeeper" and "quest giver" merges both groups. This settles the ROADMAP's stated open question. Identical to how `ShopController`'s rarity checkboxes already behave, so the codebase keeps one filter idiom; ticking more boxes widens the result, which is what a checkbox list leads people to expect.
+- **D-08: OR semantics — a contact matches if it carries any of the selected tags.** Ticking "shopkeeper" and "quest giver" merges both groups. This settles the ROADMAP's stated open question. Identical to how `ShopController`'s rarity checkboxes already behave, so the codebase keeps one filter idiom; ticking more boxes widens the result, which is what a checkbox list leads people to expect.
 
 - **D-09: Filter state lives in the query string as repeated tag ids — `?tag=3&tag=7`** — bound exactly the way `ShopController.Index` binds `IList<ItemRarity>? rarity`, with no manual parsing. Ids, not names: a name has no stability guarantee and would need case-insensitive lookup on every request.
 
