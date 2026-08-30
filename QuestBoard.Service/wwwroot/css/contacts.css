@@ -257,3 +257,36 @@
 .contacts-page .contact-card:active::after {
     animation: contact-card-ripple 0.6s ease-out;
 }
+
+/* ========================================
+   CONTACTS - CATEGORY HEADINGS
+   ======================================== */
+
+.contacts-page .category-block + .category-block {
+    margin-top: 2rem; /* a stronger break than the 24px gap inside a contact grid */
+}
+
+.contacts-page .category-heading {
+    font-family: 'Cinzel', serif;
+    font-size: 1.25rem;
+    letter-spacing: 0.02em;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid rgba(255, 193, 7, 0.4); /* echoes the contact card's own border color */
+    overflow-wrap: break-word; /* lets a single unbroken long name wrap instead of overflowing */
+}
+
+.contacts-page .category-heading i {
+    color: #ffc107;
+}
+
+/* Ungrouped heading: same element and size, muted via opacity so it does not fight the
+   shared card stylesheet's forced heading color with an !important of its own. */
+.contacts-page .category-heading-ungrouped {
+    font-style: italic;
+    opacity: 0.75;
+}
+
+.contacts-page .category-heading-ungrouped i {
+    color: rgba(244, 228, 188, 0.6);
+}
