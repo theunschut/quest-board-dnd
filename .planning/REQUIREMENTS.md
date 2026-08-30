@@ -87,6 +87,16 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **EVTAGENDA-09**: The agenda never shows another board's events or members, and the board filter can only narrow the viewer's own memberships, never widen them
 - [x] **EVTAGENDA-10**: The agenda page loads for an authenticated user who has no active board selected, rather than diverting them to the board picker
 
+### Availability Surface Naming and Placement
+
+- [ ] **EVTNAME-01**: The board-scoped availability page is called "Board Availability" everywhere a reader meets it — browser tab title, card heading, navigation entry, and both cross-link buttons — and the retired label survives in no rendered page on either layout
+- [ ] **EVTNAME-02**: Board Availability carries a subtitle under its heading naming the active board and stating that the page covers events rather than quests, with a defined fallback when no board name is in session
+- [ ] **EVTNAME-03**: My Agenda keeps its name and carries a matching subtitle stating its cross-board, events-only scope, so the two surfaces read as a deliberate pair rather than as two unrelated pages
+- [ ] **EVTNAME-04**: Board Availability's navigation entry sits inside the Dungeon Master menu directly after Create Event on both the desktop and the mobile layout, behind both the Dungeon Master policy and the existing resolved-board-type condition
+- [ ] **EVTNAME-05**: Every discoverable route to Board Availability — the navigation entry and the Calendar page's cross-link — renders only for a Dungeon Master on both layouts; a player's remaining route is a bookmark or a shared URL
+- [ ] **EVTNAME-06**: The two header cross-buttons between Board Availability and My Agenda render only for a Dungeon Master, in both directions and on both layouts, while the unconditional My Agenda entry in each layout's user menu stays visible to every authenticated user
+- [ ] **EVTNAME-07**: Board Availability itself keeps no authorization gate — a player who reaches it still receives a normal 200 and the full grid, proven by an automated case rather than assumed from the absence of an attribute
+
 ### Link Previews — Foundation and Quests
 
 - [ ] **LINKPREV-01**: The app generates correct absolute URLs behind the reverse proxy, honouring forwarded scheme and host
@@ -241,11 +251,18 @@ Explicit exclusions for v9.0, with reasoning.
 | CONTACTCAT-13 | Phase 80 | Not started |
 | CONTACTCAT-14 | Phase 80 | Not started |
 | CONTACTCAT-15 | Phase 80 | Not started |
+| EVTNAME-01 | Phase 83 | Not started |
+| EVTNAME-02 | Phase 83 | Not started |
+| EVTNAME-03 | Phase 83 | Not started |
+| EVTNAME-04 | Phase 83 | Not started |
+| EVTNAME-05 | Phase 83 | Not started |
+| EVTNAME-06 | Phase 83 | Not started |
+| EVTNAME-07 | Phase 83 | Not started |
 
 **Coverage:**
 
-- v1 requirements: 75 total
-- Mapped to phases: 75/75 ✓
+- v1 requirements: 82 total
+- Mapped to phases: 82/82 ✓
 - Unmapped: 0
 
 ---

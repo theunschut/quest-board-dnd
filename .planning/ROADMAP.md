@@ -702,8 +702,15 @@ Plans:
 | EVTAGENDA-08 | Phase 82 |
 | EVTAGENDA-09 | Phase 82 |
 | EVTAGENDA-10 | Phase 82 |
+| EVTNAME-01 | Phase 83 |
+| EVTNAME-02 | Phase 83 |
+| EVTNAME-03 | Phase 83 |
+| EVTNAME-04 | Phase 83 |
+| EVTNAME-05 | Phase 83 |
+| EVTNAME-06 | Phase 83 |
+| EVTNAME-07 | Phase 83 |
 
-**Coverage:** 60/60 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
+**Coverage:** 82/82 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
 
 ## Research Flags
 
@@ -718,9 +725,9 @@ Phases 72 and 73 needed no research step — both were researched to implementat
 ### Phase 83: Availability Surface Naming and Placement
 
 **Goal**: The two availability surfaces say what they are and sit where the people who need them will look — the cross-board personal view and the board-scoped grid stop competing for the same reader.
-**Requirements**: TBD
+**Requirements**: EVTNAME-01, EVTNAME-02, EVTNAME-03, EVTNAME-04, EVTNAME-05, EVTNAME-06, EVTNAME-07
 **Depends on**: Phase 82 (both surfaces must exist before they can be named against each other)
-**Plans**: 2/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Origin:** raised by the operator on 2026-08-30, immediately after Phase 82's UAT. Once the personal agenda shipped, the board-scoped overview from Phase 77 felt redundant to players, and its name — "Availability Overview" — reads as though it covers everything on the board rather than events only.
 
@@ -744,12 +751,15 @@ Phases 72 and 73 needed no research step — both were researched to implementat
 
 Plans:
 
-- [x] 83-01-PLAN.md
-- [x] 83-02-PLAN.md
-- [ ] 83-03-PLAN.md
-- [ ] 83-04-PLAN.md
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 83 to break down)
+- [x] 83-01-PLAN.md — Rename and subtitle the Board Availability page on both layouts, gate its My Agenda header button to Dungeon Masters, and add the shared header-subtitle style rule (wave 1)
+- [x] 83-02-PLAN.md — My Agenda's matching subtitle and Dungeon-Master-only return link, the renamed and gated Calendar cross-link, and the re-seeded Calendar button test class (wave 1)
+- [x] 83-03-PLAN.md — Move the navigation entry into the Dungeon Master menu on both layouts, collapse the desktop Calendar dropdown, and replace the four role-blind navigation cases with the six role-flip theories (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 83-04-PLAN.md — Player reachability case for the deliberately open page, the retired-label guard class across all three surfaces, and the requirement and roadmap ledger close-out (wave 2)
 
 ---
 *Roadmap created: 2026-08-25*
