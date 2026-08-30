@@ -870,4 +870,219 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
             factory.TestGroupContext.ActiveGroupId = 1;
         }
     }
+
+    // (10) Category grouping on the index: a heading never renders for a category the viewer
+    // cannot see anything under, headings follow the DM's sort order with Ungrouped last, and a
+    // board with no categories renders exactly today's flat list.
+
+    // TestDataHelper.CreateTestContactAsync has no categoryId parameter -- it predates category
+    // grouping. Stamping CategoryId directly through a fresh scope keeps this file's category
+    // seeding self-contained without changing a helper other suites also rely on.
+    private static async Task AssignContactCategoryAsync(IServiceProvider services, int contactId, int categoryId)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var contact = await context.Contacts.SingleAsync(c => c.Id == contactId);
+        contact.CategoryId = categoryId;
+        await context.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task ContactCategory_EmptyHeadingSuppression_PlayerNeverSeesHeadingForUnrevealedOnlyCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_dm", "cat_suppress_dm@example.com", roles: ["DungeonMaster"]);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Secret Cabal", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Cabalist", groupId: 1, isRevealed: false);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_player", "cat_suppress_player@example.com", roles: ["Player"]);
+
+        var response = await playerClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain("Secret Cabal");
+    }
+
+    [Fact]
+    public async Task ContactCategory_EmptyHeadingSuppression_DmWithHiddenToggleOnSeesHeading()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (_, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleon_dm", "cat_suppress_toggleon_dm@example.com", roles: ["DungeonMaster"]);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Whispering Court", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Courtier", groupId: 1, isRevealed: false);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var (otherDmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleon_other", "cat_suppress_toggleon_other@example.com", roles: ["DungeonMaster"]);
+
+        var toggleResponse = await otherDmClient.PostAsync(
+            "/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]), TestContext.Current.CancellationToken);
+        toggleResponse.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+
+        var response = await otherDmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Whispering Court");
+    }
+
+    [Fact]
+    public async Task ContactCategory_EmptyHeadingSuppression_DmWithHiddenToggleOffDoesNotSeeHeading()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (_, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleoff_dm", "cat_suppress_toggleoff_dm@example.com", roles: ["DungeonMaster"]);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Shadow Conclave", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Shadow Agent", groupId: 1, isRevealed: false);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var (otherDmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleoff_other", "cat_suppress_toggleoff_other@example.com", roles: ["DungeonMaster"]);
+
+        var response = await otherDmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain("Shadow Conclave");
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_FollowsSortPositionNotAlphabet()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_sort_dm", "cat_order_sort_dm@example.com", roles: ["DungeonMaster"]);
+
+        // Sort position deliberately reversed from alphabetical order: "Zenith Guild" is first by
+        // SortOrder even though "Alley Cats" comes first alphabetically.
+        var zenith = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Zenith Guild", sortOrder: 0, groupId: 1);
+        var alley = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Alley Cats", sortOrder: 1, groupId: 1);
+        var zenithContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Zenith Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, zenithContact.Id, zenith.Id);
+        var alleyContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Alley Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, alleyContact.Id, alley.Id);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var zenithIndex = content.IndexOf("Zenith Guild", StringComparison.Ordinal);
+        var alleyIndex = content.IndexOf("Alley Cats", StringComparison.Ordinal);
+        zenithIndex.Should().BeGreaterThan(-1);
+        alleyIndex.Should().BeGreaterThan(-1);
+        zenithIndex.Should().BeLessThan(alleyIndex);
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_ContactsWithinCategoryAreAlphabetical()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_alpha_dm", "cat_order_alpha_dm@example.com", roles: ["DungeonMaster"]);
+
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Adventuring Party", sortOrder: 0, groupId: 1);
+        var zed = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Zed the Wanderer", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, zed.Id, category.Id);
+        var anna = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Anna the Scout", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, anna.Id, category.Id);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var annaIndex = content.IndexOf("Anna the Scout", StringComparison.Ordinal);
+        var zedIndex = content.IndexOf("Zed the Wanderer", StringComparison.Ordinal);
+        annaIndex.Should().BeGreaterThan(-1);
+        zedIndex.Should().BeGreaterThan(-1);
+        annaIndex.Should().BeLessThan(zedIndex);
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_UngroupedHeadingAppearsAfterEveryRealCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_ungrouped_dm", "cat_order_ungrouped_dm@example.com", roles: ["DungeonMaster"]);
+
+        var categoryOne = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Merchant Guild", sortOrder: 0, groupId: 1);
+        var categoryTwo = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Thieves Union", sortOrder: 1, groupId: 1);
+        var catOneContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Merchant Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, catOneContact.Id, categoryOne.Id);
+        var catTwoContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Thief Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, catTwoContact.Id, categoryTwo.Id);
+        // Uncategorised on purpose -- no AssignContactCategoryAsync call for this one.
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Unaffiliated Wanderer", groupId: 1, isRevealed: true);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var categoryOneIndex = content.IndexOf("Merchant Guild", StringComparison.Ordinal);
+        var categoryTwoIndex = content.IndexOf("Thieves Union", StringComparison.Ordinal);
+        var ungroupedIndex = content.IndexOf("Ungrouped", StringComparison.Ordinal);
+        categoryOneIndex.Should().BeGreaterThan(-1);
+        categoryTwoIndex.Should().BeGreaterThan(-1);
+        ungroupedIndex.Should().BeGreaterThan(-1);
+        ungroupedIndex.Should().BeGreaterThan(categoryOneIndex);
+        ungroupedIndex.Should().BeGreaterThan(categoryTwoIndex);
+
+        // No heading carries a count: a real category name is never followed by a parenthesised
+        // number the way a badge or total would render it.
+        content.Should().NotMatchRegex(@"Merchant Guild\s*\(\d+\)");
+        content.Should().NotMatchRegex(@"Thieves Union\s*\(\d+\)");
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_ZeroCategoryBoardRendersFlatListWithNoHeadings()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_flat_dm", "cat_order_flat_dm@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Flat List Contact", groupId: 1, isRevealed: true);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        content.Should().Contain("Flat List Contact");
+        content.Should().NotContain("Ungrouped");
+        content.Should().NotContain("category-heading");
+    }
+
+    [Fact]
+    public async Task ContactCategory_NameRendersEscaped_AngleBracketsAreEncoded()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_escape_dm", "cat_escape_dm@example.com", roles: ["DungeonMaster"]);
+
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(
+            factory.Services, "<script>alert('x')</script>", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Marked Contact", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        content.Should().NotContain("<script>alert('x')</script>");
+        content.Should().Contain("&lt;script&gt;");
+    }
 }
