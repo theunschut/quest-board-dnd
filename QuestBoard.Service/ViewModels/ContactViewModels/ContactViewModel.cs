@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace QuestBoard.Service.ViewModels.ContactViewModels;
 
@@ -38,6 +39,19 @@ public class ContactViewModel
     public bool CanManage { get; set; }
 
     public List<ContactNoteViewModel> Notes { get; set; } = [];
+
+    // The only one of the five category members below that is bound from a form post.
+    public int? CategoryId { get; set; }
+
+    // Display-only values carried from the mapped category; never posted back.
+    public string? CategoryName { get; set; }
+
+    public int? CategorySortOrder { get; set; }
+
+    // Populated by the controller for form rendering; never posted back.
+    public IEnumerable<SelectListItem> CategoryOptions { get; set; } = [];
+
+    public bool HasCategories { get; set; }
 }
 
 public class ContactNoteViewModel
