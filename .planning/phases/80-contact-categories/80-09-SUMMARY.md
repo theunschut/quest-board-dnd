@@ -142,6 +142,13 @@ Both UAT-reported gaps are closed and pinned by automated facts; `dotnet build` 
 
 **Outstanding, by design:** the rendered-pixel confirmation for both gaps (does the label/link actually paint cream on a real device, not just resolve a scoped rule with the right hex value server-side) remains a human-verify item. This repository has no browser-automation harness, and a server-side integration test structurally cannot observe a computed CSS colour — the plan's own `<verification>` section calls this out as an honest limit of the automated coverage, not a gap in this plan's execution. Re-run the two `<human-check>` verification steps from the plan (load `/ContactCategoryManagement` and Contacts → Create on a real handset / genuine mobile User-Agent) during the next UAT pass to close this out visually.
 
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.IntegrationTests/Tests/ContactCategoryContrastGuardTests.cs
+- FOUND: e5529ffc (fix(80-09): scope mobile add-category label to parchment token)
+- FOUND: dc79de31 (fix(80-09): theme zero-category helper link on both card surfaces)
+- FOUND: b9551ce6 (docs(80-09): create plan summary)
+
 ---
 *Phase: 80-contact-categories*
 *Completed: 2026-08-31*
