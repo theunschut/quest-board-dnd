@@ -40,6 +40,7 @@ public static class ServiceExtensions
         services.AddScoped<IShopService, ShopService>();
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<IContactCategoryService, ContactCategoryService>();
         services.AddScoped<IDungeonMasterProfileService, DungeonMasterProfileService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IEventService, EventService>();

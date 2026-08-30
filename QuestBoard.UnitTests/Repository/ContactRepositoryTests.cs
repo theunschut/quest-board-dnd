@@ -411,6 +411,53 @@ public class ContactRepositoryTests
         contact!.HasContactImage.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task GetAllContactsWithDetailsAsync_ContactAssignedToCategory_ReturnsCategoryNamePopulated()
+    {
+        // Arrange: a contact assigned to a category
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_ContactAssignedToCategory_ReturnsCategoryNamePopulated), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.ContactCategories.Add(new ContactCategoryEntity { Id = 1, Name = "Merchants", SortOrder = 0, GroupId = 1 });
+        context.Contacts.Add(new ContactEntity { Id = 1, Name = "Assigned Contact", GroupId = 1, CreatedByUserId = 1, CategoryId = 1, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contacts = await repository.GetAllContactsWithDetailsAsync(TestContext.Current.CancellationToken);
+
+        // Assert: category name available with no second query
+        contacts.Should().ContainSingle();
+        contacts[0].CategoryName.Should().Be("Merchants");
+    }
+
+    [Fact]
+    public async Task GetAllContactsWithDetailsAsync_UnassignedContact_ReturnsNullCategoryName()
+    {
+        // Arrange: a contact with no category assigned
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_UnassignedContact_ReturnsNullCategoryName), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.Contacts.Add(new ContactEntity { Id = 1, Name = "Unassigned Contact", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contacts = await repository.GetAllContactsWithDetailsAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        contacts.Should().ContainSingle();
+        contacts[0].CategoryName.Should().BeNull();
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }

@@ -23,6 +23,7 @@ public static class ServiceExtensions
         services.AddScoped<ITradeItemRepository, TradeItemRepository>();
         services.AddScoped<ICharacterRepository, CharacterRepository>();
         services.AddScoped<IContactRepository, ContactRepository>();
+        services.AddScoped<IContactCategoryRepository, ContactCategoryRepository>();
         services.AddScoped<IDungeonMasterProfileRepository, DungeonMasterProfileRepository>();
         services.AddScoped<IReminderLogRepository, ReminderLogRepository>();
         services.AddScoped<IGroupRepository, GroupRepository>();
