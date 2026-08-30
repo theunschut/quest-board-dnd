@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "My Agenda";
     var hasOtherBoardRow = Model.Rows.Any(r => !r.IsActiveBoard);
+    var isDm = (await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;
 }
 @section Styles {
     <link href="~/css/agenda.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -16,9 +17,20 @@
    reader cannot hit by accident. Do not "restore consistency" with other clickable cards. *@
 
 <div class="container-fluid px-2 mt-2">
-    <h4 class="mb-3">
-        <i class="fas fa-calendar-days text-purple me-2"></i>@ViewData["Title"]
-    </h4>
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h4 class="mb-0">
+                <i class="fas fa-calendar-days text-purple me-2"></i>@ViewData["Title"]
+            </h4>
+            <p class="header-subtitle mb-0">Upcoming events across all your boards</p>
+        </div>
+        @if (isDm)
+        {
+            <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm">
+                <i class="fas fa-calendar-check me-1"></i>Board Availability
+            </a>
+        }
+    </div>
 
     @if (Model.EmptyState == AgendaEmptyState.NoBoards)
     {
