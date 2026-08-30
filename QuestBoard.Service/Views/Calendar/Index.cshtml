@@ -13,9 +13,12 @@
                     <i class="fas fa-calendar-alt text-info me-2"></i>
                     @ViewData["Title"]
                 </h2>
-                <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm me-2">
-                    <i class="fas fa-calendar-check me-2"></i>Availability Overview
-                </a>
+                @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
+                {
+                    <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm me-2">
+                        <i class="fas fa-calendar-check me-2"></i>Board Availability
+                    </a>
+                }
                 <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm me-2">
                     <i class="fas fa-calendar-days me-2"></i>My Agenda
                 </a>

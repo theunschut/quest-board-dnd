@@ -31,9 +31,12 @@
     </div>
 
     <div class="d-grid gap-2 mb-3">
-        <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm">
-            <i class="fas fa-calendar-check me-2"></i>Availability Overview
-        </a>
+        @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
+        {
+            <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm">
+                <i class="fas fa-calendar-check me-2"></i>Board Availability
+            </a>
+        }
         <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
             <i class="fas fa-calendar-days me-2"></i>My Agenda
         </a>
