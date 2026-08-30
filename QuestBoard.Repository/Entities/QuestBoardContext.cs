@@ -44,6 +44,8 @@ public class QuestBoardContext(
 
     public DbSet<ContactNoteEntity> ContactNotes { get; set; }
 
+    public DbSet<ContactCategoryEntity> ContactCategories { get; set; }
+
     public DbSet<EventEntity> Events { get; set; }
 
     public DbSet<EventSeriesEntity> EventSeries { get; set; }
@@ -260,6 +262,34 @@ public class QuestBoardContext(
             .HasForeignKey(c => c.GroupId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // ContactCategory → Group: NoAction to prevent cascade cycles. EF's convention default
+        // for a required foreign key is Cascade, and a cascade from Group to ContactCategories
+        // combined with the category-to-contact path below converges two delete paths onto
+        // Contacts, which SQL Server rejects at schema-creation time.
+        modelBuilder.Entity<ContactCategoryEntity>()
+            .HasOne(cc => cc.Group)
+            .WithMany()
+            .HasForeignKey(cc => cc.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // Contact → Category: nullable, SetNull — deleting a category orphans its contacts
+        // rather than deleting them. IsRequired(false) keeps the navigation optional by
+        // contract, so EF Core emits a left join rather than an inner join when a related
+        // category row is filtered out.
+        modelBuilder.Entity<ContactEntity>()
+            .HasOne(c => c.Category)
+            .WithMany()
+            .HasForeignKey(c => c.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
+        // A board's category names must be unique within that board — this database's ambient
+        // collation is already case-insensitive, so a plain unique index gives case-insensitive
+        // uniqueness with no collation override or computed shadow column needed.
+        modelBuilder.Entity<ContactCategoryEntity>()
+            .HasIndex(cc => new { cc.GroupId, cc.Name })
+            .IsUnique();
+
         // Event → Group: NoAction to prevent cascade cycles
         modelBuilder.Entity<EventEntity>()
             .HasOne(e => e.Group)
@@ -427,6 +457,14 @@ public class QuestBoardContext(
         // do above — same "per-group roster" shape as CharacterEntity. An empty Contact list when no
         // group is selected is the intended behavior here, not an oversight.
         modelBuilder.Entity<ContactEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
+        // ContactCategoryEntity: same "per-group roster" shape as ContactEntity — categories
+        // are a per-board vocabulary with no cross-board administrative view, and zero rows
+        // when no board is selected is the intended behavior, not an oversight.
+        modelBuilder.Entity<ContactCategoryEntity>()
             .HasQueryFilter(e =>
                 activeGroupContext.ActiveGroupId != null &&
                 e.GroupId == activeGroupContext.ActiveGroupId);

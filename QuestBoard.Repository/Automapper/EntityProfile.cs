@@ -126,7 +126,12 @@ public class EntityProfile : Profile
                 ? src.ProfileImage.OriginalImageData
                 : null))
             // Computed separately by a scalar query in the repository, not derivable from a single entity field.
-            .ForMember(dest => dest.HasContactImage, opt => opt.Ignore());
+            .ForMember(dest => dest.HasContactImage, opt => opt.Ignore())
+            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null))
+            .ForMember(dest => dest.CategorySortOrder, opt => opt.MapFrom(src => src.Category != null ? (int?)src.Category.SortOrder : null));
+
+        // ContactCategory mapping — every property is a plain scalar, so no member configuration is needed.
+        CreateMap<ContactCategory, ContactCategoryEntity>().ReverseMap();
 
         // ContactNote mapping — AuthorName is a display-only projection from the Author navigation
         CreateMap<ContactNote, ContactNoteEntity>()

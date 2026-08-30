@@ -194,6 +194,28 @@ public static class TestDataHelper
         return contact;
     }
 
+    public static async Task<ContactCategoryEntity> CreateTestContactCategoryAsync(
+        IServiceProvider services,
+        string name = "Test Category",
+        int sortOrder = 0,
+        int groupId = 1)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var category = new ContactCategoryEntity
+        {
+            Name = name,
+            SortOrder = sortOrder,
+            GroupId = groupId
+        };
+
+        context.ContactCategories.Add(category);
+        await context.SaveChangesAsync();
+
+        return category;
+    }
+
     public static async Task<ContactNoteEntity> CreateTestContactNoteAsync(
         IServiceProvider services,
         int contactId,

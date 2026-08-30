@@ -34,6 +34,15 @@ public class Contact : IModel
 
     public int GroupId { get; set; }
 
+    public int? CategoryId { get; set; }
+
+    // Display-only; populated from the contact's Category navigation via mapping.
+    public string? CategoryName { get; set; }
+
+    // Display-only; populated from the contact's Category navigation via mapping. Lets the
+    // index controller order category headings without a second query.
+    public int? CategorySortOrder { get; set; }
+
     // Freeform, author-attributed, timestamped notes any group member can add to and edit.
     public IList<ContactNote> Notes { get; set; } = [];
 }
