@@ -118,4 +118,111 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
         lowerRule.Should().Contain("text-shadow",
             because: "the label needs the same drop shadow every sibling mobile .form-label rule uses to stay legible over the notice-board background");
     }
+
+    [Fact]
+    public void ContactCategoryContrastGuard_ModernCardFormTextLinkRule_SetsParchmentColourWithUnderlineIntact()
+    {
+        var cssPath = ResolveCssPath("modern-card.css");
+        var css = File.ReadAllText(cssPath);
+        var rule = ExtractCssRule(css, ".modern-card .form-text a {");
+
+        rule.Should().NotBeEmpty(
+            because: $"modern-card.css at '{cssPath}' must contain a scoped .modern-card .form-text a rule");
+
+        var lowerRule = rule.ToLowerInvariant();
+        lowerRule.Should().Contain("#f4e4bc",
+            because: "the desktop 'Manage Categories' helper link must resolve to the parchment token, not Bootstrap's default link blue rgb(13,110,253)");
+        lowerRule.Should().NotContain("#0d6efd",
+            because: "the rule body must not merely restate Bootstrap's default link colour under a more specific selector");
+        lowerRule.Should().NotContain("text-decoration: none",
+            because: "the underline is the link's non-colour affordance now that it shares a hue with its surrounding text; suppressing it would violate WCAG 1.4.1");
+    }
+
+    [Fact]
+    public void ContactCategoryContrastGuard_MobileFormTextLinkRule_SetsParchmentColourWithUnderlineIntact()
+    {
+        var cssPath = ResolveCssPath("contact-form.mobile.css");
+        var css = File.ReadAllText(cssPath);
+        var rule = ExtractCssRule(css, ".contact-form-card .form-text a {");
+
+        rule.Should().NotBeEmpty(
+            because: $"contact-form.mobile.css at '{cssPath}' must contain the mirrored .contact-form-card .form-text a rule -- " +
+                     "fixing only modern-card.css would leave the mobile half of the gap rendering Bootstrap link blue");
+
+        var lowerRule = rule.ToLowerInvariant();
+        lowerRule.Should().Contain("#f4e4bc",
+            because: "the mobile 'Manage Categories' helper link must resolve to the parchment token, not Bootstrap's default link blue rgb(13,110,253)");
+        lowerRule.Should().NotContain("#0d6efd",
+            because: "the rule body must not merely restate Bootstrap's default link colour under a more specific selector");
+        lowerRule.Should().NotContain("text-decoration: none",
+            because: "the underline is the link's non-colour affordance now that it shares a hue with its surrounding text; suppressing it would violate WCAG 1.4.1");
+    }
+
+    [Fact]
+    public void ContactCategoryContrastGuard_PreExistingScopedOverrides_StillPinValidationRedAndHeaderSubtitle()
+    {
+        var cssPath = ResolveCssPath("modern-card.css");
+        var css = File.ReadAllText(cssPath);
+
+        var textDangerRule = ExtractCssRule(css, ".modern-card .text-danger {");
+        textDangerRule.Should().NotBeEmpty(
+            because: $"modern-card.css at '{cssPath}' must still carry the .modern-card .text-danger scoped override");
+        textDangerRule.ToLowerInvariant().Should().Contain("#ff6b6b",
+            because: "validation messages inside a .modern-card must still render Bootstrap danger red, not the element-enumeration rule's cream");
+
+        var headerSubtitleRule = ExtractCssRule(css, ".modern-card-header .header-subtitle {");
+        headerSubtitleRule.Should().NotBeEmpty(
+            because: $"modern-card.css at '{cssPath}' must still carry the .modern-card-header .header-subtitle scoped override");
+        headerSubtitleRule.ToLowerInvariant().Should().Contain("#1a1a1a",
+            because: "the card header's secondary line must still resolve to its own dark colour, not the heading's gold-on-dark treatment");
+    }
+
+    [Fact]
+    public async Task ContactCategoryContrastGuard_ZeroCategoryHelperLink_RendersOnBothDesktopAndMobileCardSurfaces()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contrast_guard_zero_cat_dm", "contrast_guard_zero_cat_dm@example.com", roles: ["DungeonMaster"]);
+
+        var desktopResponse = await dmClient.GetAsync("/Contacts/Create", TestContext.Current.CancellationToken);
+        var desktopHtml = await desktopResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        desktopResponse.StatusCode.Should().Be(HttpStatusCode.OK,
+            because: "a DungeonMaster on a zero-category board must be able to load Contacts Create on desktop");
+
+        var (mobileResponse, mobileHtml) = await GetMobileAsync(dmClient, "/Contacts/Create");
+        mobileResponse.StatusCode.Should().Be(HttpStatusCode.OK,
+            because: "a DungeonMaster on a zero-category board must be able to load Contacts Create under a real mobile User-Agent");
+
+        AssertHelperLinkPresentInsideFormText(desktopHtml, "desktop");
+        AssertHelperLinkPresentInsideFormText(mobileHtml, "mobile");
+
+        desktopHtml.Should().Contain("modern-card",
+            because: "the desktop Contacts Create view must wrap its form in .modern-card, the surface the modern-card.css rule targets -- " +
+                     "proving the two-stylesheet fix is necessary and not duplicated");
+        mobileHtml.Should().Contain("contact-form-card",
+            because: "the mobile Contacts Create view must wrap its form in .contact-form-card, the surface the contact-form.mobile.css rule targets -- " +
+                     "proving the two-stylesheet fix is necessary and not duplicated");
+    }
+
+    // Locates the "Manage Categories" link and confirms it sits inside a form-text <small>
+    // element -- the DOM relationship both new CSS rules depend on -- rather than assuming the
+    // page's first "form-text" occurrence (the unrelated image-upload caption) is the right one.
+    private static void AssertHelperLinkPresentInsideFormText(string html, string platform)
+    {
+        var linkIndex = html.IndexOf("ContactCategoryManagement", StringComparison.Ordinal);
+        linkIndex.Should().BeGreaterThan(-1,
+            because: $"on a board with zero categories, the {platform} Contacts Create page must render the helper link to Manage Categories");
+
+        var formTextIndex = html.LastIndexOf("form-text", linkIndex, StringComparison.Ordinal);
+        formTextIndex.Should().BeGreaterThan(-1,
+            because: $"the {platform} helper link must sit inside a form-text element, the scope both new CSS rules target");
+
+        var closingIndex = html.IndexOf("</small>", linkIndex, StringComparison.Ordinal);
+        closingIndex.Should().BeGreaterThan(-1,
+            because: $"the {platform} helper text's <small> element must close after the link appears");
+
+        var slice = html[formTextIndex..(closingIndex + "</small>".Length)];
+        slice.Should().Contain("ContactCategoryManagement",
+            because: $"the {platform} form-text slice must actually contain the Manage Categories link, proving the DOM relationship both new rules depend on");
+    }
 }
