@@ -13,6 +13,7 @@ namespace QuestBoard.Service.Controllers.Contacts
     [Authorize]
     public class ContactsController(
         IContactService contactService,
+        IContactCategoryService contactCategoryService,
         IUserService userService,
         IActiveGroupContext activeGroupContext,
         IImageValidationService imageValidationService,
@@ -39,9 +40,36 @@ namespace QuestBoard.Service.Controllers.Contacts
                 vm.CanManage = viewerIsDmTier;
             }
 
+            // Whether the board has ever created a category, not whether any group turns out
+            // non-empty for this viewer -- that distinction keeps a board that never adopted the
+            // feature rendering exactly as it does today, while a board that has categories but
+            // nothing visible right now still renders as a grouped page rather than reverting.
+            var categories = await contactCategoryService.GetOrderedAsync(token);
+            var hasCategories = categories.Any();
+
+            // Grouping runs over contactViewModels, which was built from the already-filtered
+            // visibleContacts above -- a group here can never disclose a contact the viewer
+            // cannot see, and a category with nothing visible simply produces no group at all.
+            var categoryGroups = hasCategories
+                ? contactViewModels
+                    .GroupBy(vm => (vm.CategoryId, vm.CategoryName, vm.CategorySortOrder))
+                    .OrderBy(g => g.Key.CategoryId is null)
+                    .ThenBy(g => g.Key.CategorySortOrder)
+                    .ThenBy(g => g.Key.CategoryId)
+                    .Select(g => new ContactCategoryGroupViewModel
+                    {
+                        Title = g.Key.CategoryId is null ? "Ungrouped" : g.Key.CategoryName ?? string.Empty,
+                        IsUngrouped = g.Key.CategoryId is null,
+                        Contacts = g.OrderBy(c => c.Name).ToList()
+                    })
+                    .ToList()
+                : [];
+
             var viewModel = new ContactsIndexViewModel
             {
                 Contacts = contactViewModels,
+                CategoryGroups = categoryGroups,
+                HasCategories = hasCategories,
                 ShowHidden = includeHidden,
                 ViewerIsDmTier = viewerIsDmTier
             };
