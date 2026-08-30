@@ -30,6 +30,12 @@ public class EventsController(
     // request with no active group is already redirected to the group picker upstream.
     // The configured ceiling is validated at application start; the floor below is a second,
     // defensive layer so this clamp still cannot throw even if a host somehow bypasses that.
+    //
+    // This page stays open to every board member even though its own navigation entries and
+    // cross-links now only surface for a Dungeon Master -- that split is intentional, not an
+    // oversight to "finish" by adding a policy here. Restricting this action would narrow
+    // strictly less than the cross-board personal agenda already shows on an unrestricted page,
+    // so it would trade a real permission boundary for the appearance of one.
     [HttpGet]
     public async Task<IActionResult> Index(int? take = null, CancellationToken token = default)
     {
