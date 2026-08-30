@@ -41,7 +41,9 @@ partial_coverage: |
   `.Mobile.cshtml` views -- confirmed active via `mobile-layout` body class and 2 mobile stylesheets.
   Grouping, headings, category cards, pluralised contact counts ("0 contacts" / "1 contact"), boundary
   arrow states and the Details category line all render correctly on mobile.
-  STILL UNVERIFIED: physical-device tap-target feel and long-category-name wrapping on a real handset.
+  Physical-device pass CONFIRMED BY USER 2026-08-31 ("physical device seems fine") -- tap targets and
+  long-category-name wrapping are acceptable on a real handset. No residual coverage gap on this test;
+  the recorded issue below is the label-legibility defect only.
 
 ### 3. First-run discovery on a board with zero categories
 
