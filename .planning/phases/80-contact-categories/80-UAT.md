@@ -71,7 +71,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Mobile Manage Categories form labels are legible against the dark background"
-  status: failed
+  status: resolved
   reason: "User-visible: the 'New Category Name' label renders rgb(33,37,41) (Bootstrap default) on dark wood, effectively unreadable."
   severity: minor
   test: 2
@@ -84,9 +84,10 @@ blocked: 0
   missing:
     - "Either wrap the Add form in a card whose stylesheet themes .form-label, or add a scoped .form-label rule to contacts.mobile.css matching the cream used by .contact-form-card .form-label"
   debug_session: ""
+  resolved_by: "80-09 (commits e5529ffc, dc79de31) -- re-verified live in-browser 2026-08-31"
 
 - truth: "The zero-category helper link reads as an obvious invitation to create the first category"
-  status: failed
+  status: resolved
   reason: "User-visible: the 'Manage Categories' anchor renders Bootstrap link-blue rgb(13,110,253) inside a .modern-card on a dark background, ~3.09:1 contrast, below WCAG AA 4.5:1."
   severity: minor
   test: 3
@@ -99,3 +100,4 @@ blocked: 0
   missing:
     - "Add a scoped .modern-card .form-text a rule (or .modern-card a) using an on-theme accent that clears 4.5:1 against the card background"
   debug_session: ""
+  resolved_by: "80-09 (commits e5529ffc, dc79de31) -- re-verified live in-browser 2026-08-31"
