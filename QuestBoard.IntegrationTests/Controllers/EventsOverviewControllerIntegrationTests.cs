@@ -111,6 +111,31 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    // The page is deliberately open to every board member while every link that leads to it is
+    // shown only to Dungeon Masters -- that split is intentional, and this is the only case in
+    // the suite that fails if someone later attaches an authorization policy to the action. The
+    // explicit Player role and the rendered-grid assertions are what make it a control rather
+    // than a smoke test.
+    [Fact]
+    public async Task Index_PlayerWithoutDmRole_ReturnsOkAndRendersGrid()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync("Player Reachable Session", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+        var memberId = await SeedMemberAsync("evtoverview_player_grid_member", "Player Grid Member");
+        await SeedSignupAsync(eventId, memberId, VoteType.Yes, confirmed: true);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtoverview_player_grid", "evtoverview_player_grid@example.com", roles: ["Player"]);
+
+        var response = await playerClient.GetAsync("/Events", TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("avail-grid");
+        html.Should().Contain("Player Reachable Session");
+        html.Should().Contain("Player Grid Member");
+    }
+
     [Fact]
     public async Task Index_Desktop_RendersOneRowPerEventAndOneColumnPerMember()
     {
