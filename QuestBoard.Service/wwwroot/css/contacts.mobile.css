@@ -17,6 +17,13 @@
     text-transform: uppercase;
     font-size: 0.875rem;
     letter-spacing: 0.05em;
+    overflow-wrap: break-word; /* lets a single unbroken long name wrap instead of overflowing */
+}
+
+/* Ungrouped section heading: same size, muted */
+.contact-section-heading-ungrouped {
+    font-style: italic;
+    opacity: 0.75;
 }
 
 /* List row — tappable with divider */
@@ -125,4 +132,22 @@
 
 .contact-toggle-row .btn {
     flex: 1;
+}
+
+/* Manage Categories page — mobile row, matches the existing member-row divider */
+.category-mgmt-row {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(139, 69, 19, 0.3);
+}
+
+.category-mgmt-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Reorder buttons are icon-only and must still clear a real tap target on a phone,
+   a deliberate exception to the spacing scale. */
+.category-mgmt-reorder-btn {
+    min-height: 44px;
+    min-width: 44px;
 }
