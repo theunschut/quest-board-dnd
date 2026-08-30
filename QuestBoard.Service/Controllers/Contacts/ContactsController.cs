@@ -7,6 +7,7 @@ using QuestBoard.Service.Constants;
 using QuestBoard.Service.ViewModels.ContactViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace QuestBoard.Service.Controllers.Contacts
 {
@@ -103,9 +104,10 @@ namespace QuestBoard.Service.Controllers.Contacts
 
         [HttpGet]
         [Authorize(Policy = "DungeonMasterOnly")]
-        public IActionResult Create()
+        public async Task<IActionResult> Create(CancellationToken token = default)
         {
             var viewModel = new ContactViewModel();
+            await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
         }
@@ -130,6 +132,7 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             if (!ModelState.IsValid)
             {
+                await PopulateCategoryOptionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -155,6 +158,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 }
                 if (!ModelState.IsValid)
                 {
+                    await PopulateCategoryOptionsAsync(viewModel, token);
                     return View(viewModel);
                 }
 
@@ -168,6 +172,16 @@ namespace QuestBoard.Service.Controllers.Contacts
                     await submittedCrop.CopyToAsync(croppedMemoryStream, token);
                     croppedImageData = croppedMemoryStream.ToArray();
                 }
+            }
+
+            // The posted category id is a raw integer under the caller's control -- resolve it
+            // through the board-filtered service before it ever touches the mapped contact, so a
+            // foreign board's category can never ride along into a write on this board.
+            if (!await IsCategoryAcceptableAsync(viewModel.CategoryId, token))
+            {
+                ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
+                await PopulateCategoryOptionsAsync(viewModel, token);
+                return View(viewModel);
             }
 
             var contact = mapper.Map<Contact>(viewModel);
@@ -196,6 +210,7 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             var viewModel = mapper.Map<ContactViewModel>(contact);
             viewModel.CanManage = true;
+            await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
         }
@@ -219,6 +234,18 @@ namespace QuestBoard.Service.Controllers.Contacts
             if (!ModelState.IsValid)
             {
                 viewModel.CanManage = true;
+                await PopulateCategoryOptionsAsync(viewModel, token);
+                return View(viewModel);
+            }
+
+            // The posted category id is a raw integer under the caller's control -- resolve it
+            // through the board-filtered service before it ever reaches the loaded contact, so a
+            // foreign board's category can never overwrite the stored reference.
+            if (!await IsCategoryAcceptableAsync(viewModel.CategoryId, token))
+            {
+                ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
+                viewModel.CanManage = true;
+                await PopulateCategoryOptionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -228,6 +255,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             existingContact.Description = viewModel.Description;
             existingContact.TownCity = viewModel.TownCity;
             existingContact.SubLocation = viewModel.SubLocation;
+            existingContact.CategoryId = viewModel.CategoryId;
 
             // A genuinely new original photo was uploaded this request. Hoisted into a single
             // local reused both to gate the byte-copy below and to signal the service, so the
@@ -261,6 +289,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 if (!ModelState.IsValid)
                 {
                     viewModel.CanManage = true;
+                    await PopulateCategoryOptionsAsync(viewModel, token);
                     return View(viewModel);
                 }
             }
@@ -454,6 +483,34 @@ namespace QuestBoard.Service.Controllers.Contacts
             }
 
             return File(image, DetectImageMimeType(image));
+        }
+
+        // Reads the board's ordered categories and projects them straight into select list
+        // items, preserving the service's own sort-position-then-id order. Never re-sorted here
+        // -- the dropdown must present the same vocabulary in the same order the DM already
+        // recognises from the index headings, not a second, alphabetical one.
+        private async Task PopulateCategoryOptionsAsync(ContactViewModel viewModel, CancellationToken token)
+        {
+            var categories = await contactCategoryService.GetOrderedAsync(token);
+            viewModel.CategoryOptions = categories
+                .Select(c => new SelectListItem(c.Name, c.Id.ToString()))
+                .ToList();
+            viewModel.HasCategories = categories.Count > 0;
+        }
+
+        // A null id is always acceptable. Any other id is acceptable only when a board-filtered
+        // read by that id resolves -- the category service's own query filter already confines
+        // the read to the active board, so a category owned by another board simply does not
+        // resolve and is indistinguishable from a nonexistent one.
+        private async Task<bool> IsCategoryAcceptableAsync(int? categoryId, CancellationToken token)
+        {
+            if (categoryId is null)
+            {
+                return true;
+            }
+
+            var category = await contactCategoryService.GetByIdAsync(categoryId.Value, token);
+            return category != null;
         }
 
         private static string DetectImageMimeType(byte[] data) =>

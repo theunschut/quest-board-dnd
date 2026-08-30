@@ -887,6 +887,23 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         await context.SaveChangesAsync();
     }
 
+    // Adds the acting user to a second board's membership through a direct row insert, mirroring
+    // ToggleShowHidden_IsScopedPerGroup_DoesNotLeakAcrossGroups's own inline pattern above -- the
+    // acting DM must be a real member of the board this suite flips into active, not merely
+    // authenticated against the default board.
+    private static async Task AddUserToGroupAsync(IServiceProvider services, int userId, int groupId)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = userId,
+            GroupId = groupId,
+            GroupRole = (int)QuestBoard.Domain.Enums.GroupRole.DungeonMaster
+        });
+        await context.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task ContactCategory_EmptyHeadingSuppression_PlayerNeverSeesHeadingForUnrevealedOnlyCategory()
     {
@@ -1084,5 +1101,245 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
 
         content.Should().NotContain("<script>alert('x')</script>");
         content.Should().Contain("&lt;script&gt;");
+    }
+
+    // (11) Cross-board isolation on the category-assignment surfaces this plan adds: another
+    // board's categories are unreachable from the management page, the contact form dropdown, and
+    // the index; a post naming a foreign category is refused with the stored reference left
+    // untouched either way; and a null active board fails closed rather than merging every
+    // board's categories together.
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_ManagementListNeverShowsOtherBoardsCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Exclusive Circle", sortOrder: 0, groupId: 1);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Native Circle", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_mgmt_dm", "cat_crossgroup_mgmt_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        try
+        {
+            factory.TestGroupContext.ActiveGroupId = 2;
+            var response = await dmClient.GetAsync("/ContactCategoryManagement", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().NotContain("Board One Exclusive Circle");
+            content.Should().Contain("Board Two Native Circle");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_CreateFormDropdownNeverShowsOtherBoardsCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Only Roster", sortOrder: 0, groupId: 1);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Own Roster", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_form_dm", "cat_crossgroup_form_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        try
+        {
+            factory.TestGroupContext.ActiveGroupId = 2;
+            var response = await dmClient.GetAsync("/Contacts/Create", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().NotContain("Board One Only Roster");
+            content.Should().Contain("Board Two Own Roster");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_IndexNeverShowsOtherBoardsCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Index Cabal", sortOrder: 0, groupId: 1);
+        var boardTwoCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Index Cabal", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_index_dm", "cat_crossgroup_index_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        var boardTwoContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Board Two Cabal Member", groupId: 2, isRevealed: true);
+
+        try
+        {
+            // AssignContactCategoryAsync reads through the DI-registered, board-filtered
+            // Contacts DbSet -- the active board must already be 2 before it can find a
+            // board-2 contact.
+            factory.TestGroupContext.ActiveGroupId = 2;
+            await AssignContactCategoryAsync(factory.Services, boardTwoContact.Id, boardTwoCategory.Id);
+
+            var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().NotContain("Board One Index Cabal");
+            content.Should().Contain("Board Two Index Cabal");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_CreatePost_ForeignCategoryId_IsRefusedAndNotStored()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        var boardOneCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Create Refusal Guild", sortOrder: 0, groupId: 1);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_create_dm", "cat_crossgroup_create_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        try
+        {
+            factory.TestGroupContext.ActiveGroupId = 2;
+
+            var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Name"] = "Should Not Persist Cross-Board Contact",
+                ["CategoryId"] = boardOneCategory.Id.ToString()
+            });
+
+            var response = await dmClient.PostAsync("/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().Contain("Selected category is not available on this board.");
+
+            await using var ctx = factory.Database.CreateContext();
+            var persisted = await ctx.Contacts.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Name == "Should Not Persist Cross-Board Contact", TestContext.Current.CancellationToken);
+            persisted.Should().BeNull();
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_EditPost_ForeignCategoryId_IsRefusedAndReferenceUnchanged()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        var boardOneCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Edit Target Guild", sortOrder: 0, groupId: 1);
+        var boardTwoCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Edit Home Guild", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_edit_dm", "cat_crossgroup_edit_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Board Two Contact Under Edit", groupId: 2, isRevealed: true);
+
+        try
+        {
+            // AssignContactCategoryAsync reads through the DI-registered, board-filtered
+            // Contacts DbSet -- the active board must already be 2 before it can find a
+            // board-2 contact.
+            factory.TestGroupContext.ActiveGroupId = 2;
+            await AssignContactCategoryAsync(factory.Services, contact.Id, boardTwoCategory.Id);
+
+            var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Id"] = contact.Id.ToString(),
+                ["Name"] = "Board Two Contact Under Edit",
+                ["CategoryId"] = boardOneCategory.Id.ToString()
+            });
+
+            var response = await dmClient.PostAsync($"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().Contain("Selected category is not available on this board.");
+
+            await using var ctx = factory.Database.CreateContext();
+            var persisted = await ctx.Contacts.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+            persisted.Should().NotBeNull();
+            persisted!.CategoryId.Should().Be(boardTwoCategory.Id);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_NullActiveBoard_CategoryReadResolvesToNothing()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Null Check Guild", sortOrder: 0, groupId: 1);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Null Check Guild", sortOrder: 0, groupId: 2);
+
+        // TestDatabase.CreateContext() builds its own MutableGroupContext with ActiveGroupId fixed
+        // at null, independent of the DI-registered TestGroupContext -- this exercises the
+        // fail-closed HasQueryFilter predicate on ContactCategoryEntity directly, the same idiom
+        // TenantIsolationTests already uses for QuestEntity's own null-active-group fact.
+        await using var readCtx = factory.Database.CreateContext();
+        var categories = readCtx.ContactCategories.ToList();
+
+        categories.Should().BeEmpty(
+            "a null active board must resolve to zero categories, never every board's merged together");
+    }
+
+    // (12) Disabled-select form state: a board with zero categories renders the field disabled
+    // with the discovery link; a board with at least one category renders it enabled with no
+    // helper link.
+
+    [Fact]
+    public async Task ContactCategory_DisabledSelect_ZeroCategoryBoard_CreateFormShowsDisabledSelectAndManagementLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_disabled_zero_dm", "cat_disabled_zero_dm@example.com", roles: ["DungeonMaster"]);
+
+        var response = await dmClient.GetAsync("/Contacts/Create", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("disabled");
+        content.Should().Contain("ContactCategoryManagement");
+        content.Should().Contain("No categories yet.");
+    }
+
+    [Fact]
+    public async Task ContactCategory_DisabledSelect_WithCategoryBoard_CreateFormShowsEnabledSelectNoHelperLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Available Adventuring Company", sortOrder: 0, groupId: 1);
+
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_disabled_present_dm", "cat_disabled_present_dm@example.com", roles: ["DungeonMaster"]);
+
+        var response = await dmClient.GetAsync("/Contacts/Create", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Available Adventuring Company");
+        content.Should().NotContain("No categories yet.");
     }
 }
