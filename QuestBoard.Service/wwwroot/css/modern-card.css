@@ -134,6 +134,19 @@
     font-weight: 400;
 }
 
+/* The helper text above is themed by an element list that does not include anchors, so a
+   link nested inside it falls back to a default colour that reads poorly against this
+   background. Scoped narrowly to helper-text anchors only -- a broader .modern-card a
+   would out-specify .modern-card .btn and .row-nav-link and repaint anchor-buttons and
+   clickable rows across surfaces this rule was never meant to touch. */
+.modern-card .form-text a {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+    font-weight: 600;
+}
+
 /* Modern form styling within cards */
 .modern-card .form-control,
 .modern-card .form-select {

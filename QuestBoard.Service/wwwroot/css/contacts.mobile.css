@@ -134,6 +134,15 @@
     flex: 1;
 }
 
+/* The add-category form on the Manage Categories page sits above the page's first
+   card, so the card-scoped .form-label rules every other mobile form in this project
+   relies on cannot reach it. Scope the parchment label treatment directly to this
+   form instead of adding an unscoped .form-label rule. */
+.category-mgmt-add-form .form-label {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+}
+
 /* Manage Categories page — mobile row, matches the existing member-row divider */
 .category-mgmt-row {
     padding: 12px 0;
