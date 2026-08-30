@@ -5,7 +5,7 @@
     <link href="~/css/contacts.mobile.css" asp-append-version="true" rel="stylesheet" />
 }
 
-<form asp-action="Add" method="post" class="mb-3">
+<form asp-action="Add" method="post" class="mb-3 category-mgmt-add-form">
     @Html.AntiForgeryToken()
     <label asp-for="NewCategory.Name" class="form-label">New Category Name</label>
     <input asp-for="NewCategory.Name" class="form-control mb-2" maxlength="60" placeholder="e.g. Guild Members" />
