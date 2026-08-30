@@ -49,6 +49,18 @@
     opacity: 0.75;
 }
 
+/* Inside a card header this line is a <p>, so the generic paragraph rule further down
+   this file repaints it in the heading's gold with the heavy dark shadow -- and that rule
+   carries !important, so the unscoped block above cannot win on colour, shadow or weight.
+   Restate the card header's own colour and light shadow here so the secondary line stays
+   secondary. Deliberately scoped to the card header: the mobile headers sit directly on
+   the page background instead, where this dark colour would be unreadable. */
+.modern-card-header .header-subtitle {
+    color: #1a1a1a !important;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
+    font-weight: 400 !important;
+}
+
 .modern-card-body {
     background: transparent !important;
     color: #1a1a1a !important;
