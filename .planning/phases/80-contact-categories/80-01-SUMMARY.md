@@ -138,3 +138,10 @@ None - no external service configuration required.
 ---
 *Phase: 80-contact-categories*
 *Completed: 2026-08-30*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/80-contact-categories/80-01-SUMMARY.md`
+- FOUND: `cbfc27ba` (Task 1 commit — mint REQUIREMENTS.md)
+- FOUND: `c876f040` (Task 2 commit — map ROADMAP.md coverage)
+- FOUND: `7651c8ce` (Task 3 commit — re-key 80-VALIDATION.md)
