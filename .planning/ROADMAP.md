@@ -497,8 +497,35 @@ Plans:
 
 **Goal**: Contacts can carry free-form tags — "shopkeeper", "quest giver" — independently of which category they sit under, and the Contacts index offers a filter that narrows the list to the selected tags.
 **Depends on**: Phase 80 (shares the Contacts index rendering surface and whatever grouping partial that phase establishes)
-**Requirements**: TBD
-**Plans**: TBD (run `/gsd-plan-phase 81`)
+**Requirements**: CONTACTTAG-01, CONTACTTAG-02, CONTACTTAG-03, CONTACTTAG-04, CONTACTTAG-05, CONTACTTAG-06, CONTACTTAG-07, CONTACTTAG-08, CONTACTTAG-09, CONTACTTAG-10, CONTACTTAG-11, CONTACTTAG-12, CONTACTTAG-13, CONTACTTAG-14, CONTACTTAG-15, CONTACTTAG-16, CONTACTTAG-17
+**Plans**: 0/8 plans complete
+
+Plans:
+**Wave 1**
+
+- [ ] 81-01-PLAN.md — Mint the `CONTACTTAG-*` requirement family into REQUIREMENTS.md and the roadmap coverage table, and complete the phase validation contract (wave 1)
+- [ ] 81-02-PLAN.md — Data foundation: the board-scoped `ContactTag` entity, the app's first many-to-many join, its fail-closed query filter, a collation-backed unique index, the migration, the domain model, the entity mapping, the test seed helper, and cross-board filter coverage (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 81-03-PLAN.md — Repository and service tag persistence: split-queried tag loading, upsert-by-name reconciliation through a board-filtered query, orphan pruning on save and delete, comma-list parsing, and unit tests asserting against the database (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 81-04-PLAN.md — Index read path: tag view models, repeated-tag-id query-string binding, vocabulary derived from the visible-but-unfiltered set, in-memory union filtering after the visibility gate, the Show Hidden round trip, and filter-semantics integration tests (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 81-05-PLAN.md — Contact write path: viewer-scoped suggestion lists on both form GETs, comma-separated tag persistence on both POSTs, name-length validation, and no-script write-path integration tests (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 81-06-PLAN.md — Tag entry widget on all four create and edit views: a re-verified SRI-pinned CDN library, a thin local init module, scoped theme overrides on both platforms, and form markup tests under both user agents (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 81-07-PLAN.md — Desktop display: the index filter row and its disabled state, chips on cards, the details tag line, the two-branch empty state, and markup tests for audience, vocabulary scoping, and escaping (wave 6)
+- [ ] 81-08-PLAN.md — Mobile display: the filter trigger and bottom drawer, chips on rows, the mobile details tag line, the two-branch empty state, and markup tests driven by a real mobile user agent (wave 6)
 
 **Origin:** same request as Phase 80 — "Misschien later nog een filter optie, dat ik tags kan maken op bv shopkeeper en dat er dan gefilterd kan worden erop." The requester explicitly staged this after categories; it is separated here for that reason and can stay unplanned until wanted.
 
@@ -508,8 +535,9 @@ Plans:
 - Filtering must compose with the existing visibility gates rather than route around them: a tag filter narrows what the viewer could already see, never widens it. The filtered query has to run through the same group filter and reveal/hidden logic as the unfiltered index.
 - Tag vocabulary is per-group. A tag list rendered in the filter UI leaks the group's tag names, so the vocabulary read needs the same tenancy treatment as the contacts themselves.
 - Filter state belongs in the URL query string, not in session — the "show hidden" toggle's per-group session scoping (`ToggleShowHidden`) exists for a different reason and is not the pattern to copy here.
+- **Phase 80 is not a hard blocker.** Phase 80 has a discussion record but no plans and no code, so Phase 81 is planned and verified against today's flat Contacts index. The composition requirement — category headings survive an active filter and empty ones drop out — is carried as a forward-compatibility guarantee: the tag filter is applied before any grouping step, so a later heading pass groups an already-narrowed list under its own suppression rule with no second rendering mode.
 
-**Requires a discuss-phase decision:** whether multi-tag selection is AND or OR, and whether players may create tags or only DM-tier users.
+**Discuss-phase decisions settled:** multi-tag selection is OR (ticking more tags widens the result, matching the shop's rarity checkboxes), and every tag surface — authoring, chips, and the filter — is DM-tier only, so players neither see nor create tags. Both are recorded in `.planning/phases/81-contact-tags-and-filtering/81-CONTEXT.md`.
 
 ### Phase 82: Personal Cross-Board Event Agenda
 
