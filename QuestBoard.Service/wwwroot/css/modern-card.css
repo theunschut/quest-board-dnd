@@ -106,6 +106,18 @@
                  1px 1px 6px rgba(0, 0, 0, 0.8) !important;
 }
 
+/* The generic '.modern-card span/p' rule above repaints any validation message span in the
+   heading's cream colour, since a bare element selector beats it on specificity for anything
+   without a more specific class match of its own. Validation errors need to read as errors,
+   so this restates the Bootstrap danger red with the same drop shadow every other in-card
+   label uses to stay legible over the background art. */
+.modern-card .text-danger {
+    color: #ff6b6b !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
+}
+
 .modern-card .form-label {
     color: #F4E4BC !important;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),

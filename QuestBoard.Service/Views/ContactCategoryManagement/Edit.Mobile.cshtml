@@ -1,0 +1,31 @@
+@using QuestBoard.Service.ViewModels.ContactViewModels
+@model ContactCategoryViewModel
+
+@section Styles {
+    <link href="~/css/contacts.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="contact-section-card mb-4">
+    <h2 class="contact-section-heading mb-2">
+        <i class="fas fa-pen me-2"></i>Rename Category
+    </h2>
+
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+
+        <label asp-for="Name" class="form-label">Category Name</label>
+        <input asp-for="Name" class="form-control mb-2" maxlength="60" />
+        <span asp-validation-for="Name" class="text-danger d-block mb-2"></span>
+
+        <hr />
+        <div class="d-flex gap-2 mt-3">
+            <a href="@Url.Action("Index")" class="btn btn-secondary flex-grow-1">
+                <i class="fas fa-arrow-left me-2"></i>Cancel
+            </a>
+            <button type="submit" class="btn btn-warning flex-grow-1">
+                <i class="fas fa-pen me-2"></i>Rename
+            </button>
+        </div>
+    </form>
+</div>
