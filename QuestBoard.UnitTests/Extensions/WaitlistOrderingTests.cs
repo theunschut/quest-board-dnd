@@ -41,7 +41,7 @@ public class WaitlistOrderingTests
         // Act
         var ordered = waitlist.OrderWaitlist(FinalizedProposedDateId).ToList();
 
-        // Assert: VOTE-02 — Yes > Maybe > No
+        // Assert: Yes > Maybe > No
         ordered.Select(ps => ps.Id).Should().Equal(2, 3, 1);
     }
 
@@ -56,7 +56,7 @@ public class WaitlistOrderingTests
         // Act
         var ordered = waitlist.OrderWaitlist(FinalizedProposedDateId).ToList();
 
-        // Assert: VOTE-02 tiebreak + VOTE-03 — earlier LastVoteChangeTime sorts first
+        // Assert: within the same vote type, earlier LastVoteChangeTime sorts first
         ordered.Select(ps => ps.Id).Should().Equal(1, 2);
     }
 

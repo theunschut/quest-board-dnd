@@ -38,7 +38,7 @@ public class QuestCampaignUiParityTests(WebApplicationFactoryBase factory) : ICl
     }
 
     // -----------------------------------------------------------------------
-    // Manage page — Edit Quest link (D-01/D-02) and Delete link (D-03)
+    // Manage page — Edit Quest link and Delete link
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -135,7 +135,7 @@ public class QuestCampaignUiParityTests(WebApplicationFactoryBase factory) : ICl
     }
 
     // -----------------------------------------------------------------------
-    // Edit page — field visibility by board type (D-04) and Edit GET ViewBag.BoardType (D-05)
+    // Edit page — field visibility by board type, and Edit GET ViewBag.BoardType
     // -----------------------------------------------------------------------
 
     [Fact]

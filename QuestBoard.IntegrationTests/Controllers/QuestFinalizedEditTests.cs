@@ -113,7 +113,7 @@ public class QuestFinalizedEditTests(WebApplicationFactoryBase factory) : IClass
     }
 
     // -----------------------------------------------------------------------
-    // Edit POST — Total Player Count floor guard (D-01)
+    // Edit POST — Total Player Count floor guard
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -170,7 +170,7 @@ public class QuestFinalizedEditTests(WebApplicationFactoryBase factory) : IClass
     }
 
     // -----------------------------------------------------------------------
-    // Edit POST — valid edit persists without wiping roster/FinalizedDate (D-04)
+    // Edit POST — valid edit persists without wiping roster/FinalizedDate
     // -----------------------------------------------------------------------
 
     [Fact]

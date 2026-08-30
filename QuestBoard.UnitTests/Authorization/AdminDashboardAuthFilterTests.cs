@@ -46,7 +46,7 @@ public class AdminDashboardAuthFilterTests
     public void Authorize_WhenGroupAdmin_ReturnsFalse()
     {
         // A group-scoped Admin role claim (not SuperAdmin) must be denied — Hangfire
-        // dashboard access is SuperAdmin-only, per Phase 29's intent (preserved by 34.3-05).
+        // dashboard access is SuperAdmin-only.
         var context = CreateContext(authenticated: true, "Admin");
 
         var result = new AdminDashboardAuthFilter().Authorize(context);

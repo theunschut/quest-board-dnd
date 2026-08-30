@@ -66,7 +66,7 @@
 
 /* EasyMDE's live Preview pane (.editor-preview) renders the identical Markdig-generated HTML as
    the saved page, but only .markdown-content carried this rule -- so a blockquote showed styled
-   on Details/Manage/email yet plain in Preview, a real EDITOR-04 (preview-matches-saved)
+   on Details/Manage/email yet plain in Preview, a real preview-matches-saved
    mismatch. Scoping the same rule to .editor-preview keeps every Blockquote-button field (Quest,
    Character, Contact) consistent between the two render paths. */
 .markdown-content blockquote,

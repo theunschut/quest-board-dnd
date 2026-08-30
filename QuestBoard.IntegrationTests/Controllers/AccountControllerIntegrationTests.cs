@@ -203,7 +203,7 @@ public class AccountControllerIntegrationTests(WebApplicationFactoryBase factory
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    // Regression (D-04 fail-soft): a null ActiveGroupId must render the profile page
+    // Regression (fail-soft): a null ActiveGroupId must render the profile page
     // with no role badges and must NOT throw (no 500). Restores the shared fixture's
     // ActiveGroupId back to 1 afterward so sibling tests are unaffected.
     [Fact]
@@ -318,7 +318,7 @@ public class AccountControllerIntegrationTests(WebApplicationFactoryBase factory
         // rate-limit partition happened to be exhausted by another test (302+302, or 429+429,
         // both prove enumeration-safety; a MISMATCH between the two would be the actual bug).
         unknownResponse.StatusCode.Should().Be(knownResponse.StatusCode,
-            "a known and an unknown email must be fully indistinguishable (D-11)");
+            "a known and an unknown email must be fully indistinguishable");
         knownResponse.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.TooManyRequests);
 
         if (knownResponse.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.Found)

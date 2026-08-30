@@ -8,8 +8,8 @@ using QuestBoard.IntegrationTests.Helpers;
 namespace QuestBoard.IntegrationTests.Controllers;
 
 /// <summary>
-/// Covers the POST /markdown/preview round trip (EDITOR-04's "preview matches saved render"
-/// guarantee) using this codebase's first header-based-antiforgery + JSON-body integration test.
+/// Covers the POST /markdown/preview round trip and its "preview matches saved render"
+/// guarantee, using this codebase's first header-based-antiforgery + JSON-body integration test.
 ///
 /// The CSRF token check below is structural (reflection), not a live 400 assertion: this test
 /// harness's <c>WebApplicationFactoryBase</c> replaces <c>IAntiforgery</c> with a
@@ -68,7 +68,7 @@ public class MarkdownControllerIntegrationTests(WebApplicationFactoryBase factor
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().Contain("<strong>bold</strong>");
 
-        // EDITOR-04: preview output must be byte-identical to the same Web-target render used
+        // Preview output must be byte-identical to the same Web-target render used
         // for saved page display, not just "structurally similar".
         var markdownService = factory.Services.GetRequiredService<IMarkdownService>();
         var expectedHtml = markdownService.RenderToHtml("**bold**", MarkdownRenderTarget.Web);
@@ -87,7 +87,7 @@ public class MarkdownControllerIntegrationTests(WebApplicationFactoryBase factor
         previewAction.Should().NotBeNull("MarkdownController must define a Preview action");
 
         previewAction!.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull(
-            "POST /markdown/preview must require a valid antiforgery token (T-66-03)");
+            "POST /markdown/preview must require a valid antiforgery token");
 
         var authorizeAttr = controllerType.GetCustomAttribute<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>();
         authorizeAttr.Should().NotBeNull("MarkdownController must require authentication for any group member");
@@ -107,7 +107,7 @@ public class MarkdownControllerIntegrationTests(WebApplicationFactoryBase factor
         // Act -- POST with no RequestVerificationToken header at all. As documented above, the
         // TestAntiforgeryDecorator always validates successfully in this harness, so this cannot
         // observe a 400 here; MarkdownController_Preview_CarriesValidateAntiForgeryToken above is
-        // what actually proves T-66-03's mitigation is wired up.
+        // what actually proves the antiforgery mitigation is wired up.
         var response = await client.PostAsync(PreviewUrl, MarkdownJsonBody("**bold**"), TestContext.Current.CancellationToken);
 
         // Assert -- no server error; reaches (or would reach) the controller's own logic.

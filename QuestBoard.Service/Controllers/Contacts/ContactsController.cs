@@ -463,7 +463,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             return HttpContext.Session.GetInt32(SessionKeys.ShowHiddenContactsKey(groupId)) == 1;
         }
 
-        // Three-branch visibility check (D-13/D-15): the creator always sees their own hidden
+        // Three-branch visibility check: the creator always sees their own hidden
         // Contact; a revealed Contact is visible to everyone; a DM-tier viewer with the Show
         // Hidden toggle on sees all hidden Contacts too. Plain Players never see hidden Contacts.
         private static bool IsVisibleTo(Contact contact, int currentUserId, bool includeHidden)

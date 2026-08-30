@@ -5,19 +5,13 @@ using System.Net.Http.Headers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
-// Wave 0 RED scaffold (Phase 57, Plan 01): this file intentionally references the not-yet-created
-// ContactsController and its routes (/Contacts/Index, /Contacts/Details/{id}, /Contacts/Create,
-// /Contacts/Edit/{id}, /Contacts/Delete/{id}, /Contacts/ToggleReveal/{id},
-// /Contacts/ToggleShowHidden, /Contacts/AddNote, /Contacts/EditNote, /Contacts/DeleteNote). Since
-// this file has no direct compile-time dependency on those controller/action symbols (only
-// string-based route literals), it is expected to build cleanly but every [Fact] below MUST fail
-// at runtime (404 Not Found) until Plan 04 lands — that is the intended Wave 0 RED state for an
-// integration-test scaffold that targets routes rather than C# symbols directly.
-//
-// D-09b/D-12/D-13/D-14/D-15/D-15b/D-09 refer to decisions in 57-CONTEXT.md.
+// Route-level coverage for ContactsController: authorization on the write actions, the
+// hidden/reveal visibility model (including the creator exception and the per-group Show Hidden
+// toggle), and note authoring. These tests drive string route literals rather than controller
+// symbols, so a renamed or removed route fails here at runtime rather than at compile time.
 public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factory) : IClassFixture<WebApplicationFactoryBase>
 {
-    // (1) D-09b — Player is blocked from Create/Edit/Delete/ToggleReveal; DM-tier succeeds.
+    // (1) Player is blocked from Create/Edit/Delete/ToggleReveal; DM-tier succeeds.
 
     [Fact]
     public async Task Create_Get_PlayerAccess_ShouldBeBlocked()
@@ -147,7 +141,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
     }
 
-    // (2) D-14 — a Contact created via Create POST defaults to IsRevealed == false.
+    // (2) A Contact created via Create POST defaults to IsRevealed == false.
 
     [Fact]
     public async Task Create_Post_NewContact_DefaultsToHidden()
@@ -172,7 +166,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         persisted!.IsRevealed.Should().BeFalse();
     }
 
-    // (3) D-12/D-13 — a hidden Contact is absent from a Player's Index list, and a direct
+    // (3) A hidden Contact is absent from a Player's Index list, and a direct
     // Details/{id} GET for that hidden Contact returns NotFound (404) for the Player.
 
     [Fact]
@@ -211,7 +205,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // CR-01 regression (code review) — GetContactImage must apply the same hidden-Contact
+    // Regression guard: GetContactImage must apply the same hidden-Contact
     // visibility check as Details/Index, not just the group-scoped query filter. Otherwise any
     // authenticated group member can fetch a hidden Contact's portrait by guessing/enumerating
     // its id, bypassing the hidden/reveal model entirely.
@@ -249,7 +243,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    // (4) D-15 branch 1 — the creator exception: the DM-tier user who created a hidden Contact
+    // (4) The creator exception: the DM-tier user who created a hidden Contact
     // sees it on their own Index and Details regardless of toggle state.
 
     [Fact]
@@ -285,7 +279,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         content.Should().Contain("Creator&#x27;s Own Hidden In Index");
     }
 
-    // (5) D-15 branch 2 — a different DM-tier user does NOT see the hidden Contact with toggle
+    // (5) A different DM-tier user does NOT see the hidden Contact with toggle
     // OFF, but DOES see it after POSTing ToggleShowHidden (toggle ON).
 
     [Fact]
@@ -318,7 +312,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         afterContent.Should().Contain("Toggle-Gated Contact");
     }
 
-    // (6) D-15 branch 3 — a plain Player never sees the hidden Contact regardless of any toggle state.
+    // (6) A plain Player never sees the hidden Contact regardless of any toggle state.
 
     [Fact]
     public async Task Index_HiddenContact_Player_NeverSeesHiddenContactEvenAfterToggleAttempt()
@@ -332,7 +326,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "contact_player_never", "contact_player_never@example.com", roles: ["Player"]);
 
-        // A Player posting ToggleShowHidden should have no visibility effect (D-15 branch 3);
+        // A Player posting ToggleShowHidden should have no visibility effect;
         // this either 403s/redirects to AccessDenied or is a no-op — either way, Index must
         // never show the hidden contact for a plain Player afterward.
         await playerClient.PostAsync(
@@ -345,7 +339,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         content.Should().NotContain("Never Visible To Player");
     }
 
-    // (7) D-15b — the toggle is per-group and session-scoped: toggling ON for group 1 does not
+    // (7) The toggle is per-group and session-scoped: toggling ON for group 1 does not
     // reveal hidden contacts when the active group is group 2.
 
     [Fact]
@@ -397,7 +391,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         }
     }
 
-    // (8) D-09 — any group member (Player) can POST AddNote, EditNote, and DeleteNote on a note
+    // (8) Any group member (Player) can POST AddNote, EditNote, and DeleteNote on a note
     // authored by a different user — no ownership guard blocks them.
 
     [Fact]

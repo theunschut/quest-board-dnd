@@ -289,7 +289,7 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
             "the tag-helper-generated action= URL must percent-encode the payload rather than reflect it raw");
     }
 
-    // AddMember redirect preserves the search term (D-04)
+    // AddMember redirect preserves the search term
     [Fact]
     public async Task AddMember_WithSearch_ShouldPreserveSearchOnRedirect()
     {
