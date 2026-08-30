@@ -143,7 +143,7 @@ public class ContactCategoryManagementController(
         // Redirect the same way whether or not a swap actually happened, so a no-op at a
         // boundary is indistinguishable from a successful move to the browser.
         await contactCategoryService.MoveUpAsync(id, token);
-        return RedirectToAction(nameof(Index), fragment: $"category-{id}-row");
+        return RedirectToAction(nameof(Index), controllerName: null, routeValues: null, fragment: $"category-{id}-row");
     }
 
     [HttpPost]
@@ -151,7 +151,7 @@ public class ContactCategoryManagementController(
     public async Task<IActionResult> MoveDown(int id, CancellationToken token = default)
     {
         await contactCategoryService.MoveDownAsync(id, token);
-        return RedirectToAction(nameof(Index), fragment: $"category-{id}-row");
+        return RedirectToAction(nameof(Index), controllerName: null, routeValues: null, fragment: $"category-{id}-row");
     }
 
     // Shared by Index and the failed-Add path so a rejected submission re-renders the same
