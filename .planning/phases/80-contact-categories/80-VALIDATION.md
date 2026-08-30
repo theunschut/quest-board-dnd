@@ -3,7 +3,7 @@ phase: 80
 slug: contact-categories
 status: ready
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-08-30
 ---
 
@@ -52,8 +52,8 @@ silently dropped from a plan.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 80-07 T3 | 80-07 | 6 | CONTACTCAT-05 | Info Disclosure — the Phase 49/55 leak class | Group A's categories appear on no group-B index and in no group-B dropdown; a POST naming a foreign `CategoryId` is refused, not silently accepted | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_CrossGroup"` | ✅ created by 80-07 | ⬜ pending — see 80-08-SUMMARY.md, parallel-wave note |
-| 80-07 T3 | 80-07 | 6 | CONTACTCAT-05 | Info Disclosure | A null `ActiveGroupId` returns **zero** categories, never every board's merged | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_CrossGroup"` | ✅ created by 80-07 | ⬜ pending — see 80-08-SUMMARY.md, parallel-wave note |
+| 80-07 T3 | 80-07 | 6 | CONTACTCAT-05 | Info Disclosure — the Phase 49/55 leak class | Group A's categories appear on no group-B index and in no group-B dropdown; a POST naming a foreign `CategoryId` is refused, not silently accepted | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_CrossGroup"` | ✅ created by 80-07 | ✅ green — verified post-merge on the integrated tree |
+| 80-07 T3 | 80-07 | 6 | CONTACTCAT-05 | Info Disclosure | A null `ActiveGroupId` returns **zero** categories, never every board's merged | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_CrossGroup"` | ✅ created by 80-07 | ✅ green — verified post-merge on the integrated tree |
 | 80-06 T3 | 80-06 | 5 | CONTACTCAT-12 | Info Disclosure — a heading is itself a campaign spoiler | Heading absent for a player whose contacts under it are all unrevealed; the same heading **present** for a DM with Show Hidden on | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_EmptyHeadingSuppression"` | ✅ created by 80-06 | ✅ green |
 | 80-06 T3 | 80-06 | 5 | CONTACTCAT-07, CONTACTCAT-09, CONTACTCAT-10, CONTACTCAT-11 | — | Categories render in `SortOrder`, contacts alphabetical within, Ungrouped pinned last, zero-category board renders today's flat list unchanged (D-10) | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactsIndex_CategoryOrdering"` | ✅ created by 80-06 | ✅ green |
 | 80-05 T3 | 80-05 | 4 | CONTACTCAT-03 | — | Deleting a non-empty category leaves its contacts alive with `CategoryId = null`; asserted by reading the DB directly, never inferred from the UI | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_DeleteOrphans"` | ✅ created by 80-05 | ✅ green |
@@ -64,7 +64,7 @@ silently dropped from a plan.
 | 80-06 T3 | 80-06 | 5 | CONTACTCAT-13 | Stored XSS | A category name containing markup is HTML-escaped in the heading and never routed through `IMarkdownService`; length-capped at 60 | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_NameRendersEscaped"` | ✅ created by 80-06 | ✅ green |
 | 80-02 T2, 80-03 T3 | 80-02, 80-03 | 1, 2 | CONTACTCAT-01, CONTACTCAT-02 | — | Nullable `CategoryId` + optional navigation; `SetNull` delete behaviour and the `NoAction` Group FK are what the migration actually emits | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~ContactCategoryRepository"` | ✅ created by 80-02, 80-03 | ✅ green |
 | 80-08 T1 | 80-08 | 6 | CONTACTCAT-14 | — | Category name reaches both Details views after being added to the entity, the domain model, the view model and both AutoMapper profiles | unit + integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactDetails_Category"` | ✅ created by 80-08 | ✅ green |
-| 80-07 T2 | 80-07 | 6 | CONTACTCAT-15 | — | On a board with zero categories the Create and Edit forms render a disabled select with the Manage Categories link | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_DisabledSelect"` | ✅ created by 80-07 | ⬜ pending — see 80-08-SUMMARY.md, parallel-wave note |
+| 80-07 T2 | 80-07 | 6 | CONTACTCAT-15 | — | On a board with zero categories the Create and Edit forms render a disabled select with the Manage Categories link | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~ContactCategory_DisabledSelect"` | ✅ created by 80-07 | ✅ green — verified post-merge on the integrated tree |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

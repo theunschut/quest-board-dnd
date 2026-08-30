@@ -479,7 +479,7 @@ Plans:
 **Goal**: A DM can group the board's NPCs under named categories — "Corridor", "Guild Members", "Last Bastion" — and the Contacts index renders them under those headings instead of one flat list, on both desktop and mobile.
 **Depends on**: Nothing (independent of the events chain 74–77 and the link-preview chain 78–79; touches only the Contacts feature)
 **Requirements**: CONTACTCAT-01, CONTACTCAT-02, CONTACTCAT-03, CONTACTCAT-04, CONTACTCAT-05, CONTACTCAT-06, CONTACTCAT-07, CONTACTCAT-08, CONTACTCAT-09, CONTACTCAT-10, CONTACTCAT-11, CONTACTCAT-12, CONTACTCAT-13, CONTACTCAT-14, CONTACTCAT-15
-**Plans**: 6/8 plans executed
+**Plans**: 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -505,8 +505,8 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 80-07-PLAN.md — Category assignment on the four Create/Edit forms plus the cross-group isolation suite (wave 6)
-- [ ] 80-08-PLAN.md — Category on both Details views plus the real-User-Agent mobile render suite (wave 6)
+- [x] 80-07-PLAN.md — Category assignment on the four Create/Edit forms plus the cross-group isolation suite (wave 6)
+- [x] 80-08-PLAN.md — Category on both Details views plus the real-User-Agent mobile render suite (wave 6)
 
 **Origin:** operator-relayed feature request from a board user, 2026-08-27 — "Misschien leuk … om NPC's in categorieën te kunnen onderverdelen? Dat ik verschillende kopjes/categorieën kan maken om de boel wat overzichtelijk te houden."
 
