@@ -317,73 +317,119 @@ public class LayoutNavigationTests : IClassFixture<WebApplicationFactoryBase>, I
     }
 
     // -----------------------------------------------------------------------
-    // Availability Overview nav entry — these assert the new entry itself,
-    // while the existing Calendar cases above assert the toggle label they
-    // sit beside is unchanged. Present for DM and player on both board
-    // types and both user agents, absent for an anonymous visitor.
+    // Board Availability nav entry — this entry moved out of the Calendar
+    // dropdown and into the Dungeon Master menu, and its old site was
+    // role-blind, so presence alone cannot prove the move happened: a case
+    // that only checks a DM sees it would have passed just as well before
+    // the move as after. The flip is the proof instead — present for a DM
+    // and absent for a player can only mean the entry now lives inside the
+    // DM block. If the entry's old site ever becomes role-aware for some
+    // other reason, the flip stops proving placement and this set needs
+    // rethinking.
+    //
+    // The unresolved-board-type case exists because the menu this entry
+    // moved into carries no board-type gate of its own — a DM-policy-only
+    // implementation would silently widen visibility to a DM whose board
+    // type has not resolved, which is exactly the state this entry is
+    // supposed to stay hidden in.
     // -----------------------------------------------------------------------
 
     [Theory]
     [InlineData(DesktopUserAgent)]
     [InlineData(MobileUserAgent)]
-    public async Task Nav_CampaignDm_AvailabilityOverviewLinkPresent(string userAgent)
+    public async Task Nav_CampaignDm_BoardAvailabilityLinkPresent(string userAgent)
     {
         _factory.TestGroupContext.BoardType = BoardType.Campaign;
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
-            _factory, "navavail_dm", "navavail_dm@test.com");
+            _factory, "navavail_campaign_dm", "navavail_campaign_dm@test.com");
 
         var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("Availability Overview");
+        html.Should().Contain("Board Availability");
+        html.Should().Contain("Create Event");
     }
 
     [Theory]
     [InlineData(DesktopUserAgent)]
     [InlineData(MobileUserAgent)]
-    public async Task Nav_CampaignPlayer_AvailabilityOverviewLinkPresent(string userAgent)
+    public async Task Nav_OneShotDm_BoardAvailabilityLinkPresent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = BoardType.OneShot;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            _factory, "navavail_oneshot_dm", "navavail_oneshot_dm@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Board Availability");
+        html.Should().Contain("Create Event");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignPlayer_BoardAvailabilityLinkAbsent(string userAgent)
     {
         _factory.TestGroupContext.BoardType = BoardType.Campaign;
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            _factory, "navavail_player", "navavail_player@test.com");
+            _factory, "navavail_campaign_player", "navavail_campaign_player@test.com", roles: ["Player"]);
 
         var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("Availability Overview");
+        html.Should().NotContain("Board Availability");
+        html.Should().Contain("Calendar");
     }
 
     [Theory]
     [InlineData(DesktopUserAgent)]
     [InlineData(MobileUserAgent)]
-    public async Task Nav_OneShotPlayer_AvailabilityOverviewLinkPresent(string userAgent)
+    public async Task Nav_OneShotPlayer_BoardAvailabilityLinkAbsent(string userAgent)
     {
         _factory.TestGroupContext.BoardType = BoardType.OneShot;
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            _factory, "navavail_oneshot", "navavail_oneshot@test.com");
+            _factory, "navavail_oneshot_player", "navavail_oneshot_player@test.com", roles: ["Player"]);
 
         var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("Availability Overview");
+        html.Should().NotContain("Board Availability");
+        html.Should().Contain("Calendar");
     }
 
     [Theory]
     [InlineData(DesktopUserAgent)]
     [InlineData(MobileUserAgent)]
-    public async Task Nav_CampaignAnonymous_AvailabilityOverviewLinkAbsent(string userAgent)
+    public async Task Nav_UnresolvedBoardTypeDm_BoardAvailabilityLinkAbsent(string userAgent)
+    {
+        _factory.TestGroupContext.BoardType = null;
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            _factory, "navavail_unresolved_dm", "navavail_unresolved_dm@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", userAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("Board Availability");
+        html.Should().Contain("Create Event");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Nav_CampaignAnonymous_BoardAvailabilityLinkAbsent(string userAgent)
     {
         _factory.TestGroupContext.BoardType = BoardType.Campaign;
 
         var (response, html) = await GetWithUserAgentAsync("/", userAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().NotContain("Availability Overview");
+        html.Should().NotContain("Board Availability");
     }
 
     // -----------------------------------------------------------------------
     // My Agenda nav entry — this is the one unconditional path into the cross-board
-    // agenda, so unlike the Calendar/Availability Overview entries above it must render
+    // agenda, so unlike the Calendar/Board Availability entries above it must render
     // for every authenticated user on every board type, including when no board type
     // has resolved at all.
     // -----------------------------------------------------------------------
