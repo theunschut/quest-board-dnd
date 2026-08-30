@@ -136,3 +136,13 @@ The Board Availability nav entry now lives in exactly one place on each layout â
 ---
 *Phase: 83-availability-surface-naming-and-placement*
 *Completed: 2026-08-30*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/Views/Shared/_Layout.cshtml
+- FOUND: QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml
+- FOUND: QuestBoard.IntegrationTests/Controllers/LayoutNavigationTests.cs
+- FOUND: .planning/phases/83-availability-surface-naming-and-placement/83-03-SUMMARY.md
+- FOUND: commit e3c0f4c2
+- FOUND: commit ca055ab2
+- FOUND: commit c6320357
