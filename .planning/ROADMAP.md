@@ -479,7 +479,7 @@ Plans:
 **Goal**: A DM can group the board's NPCs under named categories — "Corridor", "Guild Members", "Last Bastion" — and the Contacts index renders them under those headings instead of one flat list, on both desktop and mobile.
 **Depends on**: Nothing (independent of the events chain 74–77 and the link-preview chain 78–79; touches only the Contacts feature)
 **Requirements**: CONTACTCAT-01, CONTACTCAT-02, CONTACTCAT-03, CONTACTCAT-04, CONTACTCAT-05, CONTACTCAT-06, CONTACTCAT-07, CONTACTCAT-08, CONTACTCAT-09, CONTACTCAT-10, CONTACTCAT-11, CONTACTCAT-12, CONTACTCAT-13, CONTACTCAT-14, CONTACTCAT-15
-**Plans**: 2/8 plans executed
+**Plans**: 3/8 plans executed
 
 Plans:
 **Wave 1**
@@ -489,7 +489,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 80-03-PLAN.md — Category repository, service, DI wiring, and the unit suite (wave 2)
+- [x] 80-03-PLAN.md — Category repository, service, DI wiring, and the unit suite (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
