@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 83
 current_phase_name: Availability Surface Naming and Placement
 status: executing
-stopped_at: Phase 83 planned (4 plans, checker passed)
-last_updated: "2026-08-30T09:43:07.228Z"
-last_activity: 2026-08-29
-last_activity_desc: Phase 82 complete, transitioned to Phase 83
+stopped_at: Completed 83-02-PLAN.md
+last_updated: "2026-08-30T09:50:53.593Z"
+last_activity: 2026-08-30
+last_activity_desc: Plan 83-02 (My Agenda / Board Availability cross-link symmetry) complete
 progress:
   total_phases: 12
   completed_phases: 7
   total_plans: 82
-  completed_plans: 54
+  completed_plans: 55
   percent: 58
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 ## Current Position
 
 Phase: 83 — Availability Surface Naming and Placement
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-29 — Phase 82 complete, transitioned to Phase 83
+Plan: 2 of 4
+Status: In progress
+Last activity: 2026-08-30 — Plan 83-02 (My Agenda / Board Availability cross-link symmetry) complete
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
@@ -52,6 +52,8 @@ Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards 
 ### Decisions
 
 v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v8.0-ROADMAP.md` Milestone Summary for the consolidated view. No open decisions carried forward.
+
+- [Phase 83]: CalendarButtonStyleTests.cs written with post-write CRLF conversion (Write tool emitted LF; converted before running tests) to satisfy CLAUDE.md's Windows/CRLF convention
 
 ### Roadmap Evolution
 
@@ -83,6 +85,7 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 | 260713-js8 | Add re-crop trigger for existing profile images (Characters, Contacts, DM Profile) and fix backend gaps that would drop or wipe crop-only submissions | 2026-07-13 | d2f2f95 | [260713-js8-add-re-crop-trigger-for-existing-profile](./quick/260713-js8-add-re-crop-trigger-for-existing-profile/) |
 | 260714-b0w | Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist | 2026-07-14 | 79e76cb | [260714-b0w-waitlist-table-missing-on-quest-details-](./quick/260714-b0w-waitlist-table-missing-on-quest-details-/) |
 | Phase 83 P01 | 15min | 3 tasks | 4 files |
+| Phase 83 P02 | 20min | 3 tasks | 5 files |
 
 ## Deferred Items
 
@@ -97,8 +100,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-08-30T09:43:07.172Z
-Stopped at: Phase 83 planned (4 plans, checker passed)
+Last session: 2026-08-30T09:50:53.571Z
+Stopped at: Completed 83-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
