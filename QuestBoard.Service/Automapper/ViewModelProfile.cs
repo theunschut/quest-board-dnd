@@ -78,18 +78,39 @@ public class ViewModelProfile : Profile
         CreateMap<CharacterClass, CharacterClassViewModel>()
             .ReverseMap();
 
-        // Contact to ContactViewModel
+        // Contact to ContactViewModel -- CategoryId, CategoryName and CategorySortOrder map by
+        // convention since the names match on both sides.
         CreateMap<Contact, ContactViewModel>()
             .ForMember(dest => dest.HasContactImage, opt => opt.MapFrom(src => src.HasContactImage))
             .ForMember(dest => dest.ContactImageFile, opt => opt.Ignore())
-            .ForMember(dest => dest.CanManage, opt => opt.Ignore());
+            .ForMember(dest => dest.CanManage, opt => opt.Ignore())
+            .ForMember(dest => dest.CategoryOptions, opt => opt.Ignore())
+            .ForMember(dest => dest.HasCategories, opt => opt.Ignore());
 
-        // ContactViewModel to Contact
+        // ContactViewModel to Contact -- CategoryId maps by convention. CategoryName and
+        // CategorySortOrder are display-only projections and must never be written back into
+        // the domain model from a posted value.
         CreateMap<ContactViewModel, Contact>()
             .ForMember(dest => dest.ContactImageData, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedByUser, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.Notes, opt => opt.Ignore());
+            .ForMember(dest => dest.Notes, opt => opt.Ignore())
+            .ForMember(dest => dest.CategoryName, opt => opt.Ignore())
+            .ForMember(dest => dest.CategorySortOrder, opt => opt.Ignore());
+
+        // ContactCategory to ContactCategoryViewModel -- ContactCount, IsFirst and IsLast are
+        // computed imperatively in the controller from the ordered list and the count map,
+        // exactly as ContactViewModel.CanManage is set today rather than mapped.
+        CreateMap<ContactCategory, ContactCategoryViewModel>()
+            .ForMember(dest => dest.ContactCount, opt => opt.Ignore())
+            .ForMember(dest => dest.IsFirst, opt => opt.Ignore())
+            .ForMember(dest => dest.IsLast, opt => opt.Ignore());
+
+        // ContactCategoryViewModel to ContactCategory -- the board id is stamped by the
+        // controller from the active board and must never be accepted from a form post, since
+        // that would let a submitted value place a category on another board.
+        CreateMap<ContactCategoryViewModel, ContactCategory>()
+            .ForMember(dest => dest.GroupId, opt => opt.Ignore());
 
         // ContactNote to ContactNoteViewModel
         CreateMap<ContactNote, ContactNoteViewModel>();
