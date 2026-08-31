@@ -174,3 +174,12 @@ None - no external service configuration required.
 ---
 *Phase: 81-contact-tags-and-filtering*
 *Completed: 2026-08-31*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.IntegrationTests/Controllers/ContactsTagsDesktopMarkupTests.cs
+- FOUND: .planning/phases/81-contact-tags-and-filtering/81-07-SUMMARY.md
+- FOUND: commit 205b073f (feat: chip and filter styles, and the details tag line)
+- FOUND: commit 3a8f3703 (feat: desktop index filter row, chips, toggle round trip, and empty states)
+- FOUND: commit 2bee884c (fix: stop the tag filter from widening to the full list on zero matches)
+- FOUND: commit 3e2624f3 (test: desktop markup tests for audience, vocabulary scoping, empty states, and escaping)
