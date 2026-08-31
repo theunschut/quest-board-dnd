@@ -61,9 +61,28 @@
 /* Tag entry widget (Tagify theme override) — kept identical to contacts.css's desktop values
    so the chips look the same on both platforms. The desktop stylesheet is pulled in by the
    desktop layout and is not present on mobile, so the override has to live in both files. */
-.contact-tags-input {
-    --tag-bg: rgba(139, 69, 19, 0.35);
+/* Targets the `.tagify` element itself (not just the wrapping `.contact-tags-input` div):
+   Tagify's own CSS redeclares these same custom properties directly on `.tagify`, and a
+   rule that matches an element directly always wins over a value inherited from an
+   ancestor -- so a declaration scoped only to the wrapper div never actually reached the
+   widget and every chip rendered in Tagify's stock light-grey theme regardless. */
+.contact-tags-input .tagify {
+    --tag-bg: rgba(139, 69, 19, 0.85);
     --tag-text-color: #F4E4BC;
     --tags-border-color: rgba(0, 0, 0, 0.3);
     --tags-focus-border-color: #ffc107;
+}
+
+/* Same fix as the desktop stylesheet: `.contact-form-card span:not(.badge)` above repaints
+   every span pale-gold with a drop shadow, including Tagify's contenteditable input span --
+   making the placeholder and in-progress typed text nearly illegible on the input's light
+   surface. Reset it back to plain readable text. */
+.contact-tags-input .tagify__input {
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+}
+
+.contact-tags-input .tagify__input::before {
+    color: rgba(0, 0, 0, 0.5) !important;
+    text-shadow: none !important;
 }
