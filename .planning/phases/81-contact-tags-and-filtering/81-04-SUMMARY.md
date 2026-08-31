@@ -191,3 +191,7 @@ None - no external service configuration required.
 ---
 *Phase: 81-contact-tags-and-filtering*
 *Completed: 2026-08-31*
+
+## Self-Check: PASSED
+
+All claimed files verified present on disk (`ContactTagViewModel.cs`, `81-04-SUMMARY.md`); all four commits (`de9bb1ee`, `0d463fe9`, `53fced74`, `b5a83f83`) verified present in `git log`.
