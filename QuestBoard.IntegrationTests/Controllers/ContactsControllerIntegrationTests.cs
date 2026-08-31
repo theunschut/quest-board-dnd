@@ -476,6 +476,42 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         persisted.Should().BeNull();
     }
 
+    // Defends against a caller on one board posting a contactId that belongs to a contact
+    // on a different board -- the note must be rejected with a 404 and no row committed.
+    [Fact]
+    public async Task AddNote_ContactInDifferentGroup_ReturnsNotFoundAndInsertsNoNote()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+
+        var (attackerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_addnote_attacker", "contact_addnote_attacker@example.com", roles: ["Player"]);
+
+        var otherBoardOwner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "contact_addnote_otherboard_owner", "contact_addnote_otherboard_owner@example.com", "Test123!", "Other Board Owner For AddNote");
+        var otherBoardContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, otherBoardOwner.Id, "Other Board's Contact For AddNote", groupId: 2, isRevealed: true);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["contactId"] = otherBoardContact.Id.ToString(),
+            ["Text"] = "A note attempted against a foreign board's contact."
+        });
+
+        var response = await attackerClient.PostAsync("/Contacts/AddNote", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // IgnoreQueryFilters is load-bearing here -- without it the scoped context filters to
+        // board 1 and this assertion would pass even if the row were actually inserted, which
+        // is exactly the failure mode that let this bug survive manual testing.
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = context.ContactNotes.IgnoreQueryFilters()
+            .FirstOrDefault(n => n.ContactId == otherBoardContact.Id);
+        persisted.Should().BeNull();
+    }
+
     // (9) Cross-tenant IDOR — a Details/{id} GET for a Contact belonging to another group
     // returns 404.
 
