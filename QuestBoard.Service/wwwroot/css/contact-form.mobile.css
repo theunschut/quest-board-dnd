@@ -57,3 +57,13 @@
     display: block;
     width: 100%;
 }
+
+/* Tag entry widget (Tagify theme override) — kept identical to contacts.css's desktop values
+   so the chips look the same on both platforms. The desktop stylesheet is pulled in by the
+   desktop layout and is not present on mobile, so the override has to live in both files. */
+.contact-tags-input {
+    --tag-bg: rgba(139, 69, 19, 0.35);
+    --tag-text-color: #F4E4BC;
+    --tags-border-color: rgba(0, 0, 0, 0.3);
+    --tags-focus-border-color: #ffc107;
+}

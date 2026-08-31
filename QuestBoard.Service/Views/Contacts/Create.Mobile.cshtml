@@ -44,6 +44,13 @@
                 <span asp-validation-for="SubLocation" class="text-danger"></span>
             </div>
 
+            <div class="mb-3 contact-tags-input">
+                <label asp-for="TagsInput" class="form-label">Tags</label>
+                <input asp-for="TagsInput" class="form-control" id="TagsInput" placeholder="Add a tag and press Enter…" />
+                <span asp-validation-for="TagsInput" class="text-danger"></span>
+                <small class="form-text text-muted">Optional — e.g. shopkeeper, quest giver</small>
+            </div>
+
             <div class="mb-3">
                 <label asp-for="CategoryId" class="form-label">Category</label>
                 @if (Model.HasCategories)
@@ -144,5 +151,15 @@
     <script src="~/js/image-crop.js" asp-append-version="true"></script>
     <script>
         initImageCrop({ fileInputId: 'contactImageInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1 });
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/@@yaireo/tagify@4.38.0/dist/tagify.css"
+          integrity="sha384-C4PNucE7dGKU8Ad5d3yFKR13AcpKTe+MbcGsu83yTrSmvAMWiPj7Gb2vUJth6uLu"
+          crossorigin="anonymous" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@@yaireo/tagify@4.38.0/dist/tagify.min.js"
+            integrity="sha384-YtX1Y58YfRTMkRpmTDmpcMyzLXjMKMypzK5BNd5PRLaoZfVSFefqUZ855u0XJn0E"
+            crossorigin="anonymous"></script>
+    <script src="~/js/contact-tags.js" asp-append-version="true"></script>
+    <script>
+        initContactTags({ inputId: 'TagsInput', whitelist: @Html.Raw(Json.Serialize(Model.AvailableTagNames)) });
     </script>
 }
