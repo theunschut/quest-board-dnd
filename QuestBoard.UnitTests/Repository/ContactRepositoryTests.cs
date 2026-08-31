@@ -352,6 +352,37 @@ public class ContactRepositoryTests
     }
 
     [Fact]
+    public async Task AddNoteAsync_ContactFromAnotherGroup_InsertsNothing()
+    {
+        // Defends against a note whose ContactId targets a contact outside the active group --
+        // the group-scoped Contacts existence check must reject the insert even when a caller
+        // reaches this method directly, without going through the controller's own resolve.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(AddNoteAsync_ContactFromAnotherGroup_InsertsNothing), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        var note = new ContactNote
+        {
+            ContactId = 2, // seeded in group 2 by SeedTwoGroupContactsAsync
+            AuthorUserId = 2,
+            Text = "A note aimed at a contact on a different board.",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Act
+        await repository.AddNoteAsync(note, TestContext.Current.CancellationToken);
+
+        // Assert: nothing committed for the foreign contact, regardless of query filters
+        var persisted = context.Set<ContactNoteEntity>().IgnoreQueryFilters()
+            .Where(n => n.ContactId == 2)
+            .ToList();
+        persisted.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task GetAllContactsWithDetailsAsync_ReflectsHasContactImage_TrueWithImage_FalseWithout()
     {
         // Arrange: two contacts in the same group, one with a stored image and one without.
@@ -456,6 +487,297 @@ public class ContactRepositoryTests
         // Assert
         contacts.Should().ContainSingle();
         contacts[0].CategoryName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_NewNames_CreatesTagRowsAndAssociations()
+    {
+        // Arrange: a contact with no tags yet
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_NewNames_CreatesTagRowsAndAssociations);
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Tagged Contact", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+
+            // Act
+            await repository.ReplaceContactTagsAsync(1, ["shopkeeper", "quest giver"], TestContext.Current.CancellationToken);
+        }
+
+        // Assert: read through a fresh context scope, not the one that just wrote
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().HaveCount(2);
+            tags.Select(t => t.Name).Should().BeEquivalentTo(["shopkeeper", "quest giver"]);
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_CaseVariantOfExistingName_ReusesRow()
+    {
+        // Arrange: an existing "shopkeeper" tag on one contact, and a second, still-untagged
+        // contact on the same board. The in-memory provider does not enforce the unique index
+        // or the column collation, so this proves the app-level case-insensitive reuse works by
+        // construction rather than by relying on a constraint violation.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_CaseVariantOfExistingName_ReusesRow);
+        int existingTagId;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Contact A", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            context.Contacts.Add(new ContactEntity { Id = 2, Name = "Contact B", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+            await repository.ReplaceContactTagsAsync(1, ["shopkeeper"], TestContext.Current.CancellationToken);
+            existingTagId = await context.ContactTags.Select(t => t.Id).SingleAsync(TestContext.Current.CancellationToken);
+
+            // Act: submit a case-variant name on the second contact
+            await repository.ReplaceContactTagsAsync(2, ["Shopkeeper"], TestContext.Current.CancellationToken);
+        }
+
+        // Assert: still exactly one tag row on the board, reused rather than duplicated
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().ContainSingle();
+            tags[0].Id.Should().Be(existingTagId);
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_DuplicateCaseVariantsInSameSubmission_CreatesSingleRow()
+    {
+        // Arrange: a contact with no tags yet
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_DuplicateCaseVariantsInSameSubmission_CreatesSingleRow);
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Contact A", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+
+            // Act: three case variants of the same name submitted together in one call
+            await repository.ReplaceContactTagsAsync(1, ["shopkeeper", "Shopkeeper", "SHOPKEEPER"], TestContext.Current.CancellationToken);
+        }
+
+        // Assert: exactly one tag row and one association
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().ContainSingle();
+
+            var contact = await context.Contacts.Include(c => c.Tags).FirstAsync(c => c.Id == 1, TestContext.Current.CancellationToken);
+            contact.Tags.Should().ContainSingle();
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_LastContactDropsTag_DeletesRow()
+    {
+        // Arrange: a single contact holding a single tag
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_LastContactDropsTag_DeletesRow);
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Solo Holder", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+            await repository.ReplaceContactTagsAsync(1, ["temporary"], TestContext.Current.CancellationToken);
+
+            // Act: drop the tag entirely
+            await repository.ReplaceContactTagsAsync(1, [], TestContext.Current.CancellationToken);
+        }
+
+        // Assert: the tag row is gone from the database, not just detached from the contact
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().BeEmpty();
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_TagStillHeldByAnotherContact_SurvivesPrune()
+    {
+        // Arrange: two contacts sharing one tag
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_TagStillHeldByAnotherContact_SurvivesPrune);
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Contact A", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            context.Contacts.Add(new ContactEntity { Id = 2, Name = "Contact B", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+            await repository.ReplaceContactTagsAsync(1, ["shared"], TestContext.Current.CancellationToken);
+            await repository.ReplaceContactTagsAsync(2, ["shared"], TestContext.Current.CancellationToken);
+
+            // Act: contact A drops the tag, but contact B still holds it
+            await repository.ReplaceContactTagsAsync(1, [], TestContext.Current.CancellationToken);
+        }
+
+        // Assert: the tag row survives because contact B still references it
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().ContainSingle();
+
+            var contactB = await context.Contacts.Include(c => c.Tags).FirstAsync(c => c.Id == 2, TestContext.Current.CancellationToken);
+            contactB.Tags.Should().ContainSingle(t => t.Name == "shared");
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_ContactOnAnotherBoard_IsSilentNoOp()
+    {
+        // Arrange: contact 2 belongs to group 2, viewer's active group is 1
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_ContactOnAnotherBoard_IsSilentNoOp);
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            await SeedTwoGroupContactsAsync(context, groupContext);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+
+            // Act: a cross-board contact id is a silent no-op -- no exception, nothing created
+            var act = () => repository.ReplaceContactTagsAsync(2, ["intruder"], TestContext.Current.CancellationToken);
+            await act.Should().NotThrowAsync();
+        }
+
+        // Assert: nothing was created on either board
+        groupContext.ActiveGroupId = null; // see-all
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().BeEmpty();
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_ReAddingPrunedName_MintsNewId()
+    {
+        // Arrange: a tag created, then pruned back to zero contacts
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_ReAddingPrunedName_MintsNewId);
+        int prunedTagId;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Solo Holder", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+            await repository.ReplaceContactTagsAsync(1, ["reborn"], TestContext.Current.CancellationToken);
+            prunedTagId = await context.ContactTags.Select(t => t.Id).SingleAsync(TestContext.Current.CancellationToken);
+            await repository.ReplaceContactTagsAsync(1, [], TestContext.Current.CancellationToken);
+
+            // Act: re-type the same name that was just pruned
+            await repository.ReplaceContactTagsAsync(1, ["reborn"], TestContext.Current.CancellationToken);
+        }
+
+        // Assert: a fresh row with a different id, not the pruned one resurrected
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().ContainSingle();
+            tags[0].Id.Should().NotBe(prunedTagId);
+        }
+    }
+
+    [Fact]
+    public async Task RemoveAsync_ContactWasSoleTagHolder_PrunesTag()
+    {
+        // Arrange: a contact holding a tag no other contact holds
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(RemoveAsync_ContactWasSoleTagHolder_PrunesTag);
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Solo Holder", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+            await repository.ReplaceContactTagsAsync(1, ["disposable"], TestContext.Current.CancellationToken);
+            var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+
+            // Act: delete the contact that was the tag's only holder
+            await repository.RemoveAsync(contact!, TestContext.Current.CancellationToken);
+        }
+
+        // Assert: the tag row is gone along with the contact
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().BeEmpty();
+            var contacts = await context.Contacts.ToListAsync(TestContext.Current.CancellationToken);
+            contacts.Should().BeEmpty();
+        }
+    }
+
+    [Fact]
+    public async Task RemoveAsync_ContactTagsSharedWithAnotherContact_SurvivesDelete()
+    {
+        // Arrange: two contacts sharing one tag
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(RemoveAsync_ContactTagsSharedWithAnotherContact_SurvivesDelete);
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+            context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+            context.Contacts.Add(new ContactEntity { Id = 1, Name = "Contact A", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            context.Contacts.Add(new ContactEntity { Id = 2, Name = "Contact B", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+            await repository.ReplaceContactTagsAsync(1, ["shared"], TestContext.Current.CancellationToken);
+            await repository.ReplaceContactTagsAsync(2, ["shared"], TestContext.Current.CancellationToken);
+            var contactA = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+
+            // Act: delete contact A, which is not the tag's only holder
+            await repository.RemoveAsync(contactA!, TestContext.Current.CancellationToken);
+        }
+
+        // Assert: the tag survives because contact B still references it
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().ContainSingle();
+        }
     }
 
     private sealed class MutableTestGroupContext : IActiveGroupContext

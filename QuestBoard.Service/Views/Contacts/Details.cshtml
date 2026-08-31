@@ -33,6 +33,16 @@
                     {
                         <p class="text-muted">@Model.SubLocation</p>
                     }
+                    @if (Model.CanManage && Model.Tags.Any())
+                    {
+                        <p class="text-muted contact-tag-list">
+                            <i class="fas fa-tags me-1"></i>
+                            @foreach (var tag in Model.Tags)
+                            {
+                                <span class="contact-tag-chip">@tag.Name</span>
+                            }
+                        </p>
+                    }
                     @if (!string.IsNullOrEmpty(Model.CategoryName))
                     {
                         <p class="text-muted">

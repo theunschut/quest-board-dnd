@@ -19,6 +19,28 @@ internal class ContactService(IContactRepository repository, IMapper mapper) : B
     }
 
     /// <inheritdoc/>
+    public Task ReplaceContactTagsAsync(int contactId, IReadOnlyList<string> tagNames, CancellationToken token = default) =>
+        repository.ReplaceContactTagsAsync(contactId, tagNames, token);
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> ParseTagNames(string? rawInput)
+    {
+        if (string.IsNullOrWhiteSpace(rawInput)) return [];
+
+        var names = new List<string>();
+        foreach (var part in rawInput.Split(','))
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Length == 0) continue;
+            // De-duplicate case-insensitively while preserving the first occurrence's casing
+            // and the input order.
+            if (names.Any(n => string.Equals(n, trimmed, StringComparison.OrdinalIgnoreCase))) continue;
+            names.Add(trimmed);
+        }
+        return names;
+    }
+
+    /// <inheritdoc/>
     public override async Task UpdateAsync(Contact model, CancellationToken token = default)
     {
         // No caller-supplied signal (e.g. a not-yet-updated call site) defaults to the safe

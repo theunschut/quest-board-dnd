@@ -45,6 +45,9 @@ public class Contact : IModel
 
     // Freeform, author-attributed, timestamped notes any group member can add to and edit.
     public IList<ContactNote> Notes { get; set; } = [];
+
+    // Free-form, board-scoped tags this contact carries. Reused across contacts by name.
+    public IList<ContactTag> Tags { get; set; } = [];
 }
 
 public class ContactNote : IModel
@@ -64,4 +67,14 @@ public class ContactNote : IModel
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
+}
+
+public class ContactTag : IModel
+{
+    public int Id { get; set; }
+
+    [StringLength(30)]
+    public string Name { get; set; } = string.Empty;
+
+    public int GroupId { get; set; }
 }

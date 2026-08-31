@@ -8,6 +8,7 @@ using QuestBoard.Service.ViewModels.ContactViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace QuestBoard.Service.Controllers.Contacts
 {
@@ -21,7 +22,7 @@ namespace QuestBoard.Service.Controllers.Contacts
         IMapper mapper) : Controller
     {
         [HttpGet]
-        public async Task<IActionResult> Index(CancellationToken token = default)
+        public async Task<IActionResult> Index(IList<int>? tag = null, CancellationToken token = default)
         {
             var currentUser = await userService.GetUserAsync(User);
             if (currentUser.Id == 0)
@@ -32,13 +33,34 @@ namespace QuestBoard.Service.Controllers.Contacts
             var viewerIsDmTier = await IsDmTierAsync();
             var includeHidden = viewerIsDmTier && ReadShowHiddenToggle();
 
+            // Gated on the same DM-tier flag that already drives CanManage, rather than a
+            // second check that could drift from it -- a player supplying a tag id in the
+            // query string gets exactly the list they would have gotten without it.
+            var selectedTagIds = viewerIsDmTier ? tag ?? [] : [];
+
             var allContacts = await contactService.GetAllContactsWithDetailsAsync(token);
             var visibleContacts = allContacts.Where(c => IsVisibleTo(c, currentUser.Id, includeHidden)).ToList();
 
-            var contactViewModels = mapper.Map<List<ContactViewModel>>(visibleContacts);
+            // The vocabulary is a projection of the visible-but-unfiltered set -- take it from
+            // the filtered set instead and ticking one tag would make every other tag vanish,
+            // so a second one could never be added. Derived through the same shared helper the
+            // create/edit form suggestion lists use, so the two surfaces cannot drift apart.
+            var availableTags = mapper.Map<List<ContactTagViewModel>>(
+                await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token));
+
+            // The filter runs after the visibility gate and never inside the query, so it can
+            // only narrow what the viewer could already see -- applying it upstream would be
+            // the exact way a filter turns into a way of surfacing something hidden.
+            var filteredContacts = ApplyTagFilter(visibleContacts, selectedTagIds);
+
+            var contactViewModels = mapper.Map<List<ContactViewModel>>(filteredContacts);
             foreach (var vm in contactViewModels)
             {
                 vm.CanManage = viewerIsDmTier;
+                if (!viewerIsDmTier)
+                {
+                    vm.Tags = [];
+                }
             }
 
             // Whether the board has ever created a category, not whether any group turns out
@@ -48,9 +70,10 @@ namespace QuestBoard.Service.Controllers.Contacts
             var categories = await contactCategoryService.GetOrderedAsync(token);
             var hasCategories = categories.Any();
 
-            // Grouping runs over contactViewModels, which was built from the already-filtered
-            // visibleContacts above -- a group here can never disclose a contact the viewer
-            // cannot see, and a category with nothing visible simply produces no group at all.
+            // Grouping runs over contactViewModels, which was built from filteredContacts above
+            // -- the tag filter has already run by this point, so a group here can never
+            // disclose a contact the viewer cannot see or one the filter excluded, and a
+            // category with nothing left simply produces no group at all.
             var categoryGroups = hasCategories
                 ? contactViewModels
                     .GroupBy(vm => (vm.CategoryId, vm.CategoryName, vm.CategorySortOrder))
@@ -72,7 +95,9 @@ namespace QuestBoard.Service.Controllers.Contacts
                 CategoryGroups = categoryGroups,
                 HasCategories = hasCategories,
                 ShowHidden = includeHidden,
-                ViewerIsDmTier = viewerIsDmTier
+                ViewerIsDmTier = viewerIsDmTier,
+                SelectedTagIds = selectedTagIds,
+                AvailableTags = availableTags
             };
 
             return View(viewModel);
@@ -98,6 +123,10 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             var viewModel = mapper.Map<ContactViewModel>(contact);
             viewModel.CanManage = viewerIsDmTier;
+            if (!viewerIsDmTier)
+            {
+                viewModel.Tags = [];
+            }
 
             return View(viewModel);
         }
@@ -106,7 +135,15 @@ namespace QuestBoard.Service.Controllers.Contacts
         [Authorize(Policy = "DungeonMasterOnly")]
         public async Task<IActionResult> Create(CancellationToken token = default)
         {
-            var viewModel = new ContactViewModel();
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = await IsDmTierAsync();
+
+            var vocabulary = await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token);
+
+            var viewModel = new ContactViewModel
+            {
+                AvailableTagNames = [.. vocabulary.Select(t => t.Name)]
+            };
             await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
@@ -130,9 +167,15 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return RedirectToAction("Index", "GroupPicker");
             }
 
+            // Parsed before any ModelState check, and before any write, so an over-long name is
+            // reported through the existing invalid-model re-render path rather than a second one.
+            var parsedTagNames = contactService.ParseTagNames(viewModel.TagsInput);
+            ValidateTagNameLengths(parsedTagNames, viewModel);
+
             if (!ModelState.IsValid)
             {
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -159,6 +202,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 if (!ModelState.IsValid)
                 {
                     await PopulateCategoryOptionsAsync(viewModel, token);
+                    await PopulateTagSuggestionsAsync(viewModel, token);
                     return View(viewModel);
                 }
 
@@ -181,6 +225,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             {
                 ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -195,6 +240,11 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             await contactService.AddAsync(contact, croppedImageData, token);
 
+            // The base repository has already propagated the database-generated id onto contact
+            // by this point, so the newly created row can be reconciled with its tags in the
+            // same request with no re-fetch.
+            await contactService.ReplaceContactTagsAsync(contact.Id, parsedTagNames, token);
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -208,8 +258,17 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return NotFound();
             }
 
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = await IsDmTierAsync();
+
             var viewModel = mapper.Map<ContactViewModel>(contact);
             viewModel.CanManage = true;
+            // contact.Tags is already alphabetical, per the repository's read query -- joined
+            // as-is rather than re-sorted here so the pre-filled field can never disagree with
+            // the order the same tags would be listed in elsewhere on the page.
+            viewModel.TagsInput = string.Join(", ", contact.Tags.Select(t => t.Name));
+            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token))
+                .Select(t => t.Name)];
             await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
@@ -231,10 +290,16 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return NotFound();
             }
 
+            // Parsed before any ModelState check, and before any write, so an over-long name is
+            // reported through the existing invalid-model re-render path rather than a second one.
+            var parsedTagNames = contactService.ParseTagNames(viewModel.TagsInput);
+            ValidateTagNameLengths(parsedTagNames, viewModel);
+
             if (!ModelState.IsValid)
             {
                 viewModel.CanManage = true;
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -246,6 +311,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
                 viewModel.CanManage = true;
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -290,6 +356,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 {
                     viewModel.CanManage = true;
                     await PopulateCategoryOptionsAsync(viewModel, token);
+                    await PopulateTagSuggestionsAsync(viewModel, token);
                     return View(viewModel);
                 }
             }
@@ -314,6 +381,8 @@ namespace QuestBoard.Service.Controllers.Contacts
             // the photo. newCroppedImageData carries a real submitted crop through so it persists
             // instead of being cleared.
             await contactService.UpdateAsync(existingContact, hasNewOriginalUpload, newCroppedImageData, token);
+
+            await contactService.ReplaceContactTagsAsync(existingContact.Id, parsedTagNames, token);
 
             return RedirectToAction(nameof(Details), new { id });
         }
@@ -355,7 +424,7 @@ namespace QuestBoard.Service.Controllers.Contacts
         [HttpPost]
         [Authorize(Policy = "DungeonMasterOnly")]
         [ValidateAntiForgeryToken]
-        public IActionResult ToggleShowHidden()
+        public IActionResult ToggleShowHidden(IList<int>? tag = null)
         {
             // A SuperAdmin has no active group by design, so there is no per-board toggle to
             // flip. Send them to pick one rather than letting the write throw.
@@ -369,7 +438,20 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             HttpContext.Session.SetInt32(key, current ? 0 : 1);
 
-            return RedirectToAction(nameof(Index));
+            // Preserve the selection across the redirect as repeated tag query parameters, so
+            // the shape matches what Index binds. Passing the collection as a single anonymous
+            // route value would stringify it to its type name instead of expanding it, so the
+            // query string is composed by hand from the application's own action url plus
+            // integer ids only -- always local, never a user-supplied string.
+            var selectedTagIds = tag ?? [];
+            var indexUrl = Url.Action(nameof(Index))!;
+            var redirectUrl = selectedTagIds.Count == 0
+                ? indexUrl
+                : QueryHelpers.AddQueryString(
+                    indexUrl,
+                    selectedTagIds.Select(id => new KeyValuePair<string, string?>("tag", id.ToString())));
+
+            return Redirect(redirectUrl);
         }
 
         [HttpPost]
@@ -380,6 +462,14 @@ namespace QuestBoard.Service.Controllers.Contacts
             if (currentUser.Id == 0)
             {
                 return Challenge();
+            }
+
+            // Board scoping on contacts only constrains reads, so an id belonging to
+            // another board has to be rejected here before it can reach the insert.
+            var contact = await contactService.GetContactWithDetailsAsync(contactId, token);
+            if (contact == null)
+            {
+                return NotFound();
             }
 
             if (!ModelState.IsValid)
@@ -513,6 +603,35 @@ namespace QuestBoard.Service.Controllers.Contacts
             return category != null;
         }
 
+        // Adds a targeted ModelState error naming the offending tag rather than truncating --
+        // a silently shortened tag would be indistinguishable from a correct one on the next
+        // page load, and there is no rename path in this feature to repair it afterwards. Errors
+        // added here surface through the caller's existing ModelState.IsValid re-render check
+        // rather than a second one.
+        private bool ValidateTagNameLengths(IReadOnlyList<string> parsedTagNames, ContactViewModel viewModel)
+        {
+            const int maxTagNameLength = 30;
+            var overLong = parsedTagNames.FirstOrDefault(name => name.Length > maxTagNameLength);
+            if (overLong == null)
+            {
+                return true;
+            }
+
+            ModelState.AddModelError(nameof(viewModel.TagsInput),
+                $"Tag \"{overLong}\" exceeds the {maxTagNameLength}-character limit.");
+            return false;
+        }
+
+        // Every invalid-model re-render on Create/Edit routes through this one assignment, so a
+        // future added guard on either action cannot ship a form with an empty suggestion list.
+        private async Task PopulateTagSuggestionsAsync(ContactViewModel viewModel, CancellationToken token)
+        {
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = await IsDmTierAsync();
+            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token))
+                .Select(t => t.Name)];
+        }
+
         private static string DetectImageMimeType(byte[] data) =>
             data.Length >= 4 && data[0] == 0x89 && data[1] == 0x50 ? "image/png" :
             data.Length >= 6 && data[0] == 0x47 && data[1] == 0x49 ? "image/gif" :
@@ -564,6 +683,57 @@ namespace QuestBoard.Service.Controllers.Contacts
             }
 
             return includeHidden;
+        }
+
+        // Shared by Index, Create GET, and Edit GET so the index filter list and the form
+        // suggestion lists all come from one derivation and cannot drift apart -- there is no
+        // second vocabulary query anywhere in this controller. Returns an empty list for a
+        // non-DM-tier viewer; Players get no tag surface on any of these three actions.
+        private async Task<IList<ContactTag>> GetVisibleTagVocabularyAsync(int currentUserId, bool viewerIsDmTier, CancellationToken token)
+        {
+            if (!viewerIsDmTier)
+            {
+                return [];
+            }
+
+            var includeHidden = ReadShowHiddenToggle();
+            var allContacts = await contactService.GetAllContactsWithDetailsAsync(token);
+            var visibleContacts = allContacts.Where(c => IsVisibleTo(c, currentUserId, includeHidden)).ToList();
+
+            return BuildTagVocabulary(visibleContacts);
+        }
+
+        // Flattens every visible contact's tags, de-duplicates by id, and orders by name with a
+        // case-insensitive comparer so near-duplicates sit next to each other and a DM can spot
+        // them. Takes only the visible-but-unfiltered set as its input, which is what makes it
+        // structurally impossible for a tag borne solely by contacts this viewer cannot see to
+        // reach the browser -- there is no separate vocabulary query to get wrong.
+        private static IList<ContactTag> BuildTagVocabulary(IEnumerable<Contact> visibleContacts) =>
+            visibleContacts
+                .SelectMany(c => c.Tags)
+                .GroupBy(t => t.Id)
+                .Select(g => g.First())
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        // Returns the input unchanged when no ids are selected; otherwise returns only the
+        // contacts carrying at least one selected tag id -- union semantics, so ticking more
+        // boxes widens the result within the filtered set, but the filter itself never widens
+        // beyond what the viewer could already see. A selection that matches nothing at all --
+        // every id unknown, already pruned, or belonging to another board -- resolves to an
+        // empty list rather than silently falling back to the unfiltered page: an empty result
+        // is never treated as an error, but it must also never be confused with "no filter was
+        // applied at all."
+        private static IList<Contact> ApplyTagFilter(IList<Contact> visibleContacts, IList<int> selectedTagIds)
+        {
+            if (selectedTagIds.Count == 0)
+            {
+                return visibleContacts;
+            }
+
+            return visibleContacts
+                .Where(c => c.Tags.Any(t => selectedTagIds.Contains(t.Id)))
+                .ToList();
         }
     }
 }

@@ -134,6 +134,41 @@
     flex: 1;
 }
 
+/* Tag chips — contact rows and the filter drawer, matching the desktop chip treatment */
+.contact-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.contact-tag-chip {
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(139, 69, 19, 0.35);
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    color: #F4E4BC;
+}
+
+/* Filter drawer — tag checkbox row spacing and accent color */
+.contact-filter-check-label {
+    padding: 0.375rem 0;
+}
+
+.contact-filter-check-label .form-check-input {
+    accent-color: #ffc107;
+}
+
+/* Helper line beneath a disabled filter trigger, shown before the board has any tags */
+.contact-filter-empty {
+    color: rgba(244, 228, 188, 0.7);
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+    font-size: 0.8125rem;
+    margin-top: 4px;
+}
+
 /* The add-category form on the Manage Categories page sits above the page's first
    card, so the card-scoped .form-label rules every other mobile form in this project
    relies on cannot reach it. Scope the parchment label treatment directly to this

@@ -292,6 +292,97 @@ public class ContactServiceTests
         cropped.Should().Equal([1, 2, 3]);
     }
 
+    [Fact]
+    public void ParseTagNames_WhitespaceAndDuplicates_TrimsDropsEmptyAndDedupesCaseInsensitively()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        using var context = CreateContext("ContactServiceTests." + nameof(ParseTagNames_WhitespaceAndDuplicates_TrimsDropsEmptyAndDedupesCaseInsensitively), groupContext);
+        var mapper = CreateMapper();
+        var service = new ContactService(new ContactRepository(context, mapper), mapper);
+
+        // Act
+        var result = service.ParseTagNames(" shopkeeper , , Quest Giver ,shopkeeper ");
+
+        // Assert: exactly two names, empty segments dropped, later duplicate collapsed onto the
+        // first occurrence's casing, input order preserved
+        result.Should().Equal("shopkeeper", "Quest Giver");
+    }
+
+    [Fact]
+    public void ParseTagNames_NullInput_ReturnsEmptyList()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        using var context = CreateContext("ContactServiceTests." + nameof(ParseTagNames_NullInput_ReturnsEmptyList), groupContext);
+        var mapper = CreateMapper();
+        var service = new ContactService(new ContactRepository(context, mapper), mapper);
+
+        // Act
+        var result = service.ParseTagNames(null);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseTagNames_EmptyStringInput_ReturnsEmptyList()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        using var context = CreateContext("ContactServiceTests." + nameof(ParseTagNames_EmptyStringInput_ReturnsEmptyList), groupContext);
+        var mapper = CreateMapper();
+        var service = new ContactService(new ContactRepository(context, mapper), mapper);
+
+        // Act
+        var result = service.ParseTagNames(string.Empty);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseTagNames_CommasOnlyInput_ReturnsEmptyList()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        using var context = CreateContext("ContactServiceTests." + nameof(ParseTagNames_CommasOnlyInput_ReturnsEmptyList), groupContext);
+        var mapper = CreateMapper();
+        var service = new ContactService(new ContactRepository(context, mapper), mapper);
+
+        // Act
+        var result = service.ParseTagNames(" , , ");
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_DelegatesToRepository_ReconcilesContactTags()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactServiceTests." + nameof(ReplaceContactTagsAsync_DelegatesToRepository_ReconcilesContactTags), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.Contacts.Add(new ContactEntity { Id = 1, Name = "Test Contact", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var mapper = CreateMapper();
+        var repository = new ContactRepository(context, mapper);
+        var service = new ContactService(repository, mapper);
+        groupContext.ActiveGroupId = 1;
+
+        // Act: call through the service, not the repository directly
+        await service.ReplaceContactTagsAsync(1, ["proof of delegation"], TestContext.Current.CancellationToken);
+
+        // Assert: the repository's reconciliation actually ran, proving the service is a real
+        // pass-through rather than a no-op stub
+        var contact = await repository.GetContactWithDetailsAsync(1, TestContext.Current.CancellationToken);
+        contact!.Tags.Should().ContainSingle(t => t.Name == "proof of delegation");
+    }
+
     private sealed class MutableTestGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId { get; set; }

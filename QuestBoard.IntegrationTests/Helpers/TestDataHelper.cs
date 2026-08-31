@@ -239,6 +239,38 @@ public static class TestDataHelper
         return note;
     }
 
+    public static async Task<ContactTagEntity> CreateTestContactTagAsync(
+        IServiceProvider services,
+        string name = "Test Tag",
+        int groupId = 1,
+        params int[] contactIds)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var tag = new ContactTagEntity
+        {
+            Name = name,
+            GroupId = groupId
+        };
+
+        context.Set<ContactTagEntity>().Add(tag);
+
+        // The join is EF-owned with no direct DbSet, so attaching a contact means loading it
+        // and adding the tag through the skip navigation rather than inserting a join row.
+        foreach (var contactId in contactIds)
+        {
+            var contact = await context.Contacts
+                .Include(c => c.Tags)
+                .FirstAsync(c => c.Id == contactId);
+            contact.Tags.Add(tag);
+        }
+
+        await context.SaveChangesAsync();
+
+        return tag;
+    }
+
     public static async Task ClearDatabaseAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();

@@ -122,6 +122,105 @@ public class QuestBoardContextFilterTests
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
+    // Seeds one contact carrying one tag on the given board, through a null-ActiveGroupId
+    // context so the write path itself isn't blocked by the filters under test.
+    private static async Task SeedContactWithTagAsync(
+        QuestBoardContext context, int groupId, int contactId, int tagId, string tagName, int userId)
+    {
+        if (!await context.Groups.AnyAsync(g => g.Id == groupId, TestContext.Current.CancellationToken))
+        {
+            context.Groups.Add(new GroupEntity { Id = groupId, Name = $"Group {groupId}" });
+        }
+
+        if (!await context.UserEntities.AnyAsync(u => u.Id == userId, TestContext.Current.CancellationToken))
+        {
+            context.UserEntities.Add(new UserEntity { Id = userId, Name = $"User {userId}", Email = $"user{userId}@test.com" });
+        }
+
+        var tag = new ContactTagEntity { Id = tagId, Name = tagName, GroupId = groupId };
+        context.Set<ContactTagEntity>().Add(tag);
+
+        var contact = new ContactEntity
+        {
+            Id = contactId,
+            Name = $"Contact {contactId}",
+            CreatedByUserId = userId,
+            GroupId = groupId,
+            CreatedAt = DateTime.UtcNow
+        };
+        contact.Tags.Add(tag);
+        context.Contacts.Add(contact);
+
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // -------------------------------------------------------------------
+    // ContactTagEntity: fail-closed filter and cross-board isolation
+    // -------------------------------------------------------------------
+
+    [Fact]
+    public async Task ContactTags_NullActiveGroup_ReturnsNoRows()
+    {
+        var seedContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext(nameof(ContactTags_NullActiveGroup_ReturnsNoRows), seedContext);
+        await SeedContactWithTagAsync(context, groupId: 1, contactId: 1, tagId: 1, tagName: "Shopkeeper", userId: 901);
+        await SeedContactWithTagAsync(context, groupId: 2, contactId: 2, tagId: 2, tagName: "Innkeeper", userId: 902);
+
+        var count = await context.Set<ContactTagEntity>().CountAsync(TestContext.Current.CancellationToken);
+
+        count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ContactTags_OtherBoardsTag_IsNotVisible()
+    {
+        var seedContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var seedDbContext = CreateContext(nameof(ContactTags_OtherBoardsTag_IsNotVisible), seedContext);
+        await SeedContactWithTagAsync(seedDbContext, groupId: 1, contactId: 1, tagId: 1, tagName: "Shopkeeper", userId: 901);
+        await SeedContactWithTagAsync(seedDbContext, groupId: 2, contactId: 2, tagId: 2, tagName: "Innkeeper", userId: 902);
+
+        var activeGroupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var context = CreateContext(nameof(ContactTags_OtherBoardsTag_IsNotVisible), activeGroupContext);
+
+        var tags = await context.Set<ContactTagEntity>().ToListAsync(TestContext.Current.CancellationToken);
+
+        tags.Should().ContainSingle();
+        tags[0].GroupId.Should().Be(1);
+        tags[0].Name.Should().Be("Shopkeeper");
+    }
+
+    [Fact]
+    public async Task Contact_TagsNavigation_ExcludesOtherBoardsTag()
+    {
+        var seedContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var seedDbContext = CreateContext(nameof(Contact_TagsNavigation_ExcludesOtherBoardsTag), seedContext);
+        await SeedContactWithTagAsync(seedDbContext, groupId: 1, contactId: 1, tagId: 1, tagName: "Shopkeeper", userId: 901);
+        await SeedContactWithTagAsync(seedDbContext, groupId: 2, contactId: 2, tagId: 2, tagName: "Innkeeper", userId: 902);
+
+        // Board 1's own contact exposes its own tag through the Tags navigation.
+        var groupOneContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        await using var contextGroupOne = CreateContext(nameof(Contact_TagsNavigation_ExcludesOtherBoardsTag), groupOneContext);
+        var contactOne = await contextGroupOne.Contacts
+            .Include(c => c.Tags)
+            .FirstAsync(c => c.Id == 1, TestContext.Current.CancellationToken);
+
+        contactOne.Tags.Should().ContainSingle(t => t.Name == "Shopkeeper");
+
+        // Board 1's contact is entirely invisible under board 2's active group, and no
+        // contact visible under board 2 ever carries board 1's tag through its navigation.
+        var groupTwoContext = new MutableTestGroupContext { ActiveGroupId = 2 };
+        await using var contextGroupTwo = CreateContext(nameof(Contact_TagsNavigation_ExcludesOtherBoardsTag), groupTwoContext);
+        var contactUnderOtherBoard = await contextGroupTwo.Contacts
+            .Include(c => c.Tags)
+            .FirstOrDefaultAsync(c => c.Id == 1, TestContext.Current.CancellationToken);
+        var visibleContactsUnderOtherBoard = await contextGroupTwo.Contacts
+            .Include(c => c.Tags)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        contactUnderOtherBoard.Should().BeNull();
+        visibleContactsUnderOtherBoard.Should().NotContain(c => c.Tags.Any(t => t.Name == "Shopkeeper"));
+    }
+
     // -------------------------------------------------------------------
     // Fail-closed assertions: null ActiveGroupId must yield zero rows
     // -------------------------------------------------------------------

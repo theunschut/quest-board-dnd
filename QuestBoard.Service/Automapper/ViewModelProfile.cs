@@ -85,7 +85,9 @@ public class ViewModelProfile : Profile
             .ForMember(dest => dest.ContactImageFile, opt => opt.Ignore())
             .ForMember(dest => dest.CanManage, opt => opt.Ignore())
             .ForMember(dest => dest.CategoryOptions, opt => opt.Ignore())
-            .ForMember(dest => dest.HasCategories, opt => opt.Ignore());
+            .ForMember(dest => dest.HasCategories, opt => opt.Ignore())
+            .ForMember(dest => dest.TagsInput, opt => opt.Ignore())
+            .ForMember(dest => dest.AvailableTagNames, opt => opt.Ignore());
 
         // ContactViewModel to Contact -- CategoryId maps by convention. CategoryName and
         // CategorySortOrder are display-only projections and must never be written back into
@@ -96,7 +98,14 @@ public class ViewModelProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Notes, opt => opt.Ignore())
             .ForMember(dest => dest.CategoryName, opt => opt.Ignore())
-            .ForMember(dest => dest.CategorySortOrder, opt => opt.Ignore());
+            .ForMember(dest => dest.CategorySortOrder, opt => opt.Ignore())
+            .ForMember(dest => dest.Tags, opt => opt.Ignore());
+
+        // ContactTag to ContactTagViewModel -- the tag association itself is reconciled by a
+        // dedicated repository method, never by AutoMapper's child-collection replacement, so
+        // this map only ever handles the individual tag's own two fields.
+        CreateMap<ContactTag, ContactTagViewModel>()
+            .ReverseMap();
 
         // ContactCategory to ContactCategoryViewModel -- ContactCount, IsFirst and IsLast are
         // computed imperatively in the controller from the ordered list and the count map,
