@@ -1547,4 +1547,229 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         location.Should().Contain("tag=5");
         location.Should().Contain("tag=7");
     }
+
+    // Write-path coverage for the tag persistence added on Create/Edit: the no-script comma
+    // path, case-insensitive reuse and de-duplication, pruning through the form, the over-long
+    // rejection, and the cross-board write refusal. Every outcome is asserted against
+    // QuestBoardContext -- the surviving ContactTags rows, their ids, and the contact's own
+    // Tags collection -- rather than inferred from the rendered page.
+
+    [Fact]
+    public async Task Create_CommaSeparatedTags_AttachesBothTags()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_create_comma", "contact_tag_create_comma@example.com", roles: ["DungeonMaster"]);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Name"] = "Comma Tagged Contact",
+            ["TagsInput"] = "shopkeeper, quest giver"
+        });
+
+        var response = await dmClient.PostAsync("/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Contacts
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Name == "Comma Tagged Contact", TestContext.Current.CancellationToken);
+
+        persisted.Tags.Select(t => t.Name).Should().BeEquivalentTo(["shopkeeper", "quest giver"]);
+    }
+
+    [Fact]
+    public async Task Edit_CaseVariantOfExistingTag_ReusesExistingRow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_reuse_dm", "contact_tag_reuse_dm@example.com", roles: ["DungeonMaster"]);
+
+        var firstContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "First Shopkeeper Contact", groupId: 1);
+        var existingTag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "shopkeeper", groupId: 1, firstContact.Id);
+
+        var secondContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Second Shopkeeper Contact", groupId: 1);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = secondContact.Id.ToString(),
+            ["Name"] = "Second Shopkeeper Contact",
+            ["TagsInput"] = "Shopkeeper"
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{secondContact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persistedSecond = await context.Contacts
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == secondContact.Id, TestContext.Current.CancellationToken);
+
+        persistedSecond.Tags.Should().ContainSingle(t => t.Id == existingTag.Id);
+
+        var tagCount = await context.ContactTags.CountAsync(
+            t => t.Name == "shopkeeper", TestContext.Current.CancellationToken);
+        tagCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Edit_RepeatedCasingsOfOneName_CreatesSingleTag()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_repeatcase_dm", "contact_tag_repeatcase_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Repeated Casing Contact", groupId: 1);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = contact.Id.ToString(),
+            ["Name"] = "Repeated Casing Contact",
+            ["TagsInput"] = "shopkeeper, SHOPKEEPER, Shopkeeper"
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Contacts
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+
+        persisted.Tags.Should().HaveCount(1);
+        var tagCount = await context.ContactTags.CountAsync(TestContext.Current.CancellationToken);
+        tagCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Edit_EmptyTagsInput_RemovesTagsAndPrunesOrphan()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_prune_dm", "contact_tag_prune_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact Losing Its Only Tag", groupId: 1);
+        var tag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Orphan Bound Tag", groupId: 1, contact.Id);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = contact.Id.ToString(),
+            ["Name"] = "Contact Losing Its Only Tag",
+            ["TagsInput"] = "   "
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Contacts
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+
+        persisted.Tags.Should().BeEmpty();
+
+        var tagStillExists = await context.ContactTags.AnyAsync(
+            t => t.Id == tag.Id, TestContext.Current.CancellationToken);
+        tagStillExists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Edit_TagNameOverLengthLimit_RerendersWithValidationError()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_overlong_dm", "contact_tag_overlong_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Contact Keeping Its Tag", groupId: 1);
+        var existingTag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Untouched Tag", groupId: 1, contact.Id);
+
+        var overLongName = new string('a', 31);
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = contact.Id.ToString(),
+            ["Name"] = "Contact Keeping Its Tag",
+            ["TagsInput"] = overLongName
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("30-character limit");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        var tagCreated = await context.ContactTags.AnyAsync(
+            t => t.Name == overLongName, TestContext.Current.CancellationToken);
+        tagCreated.Should().BeFalse();
+
+        var persisted = await context.Contacts
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+        persisted.Tags.Should().ContainSingle(t => t.Id == existingTag.Id);
+    }
+
+    [Fact]
+    public async Task Edit_TagNameExistingOnlyOnAnotherBoard_CreatesOwnBoardRow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+
+        var otherBoardTag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Shopkeeper", groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_crossboard_dm", "contact_tag_crossboard_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Cross Board Tag Target", groupId: 1);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = contact.Id.ToString(),
+            ["Name"] = "Cross Board Tag Target",
+            ["TagsInput"] = "Shopkeeper"
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Contacts
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+
+        var ownBoardTag = persisted.Tags.Should().ContainSingle(t => t.Name == "Shopkeeper").Subject;
+        ownBoardTag.Id.Should().NotBe(otherBoardTag.Id);
+
+        var otherBoardTagStillExists = await context.ContactTags
+            .IgnoreQueryFilters()
+            .AnyAsync(t => t.Id == otherBoardTag.Id, TestContext.Current.CancellationToken);
+        otherBoardTagStillExists.Should().BeTrue();
+    }
 }
