@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 Phase: 82 — Personal Cross-Board Event Agenda
 Plan: Not started
 Status: Executing Phase 81
-Last activity: 2026-08-31 - Completed quick task 260831-hz9: Fix cross-tenant note-injection in ContactsController.AddNote
+Last activity: 2026-08-31 - Completed quick task 260831-mcb: Contact tags now respect ownership + Show Hidden toggle (chips and filter row)
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
@@ -87,6 +87,7 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 | Phase 83 P01 | 15min | 3 tasks | 4 files |
 | Phase 83 P02 | 20min | 3 tasks | 5 files |
 | 260831-hz9 | Fix cross-tenant note-injection in ContactsController.AddNote | 2026-08-31 | f732fb81 | [260831-hz9-fix-cross-tenant-note-injection-in-conta](./quick/260831-hz9-fix-cross-tenant-note-injection-in-conta/) |
+| 260831-mcb | Contact tags: show tags only for owned contacts by default; non-owned contacts' tags hidden unless the existing ShowHidden toggle is on (universal rule for all DM-tier viewers) | 2026-08-31 | b8b4da56 | [260831-mcb-contact-tags-show-tags-only-for-owned-co](./quick/260831-mcb-contact-tags-show-tags-only-for-owned-co/) |
 
 ## Deferred Items
 
