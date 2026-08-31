@@ -14,10 +14,17 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         // Group scoping is enforced entirely by ContactEntity's fail-closed query filter here --
         // no manual GroupId .Where is needed or added. Ordering is flat alphabetical by name
         // (no owner-based grouping, since Contacts have no ownership/edit-restriction concept).
+        //
+        // Two independent collection Includes (Notes and Tags) in a single query force EF to
+        // cross-join both collections, multiplying row count combinatorially and triggering the
+        // MultipleCollectionIncludeWarning. AsSplitQuery() issues one query per collection
+        // instead, avoiding the row-count blowup without changing the loaded shape.
         var entities = await DbContext.Contacts
+            .AsSplitQuery()
             .Include(c => c.CreatedByUser)
             .Include(c => c.Category)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
+            .Include(c => c.Tags)
             .OrderBy(c => c.Name)
             .ToListAsync(token);
 
@@ -31,6 +38,7 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         foreach (var contact in contacts)
         {
             contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+            contact.Tags = [.. contact.Tags.OrderBy(t => t.Name)];
             contact.HasContactImage = imageFlags.GetValueOrDefault(contact.Id);
         }
         return contacts;
@@ -39,15 +47,20 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     /// <inheritdoc/>
     public async Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default)
     {
+        // See GetAllContactsWithDetailsAsync above for why AsSplitQuery() is required here:
+        // Notes and Tags are two independent collection Includes off the same root.
         var entity = await DbContext.Contacts
+            .AsSplitQuery()
             .Include(c => c.CreatedByUser)
             .Include(c => c.Category)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
+            .Include(c => c.Tags)
             .FirstOrDefaultAsync(c => c.Id == id, token);
         if (entity == null) return null;
 
         var contact = Mapper.Map<Contact>(entity);
         contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+        contact.Tags = [.. contact.Tags.OrderBy(t => t.Name)];
         // Image bytes are never selected here -- only a presence flag, via a scalar query that
         // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
         contact.HasContactImage = await DbContext.Contacts
@@ -55,6 +68,101 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
             .Select(c => c.ProfileImage != null)
             .FirstOrDefaultAsync(token);
         return contact;
+    }
+
+    /// <inheritdoc/>
+    public async Task ReplaceContactTagsAsync(int contactId, IReadOnlyList<string> tagNames, CancellationToken token = default)
+    {
+        // Rooted at the board-filtered Contacts set -- a contact id belonging to another board
+        // simply doesn't resolve here, so this is a silent no-op rather than an error. An error
+        // response would itself confirm that an id in that range exists on another board.
+        var contact = await DbContext.Contacts
+            .Include(c => c.Tags)
+            .FirstOrDefaultAsync(c => c.Id == contactId, token);
+        if (contact == null) return;
+
+        // Snapshot before mutating -- these are the only ids that can possibly become orphaned
+        // by this call.
+        var previousTagIds = contact.Tags.Select(t => t.Id).ToList();
+
+        // A real query, so the board query filter applies here too: a foreign-board tag is
+        // simply absent from this list, never resolved by primary-key lookup against the change
+        // tracker (which can return an already-tracked instance without re-applying the filter).
+        var boardVocabulary = await DbContext.ContactTags.ToListAsync(token);
+
+        var resolvedTags = new List<ContactTagEntity>();
+        foreach (var name in tagNames)
+        {
+            // The comparison happens in memory, not in the query: production enforces
+            // case-insensitivity through the column collation, but the in-memory test provider
+            // compares ordinally, so an in-query equality check would behave differently in
+            // tests than in production.
+            var match = boardVocabulary.Concat(resolvedTags)
+                .FirstOrDefault(t => StringComparer.OrdinalIgnoreCase.Equals(t.Name, name));
+
+            if (match != null)
+            {
+                if (!resolvedTags.Contains(match))
+                {
+                    resolvedTags.Add(match);
+                }
+            }
+            else
+            {
+                resolvedTags.Add(new ContactTagEntity { Name = name, GroupId = contact.GroupId });
+            }
+        }
+
+        contact.Tags.Clear();
+        foreach (var tag in resolvedTags)
+        {
+            contact.Tags.Add(tag);
+        }
+        await DbContext.SaveChangesAsync(token);
+
+        await PruneOrphanedTagsAsync(previousTagIds, token);
+    }
+
+    /// <inheritdoc/>
+    public override async Task RemoveAsync(Contact model, CancellationToken token = default)
+    {
+        var entity = await DbContext.Contacts
+            .Include(c => c.Tags)
+            .FirstOrDefaultAsync(c => c.Id == model.Id, token);
+        if (entity == null)
+        {
+            // Contact doesn't resolve on this board -- fall through to the base behaviour so
+            // existing delete semantics are unchanged.
+            await base.RemoveAsync(model, token);
+            return;
+        }
+
+        var previousTagIds = entity.Tags.Select(t => t.Id).ToList();
+        // Clearing the collection removes the join rows along with the contact itself.
+        entity.Tags.Clear();
+        DbSet.Remove(entity);
+        await DbContext.SaveChangesAsync(token);
+
+        await PruneOrphanedTagsAsync(previousTagIds, token);
+    }
+
+    // Shared by both ReplaceContactTagsAsync and RemoveAsync so the two prune paths cannot
+    // drift apart. Re-loads each candidate tag (through the board-filtered set) with its
+    // Contacts collection and deletes any tag left with no contacts.
+    private async Task PruneOrphanedTagsAsync(IReadOnlyList<int> candidateTagIds, CancellationToken token)
+    {
+        if (candidateTagIds.Count == 0) return;
+
+        var candidates = await DbContext.ContactTags
+            .Include(t => t.Contacts)
+            .Where(t => candidateTagIds.Contains(t.Id))
+            .ToListAsync(token);
+
+        var orphaned = candidates.Where(t => t.Contacts.Count == 0).ToList();
+        if (orphaned.Count == 0) return;
+
+        DbContext.ContactTags.RemoveRange(orphaned);
+        await DbContext.SaveChangesAsync(token);
     }
 
     /// <inheritdoc/>
