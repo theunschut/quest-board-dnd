@@ -529,7 +529,7 @@ Plans:
 **Goal**: Contacts can carry free-form tags — "shopkeeper", "quest giver" — independently of which category they sit under, and the Contacts index offers a filter that narrows the list to the selected tags.
 **Depends on**: Phase 80 (shares the Contacts index rendering surface and whatever grouping partial that phase establishes)
 **Requirements**: CONTACTTAG-01, CONTACTTAG-02, CONTACTTAG-03, CONTACTTAG-04, CONTACTTAG-05, CONTACTTAG-06, CONTACTTAG-07, CONTACTTAG-08, CONTACTTAG-09, CONTACTTAG-10, CONTACTTAG-11, CONTACTTAG-12, CONTACTTAG-13, CONTACTTAG-14, CONTACTTAG-15, CONTACTTAG-16, CONTACTTAG-17
-**Plans**: 5/8 plans executed
+**Plans**: 6/8 plans executed
 
 Plans:
 **Wave 1**
@@ -551,7 +551,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 81-06-PLAN.md — Tag entry widget on all four create and edit views: a re-verified SRI-pinned CDN library, a thin local init module, scoped theme overrides on both platforms, and form markup tests under both user agents (wave 5)
+- [x] 81-06-PLAN.md — Tag entry widget on all four create and edit views: a re-verified SRI-pinned CDN library, a thin local init module, scoped theme overrides on both platforms, and form markup tests under both user agents (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
