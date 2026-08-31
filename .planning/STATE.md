@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 Phase: 82 — Personal Cross-Board Event Agenda
 Plan: Not started
 Status: Executing Phase 81
-Last activity: 2026-08-31 — Phase 81 complete, transitioned to Phase 82
+Last activity: 2026-08-31 - Completed quick task 260831-hz9: Fix cross-tenant note-injection in ContactsController.AddNote
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
@@ -86,6 +86,7 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 | 260714-b0w | Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist | 2026-07-14 | 79e76cb | [260714-b0w-waitlist-table-missing-on-quest-details-](./quick/260714-b0w-waitlist-table-missing-on-quest-details-/) |
 | Phase 83 P01 | 15min | 3 tasks | 4 files |
 | Phase 83 P02 | 20min | 3 tasks | 5 files |
+| 260831-hz9 | Fix cross-tenant note-injection in ContactsController.AddNote | 2026-08-31 | f732fb81 | [260831-hz9-fix-cross-tenant-note-injection-in-conta](./quick/260831-hz9-fix-cross-tenant-note-injection-in-conta/) |
 
 ## Deferred Items
 
