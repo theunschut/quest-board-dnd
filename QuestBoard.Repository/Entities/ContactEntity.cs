@@ -41,4 +41,9 @@ public class ContactEntity : IEntity
 
     [ForeignKey(nameof(GroupId))]
     public virtual GroupEntity Group { get; set; } = null!;
+
+    public int? CategoryId { get; set; }
+
+    [ForeignKey(nameof(CategoryId))]
+    public virtual ContactCategoryEntity? Category { get; set; }
 }

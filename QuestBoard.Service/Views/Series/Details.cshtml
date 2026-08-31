@@ -1,0 +1,179 @@
+@*
+    Reached from any occurrence's Details page. The rule and the template render read-only here
+    -- there is no edit form on this page at all, because the cadence is fixed once created and
+    template changes flow only through the occurrence edit's scope prompt.
+*@
+@using QuestBoard.Service.Extensions
+@using QuestBoard.Service.ViewModels.SeriesViewModels
+@model SeriesDetailsViewModel
+@{
+    ViewData["Title"] = Model.Title;
+
+    var todayLabel = DateTime.Today.ToString("MMMM d, yyyy");
+    var endConfirmMessage = Model.AnsweredCount == 0
+        ? $"End this series after {todayLabel}? {Model.FutureCount} upcoming session(s) will no longer be generated. Sessions that already happened are always kept. This cannot be undone."
+        : $"End this series after {todayLabel}? {Model.FutureCount} upcoming session(s) will no longer be generated, and {Model.AnsweredCount} availability answer(s) already given for them will be cleared. Sessions that already happened are always kept. This cannot be undone.";
+    var removalBodyMessage = $"{Model.TotalCount} session(s) will be affected — {Model.PastCount} already held, {Model.FutureCount} upcoming — along with {Model.AnsweredCount} availability answer(s) people actually gave. What should happen to them?";
+
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var todayDividerRendered = false;
+}
+
+<div class="card modern-card mb-3">
+    <div class="card-header modern-card-header">
+        <h2 class="mb-0">
+            <i class="fas fa-repeat text-purple me-2"></i>
+            @Model.Title — Recurring Series
+        </h2>
+    </div>
+</div>
+
+<div class="card modern-card mb-3">
+    <div class="card-header modern-card-header">
+        <h4 class="mb-0">Recurrence Rule</h4>
+    </div>
+    <div class="card-body modern-card-body">
+        <p class="mb-1">
+            <i class="fas fa-calendar-day me-2"></i>Anchor date: @Model.AnchorDate.ToString("dddd, MMMM d, yyyy")
+        </p>
+        <p class="mb-3">
+            <i class="fas fa-repeat me-2"></i>@Model.CadenceLabel
+        </p>
+
+        @* Read-only variant of the toggle strip: identical cells, no click handlers, no
+           +/- controls. pointer-events and aria-disabled make the "you cannot edit this here"
+           fact visible rather than merely silently swallowing clicks. *@
+        <div class="cycle-mask-strip mb-3" aria-disabled="true">
+            @foreach (var on in Model.CyclePositions)
+            {
+                <span class="cycle-mask-cell @(on ? "on" : "")" style="pointer-events: none;" aria-disabled="true">
+                    @if (on)
+                    {
+                        <i class="fas fa-check"></i>
+                    }
+                </span>
+            }
+        </div>
+
+        <p class="mb-3">
+            @if (Model.EndDate.HasValue)
+            {
+                <text><i class="fas fa-flag-checkered me-2"></i>Ends: @Model.EndDate.Value.ToString("dddd, MMMM d, yyyy")</text>
+            }
+            else
+            {
+                <text><i class="fas fa-infinity me-2"></i>No end date — runs indefinitely.</text>
+            }
+        </p>
+
+        <hr />
+
+        <h5 class="mb-2">@Model.Title</h5>
+        <p class="mb-1">
+            <i class="fas fa-clock me-2"></i>@Model.TimeLabel
+        </p>
+        @if (!string.IsNullOrEmpty(Model.Description))
+        {
+            @Html.Markdown(Model.Description)
+        }
+        else
+        {
+            <p class="text-muted mb-0">No description provided.</p>
+        }
+    </div>
+</div>
+
+<div class="card modern-card mb-3">
+    <div class="card-header modern-card-header">
+        <h4 class="mb-0">Occurrences</h4>
+    </div>
+    <div class="card-body modern-card-body">
+        @if (Model.Occurrences.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var occurrence in Model.Occurrences)
+                        {
+                            @if (!todayDividerRendered && occurrence.Date >= today)
+                            {
+                                todayDividerRendered = true;
+                                <tr class="today">
+                                    <td colspan="3" class="text-center small text-muted">Today</td>
+                                </tr>
+                            }
+                            <tr class="@(occurrence.IsCancelled ? "text-decoration-line-through" : "")">
+                                <td>@occurrence.Date.ToString("dddd, MMMM d, yyyy") &middot; @occurrence.TimeLabel</td>
+                                <td>
+                                    @if (occurrence.IsCancelled)
+                                    {
+                                        <span class="badge bg-secondary">Cancelled</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("Details", "Events", new { id = occurrence.Id })">View</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-0">No occurrences have been generated yet.</p>
+        }
+    </div>
+</div>
+
+@if (Model.CanManage)
+{
+    <div class="card modern-card mb-3">
+        <div class="card-header modern-card-header">
+            <h4 class="mb-0">Actions</h4>
+        </div>
+        <div class="card-body modern-card-body">
+            <form asp-action="End" method="post" onsubmit="return confirm('@endConfirmMessage');" class="mb-2">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="submit" class="btn btn-warning w-100">
+                    <i class="fas fa-flag-checkered me-2"></i>End Series
+                </button>
+            </form>
+            <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#removeSeriesModal">
+                <i class="fas fa-trash me-2"></i>Delete Series
+            </button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="removeSeriesModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Remove this series</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">@removalBodyMessage</p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <form asp-action="Detach" method="post" class="mb-0">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button type="submit" class="btn btn-warning">Detach sessions</button>
+                    </form>
+                    <form asp-action="Delete" method="post" class="mb-0">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button type="submit" class="btn btn-danger">Delete everything</button>
+                    </form>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

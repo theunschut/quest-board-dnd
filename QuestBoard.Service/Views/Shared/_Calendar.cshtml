@@ -27,11 +27,36 @@
                 @if (!day.IsEmpty)
                 {
                     <div class="day-number">@day.Day</div>
-                    
+
+                    @* The day number stays outside this wrapper so it never scrolls out of *@
+                    @* view. Both the events block and the quest list share one scrollbar *@
+                    @* here instead of each getting its own, since the cell height is fixed *@
+                    @* and no longer grows to fit its contents. *@
+                    <div class="day-cell-items">
+                    @* Renders only when the day actually has events, and the collection is *@
+                    @* empty by default, so the callers of this partial that build their own *@
+                    @* model and never populate events render nothing here without any flag *@
+                    @* to set. *@
+                    @if (day.EventsOnDay.Any())
+                    {
+                        <div class="calendar-events">
+                            @foreach (var eventOnDay in day.EventsOnDay)
+                            {
+                                <div class="calendar-event @(eventOnDay.Event.IsCancelled ? "cancelled" : "")" title="@eventOnDay.Event.Title - @eventOnDay.TimeLabel">
+                                    <a href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })"
+                                       class="quest-link">
+                                        <div class="calendar-event-title"><i class="fas fa-calendar-day me-1"></i>@eventOnDay.Event.Title</div>
+                                        <div class="calendar-event-time">@eventOnDay.TimeLabel</div>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    }
+
                     @if (day.QuestsOnDay.Any())
                     {
                         <div class="quest-events">
-                            @foreach (var questOnDay in day.QuestsOnDay.Take(3))
+                            @foreach (var questOnDay in day.QuestsOnDay)
                             {
                                 <div class="quest-event @(questOnDay.IsFinalized ? "finalized" : "proposed") @(isDetailsPage && questOnDay.Quest.Id == currentQuestId ? "current-quest" : "")" 
                                      title="@questOnDay.Quest.Title - @questOnDay.ProposedDate.Date.ToString("HH:mm")"
@@ -196,12 +221,9 @@
                                     }
                                 </div>
                             }
-                            @if (day.QuestsOnDay.Count > 3)
-                            {
-                                <div class="more-events">+@(day.QuestsOnDay.Count - 3) more</div>
-                            }
                         </div>
                     }
+                    </div>
                 }
             </div>
         }

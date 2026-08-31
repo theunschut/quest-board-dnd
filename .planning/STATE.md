@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 73
-current_phase_name: Resolve Stale HIGH Security Alerts
+current_phase: 81
+current_phase_name: Contact Tags and Filtering
 status: executing
-stopped_at: Phase 72 context gathered
-last_updated: "2026-08-26T05:55:52.143Z"
-last_activity: 2026-08-26
-last_activity_desc: Phase 72 complete, transitioned to Phase 73
+stopped_at: Phase 80 complete (9/9 plans, verification passed), ready to plan Phase 81
+last_updated: "2026-08-31T06:34:40.836Z"
+last_activity: 2026-08-31
+last_activity_desc: Phase 80 complete, transitioned to Phase 81
 progress:
-  total_phases: 6
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 17
+  total_phases: 12
+  completed_phases: 9
+  total_plans: 83
+  completed_plans: 66
+  percent: 75
 ---
 
 # Project State
@@ -24,14 +24,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 72 — change-character-on-an-existing-signup
+**Current focus:** Phase 81 — contact-tags-and-filtering
 
 ## Current Position
 
-Phase: 73 — Resolve Stale HIGH Security Alerts
+Phase: 81 — Contact Tags and Filtering
 Plan: Not started
-Status: Executing Phase 72
-Last activity: 2026-08-26 — Phase 72 complete, transitioned to Phase 73
+Status: In progress
+Last activity: 2026-08-31 — Phase 80 complete, transitioned to Phase 81
+
+Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
 ## Performance Metrics
 
@@ -51,9 +53,18 @@ Last activity: 2026-08-26 — Phase 72 complete, transitioned to Phase 73
 
 v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v8.0-ROADMAP.md` Milestone Summary for the consolidated view. No open decisions carried forward.
 
+- [Phase 83]: CalendarButtonStyleTests.cs written with post-write CRLF conversion (Write tool emitted LF; converted before running tests) to satisfy CLAUDE.md's Windows/CRLF convention
+
 ### Roadmap Evolution
 
 v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100% requirement coverage (21/21), no orphans, no ad-hoc scope additions. Full evolution history archived in `.planning/milestones/v8.0-ROADMAP.md`.
+
+- Phase 78 added 2026-08-26: Link Preview Foundation and Quest Cards — Open Graph / Twitter Card unfurls for quest links, gated behind signed share links.
+- Phase 79 added 2026-08-26: Character and Contact Link Cards — extends the signed-link mechanism to characters and contacts, including portrait images and the `IsRevealed` spoiler gate.
+- Phase 80 added 2026-08-27: Contact Categories — group NPCs under named headings on the Contacts index. From a board user's feature request relayed by the operator.
+- Phase 81 added 2026-08-27: Contact Tags and Filtering — many-to-many free-form tags on contacts plus a filter on the index. Same request; the requester staged it after categories, so it is a separate phase and may stay unplanned.
+- Phase 82 added 2026-08-29: Personal Cross-Board Event Agenda — every upcoming event across all boards a member belongs to, board named on every row. Raised during Phase 77's discuss pass and deliberately kept off that page.
+- Phase 83 added 2026-08-30: Availability Surface Naming and Placement — rename the pair to "My Agenda" / "Board Availability" and move the board-scoped overview's nav entry under the Dungeon Master menu. Naming and discoverability only; a DM-only permission gate was considered and rejected because it would hide less than the agenda already shows.
 
 ### Pending Todos
 
@@ -73,6 +84,8 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 |---|-------------|------|--------|-----------|
 | 260713-js8 | Add re-crop trigger for existing profile images (Characters, Contacts, DM Profile) and fix backend gaps that would drop or wipe crop-only submissions | 2026-07-13 | d2f2f95 | [260713-js8-add-re-crop-trigger-for-existing-profile](./quick/260713-js8-add-re-crop-trigger-for-existing-profile/) |
 | 260714-b0w | Waitlist table missing on quest details/manage pages when quest is finalized, or 'No' votes not showing in waitlist | 2026-07-14 | 79e76cb | [260714-b0w-waitlist-table-missing-on-quest-details-](./quick/260714-b0w-waitlist-table-missing-on-quest-details-/) |
+| Phase 83 P01 | 15min | 3 tasks | 4 files |
+| Phase 83 P02 | 20min | 3 tasks | 5 files |
 
 ## Deferred Items
 
@@ -87,9 +100,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-08-25T11:14:47.548Z
-Stopped at: Phase 72 context gathered
-Resume file: .planning/phases/72-change-character-on-an-existing-signup/72-CONTEXT.md
+Last session: 2026-08-31T06:45:40.605Z
+Stopped at: Phase 80 complete, ready to plan Phase 81
+Resume file: None
 
 ## Operator Next Steps
 

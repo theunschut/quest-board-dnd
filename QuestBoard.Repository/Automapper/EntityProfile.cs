@@ -126,7 +126,12 @@ public class EntityProfile : Profile
                 ? src.ProfileImage.OriginalImageData
                 : null))
             // Computed separately by a scalar query in the repository, not derivable from a single entity field.
-            .ForMember(dest => dest.HasContactImage, opt => opt.Ignore());
+            .ForMember(dest => dest.HasContactImage, opt => opt.Ignore())
+            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null))
+            .ForMember(dest => dest.CategorySortOrder, opt => opt.MapFrom(src => src.Category != null ? (int?)src.Category.SortOrder : null));
+
+        // ContactCategory mapping — every property is a plain scalar, so no member configuration is needed.
+        CreateMap<ContactCategory, ContactCategoryEntity>().ReverseMap();
 
         // ContactNote mapping — AuthorName is a display-only projection from the Author navigation
         CreateMap<ContactNote, ContactNoteEntity>()
@@ -134,6 +139,36 @@ public class EntityProfile : Profile
 
         CreateMap<ContactNoteEntity, ContactNote>()
             .ForMember(dest => dest.AuthorName, opt => opt.MapFrom(src => src.Author != null ? src.Author.Name : null));
+
+        // Event mapping. Group and Series are ignored on the reverse map so mapping a domain
+        // model onto an already-tracked entity during an update never replaces a loaded
+        // navigation with null.
+        CreateMap<EventEntity, Event>();
+
+        CreateMap<Event, EventEntity>()
+            .ForMember(dest => dest.Group, opt => opt.Ignore())
+            .ForMember(dest => dest.Series, opt => opt.Ignore())
+            .ForMember(dest => dest.Signups, opt => opt.Ignore());
+
+        // EventSeries mapping. Group is ignored on the reverse map for the same reason as
+        // Event above - it stops mapping a domain model onto a tracked entity from replacing
+        // a loaded navigation with null.
+        CreateMap<EventSeriesEntity, EventSeries>();
+
+        CreateMap<EventSeries, EventSeriesEntity>()
+            .ForMember(dest => dest.Group, opt => opt.Ignore());
+
+        // EventSignup mapping — Availability is stored as int and cast to/from VoteType,
+        // matching the PlayerSignup enum-cast pattern. UserName is a display-only projection
+        // from the signup's User navigation.
+        CreateMap<EventSignupEntity, EventSignup>()
+            .ForMember(dest => dest.Availability, opt => opt.MapFrom(src => (VoteType)src.Availability))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.Name : string.Empty));
+
+        CreateMap<EventSignup, EventSignupEntity>()
+            .ForMember(dest => dest.Availability, opt => opt.MapFrom(src => (int)src.Availability))
+            .ForMember(dest => dest.Event, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore());
 
         // DungeonMasterProfile mappings
         CreateMap<DungeonMasterProfileEntity, DungeonMasterProfile>()

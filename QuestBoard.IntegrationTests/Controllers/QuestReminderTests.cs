@@ -16,7 +16,7 @@ public class QuestReminderTests(WebApplicationFactoryBase factory) : IClassFixtu
         var paramTypes = constructor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IReminderJobDispatcher),
-            "REMIND-03 requires IReminderJobDispatcher in QuestController constructor — " +
+            "QuestController must take IReminderJobDispatcher — " +
             "IBackgroundJobClient must not be injected directly (unavailable in Testing environment)");
     }
 
@@ -28,7 +28,7 @@ public class QuestReminderTests(WebApplicationFactoryBase factory) : IClassFixtu
         var paramTypes = constructor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().NotContain(t => t.Name == "IBackgroundJobClient",
-            "REMIND-03: IBackgroundJobClient is not registered in Testing environment; " +
+            "IBackgroundJobClient is not registered in the Testing environment; " +
             "use IReminderJobDispatcher abstraction instead");
     }
 

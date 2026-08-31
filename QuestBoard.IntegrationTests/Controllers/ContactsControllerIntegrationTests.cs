@@ -5,19 +5,13 @@ using System.Net.Http.Headers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
-// Wave 0 RED scaffold (Phase 57, Plan 01): this file intentionally references the not-yet-created
-// ContactsController and its routes (/Contacts/Index, /Contacts/Details/{id}, /Contacts/Create,
-// /Contacts/Edit/{id}, /Contacts/Delete/{id}, /Contacts/ToggleReveal/{id},
-// /Contacts/ToggleShowHidden, /Contacts/AddNote, /Contacts/EditNote, /Contacts/DeleteNote). Since
-// this file has no direct compile-time dependency on those controller/action symbols (only
-// string-based route literals), it is expected to build cleanly but every [Fact] below MUST fail
-// at runtime (404 Not Found) until Plan 04 lands — that is the intended Wave 0 RED state for an
-// integration-test scaffold that targets routes rather than C# symbols directly.
-//
-// D-09b/D-12/D-13/D-14/D-15/D-15b/D-09 refer to decisions in 57-CONTEXT.md.
+// Route-level coverage for ContactsController: authorization on the write actions, the
+// hidden/reveal visibility model (including the creator exception and the per-group Show Hidden
+// toggle), and note authoring. These tests drive string route literals rather than controller
+// symbols, so a renamed or removed route fails here at runtime rather than at compile time.
 public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factory) : IClassFixture<WebApplicationFactoryBase>
 {
-    // (1) D-09b — Player is blocked from Create/Edit/Delete/ToggleReveal; DM-tier succeeds.
+    // (1) Player is blocked from Create/Edit/Delete/ToggleReveal; DM-tier succeeds.
 
     [Fact]
     public async Task Create_Get_PlayerAccess_ShouldBeBlocked()
@@ -147,7 +141,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
     }
 
-    // (2) D-14 — a Contact created via Create POST defaults to IsRevealed == false.
+    // (2) A Contact created via Create POST defaults to IsRevealed == false.
 
     [Fact]
     public async Task Create_Post_NewContact_DefaultsToHidden()
@@ -172,7 +166,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         persisted!.IsRevealed.Should().BeFalse();
     }
 
-    // (3) D-12/D-13 — a hidden Contact is absent from a Player's Index list, and a direct
+    // (3) A hidden Contact is absent from a Player's Index list, and a direct
     // Details/{id} GET for that hidden Contact returns NotFound (404) for the Player.
 
     [Fact]
@@ -211,7 +205,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // CR-01 regression (code review) — GetContactImage must apply the same hidden-Contact
+    // Regression guard: GetContactImage must apply the same hidden-Contact
     // visibility check as Details/Index, not just the group-scoped query filter. Otherwise any
     // authenticated group member can fetch a hidden Contact's portrait by guessing/enumerating
     // its id, bypassing the hidden/reveal model entirely.
@@ -249,7 +243,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    // (4) D-15 branch 1 — the creator exception: the DM-tier user who created a hidden Contact
+    // (4) The creator exception: the DM-tier user who created a hidden Contact
     // sees it on their own Index and Details regardless of toggle state.
 
     [Fact]
@@ -285,7 +279,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         content.Should().Contain("Creator&#x27;s Own Hidden In Index");
     }
 
-    // (5) D-15 branch 2 — a different DM-tier user does NOT see the hidden Contact with toggle
+    // (5) A different DM-tier user does NOT see the hidden Contact with toggle
     // OFF, but DOES see it after POSTing ToggleShowHidden (toggle ON).
 
     [Fact]
@@ -318,7 +312,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         afterContent.Should().Contain("Toggle-Gated Contact");
     }
 
-    // (6) D-15 branch 3 — a plain Player never sees the hidden Contact regardless of any toggle state.
+    // (6) A plain Player never sees the hidden Contact regardless of any toggle state.
 
     [Fact]
     public async Task Index_HiddenContact_Player_NeverSeesHiddenContactEvenAfterToggleAttempt()
@@ -332,7 +326,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "contact_player_never", "contact_player_never@example.com", roles: ["Player"]);
 
-        // A Player posting ToggleShowHidden should have no visibility effect (D-15 branch 3);
+        // A Player posting ToggleShowHidden should have no visibility effect;
         // this either 403s/redirects to AccessDenied or is a no-op — either way, Index must
         // never show the hidden contact for a plain Player afterward.
         await playerClient.PostAsync(
@@ -345,7 +339,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         content.Should().NotContain("Never Visible To Player");
     }
 
-    // (7) D-15b — the toggle is per-group and session-scoped: toggling ON for group 1 does not
+    // (7) The toggle is per-group and session-scoped: toggling ON for group 1 does not
     // reveal hidden contacts when the active group is group 2.
 
     [Fact]
@@ -397,7 +391,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         }
     }
 
-    // (8) D-09 — any group member (Player) can POST AddNote, EditNote, and DeleteNote on a note
+    // (8) Any group member (Player) can POST AddNote, EditNote, and DeleteNote on a note
     // authored by a different user — no ownership guard blocks them.
 
     [Fact]
@@ -843,5 +837,509 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var content = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
         content.Should().NotBeEmpty();
         content.Should().Equal(croppedBytes);
+    }
+
+    // A SuperAdmin has no active group by design. RequireActiveGroupId() previously threw
+    // unguarded when the Create POST write-stamp ran for a SuperAdmin with no board selected —
+    // this pins down that it now degrades gracefully instead of an unhandled 500.
+    [Fact]
+    public async Task Create_Post_SuperAdminWithNoActiveGroup_DoesNotThrow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Name"] = "No Board Contact"
+            });
+
+            var response = await superAdminClient.PostAsync("/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+            // A non-idempotent request with no active group never gets silently redirected
+            // (that would drop the submitted body) — GroupSessionMiddleware returns 409 Conflict,
+            // and if that gate is ever bypassed, ContactsController's own write-stamp guard
+            // redirects instead of throwing. Either way, it must never be a 500.
+            response.StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Conflict, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    // (10) Category grouping on the index: a heading never renders for a category the viewer
+    // cannot see anything under, headings follow the DM's sort order with Ungrouped last, and a
+    // board with no categories renders exactly today's flat list.
+
+    // TestDataHelper.CreateTestContactAsync has no categoryId parameter -- it predates category
+    // grouping. Stamping CategoryId directly through a fresh scope keeps this file's category
+    // seeding self-contained without changing a helper other suites also rely on.
+    private static async Task AssignContactCategoryAsync(IServiceProvider services, int contactId, int categoryId)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var contact = await context.Contacts.SingleAsync(c => c.Id == contactId);
+        contact.CategoryId = categoryId;
+        await context.SaveChangesAsync();
+    }
+
+    // Adds the acting user to a second board's membership through a direct row insert, mirroring
+    // ToggleShowHidden_IsScopedPerGroup_DoesNotLeakAcrossGroups's own inline pattern above -- the
+    // acting DM must be a real member of the board this suite flips into active, not merely
+    // authenticated against the default board.
+    private static async Task AddUserToGroupAsync(IServiceProvider services, int userId, int groupId)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.UserGroups.Add(new UserGroupEntity
+        {
+            UserId = userId,
+            GroupId = groupId,
+            GroupRole = (int)QuestBoard.Domain.Enums.GroupRole.DungeonMaster
+        });
+        await context.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task ContactCategory_EmptyHeadingSuppression_PlayerNeverSeesHeadingForUnrevealedOnlyCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_dm", "cat_suppress_dm@example.com", roles: ["DungeonMaster"]);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Secret Cabal", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Cabalist", groupId: 1, isRevealed: false);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_player", "cat_suppress_player@example.com", roles: ["Player"]);
+
+        var response = await playerClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain("Secret Cabal");
+    }
+
+    [Fact]
+    public async Task ContactCategory_EmptyHeadingSuppression_DmWithHiddenToggleOnSeesHeading()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (_, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleon_dm", "cat_suppress_toggleon_dm@example.com", roles: ["DungeonMaster"]);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Whispering Court", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Courtier", groupId: 1, isRevealed: false);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var (otherDmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleon_other", "cat_suppress_toggleon_other@example.com", roles: ["DungeonMaster"]);
+
+        var toggleResponse = await otherDmClient.PostAsync(
+            "/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]), TestContext.Current.CancellationToken);
+        toggleResponse.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+
+        var response = await otherDmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Whispering Court");
+    }
+
+    [Fact]
+    public async Task ContactCategory_EmptyHeadingSuppression_DmWithHiddenToggleOffDoesNotSeeHeading()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (_, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleoff_dm", "cat_suppress_toggleoff_dm@example.com", roles: ["DungeonMaster"]);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Shadow Conclave", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Hidden Shadow Agent", groupId: 1, isRevealed: false);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var (otherDmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_suppress_toggleoff_other", "cat_suppress_toggleoff_other@example.com", roles: ["DungeonMaster"]);
+
+        var response = await otherDmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain("Shadow Conclave");
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_FollowsSortPositionNotAlphabet()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_sort_dm", "cat_order_sort_dm@example.com", roles: ["DungeonMaster"]);
+
+        // Sort position deliberately reversed from alphabetical order: "Zenith Guild" is first by
+        // SortOrder even though "Alley Cats" comes first alphabetically.
+        var zenith = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Zenith Guild", sortOrder: 0, groupId: 1);
+        var alley = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Alley Cats", sortOrder: 1, groupId: 1);
+        var zenithContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Zenith Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, zenithContact.Id, zenith.Id);
+        var alleyContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Alley Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, alleyContact.Id, alley.Id);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var zenithIndex = content.IndexOf("Zenith Guild", StringComparison.Ordinal);
+        var alleyIndex = content.IndexOf("Alley Cats", StringComparison.Ordinal);
+        zenithIndex.Should().BeGreaterThan(-1);
+        alleyIndex.Should().BeGreaterThan(-1);
+        zenithIndex.Should().BeLessThan(alleyIndex);
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_ContactsWithinCategoryAreAlphabetical()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_alpha_dm", "cat_order_alpha_dm@example.com", roles: ["DungeonMaster"]);
+
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Adventuring Party", sortOrder: 0, groupId: 1);
+        var zed = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Zed the Wanderer", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, zed.Id, category.Id);
+        var anna = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Anna the Scout", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, anna.Id, category.Id);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var annaIndex = content.IndexOf("Anna the Scout", StringComparison.Ordinal);
+        var zedIndex = content.IndexOf("Zed the Wanderer", StringComparison.Ordinal);
+        annaIndex.Should().BeGreaterThan(-1);
+        zedIndex.Should().BeGreaterThan(-1);
+        annaIndex.Should().BeLessThan(zedIndex);
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_UngroupedHeadingAppearsAfterEveryRealCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_ungrouped_dm", "cat_order_ungrouped_dm@example.com", roles: ["DungeonMaster"]);
+
+        var categoryOne = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Merchant Guild", sortOrder: 0, groupId: 1);
+        var categoryTwo = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Thieves Union", sortOrder: 1, groupId: 1);
+        var catOneContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Merchant Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, catOneContact.Id, categoryOne.Id);
+        var catTwoContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Thief Member", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, catTwoContact.Id, categoryTwo.Id);
+        // Uncategorised on purpose -- no AssignContactCategoryAsync call for this one.
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Unaffiliated Wanderer", groupId: 1, isRevealed: true);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var categoryOneIndex = content.IndexOf("Merchant Guild", StringComparison.Ordinal);
+        var categoryTwoIndex = content.IndexOf("Thieves Union", StringComparison.Ordinal);
+        var ungroupedIndex = content.IndexOf("Ungrouped", StringComparison.Ordinal);
+        categoryOneIndex.Should().BeGreaterThan(-1);
+        categoryTwoIndex.Should().BeGreaterThan(-1);
+        ungroupedIndex.Should().BeGreaterThan(-1);
+        ungroupedIndex.Should().BeGreaterThan(categoryOneIndex);
+        ungroupedIndex.Should().BeGreaterThan(categoryTwoIndex);
+
+        // No heading carries a count: a real category name is never followed by a parenthesised
+        // number the way a badge or total would render it.
+        content.Should().NotMatchRegex(@"Merchant Guild\s*\(\d+\)");
+        content.Should().NotMatchRegex(@"Thieves Union\s*\(\d+\)");
+    }
+
+    [Fact]
+    public async Task ContactsIndex_CategoryOrdering_ZeroCategoryBoardRendersFlatListWithNoHeadings()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_order_flat_dm", "cat_order_flat_dm@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Flat List Contact", groupId: 1, isRevealed: true);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        content.Should().Contain("Flat List Contact");
+        content.Should().NotContain("Ungrouped");
+        content.Should().NotContain("category-heading");
+    }
+
+    [Fact]
+    public async Task ContactCategory_NameRendersEscaped_AngleBracketsAreEncoded()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_escape_dm", "cat_escape_dm@example.com", roles: ["DungeonMaster"]);
+
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(
+            factory.Services, "<script>alert('x')</script>", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Marked Contact", groupId: 1, isRevealed: true);
+        await AssignContactCategoryAsync(factory.Services, contact.Id, category.Id);
+
+        var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        content.Should().NotContain("<script>alert('x')</script>");
+        content.Should().Contain("&lt;script&gt;");
+    }
+
+    // (11) Cross-board isolation on the category-assignment surfaces this plan adds: another
+    // board's categories are unreachable from the management page, the contact form dropdown, and
+    // the index; a post naming a foreign category is refused with the stored reference left
+    // untouched either way; and a null active board fails closed rather than merging every
+    // board's categories together.
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_ManagementListNeverShowsOtherBoardsCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Exclusive Circle", sortOrder: 0, groupId: 1);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Native Circle", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_mgmt_dm", "cat_crossgroup_mgmt_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        try
+        {
+            factory.TestGroupContext.ActiveGroupId = 2;
+            var response = await dmClient.GetAsync("/ContactCategoryManagement", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().NotContain("Board One Exclusive Circle");
+            content.Should().Contain("Board Two Native Circle");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_CreateFormDropdownNeverShowsOtherBoardsCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Only Roster", sortOrder: 0, groupId: 1);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Own Roster", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_form_dm", "cat_crossgroup_form_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        try
+        {
+            factory.TestGroupContext.ActiveGroupId = 2;
+            var response = await dmClient.GetAsync("/Contacts/Create", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().NotContain("Board One Only Roster");
+            content.Should().Contain("Board Two Own Roster");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_IndexNeverShowsOtherBoardsCategory()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Index Cabal", sortOrder: 0, groupId: 1);
+        var boardTwoCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Index Cabal", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_index_dm", "cat_crossgroup_index_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        var boardTwoContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Board Two Cabal Member", groupId: 2, isRevealed: true);
+
+        try
+        {
+            // AssignContactCategoryAsync reads through the DI-registered, board-filtered
+            // Contacts DbSet -- the active board must already be 2 before it can find a
+            // board-2 contact.
+            factory.TestGroupContext.ActiveGroupId = 2;
+            await AssignContactCategoryAsync(factory.Services, boardTwoContact.Id, boardTwoCategory.Id);
+
+            var response = await dmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().NotContain("Board One Index Cabal");
+            content.Should().Contain("Board Two Index Cabal");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_CreatePost_ForeignCategoryId_IsRefusedAndNotStored()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        var boardOneCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Create Refusal Guild", sortOrder: 0, groupId: 1);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_create_dm", "cat_crossgroup_create_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        try
+        {
+            factory.TestGroupContext.ActiveGroupId = 2;
+
+            var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Name"] = "Should Not Persist Cross-Board Contact",
+                ["CategoryId"] = boardOneCategory.Id.ToString()
+            });
+
+            var response = await dmClient.PostAsync("/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().Contain("Selected category is not available on this board.");
+
+            await using var ctx = factory.Database.CreateContext();
+            var persisted = await ctx.Contacts.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Name == "Should Not Persist Cross-Board Contact", TestContext.Current.CancellationToken);
+            persisted.Should().BeNull();
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_EditPost_ForeignCategoryId_IsRefusedAndReferenceUnchanged()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        var boardOneCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Edit Target Guild", sortOrder: 0, groupId: 1);
+        var boardTwoCategory = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Edit Home Guild", sortOrder: 0, groupId: 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_crossgroup_edit_dm", "cat_crossgroup_edit_dm@example.com", roles: ["DungeonMaster"]);
+        await AddUserToGroupAsync(factory.Services, dmUser.Id, 2);
+
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Board Two Contact Under Edit", groupId: 2, isRevealed: true);
+
+        try
+        {
+            // AssignContactCategoryAsync reads through the DI-registered, board-filtered
+            // Contacts DbSet -- the active board must already be 2 before it can find a
+            // board-2 contact.
+            factory.TestGroupContext.ActiveGroupId = 2;
+            await AssignContactCategoryAsync(factory.Services, contact.Id, boardTwoCategory.Id);
+
+            var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Id"] = contact.Id.ToString(),
+                ["Name"] = "Board Two Contact Under Edit",
+                ["CategoryId"] = boardOneCategory.Id.ToString()
+            });
+
+            var response = await dmClient.PostAsync($"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            content.Should().Contain("Selected category is not available on this board.");
+
+            await using var ctx = factory.Database.CreateContext();
+            var persisted = await ctx.Contacts.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+            persisted.Should().NotBeNull();
+            persisted!.CategoryId.Should().Be(boardTwoCategory.Id);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    [Fact]
+    public async Task ContactCategory_CrossGroup_NullActiveBoard_CategoryReadResolvesToNothing()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board One Null Check Guild", sortOrder: 0, groupId: 1);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Board Two Null Check Guild", sortOrder: 0, groupId: 2);
+
+        // TestDatabase.CreateContext() builds its own MutableGroupContext with ActiveGroupId fixed
+        // at null, independent of the DI-registered TestGroupContext -- this exercises the
+        // fail-closed HasQueryFilter predicate on ContactCategoryEntity directly, the same idiom
+        // TenantIsolationTests already uses for QuestEntity's own null-active-group fact.
+        await using var readCtx = factory.Database.CreateContext();
+        var categories = readCtx.ContactCategories.ToList();
+
+        categories.Should().BeEmpty(
+            "a null active board must resolve to zero categories, never every board's merged together");
+    }
+
+    // (12) Disabled-select form state: a board with zero categories renders the field disabled
+    // with the discovery link; a board with at least one category renders it enabled with no
+    // helper link.
+
+    [Fact]
+    public async Task ContactCategory_DisabledSelect_ZeroCategoryBoard_CreateFormShowsDisabledSelectAndManagementLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_disabled_zero_dm", "cat_disabled_zero_dm@example.com", roles: ["DungeonMaster"]);
+
+        var response = await dmClient.GetAsync("/Contacts/Create", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("disabled");
+        content.Should().Contain("ContactCategoryManagement");
+        content.Should().Contain("No categories yet.");
+    }
+
+    [Fact]
+    public async Task ContactCategory_DisabledSelect_WithCategoryBoard_CreateFormShowsEnabledSelectNoHelperLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Available Adventuring Company", sortOrder: 0, groupId: 1);
+
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "cat_disabled_present_dm", "cat_disabled_present_dm@example.com", roles: ["DungeonMaster"]);
+
+        var response = await dmClient.GetAsync("/Contacts/Create", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Available Adventuring Company");
+        content.Should().NotContain("No categories yet.");
     }
 }

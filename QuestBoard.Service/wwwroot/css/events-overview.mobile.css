@@ -1,0 +1,129 @@
+/* ========================================
+   AVAILABILITY OVERVIEW STYLES (MOBILE)
+   ======================================== */
+
+/* This stylesheet and its desktop sibling are a duplicated pair, not a shared file: the
+   mobile layout loads its own stylesheet set, so the cell-state and count rules below are
+   copied verbatim into both files rather than factored out, the same reason calendar.css
+   and calendar.mobile.css already exist side by side. The unconfirmed-default chip in
+   particular carries its distinguishing signal on purpose in more than one place -- a
+   dashed border here, an italic label and a clock icon in the markup that uses this class
+   -- so that a reader who cannot rely on color still sees it is a default, not a real
+   answer. */
+
+/* The unconfirmed-Yes chip carries the same solid green as a confirmed Yes, because the
+   earlier hollow fill left its label too faint to read comfortably at a glance. The
+   distinction is therefore carried entirely by signals that survive greyscale and
+   colour-blindness rather than by fill weight: a dashed border here, plus the clock icon
+   and italic label in the markup. The border is drawn in white so the dashes stay legible
+   against the solid fill. */
+.avail-cell-yes-muted {
+    background-color: var(--bs-success);
+    color: #fff;
+    border: 1px dashed rgba(255, 255, 255, 0.85) !important;
+}
+
+.avail-cell-yes-muted em {
+    font-style: italic;
+}
+
+/* The empty cell is deliberately not a badge at all, so its shape alone already separates
+   "no signup exists" from every vote-bearing state before color is read. */
+.avail-cell-empty {
+    opacity: 0.55;
+    font-weight: 400;
+}
+
+.avail-count-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.avail-count-headline {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.avail-count-detail {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* This card sits directly on the page's background image with nothing wrapping it, so it
+   carries the app's glass treatment directly rather than through a shared class, and must
+   stay in step with the shared card styling if that styling ever changes. The calendar's
+   nested entry rows are a different level of the hierarchy -- a small row living inside a
+   glass wrapper of its own -- and are not the reference to copy here. */
+.avail-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.avail-card:active {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.avail-card-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #F4E4BC;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* This card sits directly on the page's background image with only a translucent surface
+   between, so every text run inside it states its own colour instead of inheriting one --
+   nothing here can rely on a parent's default. The count block in particular used to
+   inherit dark text that suited an opaque desktop table cell, which read at a measured
+   5.07:1 against the brightest point of the background image, comfortably above the 4.5:1
+   WCAG AA floor for normal text. */
+.avail-card .avail-count-headline {
+    color: #FFFFFF;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.avail-card .avail-count-detail {
+    color: #FFFFFF !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.avail-card .avail-card-meta {
+    color: #FFFFFF !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.avail-card .avail-roster-name {
+    color: #FFFFFF;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* The roster toggle is a real tap target, so it reaches the 44px iOS/Android floor through
+   padding rather than through font size -- do not shrink it to fit the 4px spacing scale. */
+.avail-expand-toggle {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* The mobile layout does not load calendar.css, so the legend card's compact sizing is
+   duplicated here rather than shared -- the same duplication policy documented at the top
+   of this file. */
+.legend-card {
+    height: fit-content;
+}
+
+.legend-card .card-body {
+    padding: 0.75rem !important;
+}
+
+.legend-card small {
+    font-size: 0.75rem;
+    line-height: 1.2;
+}

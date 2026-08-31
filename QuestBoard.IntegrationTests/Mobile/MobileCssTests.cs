@@ -78,7 +78,7 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 
         // Assert
         css.Should().Contain("min-height: 44px",
-            because: $"mobile.css at '{cssPath}' must enforce 44px touch targets per INFRA-06");
+            because: $"mobile.css at '{cssPath}' must enforce a 44px minimum touch target");
     }
 
     /// <summary>

@@ -6,7 +6,7 @@
     ViewBag.IsDetailsPage = false;
     var prevMonth = Model.FirstDayOfMonth.AddMonths(-1);
     var nextMonth = Model.FirstDayOfMonth.AddMonths(1);
-    var agendaDays = Model.GetCalendarDays().Where(d => !d.IsEmpty && d.QuestsOnDay.Any()).ToList();
+    var agendaDays = Model.GetCalendarDays().Where(d => !d.IsEmpty && (d.QuestsOnDay.Any() || d.EventsOnDay.Any())).ToList();
 }
 @section Styles {
     <link href="~/css/calendar.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -30,14 +30,53 @@
         </a>
     </div>
 
-    @* Agenda list — one section per day that has at least one quest *@
+    <div class="d-grid gap-2 mb-3">
+        @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
+        {
+            <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm">
+                <i class="fas fa-calendar-check me-2"></i>Board Availability
+            </a>
+        }
+        <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
+            <i class="fas fa-calendar-days me-2"></i>My Agenda
+        </a>
+    </div>
+
+    @* Low-runway warning — a player has no action to take on a scheduling warning, so this
+       block is gated to managers only, matching the desktop calendar's banner. *@
+    @if (Model.CanManage && Model.SeriesBelowRunway.Any())
+    {
+        <div class="alert alert-warning mb-3" role="alert">
+            @if (Model.SeriesBelowRunway.Count == 1)
+            {
+                var series = Model.SeriesBelowRunway[0];
+                <text>The '</text><a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a><text>' series is running low — only @series.UpcomingCount upcoming session(s) left. Visit its series page to check the cadence.</text>
+            }
+            else
+            {
+                <text>@Model.SeriesBelowRunway.Count recurring series are running low on upcoming sessions: </text>
+                @for (var i = 0; i < Model.SeriesBelowRunway.Count; i++)
+                {
+                    var series = Model.SeriesBelowRunway[i];
+                    <a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a>
+                    if (i < Model.SeriesBelowRunway.Count - 1)
+                    {
+                        <text>, </text>
+                    }
+                }
+                <text>. Visit each series page to check its cadence.</text>
+            }
+        </div>
+    }
+
+    @* Agenda list — one section per day that has at least one quest or event *@
     @if (!agendaDays.Any())
     {
-        @* Empty state (month with no quests) *@
+        @* Empty state stays month-neutral because this block now covers both quests and events *@
         <div class="text-center text-muted py-5">
             <i class="fas fa-calendar-alt fa-3x mb-3"></i>
-            <h5>No Quests This Month</h5>
-            <p>No adventures are planned for @Model.MonthName. Check another month.</p>
+            <h5>Nothing This Month</h5>
+            <p>No quests or events are planned for @Model.MonthName. Check another month.</p>
         </div>
     }
     else
@@ -49,13 +88,26 @@
                 <div class="agenda-day-label text-uppercase fw-bold small mb-1">
                     @day.Date.ToString("dddd, MMMM d").ToUpper()
                 </div>
+                @* Event entries render first so the mobile agenda groups a day the same way the
+                   desktop day cell does; the time slot always prints something because a blank
+                   slot is indistinguishable from a loading failure. *@
+                @foreach (var eventOnDay in day.EventsOnDay)
+                {
+                    <div class="agenda-event-entry @(eventOnDay.Event.IsCancelled ? "cancelled" : "")"
+                         onclick="window.location.href='@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })'">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="agenda-event-title fw-bold"><i class="fas fa-calendar-day me-2"></i><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })">@eventOnDay.Event.Title</a></span>
+                            <small class="text-muted ms-2 flex-shrink-0">@eventOnDay.TimeLabel</small>
+                        </div>
+                    </div>
+                }
                 @* Quest entries for this day — all quests, no Take(3) cap *@
                 @foreach (var questOnDay in day.QuestsOnDay)
                 {
                     <div class="agenda-quest-entry @(questOnDay.IsFinalized ? "agenda-quest-finalized" : "agenda-quest-proposed")"
                          onclick="window.location.href='@Url.Action("Details", "Quest", new { id = questOnDay.Quest.Id })'">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="agenda-quest-title fw-bold">@questOnDay.Quest.Title</span>
+                            <span class="agenda-quest-title fw-bold"><a class="row-nav-link" href="@Url.Action("Details", "Quest", new { id = questOnDay.Quest.Id })">@questOnDay.Quest.Title</a></span>
                             <small class="text-muted ms-2 flex-shrink-0">
                                 @questOnDay.ProposedDate.Date.ToString("HH:mm")
                             </small>

@@ -1,4 +1,5 @@
 using AutoMapper;
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Services;
@@ -68,5 +69,29 @@ public class GroupServiceTests
 
         // Assert
         await _repository.Received(1).GetMembersAsync(1, null, Arg.Any<CancellationToken>());
+    }
+
+    // ---------------------------------------------------------------------------
+    // AddMemberAsync / RemoveMemberAsync — chokepoint pass-through
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task AddMemberAsync_ForwardsArgumentsUnchangedToRepository()
+    {
+        // Act
+        await _sut.AddMemberAsync(5, 42, GroupRole.DungeonMaster, TestContext.Current.CancellationToken);
+
+        // Assert: the service adds no logic of its own at this chokepoint
+        await _repository.Received(1).AddMemberAsync(5, 42, GroupRole.DungeonMaster, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RemoveMemberAsync_ForwardsArgumentsUnchangedToRepository()
+    {
+        // Act
+        await _sut.RemoveMemberAsync(5, 42, TestContext.Current.CancellationToken);
+
+        // Assert: the service adds no logic of its own at this chokepoint
+        await _repository.Received(1).RemoveMemberAsync(5, 42, Arg.Any<CancellationToken>());
     }
 }

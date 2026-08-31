@@ -1,0 +1,73 @@
+/* ========================================
+   MY AGENDA STYLES (DESKTOP)
+   ======================================== */
+
+/* This stylesheet and its mobile sibling are a duplicated pair, not a shared file: the
+   mobile layout loads its own stylesheet set, so these rules are copied verbatim into both
+   files rather than factored out, the same reason events-overview.css and its own mobile
+   sibling already exist side by side. The cell chips themselves are not restyled here --
+   on desktop those rules already arrive from the globally-linked availability
+   stylesheet. */
+
+/* Each row is its own parchment surface rather than a divider-separated band on the dark card
+   body. The availability overview reaches the same surface through the shared table-cell rule;
+   this page has no table to inherit it from, so it declares the same treatment directly and
+   must stay in step with that rule if it ever changes. Without it the rows sit on the raw card
+   body and the page reads as a different material from the rest of the app. */
+.agenda-row {
+    background-color: rgba(244, 228, 188, 0.85);
+    border: 1px solid rgba(139, 69, 19, 0.3);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+
+.agenda-row:last-child {
+    margin-bottom: 0;
+}
+
+/* The parchment surface is light, so the row's own text has to invert from the cream the card
+   declares for its own dark body. That cream is declared with !important on a bare element
+   selector, so these rules match it the same way the availability overview's sticky-column
+   rules do -- without the !important the base rule wins unconditionally and the board name
+   paints cream on cream, which is invisible rather than merely low-contrast.
+
+   Badges are deliberately left alone: each one carries its own background and its own text
+   colour, and some of them (the maybe chip) are dark-on-light already. */
+.agenda-row,
+.agenda-row strong,
+.agenda-row .fw-semibold,
+.agenda-row .agenda-roster-entry > span.small {
+    color: #1a0f08 !important;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.9) !important;
+}
+
+.agenda-row .text-muted {
+    color: #5a4632 !important;
+    text-shadow: none !important;
+}
+
+/* The empty-cell mark is a muted em dash rather than a badge, so it follows the row's
+   secondary tone instead of the badge exemption above. */
+.agenda-row .avail-cell-empty {
+    color: #5a4632 !important;
+    text-shadow: none !important;
+}
+
+.agenda-row hr {
+    border-top-color: rgba(139, 69, 19, 0.3);
+    opacity: 1;
+}
+
+.agenda-roster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.agenda-roster-entry {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

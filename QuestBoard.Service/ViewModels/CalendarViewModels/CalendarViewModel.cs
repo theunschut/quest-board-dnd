@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
 
 namespace QuestBoard.Service.ViewModels.CalendarViewModels;
@@ -7,6 +8,20 @@ public class CalendarViewModel
     public int Year { get; set; }
     public int Month { get; set; }
     public List<Quest> Quests { get; set; } = new();
+
+    // Defaults to empty on purpose. The shared calendar partial is rendered from several
+    // places that build their own instance of this model and never set this collection;
+    // those places therefore render no events with no flag to set and nothing to remember,
+    // and any future caller inherits the same safe default.
+    public List<Event> Events { get; set; } = new();
+
+    // Both default empty/false on purpose, for the same reason as Events above: the shared
+    // calendar partial is rendered from several places that build their own instance of this
+    // model and never set these, so those places carry no runway state and no manager flag
+    // with nothing to remember and no flag to switch off, and any future caller inherits the
+    // same safe default.
+    public List<SeriesRunwayStatus> SeriesBelowRunway { get; set; } = [];
+    public bool CanManage { get; set; }
 
     public DateTime FirstDayOfMonth => new(Year, Month, 1);
     public DateTime LastDayOfMonth => FirstDayOfMonth.AddMonths(1).AddDays(-1);
@@ -34,12 +49,14 @@ public class CalendarViewModel
         {
             var date = new DateTime(Year, Month, day);
             var questsOnDay = GetQuestsForDate(date);
+            var eventsOnDay = GetEventsForDate(date);
 
             days.Add(new CalendarDay
             {
                 Date = date,
                 Day = day,
-                QuestsOnDay = questsOnDay
+                QuestsOnDay = questsOnDay,
+                EventsOnDay = eventsOnDay
             });
         }
 
@@ -101,5 +118,17 @@ public class CalendarViewModel
         }
 
         return questsOnDay;
+    }
+
+    private List<EventOnDay> GetEventsForDate(DateTime date)
+    {
+        // This is the single place the stored date type meets the calendar grid's
+        // date-and-time type. No other file may convert between them.
+        var dateOnly = DateOnly.FromDateTime(date);
+
+        return [.. Events
+            .Where(e => e.Date == dateOnly)
+            .OrderBy(e => e.StartTime ?? TimeOnly.MinValue)
+            .Select(e => new EventOnDay { Event = e })];
     }
 }

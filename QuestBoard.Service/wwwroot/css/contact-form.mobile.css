@@ -34,6 +34,14 @@
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Same reasoning as the desktop card: the helper text above is themed by an element list
+   that does not include anchors, so a link nested inside it falls back to a default colour
+   that is hard to read against this background. */
+.contact-form-card .form-text a {
+    color: #F4E4BC !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
 /* text-muted scoped override */
 .contact-form-card .text-muted {
     color: rgba(244, 228, 188, 0.7) !important;

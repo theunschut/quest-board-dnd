@@ -1,0 +1,140 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.Constants
+@using QuestBoard.Service.ViewModels.EventViewModels
+@model EventOverviewViewModel
+@{
+    ViewData["Title"] = "Board Availability";
+    var activeGroupName = Context.Session?.GetString(SessionKeys.ActiveGroupName);
+    var subtitleBoardName = string.IsNullOrEmpty(activeGroupName) ? "this board" : activeGroupName;
+    var isDm = (await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;
+}
+
+<div class="row">
+    <div class="col-lg-9 col-md-8">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header d-flex justify-content-between align-items-start">
+                <div>
+                    <h2 class="mb-0">
+                        <i class="fas fa-calendar-check text-purple me-2"></i>@ViewData["Title"]
+                    </h2>
+                    <p class="header-subtitle mb-0">Events on @subtitleBoardName</p>
+                </div>
+                @if (isDm)
+                {
+                    <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-calendar-days me-2"></i>My Agenda
+                    </a>
+                }
+            </div>
+            <div class="card-body modern-card-body p-0">
+                @if (!Model.Rows.Any())
+                {
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-calendar-alt fa-3x mb-3"></i>
+                        <h5>No Upcoming Events</h5>
+                        <p class="mb-0">This board has no upcoming events yet. Once a DM schedules one, it will appear here.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 avail-grid">
+                            <thead>
+                                <tr>
+                                    <th class="avail-sticky-col avail-col-event">Event</th>
+                                    <th class="avail-sticky-col avail-col-attendance">Attendance</th>
+                                    @foreach (var member in Model.Members)
+                                    {
+                                        @if (member.UserId == Model.CurrentUserId)
+                                        {
+                                            <th class="avail-col-self">@member.Name (you)</th>
+                                        }
+                                        else
+                                        {
+                                            <th>@member.Name</th>
+                                        }
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.Rows)
+                                {
+                                    <tr class="avail-row-clickable" onclick="window.location.href='@Url.Action("Details", "Events", new { id = row.EventId })'">
+                                        <td class="avail-sticky-col avail-col-event">
+                                            <strong><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></strong><br />
+                                            <small class="text-muted">
+                                                @row.Date.ToString("ddd, MMM d")
+                                                @if (row.StartTime.HasValue)
+                                                {
+                                                    @:&middot; @row.StartTime.Value.ToString("HH:mm")
+                                                }
+                                            </small>
+                                        </td>
+                                        <td class="avail-sticky-col avail-col-attendance">
+                                            @await Html.PartialAsync("_AvailabilityCounts", row)
+                                        </td>
+                                        @for (var i = 0; i < Model.Members.Count; i++)
+                                        {
+                                            var member = Model.Members[i];
+                                            var cell = i < row.Cells.Count ? row.Cells[i] : AvailabilityCellState.Empty;
+                                            @if (member.UserId == Model.CurrentUserId)
+                                            {
+                                                <td class="avail-col-self">@await Html.PartialAsync("_AvailabilityCell", cell)</td>
+                                            }
+                                            else
+                                            {
+                                                <td>@await Html.PartialAsync("_AvailabilityCell", cell)</td>
+                                            }
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (Model.CanShowMore)
+                    {
+                        <hr />
+                        <div class="text-center mb-3">
+                            <a href="@Url.Action("Index", new { take = Model.NextTake })" class="btn btn-primary">
+                                <i class="fas fa-chevron-down me-2"></i>Show More Events
+                            </a>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="col-lg-3 col-md-4">
+        <div class="card modern-card legend-card">
+            <div class="card-header modern-card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-1"></i>Legend
+                </h6>
+            </div>
+            <div class="card-body modern-card-body p-2">
+                <div class="d-flex align-items-center mb-2">
+                    @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedYes)
+                    <small class="ms-2">Confirmed available</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedMaybe)
+                    <small class="ms-2">Confirmed maybe</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedNo)
+                    <small class="ms-2">Confirmed not available</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.UnconfirmedYes)
+                    <small class="ms-2">Counted by default — not yet confirmed</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.Empty)
+                    <small class="ms-2">No signup for this event</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

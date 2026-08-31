@@ -31,6 +31,12 @@
         {
             <p class="contact-info-value mb-2">@Model.SubLocation</p>
         }
+        @if (!string.IsNullOrEmpty(Model.CategoryName))
+        {
+            <p class="contact-info-value mb-2">
+                <i class="fas fa-tag me-1"></i>@Model.CategoryName
+            </p>
+        }
         <div class="mb-2">
             @if (!Model.IsRevealed)
             {
@@ -201,7 +207,7 @@
             const textarea = editForm.querySelector('.markdown-editor-textarea');
 
             editBtn?.addEventListener('click', function () {
-                // D-03: only one note editor open at a time -- collapse (and discard unsaved
+                // Only one note editor open at a time -- collapse (and discard unsaved
                 // text in) every other currently-open note editor before opening this one.
                 document.querySelectorAll('.note-item').forEach(function (other) {
                     if (other !== noteItem && other.querySelector('.note-edit-form').style.display !== 'none') {

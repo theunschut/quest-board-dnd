@@ -26,7 +26,7 @@
 
                     <!-- Quest Header -->
                     <div class="quest-log-card-header">
-                        <h3 class="quest-log-card-title">@quest.Title</h3>
+                        <h3 class="quest-log-card-title"><a class="row-nav-link" href="@Url.Action("Details", "QuestLog", new { id = quest.Id })">@quest.Title</a></h3>
                         @if (boardType != BoardType.Campaign)
                         {
                             <span class="cr-badge">

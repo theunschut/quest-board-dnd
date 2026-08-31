@@ -15,7 +15,7 @@ public class QuestFinalizeTests(WebApplicationFactory<Program> factory) : IClass
         var paramTypes = constructor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().NotContain(typeof(IEmailService),
-            "CTRL-02 requires IEmailService to be removed from QuestController — email dispatch belongs in QuestService");
+            "IEmailService must not be injected into QuestController — email dispatch belongs in QuestService");
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class QuestFinalizeTests(WebApplicationFactory<Program> factory) : IClass
             // Fallback when source not available at test run location
             var ctor = typeof(QuestController).GetConstructors().Single();
             ctor.GetParameters().Should().NotContain(p => p.ParameterType == typeof(IEmailService),
-                "CTRL-01: source unavailable; verifying via constructor guard instead");
+                "source unavailable; verifying via constructor guard instead");
             return;
         }
 
@@ -55,6 +55,6 @@ public class QuestFinalizeTests(WebApplicationFactory<Program> factory) : IClass
         }
 
         nonBlankCount.Should().BeLessThanOrEqualTo(20,
-            "CTRL-01 requires the Finalize action body to be ≤ 20 non-blank lines");
+            "the Finalize action body must stay at or under 20 non-blank lines — orchestration belongs in QuestService");
     }
 }

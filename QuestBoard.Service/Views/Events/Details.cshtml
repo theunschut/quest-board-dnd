@@ -1,0 +1,292 @@
+@*
+    This is the only place a Dungeon Master edits or deletes an event, and also the only place
+    any board member answers an event's availability. The calendar chip links here rather than
+    carrying its own controls, so the shared calendar partial stays free of both write actions
+    and availability state.
+*@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.Extensions
+@using QuestBoard.Service.ViewModels.EventViewModels
+@model EventViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var deleteConfirmMessage = Model.SignupCount == 0
+        ? "Delete this event? This action cannot be undone."
+        : $"Delete this event? {Model.SignupCount} {(Model.SignupCount == 1 ? "person has" : "people have")} signed up and their availability will be lost. This action cannot be undone.";
+    var cancelConfirmMessage = $"Cancel this session on {Model.Date:dddd, MMMM d, yyyy}? It stays on the calendar, struck through, so everyone can see it's off instead of missing. This does not delete any availability answers already given.";
+    var restoreConfirmMessage = $"Restore this session on {Model.Date:dddd, MMMM d, yyyy}? It will show as scheduled again.";
+}
+
+@* Plain page-level breadcrumb navigation, not part of the event's own content -- the active
+   board is deliberately not switched back here. Switching twice per answer is state that is
+   easy to get wrong and hard to notice when it is, so this is a plain link, not a board switch. *@
+@if (ViewBag.ReturnedFromAgenda == true)
+{
+    @* A filled control rather than a bare link: this sits directly on the page background,
+       where the default link colour has too little contrast to read. *@
+    <div class="mb-3">
+        <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left me-2"></i>Back to My Agenda
+        </a>
+    </div>
+}
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card modern-card mb-3">
+            <div class="card-body modern-card-body">
+                <h2>@Model.Title</h2>
+                <p class="mb-1">
+                    <i class="fas fa-calendar-day me-2"></i>@Model.Date.ToString("dddd, MMMM d, yyyy")
+                </p>
+                <p class="mb-0">
+                    <i class="fas fa-clock me-2"></i>@Model.TimeLabel
+                </p>
+            </div>
+        </div>
+
+        @if (Model.CanManage)
+        {
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h4 class="mb-0">Actions</h4>
+                </div>
+                <div class="card-body modern-card-body">
+                    <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning w-100 mb-2">
+                        <i class="fas fa-pen me-2"></i>Edit Event
+                    </a>
+                    @if (Model.SeriesId.HasValue)
+                    {
+                        <a href="@Url.Action("Details", "Series", new { id = Model.SeriesId })" class="btn btn-outline-secondary w-100 mb-2">
+                            <i class="fas fa-repeat me-2"></i>View Series Details
+                        </a>
+                    }
+                    @if (Model.SeriesId.HasValue)
+                    {
+                        @if (Model.IsCancelled)
+                        {
+                            <form asp-action="Restore" method="post" onsubmit="return confirm(`@restoreConfirmMessage`);">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <button type="submit" class="btn btn-outline-success w-100">
+                                    <i class="fas fa-undo me-2"></i>Restore Occurrence
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="Cancel" method="post" onsubmit="return confirm(`@cancelConfirmMessage`);">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <button type="submit" class="btn btn-outline-warning w-100">
+                                    <i class="fas fa-ban me-2"></i>Cancel Occurrence
+                                </button>
+                            </form>
+                        }
+                    }
+                    else
+                    {
+                        <form asp-action="Delete" method="post" onsubmit="return confirm('@deleteConfirmMessage');">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="fas fa-trash me-2"></i>Delete Event
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h4 class="mb-0">Description</h4>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    @Html.Markdown(Model.Description)
+                }
+                else
+                {
+                    <p class="text-muted mb-0">No description provided.</p>
+                }
+            </div>
+        </div>
+
+        @if (Model.IsCancelled)
+        {
+            <div class="alert alert-secondary mb-3">
+                <i class="fas fa-ban me-2"></i>This session has been cancelled.
+            </div>
+        }
+
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-calendar-check me-2"></i>Your Availability
+                </h4>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (Model.HasOwnSignup)
+                {
+                    <p class="mb-0">
+                        Your current answer:
+                        @if (Model.MyAvailability == VoteType.Yes)
+                        {
+                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+                        }
+                        else if (Model.MyAvailability == VoteType.Maybe)
+                        {
+                            <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+                        }
+                        else if (Model.MyAvailability == VoteType.No)
+                        {
+                            <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+                        }
+                    </p>
+                }
+                else if (Model.IsCancelled)
+                {
+                    <p class="mb-0 text-muted">You did not answer before this session was cancelled.</p>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">You haven't answered yet. Choosing an answer below signs you up.</p>
+                }
+                @* A cancelled occurrence removes the answer controls entirely rather than disabling
+                   them -- the answers already given stay visible as historical record, but there is
+                   nothing left to answer for a session that is off. *@
+                @if (!Model.IsCancelled)
+                {
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            @* The withdraw control's visibility is a convenience only -- the server re-checks
+                               the board type on the request itself. On a campaign board opting out means
+                               answering No, not deleting the row, and a deleted row there would be recreated
+                               by the next automatic pass anyway. *@
+                            @if (Model.IsOneShotBoard && Model.HasOwnSignup)
+                            {
+                                <button type="button" class="btn btn-outline-danger" onclick="withdrawAvailability(@Model.Id)">
+                                    <i class="fas fa-user-slash me-2"></i>Withdraw
+                                </button>
+                                @* The handler lives beside its only caller rather than in the shared Scripts
+                                   section below, so a page where the control never rendered never defines a
+                                   function with nothing valid to call it. *@
+                                <script>
+                                    function withdrawAvailability(eventId) {
+                                        if (confirm("Withdrawing removes your answer entirely and returns you to not having responded. Continue?")) {
+                                            const formData = new FormData();
+                                            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+
+                                            fetch(`/Events/Withdraw/${eventId}`, {
+                                                method: "DELETE",
+                                                body: formData
+                                            }).then(res => {
+                                                if (res.ok) {
+                                                    location.reload();
+                                                } else {
+                                                    res.text().then(text => {
+                                                        alert(`Failed to withdraw availability: ${text}`);
+                                                    });
+                                                }
+                                            }).catch(err => {
+                                                alert("An error occurred while withdrawing availability.");
+                                            });
+                                        }
+                                    }
+                                </script>
+                            }
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-success" onclick="setAvailability(@Model.Id, @((int)VoteType.Yes))">
+                                <i class="fas fa-check me-2"></i>Yes
+                            </button>
+                            <button type="button" class="btn btn-warning" onclick="setAvailability(@Model.Id, @((int)VoteType.Maybe))">
+                                <i class="fas fa-question me-2"></i>Maybe
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="setAvailability(@Model.Id, @((int)VoteType.No))">
+                                <i class="fas fa-times me-2"></i>No
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card modern-card mb-3">
+            <div class="card-header modern-card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-users me-2"></i>Who's Coming
+                </h4>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (Model.Roster.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Availability</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var signup in Model.Roster)
+                                {
+                                    <tr>
+                                        <td>@signup.UserName</td>
+                                        <td>
+                                            @if (signup.Availability == VoteType.Yes)
+                                            {
+                                                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+                                            }
+                                            else if (signup.Availability == VoteType.Maybe)
+                                            {
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+                                            }
+                                            else if (signup.Availability == VoteType.No)
+                                            {
+                                                <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Nobody has answered yet -- be the first.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function setAvailability(eventId, availability) {
+            const formData = new FormData();
+            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
+            formData.append('availability', availability);
+
+            fetch(`/Events/SetAvailability/${eventId}`, {
+                method: "POST",
+                body: formData
+            }).then(res => {
+                if (res.ok) {
+                    location.reload();
+                } else {
+                    res.text().then(text => {
+                        alert(`Failed to set availability: ${text}`);
+                    });
+                }
+            }).catch(err => {
+                alert("An error occurred while setting availability.");
+            });
+        }
+    </script>
+}

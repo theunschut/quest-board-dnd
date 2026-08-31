@@ -16,6 +16,7 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         // (no owner-based grouping, since Contacts have no ownership/edit-restriction concept).
         var entities = await DbContext.Contacts
             .Include(c => c.CreatedByUser)
+            .Include(c => c.Category)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
             .OrderBy(c => c.Name)
             .ToListAsync(token);
@@ -40,6 +41,7 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     {
         var entity = await DbContext.Contacts
             .Include(c => c.CreatedByUser)
+            .Include(c => c.Category)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
             .FirstOrDefaultAsync(c => c.Id == id, token);
         if (entity == null) return null;

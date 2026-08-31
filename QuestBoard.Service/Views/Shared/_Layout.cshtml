@@ -14,7 +14,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/v4-shims.min.css" rel="stylesheet" integrity="sha384-TjXU13dTMPo+5ZlOUI1IGXvpmajjoetPqbUJqTx+uZ1bGwylKHNEItuVe/mg/H6l" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modern-card.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/events-overview.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/agenda.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/quests.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/characters.css" asp-append-version="true" />
@@ -97,6 +100,19 @@
                                                 <i class="fas fa-scroll me-2"></i>Create Quest
                                             </a>
                                         </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Events" asp-action="Create">
+                                                <i class="fas fa-calendar-plus me-2"></i>Create Event
+                                            </a>
+                                        </li>
+                                        @if (activeBoardType is BoardType.OneShot or BoardType.Campaign)
+                                        {
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Events" asp-action="Index">
+                                                <i class="fas fa-calendar-check me-2"></i>Board Availability
+                                            </a>
+                                        </li>
+                                        }
                                         @if (activeBoardType == BoardType.OneShot)
                                         {
                                         <li>
@@ -156,7 +172,10 @@
                     <ul class="navbar-nav ms-auto">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            if (activeBoardType == BoardType.OneShot)
+                            @* The calendar carries the recurring-session surfaces both board types depend
+                               on, so it is available whenever a board type has actually resolved; an
+                               unresolved board type is deliberately excluded rather than guessed at. *@
+                            if (activeBoardType is BoardType.OneShot or BoardType.Campaign)
                             {
                                 <li class="nav-item">
                                     <a class="nav-link" asp-controller="Calendar" asp-action="Index">
@@ -184,6 +203,15 @@
                                     <li>
                                         <a class="dropdown-item text-wrap" asp-controller="GroupPicker" asp-action="Index">
                                             <i class="fas fa-arrows-rotate me-2"></i>@(string.IsNullOrEmpty(activeGroupName) ? "Switch Group" : activeGroupName)
+                                        </a>
+                                    </li>
+                                    @* Deliberately outside every board-type condition: this page is scoped by
+                                       the viewer's own board memberships, not by a resolved board type, and is
+                                       the one surface that works with no board selected -- gating it here would
+                                       hide it in exactly the situation it exists for. *@
+                                    <li>
+                                        <a class="dropdown-item text-wrap" asp-controller="Agenda" asp-action="Index">
+                                            <i class="fas fa-calendar-days text-purple me-2"></i>My Agenda
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>

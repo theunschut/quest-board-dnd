@@ -166,9 +166,9 @@ public class UsersControllerIntegrationTests : IClassFixture<WebApplicationFacto
         enableAction.Should().NotBeNull();
 
         disableAction!.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull(
-            "Disable must require a valid antiforgery token (T-41-02)");
+            "Disable must require a valid antiforgery token");
         enableAction!.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull(
-            "Enable must require a valid antiforgery token (T-41-02)");
+            "Enable must require a valid antiforgery token");
     }
 
     // Even though the test harness's antiforgery decorator always validates successfully
@@ -193,7 +193,7 @@ public class UsersControllerIntegrationTests : IClassFixture<WebApplicationFacto
         // Act — POST with no antiforgery token at all. The TestAntiforgeryDecorator always
         // validates successfully in this harness, so this cannot observe a 400 here; the
         // Disable_And_Enable_Actions_CarryValidateAntiForgeryToken test above is what actually
-        // proves T-41-02's mitigation for this controller.
+        // proves the antiforgery mitigation for this controller.
         var response = await superAdminClient.PostAsync("/Platform/Users/Disable", formContent, TestContext.Current.CancellationToken);
 
         // Assert — no server error, and the request still reaches the controller's own logic.

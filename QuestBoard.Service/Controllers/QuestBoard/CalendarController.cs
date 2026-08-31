@@ -1,4 +1,7 @@
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Service.ViewModels.CalendarViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +9,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.QuestBoard;
 
 [Authorize]
-public class CalendarController(IQuestService questService) : Controller
+public class CalendarController(
+    IQuestService questService,
+    IEventService eventService,
+    IEventSeriesService eventSeriesService,
+    IUserService userService,
+    IActiveGroupContext activeGroupContext,
+    IBoardTypeResolver boardTypeResolver) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int? year = null, int? month = null, CancellationToken token = default)
@@ -28,17 +37,51 @@ public class CalendarController(IQuestService questService) : Controller
             return BadRequest("Invalid year. Year must be between 1900 and 2100.");
         }
 
+        // A campaign board's calendar is an events-only surface, so its quests are never
+        // loaded rather than loaded and hidden -- a quest that is never fetched cannot leak
+        // through a view, a partial or a future caller. A board type that cannot be resolved
+        // keeps the both-kinds behaviour rather than guessing: an unresolved board type means
+        // no active board is selected, in which case the fail-closed board query filter
+        // already returns no rows, so keeping the behaviour cannot expose anything.
+        var activeBoardType = await boardTypeResolver.GetBoardTypeAsync(token);
+        var includeQuests = activeBoardType != BoardType.Campaign;
+
         // Get all quests with their proposed dates
-        var allQuests = await questService.GetQuestsForCalendarAsync(token);
+        IList<Quest> allQuests = includeQuests
+            ? await questService.GetQuestsForCalendarAsync(token)
+            : [];
+        var allEvents = await eventService.GetEventsForCalendarAsync(token);
 
         // Create calendar model
         var calendarModel = new CalendarViewModel
         {
             Year = selectedYear,
             Month = selectedMonth,
-            Quests = [.. allQuests]
+            Quests = [.. allQuests],
+            Events = [.. allEvents],
+            CanManage = await IsDmTierAsync()
         };
+
+        // A player never triggers the runway query and never receives series titles they
+        // have no action to take on.
+        if (calendarModel.CanManage)
+        {
+            calendarModel.SeriesBelowRunway = [.. await eventSeriesService.GetSeriesBelowRunwayAsync(token)];
+        }
 
         return View(calendarModel);
     }
+
+    private async Task<bool> IsDmTierAsync()
+    {
+        var role = await GetEffectiveRoleAsync();
+        return role == GroupRole.Admin || role == GroupRole.DungeonMaster;
+    }
+
+    // SuperAdmin has no active group by design, so short-circuit to Admin here rather than
+    // calling RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+    private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+        User.IsInRole("SuperAdmin")
+            ? GroupRole.Admin
+            : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
 }

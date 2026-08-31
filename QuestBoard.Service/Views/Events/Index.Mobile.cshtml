@@ -1,0 +1,118 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.Constants
+@using QuestBoard.Service.ViewModels.EventViewModels
+@model EventOverviewViewModel
+@{
+    ViewData["Title"] = "Board Availability";
+    var activeGroupName = Context.Session?.GetString(SessionKeys.ActiveGroupName);
+    var subtitleBoardName = string.IsNullOrEmpty(activeGroupName) ? "this board" : activeGroupName;
+    var isDm = (await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;
+}
+@section Styles {
+    <link href="~/css/events-overview.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<div class="container-fluid px-2 mt-2">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <h4 class="mb-0">
+                <i class="fas fa-calendar-check text-purple me-2"></i>@ViewData["Title"]
+            </h4>
+            <p class="header-subtitle mb-0">Events on @subtitleBoardName</p>
+        </div>
+        @if (isDm)
+        {
+            <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
+                <i class="fas fa-calendar-days me-1"></i>My Agenda
+            </a>
+        }
+    </div>
+
+    <div class="mb-3">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="collapse" data-bs-target="#avail-legend" aria-expanded="false">
+            What do these mean?
+        </button>
+        <div class="collapse mt-2" id="avail-legend">
+            <div class="card modern-card legend-card">
+                <div class="card-body modern-card-body p-2">
+                    <div class="d-flex align-items-center mb-2">
+                        @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedYes)
+                        <small class="ms-2">Confirmed available</small>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedMaybe)
+                        <small class="ms-2">Confirmed maybe</small>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedNo)
+                        <small class="ms-2">Confirmed not available</small>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.UnconfirmedYes)
+                        <small class="ms-2">Counted by default — not yet confirmed</small>
+                    </div>
+                    <div class="d-flex align-items-center mb-0">
+                        @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.Empty)
+                        <small class="ms-2">No signup for this event</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Rows.Any())
+    {
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-calendar-alt fa-3x mb-3"></i>
+            <h5>No Upcoming Events</h5>
+            <p class="mb-0">This board has no upcoming events yet. Once a DM schedules one, it will appear here.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var row in Model.Rows)
+        {
+            <div class="avail-card mb-3" onclick="window.location.href='@Url.Action("Details", "Events", new { id = row.EventId })'">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="fw-bold avail-card-title"><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></div>
+                        <small class="text-muted avail-card-meta">
+                            @row.Date.ToString("ddd, MMM d")
+                            @if (row.StartTime.HasValue)
+                            {
+                                @:&middot; @row.StartTime.Value.ToString("HH:mm")
+                            }
+                        </small>
+                    </div>
+                    @await Html.PartialAsync("_AvailabilityCounts", row)
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary mt-2 avail-expand-toggle"
+                        data-bs-toggle="collapse" data-bs-target="#roster-@row.EventId"
+                        onclick="event.stopPropagation();" aria-expanded="false">
+                    <i class="fas fa-chevron-down me-1"></i>Show players
+                </button>
+                <div class="collapse mt-2" id="roster-@row.EventId" onclick="event.stopPropagation();">
+                    <ul class="list-unstyled mb-0 small">
+                        @for (var i = 0; i < Model.Members.Count; i++)
+                        {
+                            var member = Model.Members[i];
+                            var cell = i < row.Cells.Count ? row.Cells[i] : AvailabilityCellState.Empty;
+                            <li class="d-flex justify-content-between">
+                                <span class="avail-roster-name">@member.Name@(member.UserId == Model.CurrentUserId ? " (you)" : "")</span>
+                                @await Html.PartialAsync("_AvailabilityCell", cell)
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+        @if (Model.CanShowMore)
+        {
+            <div class="d-grid mb-3">
+                <a href="@Url.Action("Index", new { take = Model.NextTake })" class="btn btn-primary">
+                    <i class="fas fa-chevron-down me-2"></i>Show More Events
+                </a>
+            </div>
+        }
+    }
+</div>

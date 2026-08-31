@@ -1,0 +1,97 @@
+@using QuestBoard.Service.ViewModels.ContactViewModels
+@model ContactCategoryManagementViewModel
+
+@section Styles {
+    <link href="~/css/contacts.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+<form asp-action="Add" method="post" class="mb-3 category-mgmt-add-form">
+    @Html.AntiForgeryToken()
+    <label asp-for="NewCategory.Name" class="form-label">New Category Name</label>
+    <input asp-for="NewCategory.Name" class="form-control mb-2" maxlength="60" placeholder="e.g. Guild Members" />
+    <span asp-validation-for="NewCategory.Name" class="text-danger d-block mb-2"></span>
+    <button type="submit" class="btn btn-warning w-100">
+        <i class="fas fa-plus me-2"></i>Add Category
+    </button>
+</form>
+
+<div class="contact-section-card mb-4">
+    @if (Model.Categories.Any())
+    {
+        @foreach (var category in Model.Categories)
+        {
+            <div class="category-mgmt-row" id="category-@category.Id-row" tabindex="-1">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="contact-member-name">@category.Name</div>
+                        <small class="text-muted">@category.ContactCount contact@(category.ContactCount == 1 ? "" : "s")</small>
+                    </div>
+                    <div class="btn-group" role="group" aria-label="Reorder @category.Name">
+                        <form asp-action="MoveUp" asp-route-id="@category.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary category-mgmt-reorder-btn"
+                                    aria-label="Move @category.Name up" disabled="@category.IsFirst">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                        </form>
+                        <form asp-action="MoveDown" asp-route-id="@category.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary category-mgmt-reorder-btn"
+                                    aria-label="Move @category.Name down" disabled="@category.IsLast">
+                                <i class="fas fa-arrow-down"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-warning btn-sm flex-grow-1">
+                        <i class="fas fa-pen me-1"></i>Rename
+                    </a>
+                    <form asp-action="Delete" asp-route-id="@category.Id" method="post" class="d-inline flex-grow-1 category-delete-form"
+                          data-category-name="@category.Name" data-contact-count="@category.ContactCount">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger btn-sm w-100">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="contact-empty-state">
+            <i class="fas fa-tags fa-2x mb-2"></i>
+            <h5>No Categories Yet</h5>
+            <p>Add your first category above to start grouping your contacts.</p>
+        </div>
+    }
+</div>
+
+<a href="@Url.Action("Index", "Contacts")" class="btn btn-secondary w-100">
+    <i class="fas fa-arrow-left me-2"></i>Back to Contacts
+</a>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.category-delete-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                var name = form.dataset.categoryName;
+                var count = parseInt(form.dataset.contactCount, 10);
+                var message = count > 0
+                    ? 'Delete "' + name + '"? This will move ' + count + ' contact' + (count === 1 ? '' : 's') + ' to Ungrouped.'
+                    : 'Delete "' + name + '"? It has no contacts to move.';
+                if (!confirm(message)) {
+                    e.preventDefault();
+                }
+            });
+        });
+
+        if (location.hash) {
+            var target = document.querySelector(location.hash);
+            if (target) {
+                target.focus({ preventScroll: false });
+            }
+        }
+    </script>
+}

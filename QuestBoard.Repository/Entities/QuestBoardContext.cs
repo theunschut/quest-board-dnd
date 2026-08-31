@@ -44,6 +44,14 @@ public class QuestBoardContext(
 
     public DbSet<ContactNoteEntity> ContactNotes { get; set; }
 
+    public DbSet<ContactCategoryEntity> ContactCategories { get; set; }
+
+    public DbSet<EventEntity> Events { get; set; }
+
+    public DbSet<EventSeriesEntity> EventSeries { get; set; }
+
+    public DbSet<EventSignupEntity> EventSignups { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -254,6 +262,107 @@ public class QuestBoardContext(
             .HasForeignKey(c => c.GroupId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // ContactCategory → Group: NoAction to prevent cascade cycles. EF's convention default
+        // for a required foreign key is Cascade, and a cascade from Group to ContactCategories
+        // combined with the category-to-contact path below converges two delete paths onto
+        // Contacts, which SQL Server rejects at schema-creation time.
+        modelBuilder.Entity<ContactCategoryEntity>()
+            .HasOne(cc => cc.Group)
+            .WithMany()
+            .HasForeignKey(cc => cc.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // Contact → Category: nullable, SetNull — deleting a category orphans its contacts
+        // rather than deleting them. IsRequired(false) keeps the navigation optional by
+        // contract, so EF Core emits a left join rather than an inner join when a related
+        // category row is filtered out.
+        modelBuilder.Entity<ContactEntity>()
+            .HasOne(c => c.Category)
+            .WithMany()
+            .HasForeignKey(c => c.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
+        // A board's category names must be unique within that board — this database's ambient
+        // collation is already case-insensitive, so a plain unique index gives case-insensitive
+        // uniqueness with no collation override or computed shadow column needed.
+        modelBuilder.Entity<ContactCategoryEntity>()
+            .HasIndex(cc => new { cc.GroupId, cc.Name })
+            .IsUnique();
+
+        // Event → Group: NoAction to prevent cascade cycles
+        modelBuilder.Entity<EventEntity>()
+            .HasOne(e => e.Group)
+            .WithMany()
+            .HasForeignKey(e => e.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // EventSeries → Group: NoAction to prevent cascade cycles
+        modelBuilder.Entity<EventSeriesEntity>()
+            .HasOne(es => es.Group)
+            .WithMany()
+            .HasForeignKey(es => es.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // Event → Series: nullable, NoAction — a one-off event has no series and a
+        // materialized occurrence's series may be deleted independently of its occurrences
+        modelBuilder.Entity<EventEntity>()
+            .HasOne(e => e.Series)
+            .WithMany()
+            .HasForeignKey(e => e.SeriesId)
+            .OnDelete(DeleteBehavior.NoAction)
+            .IsRequired(false);
+
+        // EventSignup → Event: Cascade — a signup is an owned child of its event, so a
+        // hard-deleted event takes its signups with it. The inverse is spelled out explicitly
+        // (rather than a bare WithMany()) so it binds to EventEntity.Signups instead of a
+        // second, disconnected shadow relationship -- without this, staging a signup through
+        // that navigation and saving once (the campaign fan-out's whole point) inserts every
+        // row with its EventId left at its default value instead of the new event's real id.
+        modelBuilder.Entity<EventSignupEntity>()
+            .HasOne(es => es.Event)
+            .WithMany(e => e.Signups)
+            .HasForeignKey(es => es.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EventSignup → User: NoAction — this is what keeps SQL Server from rejecting
+        // multiple cascade paths into the signup table
+        modelBuilder.Entity<EventSignupEntity>()
+            .HasOne(es => es.User)
+            .WithMany()
+            .HasForeignKey(es => es.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // The monthly calendar read is always group-then-date, so this composite is the
+        // covering shape for that query.
+        modelBuilder.Entity<EventEntity>()
+            .HasIndex(e => new { e.GroupId, e.Date });
+
+        // The FK's own conventional index, declared explicitly so the composite index below
+        // (which also starts with SeriesId) does not make EF Core's migration tooling treat
+        // it as redundant and drop it.
+        modelBuilder.Entity<EventEntity>()
+            .HasIndex(e => e.SeriesId)
+            .HasDatabaseName("IX_Events_SeriesId");
+
+        // The database-level guarantee that two rows can never claim the same slot of the
+        // same series. The filter keeps one-off events — which carry null in both columns —
+        // entirely out of it, and the filter string is written explicitly rather than relying
+        // on the provider's implicit handling of nullable columns in a unique index. The
+        // application-level existence check alone is not sufficient: the app registers a
+        // global automatic retry policy, so a job that dies partway re-runs from the top and
+        // reproduces exactly the check-then-insert race this index closes.
+        modelBuilder.Entity<EventEntity>()
+            .HasIndex(e => new { e.SeriesId, e.SeriesSlotIndex })
+            .IsUnique()
+            .HasFilter("[SeriesId] IS NOT NULL")
+            .HasDatabaseName("IX_Events_SeriesId_SeriesSlotIndex");
+
+        // One answer per person per event, mirroring the existing unique vote index.
+        modelBuilder.Entity<EventSignupEntity>()
+            .HasIndex(es => new { es.EventId, es.UserId })
+            .IsUnique();
+
         // UserGroup → User: Cascade — removing a user removes their memberships
         modelBuilder.Entity<UserGroupEntity>()
             .HasOne(ug => ug.User)
@@ -352,6 +461,14 @@ public class QuestBoardContext(
                 activeGroupContext.ActiveGroupId != null &&
                 e.GroupId == activeGroupContext.ActiveGroupId);
 
+        // ContactCategoryEntity: same "per-group roster" shape as ContactEntity — categories
+        // are a per-board vocabulary with no cross-board administrative view, and zero rows
+        // when no board is selected is the intended behavior, not an oversight.
+        modelBuilder.Entity<ContactCategoryEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
         modelBuilder.Entity<ContactImageEntity>()
             .HasQueryFilter(ci =>
                 activeGroupContext.ActiveGroupId != null &&
@@ -361,6 +478,29 @@ public class QuestBoardContext(
             .HasQueryFilter(cn =>
                 activeGroupContext.ActiveGroupId != null &&
                 cn.Contact.GroupId == activeGroupContext.ActiveGroupId);
+
+        // Event/EventSeries/EventSignup filters follow the same fail-closed rule as
+        // everything above: with no group selected, every event query returns nothing
+        // rather than every board's events merged together. activeGroupContext is
+        // dereferenced inline in each lambda rather than read into a local first.
+        modelBuilder.Entity<EventEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
+        // A series cannot be scoped through an event, because the foreign key points from
+        // event to series and is nullable, so a series must carry its own group.
+        modelBuilder.Entity<EventSeriesEntity>()
+            .HasQueryFilter(es =>
+                activeGroupContext.ActiveGroupId != null &&
+                es.GroupId == activeGroupContext.ActiveGroupId);
+
+        // This filter is added now, before any code reads the table, so the scoping
+        // convention is settled rather than retrofitted later.
+        modelBuilder.Entity<EventSignupEntity>()
+            .HasQueryFilter(es =>
+                activeGroupContext.ActiveGroupId != null &&
+                es.Event.GroupId == activeGroupContext.ActiveGroupId);
 
         // UserEntity intentionally excluded — HasQueryFilter on UserEntity breaks ASP.NET Core Identity
         // (login, password reset, and email confirmation all fail silently)

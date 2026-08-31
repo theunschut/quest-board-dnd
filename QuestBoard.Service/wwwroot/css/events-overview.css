@@ -1,0 +1,124 @@
+/* ========================================
+   AVAILABILITY OVERVIEW STYLES (DESKTOP)
+   ======================================== */
+
+/* This stylesheet and its mobile sibling are a duplicated pair, not a shared file: the
+   mobile layout loads its own stylesheet set, so the cell-state and count rules below are
+   copied verbatim into both files rather than factored out, the same reason calendar.css
+   and calendar.mobile.css already exist side by side. The unconfirmed-default chip in
+   particular carries its distinguishing signal on purpose in more than one place -- a
+   dashed border here, an italic label and a clock icon in the markup that uses this class
+   -- so that a reader who cannot rely on color still sees it is a default, not a real
+   answer. */
+
+/* The unconfirmed-Yes chip carries the same solid green as a confirmed Yes, because the
+   earlier hollow fill left its label too faint to read comfortably at a glance. The
+   distinction is therefore carried entirely by signals that survive greyscale and
+   colour-blindness rather than by fill weight: a dashed border here, plus the clock icon
+   and italic label in the markup. The border is drawn in white so the dashes stay legible
+   against the solid fill. */
+.avail-cell-yes-muted {
+    background-color: var(--bs-success);
+    color: #fff;
+    border: 1px dashed rgba(255, 255, 255, 0.85) !important;
+}
+
+.avail-cell-yes-muted em {
+    font-style: italic;
+}
+
+/* The empty cell is deliberately not a badge at all, so its shape alone already separates
+   "no signup exists" from every vote-bearing state before color is read. */
+.avail-cell-empty {
+    opacity: 0.55;
+    font-weight: 400;
+}
+
+.avail-count-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.avail-count-headline {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.avail-count-detail {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* Desktop grid layout */
+
+.avail-grid th,
+.avail-grid td {
+    min-width: 90px;
+    text-align: center;
+}
+
+.avail-grid .avail-col-event,
+.avail-grid .avail-col-attendance {
+    text-align: left;
+}
+
+.avail-sticky-col {
+    position: sticky;
+    z-index: 2;
+}
+
+/* The base .modern-card .table th/td rules declare background-color with !important, so a
+   sticky column at lower specificity would let scrolled content show through it. These two
+   rules match that specificity and each step one shade more opaque than the base tint --
+   the header brown and the body cream -- so nothing bleeds through as columns scroll under
+   the sticky pair. */
+.modern-card .table th.avail-sticky-col {
+    background-color: rgba(139, 69, 19, 0.95) !important;
+}
+
+.modern-card .table td.avail-sticky-col {
+    background-color: rgba(244, 228, 188, 0.95) !important;
+}
+
+/* The event column's width and the attendance column's offset must stay equal -- one is the
+   other's starting edge -- so both read from a single declaration rather than repeating the
+   same number in two places where they could drift apart. */
+.avail-grid {
+    --avail-event-col-width: 200px;
+}
+
+.avail-col-event {
+    left: 0;
+    width: var(--avail-event-col-width);
+    min-width: var(--avail-event-col-width);
+    max-width: var(--avail-event-col-width);
+    overflow-wrap: anywhere;
+}
+
+.avail-col-attendance {
+    left: var(--avail-event-col-width);
+    min-width: 170px;
+}
+
+.avail-row-clickable {
+    cursor: pointer;
+}
+
+/* A subtle highlight on the viewer's own column so a player can find themselves in a wide
+   grid without disturbing the stable alphabetical column order. Applies to both the header
+   cell and every body cell of that column. The base .modern-card .table th/td rules declare
+   background-color with !important, so these two rules match that specificity the same way
+   the sticky-column rules above do -- otherwise the base rule would win unconditionally and
+   the highlight would silently never paint. Each tint is one step lighter than its matching
+   sticky-column tint so the two affordances stay visually distinct, and both stay less
+   specific than the row-hover rule so hovering still tints the whole row, own column
+   included. */
+.modern-card .table th.avail-col-self {
+    background-color: rgba(139, 69, 19, 0.65) !important;
+}
+
+.modern-card .table td.avail-col-self {
+    background-color: rgba(255, 235, 180, 0.95) !important;
+}

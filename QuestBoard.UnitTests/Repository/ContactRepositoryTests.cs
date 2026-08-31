@@ -8,11 +8,8 @@ using QuestBoard.Repository.Entities;
 
 namespace QuestBoard.UnitTests.Repository;
 
-// Wave 0 RED scaffold (Phase 57, Plan 01): this file intentionally references production
-// symbols (ContactEntity, ContactImageEntity, ContactNoteEntity, ContactRepository, Contact,
-// ContactNote) that do not exist yet. It will compile-fail until Plans 02-03 land — that is the
-// intended state for this test-first scaffold. Once those plans exist, this file must compile
-// and every fact below must pass.
+// Repository-level coverage for contacts and their notes: group-scoped reads, alphabetical
+// contact ordering, newest-first note ordering, and the dedicated note add/edit/delete methods.
 public class ContactRepositoryTests
 {
     private static QuestBoardContext CreateContext(string databaseName, MutableTestGroupContext groupContext)
@@ -75,7 +72,7 @@ public class ContactRepositoryTests
     [Fact]
     public async Task GetAllContactsWithDetailsAsync_MultipleContacts_ReturnsOrderedAlphabeticallyByName()
     {
-        // Arrange: seed names deliberately out of alphabetical order (D-17: flat list, alphabetical by Name)
+        // Arrange: seed names deliberately out of alphabetical order — the index is a flat list sorted by Name
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
         await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_MultipleContacts_ReturnsOrderedAlphabeticallyByName), groupContext);
 
@@ -103,7 +100,7 @@ public class ContactRepositoryTests
     public async Task GetContactWithDetailsAsync_Notes_ReturnedNewestFirstByCreatedAt()
     {
         // Arrange: Id order and CreatedAt order deliberately disagree, proving the sort key is
-        // CreatedAt (D-10: newest first), not Id.
+        // CreatedAt (newest first), not Id.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
         await using var context = CreateContext("ContactRepositoryTests." + nameof(GetContactWithDetailsAsync_Notes_ReturnedNewestFirstByCreatedAt), groupContext);
 
@@ -314,7 +311,7 @@ public class ContactRepositoryTests
     [Fact]
     public async Task AddNoteAsync_ThenDeleteNoteAsync_RoundTripsCorrectly()
     {
-        // Arrange: D-08/D-09 — dedicated note methods, not folded into the generic UpdateAsync path.
+        // Arrange: notes have dedicated add/delete methods, not folded into the generic UpdateAsync path.
         var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
         await using var context = CreateContext("ContactRepositoryTests." + nameof(AddNoteAsync_ThenDeleteNoteAsync_RoundTripsCorrectly), groupContext);
 
@@ -412,6 +409,53 @@ public class ContactRepositoryTests
         // Assert
         contact.Should().NotBeNull();
         contact!.HasContactImage.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetAllContactsWithDetailsAsync_ContactAssignedToCategory_ReturnsCategoryNamePopulated()
+    {
+        // Arrange: a contact assigned to a category
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_ContactAssignedToCategory_ReturnsCategoryNamePopulated), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.ContactCategories.Add(new ContactCategoryEntity { Id = 1, Name = "Merchants", SortOrder = 0, GroupId = 1 });
+        context.Contacts.Add(new ContactEntity { Id = 1, Name = "Assigned Contact", GroupId = 1, CreatedByUserId = 1, CategoryId = 1, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contacts = await repository.GetAllContactsWithDetailsAsync(TestContext.Current.CancellationToken);
+
+        // Assert: category name available with no second query
+        contacts.Should().ContainSingle();
+        contacts[0].CategoryName.Should().Be("Merchants");
+    }
+
+    [Fact]
+    public async Task GetAllContactsWithDetailsAsync_UnassignedContact_ReturnsNullCategoryName()
+    {
+        // Arrange: a contact with no category assigned
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(GetAllContactsWithDetailsAsync_UnassignedContact_ReturnsNullCategoryName), groupContext);
+
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.Contacts.Add(new ContactEntity { Id = 1, Name = "Unassigned Contact", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var contacts = await repository.GetAllContactsWithDetailsAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        contacts.Should().ContainSingle();
+        contacts[0].CategoryName.Should().BeNull();
     }
 
     private sealed class MutableTestGroupContext : IActiveGroupContext

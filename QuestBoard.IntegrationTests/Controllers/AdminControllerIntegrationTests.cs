@@ -220,8 +220,8 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         var createdUser = await userManager.FindByEmailAsync(newUserEmail);
         createdUser.Should().NotBeNull();
         createdUser!.Name.Should().Be("Created User");
-        createdUser.PasswordHash.Should().BeNull("accounts are created passwordless (PWFLOW-01/D-01)");
-        createdUser.EmailConfirmed.Should().BeFalse("email is only confirmed once the user completes SetPassword (D-09)");
+        createdUser.PasswordHash.Should().BeNull("accounts are created passwordless — the user sets their own password via SetPassword");
+        createdUser.EmailConfirmed.Should().BeFalse("email is only confirmed once the user completes SetPassword");
 
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
         var membership = context.UserGroups.FirstOrDefault(ug => ug.UserId == createdUser.Id && ug.GroupId == 1);
@@ -388,7 +388,7 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     // DeleteUser must remove only the active-group membership row — the account itself
-    // and any other group memberships must survive (SAFE-01).
+    // and any other group memberships must survive.
     [Fact]
     public async Task DeleteUser_Post_RemovesGroupMembershipOnly_AccountAndOtherMembershipsIntact()
     {
@@ -427,7 +427,7 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
 
     // DeleteUser must not throw an unhandled DbUpdateException for a user with rows across
     // all five NoAction FKs (quest DM, shop item creator, transaction, reminder log), and must
-    // not silently cascade-delete their characters/DM profile/signups (SAFE-01).
+    // not silently cascade-delete their characters/DM profile/signups.
     [Fact]
     public async Task DeleteUser_Post_WithQuestShopTransactionReminderHistory_DoesNotThrow()
     {

@@ -27,7 +27,7 @@ public class EmailServiceTests
         var constructor = typeof(EmailService).GetConstructors().Single();
         var firstParam = constructor.GetParameters()[0];
         firstParam.ParameterType.Should().Be(typeof(IOptions<EmailSettings>),
-            "EMAIL-02 requires EmailService to inject IOptions<EmailSettings>");
+            "EmailService must take its SMTP configuration via IOptions<EmailSettings>");
     }
 
     [Fact]
@@ -40,13 +40,13 @@ public class EmailServiceTests
         {
             var constructor = typeof(EmailService).GetConstructors().Single();
             constructor.GetParameters()[0].ParameterType.Should().Be(typeof(IOptions<EmailSettings>),
-                "EMAIL-02 requires SMTP setup to be deduplicated into a single helper");
+                "SMTP setup must be deduplicated into a single helper");
             return;
         }
 
         var source = File.ReadAllText(sourcePath);
         var occurrences = System.Text.RegularExpressions.Regex.Matches(source, @"new SmtpClient\(").Count;
-        occurrences.Should().Be(1, "EMAIL-02 requires SMTP setup to be deduplicated into a single helper");
+        occurrences.Should().Be(1, "SMTP setup must be deduplicated into a single helper — exactly one SmtpClient construction");
     }
 
     [Fact]
@@ -60,12 +60,12 @@ public class EmailServiceTests
         if (!File.Exists(sourcePath))
         {
             var sendMethod = typeof(EmailService).GetMethod("SendAsync");
-            sendMethod.Should().NotBeNull("EMAIL-03 requires a public SendAsync method on EmailService");
+            sendMethod.Should().NotBeNull("EmailService must expose a public SendAsync method");
             return;
         }
 
         var source = File.ReadAllText(sourcePath);
-        source.Should().Contain("IsBodyHtml = true", "EMAIL-03 requires SendAsync to mark the body as HTML");
+        source.Should().Contain("IsBodyHtml = true", "SendAsync must mark the body as HTML");
     }
 
     [Fact]

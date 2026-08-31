@@ -7,12 +7,14 @@ using QuestBoard.Service.Constants;
 using QuestBoard.Service.ViewModels.ContactViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace QuestBoard.Service.Controllers.Contacts
 {
     [Authorize]
     public class ContactsController(
         IContactService contactService,
+        IContactCategoryService contactCategoryService,
         IUserService userService,
         IActiveGroupContext activeGroupContext,
         IImageValidationService imageValidationService,
@@ -39,9 +41,36 @@ namespace QuestBoard.Service.Controllers.Contacts
                 vm.CanManage = viewerIsDmTier;
             }
 
+            // Whether the board has ever created a category, not whether any group turns out
+            // non-empty for this viewer -- that distinction keeps a board that never adopted the
+            // feature rendering exactly as it does today, while a board that has categories but
+            // nothing visible right now still renders as a grouped page rather than reverting.
+            var categories = await contactCategoryService.GetOrderedAsync(token);
+            var hasCategories = categories.Any();
+
+            // Grouping runs over contactViewModels, which was built from the already-filtered
+            // visibleContacts above -- a group here can never disclose a contact the viewer
+            // cannot see, and a category with nothing visible simply produces no group at all.
+            var categoryGroups = hasCategories
+                ? contactViewModels
+                    .GroupBy(vm => (vm.CategoryId, vm.CategoryName, vm.CategorySortOrder))
+                    .OrderBy(g => g.Key.CategoryId is null)
+                    .ThenBy(g => g.Key.CategorySortOrder)
+                    .ThenBy(g => g.Key.CategoryId)
+                    .Select(g => new ContactCategoryGroupViewModel
+                    {
+                        Title = g.Key.CategoryId is null ? "Ungrouped" : g.Key.CategoryName ?? string.Empty,
+                        IsUngrouped = g.Key.CategoryId is null,
+                        Contacts = g.OrderBy(c => c.Name).ToList()
+                    })
+                    .ToList()
+                : [];
+
             var viewModel = new ContactsIndexViewModel
             {
                 Contacts = contactViewModels,
+                CategoryGroups = categoryGroups,
+                HasCategories = hasCategories,
                 ShowHidden = includeHidden,
                 ViewerIsDmTier = viewerIsDmTier
             };
@@ -75,9 +104,10 @@ namespace QuestBoard.Service.Controllers.Contacts
 
         [HttpGet]
         [Authorize(Policy = "DungeonMasterOnly")]
-        public IActionResult Create()
+        public async Task<IActionResult> Create(CancellationToken token = default)
         {
             var viewModel = new ContactViewModel();
+            await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
         }
@@ -93,8 +123,16 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return Challenge();
             }
 
+            // A SuperAdmin has no active group by design, so there is no board to stamp onto
+            // the new contact. Send them to pick one rather than letting the write throw.
+            if (activeGroupContext.ActiveGroupId is not { } activeGroupId)
+            {
+                return RedirectToAction("Index", "GroupPicker");
+            }
+
             if (!ModelState.IsValid)
             {
+                await PopulateCategoryOptionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -120,6 +158,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 }
                 if (!ModelState.IsValid)
                 {
+                    await PopulateCategoryOptionsAsync(viewModel, token);
                     return View(viewModel);
                 }
 
@@ -135,12 +174,22 @@ namespace QuestBoard.Service.Controllers.Contacts
                 }
             }
 
+            // The posted category id is a raw integer under the caller's control -- resolve it
+            // through the board-filtered service before it ever touches the mapped contact, so a
+            // foreign board's category can never ride along into a write on this board.
+            if (!await IsCategoryAcceptableAsync(viewModel.CategoryId, token))
+            {
+                ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
+                await PopulateCategoryOptionsAsync(viewModel, token);
+                return View(viewModel);
+            }
+
             var contact = mapper.Map<Contact>(viewModel);
             contact.ContactImageData = uploadedOriginalImageData;
 
             // Tag the contact to the active group so the group-scoped roster query filter
             // applies (ContactEntity is scoped by a global query filter on GroupId).
-            contact.GroupId = activeGroupContext.RequireActiveGroupId();
+            contact.GroupId = activeGroupId;
             contact.CreatedByUserId = currentUser.Id;
             contact.IsRevealed = false;
 
@@ -161,6 +210,7 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             var viewModel = mapper.Map<ContactViewModel>(contact);
             viewModel.CanManage = true;
+            await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
         }
@@ -184,6 +234,18 @@ namespace QuestBoard.Service.Controllers.Contacts
             if (!ModelState.IsValid)
             {
                 viewModel.CanManage = true;
+                await PopulateCategoryOptionsAsync(viewModel, token);
+                return View(viewModel);
+            }
+
+            // The posted category id is a raw integer under the caller's control -- resolve it
+            // through the board-filtered service before it ever reaches the loaded contact, so a
+            // foreign board's category can never overwrite the stored reference.
+            if (!await IsCategoryAcceptableAsync(viewModel.CategoryId, token))
+            {
+                ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
+                viewModel.CanManage = true;
+                await PopulateCategoryOptionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -193,6 +255,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             existingContact.Description = viewModel.Description;
             existingContact.TownCity = viewModel.TownCity;
             existingContact.SubLocation = viewModel.SubLocation;
+            existingContact.CategoryId = viewModel.CategoryId;
 
             // A genuinely new original photo was uploaded this request. Hoisted into a single
             // local reused both to gate the byte-copy below and to signal the service, so the
@@ -226,6 +289,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 if (!ModelState.IsValid)
                 {
                     viewModel.CanManage = true;
+                    await PopulateCategoryOptionsAsync(viewModel, token);
                     return View(viewModel);
                 }
             }
@@ -293,7 +357,13 @@ namespace QuestBoard.Service.Controllers.Contacts
         [ValidateAntiForgeryToken]
         public IActionResult ToggleShowHidden()
         {
-            var groupId = activeGroupContext.RequireActiveGroupId();
+            // A SuperAdmin has no active group by design, so there is no per-board toggle to
+            // flip. Send them to pick one rather than letting the write throw.
+            if (activeGroupContext.ActiveGroupId is not { } groupId)
+            {
+                return RedirectToAction("Index", "GroupPicker");
+            }
+
             var key = SessionKeys.ShowHiddenContactsKey(groupId);
             var current = HttpContext.Session.GetInt32(key) == 1;
 
@@ -415,6 +485,34 @@ namespace QuestBoard.Service.Controllers.Contacts
             return File(image, DetectImageMimeType(image));
         }
 
+        // Reads the board's ordered categories and projects them straight into select list
+        // items, preserving the service's own sort-position-then-id order. Never re-sorted here
+        // -- the dropdown must present the same vocabulary in the same order the DM already
+        // recognises from the index headings, not a second, alphabetical one.
+        private async Task PopulateCategoryOptionsAsync(ContactViewModel viewModel, CancellationToken token)
+        {
+            var categories = await contactCategoryService.GetOrderedAsync(token);
+            viewModel.CategoryOptions = categories
+                .Select(c => new SelectListItem(c.Name, c.Id.ToString()))
+                .ToList();
+            viewModel.HasCategories = categories.Count > 0;
+        }
+
+        // A null id is always acceptable. Any other id is acceptable only when a board-filtered
+        // read by that id resolves -- the category service's own query filter already confines
+        // the read to the active board, so a category owned by another board simply does not
+        // resolve and is indistinguishable from a nonexistent one.
+        private async Task<bool> IsCategoryAcceptableAsync(int? categoryId, CancellationToken token)
+        {
+            if (categoryId is null)
+            {
+                return true;
+            }
+
+            var category = await contactCategoryService.GetByIdAsync(categoryId.Value, token);
+            return category != null;
+        }
+
         private static string DetectImageMimeType(byte[] data) =>
             data.Length >= 4 && data[0] == 0x89 && data[1] == 0x50 ? "image/png" :
             data.Length >= 6 && data[0] == 0x47 && data[1] == 0x49 ? "image/gif" :
@@ -426,17 +524,31 @@ namespace QuestBoard.Service.Controllers.Contacts
         // resolves the same way GetEffectiveGroupRoleAsync does, but never gates an action.
         private async Task<bool> IsDmTierAsync()
         {
-            var role = await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+            var role = await GetEffectiveRoleAsync();
             return role == GroupRole.Admin || role == GroupRole.DungeonMaster;
         }
 
+        // SuperAdmin has no active group by design, so short-circuit to Admin here rather than
+        // calling RequireActiveGroupId(), which would throw for a SuperAdmin with no active group.
+        private async Task<GroupRole?> GetEffectiveRoleAsync() =>
+            User.IsInRole("SuperAdmin")
+                ? GroupRole.Admin
+                : await userService.GetEffectiveGroupRoleAsync(User, activeGroupContext.RequireActiveGroupId());
+
+        // No active group means there is nothing to key the hidden-contacts toggle by. Failing
+        // closed (never showing hidden contacts) is safe here since this only relaxes visibility
+        // when true — it never widens what a SuperAdmin without a selected board can see.
         private bool ReadShowHiddenToggle()
         {
-            var groupId = activeGroupContext.RequireActiveGroupId();
+            if (activeGroupContext.ActiveGroupId is not { } groupId)
+            {
+                return false;
+            }
+
             return HttpContext.Session.GetInt32(SessionKeys.ShowHiddenContactsKey(groupId)) == 1;
         }
 
-        // Three-branch visibility check (D-13/D-15): the creator always sees their own hidden
+        // Three-branch visibility check: the creator always sees their own hidden
         // Contact; a revealed Contact is visible to everyone; a DM-tier viewer with the Show
         // Hidden toggle on sees all hidden Contacts too. Plain Players never see hidden Contacts.
         private static bool IsVisibleTo(Contact contact, int currentUserId, bool includeHidden)

@@ -13,6 +13,15 @@
                     <i class="fas fa-calendar-alt text-info me-2"></i>
                     @ViewData["Title"]
                 </h2>
+                @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
+                {
+                    <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm me-2">
+                        <i class="fas fa-calendar-check me-2"></i>Board Availability
+                    </a>
+                }
+                <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm me-2">
+                    <i class="fas fa-calendar-days me-2"></i>My Agenda
+                </a>
                 <div class="calendar-navigation">
                     <a href="@Url.Action("Index", new { year = Model.FirstDayOfMonth.AddMonths(-1).Year, month = Model.FirstDayOfMonth.AddMonths(-1).Month })" 
                        class="btn btn-primary btn-sm me-2">
@@ -26,7 +35,31 @@
                 </div>
             </div>
             <div class="card-body modern-card-body p-0">
-                @{ 
+                @if (Model.CanManage && Model.SeriesBelowRunway.Any())
+                {
+                    <div class="alert alert-warning m-3 mb-0" role="alert">
+                        @if (Model.SeriesBelowRunway.Count == 1)
+                        {
+                            var series = Model.SeriesBelowRunway[0];
+                            <text>The '</text><a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a><text>' series is running low — only @series.UpcomingCount upcoming session(s) left. Visit its series page to check the cadence.</text>
+                        }
+                        else
+                        {
+                            <text>@Model.SeriesBelowRunway.Count recurring series are running low on upcoming sessions: </text>
+                            @for (var i = 0; i < Model.SeriesBelowRunway.Count; i++)
+                            {
+                                var series = Model.SeriesBelowRunway[i];
+                                <a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a>
+                                if (i < Model.SeriesBelowRunway.Count - 1)
+                                {
+                                    <text>, </text>
+                                }
+                            }
+                            <text>. Visit each series page to check its cadence.</text>
+                        }
+                    </div>
+                }
+                @{
                     ViewBag.IsDetailsPage = false;
                 }
                 @await Html.PartialAsync("_Calendar", Model)
@@ -53,13 +86,21 @@
                     <small>Finalized</small>
                 </div>
                 <div class="d-flex align-items-center mb-2">
+                    <div class="legend-item event me-2"></div>
+                    <small>Event</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="legend-item cancelled me-2"></div>
+                    <small>Cancelled</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
                     <i class="fas fa-exclamation-triangle text-warning me-2"></i>
                     <small>No building key</small>
                 </div>
                 <div class="mt-2">
                     <small class="text-muted">
                         <i class="fas fa-lightbulb me-1"></i>
-                        Click quests for details
+                        Click quests or events for details
                     </small>
                 </div>
             </div>

@@ -48,7 +48,7 @@ Three-layer clean architecture: **Service → Domain → Repository** (strict on
 - `QuestBoard.Repository` — EF Core entities, repositories, `QuestBoardContext`, migrations
 
 AutoMapper runs at two boundaries:
-- Entity ↔ DomainModel: `QuestBoard.Domain/Automapper/EntityProfile.cs`
+- Entity ↔ DomainModel: `QuestBoard.Repository/Automapper/EntityProfile.cs`
 - DomainModel ↔ ViewModel: `QuestBoard.Service/Automapper/ViewModelProfile.cs`
 
 Authorization policies: `"DungeonMasterOnly"` (DungeonMaster or Admin role), `"AdminOnly"` (Admin role only).

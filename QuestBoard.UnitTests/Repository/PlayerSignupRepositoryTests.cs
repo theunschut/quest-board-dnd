@@ -139,7 +139,7 @@ public class PlayerSignupRepositoryTests
         // Act
         var seatFreed = await repository.ChangeVoteAsync(1, proposedDateId: 5, VoteType.Maybe, TestContext.Current.CancellationToken);
 
-        // Assert: VOTE-05 — Maybe keeps the seat, no promotion signal
+        // Assert: Maybe keeps the seat, no promotion signal
         seatFreed.Should().BeFalse();
         var persisted = await context.PlayerSignups.FirstAsync(ps => ps.Id == 1, TestContext.Current.CancellationToken);
         persisted.IsSelected.Should().BeTrue();
@@ -160,7 +160,7 @@ public class PlayerSignupRepositoryTests
         // Act
         var seatFreed = await repository.ChangeVoteAsync(1, proposedDateId: 5, VoteType.No, TestContext.Current.CancellationToken);
 
-        // Assert: VOTE-06 — waitlisted signup voting No stays on the waitlist, no seat freed
+        // Assert: a waitlisted signup voting No stays on the waitlist, no seat freed
         seatFreed.Should().BeFalse();
         var persisted = await context.PlayerSignups.FirstAsync(ps => ps.Id == 1, TestContext.Current.CancellationToken);
         persisted.IsSelected.Should().BeFalse();
@@ -181,7 +181,7 @@ public class PlayerSignupRepositoryTests
         // Act
         var seatFreed = await repository.ChangeVoteAsync(1, proposedDateId: 5, VoteType.No, TestContext.Current.CancellationToken);
 
-        // Assert: VOTE-04 — selected signup voting No frees the seat and signals promotion
+        // Assert: a selected signup voting No frees the seat and signals promotion
         seatFreed.Should().BeTrue();
         var persisted = await context.PlayerSignups.FirstAsync(ps => ps.Id == 1, TestContext.Current.CancellationToken);
         persisted.IsSelected.Should().BeFalse();

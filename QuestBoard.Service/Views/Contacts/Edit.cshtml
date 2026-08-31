@@ -63,6 +63,28 @@
                     </div>
                 </div>
 
+                <div class="mb-3">
+                    <label asp-for="CategoryId" class="form-label">Category</label>
+                    @if (Model.HasCategories)
+                    {
+                        <select asp-for="CategoryId" asp-items="Model.CategoryOptions" class="form-select">
+                            <option value="">— None —</option>
+                        </select>
+                        <span asp-validation-for="CategoryId" class="text-danger"></span>
+                    }
+                    else
+                    {
+                        <select class="form-select" disabled>
+                            <option>— None —</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            No categories yet.
+                            <a asp-controller="ContactCategoryManagement" asp-action="Index">Manage Categories</a>
+                            to create one.
+                        </small>
+                    }
+                </div>
+
                 @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
                    {
                        FieldName = "Description",

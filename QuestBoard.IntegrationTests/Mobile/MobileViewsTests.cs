@@ -1219,4 +1219,149 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         html.Should().Contain("shop-details-card-mobile");
         html.Should().Contain("shop-details.mobile.css");
     }
+
+    // -----------------------------------------------------------------------
+    // Mobile agenda events — a day with only an event, all-day wording,
+    // event-before-quest ordering, and the neutral empty state
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// A day with an event but no quest appears in the agenda — this is the case the agenda
+    /// could not show before, because the day list was filtered on quests alone.
+    /// </summary>
+    [Fact]
+    public async Task MobileCalendar_DayWithEventButNoQuest_AppearsInAgenda()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var eventDate = DateTime.Today.AddDays(6);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.Events.Add(new EventEntity
+            {
+                Title = "Event Only Day Council",
+                GroupId = 1,
+                Date = DateOnly.FromDateTime(eventDate),
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "mobileagenda_eventonly", "mobileagenda_eventonly@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Calendar?year={eventDate.Year}&month={eventDate.Month}", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Event Only Day Council");
+        html.Should().Contain("agenda-event-entry");
+    }
+
+    /// <summary>
+    /// An event with no start time always renders the all-day wording rather than a blank
+    /// time slot.
+    /// </summary>
+    [Fact]
+    public async Task MobileCalendar_EventWithoutStartTime_RendersAllDayWording()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var eventDate = DateTime.Today.AddDays(8);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.Events.Add(new EventEntity
+            {
+                Title = "Mobile All Day Council",
+                GroupId = 1,
+                Date = DateOnly.FromDateTime(eventDate),
+                StartTime = null,
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "mobileagenda_allday", "mobileagenda_allday@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Calendar?year={eventDate.Year}&month={eventDate.Month}", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Mobile All Day Council");
+        html.Should().Contain("All day");
+    }
+
+    /// <summary>
+    /// Within a day that has both an event and a quest, the event entry renders first,
+    /// mirroring the desktop day cell's ordering.
+    /// </summary>
+    [Fact]
+    public async Task MobileCalendar_EventAndQuestOnSameDay_EventEntryRendersFirst()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "mobileagenda_dm", "mobileagenda_dm@test.com", name: "Mobile Agenda DM");
+        var sharedDate = DateTime.Today.AddDays(10);
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            _factory.Services, dm.Id, "Mobile Ordering Quest", isFinalized: true);
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, sharedDate);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var questToUpdate = await context.Quests.FindAsync([quest.Id], TestContext.Current.CancellationToken);
+            if (questToUpdate != null)
+            {
+                questToUpdate.FinalizedDate = sharedDate;
+                await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+
+            context.Events.Add(new EventEntity
+            {
+                Title = "Mobile Ordering Event",
+                GroupId = 1,
+                Date = DateOnly.FromDateTime(sharedDate),
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "mobileagenda_orderviewer", "mobileagenda_orderviewer@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Calendar?year={sharedDate.Year}&month={sharedDate.Month}", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var eventEntryIndex = html.IndexOf("agenda-event-entry", StringComparison.Ordinal);
+        var questEntryIndex = html.IndexOf("agenda-quest-entry", StringComparison.Ordinal);
+        eventEntryIndex.Should().BeGreaterThan(0);
+        eventEntryIndex.Should().BeLessThan(questEntryIndex);
+    }
+
+    /// <summary>
+    /// A month with neither quests nor events shows the month-neutral empty state, not the
+    /// old quest-only heading.
+    /// </summary>
+    [Fact]
+    public async Task MobileCalendar_MonthWithNeitherQuestNorEvent_RendersNeutralEmptyState()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "mobileagenda_empty", "mobileagenda_empty@test.com");
+
+        var farFutureMonth = DateTime.Today.AddYears(5);
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Calendar?year={farFutureMonth.Year}&month={farFutureMonth.Month}", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Nothing This Month");
+        html.Should().NotContain("No Quests This Month");
+    }
 }

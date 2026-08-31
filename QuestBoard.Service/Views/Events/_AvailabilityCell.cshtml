@@ -1,0 +1,36 @@
+@using QuestBoard.Domain.Enums
+@model AvailabilityCellState
+@*
+    The single source of the five-state cell vocabulary. Both the desktop grid and the
+    mobile roster list render this partial for every member/event pairing, so the two
+    surfaces can never drift apart on what a cell looks like.
+*@
+@switch (Model)
+{
+    case AvailabilityCellState.ConfirmedYes:
+        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+        break;
+    case AvailabilityCellState.ConfirmedMaybe:
+        <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+        break;
+    case AvailabilityCellState.ConfirmedNo:
+        <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+        break;
+    case AvailabilityCellState.UnconfirmedYes:
+        @* The icon is the clock, never the tick: fill alone is a difference of degree that
+           a colour-blind or low-contrast reader loses, so the distinct icon, the italic
+           label and the dashed border from the stylesheet are three independent signals
+           that all survive greyscale. *@
+        <span class="badge avail-cell-yes-muted"
+              title="Yes — counted, but not yet confirmed by this member"
+              aria-label="Yes, unconfirmed default">
+            <i class="fas fa-clock me-1"></i><em>Yes</em>
+        </span>
+        break;
+    default:
+        @* Deliberately not a badge: the shape alone separates "no signup row exists" from
+           every vote-bearing state before colour is read, and it must stay visibly
+           different from the unconfirmed default above, which stores a Yes and is counted. *@
+        <span class="text-muted avail-cell-empty" aria-label="No signup for this event">&mdash;</span>
+        break;
+}
