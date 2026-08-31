@@ -3,7 +3,7 @@ status: complete
 phase: 80-contact-categories
 source: [80-VERIFICATION.md]
 started: 2026-08-30T12:57:24Z
-updated: 2026-08-31T00:00:00Z
+updated: 2026-08-31T06:02:37Z
 ---
 
 ## Current Test
@@ -33,9 +33,13 @@ evidence: |
 ### 2. Real-handset mobile pass over the category surfaces
 
 expected: On a real device layout is usable, tap targets are adequate, and a long category name does not break the heading.
-result: issue
-reported: "Mobile Manage Categories: the 'New Category Name' label renders in Bootstrap's default near-black (rgb(33,37,41)) with no text-shadow, directly on the dark wood background. It is effectively unreadable."
-severity: minor
+result: pass
+retested: |
+  Fixed by gap-closure plan 80-09 (commits e5529ffc, dc79de31), merged and post-merge gate green
+  (437 unit + 674 integration, 0 failures). Re-verified live in-browser on TWO separate app launches
+  (2026-08-31): under a real mobile User-Agent (Pixel 8 / Android 14) on /ContactCategoryManagement,
+  the "New Category Name" label now resolves to rgb(244,228,188) with a text-shadow -- was
+  rgb(33,37,41), no shadow. Confirmed both by computed-style read and by screenshot.
 partial_coverage: |
   Exercised with a real mobile User-Agent (Pixel 8 / Android 14), which is how this project selects
   `.Mobile.cshtml` views -- confirmed active via `mobile-layout` body class and 2 mobile stylesheets.
@@ -48,9 +52,16 @@ partial_coverage: |
 ### 3. First-run discovery on a board with zero categories
 
 expected: The category select on Contacts -> Create is disabled with helper text linking to Manage Categories, and reads as an obvious invitation. The index shows no headings at all.
-result: issue
-reported: "Mechanics are all correct, but the 'Manage Categories' link inside the helper text renders in Bootstrap's default link blue (rgb(13,110,253)) inside a .modern-card on a dark background -- roughly 3.09:1 contrast, below WCAG AA's 4.5:1. The one element meant to read as the invitation is the least legible part of it."
-severity: minor
+result: pass
+retested: |
+  Fixed by gap-closure plan 80-09 (commits e5529ffc, dc79de31) on BOTH surfaces the fix required --
+  desktop `.modern-card .form-text a` and mobile `.contact-form-card .form-text a` (the original
+  report understated scope: mobile Create/Edit use a different card class than desktop and needed
+  its own rule). Re-verified live on two separate app launches (2026-08-31) on a genuinely
+  zero-category board ("The Boundless Domain"): the "Manage Categories" link now resolves to
+  rgb(244,228,188) on both desktop and mobile, ~11.04:1 contrast (was ~3.09:1), underline preserved.
+  Regression-checked: the unrelated Cancel anchor-button on the same card still resolves
+  rgb(255,255,255) -- the fix did not repaint anchors it should not have.
 verified_correct: |
   Tested on a genuinely zero-category board ("The Boundless Domain", 17 contacts, 0 categories):
   - Contacts index renders a completely flat list with NO headings at all, not even "Ungrouped" --
@@ -62,8 +73,8 @@ verified_correct: |
 ## Summary
 
 total: 3
-passed: 1
-issues: 2
+passed: 3
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
