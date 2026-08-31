@@ -88,8 +88,9 @@ public class ContactsTagsFormMarkupTests(WebApplicationFactoryBase factory) : IC
 
         desktopStatus.Should().Be(HttpStatusCode.OK);
         mobileStatus.Should().Be(HttpStatusCode.OK);
-        desktopHtml.Should().Contain("value=\"shopkeeper, quest giver\"");
-        mobileHtml.Should().Contain("value=\"shopkeeper, quest giver\"");
+        // TagsInput pre-fills in the contact's own already-alphabetical tag order.
+        desktopHtml.Should().Contain("value=\"quest giver, shopkeeper\"");
+        mobileHtml.Should().Contain("value=\"quest giver, shopkeeper\"");
     }
 
     [Fact]
