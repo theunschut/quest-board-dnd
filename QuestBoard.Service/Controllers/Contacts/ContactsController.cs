@@ -464,6 +464,14 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return Challenge();
             }
 
+            // Board scoping on contacts only constrains reads, so an id belonging to
+            // another board has to be rejected here before it can reach the insert.
+            var contact = await contactService.GetContactWithDetailsAsync(contactId, token);
+            if (contact == null)
+            {
+                return NotFound();
+            }
+
             if (!ModelState.IsValid)
             {
                 TempData["Error"] = "Note text is required and cannot exceed 2000 characters.";
