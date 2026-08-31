@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Important**: SQL Server runs on the Windows host, not in WSL. Use `localhost` in the connection string for local development; Docker uses the `sqlserver` service name.
 
+**If running in a Linux environment** (not native Windows): there is no Windows host to provide SQL Server. Before running the app or migrations, check whether the standalone dev SQL Server container is up: `docker ps --filter name=mssql-dev`. If it isn't running, start it with `docker compose -f /home/theunschut/Documents/SQLServer/docker-compose.yml up -d` — it does not auto-start on boot. Note that the checked-in `appsettings.json` connection string uses `Trusted_Connection=true` (Windows Integrated Auth), which does not work against this container; a SQL-auth connection string (`User Id=sa`) is required instead. This does not apply on native Windows — ignore it there.
+
 ## Branching
 
 **Never commit directly to `main`.** Main has branch protection rules. All work — including planning docs, migrations, and feature code — must go on a feature branch.
