@@ -135,7 +135,7 @@ public class ContactsTagsMobileTests(WebApplicationFactoryBase factory) : IClass
     }
 
     [Fact]
-    public async Task Index_MobileBoardWithNoTags_RendersDisabledTriggerAndHint()
+    public async Task Index_MobileBoardWithNoTags_RendersDisabledTriggerWithoutHint()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
@@ -148,7 +148,7 @@ public class ContactsTagsMobileTests(WebApplicationFactoryBase factory) : IClass
         statusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("Filter Tags");
         html.Should().Contain("disabled>");
-        html.Should().Contain("No tags yet. Add tags when creating or editing a contact to start filtering.");
+        html.Should().NotContain("No tags yet. Add tags when creating or editing a contact to start filtering.");
         // The trigger's data-bs-target keeps referencing the drawer's id even while disabled
         // (harmless, since the button cannot be clicked), so the absence check targets the
         // drawer element itself rather than every occurrence of the id string.
@@ -236,7 +236,7 @@ public class ContactsTagsMobileTests(WebApplicationFactoryBase factory) : IClass
         beforeStatus.Should().Be(HttpStatusCode.OK);
         beforeHtml.Should().NotContain("contact-tag-chip");
         beforeHtml.Should().NotContain("owner-only-mobile-tag");
-        beforeHtml.Should().Contain("No tags yet. Add tags when creating or editing a contact to start filtering.");
+        beforeHtml.Should().NotContain("No tags yet. Add tags when creating or editing a contact to start filtering.");
 
         var toggleResponse = await nonOwnerClient.PostAsync(
             "/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]), TestContext.Current.CancellationToken);

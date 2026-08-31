@@ -51,7 +51,7 @@ public class ContactsTagOwnershipTests(WebApplicationFactoryBase factory) : ICla
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         html.Should().NotContain("contact-tag-chip");
         html.Should().NotContain("owner-only-tag");
-        html.Should().Contain("contact-filter-empty");
+        html.Should().NotContain("contact-filter-empty");
     }
 
     [Fact]

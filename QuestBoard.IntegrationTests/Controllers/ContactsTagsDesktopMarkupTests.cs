@@ -134,7 +134,7 @@ public class ContactsTagsDesktopMarkupTests(WebApplicationFactoryBase factory) :
     }
 
     [Fact]
-    public async Task Index_BoardWithNoTags_RendersDisabledFilterHint()
+    public async Task Index_BoardWithNoTags_RendersNoFilterBar()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
@@ -146,8 +146,8 @@ public class ContactsTagsDesktopMarkupTests(WebApplicationFactoryBase factory) :
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        html.Should().Contain("contact-filter-empty");
-        html.Should().Contain("No tags yet. Add tags when creating or editing a contact to start filtering.");
+        html.Should().NotContain("contact-filter-empty");
+        html.Should().NotContain("No tags yet. Add tags when creating or editing a contact to start filtering.");
         html.Should().NotContain("type=\"checkbox\" name=\"tag\"");
     }
 
