@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 83
-current_phase_name: Availability Surface Naming and Placement
+current_phase: 81
+current_phase_name: Contact Tags and Filtering
 status: executing
 stopped_at: Phase 83 complete (4/4 plans, verification passed)
-last_updated: "2026-08-30T10:29:57.900Z"
-last_activity: 2026-08-30
-last_activity_desc: Plan 83-02 (My Agenda / Board Availability cross-link symmetry) complete
+last_updated: "2026-08-31T06:34:40.836Z"
+last_activity: 2026-08-31
+last_activity_desc: Phase 80 complete, transitioned to Phase 81
 progress:
   total_phases: 12
-  completed_phases: 8
-  total_plans: 82
-  completed_plans: 61
-  percent: 67
+  completed_phases: 9
+  total_plans: 83
+  completed_plans: 66
+  percent: 75
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 ## Current Position
 
-Phase: 83 — Availability Surface Naming and Placement
-Plan: 2 of 4
+Phase: 81 — Contact Tags and Filtering
+Plan: Not started
 Status: In progress
-Last activity: 2026-08-30 — Plan 83-02 (My Agenda / Board Availability cross-link symmetry) complete
+Last activity: 2026-08-31 — Phase 80 complete, transitioned to Phase 81
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
