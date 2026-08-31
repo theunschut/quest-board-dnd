@@ -20,4 +20,13 @@ public class ContactsIndexViewModel
 
     // Drives whether the Show Hidden toggle and the "+ Contact" button render.
     public bool ViewerIsDmTier { get; set; }
+
+    // The tag ids currently ticked, read straight from the query string.
+    public IList<int> SelectedTagIds { get; set; } = [];
+
+    // The tags carried by contacts this viewer can see, which is the whole filter vocabulary.
+    public IList<ContactTagViewModel> AvailableTags { get; set; } = [];
+
+    // Computed, drives whether the Clear action renders.
+    public bool HasActiveFilters => SelectedTagIds.Count > 0;
 }
