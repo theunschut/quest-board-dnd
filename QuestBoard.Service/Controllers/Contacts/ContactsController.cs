@@ -57,7 +57,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             foreach (var vm in contactViewModels)
             {
                 vm.CanManage = viewerIsDmTier;
-                if (!viewerIsDmTier)
+                if (!AreTagsVisibleTo(vm.CreatedByUserId, currentUser.Id, viewerIsDmTier, includeHidden))
                 {
                     vm.Tags = [];
                 }
@@ -123,7 +123,7 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             var viewModel = mapper.Map<ContactViewModel>(contact);
             viewModel.CanManage = viewerIsDmTier;
-            if (!viewerIsDmTier)
+            if (!AreTagsVisibleTo(viewModel.CreatedByUserId, currentUser.Id, viewerIsDmTier, includeHidden))
             {
                 viewModel.Tags = [];
             }
@@ -678,6 +678,25 @@ namespace QuestBoard.Service.Controllers.Contacts
             }
 
             if (currentUserId != 0 && contact.CreatedByUserId == currentUserId)
+            {
+                return true;
+            }
+
+            return includeHidden;
+        }
+
+        // Tag badges follow the same owner-or-toggle rule the hidden-contact check above uses: a
+        // non-DM-tier viewer never sees them, the contact's own creator always does, and anyone
+        // else only does once the Show Hidden toggle is on for that board. This keeps a viewer
+        // from reading tag names on contacts authored by someone else while the toggle is off.
+        private static bool AreTagsVisibleTo(int createdByUserId, int currentUserId, bool viewerIsDmTier, bool includeHidden)
+        {
+            if (!viewerIsDmTier)
+            {
+                return false;
+            }
+
+            if (currentUserId != 0 && createdByUserId == currentUserId)
             {
                 return true;
             }
