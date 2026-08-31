@@ -352,6 +352,37 @@ public class ContactRepositoryTests
     }
 
     [Fact]
+    public async Task AddNoteAsync_ContactFromAnotherGroup_InsertsNothing()
+    {
+        // Defends against a note whose ContactId targets a contact outside the active group --
+        // the group-scoped Contacts existence check must reject the insert even when a caller
+        // reaches this method directly, without going through the controller's own resolve.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        await using var context = CreateContext("ContactRepositoryTests." + nameof(AddNoteAsync_ContactFromAnotherGroup_InsertsNothing), groupContext);
+        await SeedTwoGroupContactsAsync(context, groupContext);
+
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        var note = new ContactNote
+        {
+            ContactId = 2, // seeded in group 2 by SeedTwoGroupContactsAsync
+            AuthorUserId = 2,
+            Text = "A note aimed at a contact on a different board.",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Act
+        await repository.AddNoteAsync(note, TestContext.Current.CancellationToken);
+
+        // Assert: nothing committed for the foreign contact, regardless of query filters
+        var persisted = context.Set<ContactNoteEntity>().IgnoreQueryFilters()
+            .Where(n => n.ContactId == 2)
+            .ToList();
+        persisted.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task GetAllContactsWithDetailsAsync_ReflectsHasContactImage_TrueWithImage_FalseWithout()
     {
         // Arrange: two contacts in the same group, one with a stored image and one without.
