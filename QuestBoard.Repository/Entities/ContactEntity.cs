@@ -37,6 +37,8 @@ public class ContactEntity : IEntity
 
     public virtual ICollection<ContactNoteEntity> Notes { get; set; } = [];
 
+    public virtual ICollection<ContactTagEntity> Tags { get; set; } = [];
+
     public int GroupId { get; set; }
 
     [ForeignKey(nameof(GroupId))]

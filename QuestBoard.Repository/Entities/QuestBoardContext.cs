@@ -44,6 +44,8 @@ public class QuestBoardContext(
 
     public DbSet<ContactNoteEntity> ContactNotes { get; set; }
 
+    public DbSet<ContactTagEntity> ContactTags { get; set; }
+
     public DbSet<ContactCategoryEntity> ContactCategories { get; set; }
 
     public DbSet<EventEntity> Events { get; set; }
@@ -478,6 +480,48 @@ public class QuestBoardContext(
             .HasQueryFilter(cn =>
                 activeGroupContext.ActiveGroupId != null &&
                 cn.Contact.GroupId == activeGroupContext.ActiveGroupId);
+
+        // ContactTag → Group: NoAction, matching every other Group foreign key in this model —
+        // EF's convention default for a required foreign key is Cascade, which for Group would
+        // converge multiple delete paths and which SQL Server rejects at schema-creation time.
+        modelBuilder.Entity<ContactTagEntity>()
+            .HasOne(t => t.Group)
+            .WithMany()
+            .HasForeignKey(t => t.GroupId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // ContactTagEntity.Name gets an explicit column collation rather than relying on
+        // whatever collation the target SQL Server instance happens to have. The dev
+        // connection string points at a developer's own localhost install whose collation
+        // isn't knowable from this repository, so this makes the case-insensitive tag-name
+        // guarantee travel with the migration instead of depending on server provisioning.
+        modelBuilder.Entity<ContactTagEntity>()
+            .Property(t => t.Name)
+            .UseCollation("SQL_Latin1_General_CP1_CI_AS");
+
+        // A tag name is unique per board, case-insensitively (enforced together with the
+        // collation above).
+        modelBuilder.Entity<ContactTagEntity>()
+            .HasIndex(t => new { t.GroupId, t.Name })
+            .IsUnique();
+
+        // ContactTagEntity deliberately does NOT offer a SuperAdmin cross-group view, same
+        // "per-group roster" shape as ContactEntity above — a tag is per-board data with no
+        // cross-board escape hatch.
+        modelBuilder.Entity<ContactTagEntity>()
+            .HasQueryFilter(e =>
+                activeGroupContext.ActiveGroupId != null &&
+                e.GroupId == activeGroupContext.ActiveGroupId);
+
+        // Contact <-> ContactTag is a plain many-to-many with no data of its own on the
+        // association row, so it uses an implicit, unmapped join table rather than a
+        // dedicated CLR join-entity class. The join needs no query filter of its own: every
+        // read path joins through two already-filtered ends, so a join row referencing an
+        // out-of-board entity on either side structurally cannot appear in a result.
+        modelBuilder.Entity<ContactEntity>()
+            .HasMany(c => c.Tags)
+            .WithMany(t => t.Contacts)
+            .UsingEntity(j => j.ToTable("ContactContactTags"));
 
         // Event/EventSeries/EventSignup filters follow the same fail-closed rule as
         // everything above: with no group selected, every event query returns nothing
