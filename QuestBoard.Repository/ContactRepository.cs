@@ -14,10 +14,17 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         // Group scoping is enforced entirely by ContactEntity's fail-closed query filter here --
         // no manual GroupId .Where is needed or added. Ordering is flat alphabetical by name
         // (no owner-based grouping, since Contacts have no ownership/edit-restriction concept).
+        //
+        // Two independent collection Includes (Notes and Tags) in a single query force EF to
+        // cross-join both collections, multiplying row count combinatorially and triggering the
+        // MultipleCollectionIncludeWarning. AsSplitQuery() issues one query per collection
+        // instead, avoiding the row-count blowup without changing the loaded shape.
         var entities = await DbContext.Contacts
+            .AsSplitQuery()
             .Include(c => c.CreatedByUser)
             .Include(c => c.Category)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
+            .Include(c => c.Tags)
             .OrderBy(c => c.Name)
             .ToListAsync(token);
 
@@ -31,6 +38,7 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         foreach (var contact in contacts)
         {
             contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+            contact.Tags = [.. contact.Tags.OrderBy(t => t.Name)];
             contact.HasContactImage = imageFlags.GetValueOrDefault(contact.Id);
         }
         return contacts;
@@ -39,15 +47,20 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     /// <inheritdoc/>
     public async Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default)
     {
+        // See GetAllContactsWithDetailsAsync above for why AsSplitQuery() is required here:
+        // Notes and Tags are two independent collection Includes off the same root.
         var entity = await DbContext.Contacts
+            .AsSplitQuery()
             .Include(c => c.CreatedByUser)
             .Include(c => c.Category)
             .Include(c => c.Notes).ThenInclude(n => n.Author)
+            .Include(c => c.Tags)
             .FirstOrDefaultAsync(c => c.Id == id, token);
         if (entity == null) return null;
 
         var contact = Mapper.Map<Contact>(entity);
         contact.Notes = [.. contact.Notes.OrderByDescending(n => n.CreatedAt)];
+        contact.Tags = [.. contact.Tags.OrderBy(t => t.Name)];
         // Image bytes are never selected here -- only a presence flag, via a scalar query that
         // EF Core translates to an EXISTS/JOIN check rather than pulling OriginalImageData/CroppedImageData.
         contact.HasContactImage = await DbContext.Contacts
@@ -56,6 +69,10 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
             .FirstOrDefaultAsync(token);
         return contact;
     }
+
+    /// <inheritdoc/>
+    public Task ReplaceContactTagsAsync(int contactId, IReadOnlyList<string> tagNames, CancellationToken token = default) =>
+        throw new NotImplementedException("Implemented in a follow-up task of this plan.");
 
     /// <inheritdoc/>
     public async Task<byte[]?> GetContactOriginalImageAsync(int id, CancellationToken token = default)

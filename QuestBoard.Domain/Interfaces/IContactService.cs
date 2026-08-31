@@ -5,16 +5,34 @@ namespace QuestBoard.Domain.Interfaces;
 public interface IContactService : IBaseService<Contact>
 {
     /// <summary>
-    /// Returns all contacts in the active group with creator, profile image, and notes loaded,
-    /// ordered alphabetically by name. Notes are ordered newest first.
+    /// Returns all contacts in the active group with creator, profile image, notes, and tags
+    /// loaded, ordered alphabetically by name. Notes are ordered newest first; tags are ordered
+    /// alphabetically by name.
     /// </summary>
     Task<IList<Contact>> GetAllContactsWithDetailsAsync(CancellationToken token = default);
 
     /// <summary>
-    /// Returns a single contact with creator, profile image, and notes loaded (notes ordered
-    /// newest first), or null if not found or outside the active group.
+    /// Returns a single contact with creator, profile image, notes, and tags loaded (notes
+    /// ordered newest first, tags ordered alphabetically by name), or null if not found or
+    /// outside the active group.
     /// </summary>
     Task<Contact?> GetContactWithDetailsAsync(int id, CancellationToken token = default);
+
+    /// <summary>
+    /// Reconciles a contact's tag list against the submitted set of names: a name matching an
+    /// existing board tag (case-insensitively) reuses that row rather than creating a second
+    /// one; a name with no match creates a new tag row on the contact's own board. Any tag left
+    /// with no contacts afterward is deleted in the same save. A contact id outside the active
+    /// group is a silent no-op -- nothing is created and nothing is thrown.
+    /// </summary>
+    Task ReplaceContactTagsAsync(int contactId, IReadOnlyList<string> tagNames, CancellationToken token = default);
+
+    /// <summary>
+    /// Splits a raw comma-separated string into tag names: trims each part, drops empty parts,
+    /// and de-duplicates case-insensitively while preserving the first occurrence's casing and
+    /// the input order. Returns an empty list for null or whitespace-only input.
+    /// </summary>
+    IReadOnlyList<string> ParseTagNames(string? rawInput);
 
     /// <summary>
     /// Returns the contact's original (unmodified) profile image bytes, or null if none is set.

@@ -19,6 +19,14 @@ internal class ContactService(IContactRepository repository, IMapper mapper) : B
     }
 
     /// <inheritdoc/>
+    public Task ReplaceContactTagsAsync(int contactId, IReadOnlyList<string> tagNames, CancellationToken token = default) =>
+        throw new NotImplementedException("Implemented in a follow-up task of this plan.");
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> ParseTagNames(string? rawInput) =>
+        throw new NotImplementedException("Implemented in a follow-up task of this plan.");
+
+    /// <inheritdoc/>
     public override async Task UpdateAsync(Contact model, CancellationToken token = default)
     {
         // No caller-supplied signal (e.g. a not-yet-updated call site) defaults to the safe
