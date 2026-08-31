@@ -167,9 +167,15 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return RedirectToAction("Index", "GroupPicker");
             }
 
+            // Parsed before any ModelState check, and before any write, so an over-long name is
+            // reported through the existing invalid-model re-render path rather than a second one.
+            var parsedTagNames = contactService.ParseTagNames(viewModel.TagsInput);
+            ValidateTagNameLengths(parsedTagNames, viewModel);
+
             if (!ModelState.IsValid)
             {
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -196,6 +202,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 if (!ModelState.IsValid)
                 {
                     await PopulateCategoryOptionsAsync(viewModel, token);
+                    await PopulateTagSuggestionsAsync(viewModel, token);
                     return View(viewModel);
                 }
 
@@ -218,6 +225,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             {
                 ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -231,6 +239,11 @@ namespace QuestBoard.Service.Controllers.Contacts
             contact.IsRevealed = false;
 
             await contactService.AddAsync(contact, croppedImageData, token);
+
+            // The base repository has already propagated the database-generated id onto contact
+            // by this point, so the newly created row can be reconciled with its tags in the
+            // same request with no re-fetch.
+            await contactService.ReplaceContactTagsAsync(contact.Id, parsedTagNames, token);
 
             return RedirectToAction(nameof(Index));
         }
@@ -277,10 +290,16 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return NotFound();
             }
 
+            // Parsed before any ModelState check, and before any write, so an over-long name is
+            // reported through the existing invalid-model re-render path rather than a second one.
+            var parsedTagNames = contactService.ParseTagNames(viewModel.TagsInput);
+            ValidateTagNameLengths(parsedTagNames, viewModel);
+
             if (!ModelState.IsValid)
             {
                 viewModel.CanManage = true;
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -292,6 +311,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 ModelState.AddModelError(nameof(viewModel.CategoryId), "Selected category is not available on this board.");
                 viewModel.CanManage = true;
                 await PopulateCategoryOptionsAsync(viewModel, token);
+                await PopulateTagSuggestionsAsync(viewModel, token);
                 return View(viewModel);
             }
 
@@ -336,6 +356,7 @@ namespace QuestBoard.Service.Controllers.Contacts
                 {
                     viewModel.CanManage = true;
                     await PopulateCategoryOptionsAsync(viewModel, token);
+                    await PopulateTagSuggestionsAsync(viewModel, token);
                     return View(viewModel);
                 }
             }
@@ -360,6 +381,8 @@ namespace QuestBoard.Service.Controllers.Contacts
             // the photo. newCroppedImageData carries a real submitted crop through so it persists
             // instead of being cleared.
             await contactService.UpdateAsync(existingContact, hasNewOriginalUpload, newCroppedImageData, token);
+
+            await contactService.ReplaceContactTagsAsync(existingContact.Id, parsedTagNames, token);
 
             return RedirectToAction(nameof(Details), new { id });
         }
@@ -570,6 +593,35 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             var category = await contactCategoryService.GetByIdAsync(categoryId.Value, token);
             return category != null;
+        }
+
+        // Adds a targeted ModelState error naming the offending tag rather than truncating --
+        // a silently shortened tag would be indistinguishable from a correct one on the next
+        // page load, and there is no rename path in this feature to repair it afterwards. Errors
+        // added here surface through the caller's existing ModelState.IsValid re-render check
+        // rather than a second one.
+        private bool ValidateTagNameLengths(IReadOnlyList<string> parsedTagNames, ContactViewModel viewModel)
+        {
+            const int maxTagNameLength = 30;
+            var overLong = parsedTagNames.FirstOrDefault(name => name.Length > maxTagNameLength);
+            if (overLong == null)
+            {
+                return true;
+            }
+
+            ModelState.AddModelError(nameof(viewModel.TagsInput),
+                $"Tag \"{overLong}\" exceeds the {maxTagNameLength}-character limit.");
+            return false;
+        }
+
+        // Every invalid-model re-render on Create/Edit routes through this one assignment, so a
+        // future added guard on either action cannot ship a form with an empty suggestion list.
+        private async Task PopulateTagSuggestionsAsync(ContactViewModel viewModel, CancellationToken token)
+        {
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = await IsDmTierAsync();
+            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token))
+                .Select(t => t.Name)];
         }
 
         private static string DetectImageMimeType(byte[] data) =>
