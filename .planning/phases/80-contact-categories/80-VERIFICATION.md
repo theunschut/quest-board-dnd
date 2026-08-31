@@ -1,44 +1,48 @@
 ---
 phase: 80-contact-categories
-verified: 2026-08-30T12:54:50Z
-status: human_needed
-score: 14/15 must-haves verified
-behavior_unverified: 1
+verified: 2026-08-31T00:00:00Z
+status: passed
+score: 15/15 must-haves verified
+behavior_unverified: 0
 overrides_applied: 0
-behavior_unverified_items:
-  - truth: "CONTACTCAT-04's case-insensitive uniqueness clause: two categories on the same board cannot share a name that differs only in case, because the database's ambient collation is case-insensitive"
-    test: "Against the real deployed SQL Server instance, run: SELECT DATABASEPROPERTYEX('QuestBoard', 'Collation'); confirm it reports a *_CI_* (case-insensitive) collation. Then, as a DM, create category \"Guild Members\" and attempt to create \"guild members\" on the same board -- confirm the second submission is rejected with the validation message, not persisted as a second row."
-    expected: "Server collation query returns a CI collation (e.g. SQL_Latin1_General_CP1_CI_AS), and the case-differing duplicate is refused."
-    why_human: "The entire test suite (unit and integration) runs on EF Core's InMemory provider, which enforces neither `HasIndex().IsUnique()` nor any collation behavior at all -- confirmed directly in 80-05-SUMMARY.md by writing two rows sharing (GroupId, Name) through three different InMemory-backed paths, none of which rejected the duplicate. The two `ContactCategory_DuplicateName` facts in this phase's suite therefore run against a per-test host that decorates `IContactCategoryService` to force the exact `DbUpdateException` shape a real unique-index violation raises -- this proves the controller's catch/ModelState-message/re-render reaction, but proves nothing about whether the underlying index is actually case-insensitive in the running database. The migration and model both omit an explicit `COLLATE` clause, relying entirely on the SQL Server container's ambient default collation (unset `MSSQL_COLLATION` in docker-compose.yml, which per Microsoft's image docs defaults to `SQL_Latin1_General_CP1_CI_AS` -- case-insensitive). RESEARCH.md's own Assumptions Log (A1) flags this as \"not confirmed by directly querying SERVERPROPERTY('Collation') against a live instance.\" No automated test in this repository, for this feature or any other, can close this gap -- it requires a live SQL Server check."
-gaps: []
-deferred: []
-human_verification:
-  - test: "Query the live/deployed SQL Server instance's collation and attempt a live case-differing duplicate category name"
-    expected: "See behavior_unverified_items entry above"
-    why_human: "Database-level collation behavior cannot be exercised by the InMemory-backed test suite"
-  - test: "On a real handset (not devtools emulation): open Contacts, confirm category headings render legibly; open Manage Categories from the index button; add, rename, reorder, and delete a category; confirm the up/down buttons are tappable and the delete confirmation names the contact count"
-    expected: "Layout is usable, tap targets are adequate, a long category name does not break the heading"
-    why_human: "80-VALIDATION.md's own Manual-Only Verifications table (D-08, D-09) states the automated suite proves the mobile view is selected and renders, but cannot judge layout, tap targets, or real-device legibility. Carried forward unresolved from the phase's own validation contract."
-  - test: "On a board with genuinely zero categories: open Contacts -> Create. Confirm the category select is disabled with helper text linking to Manage Categories, and that the index shows no headings at all"
-    expected: "Disabled dropdown reads as an obvious invitation to create the first category"
-    why_human: "80-VALIDATION.md's own Manual-Only Verifications table (D-07) flags this as depending on subjective UX judgment of whether the hint reads as an invitation, not just that the markup is present (the markup itself was independently confirmed present and correct in this verification pass)."
+re_verification:
+  previous_status: human_needed
+  previous_score: 14/15
+  gaps_closed:
+    - "CONTACTCAT-04's case-insensitive uniqueness constraint -- the InMemory-provider blind spot from the initial pass is now closed by live evidence against the real SQL Server instance (recorded in 80-UAT.md, independently corroborated against the current migration/model in this pass), not merely re-asserted"
+    - "Real-device mobile usability (human_verification item #2 from the initial pass) -- the mobile New Category Name label contrast defect UAT found is fixed by 80-09 and re-verified live in-browser twice, plus the broader real-handset pass was confirmed by the user directly"
+    - "First-run discovery path subjective UX (human_verification item #3 from the initial pass) -- the zero-category Manage Categories helper link contrast defect UAT found is fixed by 80-09 and re-verified live in-browser on both desktop and mobile"
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 80: Contact Categories Verification Report
 
 **Phase Goal:** A DM can group the board's NPCs under named categories -- "Corridor", "Guild Members", "Last Bastion" -- and the Contacts index renders them under those headings instead of one flat list, on both desktop and mobile.
 
-**Verified:** 2026-08-30T12:54:50Z
-**Status:** human_needed
-**Re-verification:** No -- initial verification
+**Verified:** 2026-08-31T00:00:00Z
+**Status:** passed
+**Re-verification:** Yes -- after gap closure (plan 80-09) and a live UAT re-pass; supersedes the 2026-08-30T12:54:50Z human_needed report (score 14/15)
 
 ## Summary
 
-This phase is substantively well-built. Every artifact claimed in the 8 plan SUMMARYs was independently confirmed to exist, be wired, and behave correctly by reading the actual merged code on `milestone/v9-rolling-improvements` (not the SUMMARY narrative) and by independently re-running the test suite from this session (not trusting the plans' self-reported results, several of which were run from the wrong working directory per the phase's own admission). Build is 0 errors; `dotnet test` run fresh in this session reproduces exactly 437 unit + 668 integration tests, 0 failures, matching the reported current state.
+This is a full re-verification, not a rubber stamp on the prior 14/15 pass. All source claimed by the nine plans (80-01 through 80-09) was read fresh from the current milestone/v9-rolling-improvements checkout, and the full test suite was rebuilt and re-run independently in this session -- not trusted from any SUMMARY, UAT record, or security audit.
 
-One genuine, honestly-disclosed residual risk survives: **CONTACTCAT-04's case-insensitive uniqueness constraint is architecturally sound but empirically unverified against a live SQL Server instance.** The unique index on `(GroupId, Name)` carries no explicit `COLLATE` clause and depends entirely on the database's ambient collation being case-insensitive (the SQL Server Docker image's undocumented default when `MSSQL_COLLATION` is unset). This is not a code defect -- it is the same pattern `GroupEntity.Name` already uses elsewhere in this codebase -- but no automated test anywhere in this repository can prove it, because the entire suite runs on EF Core's InMemory provider, which enforces neither unique indexes nor collation at all. This was flagged as an open assumption in the phase's own RESEARCH.md before implementation began, and remains open now. Worst-case failure mode if the assumption is wrong: two category names differing only in case could both be created (a UX inconsistency), not a crash or security issue.
+**The one item the initial pass could not verify -- CONTACTCAT-04's case-insensitive uniqueness -- is now closed**, on two independent legs:
 
-No other blocking gaps were found. All five specifically-flagged risk areas were independently re-derived from the code and found sound.
+1. 80-UAT.md records a live probe against the actual deployed SQL Server instance: DATABASEPROPERTYEX('QuestBoard','Collation') returns SQL_Latin1_General_CP1_CI_AS, IX_ContactCategories_GroupId_Name's Name column carries that same case-insensitive collation, and a direct in-transaction insert of "ZZTest Guild Members" then "zztest guild members" on the same board raised SQL error 2601 before rollback -- the constraint genuinely holds live, not just in theory.
+2. Independently in this pass, I re-read QuestBoardContext.cs (lines 286-291) and the AddContactCategories migration and confirmed the source-level configuration is unchanged and consistent with that live result: HasIndex(cc => new { cc.GroupId, cc.Name }).IsUnique() with no explicit COLLATE override anywhere in the model or migration, and no MSSQL_COLLATION override in docker-compose.yml -- the index rides the database's ambient case-insensitive collation exactly as the code comment states and exactly as the live probe found. 80-09's gap-closure work touched only CSS and one Razor view; it did not touch this area, so nothing here has drifted since the UAT probe ran.
+
+**Both UAT-found contrast defects are fixed and independently confirmed in source, not just claimed by 80-09-SUMMARY.md:**
+
+- contacts.mobile.css lines 141-144 -- `.category-mgmt-add-form .form-label { color: #F4E4BC !important; text-shadow: ...; }`, and Manage.Mobile.cshtml line 8 carries the matching `category-mgmt-add-form` class on the add-category `<form>`, directly enclosing the "New Category Name" label at line 10.
+- modern-card.css lines 142-148 -- `.modern-card .form-text a { color: #F4E4BC !important; ...; font-weight: 600; }` and contact-form.mobile.css lines 40-43 -- `.contact-form-card .form-text a { color: #F4E4BC !important; text-shadow: ...; }`. Neither rule sets text-decoration, so the underline affordance survives per the plan's explicit WCAG 1.4.1 constraint.
+- The two pre-existing scoped overrides these fixes were required not to regress are untouched and confirmed exactly as before: modern-card.css lines 114-119 `.modern-card .text-danger { color: #ff6b6b !important; ... }` and modern-card.css lines 58-62 `.modern-card-header .header-subtitle { color: #1a1a1a !important; ... }`.
+- ContactCategoryContrastGuardTests.cs (read in full) genuinely enforces all of this: six facts, including a dedicated `ContactCategoryContrastGuard_PreExistingScopedOverrides_StillPinValidationRedAndHeaderSubtitle` fact that extracts both pre-existing rule bodies via `ExtractCssRule` and asserts #ff6b6b/#1a1a1a are still present -- this is a real regression guard, not a claim. All six facts were re-run fresh in this session (isolated filter run) and pass.
+
+**Build and test suite, run fresh in this session (not trusted from any SUMMARY):** a live QuestBoard.Service.exe debug process (PID 22208) held Domain.dll/Repository.dll locked in the default bin/Debug/net10.0 output paths, causing the first plain `dotnet build` to fail on file-copy retries -- consistent with this repo's own documented failure mode (CLAUDE.md: "ask the user to stop the debugger"). Rather than disrupt a running debug session, I rebuilt the test projects to an isolated output directory inside the repo tree (so the CSS-path-walking test helpers, including ContactCategoryContrastGuardTests.ResolveCssPath, still resolve QuestBoard.Service/wwwroot/css/* correctly) and ran the suite from there. Result: **0 build errors, 437 unit tests passed / 0 failed, 674 integration tests passed / 0 failed** -- exactly matching 80-09-SUMMARY.md's claimed post-gap-closure count (437 + 674, up from 668 pre-80-09). The isolated build/test output directory was deleted afterward; nothing was left in the working tree.
+
+No new gaps were found. No regressions were found in the 80-01..08 surface area, which was spot-checked (class-level `[Authorize(Policy = "DungeonMasterOnly")]` on ContactCategoryManagementController, absence of IgnoreQueryFilters in the category repository/controller, the fail-closed HasQueryFilter in QuestBoardContext.cs) against source rather than re-derived from scratch, consistent with the instruction that unchanged 80-01..08 work should be spot-checked, not fully re-verified.
 
 ## Goal Achievement
 
@@ -46,59 +50,60 @@ No other blocking gaps were found. All five specifically-flagged risk areas were
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | (CONTACTCAT-01) DM creates a named category from a dedicated Manage Categories page reached from the Contacts index, scoped to the active board | VERIFIED | `ContactCategoryManagementController.Add` stamps `category.GroupId = activeGroupId` from `activeGroupContext.ActiveGroupId`; `[Authorize(Policy = "DungeonMasterOnly")]` at class level; `Views/Contacts/Index.cshtml:71-73` links to it from `Url.Action("Index", "ContactCategoryManagement")` |
-| 2 | (CONTACTCAT-02) A contact belongs to exactly one category or none, via a single dropdown with blank "-- None --" on Create/Edit, desktop and mobile | VERIFIED | Confirmed identical `asp-for="CategoryId"` select + "-- None --" option in all four views: `Create.cshtml`, `Create.Mobile.cshtml`, `Edit.cshtml`, `Edit.Mobile.cshtml` |
-| 3 | (CONTACTCAT-03) DM renames/deletes a category; deleting a non-empty category moves its contacts to Ungrouped rather than deleting or blocking | VERIFIED | `ContactCategoryRepository.DeleteWithDependentsLoadedAsync` loads dependents so the configured `SetNull` behaviour applies; `ContactCategoryRepositoryTests.DeleteWithDependentsLoadedAsync_ContactsSurviveWithNullCategory` asserts both contacts survive with `CategoryId == null`. Re-ran this fact fresh in this session -- passed |
-| 4 | (CONTACTCAT-04) Category names unique per board, case-insensitive; duplicate returns a validation message, not a 500 | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Controller catch/message/re-render path (`ContactCategoryManagementController.Add`/`Edit`) is real and independently confirmed working via `ContactCategory_DuplicateName` tests, re-run fresh and green. **But** these tests use a decorator that forces the exception shape rather than exercising the real unique index, because EF Core InMemory enforces neither `IsUnique()` nor collation. The actual case-insensitive DB enforcement (`IX_ContactCategories_GroupId_Name`, no explicit `COLLATE`, relies on ambient SQL Server default collation) has never been exercised against a real database in this repo. See `behavior_unverified_items` |
-| 5 | (CONTACTCAT-05) Every category read/write is scoped to the active board by the global query filter; null active board resolves zero categories; no app path bypasses it | VERIFIED | `ContactCategoryEntity.HasQueryFilter` in `QuestBoardContext.cs:467-470` fails closed on null `ActiveGroupId`; grepped `QuestBoard.Service`, `QuestBoard.Domain`, `QuestBoard.Repository` for `IgnoreQueryFilters` on category/contact paths -- zero occurrences outside test infrastructure. Five dedicated `ContactCategory_CrossGroup_*` integration tests re-run fresh and green, including the foreign-`CategoryId` POST-refusal path on both Create and Edit |
-| 6 | (CONTACTCAT-06) Only DM-tier users can create/rename/delete/reorder categories, enforced server-side | VERIFIED | `[Authorize(Policy = "DungeonMasterOnly")]` at class level on `ContactCategoryManagementController`; six `*_PlayerAccess_ShouldBeBlocked` integration tests re-run fresh and green |
-| 7 | (CONTACTCAT-07) DM reorders with up/down; index renders headings in that order, not alphabetically | VERIFIED | `ContactCategoryService.MoveUpAsync`/`MoveDownAsync` swap `SortOrder` via position in the board-scoped ordered list; `ContactsIndex_CategoryOrdering_FollowsSortPositionNotAlphabet` (deliberately reversed alphabetical vs. sort order) re-run fresh and green |
-| 8 | (CONTACTCAT-08) Manage Categories ships desktop and mobile; the mobile view is proven selected under a real mobile User-Agent | VERIFIED | `ContactCategoryMobileRenderTests` sends a real iPhone Safari UA and asserts mobile-only markup (`category-mgmt-row`) present under mobile UA and absent under default UA, and the reverse for desktop-only markup; re-run fresh and green |
-| 9 | (CONTACTCAT-09) Contacts index renders contacts under category headings, both desktop and mobile, alphabetical by name within each heading | VERIFIED | `ContactsController.Index` groups the already-visibility-filtered view models by category, `.OrderBy(c => c.Name)` within each group; `Index.cshtml` and `Index.Mobile.cshtml` both iterate `Model.CategoryGroups`; `ContactsIndex_CategoryOrdering_ContactsWithinCategoryAreAlphabetical` re-run fresh and green |
-| 10 | (CONTACTCAT-10) Ungrouped contacts render under a synthetic "Ungrouped" heading pinned after every real category, not renameable or orderable | VERIFIED | `.OrderBy(g => g.Key.CategoryId is null)` pins the null-category group last; `ContactCategoryGroupViewModel.IsUngrouped` has no `Id`/edit route wired anywhere; `ContactsIndex_CategoryOrdering_UngroupedHeadingAppearsAfterEveryRealCategory` re-run fresh and green |
-| 11 | (CONTACTCAT-11) A board with no categories renders the flat contact list exactly as it renders today, no headings at all | VERIFIED | Diffed current `Index.cshtml`/`Index.Mobile.cshtml` against the pre-phase-80 commit (`a146d8d3`): the `else` (no-categories) branch reproduces the identical prior markup structure on both desktop (bare `contact-grid`, no heading) and mobile (`contact-section-card` + "Contacts" heading, matching the pre-existing unconditional wrapper). `ContactsIndex_CategoryOrdering_ZeroCategoryBoardRendersFlatListWithNoHeadings` present |
-| 12 | (CONTACTCAT-12) A category heading renders only when at least one contact beneath it is visible; carries the name alone, no count | VERIFIED | `ContactCategoryGroupViewModel` has no count field by design (comment explicitly rejects it); grouping runs over the already-visibility-filtered `contactViewModels`, so an all-hidden category produces no group key at all. Three `ContactCategory_EmptyHeadingSuppression_*` tests (player, DM-toggle-on, DM-toggle-off) independently re-run fresh and green -- this is the exact heading-disclosure concern flagged in the verification brief, and it holds |
-| 13 | (CONTACTCAT-13) Category name stored with 60-char cap, rendered as plain escaped text, never through Markdown | VERIFIED | `ContactCategoryEntity.Name` is `[StringLength(60)]`; `ContactCategoryViewModel.Name` is `[StringLength(60, ErrorMessage = ...)]`; `@group.Title` in both Index views uses default Razor HTML-encoding, never `Html.Raw` or `IMarkdownService`; `ContactCategory_NameRendersEscaped_AngleBracketsAreEncoded` re-run fresh and green. No dedicated regression test exists for the 61-char boundary itself (informational, not a gap -- `[StringLength]` is a standard, independently-tested ASP.NET Core validation attribute) |
-| 14 | (CONTACTCAT-14) Contact's category shown on Details, desktop and mobile; no category = no line | VERIFIED | `Details.cshtml:36-41` and `Details.Mobile.cshtml:34-39` both gate the category line on `!string.IsNullOrEmpty(Model.CategoryName)`; AutoMapper wiring (`EntityProfile.cs`, `ViewModelProfile.cs`) confirmed carrying `CategoryName`/`CategorySortOrder` as read-only projections (`.Ignore()` on the reverse map so a POST cannot inject them) |
-| 15 | (CONTACTCAT-15) Zero-category board: Create/Edit render a disabled select with helper text linking to Manage Categories | VERIFIED | Confirmed identical disabled-`<select>` + "Manage Categories" link fallback in all four views (`Create.cshtml`, `Create.Mobile.cshtml`, `Edit.cshtml`, `Edit.Mobile.cshtml`), gated on `Model.HasCategories` |
+| 1 | (CONTACTCAT-01) DM creates a named category from a dedicated Manage Categories page reached from the Contacts index, scoped to the active board | VERIFIED | ContactCategoryManagementController.cs line 11 class-level `[Authorize(Policy = "DungeonMasterOnly")]`; stamps category.GroupId from activeGroupContext.ActiveGroupId. Unchanged since initial pass; spot-checked fresh |
+| 2 | (CONTACTCAT-02) A contact belongs to exactly one category or none, via a single dropdown with blank "-- None --" on Create/Edit, desktop and mobile | VERIFIED | Unchanged since initial pass; four views confirmed by initial pass, no diff in this range since |
+| 3 | (CONTACTCAT-03) DM renames/deletes a category; deleting a non-empty category moves its contacts to Ungrouped rather than deleting or blocking | VERIFIED | ContactCategoryRepository.DeleteWithDependentsLoadedAsync unchanged; full suite re-run fresh in this pass confirms ContactCategoryRepositoryTests.DeleteWithDependentsLoadedAsync_ContactsSurviveWithNullCategory still passes |
+| 4 | (CONTACTCAT-04) Category names unique per board, case-insensitive; duplicate returns a validation message, not a 500 | VERIFIED | Two independent legs, both closed in this pass: (a) 80-UAT.md live probe against the real SQL Server instance -- collation confirmed CI, index column carries that collation, a case-differing duplicate insert raised error 2601 in a rolled-back transaction, live UI refused "last bastion" after "Last Bastion" existed. (b) Independently re-read in this pass: QuestBoardContext.cs `.HasIndex(cc => new { cc.GroupId, cc.Name }).IsUnique()`, no COLLATE override anywhere in the model or the AddContactCategories migration, no MSSQL_COLLATION override in docker-compose.yml -- the source configuration is exactly what the live probe found in effect, and 80-09's gap-closure work never touched this file |
+| 5 | (CONTACTCAT-05) Every category read/write is scoped to the active board by the global query filter; null active board resolves zero categories; no app path bypasses it | VERIFIED | QuestBoardContext.cs lines 467-470 HasQueryFilter fail-closed on null ActiveGroupId, re-read fresh in this pass; grepped ContactCategoryRepository.cs and ContactsController.cs for IgnoreQueryFilters -- zero occurrences, confirmed fresh in this pass |
+| 6 | (CONTACTCAT-06) Only DM-tier users can create/rename/delete/reorder categories, enforced server-side | VERIFIED | `[Authorize(Policy = "DungeonMasterOnly")]` at class level, re-confirmed fresh in this pass at ContactCategoryManagementController.cs line 11 |
+| 7 | (CONTACTCAT-07) DM reorders with up/down; index renders headings in that order, not alphabetically | VERIFIED | Unchanged since initial pass; full suite re-run confirms the reorder/ordering facts still pass |
+| 8 | (CONTACTCAT-08) Manage Categories ships desktop and mobile; the mobile view is proven selected under a real mobile User-Agent | VERIFIED | ContactCategoryMobileRenderTests unchanged and still green; additionally, this requirement is the one 80-09 touched for the label-contrast fix -- ContactCategoryContrastGuard_ManagementPageLabel_RendersInsideScopedFormOnMobileOnly independently re-run in this pass and green, confirming the mobile file is still the one selected and the label sits inside the scoped form |
+| 9 | (CONTACTCAT-09) Contacts index renders contacts under category headings, both desktop and mobile, alphabetical by name within each heading | VERIFIED | Unchanged since initial pass; full suite re-run confirms the ordering facts still pass |
+| 10 | (CONTACTCAT-10) Ungrouped contacts render under a synthetic "Ungrouped" heading pinned after every real category, not renameable or orderable | VERIFIED | Unchanged since initial pass; full suite re-run confirms the ungrouped-pinning fact still passes |
+| 11 | (CONTACTCAT-11) A board with no categories renders the flat contact list exactly as it renders today, no headings at all | VERIFIED | Unchanged since initial pass; 80-UAT.md re-tested this live on a genuinely zero-category board ("The Boundless Domain", 17 contacts) and confirmed no headings at all, including no "Ungrouped" |
+| 12 | (CONTACTCAT-12) A category heading renders only when at least one contact beneath it is visible; carries the name alone, no count | VERIFIED | Unchanged since initial pass; full suite re-run confirms the three suppression facts still pass |
+| 13 | (CONTACTCAT-13) Category name stored with 60-char cap, rendered as plain escaped text, never through Markdown | VERIFIED | Unchanged since initial pass; full suite re-run confirms the escaping fact still passes |
+| 14 | (CONTACTCAT-14) Contact's category shown on Details, desktop and mobile; no category = no line | VERIFIED | Unchanged since initial pass; full suite re-run confirms ContactDetailsCategoryTests still passes |
+| 15 | (CONTACTCAT-15) Zero-category board: Create/Edit render a disabled select with helper text linking to Manage Categories | VERIFIED | This is the requirement 80-09's second gap-closure targeted (the helper link's contrast). Independently confirmed in this pass: modern-card.css lines 142-148 and contact-form.mobile.css lines 40-43 both carry `.form-text a { color: #F4E4BC !important; ... }` rules with no text-decoration override; 80-UAT.md re-tested live on both desktop and mobile and confirmed ~11.04:1 contrast (was ~3.09:1), underline preserved, and the unrelated Cancel button anchor unaffected (regression-checked live). ContactCategoryContrastGuard_ZeroCategoryHelperLink_RendersOnBothDesktopAndMobileCardSurfaces independently re-run in this pass and green |
 
-**Score:** 14/15 truths verified (1 present + wired, behavior-unverified)
+**Score:** 15/15 truths verified (0 present, behavior-unverified)
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `QuestBoard.Repository/Entities/ContactCategoryEntity.cs` | Entity: Name (60 cap), SortOrder, GroupId | VERIFIED | Present, substantive, wired into `QuestBoardContext` |
-| `QuestBoard.Repository/Migrations/20260830094351_AddContactCategories.cs` | Table, FKs, unique index | VERIFIED | Table created, `IX_ContactCategories_GroupId_Name` unique (no explicit collation -- see truth #4), `SetNull` FK from Contacts |
-| `QuestBoard.Domain/Services/ContactCategoryService.cs` | Ordered read, reorder, delete-orphan | VERIFIED | All methods delegate through board-scoped repository calls |
-| `QuestBoard.Repository/ContactCategoryRepository.cs` | Board-scoped CRUD + reorder + counts | VERIFIED | No `IgnoreQueryFilters()` in any application path |
-| `QuestBoard.Service/Controllers/Contacts/ContactCategoryManagementController.cs` | CRUD, reorder, class-level DM-only auth | VERIFIED | `[Authorize(Policy = "DungeonMasterOnly")]` at class level |
-| `QuestBoard.Service/Controllers/Contacts/ContactsController.cs` (modified) | Grouping, visibility-safe headings, cross-board CategoryId rejection | VERIFIED | `IsCategoryAcceptableAsync` resolves through board-filtered `GetByIdAsync` before any write |
-| `QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml` + `.Mobile.cshtml` | Desktop + mobile management UI | VERIFIED | Both present, distinct markup (`category-mgmt-row` mobile-only class), reorder buttons, delete confirmation with contact count |
-| `QuestBoard.Service/Views/Contacts/Index.cshtml` + `.Mobile.cshtml` | Grouped headings, desktop + mobile | VERIFIED | Both render `Model.CategoryGroups`, flat fallback matches pre-phase markup |
-| `QuestBoard.Service/Views/Contacts/Details.cshtml` + `.Mobile.cshtml` | Category line, desktop + mobile | VERIFIED | Both gate on non-empty `CategoryName` |
-| `QuestBoard.Service/Views/Contacts/Create.cshtml/.Mobile/Edit.cshtml/.Mobile` | Category dropdown / disabled-select fallback | VERIFIED | All four views confirmed |
+| QuestBoard.Repository/Entities/ContactCategoryEntity.cs | Entity: Name (60 cap), SortOrder, GroupId | VERIFIED | Re-read fresh in this pass, unchanged |
+| QuestBoard.Repository/Migrations/20260830094351_AddContactCategories.cs | Table, FKs, unique index | VERIFIED | Re-read fresh in this pass: IX_ContactCategories_GroupId_Name unique, no explicit collation (matches live-probe-confirmed ambient CI collation), SetNull FK from Contacts |
+| QuestBoard.Repository/Entities/QuestBoardContext.cs (category config) | HasIndex(...).IsUnique(), fail-closed HasQueryFilter | VERIFIED | Re-read fresh in this pass at lines 286-291 and 464-470; unchanged since initial pass, and confirmed to be the configuration the live UAT collation probe exercised |
+| QuestBoard.Domain/Services/ContactCategoryService.cs, ContactCategoryRepository.cs, ContactCategoryManagementController.cs, ContactsController.cs (modified), management + index + details views | Full CRUD/grouping/rendering surface | VERIFIED | Spot-checked (auth attribute, query-filter bypass grep) rather than re-derived; unchanged in this range since initial pass, corroborated by 80-SECURITY.md's independent 43/43 audit |
+| QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml | Add-category form carries scoping class | VERIFIED | Re-read fresh: line 8, `<form asp-action="Add" method="post" class="mb-3 category-mgmt-add-form">`, directly enclosing the New Category Name label at line 10 |
+| QuestBoard.Service/wwwroot/css/contacts.mobile.css | .category-mgmt-add-form .form-label rule, #F4E4BC | VERIFIED | Re-read fresh: lines 141-144, exact selector and colour confirmed |
+| QuestBoard.Service/wwwroot/css/modern-card.css | .modern-card .form-text a rule, #F4E4BC, .text-danger/.header-subtitle unregressed | VERIFIED | Re-read fresh: lines 142-148 (new rule), lines 114-119 (.text-danger = #ff6b6b, unchanged), lines 58-62 (.header-subtitle = #1a1a1a, unchanged) |
+| QuestBoard.Service/wwwroot/css/contact-form.mobile.css | .contact-form-card .form-text a rule, #F4E4BC | VERIFIED | Re-read fresh: lines 40-43, exact selector and colour confirmed |
+| QuestBoard.IntegrationTests/Tests/ContactCategoryContrastGuardTests.cs | Six guard facts, including a real regression guard | VERIFIED | Read in full in this pass; all six facts independently re-run via isolated filter (FullyQualifiedName~ContactCategoryContrastGuardTests) -- 6 passed, 0 failed |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|----|--------|---------|
-| `ContactsController.Create/Edit` POST | `ContactCategoryService.GetByIdAsync` | `IsCategoryAcceptableAsync` | WIRED | Board-filtered lookup rejects a foreign `CategoryId` before any write; confirmed by two dedicated cross-group POST tests, re-run fresh and green |
-| `ContactsController.Index` | `ContactCategoryService.GetOrderedAsync` | direct call | WIRED | Board-scoped, ordered by SortOrder then Id |
-| `ContactCategoryManagementController.Add/Edit` | `IContactCategoryService` -> `DbUpdateException` catch | try/catch on "unique"/"duplicate" substring | WIRED (controller layer only; DB layer unverified -- see truth #4) | |
-| `Index.cshtml`/`Index.Mobile.cshtml` | `ContactsController.Index` view model | `Model.CategoryGroups`, `Model.HasCategories` | WIRED | Grouping runs over already-visibility-filtered data; no disclosure path found |
-| `Create/Edit.cshtml` (all 4) | `PopulateCategoryOptionsAsync` | `Model.CategoryOptions`, `Model.HasCategories` | WIRED | Options sourced from board-scoped `GetOrderedAsync`, never re-sorted client-side |
+| ContactCategoryContrastGuardTests | contacts.mobile.css / modern-card.css / contact-form.mobile.css | ResolveCssPath + ExtractCssRule, scoped to one rule body | WIRED | Re-verified structurally in this pass by reading the helper methods and re-running the facts; scoping prevents a false pass from an unrelated declaration elsewhere in the file |
+| Manage.Mobile.cshtml add-category form | .category-mgmt-add-form .form-label rule | class token on the element enclosing the label | WIRED | Confirmed by direct read of both files, and by the rendered-HTML structural fact (ContactCategoryContrastGuard_ManagementPageLabel_RendersInsideScopedFormOnMobileOnly), re-run green in this pass |
+| Contacts Create/Edit helper `<small class="form-text">` | .modern-card .form-text a / .contact-form-card .form-text a | narrow scoped selector, not a broad .modern-card a | WIRED | Confirmed by direct read (no .modern-card a or .contact-form-card a selector introduced anywhere in either file); behavioural fact ContactCategoryContrastGuard_ZeroCategoryHelperLink_RendersOnBothDesktopAndMobileCardSurfaces re-run green |
+| IX_ContactCategories_GroupId_Name (unique index) | Ambient SQL Server collation | no explicit COLLATE, no MSSQL_COLLATION override | WIRED, live-confirmed | Source configuration re-read fresh in this pass; matches 80-UAT.md's live probe of the actual deployed instance exactly |
 
 ### Behavioral Spot-Checks / Test Re-Execution
 
-Re-ran independently in this verification session (not trusted from SUMMARY claims -- the phase's own plans admit several were run from the wrong working directory):
+Re-run independently in this verification session (isolated build output directory used to avoid a locked debugger process; not trusted from any SUMMARY claim):
 
 | Check | Command | Result | Status |
 |-------|---------|--------|--------|
-| Build | `dotnet build` | 0 errors, 20 pre-existing unrelated NuGet warnings | PASS |
-| ContactCategory-scoped tests | `dotnet test --filter "FullyQualifiedName~ContactCategory"` | 13 unit + 31 integration, 0 failures | PASS |
-| Contact-scoped tests (broader) | `dotnet test --filter "FullyQualifiedName~Contact"` | 37 unit + 70 integration, 0 failures | PASS |
-| Full suite | `dotnet test` | 437 unit + 668 integration, 0 failures | PASS -- matches reported current state exactly |
+| Build (unit test project) | dotnet build QuestBoard.UnitTests/QuestBoard.UnitTests.csproj -o (isolated dir) | 0 errors | PASS |
+| Build (integration test project) | dotnet build QuestBoard.IntegrationTests/QuestBoard.IntegrationTests.csproj -o (isolated dir) | 0 errors | PASS |
+| Unit suite | dotnet test QuestBoard.UnitTests... --no-build | 437 passed, 0 failed | PASS -- matches 80-09-SUMMARY.md's claimed count exactly |
+| Integration suite | dotnet test QuestBoard.IntegrationTests... --no-build | 674 passed, 0 failed | PASS -- matches 80-09-SUMMARY.md's claimed count exactly (668 pre-80-09 + 6 new guard facts) |
+| Contrast guard suite (isolated) | dotnet test ... --filter "FullyQualifiedName~ContactCategoryContrastGuardTests" | 6 passed, 0 failed | PASS |
+
+**Note on build environment:** a live QuestBoard.Service.exe debug process (PID 22208) held the default bin/Debug/net10.0 output files locked, causing a plain `dotnet build` from the repo root to fail on file-copy retries. Rather than terminate the user's running debug session, the test projects were rebuilt to an isolated output directory inside the repo tree (preserving the relative path structure the CSS-path-walking test helpers require) and the suite was run from there. This is a build-environment workaround, not a change to source or test code, and the isolated directory was removed after the run completed.
 
 ### Requirements Coverage
 
@@ -107,56 +112,40 @@ Re-ran independently in this verification session (not trusted from SUMMARY clai
 | CONTACTCAT-01 | 80-01 (minted), 80-05 (built) | SATISFIED | Truth #1 |
 | CONTACTCAT-02 | 80-01, 80-04/80-07 | SATISFIED | Truth #2 |
 | CONTACTCAT-03 | 80-01, 80-05 | SATISFIED | Truth #3 |
-| CONTACTCAT-04 | 80-01, 80-02/80-05 | SATISFIED WITH CAVEAT | Truth #4 -- controller path proven, DB-layer case-insensitivity unverified against a live instance |
+| CONTACTCAT-04 | 80-01, 80-02/80-05 | SATISFIED | Truth #4 -- DB-layer case-insensitivity now confirmed both live (80-UAT.md) and against current source (this pass) |
 | CONTACTCAT-05 | 80-01, 80-02/80-03/80-07 | SATISFIED | Truth #5 |
 | CONTACTCAT-06 | 80-01, 80-05 | SATISFIED | Truth #6 |
 | CONTACTCAT-07 | 80-01, 80-05/80-06 | SATISFIED | Truth #7 |
-| CONTACTCAT-08 | 80-01, 80-05/80-08 | SATISFIED | Truth #8 |
+| CONTACTCAT-08 | 80-01, 80-05/80-08/80-09 | SATISFIED | Truth #8 |
 | CONTACTCAT-09 | 80-01, 80-06 | SATISFIED | Truth #9 |
 | CONTACTCAT-10 | 80-01, 80-06 | SATISFIED | Truth #10 |
 | CONTACTCAT-11 | 80-01, 80-06 | SATISFIED | Truth #11 |
 | CONTACTCAT-12 | 80-01, 80-06 | SATISFIED | Truth #12 |
 | CONTACTCAT-13 | 80-01, 80-04/80-06 | SATISFIED | Truth #13 |
 | CONTACTCAT-14 | 80-01, 80-08 | SATISFIED | Truth #14 |
-| CONTACTCAT-15 | 80-01, 80-07 | SATISFIED | Truth #15 |
+| CONTACTCAT-15 | 80-01, 80-07/80-09 | SATISFIED | Truth #15 -- helper-link contrast fixed and confirmed both live (80-UAT.md) and against current source (this pass) |
 
-No orphaned requirements found -- all 15 IDs declared in REQUIREMENTS.md map to at least one phase-80 plan and to verified implementation.
+No orphaned requirements. All 15 IDs from .planning/REQUIREMENTS.md map to at least one of the nine phase-80 plans' requirements frontmatter and to verified implementation; .planning/ROADMAP.md's Phase 80 requirements list and coverage table both carry the identical 15-ID set. .planning/ROADMAP.md shows "Plans: 9/9 plans complete" with all nine plan checkboxes ticked, including the 80-09 gap-closure plan.
 
-**REQUIREMENTS.md currently shows all 15 as "Not started."** Based on the evidence above, 14 of 15 should be marked "Complete." CONTACTCAT-04 should be marked "Complete" only after the human verification item above is resolved, or marked complete with the caveat explicitly noted, per the operator's judgment.
+**Note:** .planning/REQUIREMENTS.md's checkbox list (lines 123-137) still shows all 15 as unchecked and its coverage table (lines 239-253) still shows "Not started" -- this is a bookkeeping field owned by the orchestrator/ship workflow, not evidence of missing implementation; every requirement is independently confirmed satisfied above. This was also flagged, identically, by the initial verification pass.
 
 ### Anti-Patterns Found
 
-None. Scanned every file this phase created or modified (`ContactCategoryEntity`, `IContactCategoryRepository`, `IContactCategoryService`, `ContactCategory` domain model, `ContactCategoryService`, `ContactCategoryRepository`, `ContactCategoryManagementController`, `ContactsController`, all three category view models) for `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER`/empty-implementation patterns. Zero matches beyond legitimate user-facing error copy ("Selected category is not available on this board.").
+None. Re-scanned every file modified by 80-09 (Manage.Mobile.cshtml, contacts.mobile.css, modern-card.css, contact-form.mobile.css, ContactCategoryContrastGuardTests.cs) for TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER in this pass. Two incidental matches on the literal word "Placeholder" are legitimate (an input placeholder attribute and a .contact-member-placeholder avatar-fallback CSS class), not debt markers. The 80-01..08 surface was re-confirmed clean by the initial pass and has not changed since.
 
-### Deviation / Risk Notes Independently Confirmed
+### Security Corroboration
 
-- **80-04's two literal-grep false positives** (`StringLength(60, ErrorMessage=...)` vs. bare `StringLength(60)`; the word "count" appearing in an explanatory comment about *not* having a count field) -- independently confirmed both were genuine grep-pattern collisions, not disguised shortcuts. Note: a later manual commit (`7a2f0587`, outside the 8 plans) re-added the `ErrorMessage` argument for a better validation UX once the acceptance-check pressure was gone; this is a net improvement, not a regression.
-- **80-06's `Ungrouped`/`IsUngrouped` substring collision and 80-07's `OrderBy` / directory-wide `IgnoreQueryFilters` collisions** -- independently re-derived from the code: `PopulateCategoryOptionsAsync` contains no `OrderBy` call, and `IgnoreQueryFilters` does not appear anywhere in `ContactsController.cs`, `ContactCategoryService.cs`, or `ContactCategoryRepository.cs`. Both deviation notes are accurate.
-- **Wrong-worktree concern (`cd "C:/Repos/quest-board"` in every plan's `<verify>` block)** -- the phase's own final tracking commit (`7243d10d`) already re-ran the two filters that couldn't be verified from an isolated 80-08 worktree, against the actual merged tree, before setting `wave_0_complete: true`. This verification pass independently re-ran the entire suite fresh from the current `milestone/v9-rolling-improvements` checkout and reproduced identical counts (437/668, 0 failures), closing this concern.
-- **Cross-board isolation (Phase 49/55 leak class)** -- independently confirmed at three layers: the global `HasQueryFilter` on `ContactCategoryEntity` fails closed on null `ActiveGroupId`; the controller resolves any client-supplied `CategoryId` through the same board-filtered lookup before every write; and five dedicated `ContactCategory_CrossGroup_*` integration tests (management list, create-form dropdown, index, create-POST refusal, edit-POST refusal, null-active-board) were re-run fresh in this session and are green. No leak found.
-- **Heading disclosure of hidden contacts** -- independently confirmed the grouping in `ContactsController.Index` runs over the already-visibility-filtered contact list, so a category with only hidden contacts produces no group key at all for a viewer who can't see them. Three dedicated tests spanning player / DM-toggle-on / DM-toggle-off were re-run fresh and green.
+80-SECURITY.md (43/43 threats closed across all 9 plans, including 6 critical cross-board-isolation threats) was read in this pass as corroborating evidence, not a substitute for the functional checks above. Its entries for the tenancy-critical threats (T-80-02-01 query filter, T-80-03-01 repository bypass grep, T-80-05-02 id-resolution-through-filter, T-80-07-01/T-80-07-02 cross-board CategoryId refusal) match exactly what this pass independently re-confirmed by reading QuestBoardContext.cs and grepping for IgnoreQueryFilters. T-80-09-01 (80-09's own entry) is consistent with this pass's read of the 80-09 diff: CSS-only plus one non-data-bound class token, zero new query/filter/view-model paths.
 
 ## Human Verification Required
 
-### 1. Live-database collation check for CONTACTCAT-04
+None. All three items the initial pass routed to human verification have been closed:
 
-**Test:** Against the deployed/production SQL Server instance, run `SELECT DATABASEPROPERTYEX('QuestBoard', 'Collation');` and confirm it reports a `*_CI_*` (case-insensitive) collation. Then create a category "Guild Members" as a DM, and attempt to create "guild members" on the same board.
-**Expected:** The collation query returns a case-insensitive collation, and the second submission is rejected with "A category with that name already exists," not silently persisted as a second row.
-**Why human:** No automated test in this repository can exercise this -- the entire suite runs on EF Core's InMemory provider, which enforces neither unique indexes nor collation. This is a pre-existing architectural pattern (shared with `GroupEntity.Name`), not a defect introduced by this phase, and the failure mode if wrong is a UX inconsistency rather than a crash or security issue -- but it is a genuinely unverified claim in a requirement that explicitly promises case-insensitivity.
-
-### 2. Real-device mobile usability
-
-**Test:** On a real phone (not devtools emulation): open Contacts, confirm headings render and are readable; open Manage Categories from the index button; add, rename, reorder, and delete a category; confirm the up/down buttons are tappable and the delete confirmation names the contact count.
-**Expected:** Layout is usable, tap targets are adequate, a long category name does not break the heading.
-**Why human:** Carried forward from the phase's own `80-VALIDATION.md` Manual-Only Verifications table (D-08/D-09) -- the automated suite proves the mobile view is selected and renders (confirmed above), not that it is legible or usable.
-
-### 3. First-run discovery path subjective UX
-
-**Test:** On a board with genuinely zero categories: open Contacts -> Create. Confirm the category select is disabled with helper text linking to Manage Categories, and the index shows no headings at all.
-**Expected:** The disabled dropdown reads as an obvious invitation to create the first category, not a confusing dead control.
-**Why human:** Carried forward from `80-VALIDATION.md` (D-07) -- the markup itself is independently confirmed present and correctly gated in this verification pass; only the subjective "does it read as an invitation" judgment remains open.
+1. **Live-database collation check for CONTACTCAT-04** -- closed by 80-UAT.md's live probe against the actual SQL Server instance, independently corroborated in this pass against current source (Truth #4 above).
+2. **Real-device mobile usability** -- closed by 80-09's label-contrast fix, re-verified live in-browser twice per 80-UAT.md, plus a direct user confirmation on tap targets and long-name wrapping.
+3. **First-run discovery path subjective UX** -- closed by 80-09's helper-link-contrast fix, re-verified live in-browser on both desktop and mobile per 80-UAT.md, confirming the disabled select with helper text now reads as a legible invitation rather than a low-contrast dead control.
 
 ---
 
-_Verified: 2026-08-30T12:54:50Z_
+_Verified: 2026-08-31T00:00:00Z_
 _Verifier: Claude (gsd-verifier)_
