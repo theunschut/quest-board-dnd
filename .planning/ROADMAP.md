@@ -713,8 +713,25 @@ Plans:
 | EVTNAME-05 | Phase 83 |
 | EVTNAME-06 | Phase 83 |
 | EVTNAME-07 | Phase 83 |
+| CONTACTTAG-01 | Phase 81 |
+| CONTACTTAG-02 | Phase 81 |
+| CONTACTTAG-03 | Phase 81 |
+| CONTACTTAG-04 | Phase 81 |
+| CONTACTTAG-05 | Phase 81 |
+| CONTACTTAG-06 | Phase 81 |
+| CONTACTTAG-07 | Phase 81 |
+| CONTACTTAG-08 | Phase 81 |
+| CONTACTTAG-09 | Phase 81 |
+| CONTACTTAG-10 | Phase 81 |
+| CONTACTTAG-11 | Phase 81 |
+| CONTACTTAG-12 | Phase 81 |
+| CONTACTTAG-13 | Phase 81 |
+| CONTACTTAG-14 | Phase 81 |
+| CONTACTTAG-15 | Phase 81 |
+| CONTACTTAG-16 | Phase 81 |
+| CONTACTTAG-17 | Phase 81 |
 
-**Coverage:** 82/82 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
+**Coverage:** 99/99 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
 
 ## Research Flags
 
