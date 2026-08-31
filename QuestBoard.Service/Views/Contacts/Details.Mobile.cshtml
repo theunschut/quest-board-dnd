@@ -37,6 +37,16 @@
                 <i class="fas fa-tag me-1"></i>@Model.CategoryName
             </p>
         }
+        @if (Model.CanManage && Model.Tags.Count > 0)
+        {
+            <div class="contact-info-value contact-tag-list mb-2">
+                <i class="fas fa-tags me-1"></i>
+                @foreach (var tag in Model.Tags)
+                {
+                    <span class="contact-tag-chip">@tag.Name</span>
+                }
+            </div>
+        }
         <div class="mb-2">
             @if (!Model.IsRevealed)
             {
