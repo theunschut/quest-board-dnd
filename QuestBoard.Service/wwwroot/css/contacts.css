@@ -301,3 +301,101 @@
     --tags-border-color: rgba(0, 0, 0, 0.3);
     --tags-focus-border-color: #ffc107;
 }
+
+/* ========================================
+   CONTACTS - TAG CHIPS AND FILTER ROW
+   ======================================== */
+
+.contacts-page .contact-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.contacts-page .contact-tag-chip {
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(139, 69, 19, 0.35);
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    color: #F4E4BC;
+}
+
+.contacts-page .contact-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #444;
+    border-radius: 6px;
+    margin-bottom: 24px;
+}
+
+.contacts-page .contact-filter-label {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: #F4E4BC;
+    white-space: nowrap;
+}
+
+.contacts-page .contact-filter-tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.contacts-page .contact-filter-check-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: #F4E4BC;
+    cursor: pointer;
+}
+
+.contacts-page .contact-filter-check-label input[type="checkbox"] {
+    accent-color: #ffc107;
+    cursor: pointer;
+}
+
+.contacts-page .contact-filter-apply-btn {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #444;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 400;
+    transition: all 0.3s ease;
+}
+
+.contacts-page .contact-filter-apply-btn:hover {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.contacts-page .contact-filter-clear-btn {
+    background: transparent;
+    border: 1px solid #6c757d;
+    color: rgba(244, 228, 188, 0.7);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+
+.contacts-page .contact-filter-clear-btn:hover {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.contacts-page .contact-filter-empty {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
