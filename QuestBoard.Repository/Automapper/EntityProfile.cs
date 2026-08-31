@@ -119,7 +119,10 @@ public class EntityProfile : Profile
                 {
                     OriginalImageData = src.ContactImageData
                 }))
-            .ForMember(dest => dest.Notes, opt => opt.Ignore());
+            .ForMember(dest => dest.Notes, opt => opt.Ignore())
+            // The tag association is reconciled by a dedicated repository method, never by
+            // AutoMapper's child-collection replacement — same reasoning as Notes above.
+            .ForMember(dest => dest.Tags, opt => opt.Ignore());
 
         CreateMap<ContactEntity, Contact>()
             .ForMember(dest => dest.ContactImageData, opt => opt.MapFrom(src => src.ProfileImage != null
@@ -139,6 +142,15 @@ public class EntityProfile : Profile
 
         CreateMap<ContactNoteEntity, ContactNote>()
             .ForMember(dest => dest.AuthorName, opt => opt.MapFrom(src => src.Author != null ? src.Author.Name : null));
+
+        // ContactTag mapping — mapping a domain model onto an already-tracked entity must never
+        // null out a loaded navigation or replace the association collection, so Group and
+        // Contacts are ignored on the entity-bound side, mirroring the Contact map above.
+        CreateMap<ContactTag, ContactTagEntity>()
+            .ForMember(dest => dest.Group, opt => opt.Ignore())
+            .ForMember(dest => dest.Contacts, opt => opt.Ignore());
+
+        CreateMap<ContactTagEntity, ContactTag>();
 
         // Event mapping. Group and Series are ignored on the reverse map so mapping a domain
         // model onto an already-tracked entity during an update never replaces a loaded
