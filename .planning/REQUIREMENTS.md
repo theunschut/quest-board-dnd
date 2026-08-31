@@ -139,18 +139,18 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 ### Contact Tags and Filtering
 
 - [x] **CONTACTTAG-01**: Every tag surface — chips, the filter control, the details tag line, and the tag-entry field — renders only for a DM-tier viewer, and a player-tier response contains no tag markup at all on either the desktop or the mobile layout
-- [ ] **CONTACTTAG-02**: Contacts carry free-form tags through a board-scoped ContactTag entity joined many-to-many to contacts, not a second category column and not a per-contact name string
-- [ ] **CONTACTTAG-03**: Tag names are unique per board and compared case-insensitively, so typing a case variant of an existing tag reuses that row instead of minting a twin
-- [ ] **CONTACTTAG-04**: Tag reads and writes are scoped to the viewer's active board by a fail-closed query filter that returns zero tags when no board is active, and no code path in this feature bypasses that filter
-- [ ] **CONTACTTAG-05**: Tag rows are created by free-typing on the contact form and pruned automatically when the last contact drops them, on both contact save and contact delete; there is no management page and no rename path
-- [ ] **CONTACTTAG-06**: An unknown, deleted, or other-board tag id supplied in the filter query string silently matches nothing rather than producing an error or a not-found response
+- [x] **CONTACTTAG-02**: Contacts carry free-form tags through a board-scoped ContactTag entity joined many-to-many to contacts, not a second category column and not a per-contact name string
+- [x] **CONTACTTAG-03**: Tag names are unique per board and compared case-insensitively, so typing a case variant of an existing tag reuses that row instead of minting a twin
+- [x] **CONTACTTAG-04**: Tag reads and writes are scoped to the viewer's active board by a fail-closed query filter that returns zero tags when no board is active, and no code path in this feature bypasses that filter
+- [x] **CONTACTTAG-05**: Tag rows are created by free-typing on the contact form and pruned automatically when the last contact drops them, on both contact save and contact delete; there is no management page and no rename path
+- [x] **CONTACTTAG-06**: An unknown, deleted, or other-board tag id supplied in the filter query string silently matches nothing rather than producing an error or a not-found response
 - [x] **CONTACTTAG-07**: Selecting several tags returns the union of their contacts, not the intersection
 - [x] **CONTACTTAG-08**: Filter selection lives in the URL query string as repeated tag ids rather than in session state
-- [ ] **CONTACTTAG-09**: The tag filter is applied in memory after the existing contact visibility gate, so it can only narrow what the viewer could already see and can never surface a contact that gate excluded
+- [x] **CONTACTTAG-09**: The tag filter is applied in memory after the existing contact visibility gate, so it can only narrow what the viewer could already see and can never surface a contact that gate excluded
 - [x] **CONTACTTAG-10**: The filter's tag list is derived from the viewer's visible-but-unfiltered contact set, so a tag borne only by contacts the viewer cannot see never appears, and selecting one tag does not remove the rest from the list
 - [x] **CONTACTTAG-11**: Toggling Show Hidden preserves the active tag selection across the post-redirect round trip
-- [ ] **CONTACTTAG-12**: All four contact create and edit views offer a chips-and-typeahead tag field backed by a version-pinned, integrity-checked CDN library and a thin local init module
-- [ ] **CONTACTTAG-13**: The tag field is a real text input holding a comma-separated list, and the server parses that one value shape whether or not the client script ran — trimming, dropping empties, and de-duplicating case-insensitively
+- [x] **CONTACTTAG-12**: All four contact create and edit views offer a chips-and-typeahead tag field backed by a version-pinned, integrity-checked CDN library and a thin local init module
+- [x] **CONTACTTAG-13**: The tag field is a real text input holding a comma-separated list, and the server parses that one value shape whether or not the client script ran — trimming, dropping empties, and de-duplicating case-insensitively
 - [x] **CONTACTTAG-14**: Tags render as chips on both contact index layouts and as a muted line on both contact details layouts, always as plain escaped text and never through the Markdown renderer
 - [x] **CONTACTTAG-15**: Before a board has any tags the filter control still renders, disabled, with helper text pointing at the contact form; once tags exist, a filter matching nothing shows a distinct no-match message with a clear-filters action, leaving the genuinely-empty-list message unchanged
 - [x] **CONTACTTAG-16**: The desktop filter is an inline get-form with checkboxes and apply and clear actions, the mobile filter is a bottom drawer behind a filter button, both ship in the same phase, and the mobile markup is proven under a real mobile user agent rather than viewport emulation
