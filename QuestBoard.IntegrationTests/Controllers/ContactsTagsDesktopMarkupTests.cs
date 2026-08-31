@@ -101,20 +101,21 @@ public class ContactsTagsDesktopMarkupTests(WebApplicationFactoryBase factory) :
     public async Task Index_TagOnlyOnUnrevealedContact_AbsentUntilShowHiddenIsOn()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
-        var (_, creator) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "tagmark_vocab_creator", "tagmark_vocab_creator@example.com", roles: ["DungeonMaster"]);
+        var (otherDmClient, requester) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "tagmark_vocab_otherdm", "tagmark_vocab_otherdm@example.com", roles: ["DungeonMaster"]);
+
+        // The requester owns the revealed contact, so its tag name is present on its own merits
+        // -- ownership, not the toggle, is what surfaces it. The unrevealed contact belongs to a
+        // different owner entirely, so only the Show Hidden toggle can surface its tag.
         var visibleContact = await TestDataHelper.CreateTestContactAsync(
-            factory.Services, creator.Id, "Town Guard Contact", groupId: 1, isRevealed: true);
+            factory.Services, requester.Id, "Town Guard Contact", groupId: 1, isRevealed: true);
         await TestDataHelper.CreateTestContactTagAsync(factory.Services, "town-guard", groupId: 1, visibleContact.Id);
 
+        var otherOwner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "tagmark_vocab_creator", "tagmark_vocab_creator@example.com", "Test123!", "Other Owner");
         var hiddenContact = await TestDataHelper.CreateTestContactAsync(
-            factory.Services, creator.Id, "Secret Contact", groupId: 1, isRevealed: false);
+            factory.Services, otherOwner.Id, "Secret Contact", groupId: 1, isRevealed: false);
         await TestDataHelper.CreateTestContactTagAsync(factory.Services, "secret-tag", groupId: 1, hiddenContact.Id);
-
-        // A different DM-tier viewer than the creator, so the creator's own-contact visibility
-        // exemption cannot mask the Show Hidden toggle's effect on the filter vocabulary.
-        var (otherDmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "tagmark_vocab_otherdm", "tagmark_vocab_otherdm@example.com", roles: ["DungeonMaster"]);
 
         var beforeResponse = await otherDmClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
         beforeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -133,7 +134,7 @@ public class ContactsTagsDesktopMarkupTests(WebApplicationFactoryBase factory) :
     }
 
     [Fact]
-    public async Task Index_BoardWithNoTags_RendersDisabledFilterHint()
+    public async Task Index_BoardWithNoTags_RendersNoFilterBar()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
@@ -145,8 +146,8 @@ public class ContactsTagsDesktopMarkupTests(WebApplicationFactoryBase factory) :
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        html.Should().Contain("contact-filter-empty");
-        html.Should().Contain("No tags yet. Add tags when creating or editing a contact to start filtering.");
+        html.Should().NotContain("contact-filter-empty");
+        html.Should().NotContain("No tags yet. Add tags when creating or editing a contact to start filtering.");
         html.Should().NotContain("type=\"checkbox\" name=\"tag\"");
     }
 

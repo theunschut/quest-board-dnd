@@ -95,38 +95,29 @@
         }
     </div>
 
-    @if (viewerIsDmTier)
+    @if (viewerIsDmTier && Model.AvailableTags.Any())
     {
-        @if (Model.AvailableTags.Any())
-        {
-            <form method="get" action="@Url.Action("Index")" class="contact-filter-row">
-                <span class="contact-filter-label">Tags:</span>
-                <div class="contact-filter-tag-group">
-                    @foreach (var availableTag in Model.AvailableTags)
-                    {
-                        <label class="contact-filter-check-label">
-                            <input type="checkbox" name="tag" value="@availableTag.Id" checked="@(Model.SelectedTagIds.Contains(availableTag.Id))" />
-                            @availableTag.Name
-                        </label>
-                    }
-                </div>
-                <button type="submit" class="btn btn-sm contact-filter-apply-btn">
-                    <i class="fas fa-filter me-2"></i>Apply Filters
-                </button>
-                @if (Model.HasActiveFilters)
+        <form method="get" action="@Url.Action("Index")" class="contact-filter-row">
+            <span class="contact-filter-label">Tags:</span>
+            <div class="contact-filter-tag-group">
+                @foreach (var availableTag in Model.AvailableTags)
                 {
-                    <a href="@Url.Action("Index")" class="btn btn-sm contact-filter-clear-btn">
-                        <i class="fas fa-times me-2"></i>Clear Filters
-                    </a>
+                    <label class="contact-filter-check-label">
+                        <input type="checkbox" name="tag" value="@availableTag.Id" checked="@(Model.SelectedTagIds.Contains(availableTag.Id))" />
+                        @availableTag.Name
+                    </label>
                 }
-            </form>
-        }
-        else
-        {
-            <div class="contact-filter-row contact-filter-empty">
-                <i class="fas fa-tag me-2"></i>No tags yet. Add tags when creating or editing a contact to start filtering.
             </div>
-        }
+            <button type="submit" class="btn btn-sm contact-filter-apply-btn">
+                <i class="fas fa-filter me-2"></i>Apply Filters
+            </button>
+            @if (Model.HasActiveFilters)
+            {
+                <a href="@Url.Action("Index")" class="btn btn-sm contact-filter-clear-btn">
+                    <i class="fas fa-times me-2"></i>Clear Filters
+                </a>
+            }
+        </form>
     }
 
     <div class="card modern-card">

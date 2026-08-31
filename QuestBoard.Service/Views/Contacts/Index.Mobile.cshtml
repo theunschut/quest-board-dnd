@@ -85,11 +85,7 @@
             <span class="badge bg-dark ms-1">Active</span>
         }
     </button>
-    @if (Model.AvailableTags.Count == 0)
-    {
-        <p class="contact-filter-empty mb-3">No tags yet. Add tags when creating or editing a contact to start filtering.</p>
-    }
-    else
+    @if (Model.AvailableTags.Count > 0)
     {
         <div class="offcanvas offcanvas-bottom" id="contactFilterOffcanvas" tabindex="-1">
             <div class="offcanvas-header">

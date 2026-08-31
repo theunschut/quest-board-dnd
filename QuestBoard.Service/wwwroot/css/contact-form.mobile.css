@@ -76,13 +76,18 @@
 /* Same fix as the desktop stylesheet: `.contact-form-card span:not(.badge)` above repaints
    every span pale-gold with a drop shadow, including Tagify's contenteditable input span --
    making the placeholder and in-progress typed text nearly illegible on the input's light
-   surface. Reset it back to plain readable text. */
-.contact-tags-input .tagify__input {
+   surface. Reset it back to plain readable text.
+   Selector needs all three classes (.contact-form-card .contact-tags-input .tagify__input):
+   the catch-all above is `.contact-form-card span:not(.badge)`, which carries one type
+   selector plus two class-level selectors ((0,2,1)). A two-class override here ((0,2,0))
+   loses to that on specificity even with !important on both sides, so the fix has to match
+   the catch-all's own scoping class to outrank it. */
+.contact-form-card .contact-tags-input .tagify__input {
     color: #1a1a1a !important;
     text-shadow: none !important;
 }
 
-.contact-tags-input .tagify__input::before {
+.contact-form-card .contact-tags-input .tagify__input::before {
     color: rgba(0, 0, 0, 0.5) !important;
     text-shadow: none !important;
 }
