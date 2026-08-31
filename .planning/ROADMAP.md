@@ -529,7 +529,7 @@ Plans:
 **Goal**: Contacts can carry free-form tags — "shopkeeper", "quest giver" — independently of which category they sit under, and the Contacts index offers a filter that narrows the list to the selected tags.
 **Depends on**: Phase 80 (shares the Contacts index rendering surface and whatever grouping partial that phase establishes)
 **Requirements**: CONTACTTAG-01, CONTACTTAG-02, CONTACTTAG-03, CONTACTTAG-04, CONTACTTAG-05, CONTACTTAG-06, CONTACTTAG-07, CONTACTTAG-08, CONTACTTAG-09, CONTACTTAG-10, CONTACTTAG-11, CONTACTTAG-12, CONTACTTAG-13, CONTACTTAG-14, CONTACTTAG-15, CONTACTTAG-16, CONTACTTAG-17
-**Plans**: 6/8 plans executed
+**Plans**: 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -555,8 +555,8 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 81-07-PLAN.md — Desktop display: the index filter row and its disabled state, chips on cards, the details tag line, the two-branch empty state, and markup tests for audience, vocabulary scoping, and escaping (wave 6)
-- [ ] 81-08-PLAN.md — Mobile display: the filter trigger and bottom drawer, chips on rows, the mobile details tag line, the two-branch empty state, and markup tests driven by a real mobile user agent (wave 6)
+- [x] 81-07-PLAN.md — Desktop display: the index filter row and its disabled state, chips on cards, the details tag line, the two-branch empty state, and markup tests for audience, vocabulary scoping, and escaping (wave 6)
+- [x] 81-08-PLAN.md — Mobile display: the filter trigger and bottom drawer, chips on rows, the mobile details tag line, the two-branch empty state, and markup tests driven by a real mobile user agent (wave 6)
 
 **Origin:** same request as Phase 80 — "Misschien later nog een filter optie, dat ik tags kan maken op bv shopkeeper en dat er dan gefilterd kan worden erop." The requester explicitly staged this after categories; it is separated here for that reason and can stay unplanned until wanted.
 
