@@ -708,12 +708,14 @@ namespace QuestBoard.Service.Controllers.Contacts
                 .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-        // Returns the input unchanged when no ids are selected; otherwise returns the contacts
-        // carrying at least one selected tag id. Union semantics, so ticking more boxes widens
-        // the result. A selection that matches nothing at all -- every id unknown, already
-        // pruned, or belonging to another board -- falls back to the full visible list rather
-        // than an empty page: it is never treated as an error, and an error response for it
-        // would itself confirm that an id in that range exists somewhere.
+        // Returns the input unchanged when no ids are selected; otherwise returns only the
+        // contacts carrying at least one selected tag id -- union semantics, so ticking more
+        // boxes widens the result within the filtered set, but the filter itself never widens
+        // beyond what the viewer could already see. A selection that matches nothing at all --
+        // every id unknown, already pruned, or belonging to another board -- resolves to an
+        // empty list rather than silently falling back to the unfiltered page: an empty result
+        // is never treated as an error, but it must also never be confused with "no filter was
+        // applied at all."
         private static IList<Contact> ApplyTagFilter(IList<Contact> visibleContacts, IList<int> selectedTagIds)
         {
             if (selectedTagIds.Count == 0)
@@ -721,11 +723,9 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return visibleContacts;
             }
 
-            var matched = visibleContacts
+            return visibleContacts
                 .Where(c => c.Tags.Any(t => selectedTagIds.Contains(t.Id)))
                 .ToList();
-
-            return matched.Count == 0 ? visibleContacts : matched;
         }
     }
 }

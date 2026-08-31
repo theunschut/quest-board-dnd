@@ -1434,7 +1434,7 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
     }
 
     [Fact]
-    public async Task Index_UnknownTagId_ReturnsFullVisibleListWithoutError()
+    public async Task Index_UnknownTagId_ReturnsNoMatchBranchWithoutError()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
@@ -1446,14 +1446,16 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
 
         var response = await dmClient.GetAsync("/Contacts/Index?tag=999999", TestContext.Current.CancellationToken);
 
+        // An id with no matching contact resolves to the empty, filtered-to-nothing result --
+        // never an error, and never a silent fall-back to the unfiltered list.
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        content.Should().Contain("First Visible Contact");
-        content.Should().Contain("Second Visible Contact");
+        content.Should().NotContain("First Visible Contact");
+        content.Should().NotContain("Second Visible Contact");
     }
 
     [Fact]
-    public async Task Index_TagIdFromAnotherBoard_ReturnsOwnBoardListOnly()
+    public async Task Index_TagIdFromAnotherBoard_MatchesNothingAndNeverLeaksTheOtherBoard()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
@@ -1486,9 +1488,12 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var response = await dmClient.GetAsync(
             $"/Contacts/Index?tag={otherBoardTag.Id}", TestContext.Current.CancellationToken);
 
+        // A foreign-board tag id matches no contact on this board at all -- the filter narrows
+        // to nothing rather than falling back to the unfiltered list, and the other board's
+        // contact and tag name never appear regardless.
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        content.Should().Contain("Own Board Contact");
+        content.Should().NotContain("Own Board Contact");
         content.Should().NotContain("Other Board's Contact");
         content.Should().NotContain("Other Board Tag");
     }
