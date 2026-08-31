@@ -214,4 +214,40 @@ public class ContactsTagsMobileTests(WebApplicationFactoryBase factory) : IClass
         html.Should().Contain("Try selecting different tags.");
         html.Should().NotContain("No one has added a contact yet. DMs can create the first one to start building out the world.");
     }
+
+    // The mobile view is selected by the request's User-Agent header, so the ownership x
+    // toggle rule for tag chips and filter options is re-proven here under a real mobile
+    // User-Agent rather than assumed from the desktop coverage alone.
+    [Fact]
+    public async Task Index_MobileNonOwningDungeonMaster_SeesNoChipsOrDrawerOptionsUntilShowHiddenIsOn()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "mobtag_ownership_owner", "mobtag_ownership_owner@example.com", "Test123!", "Contact Owner");
+        var contact = await TestDataHelper.CreateTestContactAsync(factory.Services, owner.Id, "Owner's Mobile Contact", isRevealed: true);
+        await TestDataHelper.CreateTestContactTagAsync(factory.Services, "owner-only-mobile-tag", contactIds: [contact.Id]);
+
+        var (nonOwnerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "mobtag_ownership_nonowner", "mobtag_ownership_nonowner@example.com", roles: ["DungeonMaster"]);
+
+        var (beforeStatus, beforeHtml) = await SendAsync(
+            nonOwnerClient, "/Contacts/Index", MobileUserAgent, nonOwnerClient.DefaultRequestHeaders.Authorization);
+
+        beforeStatus.Should().Be(HttpStatusCode.OK);
+        beforeHtml.Should().NotContain("contact-tag-chip");
+        beforeHtml.Should().NotContain("owner-only-mobile-tag");
+        beforeHtml.Should().Contain("No tags yet. Add tags when creating or editing a contact to start filtering.");
+
+        var toggleResponse = await nonOwnerClient.PostAsync(
+            "/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]), TestContext.Current.CancellationToken);
+        toggleResponse.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+
+        var (afterStatus, afterHtml) = await SendAsync(
+            nonOwnerClient, "/Contacts/Index", MobileUserAgent, nonOwnerClient.DefaultRequestHeaders.Authorization);
+
+        afterStatus.Should().Be(HttpStatusCode.OK);
+        afterHtml.Should().Contain("contact-tag-chip");
+        afterHtml.Should().Contain("owner-only-mobile-tag");
+        afterHtml.Should().Contain("contactFilterOffcanvas");
+    }
 }
