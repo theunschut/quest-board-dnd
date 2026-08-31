@@ -3,6 +3,10 @@
 @{
     ViewData["Title"] = "Contacts";
 
+    // Read once so the header controls and the filter row below share a single evaluation of
+    // the audience gate rather than two independently derived checks.
+    var viewerIsDmTier = Model.ViewerIsDmTier;
+
     void RenderContactCard(ContactViewModel contact)
     {
         <div class="contact-card">
@@ -38,6 +42,15 @@
                         {
                             <p class="contact-sub-location mb-0">@contact.SubLocation</p>
                         }
+                        @if (Model.ViewerIsDmTier && contact.Tags.Any())
+                        {
+                            <div class="contact-tag-list">
+                                @foreach (var tag in contact.Tags)
+                                {
+                                    <span class="contact-tag-chip">@tag.Name</span>
+                                }
+                            </div>
+                        }
                     </div>
                 </div>
             </a>
@@ -51,10 +64,14 @@
             <i class="fas fa-address-book me-2 text-warning"></i>
             Contacts
         </h1>
-        @if (Model.ViewerIsDmTier)
+        @if (viewerIsDmTier)
         {
             <div class="d-flex gap-2">
                 <form asp-action="ToggleShowHidden" method="post">
+                    @foreach (var selectedTagId in Model.SelectedTagIds)
+                    {
+                        <input type="hidden" name="tag" value="@selectedTagId" />
+                    }
                     @if (Model.ShowHidden)
                     {
                         <button type="submit" class="btn btn-secondary" aria-pressed="true">
@@ -78,17 +95,43 @@
         }
     </div>
 
+    @if (viewerIsDmTier)
+    {
+        @if (Model.AvailableTags.Any())
+        {
+            <form method="get" action="@Url.Action("Index")" class="contact-filter-row">
+                <span class="contact-filter-label">Tags:</span>
+                <div class="contact-filter-tag-group">
+                    @foreach (var availableTag in Model.AvailableTags)
+                    {
+                        <label class="contact-filter-check-label">
+                            <input type="checkbox" name="tag" value="@availableTag.Id" checked="@(Model.SelectedTagIds.Contains(availableTag.Id))" />
+                            @availableTag.Name
+                        </label>
+                    }
+                </div>
+                <button type="submit" class="btn btn-sm contact-filter-apply-btn">
+                    <i class="fas fa-filter me-2"></i>Apply Filters
+                </button>
+                @if (Model.HasActiveFilters)
+                {
+                    <a href="@Url.Action("Index")" class="btn btn-sm contact-filter-clear-btn">
+                        <i class="fas fa-times me-2"></i>Clear Filters
+                    </a>
+                }
+            </form>
+        }
+        else
+        {
+            <div class="contact-filter-row contact-filter-empty">
+                <i class="fas fa-tag me-2"></i>No tags yet. Add tags when creating or editing a contact to start filtering.
+            </div>
+        }
+    }
+
     <div class="card modern-card">
         <div class="card-body modern-card-body">
-            @if (!Model.Contacts.Any())
-            {
-                <div class="text-center py-5">
-                    <i class="fas fa-address-book fa-3x text-muted mb-3"></i>
-                    <h4>No Contacts Yet</h4>
-                    <p class="text-muted">No one has added a contact yet. DMs can create the first one to start building out the world.</p>
-                </div>
-            }
-            else if (Model.HasCategories)
+            @if (Model.HasCategories && Model.Contacts.Any())
             {
                 @foreach (var group in Model.CategoryGroups)
                 {
@@ -105,13 +148,32 @@
                     </div>
                 }
             }
-            else
+            else if (Model.Contacts.Any())
             {
                 <div class="contact-grid">
                     @foreach (var contact in Model.Contacts)
                     {
                         RenderContactCard(contact);
                     }
+                </div>
+            }
+            else if (Model.HasActiveFilters)
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-filter fa-3x text-muted mb-3"></i>
+                    <h4>No contacts match your filters</h4>
+                    <p class="text-muted">Try selecting different tags.</p>
+                    <a href="@Url.Action("Index")" class="btn contact-filter-apply-btn">
+                        <i class="fas fa-times me-2"></i>Clear filters
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-address-book fa-3x text-muted mb-3"></i>
+                    <h4>No Contacts Yet</h4>
+                    <p class="text-muted">No one has added a contact yet. DMs can create the first one to start building out the world.</p>
                 </div>
             }
         </div>
