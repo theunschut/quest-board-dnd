@@ -623,10 +623,10 @@ namespace QuestBoard.Service.Controllers.Contacts
 
         // Returns the input unchanged when no ids are selected; otherwise returns the contacts
         // carrying at least one selected tag id. Union semantics, so ticking more boxes widens
-        // the result. An id that matches nothing -- unknown, already pruned, or belonging to
-        // another board -- simply contributes no matches; it is never treated as an error,
-        // since an error response for it would itself confirm that an id in that range exists
-        // somewhere.
+        // the result. A selection that matches nothing at all -- every id unknown, already
+        // pruned, or belonging to another board -- falls back to the full visible list rather
+        // than an empty page: it is never treated as an error, and an error response for it
+        // would itself confirm that an id in that range exists somewhere.
         private static IList<Contact> ApplyTagFilter(IList<Contact> visibleContacts, IList<int> selectedTagIds)
         {
             if (selectedTagIds.Count == 0)
@@ -634,9 +634,11 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return visibleContacts;
             }
 
-            return visibleContacts
+            var matched = visibleContacts
                 .Where(c => c.Tags.Any(t => selectedTagIds.Contains(t.Id)))
                 .ToList();
+
+            return matched.Count == 0 ? visibleContacts : matched;
         }
     }
 }

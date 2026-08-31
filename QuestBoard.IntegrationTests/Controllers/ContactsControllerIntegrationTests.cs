@@ -1342,4 +1342,209 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         content.Should().Contain("Available Adventuring Company");
         content.Should().NotContain("No categories yet.");
     }
+
+    // Tag filter semantics on the index read path: narrowing by one tag, union across two
+    // selected tags, the visibility gate winning over a matching tag on an unrevealed contact,
+    // silent handling of unknown and other-board tag ids, the Show Hidden round trip, and the
+    // player-tier no-op.
+
+    [Fact]
+    public async Task Index_SingleSelectedTag_ReturnsOnlyMatchingContacts()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_single_dm", "contact_tag_single_dm@example.com", roles: ["DungeonMaster"]);
+
+        var tagged = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Tagged Contact Alone", groupId: 1, isRevealed: true);
+        var untagged = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Untagged Contact Alone", groupId: 1, isRevealed: true);
+        var tag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Alone Tag", groupId: 1, tagged.Id);
+
+        var response = await dmClient.GetAsync($"/Contacts/Index?tag={tag.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Tagged Contact Alone");
+        content.Should().NotContain("Untagged Contact Alone");
+    }
+
+    [Fact]
+    public async Task Index_TwoSelectedTags_ReturnsUnionNotIntersection()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_union_dm", "contact_tag_union_dm@example.com", roles: ["DungeonMaster"]);
+
+        var firstTagged = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "First Tag Holder", groupId: 1, isRevealed: true);
+        var secondTagged = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Second Tag Holder", groupId: 1, isRevealed: true);
+        var neitherTagged = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Neither Tag Holder", groupId: 1, isRevealed: true);
+        var firstTag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "First Union Tag", groupId: 1, firstTagged.Id);
+        var secondTag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Second Union Tag", groupId: 1, secondTagged.Id);
+
+        var response = await dmClient.GetAsync(
+            $"/Contacts/Index?tag={firstTag.Id}&tag={secondTag.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("First Tag Holder");
+        content.Should().Contain("Second Tag Holder");
+        content.Should().NotContain("Neither Tag Holder");
+    }
+
+    [Fact]
+    public async Task Index_SelectedTagOnUnrevealedContact_StaysHiddenWhileShowHiddenIsOff()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (creatorClient, creator) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_hidden_creator", "contact_tag_hidden_creator@example.com", roles: ["DungeonMaster"]);
+        var hiddenContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, creator.Id, "Hidden Tagged Contact", groupId: 1, isRevealed: false);
+        var tag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Hidden Contact Tag", groupId: 1, hiddenContact.Id);
+
+        var (otherDmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_hidden_otherdm", "contact_tag_hidden_otherdm@example.com", roles: ["DungeonMaster"]);
+
+        // Toggle OFF (default): the matching tag cannot pull the unrevealed contact past the
+        // visibility gate.
+        var beforeToggle = await otherDmClient.GetAsync(
+            $"/Contacts/Index?tag={tag.Id}", TestContext.Current.CancellationToken);
+        beforeToggle.StatusCode.Should().Be(HttpStatusCode.OK);
+        var beforeContent = await beforeToggle.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        beforeContent.Should().NotContain("Hidden Tagged Contact");
+
+        var toggleResponse = await otherDmClient.PostAsync(
+            "/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]), TestContext.Current.CancellationToken);
+        toggleResponse.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+
+        // Toggle ON: the same filtered request now surfaces it, once the visibility gate lets
+        // it through.
+        var afterToggle = await otherDmClient.GetAsync(
+            $"/Contacts/Index?tag={tag.Id}", TestContext.Current.CancellationToken);
+        afterToggle.StatusCode.Should().Be(HttpStatusCode.OK);
+        var afterContent = await afterToggle.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        afterContent.Should().Contain("Hidden Tagged Contact");
+    }
+
+    [Fact]
+    public async Task Index_UnknownTagId_ReturnsFullVisibleListWithoutError()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_unknown_dm", "contact_tag_unknown_dm@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "First Visible Contact", groupId: 1, isRevealed: true);
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Second Visible Contact", groupId: 1, isRevealed: true);
+
+        var response = await dmClient.GetAsync("/Contacts/Index?tag=999999", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("First Visible Contact");
+        content.Should().Contain("Second Visible Contact");
+    }
+
+    [Fact]
+    public async Task Index_TagIdFromAnotherBoard_ReturnsOwnBoardListOnly()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(factory.Services, 2);
+
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_otherboard_dm", "contact_tag_otherboard_dm@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Own Board Contact", groupId: 1, isRevealed: true);
+
+        var otherBoardOwner = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "contact_tag_otherboard_owner", "contact_tag_otherboard_owner@example.com", "Test123!", "Other Board Owner");
+        var otherBoardContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, otherBoardOwner.Id, "Other Board's Contact", groupId: 2, isRevealed: true);
+
+        // ContactEntity's own board-scoped query filter applies to the helper's lookup too, so
+        // creating the tag on the other board's contact needs the active group switched there
+        // first, exactly as ToggleShowHidden_IsScopedPerGroup does above.
+        ContactTagEntity otherBoardTag;
+        try
+        {
+            factory.TestGroupContext.ActiveGroupId = 2;
+            otherBoardTag = await TestDataHelper.CreateTestContactTagAsync(
+                factory.Services, "Other Board Tag", groupId: 2, otherBoardContact.Id);
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+
+        var response = await dmClient.GetAsync(
+            $"/Contacts/Index?tag={otherBoardTag.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Own Board Contact");
+        content.Should().NotContain("Other Board's Contact");
+        content.Should().NotContain("Other Board Tag");
+    }
+
+    [Fact]
+    public async Task Index_PlayerTierWithTagId_IgnoresTheFilter()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_player_dm", "contact_tag_player_dm@example.com", roles: ["DungeonMaster"]);
+        var tagged = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Player View Tagged Contact", groupId: 1, isRevealed: true);
+        await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Player View Untagged Contact", groupId: 1, isRevealed: true);
+        var tag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Player Ignored Tag", groupId: 1, tagged.Id);
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_player", "contact_tag_player@example.com", roles: ["Player"]);
+
+        var withoutTag = await playerClient.GetAsync("/Contacts/Index", TestContext.Current.CancellationToken);
+        withoutTag.StatusCode.Should().Be(HttpStatusCode.OK);
+        var withoutTagContent = await withoutTag.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var withTag = await playerClient.GetAsync(
+            $"/Contacts/Index?tag={tag.Id}", TestContext.Current.CancellationToken);
+        withTag.StatusCode.Should().Be(HttpStatusCode.OK);
+        var withTagContent = await withTag.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // A tag parameter changes nothing for a player-tier viewer: both contacts appear either
+        // way, and the two response bodies carry the identical set of contact names.
+        withoutTagContent.Should().Contain("Player View Tagged Contact");
+        withoutTagContent.Should().Contain("Player View Untagged Contact");
+        withTagContent.Should().Contain("Player View Tagged Contact");
+        withTagContent.Should().Contain("Player View Untagged Contact");
+    }
+
+    [Fact]
+    public async Task ToggleShowHidden_WithSelectedTags_RedirectPreservesThem()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_toggle_tags_dm", "contact_toggle_tags_dm@example.com", roles: ["DungeonMaster"]);
+
+        var formContent = new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("tag", "5"),
+            new KeyValuePair<string, string>("tag", "7")
+        ]);
+
+        var response = await dmClient.PostAsync(
+            "/Contacts/ToggleShowHidden", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        var location = response.Headers.Location!.OriginalString;
+        location.Should().Contain("tag=5");
+        location.Should().Contain("tag=7");
+    }
 }
