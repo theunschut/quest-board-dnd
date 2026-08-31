@@ -290,3 +290,14 @@
 .contacts-page .category-heading-ungrouped i {
     color: rgba(244, 228, 188, 0.6);
 }
+
+/* ========================================
+   CONTACTS - TAG ENTRY WIDGET (Tagify theme override)
+   ======================================== */
+
+.contacts-page .contact-tags-input {
+    --tag-bg: rgba(139, 69, 19, 0.35);
+    --tag-text-color: #F4E4BC;
+    --tags-border-color: rgba(0, 0, 0, 0.3);
+    --tags-focus-border-color: #ffc107;
+}
