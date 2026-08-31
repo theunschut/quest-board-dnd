@@ -529,13 +529,13 @@ Plans:
 **Goal**: Contacts can carry free-form tags — "shopkeeper", "quest giver" — independently of which category they sit under, and the Contacts index offers a filter that narrows the list to the selected tags.
 **Depends on**: Phase 80 (shares the Contacts index rendering surface and whatever grouping partial that phase establishes)
 **Requirements**: CONTACTTAG-01, CONTACTTAG-02, CONTACTTAG-03, CONTACTTAG-04, CONTACTTAG-05, CONTACTTAG-06, CONTACTTAG-07, CONTACTTAG-08, CONTACTTAG-09, CONTACTTAG-10, CONTACTTAG-11, CONTACTTAG-12, CONTACTTAG-13, CONTACTTAG-14, CONTACTTAG-15, CONTACTTAG-16, CONTACTTAG-17
-**Plans**: 0/8 plans complete
+**Plans**: 2/8 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 81-01-PLAN.md — Mint the `CONTACTTAG-*` requirement family into REQUIREMENTS.md and the roadmap coverage table, and complete the phase validation contract (wave 1)
-- [ ] 81-02-PLAN.md — Data foundation: the board-scoped `ContactTag` entity, the app's first many-to-many join, its fail-closed query filter, a collation-backed unique index, the migration, the domain model, the entity mapping, the test seed helper, and cross-board filter coverage (wave 1)
+- [x] 81-01-PLAN.md — Mint the `CONTACTTAG-*` requirement family into REQUIREMENTS.md and the roadmap coverage table, and complete the phase validation contract (wave 1)
+- [x] 81-02-PLAN.md — Data foundation: the board-scoped `ContactTag` entity, the app's first many-to-many join, its fail-closed query filter, a collation-backed unique index, the migration, the domain model, the entity mapping, the test seed helper, and cross-board filter coverage (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
