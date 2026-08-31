@@ -88,6 +88,7 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 | Phase 83 P02 | 20min | 3 tasks | 5 files |
 | 260831-hz9 | Fix cross-tenant note-injection in ContactsController.AddNote | 2026-08-31 | f732fb81 | [260831-hz9-fix-cross-tenant-note-injection-in-conta](./quick/260831-hz9-fix-cross-tenant-note-injection-in-conta/) |
 | 260831-mcb | Contact tags: show tags only for owned contacts by default; non-owned contacts' tags hidden unless the existing ShowHidden toggle is on (universal rule for all DM-tier viewers) | 2026-08-31 | b8b4da56 | [260831-mcb-contact-tags-show-tags-only-for-owned-co](./quick/260831-mcb-contact-tags-show-tags-only-for-owned-co/) |
+| 260831-fast | Hide the contact tag filter bar entirely when no tags are visible to the viewer (follow-up to 260831-mcb) | 2026-08-31 | 355e51d4 | — |
 
 ## Deferred Items
 
