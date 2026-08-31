@@ -287,6 +287,11 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     /// <inheritdoc/>
     public async Task AddNoteAsync(ContactNote note, CancellationToken token = default)
     {
+        // Board scoping on contacts applies to queries, not inserts, so the target has to
+        // be resolved through the filtered set before an insert is allowed.
+        var contactExists = await DbContext.Contacts.AnyAsync(c => c.Id == note.ContactId, token);
+        if (!contactExists) return;
+
         var entity = Mapper.Map<ContactNoteEntity>(note);
         DbContext.Set<ContactNoteEntity>().Add(entity);
         await DbContext.SaveChangesAsync(token);
