@@ -44,9 +44,11 @@ namespace QuestBoard.Service.Controllers.Contacts
             // The vocabulary is a projection of the visible-but-unfiltered set -- take it from
             // the filtered set instead and ticking one tag would make every other tag vanish,
             // so a second one could never be added. Derived through the same shared helper the
-            // create/edit form suggestion lists use, so the two surfaces cannot drift apart.
+            // create/edit form suggestion lists use, but asking for the viewer-visible scope
+            // rather than the board-wide one: offering a filter option for a tag whose chip the
+            // viewer cannot see would disclose by name the exact thing the chip gate just withheld.
             var availableTags = mapper.Map<List<ContactTagViewModel>>(
-                await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token));
+                await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, TagVocabularyScope.ViewerVisible, token));
 
             // The filter runs after the visibility gate and never inside the query, so it can
             // only narrow what the viewer could already see -- applying it upstream would be
@@ -138,7 +140,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             var currentUser = await userService.GetUserAsync(User);
             var viewerIsDmTier = await IsDmTierAsync();
 
-            var vocabulary = await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token);
+            var vocabulary = await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, TagVocabularyScope.Authoring, token);
 
             var viewModel = new ContactViewModel
             {
@@ -267,7 +269,7 @@ namespace QuestBoard.Service.Controllers.Contacts
             // as-is rather than re-sorted here so the pre-filled field can never disagree with
             // the order the same tags would be listed in elsewhere on the page.
             viewModel.TagsInput = string.Join(", ", contact.Tags.Select(t => t.Name));
-            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token))
+            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, TagVocabularyScope.Authoring, token))
                 .Select(t => t.Name)];
             await PopulateCategoryOptionsAsync(viewModel, token);
 
@@ -628,7 +630,7 @@ namespace QuestBoard.Service.Controllers.Contacts
         {
             var currentUser = await userService.GetUserAsync(User);
             var viewerIsDmTier = await IsDmTierAsync();
-            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token))
+            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, TagVocabularyScope.Authoring, token))
                 .Select(t => t.Name)];
         }
 
@@ -704,11 +706,28 @@ namespace QuestBoard.Service.Controllers.Contacts
             return includeHidden;
         }
 
-        // Shared by Index, Create GET, and Edit GET so the index filter list and the form
-        // suggestion lists all come from one derivation and cannot drift apart -- there is no
-        // second vocabulary query anywhere in this controller. Returns an empty list for a
-        // non-DM-tier viewer; Players get no tag surface on any of these three actions.
-        private async Task<IList<ContactTag>> GetVisibleTagVocabularyAsync(int currentUserId, bool viewerIsDmTier, CancellationToken token)
+        // The filter row and the authoring autocomplete are allowed to differ on purpose: a DM
+        // typing a new contact must still be able to reuse a colleague's existing tag name, while
+        // the filter row must never offer a name whose chip the viewer cannot see. Widening
+        // Authoring to match ViewerVisible would take away a DM's ability to reuse a tag they did
+        // not personally introduce.
+        private enum TagVocabularyScope
+        {
+            // The board-wide vocabulary used by the create/edit tag-suggestion whitelist.
+            Authoring,
+
+            // The vocabulary narrowed to tags this viewer's chips can show, used by the index
+            // filter row.
+            ViewerVisible
+        }
+
+        // Shared by Index, Create GET, and Edit GET so every one of these surfaces derives its
+        // tag list from one place. The required scope parameter says which of the two allowed
+        // derivations a caller wants -- Authoring for the board-wide suggestion lists, or
+        // ViewerVisible for the narrowed filter row -- so a future call site cannot silently
+        // inherit either behaviour. Returns an empty list for a non-DM-tier viewer regardless of
+        // scope; Players get no tag surface on any of these three actions.
+        private async Task<IList<ContactTag>> GetVisibleTagVocabularyAsync(int currentUserId, bool viewerIsDmTier, TagVocabularyScope scope, CancellationToken token)
         {
             if (!viewerIsDmTier)
             {
@@ -718,6 +737,13 @@ namespace QuestBoard.Service.Controllers.Contacts
             var includeHidden = ReadShowHiddenToggle();
             var allContacts = await contactService.GetAllContactsWithDetailsAsync(token);
             var visibleContacts = allContacts.Where(c => IsVisibleTo(c, currentUserId, includeHidden)).ToList();
+
+            if (scope == TagVocabularyScope.ViewerVisible)
+            {
+                visibleContacts = visibleContacts
+                    .Where(c => AreTagsVisibleTo(c.CreatedByUserId, currentUserId, true, includeHidden))
+                    .ToList();
+            }
 
             return BuildTagVocabulary(visibleContacts);
         }

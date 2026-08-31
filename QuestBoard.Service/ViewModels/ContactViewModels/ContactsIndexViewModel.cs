@@ -24,7 +24,7 @@ public class ContactsIndexViewModel
     // The tag ids currently ticked, read straight from the query string.
     public IList<int> SelectedTagIds { get; set; } = [];
 
-    // The tags carried by contacts this viewer can see, which is the whole filter vocabulary.
+    // The tags whose chips this viewer can see, which is the whole filter vocabulary.
     public IList<ContactTagViewModel> AvailableTags { get; set; } = [];
 
     // Computed, drives whether the Clear action renders.
