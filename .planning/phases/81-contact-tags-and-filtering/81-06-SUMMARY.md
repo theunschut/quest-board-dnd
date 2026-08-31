@@ -194,3 +194,13 @@ None - no external service configuration required. The pinned CDN references req
 ---
 *Phase: 81-contact-tags-and-filtering*
 *Completed: 2026-08-31*
+
+## Self-Check: PASSED
+
+- FOUND: QuestBoard.Service/wwwroot/js/contact-tags.js
+- FOUND: QuestBoard.IntegrationTests/Controllers/ContactsTagsFormMarkupTests.cs
+- FOUND: .planning/phases/81-contact-tags-and-filtering/81-06-SUMMARY.md
+- FOUND: commit 3bb35798 (feat: contact-tags.js init module + theme overrides)
+- FOUND: commit 157c6cb5 (feat: desktop tag field)
+- FOUND: commit 11b35b4d (test: RED markup tests)
+- FOUND: commit f3d9aebc (feat: mobile tag field, GREEN)
