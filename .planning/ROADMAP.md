@@ -529,7 +529,7 @@ Plans:
 **Goal**: Contacts can carry free-form tags — "shopkeeper", "quest giver" — independently of which category they sit under, and the Contacts index offers a filter that narrows the list to the selected tags.
 **Depends on**: Phase 80 (shares the Contacts index rendering surface and whatever grouping partial that phase establishes)
 **Requirements**: CONTACTTAG-01, CONTACTTAG-02, CONTACTTAG-03, CONTACTTAG-04, CONTACTTAG-05, CONTACTTAG-06, CONTACTTAG-07, CONTACTTAG-08, CONTACTTAG-09, CONTACTTAG-10, CONTACTTAG-11, CONTACTTAG-12, CONTACTTAG-13, CONTACTTAG-14, CONTACTTAG-15, CONTACTTAG-16, CONTACTTAG-17
-**Plans**: 3/8 plans executed
+**Plans**: 4/8 plans executed
 
 Plans:
 **Wave 1**
@@ -543,7 +543,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 81-04-PLAN.md — Index read path: tag view models, repeated-tag-id query-string binding, vocabulary derived from the visible-but-unfiltered set, in-memory union filtering after the visibility gate, the Show Hidden round trip, and filter-semantics integration tests (wave 3)
+- [x] 81-04-PLAN.md — Index read path: tag view models, repeated-tag-id query-string binding, vocabulary derived from the visible-but-unfiltered set, in-memory union filtering after the visibility gate, the Show Hidden round trip, and filter-semantics integration tests (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
