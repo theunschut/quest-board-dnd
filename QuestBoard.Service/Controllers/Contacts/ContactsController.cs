@@ -43,10 +43,10 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             // The vocabulary is a projection of the visible-but-unfiltered set -- take it from
             // the filtered set instead and ticking one tag would make every other tag vanish,
-            // so a second one could never be added.
-            var availableTags = viewerIsDmTier
-                ? mapper.Map<List<ContactTagViewModel>>(BuildTagVocabulary(visibleContacts))
-                : [];
+            // so a second one could never be added. Derived through the same shared helper the
+            // create/edit form suggestion lists use, so the two surfaces cannot drift apart.
+            var availableTags = mapper.Map<List<ContactTagViewModel>>(
+                await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token));
 
             // The filter runs after the visibility gate and never inside the query, so it can
             // only narrow what the viewer could already see -- applying it upstream would be
@@ -135,7 +135,15 @@ namespace QuestBoard.Service.Controllers.Contacts
         [Authorize(Policy = "DungeonMasterOnly")]
         public async Task<IActionResult> Create(CancellationToken token = default)
         {
-            var viewModel = new ContactViewModel();
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = await IsDmTierAsync();
+
+            var vocabulary = await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token);
+
+            var viewModel = new ContactViewModel
+            {
+                AvailableTagNames = [.. vocabulary.Select(t => t.Name)]
+            };
             await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
@@ -237,8 +245,17 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return NotFound();
             }
 
+            var currentUser = await userService.GetUserAsync(User);
+            var viewerIsDmTier = await IsDmTierAsync();
+
             var viewModel = mapper.Map<ContactViewModel>(contact);
             viewModel.CanManage = true;
+            // contact.Tags is already alphabetical, per the repository's read query -- joined
+            // as-is rather than re-sorted here so the pre-filled field can never disagree with
+            // the order the same tags would be listed in elsewhere on the page.
+            viewModel.TagsInput = string.Join(", ", contact.Tags.Select(t => t.Name));
+            viewModel.AvailableTagNames = [.. (await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, token))
+                .Select(t => t.Name)];
             await PopulateCategoryOptionsAsync(viewModel, token);
 
             return View(viewModel);
@@ -606,6 +623,24 @@ namespace QuestBoard.Service.Controllers.Contacts
             }
 
             return includeHidden;
+        }
+
+        // Shared by Index, Create GET, and Edit GET so the index filter list and the form
+        // suggestion lists all come from one derivation and cannot drift apart -- there is no
+        // second vocabulary query anywhere in this controller. Returns an empty list for a
+        // non-DM-tier viewer; Players get no tag surface on any of these three actions.
+        private async Task<IList<ContactTag>> GetVisibleTagVocabularyAsync(int currentUserId, bool viewerIsDmTier, CancellationToken token)
+        {
+            if (!viewerIsDmTier)
+            {
+                return [];
+            }
+
+            var includeHidden = ReadShowHiddenToggle();
+            var allContacts = await contactService.GetAllContactsWithDetailsAsync(token);
+            var visibleContacts = allContacts.Where(c => IsVisibleTo(c, currentUserId, includeHidden)).ToList();
+
+            return BuildTagVocabulary(visibleContacts);
         }
 
         // Flattens every visible contact's tags, de-duplicates by id, and orders by name with a
