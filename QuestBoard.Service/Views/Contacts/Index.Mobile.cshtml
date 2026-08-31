@@ -27,6 +27,15 @@
                 {
                     <div class="contact-member-sub-location">@contact.SubLocation</div>
                 }
+                @if (Model.ViewerIsDmTier && contact.Tags.Count > 0)
+                {
+                    <div class="contact-tag-list">
+                        @foreach (var t in contact.Tags)
+                        {
+                            <span class="contact-tag-chip">@t.Name</span>
+                        }
+                    </div>
+                }
                 @if (!contact.IsRevealed)
                 {
                     <div>
@@ -42,6 +51,10 @@
 {
     <div class="contact-toggle-row">
         <form asp-action="ToggleShowHidden" method="post" class="flex-grow-1">
+            @foreach (var selectedTagId in Model.SelectedTagIds)
+            {
+                <input type="hidden" name="tag" value="@selectedTagId" />
+            }
             @if (Model.ShowHidden)
             {
                 <button type="submit" class="btn btn-secondary w-100" aria-pressed="true">
@@ -62,19 +75,53 @@
             <i class="fas fa-plus me-2"></i>Contact
         </a>
     </div>
+
+    <button class="btn btn-warning w-100 mb-3" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#contactFilterOffcanvas"
+            @(Model.AvailableTags.Count == 0 ? "disabled" : "")>
+        <i class="fas fa-filter me-2"></i>Filter Tags
+        @if (Model.HasActiveFilters)
+        {
+            <span class="badge bg-dark ms-1">Active</span>
+        }
+    </button>
+    @if (Model.AvailableTags.Count == 0)
+    {
+        <p class="contact-filter-empty mb-3">No tags yet. Add tags when creating or editing a contact to start filtering.</p>
+    }
+    else
+    {
+        <div class="offcanvas offcanvas-bottom" id="contactFilterOffcanvas" tabindex="-1">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title">Filter by Tag</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body">
+                <form method="get" action="@Url.Action("Index")">
+                    <div class="contact-filter-tag-group mb-3">
+                        @foreach (var t in Model.AvailableTags)
+                        {
+                            <div class="form-check contact-filter-check-label">
+                                <input class="form-check-input" type="checkbox" name="tag" value="@t.Id"
+                                       id="tagFilter_@t.Id" @(Model.SelectedTagIds.Contains(t.Id) ? "checked" : "") />
+                                <label class="form-check-label" for="tagFilter_@t.Id">@t.Name</label>
+                            </div>
+                        }
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning flex-grow-1">Apply Filters</button>
+                        @if (Model.HasActiveFilters)
+                        {
+                            <a href="@Url.Action("Index")" class="btn btn-outline-secondary flex-grow-1">Clear Filters</a>
+                        }
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
 }
 
-@if (!Model.Contacts.Any())
-{
-    <div class="contact-section-card mb-4">
-        <div class="contact-empty-state">
-            <i class="fas fa-address-book fa-2x mb-2"></i>
-            <h5>No Contacts Yet</h5>
-            <p>No one has added a contact yet. DMs can create the first one to start building out the world.</p>
-        </div>
-    </div>
-}
-else if (Model.HasCategories)
+@if (Model.Contacts.Any() && Model.HasCategories)
 {
     @foreach (var group in Model.CategoryGroups)
     {
@@ -89,7 +136,7 @@ else if (Model.HasCategories)
         </div>
     }
 }
-else
+else if (Model.Contacts.Any())
 {
     <div class="contact-section-card mb-4">
         <h2 class="contact-section-heading mb-2"><i class="fas fa-address-book me-2"></i>Contacts</h2>
@@ -97,5 +144,26 @@ else
         {
             RenderContactRow(contact);
         }
+    </div>
+}
+else if (Model.HasActiveFilters)
+{
+    <div class="contact-section-card mb-4">
+        <div class="contact-empty-state">
+            <i class="fas fa-filter fa-2x mb-2"></i>
+            <h5>No contacts match your filters</h5>
+            <p>Try selecting different tags.</p>
+            <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-sm">Clear Filters</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="contact-section-card mb-4">
+        <div class="contact-empty-state">
+            <i class="fas fa-address-book fa-2x mb-2"></i>
+            <h5>No Contacts Yet</h5>
+            <p>No one has added a contact yet. DMs can create the first one to start building out the world.</p>
+        </div>
     </div>
 }
