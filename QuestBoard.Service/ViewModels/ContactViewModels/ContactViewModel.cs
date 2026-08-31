@@ -52,6 +52,18 @@ public class ContactViewModel
     public IEnumerable<SelectListItem> CategoryOptions { get; set; } = [];
 
     public bool HasCategories { get; set; }
+
+    // Display list for the chips and the details line.
+    public IList<ContactTagViewModel> Tags { get; set; } = [];
+
+    // The bound comma-separated field on the create and edit forms. This bounds one request's
+    // payload; it is deliberately not a cap on tags per contact, which stays uncapped, and 1000
+    // characters comfortably holds several dozen names.
+    [StringLength(1000, ErrorMessage = "Tags cannot exceed 1000 characters in total")]
+    public string? TagsInput { get; set; }
+
+    // The suggestion list handed to the client-side tag widget.
+    public IList<string> AvailableTagNames { get; set; } = [];
 }
 
 public class ContactNoteViewModel
