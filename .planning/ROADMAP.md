@@ -791,7 +791,7 @@ Plans:
 **Goal**: A board member can point their phone's calendar at a personal subscription URL once and have every event from every board they belong to appear there on its own — all-day entries, timed entries, later edits, and cancellations included — without opening the quest board.
 **Requirements**: TBD
 **Depends on**: Phase 82 (reuses the membership-scoped cross-board event read built there) and Phase 83 (the two availability surfaces must be settled before a third read surface is added over the same data)
-**Plans**: 0 plans
+**Plans**: 0/8 plans complete
 
 **Origin:** raised by the operator on 2026-09-17 — the board already knows every date, but getting those dates onto a phone means retyping them by hand.
 
@@ -822,7 +822,28 @@ Plans:
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 84 to break down)
+**Wave 1**
+
+- [ ] 84-01-PLAN.md — Mint the CALFEED requirement family into REQUIREMENTS.md and ROADMAP.md, and complete the phase validation contract (wave 1)
+- [ ] 84-02-PLAN.md — End-to-end tracer: subscription table and migration, the signup-rooted cross-board feed query with its second-layer re-check, a minimal RFC 5545 writer, and the anonymous token-authenticated feed endpoint (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 84-03-PLAN.md — Full RFC 5545 writer: timed and all-day branches, floating local time, transparency, board-prefixed titles with vote suffixes, source-namespaced stable identifiers, folding and escaping, plus the exact-byte unit suite (wave 2)
+- [ ] 84-04-PLAN.md — Feed hardening: configurable rolling window, tombstone status codes, throttled last-fetched write, per-address rate limiting and address-free logging (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 84-05-PLAN.md — Feed behaviour suite: log-capture harness, four two-group tenant isolation cases, every response code, the inclusion and exclusion rules, both window bounds and the fetch-time throttle (wave 3)
+- [ ] 84-06-PLAN.md — Subscription management plumbing: QR package and renderer, absolute address builder, view models, and the add, rename and revoke Profile POST actions (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 84-07-PLAN.md — The Calendar Subscription section on both Profile layouts, with copy, calendar-handoff link, QR modal, rename modal and delete confirm (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 84-08-PLAN.md — Both-layout markup and round-trip suite, the phase static guard, the real-device subscription check, and the requirement and roadmap ledger close-out (wave 5)
 
 ### Phase 85: One-Shot Quests in the Calendar Feed
 
