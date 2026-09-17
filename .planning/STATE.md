@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 82
-current_phase_name: Personal Cross-Board Event Agenda
+current_phase: 84
+current_phase_name: calendar-feed-foundation-and-event-subscription
 status: executing
 stopped_at: Phase 84 UI-SPEC approved
-last_updated: "2026-09-17T20:13:06.256Z"
-last_activity: 2026-08-31
-last_activity_desc: Phase 81 complete, transitioned to Phase 82
+last_updated: "2026-09-17T20:15:43.276Z"
+last_activity: 2026-09-17
+last_activity_desc: Phase 84 execution started
 progress:
   total_phases: 14
   completed_phases: 10
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 81 — contact-tags-and-filtering
+**Current focus:** Phase 84 — calendar-feed-foundation-and-event-subscription
 
 ## Current Position
 
-Phase: 82 — Personal Cross-Board Event Agenda
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-31 - Completed quick task 260831-mcb: Contact tags now respect ownership + Show Hidden toggle (chips and filter row)
+Phase: 84 (calendar-feed-foundation-and-event-subscription) — EXECUTING
+Plan: 1 of 8
+Status: Executing Phase 84
+Last activity: 2026-09-17 — Phase 84 execution started
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
