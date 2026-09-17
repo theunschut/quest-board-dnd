@@ -179,3 +179,11 @@ None - no external service configuration required.
 - REQUIREMENTS.md and 84-VALIDATION.md are ready for plans 84-02 through 84-08, which claim their `requirements:` frontmatter against the now-minted CALFEED ids.
 - **Outstanding for the orchestrator:** apply the ROADMAP.md diff recorded above (Requirements line + 16 Coverage rows) after this wave's worktree merges, then mark the `.planning/WINDOWS.md` entry (phase 84, `.planning/ROADMAP.md`) as fixed once applied.
 - `dotnet build` was not re-run — this plan touched no source file (Task 1, 2, and 3 are all documentation-only), consistent with the plan's own `<verification>` note.
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/84-calendar-feed-foundation-and-event-subscription/84-01-SUMMARY.md`
+- FOUND: `.planning/WINDOWS.md`
+- FOUND commit: `12b1174a`
+- FOUND commit: `4fe21693`
+- FOUND commit: `1fbf4beb`
