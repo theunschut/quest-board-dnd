@@ -10,11 +10,11 @@ last_updated: "2026-08-31T10:11:24.429Z"
 last_activity: 2026-08-31
 last_activity_desc: Phase 81 complete, transitioned to Phase 82
 progress:
-  total_phases: 12
+  total_phases: 14
   completed_phases: 10
   total_plans: 83
   completed_plans: 74
-  percent: 83
+  percent: 71
 ---
 
 # Project State
@@ -65,6 +65,8 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 81 added 2026-08-27: Contact Tags and Filtering — many-to-many free-form tags on contacts plus a filter on the index. Same request; the requester staged it after categories, so it is a separate phase and may stay unplanned.
 - Phase 82 added 2026-08-29: Personal Cross-Board Event Agenda — every upcoming event across all boards a member belongs to, board named on every row. Raised during Phase 77's discuss pass and deliberately kept off that page.
 - Phase 83 added 2026-08-30: Availability Surface Naming and Placement — rename the pair to "My Agenda" / "Board Availability" and move the board-scoped overview's nav entry under the Dungeon Master menu. Naming and discoverability only; a DM-only permission gate was considered and rejected because it would hide less than the agenda already shows.
+- Phase 84 added 2026-09-17: Calendar Feed Foundation and Event Subscription — a personal, token-authenticated `text/calendar` feed carrying every event from every board the reader belongs to, subscribable from the Account Profile page on both layouts. Raised by the operator; one-way subscription only, deliberately not CalDAV.
+- Phase 85 added 2026-09-17: One-Shot Quests in the Calendar Feed — adds the reader's quest sessions to the same feed, restricted to boards where `BoardType` is `OneShot` at the operator's instruction. Split from 84 because no cross-board quest read exists yet and the board-type predicate is independent of membership.
 
 ### Pending Todos
 
