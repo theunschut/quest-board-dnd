@@ -804,7 +804,7 @@ Plans:
 - **Both Profile layouts ship together.** `Views/Account/Profile.cshtml` has a `.Mobile` twin, and shipping a control on one and not the other is a recorded failure mode in this codebase (Phases 43, 54, 72). The subscribe surface is the whole point of the phase for a phone user, so a desktop-only version delivers nothing.
 - **Revocation ships with minting, not after.** See the first risk below.
 
-**Decisions this phase must reach before planning** (all of them change the output format, so none can be deferred into execution):
+**Decisions reached** — settled in the discuss pass on 2026-09-17 and recorded in `.planning/phases/84-calendar-feed-foundation-and-event-subscription/84-CONTEXT.md`, which is authoritative over the summaries below:
 
 - **What a wall-clock time means.** The codebase has no timezone handling anywhere — `grep TimeZoneInfo` across the solution returns nothing, and an event stores a naive `DateOnly` plus a nullable `TimeOnly`. A calendar client has to be told how to read `19:00`. Floating local time (no `TZID`) is the smallest change and matches the naive model exactly, but a reader whose phone is in another timezone sees the wrong hour. A real `VTIMEZONE` block is correct but introduces this application's first timezone concept.
 - **How long an event lasts.** There is no end time in the schema at all. The feed has to emit something — a fixed default duration, or a start-only entry — and the choice is visible on every row of every subscriber's calendar.
@@ -817,7 +817,7 @@ Plans:
 - **Losing the tenancy guard on a surface nobody watches.** The cross-board agenda pairs its membership-scoped query with a second-layer re-check and a `LogError` on any surviving foreign row, precisely because a dropped predicate is invisible in a rendered page. A feed is worse: it is read by a machine, so a leak could run for months with no reader to notice. The same guard has to apply here.
 - **Assuming an active group.** Every read surface in this application except the agenda leans on `IActiveGroupContext` and the tenant query filter. This endpoint has no session, no cookie and no active group, so any dependency that quietly expects one will either throw or return an empty feed that looks like "no events scheduled".
 - **Unstable VEVENT `UID`s.** A UID that changes between polls makes the subscriber's phone accumulate a fresh copy of every event on every refresh rather than updating in place. The UID has to derive from the event's identity, not from anything regenerated per request.
-- **Markdown leaking into `DESCRIPTION`.** Event descriptions are unbounded Markdown. An ICS description is plain text, so it needs the Markdown reduced to text — not the rendered HTML, which would show a reader raw tags.
+- ~~**Markdown leaking into `DESCRIPTION`.**~~ **Retired** — 84 D-10 drops the description entirely, so there is nothing for Markdown to leak into and `IMarkdownService` needs no plain-text target.
 - **Updates that clients refuse.** `EventEntity` carries `CreatedAt` but no modified timestamp, so there is nothing to drive a `SEQUENCE` bump when an event is edited. Clients that honour `SEQUENCE` may keep serving the stale copy.
 
 Plans:
@@ -840,11 +840,17 @@ Plans:
 - **Events keep their existing reach.** Phase 84 puts events from *every* board in the feed. This phase narrows quests only; it must not retroactively restrict events to one-shot boards.
 - **No new read surface in the application UI.** This phase adds quests to a feed, not a page. If a cross-board quest list turns out to be useful on screen, that is its own phase.
 
-**Decisions this phase must reach before planning:**
+**Locked by the operator during Phase 84's discuss pass (2026-09-17)** — recorded here so this phase does not relitigate them. Full context in `.planning/phases/84-calendar-feed-foundation-and-event-subscription/84-CONTEXT.md`:
 
-- **Which quests count as the reader's.** Signed up for, running as DM, or both — and whether a waitlisted signup appears. The answer decides whether the feed is "my nights" or "everything on my one-shot boards".
-- **Whether an unfinalized quest appears at all.** A quest has a `FinalizedDate` only once its date is locked; before that it has a set of `ProposedDates`. Putting proposals in a calendar means a reader's phone fills with dates that will mostly not happen; leaving them out means a session only appears once it is settled.
-- **What happens when a finalized date moves, or a quest is closed or cancelled.** The same emit-versus-omit question Phase 84 answers for cancelled events, on a different model.
+- **Only quests the reader is signed up for.** Not every quest on their one-shot boards. This matches the event rule Phase 84 settled (84 D-17), so both sources in the feed read the same way.
+- **Only once the quest is finalized.** A quest with `FinalizedDate` set. Proposed dates never reach the feed — a phone should not fill with candidate dates that will mostly not happen, and a date vote in progress is not a commitment.
+
+**Decisions this phase must still reach before planning:**
+
+- **Whether a quest the reader is running as DM counts.** The rule above is stated from a player's side; a DM holds no `PlayerSignup` row on their own quest, so a literal reading would leave a DM's own sessions off their calendar.
+- **Whether a waitlisted signup counts as signed up.** It is a row, but not a seat.
+- **What happens when a finalized date moves, or a quest is closed.** Phase 84 D-12 drops cancelled events from the feed rather than marking them; whether a closed quest follows the same rule is this phase's call on a different model.
+- **Whether the vote-marker convention carries over.** Phase 84 D-18 appends `(maybe)` / `(declined)` to event titles. A quest signup has no equivalent answer set, so there may be nothing to mark — or a waitlisted quest may want its own suffix.
 
 **Risks this phase must actively avoid:**
 
