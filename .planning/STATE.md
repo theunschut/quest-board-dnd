@@ -5,8 +5,8 @@ milestone_name: Rolling Improvements
 current_phase: 82
 current_phase_name: Personal Cross-Board Event Agenda
 status: executing
-stopped_at: Phase 84 context gathered
-last_updated: "2026-09-17T17:23:27.477Z"
+stopped_at: Phase 84 UI-SPEC approved
+last_updated: "2026-09-17T19:03:34.718Z"
 last_activity: 2026-08-31
 last_activity_desc: Phase 81 complete, transitioned to Phase 82
 progress:
@@ -105,9 +105,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-17T17:23:27.447Z
-Stopped at: Phase 84 context gathered
-Resume file: .planning/phases/84-calendar-feed-foundation-and-event-subscription/84-CONTEXT.md
+Last session: 2026-09-17T19:03:34.697Z
+Stopped at: Phase 84 UI-SPEC approved
+Resume file: .planning/phases/84-calendar-feed-foundation-and-event-subscription/84-UI-SPEC.md
 
 ## Operator Next Steps
 
