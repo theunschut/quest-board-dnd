@@ -51,7 +51,7 @@ This area was not on the original list. The operator raised it at the wrap-up ga
 
   **The hour is invented.** Nothing in the schema supports it; it must not be presented in the UI as though the board knows how long an event runs.
 
-- **D-03: `TRANSP:TRANSPARENT` on every entry.** Entries appear on the calendar but never mark the reader busy. The one-hour block is invented (D-02) and an all-day entry blacking out a whole day would be plainly wrong, so marking busy would publish a fiction to anyone checking availability.
+- **D-03 — every entry is marked transparent.** `TRANSP:TRANSPARENT` on every entry. Entries appear on the calendar but never mark the reader busy. The one-hour block is invented (D-02) and an all-day entry blacking out a whole day would be plainly wrong, so marking busy would publish a fiction to anyone checking availability.
 
 - **D-04: No `VALARM`.** Both iOS and Google let a reader set a default alert on a subscribed calendar, so the choice belongs to them once rather than being published to everyone. Research should confirm how each target client treats alarms in subscribed feeds before anyone relies on their absence *or* presence.
 
@@ -93,7 +93,7 @@ This area was not on the original list. The operator raised it at the wrap-up ga
 
   **Consequence:** the cross-board deep-link problem is not solved in this phase — it is removed from it. An entry is a board-prefixed title, a date and a time, and nothing else. The feed is deliberately not a second read surface for the board.
 
-- **D-12: A cancelled event is dropped from the feed entirely, not marked `STATUS:CANCELLED`.** This reuses the existing predicate verbatim — `EventRepository.cs:173` already filters `CancelledAt == null`.
+- **D-12 — a cancelled event is dropped from the feed entirely, not marked cancelled.** No `STATUS:CANCELLED` is emitted. This reuses the existing predicate verbatim — `EventRepository.cs:173` already filters `CancelledAt == null`.
 
   **Accepted cost, stated:** a cancellation reaches the subscriber only as a silent disappearance, and a reader is unlikely to notice an event they are no longer looking for.
 
@@ -105,7 +105,7 @@ This area was not on the original list. The operator raised it at the wrap-up ga
 
   **Structural consequence:** a date range with no `Take`, and **no roster join** — no `Include(Signups).ThenInclude(User)`, because no roster ever reaches an entry (D-10, D-11). Combined with D-17 this is a distinctly simpler read than the agenda's, not a widening of it.
 
-- **D-14: Copy button, a `webcal://` link, and a QR code.** The QR is the one that actually solves the stated problem — the address is created on a desktop and needed on a phone.
+- **D-14 — copy button, an open-in-calendar-app link, and a QR code.** The link uses the `webcal://` scheme. The QR is the one that actually solves the stated problem — the address is created on a desktop and needed on a phone.
 
   **Adds a dependency.** No current package can generate a QR code. This is a real addition to a dependency list the project has kept deliberately short.
 
