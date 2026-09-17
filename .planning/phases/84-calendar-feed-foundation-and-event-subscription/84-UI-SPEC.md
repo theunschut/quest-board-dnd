@@ -1,7 +1,7 @@
 ---
 phase: 84
 slug: calendar-feed-foundation-and-event-subscription
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-09-17
@@ -77,6 +77,23 @@ Existing supporting contextual colors already in use elsewhere on this exact pag
 
 ---
 
+## Visuals
+
+Focal points are declared here rather than left to be inferred from the Copywriting Contract — the checker flagged their absence as the one non-blocking gap in the first pass.
+
+| State | Focal point | How the hierarchy is carried |
+|-------|-------------|------------------------------|
+| Empty state | The **Add Subscription** button | It is the only filled, coloured control in the sub-section; the explainer prose above it is body-weight muted text. Nothing else in the sub-section competes for the first glance. |
+| Populated state | The **list of subscription rows** | The rows are the content; the section heading recedes to a label. Within a row, the address field is the widest element and reads first, with its Copy button adjacent — the address and the means of copying it are one visual unit. |
+| QR modal | The **QR code itself** | At ~240×240px it dominates the modal body. The restated Copy button and webcal link sit beneath it as secondary paths, not peers. |
+| Rename modal | The **Name input** | Single field, pre-filled and focused on open; the confirm button is the only filled control. |
+
+**Within-row action hierarchy:** Copy is the expected path and sits adjacent to the address. Show QR Code, Rename, then Delete follow, with the destructive action last and the only one in `btn-danger`. No action in a row is icon-only on desktop; on mobile the Copy and Show QR controls may reduce to icon-only buttons at the 44×44px floor, and those two only.
+
+**Accent discipline:** the `text-purple` accent is spent on exactly one element — the section heading's `fa-rss` icon (see `## Color`). It is deliberately *not* used to draw the eye to a focal point; filled-versus-muted weight does that work, matching how the rest of this application already establishes hierarchy.
+
+---
+
 ## Copywriting Contract
 
 | Element | Copy |
@@ -109,28 +126,106 @@ Existing supporting contextual colors already in use elsewhere on this exact pag
 
 ## UI Considerations
 
-Applicable state considerations resolved: 9 covered, 2 backstop, 0 unresolved.
+Probed on the closed 8-category element/state axis over 9 described surfaces. **58 applicable considerations: 37 resolved (32 explicit, 5 backstop), 21 dismissed with reasons, 0 unresolved.** Element kinds were confirmed against the heuristic classifier, not taken from it: `E1` and `E2` gained `static-content` and `E9` was reclassified from unclassified to `nav`, raising 5 considerations the cue-match alone would have missed.
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | Subscription list | ✅ covered | Zero subscriptions renders the explainer + "Add Subscription" CTA (Copywriting Contract row "Empty state body"); nothing is minted on page load per D-16. |
-| populated — one | Subscription list | ✅ covered | A single subscription renders as one row in the same list container the multi-row layout uses — no separate "single subscription" layout branch. |
-| populated — many | Subscription list | ✅ covered | Multiple named, independently revocable subscriptions (D-05) render as stacked rows (desktop: table rows matching `ContactCategoryManagement/Manage.cshtml`'s table shape; mobile: stacked cards matching `Manage.Mobile.cshtml`'s `.category-mgmt-row` shape). No pagination or cap is specified — the list grows with however many named subscriptions the reader has created. |
-| loading | Add / Rename / Delete actions | 🧪 backstop | These are standard POST-redirect-GET form submissions (no AJAX specified), so the existing full-page-reload loading behavior applies uniformly across this app; no bespoke spinner or disabled-button-during-submit state is specified for this phase. Verification: confirm the actions are plain `<form method="post">` submissions consistent with `ContactCategoryManagement/Manage.cshtml`'s Add/Delete forms, not fetch()-based. |
-| error | Add / Rename / Delete failure (validation or server error) | ✅ covered | Reuses the existing toast/validation-summary error surface already wired into this app's POST-action pattern (Copywriting Contract "Error state" row) — no new error UI. |
-| partial | A subscription that has never been fetched sitting alongside ones that have | ✅ covered | Each row's last-fetched cell renders independently — "Never fetched yet" vs. a timestamp — with no shared or aggregate status line implying all rows are in the same state. |
-| overflow | The bearer-token address string on a narrow phone viewport | ✅ covered | See "Address field presentation" below — bounded-width, monospace, horizontally scrollable/truncated container, `readonly` (not `disabled`) so it stays focusable and fully selectable; never wraps mid-token in a way that breaks copy-selection. |
-| zero-one-many | Number of named subscriptions per user | ✅ covered | Same list container handles 0 (empty state), 1, and N rows — see "populated" rows above. |
-| long-text | Subscription name (user-typed, e.g. a long device name) | 🧪 backstop | No explicit character cap is specified in 84-CONTEXT; the planner should apply a reasonable `maxlength` (matching the app's existing 60-character convention for similarly-scoped names, e.g. `ContactCategory.Name`) and truncate with `text-overflow: ellipsis` in the row label if it still overflows the row width on mobile. Verification: golden/markup test asserting a maximum-length name does not break the row layout on either platform. |
-| QR accessibility | QR code image/SVG | ✅ covered | `aria-label` describes the QR's purpose without embedding the token text (Copywriting Contract "QR image accessible text" row) — satisfies "a QR code is a visual credential; it must carry a text alternative that does not read out the secret." |
-| touch target | Mobile row action buttons (Copy, Show QR icon buttons specifically) | ✅ covered | 44×44px floor per the existing `.category-mgmt-reorder-btn` precedent (Spacing Scale exception, above). |
-| focus order | A row carrying Copy / webcal / Show QR / Rename / Delete | ✅ covered | See "Row focus order" below — natural DOM order, no `tabindex` overrides, matching this codebase's `row-nav-link` convention of never reordering focus via script. |
+Empty-state and error-state **copy** lives in `## Copywriting Contract` above; the rows below reference it rather than restating it.
+
+| # | Element / surface | Kinds |
+|---|-------------------|-------|
+| E1 | The Calendar Subscription section itself (explainer + Add control) | interactive-control, static-content |
+| E2 | The subscription list (rows: name, address, created, last-fetched) | list-collection, static-content |
+| E3 | The address field inside a populated row | form, list-collection, static-content |
+| E4 | The Copy button | form, media, interactive-control, static-content |
+| E5 | The Add Subscription form | form |
+| E6 | The Rename modal | form, list-collection, static-content |
+| E7 | The QR code modal | media, interactive-control, static-content |
+| E8 | The Delete button | list-collection, interactive-control |
+| E9 | The "Open in Calendar App" `webcal://` link | nav |
+
+### Resolved considerations
+
+| Element | Category | Status | Resolution |
+|---------|----------|--------|------------|
+| E1 | loading | 🧪 backstop | Add, Rename and Delete are plain form POSTs followed by a redirect; the whole-page reload is the only loading affordance and no spinner or skeleton is introduced for this section. |
+| E1 | error | ✅ covered | A failed add, rename or delete surfaces through the existing server-rendered toast / validation-summary pattern already wired into Profile's POST actions; no new error mechanism is introduced. |
+| E1 | overflow | ✅ covered | The explainer prose sits in the normal flow of `.modern-card-body` with no fixed height and no clipping; on a narrow viewport it wraps and grows the card rather than scrolling inside a bounded region. |
+| E1 | long-text | ✅ covered | The explainer copy is fixed by the Copywriting Contract, so its length is bounded by the contract itself; it wraps and is never truncated. |
+| E2 | empty | ✅ covered | Zero subscriptions renders the Copywriting Contract's empty-state heading and body plus the Add Subscription CTA; nothing is minted on page load. |
+| E2 | loading | 🧪 backstop | The list is server-rendered with the page; mutations are form POSTs followed by a redirect, so the page reload is the only loading affordance. |
+| E2 | error | ✅ covered | List-level failures surface through the existing toast / validation-summary pattern; no bespoke list error state. |
+| E2 | populated | ✅ covered | Desktop renders stacked table rows matching `ContactCategoryManagement/Manage.cshtml`'s table shape; mobile renders stacked cards matching `Manage.Mobile.cshtml`'s `.category-mgmt-row` shape. |
+| E2 | partial | ✅ covered | Each row's last-fetched cell renders independently — "Never fetched yet" versus a timestamp — with no shared or aggregate status line implying all rows are in the same state. |
+| E2 | overflow | ✅ covered | The list is uncapped and unpaginated: it grows in normal document flow with however many subscriptions exist. No per-user ceiling and no pagination control are introduced. |
+| E2 | zero-one-many | ✅ covered | One list container renders 0, 1 and N rows; there is no separate single-subscription layout branch. |
+| E2 | long-text | ✅ covered | The name input carries `maxlength=60`, matching `ContactCategory.Name`'s existing convention; the row label truncates with `text-overflow: ellipsis` if a 60-character name still exceeds the row width on mobile. |
+| E3 | error | ✅ covered | If the address cannot be rendered the row itself has failed; that surfaces through the section's toast / validation-summary error surface, not a field-level error state. |
+| E3 | populated | ✅ covered | A `readonly` (never `disabled`) monospace field at 14px inside a fixed-width container, with the full address always visible, focusable and fully selectable. |
+| E3 | overflow | ✅ covered | The container bounds the width and absorbs the 80-plus-character token with either `overflow-x: auto` plus `white-space: nowrap`, or `text-overflow: ellipsis` — planner's choice between the two. Page-level horizontal overflow is prohibited either way. |
+| E3 | long-text | ✅ covered | Token length is fixed by the generator, so the bounded-width container is sufficient; no truncation of the address text itself is permitted that would break copy-selection. |
+| E4 | loading | ✅ covered | The clipboard write is synchronous; the 2-second "Copied!" label-and-icon swap is the entire in-flight-and-done affordance. No spinner. |
+| E4 | error | ✅ covered | When the clipboard API is unavailable or denied, the button focuses the `readonly` address field and selects its full contents, and swaps its label to "Press Ctrl+C" for 2 seconds instead of "Copied!". |
+| E5 | empty | ✅ covered | The section's empty state *is* the unfilled form: explainer copy plus a single Add Subscription button. No fields are presented before minting. |
+| E5 | loading | ✅ covered | On submit the Add button is disabled and its label swaps to "Adding…", re-enabled only by the redirect-driven page reload. A server-side guard additionally rejects a second mint for the same user within a short window, so a JS-disabled or replayed request cannot mint two bearer tokens from one intent. |
+| E5 | error | ✅ covered | A failed mint surfaces through the existing toast / validation-summary pattern and no subscription row appears. |
+| E5 | partial | 🧪 backstop | The Add form submits no user-supplied fields, so there is no partially-filled state; a freshly minted subscription therefore carries a system-assigned default name until the reader renames it. Verification: the default-name string is not fixed by this contract — assert a freshly minted row renders a non-empty, non-placeholder label on both layouts. |
+| E6 | empty | ✅ covered | The modal opens pre-filled with the subscription's current name via the `show.bs.modal` + `event.relatedTarget` idiom; submitting an empty name is a validation failure, not an accepted rename. |
+| E6 | loading | 🧪 backstop | Rename is a form POST followed by a redirect; the page reload is the only loading affordance. |
+| E6 | error | ✅ covered | A failed rename surfaces through the existing validation-summary / toast pattern; the modal does not invent its own error surface. |
+| E6 | populated | ✅ covered | The single Name input renders pre-filled with the current name; the "e.g. My Phone" placeholder shows only when the field is empty. |
+| E6 | overflow | ✅ covered | A 60-character name scrolls horizontally within the native input; the modal body neither grows nor gains a scroll region of its own. |
+| E6 | zero-one-many | ✅ covered | One modal instance is reused for every row, populated from the triggering button's data attributes; no per-row modal markup is emitted. |
+| E6 | long-text | ✅ covered | `maxlength=60` on the Name input caps the value at source, matching `ContactCategory.Name`'s existing convention. |
+| E7 | loading | ✅ covered | The `SvgQRCode` output is rendered server-side into the modal markup in the same response as the row, so there is no fetch and no loading state. Row count is small by construction (D-16 mints nothing automatically), so inline rendering per row is affordable. |
+| E7 | error | ✅ covered | If QR generation fails the modal still renders its heading, the address, the Copy button and the "Open in Calendar App" link, so every delivery path except the QR stays reachable; the QR region is omitted rather than rendering a broken image. |
+| E7 | populated | ✅ covered | Inline SVG sized to approximately 240×240px on both layouts, inside the Bootstrap modal body with no scroll region of its own. |
+| E7 | overflow | ✅ covered | At 240×240 the SVG fits the modal body at both layouts' modal widths; it must scale down rather than introduce horizontal scroll on the narrowest supported viewport. |
+| E7 | long-text | ✅ covered | The modal body copy interpolates the subscription name, which is capped at 60 characters and wraps; the QR's `aria-label` describes the code's purpose and never the address string. |
+| E8 | loading | 🧪 backstop | Delete is a plain form POST followed by a redirect; the page reload is the only affordance. Verification: confirm Delete is a form POST consistent with the category-management delete, not a `fetch()`-based call. |
+| E8 | error | ✅ covered | A failed revoke surfaces through the existing toast / validation-summary pattern and the row remains in the list. |
+| E9 | error | ✅ covered | Handler absence cannot be detected from the page, so muted helper copy sits next to the link: "If nothing happens, copy the address and add it in your calendar app manually." The link ships on both layouts. |
+
+### Dismissed considerations (reasons are the audit trail)
+
+| Element | Category | Reason |
+|---------|----------|--------|
+| E3 | empty | A row exists only once a subscription has been minted, and minting always produces an address; an empty address field is unreachable by construction. |
+| E3 | loading | The address is server-rendered into the row markup in the same response as the row itself; there is no asynchronous fetch that could be in flight. |
+| E3 | partial | An address is an atomic opaque string; there is no partial or half-populated form of it. |
+| E3 | zero-one-many | Exactly one address per subscription row, always; there is no zero or many case for this field. |
+| E4 | empty | The Copy button exists only inside a populated row; there is no data-less form of it. |
+| E4 | populated | A button carries no populated content state; its labels are enumerated in the Copywriting Contract. |
+| E4 | partial | A clipboard write either succeeds or fails; there is no partial copy. |
+| E4 | overflow | Fixed one-word label with an icon; it cannot exceed its container. |
+| E4 | long-text | All three labels ("Copy", "Copied!", "Press Ctrl+C") are fixed by this contract and bounded. |
+| E5 | long-text | The Add form has no text input; the name is supplied afterwards through the Rename modal, where the 60-character cap applies. |
+| E6 | partial | Single-field form; there is no partial completion state to specify. |
+| E7 | empty | The QR always encodes an existing subscription address; a QR with no payload is unreachable. |
+| E8 | empty | The Delete button exists only inside a populated row. |
+| E8 | populated | A button carries no populated content state. |
+| E8 | partial | A revoke either commits or does not; there is no partial revoke state in the UI. |
+| E8 | overflow | Fixed one-word label with a trash icon. |
+| E8 | zero-one-many | One Delete control per row; the count follows the row count already covered by the list's zero-one-many resolution. |
+| E8 | long-text | Fixed label fixed by the Copywriting Contract. |
+| E9 | loading | Activating the link hands off to the operating system's default calendar handler; nothing loads in the page, so there is no in-page loading state to specify. |
+| E9 | overflow | Fixed label "Open in Calendar App" with an icon; it wraps within the row's action area and cannot exceed the viewport. |
+| E9 | long-text | Fixed label fixed by the Copywriting Contract. |
+
+### Open-axis considerations (prose-owned, outside the closed taxonomy)
+
+These sit on the open UX axis — accessibility breadth and touch interaction — and are contract content rather than probe output. They are carried forward from the authored spec and lift by the same rule.
+
+| Concern | Element(s) | Status | Resolution |
+|---------|------------|--------|------------|
+| QR accessibility | QR code SVG | ✅ covered | `aria-label` describes the QR's purpose without embedding the token text (Copywriting Contract, "QR image accessible text") — a visual credential must carry a text alternative that does not read the secret aloud. |
+| Touch target | Mobile row action buttons (Copy, Show QR icon buttons) | ✅ covered | 44×44px floor per the existing `.category-mgmt-reorder-btn` precedent in `contacts.mobile.css` (see the Spacing Scale exception). |
+| Focus order | A row carrying Copy / webcal / Show QR / Rename / Delete | ✅ covered | Natural DOM order, no `tabindex` overrides — see "Row focus order" below, matching this codebase's `row-nav-link` convention of never reordering focus via script. |
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
      🧪 backstop  → a flat scalar { statement, verification: backstop }; at verify time, no explicit
                     evidence → insufficient_spec → human_needed (never a silent pass, #1154)
      ⚠ unresolved → an explicit planner assumption (surfaced, never silently dropped)
+     Dismissed rows carry a reason and are NOT lifted as truths; the reason is the audit trail.
      Rows are REPLACED (not appended) on a probe re-run — idempotent. -->
 
 ### Address field presentation (D-06)
@@ -170,11 +265,11 @@ No component registry is in play for this phase. The one new dependency this pha
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-09-17 — gsd-ui-checker returned UI-SPEC VERIFIED (5 PASS, 1 non-blocking FLAG on Dimension 2 Visuals). The FLAG was closed by adding the `## Visuals` section above, which declares focal points per state instead of leaving them inferential.
