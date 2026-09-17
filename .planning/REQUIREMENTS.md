@@ -97,6 +97,25 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **EVTNAME-06**: The two header cross-buttons between Board Availability and My Agenda render only for a Dungeon Master, in both directions and on both layouts, while the unconditional My Agenda entry in each layout's user menu stays visible to every authenticated user
 - [x] **EVTNAME-07**: Board Availability itself keeps no authorization gate — a player who reaches it still receives a normal 200 and the full grid, proven by an automated case rather than assumed from the absence of an attribute
 
+### Calendar Feed — Foundation and Event Subscription
+
+- [ ] **CALFEED-01**: A board member holds no calendar subscription until they press Add on their Profile page, and pressing Add mints exactly one new subscription carrying a 256-bit cryptographically random URL-safe address
+- [ ] **CALFEED-02**: A member can hold several calendar subscriptions at once, each separately named, separately addressed and separately revocable, so retiring one device leaves every other device working
+- [ ] **CALFEED-03**: Every subscription row on Profile shows its name, its full re-copyable address, the date it was created and when it was last fetched, and offers rename and delete
+- [ ] **CALFEED-04**: Deleting a subscription retires it as a tombstone rather than removing the row, so its address answers 410 Gone from then on while an address that never existed answers 404 Not Found
+- [ ] **CALFEED-05**: A subscription's address serves a valid text/calendar document to an anonymous caller that sends no cookie, holds no session and has no active board, with the address itself as the only credential
+- [ ] **CALFEED-06**: The feed carries exactly the events the subscription's owner holds a signup row on, drawn from every board they are still a member of, and never an event from a board they do not belong to
+- [ ] **CALFEED-07**: A row that survives the feed query's board predicate but falls outside the owner's membership set is dropped before it reaches the response and recorded as an error in the application log
+- [ ] **CALFEED-08**: A cancelled event never appears in the feed, on any board, for any subscription
+- [ ] **CALFEED-09**: Each calendar entry's title is the board name in square brackets followed by the event title, with "(maybe)" or "(declined)" appended when the owner answered that way and nothing appended otherwise
+- [ ] **CALFEED-10**: An event with a start time becomes a one-hour entry in floating local time with no timezone declared, and an event with no start time becomes a true all-day entry occupying exactly one day
+- [ ] **CALFEED-11**: Every calendar entry is marked transparent so a subscriber never reads as busy, and carries no description, no link and no alarm
+- [ ] **CALFEED-12**: Each calendar entry's identifier is unchanged across repeated fetches of the same occurrence and is namespaced by its source, so a phone updates an entry in place and a future quest source cannot collide with an event of the same numeric id
+- [ ] **CALFEED-13**: The feed covers a rolling window of recent past and upcoming months, recomputed on every fetch, with both bounds changeable through configuration and no code change
+- [ ] **CALFEED-14**: Both the desktop and the mobile Profile layout carry the subscription section, and every row offers a copy control, a webcal link and a scannable QR code for its address
+- [ ] **CALFEED-15**: The feed endpoint is rate limited per address and no application log line ever contains a full subscription address
+- [ ] **CALFEED-16**: Repeated fetching of one address updates its last-fetched timestamp at most once per throttle interval, so a hammered address cannot become a database write storm
+
 ### Link Previews — Foundation and Quests
 
 - [ ] **LINKPREV-01**: The app generates correct absolute URLs behind the reverse proxy, honouring forwarded scheme and host
@@ -295,11 +314,27 @@ Explicit exclusions for v9.0, with reasoning.
 | CONTACTTAG-15 | Phase 81 | Not started |
 | CONTACTTAG-16 | Phase 81 | Not started |
 | CONTACTTAG-17 | Phase 81 | Not started |
+| CALFEED-01 | Phase 84 | Pending |
+| CALFEED-02 | Phase 84 | Pending |
+| CALFEED-03 | Phase 84 | Pending |
+| CALFEED-04 | Phase 84 | Pending |
+| CALFEED-05 | Phase 84 | Pending |
+| CALFEED-06 | Phase 84 | Pending |
+| CALFEED-07 | Phase 84 | Pending |
+| CALFEED-08 | Phase 84 | Pending |
+| CALFEED-09 | Phase 84 | Pending |
+| CALFEED-10 | Phase 84 | Pending |
+| CALFEED-11 | Phase 84 | Pending |
+| CALFEED-12 | Phase 84 | Pending |
+| CALFEED-13 | Phase 84 | Pending |
+| CALFEED-14 | Phase 84 | Pending |
+| CALFEED-15 | Phase 84 | Pending |
+| CALFEED-16 | Phase 84 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 99 total
-- Mapped to phases: 99/99 ✓
+- v1 requirements: 115 total
+- Mapped to phases: 115/115 ✓
 - Unmapped: 0
 
 ---
