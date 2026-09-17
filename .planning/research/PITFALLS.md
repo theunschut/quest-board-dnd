@@ -1,6 +1,6 @@
 # Pitfalls Research
 
-**Domain:** Rolling-improvements milestone (v9.0) on a mature ASP.NET Core 10 MVC app (D&D Quest Board, ~60-70k LOC, 17 users, self-hosted LXC)
+**Domain:** Rolling-improvements milestone (v9.0) on a mature ASP.NET Core 10 MVC app (D&D Quest Board, ~60-70k LOC, a single private board, self-hosted LXC)
 **Researched:** 2026-08-25
 **Confidence:** HIGH (grounded directly in the current source tree and the project's own documented incident history in `.planning/PROJECT.md`)
 
@@ -271,7 +271,7 @@ Item-2 implementation phase — the dismissal step itself.
 
 ## Performance Traps
 
-Not applicable at meaningful scale for either item — 17 users, a single-signup dropdown edit, and a 5-alert manual security review carry no performance-scale dimension worth tracking here.
+Not applicable at meaningful scale for either item — a single private board, a single-signup dropdown edit, and a 5-alert manual security review carry no performance-scale dimension worth tracking here.
 
 ## Security Mistakes
 

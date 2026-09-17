@@ -144,7 +144,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - Miniature request page (#59) — large standalone feature, future milestone
 - Email verification on registration — small trusted group; manual confirmation flow added instead
 - Resend SDK for sending — delivery path stays SmtpClient → Postfix → Resend SMTP relay
-- Webhook-based delivery tracking — polling sufficient at current scale (17 members)
+- Webhook-based delivery tracking — polling sufficient at current scale (a single private board)
 - Per-user email opt-out preferences — defer; small trusted group
 - Image blob storage migration — performance acceptable at current scale
 
@@ -188,7 +188,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - **Tech stack:** ASP.NET Core 10 MVC + SQL Server + EF Core — no framework changes
 - **Deployment:** Must remain deployable via `dotnet run` on LXC Linux host; no additional setup steps
 - **Database:** All schema changes require EF Core migrations; auto-applied on startup
-- **Email:** 100 emails/day, 3 000/month Resend relay limit; 17 members — batch-first design
+- **Email:** 100 emails/day, 3 000/month Resend relay limit against the board's full membership — batch-first design
 
 ## Key Decisions
 
@@ -227,7 +227,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 | Current Members search built server-side (own query + redirect-preservation), not a client-side filter | User explicitly requested "same logic, consistency" with the pre-existing Available Users search rather than a cheaper client-side approach, even though the members list is already fully loaded | ✓ Good — Phase 40; both search terms now survive every Add/Remove/CreateMember redirect independently |
 | Header-bar action buttons (Back to Groups, Create New User, Create Group) moved into the title row across three views mid-checkpoint | User-driven consistency request during live verification; agent declined to apply the change to the out-of-plan Group/Index.cshtml until the user explicitly confirmed it, rather than silently expanding the diff under review | ✓ Good — Phase 40 |
 | `LockoutEnabled` deliberately never set by the Disable/Enable feature — only `LockoutEnd` | User wants a DB-only manual escape hatch: flipping `LockoutEnabled = false` directly in production makes a trusted account permanently immune to in-app disable, since `UserManager.IsLockedOutAsync` short-circuits to `false` whenever `LockoutEnabled` is `false` regardless of `LockoutEnd` | ✓ Good — Phase 41; enforced by a `grep -c "LockoutEnabled" == 0` acceptance criterion, not just a code-review convention |
-| Disable also bumps `SecurityStamp` and shortens `SecurityStampValidatorOptions.ValidationInterval` to 5 minutes app-wide (from Identity's 30-min default) | An already-issued auth cookie is only invalidated on the next stamp re-validation; without this, a disabled user's active session could persist up to 30 minutes | ✓ Good — Phase 41; negligible extra DB load at this app's scale (17 members) |
+| Disable also bumps `SecurityStamp` and shortens `SecurityStampValidatorOptions.ValidationInterval` to 5 minutes app-wide (from Identity's 30-min default) | An already-issued auth cookie is only invalidated on the next stamp re-validation; without this, a disabled user's active session could persist up to 30 minutes | ✓ Good — Phase 41; negligible extra DB load at this app's scale |
 | Login distinguishes disabled vs. temporary lockout via an exact `LockoutEnd == DateTimeOffset.MaxValue` match, not a fuzzy threshold | `MaxValue` is the literal sentinel the disable feature sets; a real failed-attempt lockout is always exactly 15 minutes (`options.Lockout.DefaultLockoutTimeSpan`), so no ambiguity exists between the two cases | ✓ Good — Phase 41 |
 | Shared `_Toasts.cshtml` built as a plain Razor partial (not a View Component), wired into all 5 layouts including the Platform Area's separate pair | Matches the codebase's existing lightweight-partial convention (`_Calendar.cshtml`, `_ShopItemDetailsContent.cshtml`); RESEARCH found CONTEXT.md's stated "3 layouts" was incomplete — the Platform Area resolves to its own `_Layout.Platform`/`_Layout.Platform.Mobile` pair via a separate area-level `_ViewStart.cshtml` | ✓ Good — Phase 42 |
 | TempData key naming standardized to `Success`/`Error`/`Warning`/`Info` app-wide, retiring `AccountController`'s outlier `SuccessMessage`/`ErrorMessage`/`InfoMessage` keys | One shared partial needs one consistent key scheme rather than dual-scheme branching logic; standardizing incidentally fixed two message paths that were silently dropped today due to a key mismatch between where they were written and where they were read | ✓ Good — Phase 42 |
