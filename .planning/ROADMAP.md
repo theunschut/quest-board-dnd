@@ -953,5 +953,33 @@ Plans:
 
 - [x] 85-06-PLAN.md — Requirement and roadmap ledger close-out, validation sign-off, and the phase static guard (wave 5)
 
+## Backlog
+
+Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
+
+### Phase 999.1: Voting from a Phone Calendar Entry (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-09-18, after Phases 84 and 85 shipped and were tested on production — "would it be possible to vote in the calendar item on my phone, and will it then update my vote in the quest board?" Parked the same day, once the feasibility question was answered.
+
+**Feasibility verdict — the reason this is parked rather than planned.** It cannot be done through the subscription Phase 84 shipped, and no amount of design work changes that. A subscribed `.ics` URL is a one-way HTTP GET: the client polls, the server answers, and there is no return channel in the transport. Apple Calendar, Google Calendar's *From URL* calendars and Outlook's Internet Calendar Subscriptions all render a subscribed calendar read-only and run no scheduling against it, so emitting `ORGANIZER`, `ATTENDEE` and `RSVP=TRUE` would add bytes and produce no buttons. This confirms rather than contradicts Phase 84's own scope note ("a one-way subscription feed, not two-way sync … nothing a reader does in their calendar app ever writes back") and the writer's standing comment on why it emits no `METHOD` (`QuestBoard.Domain/Services/CalendarFeedWriter.cs`).
+
+**The two routes that could work, and what each costs:**
+
+- **iMIP — real email invitations.** The only mechanism that puts genuine Accept / Maybe / Decline buttons on a phone. The server mails a `METHOD:REQUEST` VEVENT from an `ORGANIZER` address it controls, with the reader as `ATTENDEE;RSVP=TRUE`; the client mails back a `METHOD:REPLY` carrying `PARTSTAT`. The data model fits unusually well — `ACCEPTED` / `TENTATIVE` / `DECLINED` is exactly `VoteType.Yes` / `Maybe` / `No`. The cost is not the outbound half. It is that **this codebase has no inbound mail of any kind**: `EmailService` is outbound `System.Net.Mail` SMTP only, and there is no MimeKit, no IMAP, no provider webhook anywhere in the solution. A real phase would have to add a mailbox plus polling or an inbound webhook, MIME parsing, iCalendar `REPLY` parsing, and `UID`-to-entity plus attendee-to-user matching. It would also have to answer two things that are not details: an inbound `From` header is forgeable, so a reply must carry its own secret (reply-address sub-addressing) or pass DKIM/SPF before it is allowed to change anyone's answer; and Gmail and Outlook auto-add invitations to the primary calendar, which would sit beside the identical session already arriving through the Phase 84 feed, because clients do not merge entries across calendars.
+- **Deep-link tap-through.** Reinstate `DESCRIPTION` (the reliable carrier; the `URL:` property is surfaced inconsistently, Google especially) with a token-authenticated link to a small Yes/Maybe/No page. Three taps — entry, link, answer — and it works in every client today with no inbound mail. Rejected for now on two grounds the operator weighed: it is not actually voting *in* the calendar item, only a shortcut back to the board; and it escalates what a leaked feed address costs, turning a read-only schedule disclosure into the ability to change someone's answers. Note it also reverses Phase 84 D-10, which dropped `DESCRIPTION` deliberately.
+
+**Scope correction that survives the parking:** quest *date* voting is out of reach on any route. The feed carries finalized quests only — Phase 85 locked candidate dates out on the grounds that a phone should not fill with dates that will mostly not happen — so there is nothing in the feed for a date vote to attach to. Event availability is the only thing a voting story can reach, and it is a natural fit: the feed already renders the answer outbound as the `(maybe)` / `(declined)` title suffix, so this would close a loop that is currently half-built.
+
+**Left open deliberately:** whether a decline should release a finalized quest seat and promote the waitlist. The operator chose to settle that in a discuss pass rather than now, so it is not decided here.
+
+**Revive this if:** manually opening the board to answer proves annoying enough in production use to justify the build, or inbound mail arrives in the project for some other reason — the iMIP route is a far smaller phase once a parsed inbound mailbox already exists.
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 *Roadmap created: 2026-08-25*
