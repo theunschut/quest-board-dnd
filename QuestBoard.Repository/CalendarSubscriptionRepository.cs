@@ -79,12 +79,18 @@ internal class CalendarSubscriptionRepository(QuestBoardContext dbContext, IMapp
     /// <inheritdoc/>
     public async Task TouchLastFetchedAsync(int id, DateTime fetchedAt, TimeSpan minimumInterval, CancellationToken token = default)
     {
-        // The throttle itself ships in a later plan; this tracer writes unconditionally so the
-        // column is exercised end to end from the first commit.
+        // This is the only write a read-only endpoint performs, and a calendar client polls on
+        // its own schedule which the server does not control, so the timestamp write is
+        // throttled by time rather than performed on every poll. When the guard below rejects,
+        // this method returns without calling SaveChangesAsync at all -- the point is that a
+        // hammered address performs no write, not a no-op write.
         var entity = await DbSet.FirstOrDefaultAsync(cs => cs.Id == id, token);
         if (entity == null) return;
 
-        entity.LastFetchedAt = fetchedAt;
-        await DbContext.SaveChangesAsync(token);
+        if (entity.LastFetchedAt == null || fetchedAt - entity.LastFetchedAt.Value >= minimumInterval)
+        {
+            entity.LastFetchedAt = fetchedAt;
+            await DbContext.SaveChangesAsync(token);
+        }
     }
 }

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
@@ -13,12 +14,9 @@ internal class CalendarSubscriptionService(
     IGroupService groupService,
     ICalendarFeedWriter writer,
     TimeProvider timeProvider,
+    IOptions<CalendarFeedOptions> feedOptions,
     ILogger<CalendarSubscriptionService> logger) : ICalendarSubscriptionService
 {
-    // The rolling window's exact bounds move to configuration in a later plan. Fixed here on
-    // purpose so this tracer's read path is exercised end to end from the first commit.
-    private const int WindowMonthsBack = 3;
-    private const int WindowMonthsAhead = 12;
 
     /// <inheritdoc/>
     public async Task<CalendarSubscription> MintForUserAsync(int userId, CancellationToken token = default)
@@ -68,9 +66,10 @@ internal class CalendarSubscriptionService(
         var memberGroupIds = memberships.Select(m => m.Id).ToList();
         var boardNamesById = memberships.ToDictionary(m => m.Id, m => m.Name);
 
+        var options = feedOptions.Value;
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
-        var windowStart = today.AddMonths(-WindowMonthsBack);
-        var windowEnd = today.AddMonths(WindowMonthsAhead);
+        var windowStart = today.AddMonths(-options.MonthsBack);
+        var windowEnd = today.AddMonths(options.MonthsAhead);
 
         // Called unconditionally, including when memberGroupIds is empty -- a short-circuit
         // here would hide a predicate regression exactly for the caller with no rights, and
@@ -107,7 +106,7 @@ internal class CalendarSubscriptionService(
         var body = writer.Write(entries, "D&D Quest Board");
 
         await subscriptionRepository.TouchLastFetchedAsync(
-            subscription.Id, timeProvider.GetUtcNow().UtcDateTime, TimeSpan.Zero, token);
+            subscription.Id, timeProvider.GetUtcNow().UtcDateTime, TimeSpan.FromMinutes(options.LastFetchedThrottleMinutes), token);
 
         return new CalendarFeedResult { Status = CalendarFeedStatus.Ok, Body = body, SubscriptionId = subscription.Id };
     }
