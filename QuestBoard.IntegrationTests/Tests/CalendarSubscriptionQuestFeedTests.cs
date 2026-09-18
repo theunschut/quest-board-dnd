@@ -134,6 +134,52 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
+    // Seeds one event on the named board and returns its id -- copied from
+    // CalendarSubscriptionFeedTests' own event seeder rather than inventing a second shape.
+    // The campaign-board fact and the ordering fact both need to seed events alongside quests.
+    private async Task<int> SeedEventAsync(int groupId, string title, DateOnly date, TimeOnly? startTime = null)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var newEvent = new EventEntity
+        {
+            Title = title,
+            GroupId = groupId,
+            Date = date,
+            StartTime = startTime,
+            CreatedAt = DateTime.UtcNow
+        };
+        ctx.Events.Add(newEvent);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return newEvent.Id;
+    }
+
+    // Seeds an event signup row for the given user on the given event -- distinct from
+    // SeedPlayerSignupAsync above, which seeds a quest signup row on a different entity.
+    private async Task SeedEventSignupAsync(int eventId, int userId, VoteType availability)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        ctx.EventSignups.Add(new EventSignupEntity
+        {
+            EventId = eventId,
+            UserId = userId,
+            Availability = (int)availability,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Deletes a single membership row through the unfiltered seeding context, mirroring
+    // production's "leaving a board" outcome on the UserGroups table directly -- the fact that
+    // uses this only cares that the membership row is gone before the next fetch.
+    private async Task RemoveMembershipAsync(int userId, int groupId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var membership = ctx.UserGroups.First(ug => ug.UserId == userId && ug.GroupId == groupId);
+        ctx.UserGroups.Remove(membership);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     // Mints through the real service from a scope, rather than a direct database insert, so
     // the fact exercises the same production write path the Profile page calls.
     private async Task<CalendarSubscription> MintSubscriptionAsync(int userId)
@@ -748,5 +794,183 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
             .Count(p => p.Name.Contains("MonthsBack", StringComparison.Ordinal)).Should().Be(1);
         typeof(CalendarFeedOptions).GetProperties()
             .Count(p => p.Name.Contains("MonthsAhead", StringComparison.Ordinal)).Should().Be(1);
+    }
+
+    // ---- Membership and board type, each proven independently against a second board ----
+    //
+    // Every fact below seeds two boards and asserts an outcome on each within one fetch. A
+    // suite built only from a single-board absence fact would stay entirely green even if the
+    // predicate collapsed to one board or one scope entirely -- absence alone cannot
+    // distinguish "correctly scoped" from "accidentally scoped to nothing."
+
+    [Fact]
+    public async Task Feed_BoardTypeNarrowsQuestsButNotEvents_WithinTheSameFetch()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_board_type_reader", "questfeed_board_type_reader@example.com", name: "Quest Feed Board Type Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_board_type_dm", "questfeed_board_type_dm@example.com", name: "Quest Feed Board Type DM");
+
+        await SeedBoardAsync(15, "Quest Feed One-Shot Board", BoardType.OneShot);
+        await SeedBoardAsync(16, "Quest Feed Campaign Board", BoardType.Campaign);
+        await SeedMembershipAsync(reader.Id, 15);
+        await SeedMembershipAsync(reader.Id, 16);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+
+        var oneShotQuestId = await SeedQuestAsync(15, dungeonMaster.Id, "Quest Feed One-Shot Session", finalizedDate);
+        await SeedPlayerSignupAsync(oneShotQuestId, reader.Id);
+
+        var campaignQuestId = await SeedQuestAsync(16, dungeonMaster.Id, "Quest Feed Campaign Session", finalizedDate);
+        await SeedPlayerSignupAsync(campaignQuestId, reader.Id);
+
+        var campaignEventDate = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
+        var campaignEventId = await SeedEventAsync(16, "Quest Feed Campaign Board Event", campaignEventDate);
+        await SeedEventSignupAsync(campaignEventId, reader.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("Quest Feed One-Shot Session");
+        body.Should().NotContain("Quest Feed Campaign Session");
+        body.Should().Contain("Quest Feed Campaign Board Event");
+
+        // The previous phase gave events every board's reach, this phase narrows quests only,
+        // and a change that retroactively restricted events to one-shot boards would satisfy
+        // every other assertion in this suite while quietly emptying half of every existing
+        // subscriber's calendar. This is the guard against that, and it is the only one.
+        CountVEvents(body).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Feed_CampaignQuestTheReaderRunsAsDungeonMaster_StaysOutAlongsideAQualifyingOneShotQuest()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_dm_board_type_reader", "questfeed_dm_board_type_reader@example.com", name: "Quest Feed DM Board Type Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_dm_board_type_dm", "questfeed_dm_board_type_dm@example.com", name: "Quest Feed DM Board Type DM");
+
+        await SeedBoardAsync(17, "Quest Feed DM One-Shot Board", BoardType.OneShot);
+        await SeedBoardAsync(18, "Quest Feed DM Campaign Board", BoardType.Campaign);
+        await SeedMembershipAsync(reader.Id, 17);
+        await SeedMembershipAsync(reader.Id, 18);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+
+        var oneShotQuestId = await SeedQuestAsync(17, dungeonMaster.Id, "Quest Feed DM One-Shot Session", finalizedDate);
+        await SeedPlayerSignupAsync(oneShotQuestId, reader.Id);
+
+        // Deliberately the same scenario as the previous fact from a different route in: the
+        // reader owns this campaign quest as Dungeon Master, with no signup row of their own on
+        // it. This is the route that can escape board scoping if the two conditions -- seat and
+        // Dungeon Master ownership -- are ever composed as separate queries rather than one
+        // predicate. A second way into the feed is a second way to bypass a filter that is not
+        // applied to both ways at once.
+        var campaignQuestId = await SeedQuestAsync(18, reader.Id, "Quest Feed DM Campaign Session", finalizedDate.AddHours(1));
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("Quest Feed DM One-Shot Session");
+        body.Should().NotContain("Quest Feed DM Campaign Session");
+        body.Should().NotContain($"questboard-quest-{campaignQuestId}");
+        CountVEvents(body).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Feed_ConfirmedSeatOnABoardTheReaderNeverJoined_StaysOutAlongsideAQualifyingQuest()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_non_member_board_reader", "questfeed_non_member_board_reader@example.com", name: "Quest Feed Non-Member Board Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_non_member_board_dm", "questfeed_non_member_board_dm@example.com", name: "Quest Feed Non-Member Board DM");
+
+        await SeedBoardAsync(19, "Quest Feed Member Board");
+        await SeedBoardAsync(20, "Quest Feed Non-Member Board");
+        await SeedMembershipAsync(reader.Id, 19);
+        // Deliberately no membership row for the reader on board 20.
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+
+        var memberQuestId = await SeedQuestAsync(19, dungeonMaster.Id, "Quest Feed Member Board Session", finalizedDate);
+        await SeedPlayerSignupAsync(memberQuestId, reader.Id);
+
+        // An impossible state in production, seeded deliberately: a confirmed seat row for the
+        // reader on a board they never joined. Without this row, a query that scoped on seat
+        // alone and ignored boards entirely would still pass this fact, because in normal data
+        // a non-member never holds a seat at all -- this row is what makes the fact actually
+        // test the board predicate rather than the seat predicate.
+        var nonMemberQuestId = await SeedQuestAsync(20, dungeonMaster.Id, "Quest Feed Non-Member Board Session", finalizedDate.AddHours(1));
+        await SeedPlayerSignupAsync(nonMemberQuestId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("Quest Feed Member Board Session");
+        body.Should().NotContain("Quest Feed Non-Member Board Session");
+        body.Should().NotContain($"questboard-quest-{nonMemberQuestId}");
+        CountVEvents(body).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Feed_LeavingABoard_RemovesItsQuestFromTheVeryNextFetch_WithNoErrorLoggedOnAHealthyFetch()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_leave_board_reader", "questfeed_leave_board_reader@example.com", name: "Quest Feed Leave Board Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_leave_board_dm", "questfeed_leave_board_dm@example.com", name: "Quest Feed Leave Board DM");
+
+        await SeedBoardAsync(21, "Quest Feed Leave Board");
+        await SeedMembershipAsync(reader.Id, 21);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+        var questId = await SeedQuestAsync(21, dungeonMaster.Id, "Quest Feed Leave Board Session", finalizedDate);
+        await SeedPlayerSignupAsync(questId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+        factory.LogCapture.Clear();
+
+        var beforeResponse = await FetchFeedAsync(subscription.Token);
+        var beforeBody = await beforeResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        beforeBody.Should().Contain("Quest Feed Leave Board Session");
+        CountVEvents(beforeBody).Should().Be(1);
+
+        // A normal, correctly scoped fetch must produce no error -- the drop-and-log branch is
+        // for a predicate that has gone wrong, and a re-check that fires on healthy data is a
+        // re-check that will be ignored when it matters.
+        factory.LogCapture.Records.Should().NotContain(record => record.Contains("[Error]"));
+
+        // Membership is re-read from the database on every fetch, so a board a member leaves
+        // disappears on the very next poll rather than whenever a cache happens to expire.
+        await RemoveMembershipAsync(reader.Id, 21);
+
+        var afterResponse = await FetchFeedAsync(subscription.Token);
+        var afterBody = await afterResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        afterBody.Should().NotContain("Quest Feed Leave Board Session");
+        afterBody.Should().NotContain($"questboard-quest-{questId}");
+        CountVEvents(afterBody).Should().Be(0);
     }
 }
