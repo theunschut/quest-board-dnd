@@ -59,7 +59,8 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
 
     // Seeds a finalized quest on the named board with the given Dungeon Master, through the
     // unfiltered seeding context -- field shapes copied from TestDataHelper.CreateTestQuestAsync.
-    private async Task<int> SeedQuestAsync(int groupId, int dungeonMasterId, string title, DateTime finalizedDate)
+    // dungeonMasterSession defaults to false so every existing call site keeps its prior meaning.
+    private async Task<int> SeedQuestAsync(int groupId, int dungeonMasterId, string title, DateTime finalizedDate, bool dungeonMasterSession = false)
     {
         await using var ctx = factory.Database.CreateContext();
         var quest = new QuestEntity
@@ -72,6 +73,7 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
             IsFinalized = true,
             FinalizedDate = finalizedDate,
             TotalPlayerCount = 4,
+            DungeonMasterSession = dungeonMasterSession,
             CreatedAt = DateTime.UtcNow
         };
         ctx.Quests.Add(quest);
@@ -79,16 +81,17 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         return quest.Id;
     }
 
-    // Seeds a confirmed (IsSelected == true by default) player signup for the given user on the
-    // given quest -- field shapes copied from TestDataHelper.CreatePlayerSignupAsync.
-    private async Task SeedPlayerSignupAsync(int questId, int playerId, bool isSelected = true)
+    // Seeds a player signup for the given user on the given quest -- field shapes copied from
+    // TestDataHelper.CreatePlayerSignupAsync. isSelected defaults to true (a confirmed seat) and
+    // role defaults to Player, so every existing call site keeps its prior meaning.
+    private async Task SeedPlayerSignupAsync(int questId, int playerId, bool isSelected = true, SignupRole role = SignupRole.Player)
     {
         await using var ctx = factory.Database.CreateContext();
         ctx.PlayerSignups.Add(new PlayerSignupEntity
         {
             QuestId = questId,
             PlayerId = playerId,
-            SignupRole = 0,
+            SignupRole = (int)role,
             IsSelected = isSelected,
             SignupTime = DateTime.UtcNow
         });
@@ -122,6 +125,10 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
     }
 
     private static int CountVEvents(string body) => body.Split("BEGIN:VEVENT").Length - 1;
+
+    // Counts occurrences rather than checking mere containment -- a duplicate is invisible to a
+    // containment assertion, so the single-entry guarantee below needs a count.
+    private static int CountOccurrences(string haystack, string needle) => haystack.Split(needle).Length - 1;
 
     [Fact]
     public async Task Feed_ServesASeatedReadersFinalizedOneShotQuest_ToAnonymousCaller()
@@ -180,5 +187,232 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
 
         // What proves the quest went through the timed branch and never the all-day one.
         body.Should().NotContain("DTSTART;VALUE=DATE:");
+    }
+
+    [Fact]
+    public async Task Feed_ServesAFinalizedOneShotQuestTheReaderRunsAsDungeonMaster_WithNoSignupRowAtAll()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_dm_route_reader", "questfeed_dm_route_reader@example.com", name: "Quest Feed DM Route Reader");
+
+        await SeedBoardAsync(3, "Quest Feed DM Route Board");
+        await SeedMembershipAsync(reader.Id, 3);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+
+        // The reader owns this quest as Dungeon Master and holds no signup row on it at all -- a
+        // signup-rooted query alone would give the person doing most of the board's scheduling
+        // the emptiest calendar.
+        var questId = await SeedQuestAsync(3, reader.Id, "Quest Feed DM Route Session", finalizedDate);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain($"UID:questboard-quest-{questId}");
+        body.Should().Contain("SUMMARY:[Quest Feed DM Route Board] Quest Feed DM Route Session\r\n");
+    }
+
+    [Fact]
+    public async Task Feed_QuestWhereReaderIsBothDungeonMasterAndHoldsAConfirmedSeat_EmitsExactlyOneEntryWithOneIdentifier()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_both_routes_reader", "questfeed_both_routes_reader@example.com", name: "Quest Feed Both Routes Reader");
+
+        await SeedBoardAsync(4, "Quest Feed Both Routes Board");
+        await SeedMembershipAsync(reader.Id, 4);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+
+        // The reader is both the Dungeon Master and the holder of a confirmed seat on this same
+        // quest -- the one case where the two routes into the feed can both be true at once.
+        var questId = await SeedQuestAsync(4, reader.Id, "Quest Feed Both Routes Session", finalizedDate);
+        await SeedPlayerSignupAsync(questId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // Counts, not containments, because a duplicate is invisible to a containment assertion.
+        // The identifier is derived from the quest alone, and two entries sharing one identifier
+        // is undefined behaviour on a reader's phone -- this fact fails the moment the query
+        // stops being rooted at quests and starts being two result sets merged after the fact.
+        CountVEvents(body).Should().Be(1);
+        CountOccurrences(body, $"questboard-quest-{questId}").Should().Be(1);
+        CountOccurrences(body, "SUMMARY:[Quest Feed Both Routes Board] Quest Feed Both Routes Session\r\n").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Feed_FinalizedQuestOnTheReadersOwnBoardWithNoSeat_StaysOutAlongsideAQuestTheyAreSeatedOn()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_own_board_reader", "questfeed_own_board_reader@example.com", name: "Quest Feed Own Board Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_own_board_dm", "questfeed_own_board_dm@example.com", name: "Quest Feed Own Board DM");
+
+        await SeedBoardAsync(5, "Quest Feed Own Board");
+        await SeedMembershipAsync(reader.Id, 5);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+
+        var seatedQuestId = await SeedQuestAsync(5, dungeonMaster.Id, "Quest Feed Seated Session", finalizedDate);
+        await SeedPlayerSignupAsync(seatedQuestId, reader.Id);
+
+        // Same board the reader belongs to, owned by someone else, with no signup row for the
+        // reader at all and the reader is not its Dungeon Master. Without this fact, the two
+        // facts above are equally well satisfied by a query that returns every finalized quest
+        // on every one-shot board the reader belongs to -- a real leak of the reader's own
+        // board's scheduling, and precisely the shape the "only quests the reader is signed up
+        // for" constraint rules out.
+        var unrelatedQuestId = await SeedQuestAsync(5, dungeonMaster.Id, "Quest Feed Unseated Session", finalizedDate.AddHours(1));
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("SUMMARY:[Quest Feed Own Board] Quest Feed Seated Session\r\n");
+        body.Should().NotContain($"questboard-quest-{unrelatedQuestId}");
+        body.Should().NotContain("Quest Feed Unseated Session");
+        CountVEvents(body).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Feed_WaitlistedSignup_StaysOutUntilTheSameRowIsPromotedToAConfirmedSeat()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_waitlist_reader", "questfeed_waitlist_reader@example.com", name: "Quest Feed Waitlist Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_waitlist_dm", "questfeed_waitlist_dm@example.com", name: "Quest Feed Waitlist DM");
+
+        await SeedBoardAsync(6, "Quest Feed Waitlist Board");
+        await SeedMembershipAsync(reader.Id, 6);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+        var questId = await SeedQuestAsync(6, dungeonMaster.Id, "Quest Feed Waitlist Session", finalizedDate);
+
+        // A row is not a seat -- the confirmed-seat flag is not set, exactly the shape a
+        // waitlisted player's row takes.
+        await SeedPlayerSignupAsync(questId, reader.Id, isSelected: false);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var beforePromotionResponse = await FetchFeedAsync(subscription.Token);
+        var beforePromotionBody = await beforePromotionResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // Accepted cost of this rule: a waitlisted player gets no advance warning of a night
+        // they may well end up playing.
+        beforePromotionBody.Should().NotContain($"questboard-quest-{questId}");
+        beforePromotionBody.Should().NotContain("Quest Feed Waitlist Session");
+        CountVEvents(beforePromotionBody).Should().Be(0);
+
+        // Flip the same row's confirmed-seat flag through the seeding context -- nothing else
+        // about the row changes. This is the shape a real promotion off the waitlist takes.
+        await using (var ctx = factory.Database.CreateContext())
+        {
+            var signup = await ctx.PlayerSignups.IgnoreQueryFilters()
+                .SingleAsync(ps => ps.QuestId == questId && ps.PlayerId == reader.Id, TestContext.Current.CancellationToken);
+            signup.IsSelected = true;
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var afterPromotionResponse = await FetchFeedAsync(subscription.Token);
+        var afterPromotionBody = await afterPromotionResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // A promotion off the waitlist reaches the phone at the next fetch like any other change.
+        afterPromotionBody.Should().Contain($"questboard-quest-{questId}");
+        CountVEvents(afterPromotionBody).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Feed_AllThreeSignupRoles_ReachTheFeedIdenticallyWhenTheSeatIsConfirmed()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_seat_kind_reader", "questfeed_seat_kind_reader@example.com", name: "Quest Feed Seat Kind Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_seat_kind_dm", "questfeed_seat_kind_dm@example.com", name: "Quest Feed Seat Kind DM");
+
+        await SeedBoardAsync(7, "Quest Feed Seat Kind Board");
+        await SeedMembershipAsync(reader.Id, 7);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+
+        var playerQuestId = await SeedQuestAsync(7, dungeonMaster.Id, "Quest Feed Player Seat Session", finalizedDate);
+        await SeedPlayerSignupAsync(playerQuestId, reader.Id, role: SignupRole.Player);
+
+        var spectatorQuestId = await SeedQuestAsync(7, dungeonMaster.Id, "Quest Feed Spectator Seat Session", finalizedDate.AddHours(1));
+        await SeedPlayerSignupAsync(spectatorQuestId, reader.Id, role: SignupRole.Spectator);
+
+        var assistantDmQuestId = await SeedQuestAsync(7, dungeonMaster.Id, "Quest Feed Assistant DM Seat Session", finalizedDate.AddHours(2));
+        await SeedPlayerSignupAsync(assistantDmQuestId, reader.Id, role: SignupRole.AssistantDM);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // No seat-kind branch exists in the predicate at all: the confirmed-seat flag is set
+        // unconditionally for Spectator and AssistantDM signups, and only a Player ever lands on
+        // the waitlist, so everyone holding a confirmed seat is at the table that night whatever
+        // the seat is called.
+        body.Should().Contain("Quest Feed Player Seat Session");
+        body.Should().Contain("Quest Feed Spectator Seat Session");
+        body.Should().Contain("Quest Feed Assistant DM Seat Session");
+        CountVEvents(body).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Feed_QuestFlaggedAsADungeonMasterSession_StillReachesAReaderHoldingAConfirmedSeat()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_dm_session_reader", "questfeed_dm_session_reader@example.com", name: "Quest Feed DM Session Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_dm_session_dm", "questfeed_dm_session_dm@example.com", name: "Quest Feed DM Session DM");
+
+        await SeedBoardAsync(8, "Quest Feed DM Session Board");
+        await SeedMembershipAsync(reader.Id, 8);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+        var questId = await SeedQuestAsync(8, dungeonMaster.Id, "Quest Feed DM-Flagged Session", finalizedDate, dungeonMasterSession: true);
+        await SeedPlayerSignupAsync(questId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // This flag hides a quest from the board listing, but the quest details request applies
+        // no gate whatsoever -- anyone holding the link can already open one. Honouring a seat
+        // that was actually granted therefore widens nothing. Accepted cost: a Dungeon Master
+        // who flips this flag after players signed up leaves those readers' phones carrying a
+        // title the board no longer lists for them.
+        body.Should().Contain($"questboard-quest-{questId}");
+        body.Should().Contain("Quest Feed DM-Flagged Session");
     }
 }
