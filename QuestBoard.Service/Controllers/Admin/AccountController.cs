@@ -1,19 +1,31 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
 using QuestBoard.Service.Controllers.QuestBoard;
+using QuestBoard.Service.Helpers;
 using QuestBoard.Service.Jobs;
 using QuestBoard.Service.ViewModels.AccountViewModels;
+using AutoMapper;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Text;
 
 namespace QuestBoard.Service.Controllers.Admin;
 
-public class AccountController(IUserService userService, IIdentityService identityService, IBackgroundJobClient jobClient, ILogger<AccountController> logger, IActiveGroupContext activeGroupContext) : Controller
+public class AccountController(
+    IUserService userService,
+    IIdentityService identityService,
+    IBackgroundJobClient jobClient,
+    ILogger<AccountController> logger,
+    IActiveGroupContext activeGroupContext,
+    ICalendarSubscriptionService calendarSubscriptionService,
+    IOptions<EmailSettings> emailSettings,
+    IMapper mapper) : Controller
 {
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
@@ -168,7 +180,7 @@ public class AccountController(IUserService userService, IIdentityService identi
 
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> Profile()
+    public async Task<IActionResult> Profile(CancellationToken token = default)
     {
         var user = await userService.GetUserAsync(User);
 
@@ -178,9 +190,31 @@ public class AccountController(IUserService userService, IIdentityService identi
             role = await userService.GetEffectiveGroupRoleAsync(User, groupId);
         }
 
+        var subscriptions = await calendarSubscriptionService.GetForUserAsync(user.Id, token);
+        var subscriptionRows = subscriptions.Select(subscription =>
+        {
+            var row = mapper.Map<CalendarSubscriptionViewModel>(subscription);
+            row.HttpsAddress = CalendarSubscriptionAddress.BuildHttps(emailSettings.Value.AppUrl, subscription.Token);
+            row.WebcalAddress = CalendarSubscriptionAddress.BuildWebcal(emailSettings.Value.AppUrl, subscription.Token);
+
+            // The code encodes the calendar-handoff form rather than the plain web form: scanning
+            // it hands off to the phone's calendar application and subscribes, whereas the plain
+            // web form opens a browser that downloads the document as a one-time import rather
+            // than a subscription. The handoff scheme is not honoured everywhere, which is exactly
+            // why the row also offers the plain address and a manual-entry fallback next to it.
+            row.QrCodeSvg = CalendarSubscriptionQrCode.ToSvg(row.WebcalAddress);
+            if (row.QrCodeSvg == null)
+            {
+                logger.LogWarning("Calendar subscription QR code generation failed for subscription {SubscriptionId}.", subscription.Id);
+            }
+
+            return row;
+        }).ToList();
+
         var model = new ProfileViewModel
         {
-            User = user
+            User = user,
+            CalendarSubscriptions = subscriptionRows
         };
 
         ViewData["IsDungeonMaster"] = role == GroupRole.DungeonMaster || role == GroupRole.Admin;
@@ -313,4 +347,85 @@ public class AccountController(IUserService userService, IIdentityService identi
 
         return View(model);
     }
-}
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddCalendarSubscription(CancellationToken token = default)
+    {
+        var user = await userService.GetUserAsync(User);
+
+        // The control that triggers this is a form submit, so a double click, a browser retry
+        // or a replayed request would otherwise mint a second credential that never expires from
+        // a single intent, leaving the member with an extra live address they never asked for.
+        // Ten seconds is long enough to absorb a double submit and short enough not to obstruct
+        // someone deliberately adding a second device.
+        var existingSubscriptions = await calendarSubscriptionService.GetForUserAsync(user.Id, token);
+        var mostRecent = existingSubscriptions.OrderByDescending(s => s.CreatedAt).FirstOrDefault();
+        if (mostRecent != null && DateTime.UtcNow - mostRecent.CreatedAt < TimeSpan.FromSeconds(10))
+        {
+            TempData["Error"] = "Couldn't add this subscription. Try again, and if it keeps happening, let a Dungeon Master know.";
+            return RedirectToAction(nameof(Profile));
+        }
+
+        await calendarSubscriptionService.MintForUserAsync(user.Id, token);
+        TempData["Success"] = "Subscription added.";
+        return RedirectToAction(nameof(Profile));
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenameCalendarSubscription(int id, string name, CancellationToken token = default)
+    {
+        var user = await userService.GetUserAsync(User);
+
+        var trimmedName = name.Trim();
+        if (string.IsNullOrEmpty(trimmedName) || trimmedName.Length > 60)
+        {
+            TempData["Error"] = "Couldn't rename this subscription. Try again, and if it keeps happening, let a Dungeon Master know.";
+            return RedirectToAction(nameof(Profile));
+        }
+
+        // The service and repository match on the subscription id and the member id together,
+        // so an id belonging to someone else simply matches nothing. A false result below is
+        // reported as one neutral failure, never distinguishing "not yours" from "not found" --
+        // a message that did would leak the existence of another member's subscription.
+        var renamed = await calendarSubscriptionService.RenameAsync(id, user.Id, trimmedName, token);
+        if (renamed)
+        {
+            TempData["Success"] = "Subscription renamed.";
+        }
+        else
+        {
+            TempData["Error"] = "Couldn't rename this subscription. Try again, and if it keeps happening, let a Dungeon Master know.";
+        }
+
+        return RedirectToAction(nameof(Profile));
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevokeCalendarSubscription(int id, CancellationToken token = default)
+    {
+        var user = await userService.GetUserAsync(User);
+
+        // The visible control for this action is labelled Delete even though what it performs is
+        // a retirement -- the action name says revoke because that is what the code does. The
+        // label is fixed by the copy contract and the behaviour is fixed by the tombstone
+        // decision; do not rename one to match the other. As with rename above, a false result
+        // is reported as one neutral failure that does not confirm whether the id exists at all.
+        var revoked = await calendarSubscriptionService.RevokeAsync(id, user.Id, token);
+        if (revoked)
+        {
+            TempData["Success"] = "Subscription deleted.";
+        }
+        else
+        {
+            TempData["Error"] = "Couldn't delete this subscription. Try again, and if it keeps happening, let a Dungeon Master know.";
+        }
+
+        return RedirectToAction(nameof(Profile));
+    }
+}

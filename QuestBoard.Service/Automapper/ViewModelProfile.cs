@@ -2,6 +2,7 @@
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Domain.Models.Shop;
+using QuestBoard.Service.ViewModels.AccountViewModels;
 using QuestBoard.Service.ViewModels.AgendaViewModels;
 using QuestBoard.Service.ViewModels.QuestViewModels;
 using QuestBoard.Service.ViewModels.ShopViewModels;
@@ -219,5 +220,14 @@ public class ViewModelProfile : Profile
             .ForMember(dest => dest.BoardName, opt => opt.Ignore())
             .ForMember(dest => dest.BoardType, opt => opt.Ignore())
             .ForMember(dest => dest.IsActiveBoard, opt => opt.Ignore());
+
+        // CalendarSubscription to CalendarSubscriptionViewModel -- HttpsAddress, WebcalAddress
+        // and QrCodeSvg are built in the controller from the configured application address, so
+        // they are not derivable from the domain model alone. No reverse map: nothing binds this
+        // view model from a form.
+        CreateMap<CalendarSubscription, CalendarSubscriptionViewModel>()
+            .ForMember(dest => dest.HttpsAddress, opt => opt.Ignore())
+            .ForMember(dest => dest.WebcalAddress, opt => opt.Ignore())
+            .ForMember(dest => dest.QrCodeSvg, opt => opt.Ignore());
     }
-}
+}
