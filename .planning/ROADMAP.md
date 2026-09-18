@@ -953,6 +953,57 @@ Plans:
 
 - [x] 85-06-PLAN.md — Requirement and roadmap ledger close-out, validation sign-off, and the phase static guard (wave 5)
 
+### Phase 86: Viewer-Local Times and Correct Job Scheduling
+
+**Goal**: A reader sees every real timestamp in their own browser's timezone instead of UTC, and the three nightly sweeps fire at the hour their registration claims — without moving a single game night by so much as a minute.
+**Requirements**: TBD
+**Depends on**: No hard dependency. It must not regress Phase 84's floating-local-time contract or Phase 85's quest entries — see the first risk below.
+**Plans**: 0 plans
+
+**Origin:** raised by the operator on 2026-09-18, immediately after noticing that the Calendar Subscription section's "Last fetched" timestamp reads two hours behind a Dutch wall clock. The investigation that followed found the display defect the operator reported *and* a scheduling defect they had assumed was working.
+
+**Two defects, one root cause — this application has no timezone concept at all.** `grep TimeZoneInfo` across the solution still returns nothing outside test fixtures, exactly as Phase 84's research recorded.
+
+- **Every rendered instant is UTC.** `CalendarSubscriptionService` stores `timeProvider.GetUtcNow().UtcDateTime` and `Profile.cshtml` renders it with no conversion and no zone label, which is representative rather than exceptional: there are roughly 71 date-render call sites across the views in 19 distinct format strings, none of which convert.
+- **The nightly sweeps do not fire when their comments say they do.** Two independent causes that compound. `docker-compose.yml` and `Dockerfile` set no `TZ` and mount no `/etc/localtime`, so the container clock is UTC and every `DateTime.Today`/`DateTime.Now` in production is UTC — 18 call sites across `EventSeriesService`, `CalendarController`, `GroupRepository` and `DailyReminderJob`. Independently, Hangfire's `RecurringJob.AddOrUpdate` defaults to `TimeZoneInfo.Utc` and none of the three registrations in `Program.cs` passes one. The "09:00" reminder sweep therefore fires at 11:00 Dutch summer time. The comments at `Program.cs` and `DailyReminderJob.cs` that assert "server local time (CET/CEST)" are wrong and must be corrected rather than preserved.
+
+**Scope notes:**
+
+- **The two defects ship together because they share the classifying work.** Deciding which `DateTime` is a real instant and which is naive wall-clock is the bulk of the effort for either half; splitting them would mean doing that analysis twice and risking two different answers.
+- **Rendering is client-side (operator's decision, 2026-09-18).** Emit the instant in a machine-readable `<time datetime="...Z">` attribute and format it in the browser with `Intl.DateTimeFormat` against the viewer's resolved zone. No stored preference, no cookie, no server-side zone detection, and DST handled by the platform. A server-rendered fallback must be present so a pre-hydration or no-JS view shows UTC *with an explicit zone label* rather than a bare wrong-looking time.
+- **The container's `TZ` stays unset.** Setting it would move `DateTime.Today` to local while Hangfire's cron stayed UTC, converting today's consistent-but-wrong behaviour into a genuine mismatch between the two clocks. The fix for job timing is an explicit `TimeZoneInfo` on each registration, not an ambient container setting.
+- **This is a display and scheduling phase, not a schema migration.** No stored value changes meaning and no column is rewritten. If the instant-versus-wall-clock distinction turns out to deserve expression in the type system, that is its own phase.
+
+**The distinction the whole phase turns on.** `DateTime` carries two incompatible meanings in this schema and the type does not tell them apart:
+
+| Real instants — stored UTC, *must* convert | Naive wall-clock — *must not* convert |
+|---|---|
+| `CreatedAt` (9 entities), `UpdatedAt`, `CancelledAt` | `QuestEntity.FinalizedDate` |
+| `LastFetchedAt`, `RevokedAt`, `SentAt` | `ProposedDateEntity.Date` |
+| `SignupTime`, `LastVoteChangeTime` | `EventEntity.Date` + `StartTime` |
+| `TransactionDate`, `ListedDate`, `DeniedAt` | `ShopItemEntity.AvailableFrom`/`AvailableUntil` |
+
+The right-hand column is what a Dungeon Master typed — "seven o'clock on the twelfth" — and is already local by intent. `QuestEntity.ClosedDate` and `FinalizedEmailSentForDate` are unclassified and need a decision in the discuss pass rather than an assumption.
+
+**Open questions for the discuss pass:**
+
+- Which side of the table `ClosedDate` and `FinalizedEmailSentForDate` fall on.
+- Which timezone the three sweeps should actually run in — a fixed `Europe/Amsterdam`, or configuration, given the board has no per-user zone and the operator is the only audience for job timing.
+- Whether emails (rendered server-side, with no browser to ask) should carry an explicit zone label, since the client-side mechanism cannot reach them.
+- Whether a relative rendering ("2 hours ago") is wanted for audit-style timestamps where the exact instant matters less than recency.
+
+**Risks this phase must actively avoid:**
+
+- **Shifting the calendar feed.** `QuestEntity.FinalizedDate` is what Phase 85 emits into the subscription, and Phase 84 D-09 fixed it as floating local time with no `TZID`. Anything that treats it as UTC moves every subscriber's session by the offset — and because a client refreshes on its own schedule, nobody would see it for hours. The feed writer must be provably untouched by this phase.
+- **Converting a wall-clock date.** The same mistake inside the application shifts a game night on the board, on the quest page, in the date-vote list and in every reminder email. The classification above is the control, and it needs tests that pin a wall-clock value as unmoved across a non-UTC viewer zone.
+- **Fixing one clock and not the other.** Today's two UTC clocks agree. Correcting the Hangfire schedule without correcting `DateTime.Today` inside `DailyReminderJob` — or the reverse — leaves the sweep computing "tomorrow" on a different clock than the one that woke it, which is a worse state than the one this phase starts from.
+- **Missing the mobile twins.** There are 53 `.Mobile.cshtml` views and 15 of them render dates. Shipping a change on one layout and not its twin is a recorded failure mode in this codebase (Phases 43, 54, 72, and called out again in Phase 84's scope notes).
+- **A flash of UTC.** Client-side formatting rewrites the DOM after paint. Without a deliberate fallback the reader sees the wrong time first and the right one a moment later, which reads as a bug even though the final value is correct.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 86 to break down)
+
 ## Backlog
 
 Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
@@ -979,6 +1030,7 @@ Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-b
 **Revive this if:** manually opening the board to answer proves annoying enough in production use to justify the build, or inbound mail arrives in the project for some other reason — the iMIP route is a far smaller phase once a parsed inbound mailbox already exists.
 
 Plans:
+
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ---

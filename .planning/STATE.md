@@ -9,11 +9,11 @@ last_updated: "2026-09-18T17:28:26.970Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
 progress:
-  total_phases: 14
+  total_phases: 15
   completed_phases: 12
   total_plans: 97
   completed_plans: 88
-  percent: 86
+  percent: 80
 current_phase_name: one-shot-quests-in-the-calendar-feed
 state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 ---
@@ -88,6 +88,7 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 84 added 2026-09-17: Calendar Feed Foundation and Event Subscription — a personal, token-authenticated `text/calendar` feed carrying every event from every board the reader belongs to, subscribable from the Account Profile page on both layouts. Raised by the operator; one-way subscription only, deliberately not CalDAV.
 - Phase 85 added 2026-09-17: One-Shot Quests in the Calendar Feed — adds the reader's quest sessions to the same feed, restricted to boards where `BoardType` is `OneShot` at the operator's instruction. Split from 84 because no cross-board quest read exists yet and the board-type predicate is independent of membership.
 - Backlog 999.1 parked 2026-09-18: Voting from a Phone Calendar Entry — operator asked whether a vote could be cast in the phone calendar entry itself and flow back to the board. Answered no for the shipped subscription: an `.ics` URL subscription is one-way and every major client renders it read-only, so no feed property produces an RSVP button. The two routes that would work (iMIP email invitations, which need inbound mail this codebase does not have; or a token-linked tap-through page, which reverses 84 D-10 and makes a leaked feed address write-capable) were both judged disproportionate for now. Quest date voting is unreachable on any route because the feed carries finalized quests only.
+- Phase 86 added 2026-09-18: Viewer-Local Times and Correct Job Scheduling — render real instants in the viewer's browser timezone (client-side `<time>` + `Intl`, operator's decision) and give the three Hangfire sweeps an explicit `TimeZoneInfo`. Raised from the UTC "Last fetched" timestamp on the Profile page; investigation also found the container sets no `TZ` and Hangfire cron defaults to UTC, so the sweeps never ran at the CET/CEST hour their comments claim. Both halves ship together because classifying every `DateTime` as a real instant or naive wall-clock is the shared bulk of the work.
 
 ### Pending Todos
 
