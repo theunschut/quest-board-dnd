@@ -9,10 +9,10 @@ namespace QuestBoard.UnitTests.Repository;
 
 // Protects the throttled last-fetched write: a hammered address must perform no database write
 // at all inside the configured interval, not merely a no-op write. The two window behaviors
-// (rolling MonthsBack/MonthsAhead bounds from configuration) are proved end to end in plan
-// 84-05 against real HTTP, where seeded event dates outside the configured window can be
-// observed to be absent -- a unit test here would only re-assert arithmetic, so that coverage is
-// deliberately not duplicated in this file.
+// (rolling MonthsBack/MonthsAhead bounds from configuration) are proved end to end against real
+// HTTP elsewhere, where seeded event dates outside the configured window can be observed to be
+// absent -- a unit test here would only re-assert arithmetic, so that coverage is deliberately
+// not duplicated in this file.
 public class CalendarSubscriptionRepositoryTests
 {
     private static QuestBoardContext CreateContext(string databaseName)
