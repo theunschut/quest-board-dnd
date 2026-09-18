@@ -69,7 +69,7 @@ Settled by the operator during Phase 84's discuss pass and recorded in the Phase
 
   — **Reversibility:** reversible — a new property on `CalendarFeedOptions` is additive, and the default is a literal.
 
-- **D-06: Every quest entry is `TRANSP:TRANSPARENT`, matching events.** One transparency rule for the whole feed; no per-source branch.
+- **D-06: Every quest entry sets `TRANSP` to `TRANSPARENT`, matching events.** One transparency rule for the whole feed; no per-source branch.
 
   The operator was offered `OPAQUE` on the reasoning that a session is a real commitment while an event is informational, and declined it. 84 D-03's reasoning holds for both sources: the duration is invented, so marking the reader busy for four hours publishes a fiction to anyone checking their availability.
 
@@ -95,7 +95,7 @@ Settled by the operator during Phase 84's discuss pass and recorded in the Phase
 
 ### When a session leaves the feed
 
-- **D-09: A quest that stops qualifying simply disappears. No `STATUS:CANCELLED`.** Same rule as 84 D-12 for cancelled events, applied to a different model.
+- **D-09: A quest that stops qualifying simply disappears. No `STATUS` of `CANCELLED`.** Same rule as 84 D-12 for cancelled events, applied to a different model.
 
   A one-shot quest's exits are: the DM moves the finalized date, the quest is un-finalized back to voting, the quest is deleted, or the reader's seat goes away. The predicate does all the work in each case — no finalized date, no seat, no row, nothing to emit. No tombstone state to store and no `STATUS` branch in the writer.
 
