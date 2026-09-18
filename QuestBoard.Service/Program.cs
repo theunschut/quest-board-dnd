@@ -139,6 +139,23 @@ builder.Services.AddRateLimiter(options =>
                 AutoReplenishment = true
             }));
 
+    // Partitioned by the address route value rather than the caller's network address: several
+    // members' calendar clients can sit behind one home network and would otherwise share one
+    // budget, and tying the budget to the address limits how much traffic any one leaked address
+    // can generate. This does not stop address guessing -- a guesser gets a fresh budget per
+    // guess -- guessing is made infeasible by the size of the address space, not by this
+    // limiter; its purpose is to bound what a real address can cost.
+    options.AddPolicy("calendar-feed", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Request.RouteValues["feedToken"]?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -386,4 +403,4 @@ if (app.Environment.IsProduction())
     }
 }
 
-await app.RunAsync();
+await app.RunAsync();
