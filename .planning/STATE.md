@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 84
-current_phase_name: calendar-feed-foundation-and-event-subscription
+current_phase: 85
+current_phase_name: one-shot-quests-in-the-calendar-feed
 status: executing
 stopped_at: Phase 85 context gathered
-last_updated: "2026-09-18T15:19:27.147Z"
+last_updated: "2026-09-18T15:25:01.726Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
 progress:
@@ -25,14 +25,14 @@ state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 84 — calendar-feed-foundation-and-event-subscription
+**Current focus:** Phase 85 — one-shot-quests-in-the-calendar-feed
 
 ## Current Position
 
-Phase: 84 (calendar-feed-foundation-and-event-subscription) — EXECUTING
-Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-09-18 — Phase 84 execution resumed (wave continue)
+Phase: 85 (one-shot-quests-in-the-calendar-feed) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 85
+Last activity: 2026-09-18 — Phase 85 execution started
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 

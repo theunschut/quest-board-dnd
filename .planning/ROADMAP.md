@@ -886,7 +886,7 @@ Plans:
 **Goal**: The same subscription also carries the quest sessions the reader is actually part of — from their one-shot boards only — so a phone calendar shows the night they are playing, not just the board's informational events.
 **Requirements**: QUESTFEED-01, QUESTFEED-02, QUESTFEED-03, QUESTFEED-04, QUESTFEED-05, QUESTFEED-06, QUESTFEED-07, QUESTFEED-08, QUESTFEED-09, QUESTFEED-10, QUESTFEED-11, QUESTFEED-12, QUESTFEED-13, QUESTFEED-14, QUESTFEED-15, QUESTFEED-16, QUESTFEED-17, QUESTFEED-18
 **Depends on**: Phase 84 (the token, the endpoint, the writer and the subscribe surface must all exist before a second source can be added to the feed)
-**Plans**: 6 plans
+**Plans**: 2/6 plans executed
 
 **Origin:** raised by the operator on 2026-09-17 alongside Phase 84, with the board-type restriction stated up front.
 
@@ -919,8 +919,8 @@ Plans:
 
 **Wave 1**
 
-- [ ] 85-01-PLAN.md — Mint the QUESTFEED requirement family into REQUIREMENTS.md and ROADMAP.md, and key the phase validation contract to real task ids (wave 1)
-- [ ] 85-02-PLAN.md — End-to-end tracer: the quest source wired through repository, service, writer and the live feed address, plus the configurable session length and the source-aware writer suite (wave 1)
+- [x] 85-01-PLAN.md — Mint the QUESTFEED requirement family into REQUIREMENTS.md and ROADMAP.md, and key the phase validation contract to real task ids (wave 1)
+- [x] 85-02-PLAN.md — End-to-end tracer: the quest source wired through repository, service, writer and the live feed address, plus the configurable session length and the source-aware writer suite (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
