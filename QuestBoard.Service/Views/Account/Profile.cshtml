@@ -106,20 +106,20 @@
                                         <td>
                                             <div>@subscription.Name</div>
                                             <div class="calendar-subscription-meta">
-                                                Created @subscription.CreatedAt.ToString("MMM d, yyyy")<br />
+                                                Created @subscription.CreatedAt.ToString("MMM d, yyyy")
                                                 @if (subscription.LastFetchedAt.HasValue)
                                                 {
-                                                    @:Last fetched @subscription.LastFetchedAt.Value.ToString("MMM d, yyyy h:mm tt")
+                                                    @:&middot; Last fetched @subscription.LastFetchedAt.Value.ToString("MMM d, yyyy h:mm tt")
                                                 }
                                                 else
                                                 {
-                                                    @:Never fetched yet
+                                                    @:&middot; Never fetched yet
                                                 }
                                             </div>
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
-                                                <input type="text" readonly id="subscriptionAddress-@subscription.Id" class="form-control form-control-sm font-monospace calendar-subscription-address" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
+                                                <input type="text" readonly id="subscriptionAddress-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
                                                 <button type="button" class="btn btn-primary btn-sm calendar-subscription-copy-btn" data-address-target="#subscriptionAddress-@subscription.Id">
                                                     <i class="fas fa-copy me-2"></i>Copy
                                                 </button>
@@ -127,23 +127,20 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="calendar-subscription-actions">
-                                                <div class="d-inline-block text-start">
-                                                    <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
-                                                        <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
-                                                    </a>
-                                                    <div class="calendar-subscription-meta">If nothing happens, copy the address and add it in your calendar app manually.</div>
-                                                </div>
-                                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id">
-                                                    <i class="fas fa-qrcode me-2"></i>Show QR Code
+                                                <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress" title="Open in Calendar App" aria-label="Open in Calendar App">
+                                                    <i class="fas fa-mobile-screen-button"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id" title="Show QR Code" aria-label="Show QR Code">
+                                                    <i class="fas fa-qrcode"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
-                                                    <i class="fas fa-pen me-2"></i>Rename
+                                                <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name" title="Rename" aria-label="Rename">
+                                                    <i class="fas fa-pen"></i>
                                                 </button>
                                                 <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="id" value="@subscription.Id" />
-                                                    <button type="submit" class="btn btn-danger btn-sm">
-                                                        <i class="fas fa-trash me-2"></i>Delete
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="Delete" aria-label="Delete">
+                                                        <i class="fas fa-trash"></i>
                                                     </button>
                                                 </form>
                                             </div>
@@ -152,6 +149,10 @@
                                 }
                             </tbody>
                         </table>
+
+                        @* One note for the whole list rather than a copy in every row: it says the
+                           same thing each time and was the single biggest contributor to row height. *@
+                        <div class="calendar-subscription-meta mb-3">If nothing happens, copy the address and add it in your calendar app manually.</div>
                     }
 
                     <form asp-action="AddCalendarSubscription" method="post" class="calendar-subscription-add-form">
@@ -161,62 +162,6 @@
                         </button>
                     </form>
 
-                    @if (Model.CalendarSubscriptions.Any())
-                    {
-                        <div class="modal fade" id="renameSubscriptionModal" tabindex="-1" aria-labelledby="renameSubscriptionModalLabel" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <form asp-action="RenameCalendarSubscription" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="renameSubscriptionModalLabel">Rename Subscription</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <input type="hidden" name="id" id="renameSubscriptionId" value="" />
-                                            <label for="renameSubscriptionName" class="form-label">Name</label>
-                                            <input type="text" name="name" id="renameSubscriptionName" class="form-control" maxlength="60" placeholder="e.g. My Phone" required />
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-warning">Save</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        @foreach (var subscription in Model.CalendarSubscriptions)
-                        {
-                            <div class="modal fade" id="qrSubscriptionModal-@subscription.Id" tabindex="-1" aria-labelledby="qrSubscriptionModalLabel-@subscription.Id" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="qrSubscriptionModalLabel-@subscription.Id">Scan to Subscribe</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body text-center">
-                                            <p>Point your phone's camera at this code to add @subscription.Name to your calendar app.</p>
-                                            @if (!string.IsNullOrEmpty(subscription.QrCodeSvg))
-                                            {
-                                                <div class="calendar-subscription-qr" role="img" aria-label="QR code encoding the @subscription.Name calendar subscription address">
-                                                    @Html.Raw(subscription.QrCodeSvg)
-                                                </div>
-                                            }
-                                            <div class="calendar-subscription-actions justify-content-center mt-3">
-                                                <button type="button" class="btn btn-primary btn-sm calendar-subscription-copy-btn" data-address-target="#subscriptionAddress-@subscription.Id">
-                                                    <i class="fas fa-copy me-2"></i>Copy
-                                                </button>
-                                                <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
-                                                    <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    }
                 </div>
 
                 <hr>
@@ -235,6 +180,67 @@
         </div>
     </div>
 </div>
+
+@* Modals live outside the card: the card applies a backdrop filter, which makes it the
+   containing block for fixed-position descendants. A modal nested inside it is trapped in
+   the card's stacking context, so the body-level backdrop paints over it and swallows every
+   click, including Close. *@
+    @if (Model.CalendarSubscriptions.Any())
+    {
+        <div class="modal fade" id="renameSubscriptionModal" tabindex="-1" aria-labelledby="renameSubscriptionModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="RenameCalendarSubscription" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="renameSubscriptionModalLabel">Rename Subscription</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="id" id="renameSubscriptionId" value="" />
+                            <label for="renameSubscriptionName" class="form-label">Name</label>
+                            <input type="text" name="name" id="renameSubscriptionName" class="form-control" maxlength="60" placeholder="e.g. My Phone" required />
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        @foreach (var subscription in Model.CalendarSubscriptions)
+        {
+            <div class="modal fade" id="qrSubscriptionModal-@subscription.Id" tabindex="-1" aria-labelledby="qrSubscriptionModalLabel-@subscription.Id" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="qrSubscriptionModalLabel-@subscription.Id">Scan to Subscribe</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <p>Point your phone's camera at this code to add @subscription.Name to your calendar app.</p>
+                            @if (!string.IsNullOrEmpty(subscription.QrCodeSvg))
+                            {
+                                <div class="calendar-subscription-qr" role="img" aria-label="QR code encoding the @subscription.Name calendar subscription address">
+                                    @Html.Raw(subscription.QrCodeSvg)
+                                </div>
+                            }
+                            <div class="calendar-subscription-actions justify-content-center mt-3">
+                                <button type="button" class="btn btn-primary btn-sm calendar-subscription-copy-btn" data-address-target="#subscriptionAddress-@subscription.Id">
+                                    <i class="fas fa-copy me-2"></i>Copy
+                                </button>
+                                <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
+                                    <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
 
 @section Scripts {
     <script>

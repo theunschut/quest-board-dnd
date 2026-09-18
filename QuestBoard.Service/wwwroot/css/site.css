@@ -1680,11 +1680,52 @@ input[type="radio"]:focus + .custom-radio-label {
     font-size: 14px;
     white-space: nowrap;
     overflow-x: auto;
+    width: 100%;
 }
+
+/* The address is ~85 characters and is the one thing on the row a person must be able to
+   read and select, so it gets an explicit share of the table. Without this the action
+   buttons' intrinsic width wins the layout and squeezes the address down to a dozen
+   visible characters. */
+.calendar-subscription-section th:nth-child(1),
+.calendar-subscription-section td:nth-child(1) {
+    width: 29%;
+}
+
+/* The address gets the bulk of the row now that the actions are icon-sized. */
+.calendar-subscription-section th:nth-child(2),
+.calendar-subscription-section td:nth-child(2) {
+    width: 49%;
+}
+
+/* Icon-only row actions still have to be comfortably clickable. */
+.calendar-subscription-actions .btn {
+    min-width: 38px;
+}
+
+/* The action buttons keep their labels on one line; wrapping inside a button is worse than
+   wrapping the group. */
+.calendar-subscription-actions .btn {
+    white-space: nowrap;
+}
+
+/* The row is a single line of controls; keep the cells from adding vertical padding on top
+   of that. */
+.calendar-subscription-section td {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
 
 .calendar-subscription-meta {
     font-size: 0.875rem;
     color: #6c757d;
+}
+
+/* The created/last-fetched line is one line: wrapping it was the row's remaining height. */
+.calendar-subscription-section td .calendar-subscription-meta {
+    font-size: 0.8rem;
+    white-space: nowrap;
 }
 
 .calendar-subscription-actions {
