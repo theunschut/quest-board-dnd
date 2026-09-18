@@ -271,6 +271,35 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
         return Mapper.Map<IList<Quest>>(entities);
     }
 
+    /// <inheritdoc/>
+    public async Task<IList<Quest>> GetFeedQuestsForUserAsync(
+        int userId,
+        IReadOnlyCollection<int> oneShotGroupIds,
+        DateTime windowStart,
+        DateTime windowEnd,
+        CancellationToken token = default)
+    {
+        // Rooted at Quests, so each quest is visited at most once -- no duplicate identifier can
+        // reach the writer however many of the disjunction's operands match. The filter bypass
+        // below is immediately re-narrowed by the caller-supplied board-id set, which is
+        // strictly narrower than the ambient filter for any single board rather than broader.
+        // The bypass is mandatory because both QuestEntity's and PlayerSignupEntity's own
+        // filters fail closed when no board is active, which this request always is, so
+        // omitting it makes every row vanish silently in a way indistinguishable from "no
+        // quests qualify".
+        var entities = await DbContext.Quests
+            .IgnoreQueryFilters()
+            .Where(q => oneShotGroupIds.Contains(q.GroupId)
+                && q.IsFinalized && q.FinalizedDate != null
+                && q.FinalizedDate.Value >= windowStart && q.FinalizedDate.Value <= windowEnd
+                && (q.PlayerSignups.Any(ps => ps.PlayerId == userId && ps.IsSelected)
+                    || q.DungeonMasterId == userId))
+            .AsNoTracking()
+            .ToListAsync(token);
+
+        return Mapper.Map<IList<Quest>>(entities);
+    }
+
     private static bool IsSameDateTime(DateTime date1, DateTime date2)
     {
         return Math.Abs((date1 - date2).TotalMinutes) <= DateMatchWindowMinutes;

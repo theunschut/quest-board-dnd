@@ -1,8 +1,9 @@
 namespace QuestBoard.Domain.Enums;
 
-// The entry identifier is built from this member's name, so a future second source can never
-// collide with an event that happens to share its numeric id.
+// The entry identifier is built from this member's name, so two sources sharing a numeric id
+// can never collide.
 public enum CalendarFeedSource
 {
-    Event
+    Event,
+    Quest
 }

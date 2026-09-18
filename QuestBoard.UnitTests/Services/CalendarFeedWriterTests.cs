@@ -22,7 +22,8 @@ public class CalendarFeedWriterTests
         VoteType availability = VoteType.Yes,
         DateTime? createdAt = null,
         int sourceId = 1,
-        CalendarFeedSource source = CalendarFeedSource.Event)
+        CalendarFeedSource source = CalendarFeedSource.Event,
+        TimeSpan? duration = null)
     {
         return new CalendarFeedEntry
         {
@@ -32,6 +33,7 @@ public class CalendarFeedWriterTests
             Title = title,
             Date = date,
             StartTime = startTime,
+            Duration = duration ?? TimeSpan.FromHours(1),
             Availability = availability,
             CreatedAt = createdAt ?? new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
         };
@@ -463,5 +465,114 @@ public class CalendarFeedWriterTests
         var actual = ExtractFoldedProperty(body, "UID:");
 
         actual.Should().Be(expected);
+    }
+
+    // --- Quest-source behaviour: duration is data, not a literal ---
+
+    [Fact]
+    public void Write_QuestSourcedEntryWithFourHourDuration_EmitsEndFourHoursAfterStart()
+    {
+        var start = new TimeOnly(19, 0);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), start, source: CalendarFeedSource.Quest, duration: TimeSpan.FromHours(4));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var startInstant = entry.Date.ToDateTime(start);
+        var endInstant = startInstant.Add(TimeSpan.FromHours(4));
+
+        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+    }
+
+    [Fact]
+    public void Write_QuestSourcedEntryWithTwoHourDuration_EmitsEndTwoHoursAfterStart()
+    {
+        var start = new TimeOnly(19, 0);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), start, source: CalendarFeedSource.Quest, duration: TimeSpan.FromHours(2));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var startInstant = entry.Date.ToDateTime(start);
+        var endInstant = startInstant.Add(TimeSpan.FromHours(2));
+
+        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+    }
+
+    // Regression guard for the duration default: proves the event projection can keep saying
+    // nothing about Duration and still get a one-hour block, exactly as before this phase.
+    [Fact]
+    public void Write_EventSourcedEntryBuiltWithDefaults_StillEmitsAOneHourBlock()
+    {
+        var start = new TimeOnly(19, 0);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), start);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var startInstant = entry.Date.ToDateTime(start);
+        var endInstant = startInstant.Add(TimeSpan.FromHours(1));
+
+        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+    }
+
+    // --- Quest-source behaviour: the answer suffix is unreachable for a non-event source ---
+
+    [Theory]
+    [InlineData(VoteType.Yes)]
+    [InlineData(VoteType.Maybe)]
+    [InlineData(VoteType.No)]
+    public void Write_QuestSourcedEntry_NeverAppendsAnAnswerSuffix_ForAnyAvailabilityValue(VoteType availability)
+    {
+        // The availability answer belongs to one source, and the enum's default value (No) is a
+        // real answer rather than an absence -- an entry that never set it would otherwise
+        // render a marker the reader never chose. Gating on Source before the switch is ever
+        // evaluated removes that landmine for every value, not just the ones a construction
+        // site remembers to avoid.
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), source: CalendarFeedSource.Quest, availability: availability);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("SUMMARY:[The Last Bastion] Session 12\r\n");
+    }
+
+    // If VoteType ever grows a fourth member, this fails the suite rather than letting the
+    // theory above silently leave the new value unproven.
+    [Fact]
+    public void Write_QuestSourcedEntry_NoMarkerTheoryCoversEveryDeclaredAvailabilityValue()
+    {
+        Enum.GetValues<VoteType>().Length.Should().Be(3);
+    }
+
+    // --- Quest-source behaviour: identifier namespacing at a colliding numeric id ---
+
+    [Fact]
+    public void Write_EventAndQuestSharingNumericId_EmitTwoDistinctIdentifierLines()
+    {
+        var eventEntry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 7, source: CalendarFeedSource.Event);
+        var questEntry = MakeEntry(new DateOnly(2026, 9, 21), new TimeOnly(19, 0), sourceId: 7, source: CalendarFeedSource.Quest);
+
+        var body = Writer.Write([eventEntry, questEntry], "My Calendar");
+
+        var eventUid = "UID:" + Writer.BuildUid(CalendarFeedSource.Event, 7);
+        var questUid = "UID:" + Writer.BuildUid(CalendarFeedSource.Quest, 7);
+
+        eventUid.Should().NotBe(questUid);
+        body.Should().Contain(eventUid);
+        body.Should().Contain(questUid);
+    }
+
+    // --- Quest-source behaviour: always timed, never all-day ---
+
+    [Fact]
+    public void Write_QuestSourcedEntryWithStartTime_NeverEmitsADateValuedStartOrEnd()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), source: CalendarFeedSource.Quest);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().NotContain("DTSTART;VALUE=DATE:");
+        body.Should().NotContain("DTEND;VALUE=DATE:");
+        body.Should().Contain("DTSTART:20260920T190000");
     }
 }

@@ -36,7 +36,7 @@ public static class ServiceExtensions
         // no matching configuration section still works.
         services.AddOptions<CalendarFeedOptions>()
             .BindConfiguration(CalendarFeedOptions.SectionName)
-            .Validate(o => o.IsValid(), "CalendarFeed MonthsBack must be at least 0, and MonthsAhead, LastFetchedThrottleMinutes and RetentionDays must each be at least 1.")
+            .Validate(o => o.IsValid(), "CalendarFeed MonthsBack must be at least 0, and MonthsAhead, LastFetchedThrottleMinutes, RetentionDays and QuestDurationHours must each be at least 1.")
             .ValidateOnStart();
 
         services.AddScoped<IUserService, UserService>();

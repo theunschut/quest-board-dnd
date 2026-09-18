@@ -12,6 +12,7 @@ namespace QuestBoard.Domain.Services;
 internal class CalendarSubscriptionService(
     ICalendarSubscriptionRepository subscriptionRepository,
     IEventSignupRepository eventSignupRepository,
+    IQuestRepository questRepository,
     IGroupService groupService,
     ICalendarFeedWriter writer,
     TimeProvider timeProvider,
@@ -67,6 +68,12 @@ internal class CalendarSubscriptionService(
         var memberGroupIds = memberships.Select(m => m.Id).ToList();
         var boardNamesById = memberships.ToDictionary(m => m.Id, m => m.Name);
 
+        // This single derived set encodes membership and board type at once, because it can
+        // only ever be a subset of the fresh membership read above -- there is no way to
+        // satisfy one predicate without the other. Deriving it from an independent "all
+        // one-shot boards" query instead would satisfy board type while dropping membership.
+        var oneShotGroupIds = memberships.Where(m => m.BoardType == BoardType.OneShot).Select(m => m.Id).ToList();
+
         var options = feedOptions.Value;
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         var windowStart = today.AddMonths(-options.MonthsBack);
@@ -104,7 +111,62 @@ internal class CalendarSubscriptionService(
             })
             .ToList();
 
-        var body = writer.Write(entries, "D&D Quest Board");
+        // The window is UTC-derived while FinalizedDate is stored in server local time (a
+        // standing, separately tracked known issue this phase does not touch). At this window's
+        // month granularity the host's UTC offset cannot move a quest across a bound except
+        // within a couple of hours of the boundary itself, so the discrepancy is accepted as
+        // negligible rather than left implicit. Called unconditionally, including when
+        // oneShotGroupIds is empty, for the same reason the event read above is unconditional.
+        var fetchedQuests = await questRepository.GetFeedQuestsForUserAsync(
+            subscription.UserId, oneShotGroupIds,
+            windowStart.ToDateTime(TimeOnly.MinValue), windowEnd.ToDateTime(TimeOnly.MaxValue), token);
+
+        // Second-layer re-check, mirroring the event branch above. Mandatory specifically
+        // because a feed is read by a machine, so a leak has no reader to notice it.
+        var checkedQuests = fetchedQuests.Where(q => oneShotGroupIds.Contains(q.GroupId)).ToList();
+        if (checkedQuests.Count != fetchedQuests.Count)
+        {
+            logger.LogError(
+                "Calendar feed dropped {DroppedCount} of {FetchedCount} quest row(s) falling outside the subscription owner's one-shot board set. The query is built from the same set, so this indicates a lost or mistranslated board-type or membership predicate.",
+                fetchedQuests.Count - checkedQuests.Count,
+                fetchedQuests.Count);
+        }
+
+        var questEntries = checkedQuests
+            .Select(q => new CalendarFeedEntry
+            {
+                Source = CalendarFeedSource.Quest,
+                SourceId = q.Id,
+                BoardName = boardNamesById.TryGetValue(q.GroupId, out var questBoardName) ? questBoardName : string.Empty,
+                Title = q.Title,
+                // FinalizedDate is a single DateTime carrying both date and time, unlike an
+                // event's already-split pair, so it is split explicitly here. The query
+                // guarantees FinalizedDate != null for every row that reaches this point.
+                Date = DateOnly.FromDateTime(q.FinalizedDate!.Value),
+                StartTime = TimeOnly.FromDateTime(q.FinalizedDate.Value),
+                Duration = TimeSpan.FromHours(options.QuestDurationHours),
+                CreatedAt = q.CreatedAt
+                // Availability is deliberately left at its default -- BuildSummary now checks
+                // Source before it ever reads Availability, so a quest can never pick up an
+                // answer marker, and leaving it unset is safe by construction rather than by
+                // coincidence.
+            })
+            .ToList();
+
+        // Ordered with no sentinel substituted for the absent start time, so an entry with no
+        // start time sorts before the timed entries on its day -- the same relative order the
+        // event query already produces on its own, since the database orders a null start time
+        // first too. Quests always carry a real start time, so they are never in that bucket.
+        // Source is the third key so an event precedes a quest at an identical date and time;
+        // source id is the final tiebreak.
+        var allEntries = entries.Concat(questEntries)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.StartTime)
+            .ThenBy(e => e.Source)
+            .ThenBy(e => e.SourceId)
+            .ToList();
+
+        var body = writer.Write(allEntries, "D&D Quest Board");
 
         // A strong fingerprint of the body's own bytes: it changes when and only when the
         // emitted document changes, so an event edit produces a new tag automatically with no
