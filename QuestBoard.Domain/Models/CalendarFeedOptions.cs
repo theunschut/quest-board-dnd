@@ -24,7 +24,12 @@ public class CalendarFeedOptions
     // deliberate end of the retirement guarantee.
     public int RetentionDays { get; set; } = 30;
 
+    // The operator's own figure for a full evening session. Invented for rendering because
+    // nothing in the schema records when a quest session ends, and reachable through
+    // configuration without a code change, matching the window bounds above it.
+    public int QuestDurationHours { get; set; } = 4;
+
     // A window with no forward reach or a zero throttle makes the feature unserviceable, so
     // the application refuses to start rather than failing per request.
-    public bool IsValid() => MonthsBack >= 0 && MonthsAhead >= 1 && LastFetchedThrottleMinutes >= 1 && RetentionDays >= 1;
+    public bool IsValid() => MonthsBack >= 0 && MonthsAhead >= 1 && LastFetchedThrottleMinutes >= 1 && RetentionDays >= 1 && QuestDurationHours >= 1;
 }

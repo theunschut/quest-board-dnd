@@ -64,11 +64,13 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
     }
 
     // Timed branch: floating local time (no zone parameter, no trailing Z) matching the
-    // codebase's own naive time model, a fixed one-hour block invented purely for rendering.
+    // codebase's own naive time model. The block's length is whatever the entry carries,
+    // invented purely for rendering -- an event's default one-hour block and a quest's longer
+    // configured session length are both just Duration.
     private void AppendTimedEvent(StringBuilder builder, CalendarFeedEntry entry)
     {
         var start = entry.Date.ToDateTime(entry.StartTime!.Value);
-        var end = start.AddHours(1);
+        var end = start.Add(entry.Duration);
 
         builder.Append("BEGIN:VEVENT").Append(LineBreak);
         AppendFoldedLine(builder, "UID:" + BuildUid(entry.Source, entry.SourceId));
@@ -107,17 +109,23 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
     {
         var title = "[" + entry.BoardName + "] " + entry.Title;
 
-        // Branches on Availability alone and deliberately does not consult HasAnswered. An
-        // automatically created board-wide row is a Yes that nobody chose (HasAnswered ==
-        // false for it), and every Yes -- chosen or not -- renders with a plain title. This is
-        // an accepted cost, not an oversight: there is no third marker for the never-answered
-        // case -- a no answer marker was proposed and dropped, and no such literal appears here.
-        var suffix = entry.Availability switch
-        {
-            VoteType.Maybe => " (maybe)",
-            VoteType.No => " (declined)",
-            _ => string.Empty,
-        };
+        // The availability answer belongs to one source only, and the source check comes
+        // before the availability switch is evaluated at all -- VoteType's default value is a
+        // real answer (declined), not an absence, so an entry that never set it would otherwise
+        // render a marker nobody chose. Within the event side, branches on Availability alone
+        // and deliberately does not consult HasAnswered. An automatically created board-wide
+        // row is a Yes that nobody chose (HasAnswered == false for it), and every Yes -- chosen
+        // or not -- renders with a plain title. This is an accepted cost, not an oversight:
+        // there is no third marker for the never-answered case -- a no answer marker was
+        // proposed and dropped, and no such literal appears here.
+        var suffix = entry.Source == CalendarFeedSource.Event
+            ? entry.Availability switch
+            {
+                VoteType.Maybe => " (maybe)",
+                VoteType.No => " (declined)",
+                _ => string.Empty,
+            }
+            : string.Empty;
 
         return EscapeText(title + suffix);
     }
