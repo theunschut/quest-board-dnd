@@ -1,21 +1,21 @@
 ---
-gsd_state_version: "1.0"
+gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 84
 current_phase_name: calendar-feed-foundation-and-event-subscription
 status: executing
-stopped_at: Completed 84-08-PLAN.md (Phase 84 closed)
-last_updated: "2026-09-18T13:06:04.956Z"
+stopped_at: Phase 85 context gathered
+last_updated: "2026-09-18T14:17:56.877Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
-state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 progress:
   total_phases: 14
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 91
   completed_plans: 82
-  percent: 71
+  percent: 79
+state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 ---
 
 # Project State
@@ -126,9 +126,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-18T13:06:02.667Z
-Stopped at: Completed 84-08-PLAN.md (Phase 84 closed)
-Resume file: None
+Last session: 2026-09-18T14:17:56.808Z
+Stopped at: Phase 85 context gathered
+Resume file: .planning/phases/85-one-shot-quests-in-the-calendar-feed/85-CONTEXT.md
 
 ## Operator Next Steps
 
