@@ -98,6 +98,42 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
+    // Mutates an already-seeded quest's finalized state or finalized date through the
+    // unfiltered seeding context -- covers un-finalizing a quest back to voting and moving its
+    // finalized date, the two exits that change the row in place rather than remove it outright.
+    private async Task MutateQuestAsync(int questId, Action<QuestEntity> mutate)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var quest = await ctx.Quests.IgnoreQueryFilters()
+            .SingleAsync(q => q.Id == questId, TestContext.Current.CancellationToken);
+        mutate(quest);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Deletes a quest row outright through the unfiltered seeding context -- distinct from
+    // un-finalizing, which leaves the row in place with its finalized fields cleared.
+    private async Task DeleteQuestAsync(int questId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var quest = await ctx.Quests.IgnoreQueryFilters()
+            .SingleAsync(q => q.Id == questId, TestContext.Current.CancellationToken);
+        ctx.Quests.Remove(quest);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Deletes a signup row outright through the unfiltered seeding context -- distinct from the
+    // waitlist-promotion fact elsewhere in this file, which flips the confirmed-seat flag on a
+    // surviving row. Withdrawing from a quest removes the row itself rather than leaving a
+    // demoted one behind.
+    private async Task DeleteSignupAsync(int questId, int playerId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var signup = await ctx.PlayerSignups.IgnoreQueryFilters()
+            .SingleAsync(ps => ps.QuestId == questId && ps.PlayerId == playerId, TestContext.Current.CancellationToken);
+        ctx.PlayerSignups.Remove(signup);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     // Mints through the real service from a scope, rather than a direct database insert, so
     // the fact exercises the same production write path the Profile page calls.
     private async Task<CalendarSubscription> MintSubscriptionAsync(int userId)
@@ -414,5 +450,303 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         // title the board no longer lists for them.
         body.Should().Contain($"questboard-quest-{questId}");
         body.Should().Contain("Quest Feed DM-Flagged Session");
+    }
+
+    // ---- Disappearance: every route by which a quest stops qualifying ----
+    //
+    // Each fact below is a transition -- seed a qualifying quest, fetch and assert it is
+    // present, change exactly one thing through the seeding context, fetch the same address
+    // again, and assert on the second body. A predicate that lost the clause under test would
+    // pass a fact that only ever fetched once against a feed that simply never updates; fetching
+    // twice against one subscription is what actually proves the removal rather than merely two
+    // unrelated end states.
+    //
+    // No fact here exercises a closed quest. Close is campaign-only and rejects with BadRequest
+    // on a one-shot board, so IsClosed is unreachable for every quest this phase can emit -- a
+    // fact asserting behaviour for it would be asserting on dead code.
+
+    [Fact]
+    public async Task Feed_UnfinalizedQuest_DisappearsFromTheVeryNextFetch()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_unfinalize_reader", "questfeed_unfinalize_reader@example.com", name: "Quest Feed Unfinalize Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_unfinalize_dm", "questfeed_unfinalize_dm@example.com", name: "Quest Feed Unfinalize DM");
+
+        await SeedBoardAsync(9, "Quest Feed Unfinalize Board");
+        await SeedMembershipAsync(reader.Id, 9);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+        var questId = await SeedQuestAsync(9, dungeonMaster.Id, "Quest Feed Unfinalize Session", finalizedDate);
+        await SeedPlayerSignupAsync(questId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var beforeResponse = await FetchFeedAsync(subscription.Token);
+        var beforeBody = await beforeResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        beforeBody.Should().Contain("Quest Feed Unfinalize Session");
+        CountVEvents(beforeBody).Should().Be(1);
+
+        // Sends the quest back to voting -- both the finalized flag and the finalized date clear
+        // together, matching what un-finalizing a quest actually does to the row.
+        await MutateQuestAsync(questId, q =>
+        {
+            q.IsFinalized = false;
+            q.FinalizedDate = null;
+        });
+
+        var afterResponse = await FetchFeedAsync(subscription.Token);
+        var afterBody = await afterResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        afterBody.Should().NotContain("Quest Feed Unfinalize Session");
+        afterBody.Should().NotContain($"questboard-quest-{questId}");
+        CountVEvents(afterBody).Should().Be(0);
+
+        // The decision locked here is that no tombstone is emitted at all -- not that a
+        // particular status value is avoided -- so this checks the whole document for the
+        // property itself rather than for one value of it. A cancellation therefore reaches the
+        // subscriber only as a silent disappearance, which is most acute for a called-off game
+        // night: a reader who is no longer looking for the entry is unlikely to notice it left.
+        afterBody.Should().NotContain("STATUS");
+    }
+
+    [Fact]
+    public async Task Feed_DeletedQuest_DisappearsFromTheVeryNextFetch()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_delete_reader", "questfeed_delete_reader@example.com", name: "Quest Feed Delete Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_delete_dm", "questfeed_delete_dm@example.com", name: "Quest Feed Delete DM");
+
+        await SeedBoardAsync(10, "Quest Feed Delete Board");
+        await SeedMembershipAsync(reader.Id, 10);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+        var questId = await SeedQuestAsync(10, dungeonMaster.Id, "Quest Feed Delete Session", finalizedDate);
+        await SeedPlayerSignupAsync(questId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var beforeResponse = await FetchFeedAsync(subscription.Token);
+        var beforeBody = await beforeResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        beforeBody.Should().Contain("Quest Feed Delete Session");
+        CountVEvents(beforeBody).Should().Be(1);
+
+        // Removes the row entirely -- the quest is gone, not merely un-finalized.
+        await DeleteQuestAsync(questId);
+
+        var afterResponse = await FetchFeedAsync(subscription.Token);
+        var afterBody = await afterResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        afterBody.Should().NotContain("Quest Feed Delete Session");
+        afterBody.Should().NotContain($"questboard-quest-{questId}");
+        CountVEvents(afterBody).Should().Be(0);
+        afterBody.Should().NotContain("STATUS");
+    }
+
+    [Fact]
+    public async Task Feed_QuestWhoseReaderSignupRowIsDeleted_DisappearsFromTheVeryNextFetch()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_seat_withdrawn_reader", "questfeed_seat_withdrawn_reader@example.com", name: "Quest Feed Seat Withdrawn Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_seat_withdrawn_dm", "questfeed_seat_withdrawn_dm@example.com", name: "Quest Feed Seat Withdrawn DM");
+
+        await SeedBoardAsync(11, "Quest Feed Seat Withdrawn Board");
+        await SeedMembershipAsync(reader.Id, 11);
+
+        var finalizedDate = DateTime.Today.AddDays(1).AddHours(19);
+        var questId = await SeedQuestAsync(11, dungeonMaster.Id, "Quest Feed Seat Withdrawn Session", finalizedDate);
+        await SeedPlayerSignupAsync(questId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var beforeResponse = await FetchFeedAsync(subscription.Token);
+        var beforeBody = await beforeResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        beforeBody.Should().Contain("Quest Feed Seat Withdrawn Session");
+        CountVEvents(beforeBody).Should().Be(1);
+
+        // Withdrawing from a quest removes the signup row itself -- distinct from the
+        // waitlist-promotion fact elsewhere in this file, which flips the confirmed-seat flag on
+        // a surviving row.
+        await DeleteSignupAsync(questId, reader.Id);
+
+        var afterResponse = await FetchFeedAsync(subscription.Token);
+        var afterBody = await afterResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        afterBody.Should().NotContain("Quest Feed Seat Withdrawn Session");
+        afterBody.Should().NotContain($"questboard-quest-{questId}");
+        CountVEvents(afterBody).Should().Be(0);
+        afterBody.Should().NotContain("STATUS");
+    }
+
+    [Fact]
+    public async Task Feed_RescheduledQuest_UpdatesInPlaceWithinTheWindowAndDisappearsOutsideIt()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_reschedule_reader", "questfeed_reschedule_reader@example.com", name: "Quest Feed Reschedule Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_reschedule_dm", "questfeed_reschedule_dm@example.com", name: "Quest Feed Reschedule DM");
+
+        await SeedBoardAsync(12, "Quest Feed Reschedule Board");
+        await SeedMembershipAsync(reader.Id, 12);
+
+        var options = GetFeedOptions();
+        var finalizedDate = DateTime.Today.AddDays(3).AddHours(19);
+        var questId = await SeedQuestAsync(12, dungeonMaster.Id, "Quest Feed Reschedule Session", finalizedDate);
+        await SeedPlayerSignupAsync(questId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var firstResponse = await FetchFeedAsync(subscription.Token);
+        var firstBody = await firstResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var firstUidLine = firstBody.Split("\r\n").Single(line => line.StartsWith($"UID:questboard-quest-{questId}", StringComparison.Ordinal));
+
+        // Move the finalized date to a different date, still comfortably inside the window.
+        var newDate = finalizedDate.AddDays(2);
+        await MutateQuestAsync(questId, q => q.FinalizedDate = newDate);
+
+        var secondResponse = await FetchFeedAsync(subscription.Token);
+        var secondBody = await secondResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var secondUidLine = secondBody.Split("\r\n").Single(line => line.StartsWith($"UID:questboard-quest-{questId}", StringComparison.Ordinal));
+
+        secondBody.Should().Contain($"DTSTART:{newDate:yyyyMMdd}T{newDate:HHmmss}");
+
+        // The load-bearing assertion: the identifier captured from the first fetch is
+        // byte-identical to the one captured from the second, rather than a freshly-derived
+        // expectation from the quest id. An identifier that changed between fetches would make
+        // every subscriber's phone accumulate a fresh copy of the session on every reschedule
+        // instead of updating the existing entry in place, and nothing server-side would show it.
+        secondUidLine.Should().Be(firstUidLine);
+        CountVEvents(secondBody).Should().Be(1);
+
+        // Move the finalized date outside the window entirely -- the fourth exit route, and the
+        // same predicate clause the window facts below pin from the other direction.
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var windowEnd = today.AddMonths(options.MonthsAhead);
+        var outsideWindowDate = windowEnd.AddDays(1).ToDateTime(new TimeOnly(19, 0));
+        await MutateQuestAsync(questId, q => q.FinalizedDate = outsideWindowDate);
+
+        var thirdResponse = await FetchFeedAsync(subscription.Token);
+        var thirdBody = await thirdResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        thirdBody.Should().NotContain("Quest Feed Reschedule Session");
+        thirdBody.Should().NotContain($"questboard-quest-{questId}");
+        CountVEvents(thirdBody).Should().Be(0);
+        thirdBody.Should().NotContain("STATUS");
+    }
+
+    // ---- The shared rolling window, both bounds ----
+
+    [Fact]
+    public async Task Feed_QuestJustInsideTheBackwardWindowBound_AppearsWhileOneJustOutsideDoesNot()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_backward_window_reader", "questfeed_backward_window_reader@example.com", name: "Quest Feed Backward Window Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_backward_window_dm", "questfeed_backward_window_dm@example.com", name: "Quest Feed Backward Window DM");
+
+        // Board name kept short deliberately -- at the octet count RFC 5545 folds a SUMMARY
+        // line, a folded continuation line splits a plain Contain() assertion's expected text
+        // across two physical lines even though the underlying title is correct and unchanged.
+        await SeedBoardAsync(13, "Quest Feed Window Board");
+        await SeedMembershipAsync(reader.Id, 13);
+
+        var options = GetFeedOptions();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var windowStart = today.AddMonths(-options.MonthsBack);
+
+        // Every date here is derived from the running host's own configured month count, never
+        // from a literal number of months -- a fact that hard-coded "three months back" would
+        // stop testing the bound the moment the default changed, and would silently keep
+        // passing. Each date sits a full day clear of the bound rather than an hour: the window
+        // bounds are derived from a coordinated-universal clock while the quest's finalized date
+        // is stored in server local time, so a date within the host's own UTC offset of a bound
+        // is genuinely ambiguous by design, not flaky by accident. This fact does not probe the
+        // exact boundary instant.
+        var insideDate = windowStart.AddDays(1).ToDateTime(new TimeOnly(19, 0));
+        var outsideDate = windowStart.AddDays(-1).ToDateTime(new TimeOnly(19, 0));
+
+        var insideQuestId = await SeedQuestAsync(13, dungeonMaster.Id, "Quest Feed Backward Inside Session", insideDate);
+        await SeedPlayerSignupAsync(insideQuestId, reader.Id);
+
+        var outsideQuestId = await SeedQuestAsync(13, dungeonMaster.Id, "Quest Feed Backward Outside Session", outsideDate);
+        await SeedPlayerSignupAsync(outsideQuestId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("Quest Feed Backward Inside Session");
+        body.Should().NotContain("Quest Feed Backward Outside Session");
+        CountVEvents(body).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Feed_QuestJustInsideTheForwardWindowBound_AppearsWhileOneJustOutsideDoesNot()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_forward_window_reader", "questfeed_forward_window_reader@example.com", name: "Quest Feed Forward Window Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_forward_window_dm", "questfeed_forward_window_dm@example.com", name: "Quest Feed Forward Window DM");
+
+        await SeedBoardAsync(14, "Quest Feed Window Board");
+        await SeedMembershipAsync(reader.Id, 14);
+
+        var options = GetFeedOptions();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var windowEnd = today.AddMonths(options.MonthsAhead);
+
+        var insideDate = windowEnd.AddDays(-1).ToDateTime(new TimeOnly(19, 0));
+        var outsideDate = windowEnd.AddDays(1).ToDateTime(new TimeOnly(19, 0));
+
+        var insideQuestId = await SeedQuestAsync(14, dungeonMaster.Id, "Quest Feed Forward Inside Session", insideDate);
+        await SeedPlayerSignupAsync(insideQuestId, reader.Id);
+
+        var outsideQuestId = await SeedQuestAsync(14, dungeonMaster.Id, "Quest Feed Forward Outside Session", outsideDate);
+        await SeedPlayerSignupAsync(outsideQuestId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("Quest Feed Forward Inside Session");
+        body.Should().NotContain("Quest Feed Forward Outside Session");
+        CountVEvents(body).Should().Be(1);
+
+        // No second pair of window knobs exists for quests: CalendarFeedOptions exposes exactly
+        // one backward bound and one forward bound, and both window facts in this file read
+        // those same two properties -- there is no separate Quest-only pair sitting alongside
+        // them for a quest predicate to drift out of sync with.
+        typeof(CalendarFeedOptions).GetProperties()
+            .Count(p => p.Name.Contains("MonthsBack", StringComparison.Ordinal)).Should().Be(1);
+        typeof(CalendarFeedOptions).GetProperties()
+            .Count(p => p.Name.Contains("MonthsAhead", StringComparison.Ordinal)).Should().Be(1);
     }
 }
