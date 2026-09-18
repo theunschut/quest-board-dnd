@@ -732,8 +732,24 @@ Plans:
 | CONTACTTAG-15 | Phase 81 |
 | CONTACTTAG-16 | Phase 81 |
 | CONTACTTAG-17 | Phase 81 |
+| CALFEED-01 | Phase 84 |
+| CALFEED-02 | Phase 84 |
+| CALFEED-03 | Phase 84 |
+| CALFEED-04 | Phase 84 |
+| CALFEED-05 | Phase 84 |
+| CALFEED-06 | Phase 84 |
+| CALFEED-07 | Phase 84 |
+| CALFEED-08 | Phase 84 |
+| CALFEED-09 | Phase 84 |
+| CALFEED-10 | Phase 84 |
+| CALFEED-11 | Phase 84 |
+| CALFEED-12 | Phase 84 |
+| CALFEED-13 | Phase 84 |
+| CALFEED-14 | Phase 84 |
+| CALFEED-15 | Phase 84 |
+| CALFEED-16 | Phase 84 |
 
-**Coverage:** 99/99 requirements mapped ✓ · 0 unmapped · 2 phases awaiting requirements (84, 85 — minted during their discuss pass)
+**Coverage:** 115/115 requirements mapped ✓ · 0 unmapped · 1 phase awaiting requirements (85 — minted during its discuss pass)
 
 ## Research Flags
 
@@ -789,9 +805,9 @@ Plans:
 ### Phase 84: Calendar Feed Foundation and Event Subscription
 
 **Goal**: A board member can point their phone's calendar at a personal subscription URL once and have every event from every board they belong to appear there on its own — all-day entries, timed entries, later edits, and cancellations included — without opening the quest board.
-**Requirements**: TBD
+**Requirements**: CALFEED-01, CALFEED-02, CALFEED-03, CALFEED-04, CALFEED-05, CALFEED-06, CALFEED-07, CALFEED-08, CALFEED-09, CALFEED-10, CALFEED-11, CALFEED-12, CALFEED-13, CALFEED-14, CALFEED-15, CALFEED-16
 **Depends on**: Phase 82 (reuses the membership-scoped cross-board event read built there) and Phase 83 (the two availability surfaces must be settled before a third read surface is added over the same data)
-**Plans**: 0/8 plans complete
+**Plans**: 1/8 plans executed
 
 **Origin:** raised by the operator on 2026-09-17 — the board already knows every date, but getting those dates onto a phone means retyping them by hand.
 
@@ -824,7 +840,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 84-01-PLAN.md — Mint the CALFEED requirement family into REQUIREMENTS.md and ROADMAP.md, and complete the phase validation contract (wave 1)
+- [x] 84-01-PLAN.md — Mint the CALFEED requirement family into REQUIREMENTS.md and ROADMAP.md, and complete the phase validation contract (wave 1)
 - [ ] 84-02-PLAN.md — End-to-end tracer: subscription table and migration, the signup-rooted cross-board feed query with its second-layer re-check, a minimal RFC 5545 writer, and the anonymous token-authenticated feed endpoint (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*

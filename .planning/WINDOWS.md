@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 1
+open_count: 0
 waived_count: 0
-fixed_count: 0
+fixed_count: 1
 total_count: 1
-last_updated: 2026-09-17T20:23:58.316Z
+last_updated: 2026-09-18T07:10:44.090Z
 ---
 
 # Broken Windows Ledger
@@ -15,7 +15,7 @@ last_updated: 2026-09-17T20:23:58.316Z
 
 | id | phase | kind | file | line | description | status | reason | recorded_at | resolved_at |
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
-| 1 | 84 | deviation | .planning/ROADMAP.md |  | 84-01 Task 2 ROADMAP.md edits (Requirements line + 16 Coverage rows) computed and verified but not committed - worktree harness blocks commits touching ROADMAP.md; orchestrator must apply after wave merge (see 84-01-SUMMARY.md) | open |  | 2026-09-17T20:23:58.316Z |  |
+| 1 | 84 | deviation | .planning/ROADMAP.md |  | 84-01 Task 2 ROADMAP.md edits (Requirements line + 16 Coverage rows) computed and verified but not committed - worktree harness blocks commits touching ROADMAP.md; orchestrator must apply after wave merge (see 84-01-SUMMARY.md) | fixed |  | 2026-09-17T20:23:58.316Z | 2026-09-18T07:10:44.090Z |
 
 ````json
 [
@@ -26,10 +26,10 @@ last_updated: 2026-09-17T20:23:58.316Z
     "file": ".planning/ROADMAP.md",
     "line": null,
     "description": "84-01 Task 2 ROADMAP.md edits (Requirements line + 16 Coverage rows) computed and verified but not committed - worktree harness blocks commits touching ROADMAP.md; orchestrator must apply after wave merge (see 84-01-SUMMARY.md)",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-09-17T20:23:58.316Z",
-    "resolved_at": null
+    "resolved_at": "2026-09-18T07:10:44.090Z"
   }
 ]
 ````
