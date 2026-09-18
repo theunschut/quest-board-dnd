@@ -32,6 +32,12 @@ public static class ServiceExtensions
             .BindConfiguration(AgendaOptions.SectionName)
             .Validate(o => o.IsValid(), "Agenda DefaultTake, MaxTake and PageIncrement must each be at least 1, and DefaultTake must not exceed MaxTake.")
             .ValidateOnStart();
+        // Same code-default-plus-configuration shape as AgendaOptions above: a deployment with
+        // no matching configuration section still works.
+        services.AddOptions<CalendarFeedOptions>()
+            .BindConfiguration(CalendarFeedOptions.SectionName)
+            .Validate(o => o.IsValid(), "CalendarFeed MonthsBack must be at least 0, and MonthsAhead, LastFetchedThrottleMinutes and RetentionDays must each be at least 1.")
+            .ValidateOnStart();
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IEmailService, EmailService>();
