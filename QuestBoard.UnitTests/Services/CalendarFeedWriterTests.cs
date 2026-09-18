@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
@@ -297,5 +298,100 @@ public class CalendarFeedWriterTests
         body.Should().EndWith("END:VCALENDAR\r\n");
         body.Replace("\r\n", string.Empty).Should().NotContain("\n");
         body.Replace("\r\n", string.Empty).Should().NotContain("\r");
+    }
+
+    [Fact]
+    public void Write_YesAnswer_EmitsPlainTitleWithNoSuffix()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.Yes);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("SUMMARY:[The Last Bastion] Session 12" + "\r\n");
+    }
+
+    [Fact]
+    public void Write_MaybeAnswer_AppendsMaybeSuffix()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.Maybe);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        UnescapeText(summary).Should().Be("[The Last Bastion] Session 12 (maybe)");
+    }
+
+    [Fact]
+    public void Write_NoAnswer_AppendsDeclinedSuffix()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.No);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        UnescapeText(summary).Should().Be("[The Last Bastion] Session 12 (declined)");
+    }
+
+    [Fact]
+    public void Write_Summary_OpensWithBoardNameBracket()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        summary.Should().StartWith("[");
+    }
+
+    [Fact]
+    public void Write_BoardNameWithComma_EscapesAndRoundTrips()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), boardName: "Smith, Jones", title: "Title");
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        UnescapeText(summary).Should().Be("[Smith, Jones] Title");
+    }
+
+    [Fact]
+    public void Write_Document_EmitsCalNameTtlAndRefreshInterval()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("X-WR-CALNAME:My Calendar");
+        body.Should().Contain("X-PUBLISHED-TTL:PT4H");
+        body.Should().Contain("REFRESH-INTERVAL;VALUE=DURATION:PT4H");
+    }
+
+    [Fact]
+    public void Write_Document_EmitsVersionProdidCalscaleAndNoMethod()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("VERSION:2.0");
+        body.Should().Contain("PRODID:");
+        body.Should().Contain("CALSCALE:GREGORIAN");
+        body.Should().NotContain("METHOD:");
+    }
+
+    [Fact]
+    public void Write_MultipleEntries_CalendarHeadersAppearExactlyOnceBeforeFirstEvent()
+    {
+        var first = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1);
+        var second = MakeEntry(new DateOnly(2026, 9, 21), new TimeOnly(19, 0), sourceId: 2);
+
+        var body = Writer.Write([first, second], "My Calendar");
+
+        Regex.Matches(body, "X-WR-CALNAME:").Count.Should().Be(1);
+        Regex.Matches(body, "VERSION:2.0").Count.Should().Be(1);
+
+        var firstEventIndex = body.IndexOf("BEGIN:VEVENT", StringComparison.Ordinal);
+        var calNameIndex = body.IndexOf("X-WR-CALNAME:", StringComparison.Ordinal);
+        calNameIndex.Should().BeLessThan(firstEventIndex);
     }
 }
