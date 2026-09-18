@@ -973,4 +973,119 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         afterBody.Should().NotContain($"questboard-quest-{questId}");
         CountVEvents(afterBody).Should().Be(0);
     }
+
+    // ---- Merged-document ordering, and the events-only guarantee ----
+
+    [Fact]
+    public async Task Feed_MergedDocument_OrdersEventsAndQuestsByDateThenStartTimeRegardlessOfSource()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_order_reader", "questfeed_order_reader@example.com", name: "Quest Feed Order Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_order_dm", "questfeed_order_dm@example.com", name: "Quest Feed Order DM");
+
+        // Board name kept short deliberately, matching the lesson learned elsewhere in this
+        // file: at the octet count RFC 5545 folds a SUMMARY line, a folded continuation line
+        // would split this fact's own title-extraction across two physical lines even though
+        // the underlying title is correct and unchanged.
+        await SeedBoardAsync(22, "Quest Feed Order Board");
+        await SeedMembershipAsync(reader.Id, 22);
+
+        var dayOne = DateOnly.FromDateTime(DateTime.Today).AddDays(10);
+        var dayTwo = dayOne.AddDays(1);
+        var dayThree = dayOne.AddDays(2);
+
+        // Seeded in a deliberately scrambled order, different from the expected output order --
+        // a pipeline that simply preserved insertion order would fail this fact.
+        var dayThreeEventId = await SeedEventAsync(22, "Order Day Three", dayThree, new TimeOnly(18, 0));
+        await SeedEventSignupAsync(dayThreeEventId, reader.Id, VoteType.Yes);
+
+        var dayOneQuestId = await SeedQuestAsync(22, dungeonMaster.Id, "Order Day One", dayOne.ToDateTime(new TimeOnly(19, 0)));
+        await SeedPlayerSignupAsync(dayOneQuestId, reader.Id);
+
+        // No start time at all -- becomes an all-day entry.
+        var dayTwoAllDayEventId = await SeedEventAsync(22, "Order Day Two All Day", dayTwo);
+        await SeedEventSignupAsync(dayTwoAllDayEventId, reader.Id, VoteType.Yes);
+
+        var dayTwoEventId = await SeedEventAsync(22, "Order Day Two Event", dayTwo, new TimeOnly(20, 0));
+        await SeedEventSignupAsync(dayTwoEventId, reader.Id, VoteType.Yes);
+
+        // Finalized an hour earlier than the day-two event's start time -- one quest and one
+        // event on the same day, meant to interleave by time rather than group by source.
+        var dayTwoQuestId = await SeedQuestAsync(22, dungeonMaster.Id, "Order Day Two Quest", dayTwo.ToDateTime(new TimeOnly(19, 0)));
+        await SeedPlayerSignupAsync(dayTwoQuestId, reader.Id);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var response = await FetchFeedAsync(subscription.Token);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // Parses the title lines in document order rather than asserting containment -- an
+        // exact sequence, not a set of containments.
+        const string summaryPrefix = "SUMMARY:[Quest Feed Order Board] ";
+        var orderedTitles = body.Split("\r\n")
+            .Where(line => line.StartsWith(summaryPrefix, StringComparison.Ordinal))
+            .Select(line => line[summaryPrefix.Length..])
+            .ToList();
+
+        // The all-day entry sorting before the day's timed entries is the order the shipped
+        // event pipeline already produces and is deliberately preserved here -- a fact that
+        // asserted the opposite would be encoding a silent change to every existing
+        // subscriber's document. And the two day-two timed entries are one quest and one event,
+        // interleaved by time rather than grouped by source, which is the actual claim under
+        // test: the document is one ordered list, not events followed by quests.
+        orderedTitles.Should().Equal(
+            "Order Day One",
+            "Order Day Two All Day",
+            "Order Day Two Quest",
+            "Order Day Two Event",
+            "Order Day Three");
+    }
+
+    [Fact]
+    public async Task Feed_EventsOnlyDocument_IsByteIdenticalWhenNoQuestQualifies()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_unchanged_reader", "questfeed_unchanged_reader@example.com", name: "Quest Feed Unchanged Reader");
+        var dungeonMaster = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "questfeed_unchanged_dm", "questfeed_unchanged_dm@example.com", name: "Quest Feed Unchanged DM");
+
+        await SeedBoardAsync(23, "Quest Feed Unchanged Board");
+        await SeedMembershipAsync(reader.Id, 23);
+
+        var eventDate = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
+        var eventId = await SeedEventAsync(23, "Quest Feed Unchanged Event", eventDate, new TimeOnly(19, 0));
+        await SeedEventSignupAsync(eventId, reader.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(reader.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var firstResponse = await FetchFeedAsync(subscription.Token);
+        var firstBody = await firstResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var firstTag = firstResponse.Headers.ETag?.Tag;
+
+        // A quest that deliberately does not qualify -- the reader holds no signup row on it
+        // and is not its Dungeon Master. The quest source is now always present in the
+        // composition path, and this fact is the guarantee that its presence costs nothing when
+        // it finds nothing.
+        await SeedQuestAsync(23, dungeonMaster.Id, "Quest Feed Unchanged Unqualified Quest", eventDate.ToDateTime(new TimeOnly(20, 0)));
+
+        var secondResponse = await FetchFeedAsync(subscription.Token);
+        var secondBody = await secondResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var secondTag = secondResponse.Headers.ETag?.Tag;
+
+        // A subscriber whose boards have no qualifying quests must receive exactly the document
+        // they were receiving before this phase -- same entries, same order, same bytes, and
+        // therefore the same entity tag, so their device does not re-download and re-import a
+        // calendar that did not change.
+        secondBody.Should().Be(firstBody);
+        secondTag.Should().Be(firstTag);
+    }
 }
