@@ -81,6 +81,59 @@ created: 2026-09-18
 | Relational SQL translation of the quest predicate | D-01 | The integration suite runs on the EF Core **InMemory** provider, which cannot prove a LINQ shape translates to SQL Server. This is an inherited gap from Phases 82 and 84, and this is the **third consecutive phase** to defer it rather than close it — closing it means standing up relational test infrastructure (a real SQL Server test fixture), which is larger than any one phase and remains out of scope here. | Run the app against the real SQL Server (`dotnet run --project QuestBoard.Service`, connection string in `appsettings.json`), sign in as a user holding a confirmed seat or Dungeon Master role on a finalized, one-shot-board quest, fetch `GET /feeds/calendar/{feedToken}.ics` for that user's subscription, and confirm no `InvalidOperationException` about client-side evaluation and that the quest's VEVENT appears in the response body. The predicate under test is `QuestRepository.GetFeedQuestsForUserAsync`, invoked from `CalendarSubscriptionService.GetFeedAsync`. |
 | Real calendar-client rendering | D-05, D-06, D-07 | Unit and markup tests cannot prove a phone renders the feed correctly. | **Inherited from Phase 84 and still not closed by this phase.** No output of this phase observes refresh latency, in-place update, or what a client does when an entry disappears between polls — and the silent-disappearance decision (D-09) rests on exactly that last, unobserved behaviour. See `85-CONTEXT.md`, Inherited assumptions, and Phase 84's own deferred real-device check. |
 
+
+### Manual verification performed — 2026-09-18
+
+**Relational SQL translation — compensating check PERFORMED. Structural gap REMAINS OPEN.**
+
+The compensating check written in the row above was executed against the real SQL Server
+(`mssql-dev`, SQL Server 2022) with the shipped code, on the real development dataset
+(39 users, 5 boards, 62 quests), not a fixture:
+
+- `AddCalendarSubscriptions` migrated cleanly on startup.
+- A subscription was minted for a user who is a member of one `OneShot` board and two
+  `Campaign` boards, holds the Dungeon Master role on in-window finalized one-shot quests,
+  and has no event signups at all — isolating the quest source from the event source.
+- `GET /feeds/calendar/{feedToken}.ics` returned `200` with correct `VEVENT`s.
+- **No `InvalidOperationException` about client-side evaluation**, and no error of any kind in
+  the application log. `QuestRepository.GetFeedQuestsForUserAsync` therefore *did* translate to
+  T-SQL and execute relationally on SQL Server 2022.
+- The served quest-id set was diffed against an independently written SQL query mirroring the
+  shipped predicate: **identical** — no over-serving and no under-serving.
+
+Scoping rules were each proven live by seeding quests that must be refused, then removing them:
+
+| Seeded case | Expected | Observed |
+|---|---|---|
+| Finalized quest on a **Campaign** board, reader is Dungeon Master | refused (board type) | refused |
+| Finalized quest on a `OneShot` board the reader is **not a member of**, reader is Dungeon Master | refused (membership) | refused |
+| Waitlisted signup | refused | refused |
+| Confirmed seat | served | served |
+| Not finalized | refused | refused |
+| Finalized 18 months ahead | refused (window) | refused |
+| `DungeonMasterSession` flagged + confirmed seat | served (accepted risk, D-04) | served |
+| One quest matching **both** routes (Dungeon Master *and* confirmed seat) | exactly one entry | exactly one entry |
+
+Protocol behaviour observed: repeat fetch byte-identical with a stable `ETag`; `If-None-Match`
+returns `304`; unknown address returns `404`; revoked returns `410` and reinstated returns `200`;
+every line within RFC 5545's 75-octet fold limit; CRLF terminators. A healthy fetch logged
+nothing, which is the re-check's own "silent on healthy data" guarantee.
+
+All seeded rows and the temporary subscription were removed afterwards; the dataset was confirmed
+back at 62 quests and 0 subscriptions.
+
+**Why this does not close the gap.** The row above defers *relational test infrastructure* — a
+real SQL Server test fixture the suite runs against automatically. This was a one-off manual
+observation of one query shape against one provider version, performed by hand and not repeatable
+by CI. It is strong evidence the translation risk is smaller than feared, and it is **not** a
+substitute for the fixture. The gap stays open for a fourth phase to close.
+
+**Real calendar-client rendering — STILL UNVERIFIED.** Confirmed unverifiable in development by
+the operator on 2026-09-18: the subscribe link resolves to `webcal://localhost:...`, which no
+external calendar service can reach. Refresh latency, in-place update, and client behaviour when
+an entry disappears between polls remain unobserved, exactly as inherited from Phase 84.
+Deferred to production.
+
 ---
 
 ## Validation Sign-Off
