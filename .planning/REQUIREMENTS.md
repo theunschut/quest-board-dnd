@@ -103,7 +103,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **CALFEED-02**: A member can hold several calendar subscriptions at once, each separately named, separately addressed and separately revocable, so retiring one device leaves every other device working
 - [ ] **CALFEED-03**: Every subscription row on Profile shows its name, its full re-copyable address, the date it was created and when it was last fetched, and offers rename and delete
 - [ ] **CALFEED-04**: Deleting a subscription retires it as a tombstone rather than removing the row, so its address answers 410 Gone for a bounded retention window while an address that never existed answers 404 Not Found
-- [ ] **CALFEED-05**: A subscription's address serves a valid text/calendar document to an anonymous caller that sends no cookie, holds no session and has no active board, with the address itself as the only credential
+- [x] **CALFEED-05**: A subscription's address serves a valid text/calendar document to an anonymous caller that sends no cookie, holds no session and has no active board, with the address itself as the only credential
 - [ ] **CALFEED-06**: The feed carries exactly the events the subscription's owner holds a signup row on, drawn from every board they are still a member of, and never an event from a board they do not belong to
 - [ ] **CALFEED-07**: A row that survives the feed query's board predicate but falls outside the owner's membership set is dropped before it reaches the response and recorded as an error in the application log
 - [ ] **CALFEED-08**: A cancelled event never appears in the feed, on any board, for any subscription
@@ -319,7 +319,7 @@ Explicit exclusions for v9.0, with reasoning.
 | CALFEED-02 | Phase 84 | Pending |
 | CALFEED-03 | Phase 84 | Pending |
 | CALFEED-04 | Phase 84 | Pending |
-| CALFEED-05 | Phase 84 | Pending |
+| CALFEED-05 | Phase 84 | Complete |
 | CALFEED-06 | Phase 84 | Pending |
 | CALFEED-07 | Phase 84 | Pending |
 | CALFEED-08 | Phase 84 | Pending |

@@ -1,19 +1,20 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 84
 current_phase_name: calendar-feed-foundation-and-event-subscription
 status: executing
-stopped_at: Phase 84 wave 1 — 84-02 decision gate answered, ready to execute
-last_updated: "2026-09-18T08:05:00.000Z"
+stopped_at: Completed 84-02-PLAN.md
+last_updated: "2026-09-18T08:09:52.074Z"
 last_activity: 2026-09-18
-last_activity_desc: Phase 84 decision gate answered; CALFEED-17 minted and ledgers amended
+last_activity_desc: Phase 84 execution resumed (wave continue)
+state_head: f81690d03293854535ec16ddfd42359db421305f
 progress:
   total_phases: 14
   completed_phases: 10
   total_plans: 91
-  completed_plans: 74
+  completed_plans: 76
   percent: 71
 ---
 
@@ -29,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 ## Current Position
 
 Phase: 84 (calendar-feed-foundation-and-event-subscription) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 84
-Last activity: 2026-09-17 — Phase 84 execution started
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-09-18 — Phase 84 execution resumed (wave continue)
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
@@ -47,6 +48,12 @@ Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards 
 - v8.0 shipped in ~2 days across 7 phases, 26 plans — no scope growth beyond the original roadmapped phase set (unlike v7.0's 18 ad-hoc additions). A milestone-close audit found and fixed one cross-phase gap (QuestLog Description rendering raw) before shipping. See `.planning/milestones/v8.0-ROADMAP.md` and `.planning/milestones/v8.0-MILESTONE-AUDIT.md` for details.
 - v7.0 shipped in ~3.1 days across 22 phases, 59 plans — largest milestone by phase count yet. See `.planning/RETROSPECTIVE.md` for the full cross-milestone trend view.
 
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 84 P02 | 22 min | 3 tasks | 24 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -56,6 +63,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 83]: CalendarButtonStyleTests.cs written with post-write CRLF conversion (Write tool emitted LF; converted before running tests) to satisfy CLAUDE.md's Windows/CRLF convention
 - [Phase 84]: 84-02's four one-way concretizations approved as specified (table shape with RevokedAt tombstone, 32-byte Base64Url address stored plain, `questboard-event-{eventId}` identifiers, `/feeds/calendar/{feedToken}.ics` on its own anonymous controller)
 - [Phase 84]: Revoked-subscription tombstones get a bounded retention window (default 30 days) swept by a nightly Hangfire job. This made the `410` temporary, so CALFEED-04 was reworded and CALFEED-17 minted rather than dropping the sweep; 84-04 grew a fifth task
+- [Phase 84]: 84-02: feed query rooted at EventSignups (third instance of the pinned-membership tenant-safety pattern), CalendarSubscriptions carries no GroupId/query filter by design, tracer proven over real anonymous HTTP with no active board.
 
 ### Roadmap Evolution
 
@@ -107,9 +115,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-18T08:05:00.000Z
-Stopped at: Session resumed; 84-02's blocking checkpoint answered `proceed-as-specified` and the retention sweep adopted. Ledger amendments applied centrally, proceeding to `/gsd-execute-phase 84`.
-Resume file: .planning/phases/84-calendar-feed-foundation-and-event-subscription/.continue-here.md
+Last session: 2026-09-18T08:09:49.531Z
+Stopped at: Completed 84-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
