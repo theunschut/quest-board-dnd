@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -105,9 +106,20 @@ internal class CalendarSubscriptionService(
 
         var body = writer.Write(entries, "D&D Quest Board");
 
+        // A strong fingerprint of the body's own bytes: it changes when and only when the
+        // emitted document changes, so an event edit produces a new tag automatically with no
+        // modified-timestamp column the schema does not have. The body is composed either way,
+        // so this saves nothing server-side -- only transfer, on a document of a few kilobytes
+        // polled a handful of times a day. It is not a promise about refresh speed.
+        var etag = $"\"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body)))}\"";
+
+        // Touched on every live request, including one that ends in a 304 with no body -- a
+        // poll that transferred nothing is still a poll, and this timestamp is the only way to
+        // tell a live subscription from a dead one. The throttle above still applies to this
+        // write.
         await subscriptionRepository.TouchLastFetchedAsync(
             subscription.Id, timeProvider.GetUtcNow().UtcDateTime, TimeSpan.FromMinutes(options.LastFetchedThrottleMinutes), token);
 
-        return new CalendarFeedResult { Status = CalendarFeedStatus.Ok, Body = body, SubscriptionId = subscription.Id };
+        return new CalendarFeedResult { Status = CalendarFeedStatus.Ok, Body = body, SubscriptionId = subscription.Id, ETag = etag };
     }
 }

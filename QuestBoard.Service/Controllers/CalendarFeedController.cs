@@ -62,6 +62,18 @@ public class CalendarFeedController(ICalendarSubscriptionService subscriptionSer
                 return StatusCode(StatusCodes.Status410Gone);
 
             default:
+                // The tag is derived from the body, which is composed either way, so nothing is
+                // saved server-side -- only transfer, on a document of a few kilobytes polled a
+                // handful of times a day. Implemented because at least one major client is
+                // reported to send If-None-Match on repeat polls, and a not-modified answer is
+                // strictly cheaper to send than an identical document. This is not a promise
+                // that events update sooner.
+                Response.Headers.ETag = result.ETag;
+                if (result.ETag != null && Request.Headers["If-None-Match"] == result.ETag)
+                {
+                    return StatusCode(StatusCodes.Status304NotModified);
+                }
+
                 return Content(result.Body ?? string.Empty, "text/calendar; charset=utf-8");
         }
     }
