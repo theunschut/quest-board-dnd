@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 84
 current_phase_name: calendar-feed-foundation-and-event-subscription
 status: executing
-stopped_at: Completed 84-04-PLAN.md
-last_updated: "2026-09-18T08:53:24.325Z"
+stopped_at: Completed 84-05-PLAN.md
+last_updated: "2026-09-18T09:20:51.538Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
-state_head: a43bf8044b0e2e11ff3aa6f84be591fb9fe790ff
+state_head: 9cb67932aeb0ed5930e2dfcc40a38aa41f51f470
 progress:
   total_phases: 14
   completed_phases: 10
   total_plans: 91
-  completed_plans: 78
+  completed_plans: 79
   percent: 71
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 ## Current Position
 
 Phase: 84 (calendar-feed-foundation-and-event-subscription) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-09-18 — Phase 84 execution resumed (wave continue)
 
@@ -55,6 +55,7 @@ Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards 
 | Phase 84 P02 | 22 min | 3 tasks | 24 files |
 | Phase 84 P03 | 16 min | 3 tasks | 2 files |
 | Phase 84 P04 | 23min | 5 tasks | 11 files |
+| Phase 84 P05 | 24min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 84]: Vote-marker branches on Availability alone, never HasAnswered -- a campaign auto-created Yes row renders identically to a chosen Yes, an accepted cost (84-CONTEXT.md D-18).
 - [Phase 84]: 84-04's amendment: revoked calendar subscriptions get a bounded retention window (RetentionDays, default 30) swept nightly by CalendarSubscriptionRetentionJob; past the window a retired address answers 404 like one that never existed
 - [Phase 84]: 84-04: rate limiting on the calendar feed is partitioned by the feedToken route value, not client IP, so several members' clients behind one home network never share a budget
+- [Phase 84]: Log-safety fact inlines its own harness smoke test (revoke-then-fetch) rather than depending on run order across facts — xUnit gives no ordering guarantee across facts, each of which clears the database independently
 
 ### Roadmap Evolution
 
@@ -120,8 +122,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-18T08:53:21.318Z
-Stopped at: Completed 84-04-PLAN.md
+Last session: 2026-09-18T09:20:48.736Z
+Stopped at: Completed 84-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
