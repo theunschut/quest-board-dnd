@@ -122,6 +122,7 @@ Items acknowledged and carried forward across milestone closes.
 | requirement | REMIND-02 — combined reminder for multi-quest days | Still deferred — same as EMAIL-04 | v4.0 close |
 | tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Still deferred — flagged by code review in Phase 31, not yet fixed | v5.0 close |
 | requirement | EMAILMD-02 — real Outlook desktop verification for all 3 quest email templates | Deferred — untestable without production access (real relay + real AppUrl); Gmail-confirmed via operator override for Quest Finalized directly, Session Reminder/Waitlist Promoted on shared-engine grounds | v8.0 close |
+| requirement | CALFEED real-device subscription check — a real phone actually subscribing via iOS Calendar, Google Calendar and Outlook, what iOS names the calendar, refresh latency, and a camera QR scan | Deferred to deployment — Outlook and Google fetch server-side from their own infrastructure, so no localhost or LAN address can satisfy them; needs a public tunnel or the deployed app. The document itself is proven (external RFC 5545 validator: 0 errors, 0 warnings) and the server contract has 29 end-to-end HTTP facts, but no client's poll-and-render behaviour has been observed | v9.0, Phase 84 |
 
 ## Session Continuity
 
