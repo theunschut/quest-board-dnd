@@ -571,8 +571,8 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         await SeedSignupAsync(answeredEventId, user.Id, VoteType.Yes);
 
         // No signup row is ever seeded for this event -- a one-shot session nobody has
-        // answered yet never reaches the phone, which is the accepted cost stated at decision
-        // time (84-CONTEXT.md D-17).
+        // answered yet never reaches the phone, an accepted cost of scoping the feed to
+        // signup rows rather than board membership.
         await SeedEventAsync(2, "No Signup Suite Unanswered Session", DateOnly.FromDateTime(DateTime.Today).AddDays(2));
 
         var subscription = await MintSubscriptionAsync(user.Id);
@@ -602,8 +602,8 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         await SeedMembershipAsync(user.Id, 2);
 
         // A live signup row on a cancelled event -- the cancellation reaches the subscriber
-        // only as a silent disappearance, the accepted cost of dropping rather than marking
-        // (84-CONTEXT.md D-12).
+        // only as a silent disappearance, the accepted cost of dropping the event entirely
+        // rather than emitting a cancelled marker.
         var eventId = await SeedEventAsync(
             2, "Cancelled Suite Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1), cancelledAt: DateTime.UtcNow);
         await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
@@ -717,7 +717,8 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         await SeedBoardAsync(2, "All Day Suite Board");
         await SeedMembershipAsync(user.Id, 2);
 
-        // No startTime -- a true all-day entry (84-CONTEXT.md D-02).
+        // No startTime -- a true all-day entry, matching EventEntity.StartTime's own
+        // documented meaning.
         var eventDate = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
         var eventId = await SeedEventAsync(2, "All Day Suite Session", eventDate);
         await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
