@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-18T07:11:50.547Z",
+  "timestamp": "2026-09-18T08:05:00.000Z",
   "phase": "84",
   "phase_name": "calendar-feed-foundation-and-event-subscription",
   "phase_dir": ".planning/phases/84-calendar-feed-foundation-and-event-subscription",
   "plan": 2,
   "task": 1,
   "total_tasks": 3,
-  "status": "paused",
+  "status": "ready",
   "completed_tasks": [
     {
       "id": "84-01-T1",
@@ -33,8 +33,8 @@
     {
       "id": "84-02-T1",
       "name": "Confirm the four one-way concretizations before they ship",
-      "status": "blocked",
-      "note": "checkpoint:decision, gate=blocking, autonomous:false — awaiting operator decision"
+      "status": "decided",
+      "note": "checkpoint:decision answered 2026-09-18 — proceed-as-specified. Supply this as the checkpoint response on resume; do not re-ask."
     },
     {
       "id": "84-02-T2",
@@ -52,31 +52,9 @@
       "status": "not_started"
     }
   ],
-  "blockers": [
-    {
-      "description": "Plan 84-02 Task 1 is a blocking checkpoint:decision. It asks the operator to confirm four one-way concretizations before any code is written: (1) the CalendarSubscriptions table shape incl. RevokedAt tombstone, (2) the 32-byte Base64Url token stored in plain text, (3) the questboard-event-{eventId} entry identifier scheme, (4) the /feeds/calendar/{feedToken}.ics route on its own AllowAnonymous controller. No decision was recorded before the pause.",
-      "type": "human_action",
-      "workaround": "None — the gate is by design. Execution of 84-02 cannot start without it."
-    },
-    {
-      "description": "Open sub-question raised by the operator against item 1: should revoked subscription rows be purged on a retention schedule (suggested 30 days) via a Hangfire recurring job, rather than kept as tombstones forever? Advice was given but no decision was made.",
-      "type": "human_action",
-      "workaround": "Does not block 84-02. RevokedAt is exactly the column a retention job needs, so the sweep can be added later at identical cost — it is NOT a one-way door. Recommended path: approve the four as specified, capture retention as a separate follow-up slice."
-    }
-  ],
+  "blockers": [],
   "async_jobs": [],
-  "human_actions_pending": [
-    {
-      "action": "Decide 84-02 Task 1: 'proceed-as-specified', or 'amend-before-shipping' naming which of the four changes and to what",
-      "context": "Blocking checkpoint gate; plan 84-02 is autonomous:false so it cannot be auto-approved. Everything in waves 2-5 builds on these four shapes.",
-      "blocking": true
-    },
-    {
-      "action": "Decide whether a revoked-subscription retention sweep is wanted, and if so the window (30/90/configurable)",
-      "context": "Operator raised it during the 84-02 gate. Hangfire is already wired with two recurring jobs in QuestBoard.Service/Jobs/, so the sweep would be idiomatic and small. Purged tokens change the endpoint response from 410 to 404, which needs its own test.",
-      "blocking": false
-    }
-  ],
+  "human_actions_pending": [],
   "decisions": [
     {
       "decision": "Treated plan 84-01 as complete despite a 'stopped' task notification and status: halted in its SUMMARY",
@@ -92,9 +70,19 @@
       "decision": "Rebuilt the wave worktree manifest before cleanup instead of hand-merging the worktree",
       "rationale": "The original manifest was lost with the previous session's /tmp. Recording the agent entry and running worktree.cleanup-wave kept the bounded, guard-checked merge path (branch identity, expected base, deletion diff) rather than an unguarded manual merge.",
       "phase": "84"
+    },
+    {
+      "decision": "84-02 Task 1 checkpoint answered: proceed-as-specified",
+      "rationale": "All four one-way concretizations ship exactly as written — table shape with the RevokedAt tombstone, 32-byte Base64Url address stored plain, questboard-event-{eventId} identifiers, and /feeds/calendar/{feedToken}.ics on its own AllowAnonymous controller.",
+      "phase": "84"
+    },
+    {
+      "decision": "Revoked-subscription retention sweep adopted in this phase, with CALFEED-04 amended to match",
+      "rationale": "A 30-day purge makes the 410 temporary, which contradicted CALFEED-04's 'from then on' and 84-04's 'survives indefinitely' truth. The operator chose to amend the requirement rather than drop the sweep. CALFEED-04 reworded, CALFEED-17 minted, D-08 amended, and 84-04 grew task 5 (PurgeRetiredBeforeAsync + CalendarSubscriptionRetentionJob at 0 4 * * *). All ledger edits applied centrally by the orchestrator because worktree executors cannot commit shared ledgers.",
+      "phase": "84"
     }
   ],
   "uncommitted_files": [],
-  "next_action": "Answer the 84-02 Task 1 checkpoint (and, optionally, the retention sub-question), then re-run /gsd-execute-phase 84 — it will skip 84-01 (SUMMARY present) and dispatch 84-02 with the decision supplied as the checkpoint response.",
-  "context_notes": "Wave 1 of 5 is half done: 84-01 landed and its ledger edit is applied; 84-02 never started. Waves are 1:[84-01,84-02] 2:[84-03,84-04] 3:[84-05,84-06] 4:[84-07] 5:[84-08]. Checkpoint plans (autonomous:false) are 84-02, 84-06, 84-08. Isolation resolved to harness-worktree with parallelization on; worktree fork base tracks live HEAD (worktree.base-check reported reason 'baseref-head', no degrade), so parallel worktree dispatch is available on resume. No intra-wave files_modified overlaps exist in any wave. Note for wave 5: plan 84-08 declares .planning/ROADMAP.md in its files_modified, so it will hit the same worktree commit block 84-01 hit — expect to apply that edit centrally too."
+  "next_action": "Run /gsd-execute-phase 84. It skips 84-01 (SUMMARY present) and dispatches 84-02 with the Task 1 response 'proceed-as-specified' supplied. 84-04 now has 5 tasks; its REQUIREMENTS/ROADMAP/CONTEXT/VALIDATION amendments are already applied and must not be re-applied.",
+  "context_notes": "Wave 1 of 5 is half done: 84-01 landed and its ledger edit is applied; 84-02 never started. Waves are 1:[84-01,84-02] 2:[84-03,84-04] 3:[84-05,84-06] 4:[84-07] 5:[84-08]. Checkpoint plans (autonomous:false) are 84-02, 84-06, 84-08. Isolation resolved to harness-worktree with parallelization on; worktree fork base tracks live HEAD (worktree.base-check reported reason 'baseref-head', no degrade), so parallel worktree dispatch is available on resume. No intra-wave files_modified overlaps exist in any wave. Note for wave 5: plan 84-08 declares .planning/ROADMAP.md in its files_modified, so it will hit the same worktree commit block 84-01 hit — expect to apply that edit centrally too. UPDATE 2026-09-18: both gates answered. The retention decision added CALFEED-17 and a fifth task to 84-04; REQUIREMENTS.md, ROADMAP.md, 84-CONTEXT.md (D-08), 84-02-PLAN.md, 84-04-PLAN.md and 84-VALIDATION.md were all amended centrally before resume."
 }

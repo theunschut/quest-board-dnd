@@ -748,8 +748,9 @@ Plans:
 | CALFEED-14 | Phase 84 |
 | CALFEED-15 | Phase 84 |
 | CALFEED-16 | Phase 84 |
+| CALFEED-17 | Phase 84 |
 
-**Coverage:** 115/115 requirements mapped ✓ · 0 unmapped · 1 phase awaiting requirements (85 — minted during its discuss pass)
+**Coverage:** 116/116 requirements mapped ✓ · 0 unmapped · 1 phase awaiting requirements (85 — minted during its discuss pass)
 
 ## Research Flags
 
@@ -805,7 +806,7 @@ Plans:
 ### Phase 84: Calendar Feed Foundation and Event Subscription
 
 **Goal**: A board member can point their phone's calendar at a personal subscription URL once and have every event from every board they belong to appear there on its own — all-day entries, timed entries, later edits, and cancellations included — without opening the quest board.
-**Requirements**: CALFEED-01, CALFEED-02, CALFEED-03, CALFEED-04, CALFEED-05, CALFEED-06, CALFEED-07, CALFEED-08, CALFEED-09, CALFEED-10, CALFEED-11, CALFEED-12, CALFEED-13, CALFEED-14, CALFEED-15, CALFEED-16
+**Requirements**: CALFEED-01, CALFEED-02, CALFEED-03, CALFEED-04, CALFEED-05, CALFEED-06, CALFEED-07, CALFEED-08, CALFEED-09, CALFEED-10, CALFEED-11, CALFEED-12, CALFEED-13, CALFEED-14, CALFEED-15, CALFEED-16, CALFEED-17
 **Depends on**: Phase 82 (reuses the membership-scoped cross-board event read built there) and Phase 83 (the two availability surfaces must be settled before a third read surface is added over the same data)
 **Plans**: 1/8 plans executed
 

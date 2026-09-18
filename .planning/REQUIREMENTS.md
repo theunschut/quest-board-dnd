@@ -102,7 +102,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **CALFEED-01**: A board member holds no calendar subscription until they press Add on their Profile page, and pressing Add mints exactly one new subscription carrying a 256-bit cryptographically random URL-safe address
 - [ ] **CALFEED-02**: A member can hold several calendar subscriptions at once, each separately named, separately addressed and separately revocable, so retiring one device leaves every other device working
 - [ ] **CALFEED-03**: Every subscription row on Profile shows its name, its full re-copyable address, the date it was created and when it was last fetched, and offers rename and delete
-- [ ] **CALFEED-04**: Deleting a subscription retires it as a tombstone rather than removing the row, so its address answers 410 Gone from then on while an address that never existed answers 404 Not Found
+- [ ] **CALFEED-04**: Deleting a subscription retires it as a tombstone rather than removing the row, so its address answers 410 Gone for a bounded retention window while an address that never existed answers 404 Not Found
 - [ ] **CALFEED-05**: A subscription's address serves a valid text/calendar document to an anonymous caller that sends no cookie, holds no session and has no active board, with the address itself as the only credential
 - [ ] **CALFEED-06**: The feed carries exactly the events the subscription's owner holds a signup row on, drawn from every board they are still a member of, and never an event from a board they do not belong to
 - [ ] **CALFEED-07**: A row that survives the feed query's board predicate but falls outside the owner's membership set is dropped before it reaches the response and recorded as an error in the application log
@@ -115,6 +115,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **CALFEED-14**: Both the desktop and the mobile Profile layout carry the subscription section, and every row offers a copy control, a webcal link and a scannable QR code for its address
 - [ ] **CALFEED-15**: The feed endpoint is rate limited per address and no application log line ever contains a full subscription address
 - [ ] **CALFEED-16**: Repeated fetching of one address updates its last-fetched timestamp at most once per throttle interval, so a hammered address cannot become a database write storm
+- [ ] **CALFEED-17**: A retired subscription's tombstone is purged once it has been retired for longer than the configured retention window, after which its address answers 404 Not Found like any address that never existed
 
 ### Link Previews — Foundation and Quests
 
@@ -330,11 +331,12 @@ Explicit exclusions for v9.0, with reasoning.
 | CALFEED-14 | Phase 84 | Pending |
 | CALFEED-15 | Phase 84 | Pending |
 | CALFEED-16 | Phase 84 | Pending |
+| CALFEED-17 | Phase 84 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 115 total
-- Mapped to phases: 115/115 ✓
+- v1 requirements: 116 total
+- Mapped to phases: 116/116 ✓
 - Unmapped: 0
 
 ---

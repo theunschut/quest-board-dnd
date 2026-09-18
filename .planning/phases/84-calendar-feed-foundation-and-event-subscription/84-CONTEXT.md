@@ -73,7 +73,9 @@ This area was not on the original list. The operator raised it at the wrap-up ga
 
 - **D-08: A revoked subscription answers `410 Gone`; an address that never existed answers `404 Not Found`.**
 
-  **Derived consequence, surfaced to the operator at the time and accepted:** telling the two apart means a revoked subscription cannot actually be deleted. The row survives as a tombstone — a `RevokedAt` timestamp — and there is no hard `DELETE` on this table. "Delete" in the UI (D-07) means revoke.
+  **Derived consequence, surfaced to the operator at the time and accepted:** telling the two apart means a revoked subscription cannot be deleted at the moment the member asks for it. The row survives as a tombstone — a `RevokedAt` timestamp — and the request path performs no hard `DELETE`. "Delete" in the UI (D-07) means revoke.
+
+  **Amended on 2026-09-18 by operator decision:** the tombstone is not kept forever. A recurring background sweep purges rows retired for longer than a configured retention window (default 30 days), after which the address answers `404` like any address that never existed. The `410` is therefore a bounded guarantee, not an indefinite one: it lasts long enough for a calendar client to stop asking, which is the whole reason D-08 chose `410`. The sweep is the only code permitted to remove a row from this table.
 
   **Accepted cost:** the differing answers confirm to anyone probing that a given address was once real. Minor for high-entropy random strings, but it is information the `404`-for-both option would not have given away.
 

@@ -5,10 +5,10 @@ milestone_name: Rolling Improvements
 current_phase: 84
 current_phase_name: calendar-feed-foundation-and-event-subscription
 status: executing
-stopped_at: Phase 84 UI-SPEC approved
-last_updated: "2026-09-17T20:15:43.276Z"
-last_activity: 2026-09-17
-last_activity_desc: Phase 84 execution started
+stopped_at: Phase 84 wave 1 — 84-02 decision gate answered, ready to execute
+last_updated: "2026-09-18T08:05:00.000Z"
+last_activity: 2026-09-18
+last_activity_desc: Phase 84 decision gate answered; CALFEED-17 minted and ledgers amended
 progress:
   total_phases: 14
   completed_phases: 10
@@ -54,6 +54,8 @@ Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards 
 v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v8.0-ROADMAP.md` Milestone Summary for the consolidated view. No open decisions carried forward.
 
 - [Phase 83]: CalendarButtonStyleTests.cs written with post-write CRLF conversion (Write tool emitted LF; converted before running tests) to satisfy CLAUDE.md's Windows/CRLF convention
+- [Phase 84]: 84-02's four one-way concretizations approved as specified (table shape with RevokedAt tombstone, 32-byte Base64Url address stored plain, `questboard-event-{eventId}` identifiers, `/feeds/calendar/{feedToken}.ics` on its own anonymous controller)
+- [Phase 84]: Revoked-subscription tombstones get a bounded retention window (default 30 days) swept by a nightly Hangfire job. This made the `410` temporary, so CALFEED-04 was reworded and CALFEED-17 minted rather than dropping the sweep; 84-04 grew a fifth task
 
 ### Roadmap Evolution
 
@@ -105,9 +107,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-17T19:03:34.697Z
-Stopped at: Phase 84 UI-SPEC approved
-Resume file: .planning/phases/84-calendar-feed-foundation-and-event-subscription/84-UI-SPEC.md
+Last session: 2026-09-18T08:05:00.000Z
+Stopped at: Session resumed; 84-02's blocking checkpoint answered `proceed-as-specified` and the retention sweep adopted. Ledger amendments applied centrally, proceeding to `/gsd-execute-phase 84`.
+Resume file: .planning/phases/84-calendar-feed-foundation-and-event-subscription/.continue-here.md
 
 ## Operator Next Steps
 
