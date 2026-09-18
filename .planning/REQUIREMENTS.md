@@ -133,10 +133,10 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **QUESTFEED-12**: A quest entry's title never gains a parenthesised availability answer, for any availability value the entry could hold
 - [x] **QUESTFEED-13**: A quest that stops qualifying, whether by being un-finalized, deleted, moved out of the window, or losing the member's seat, simply disappears from the feed at the next fetch with no cancellation marker emitted
 - [x] **QUESTFEED-14**: Quests use the same rolling window as events, governed by the existing configuration bounds and no second pair of knobs
-- [ ] **QUESTFEED-15**: A finalized quest the member holds a confirmed seat on never reaches the feed when its board is a campaign board, while that same board's events keep appearing
-- [ ] **QUESTFEED-16**: A quest from a board the member does not belong to never reaches the feed, and a quest row that survives the feed query's predicate but falls outside the member's one-shot board set is dropped before the response and recorded as an error in the application log
+- [x] **QUESTFEED-15**: A finalized quest the member holds a confirmed seat on never reaches the feed when its board is a campaign board, while that same board's events keep appearing
+- [x] **QUESTFEED-16**: A quest from a board the member does not belong to never reaches the feed, and a quest row that survives the feed query's predicate but falls outside the member's one-shot board set is dropped before the response and recorded as an error in the application log
 - [ ] **QUESTFEED-17**: A quest and an event that share the same numeric identifier produce two distinct calendar identifiers, so neither can overwrite the other in a subscriber's calendar
-- [ ] **QUESTFEED-18**: The combined document orders every entry by date and then start time regardless of which source it came from, and a fetch that turns up no qualifying quest produces the same document the event-only feed produced before this phase
+- [x] **QUESTFEED-18**: The combined document orders every entry by date and then start time regardless of which source it came from, and a fetch that turns up no qualifying quest produces the same document the event-only feed produced before this phase
 
 ### Link Previews — Foundation and Quests
 
@@ -367,10 +367,10 @@ Explicit exclusions for v9.0, with reasoning.
 | QUESTFEED-12 | Phase 85 | Pending |
 | QUESTFEED-13 | Phase 85 | Complete |
 | QUESTFEED-14 | Phase 85 | Complete |
-| QUESTFEED-15 | Phase 85 | Pending |
-| QUESTFEED-16 | Phase 85 | Pending |
+| QUESTFEED-15 | Phase 85 | Complete |
+| QUESTFEED-16 | Phase 85 | Complete |
 | QUESTFEED-17 | Phase 85 | Pending |
-| QUESTFEED-18 | Phase 85 | Pending |
+| QUESTFEED-18 | Phase 85 | Complete |
 
 **Coverage:**
 
