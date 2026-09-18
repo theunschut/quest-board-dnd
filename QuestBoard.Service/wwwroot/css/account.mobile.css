@@ -60,3 +60,50 @@
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
     font-size: 0.875rem;
 }
+
+/* Calendar Subscription section — Views/Account/Profile.Mobile.cshtml only.
+   Row shape mirrors .category-mgmt-row from contacts.mobile.css. */
+.calendar-subscription-row {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(139, 69, 19, 0.3);
+}
+
+.calendar-subscription-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.calendar-subscription-address {
+    font-size: 14px;
+    font-family: monospace;
+    white-space: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    color: #F4E4BC !important;
+}
+
+.calendar-subscription-meta {
+    font-size: 0.875rem;
+}
+
+/* Icon-only Copy and Show QR Code controls on this layout, a deliberate departure
+   from the 4px spacing grid for touch-target size, matching the existing
+   .category-mgmt-reorder-btn precedent in contacts.mobile.css. */
+.calendar-subscription-icon-btn {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+.calendar-subscription-row .calendar-subscription-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar-subscription-qr svg {
+    width: 100%;
+    height: auto;
+    max-width: 240px;
+    display: block;
+    margin: 0 auto;
+}
