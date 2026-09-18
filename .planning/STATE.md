@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 84
 current_phase_name: calendar-feed-foundation-and-event-subscription
 status: executing
-stopped_at: Completed 84-05-PLAN.md
-last_updated: "2026-09-18T09:20:51.538Z"
+stopped_at: Completed 84-08-PLAN.md (Phase 84 closed)
+last_updated: "2026-09-18T13:06:04.956Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
-state_head: 9cb67932aeb0ed5930e2dfcc40a38aa41f51f470
+state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 progress:
   total_phases: 14
   completed_phases: 10
   total_plans: 91
-  completed_plans: 79
+  completed_plans: 82
   percent: 71
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 ## Current Position
 
 Phase: 84 (calendar-feed-foundation-and-event-subscription) — EXECUTING
-Plan: 5 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-09-18 — Phase 84 execution resumed (wave continue)
 
@@ -56,6 +56,7 @@ Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards 
 | Phase 84 P03 | 16 min | 3 tasks | 2 files |
 | Phase 84 P04 | 23min | 5 tasks | 11 files |
 | Phase 84 P05 | 24min | 3 tasks | 3 files |
+| Phase 84 P08 | 137min | 4 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 84]: 84-04's amendment: revoked calendar subscriptions get a bounded retention window (RetentionDays, default 30) swept nightly by CalendarSubscriptionRetentionJob; past the window a retired address answers 404 like one that never existed
 - [Phase 84]: 84-04: rate limiting on the calendar feed is partitioned by the feedToken route value, not client IP, so several members' clients behind one home network never share a budget
 - [Phase 84]: Log-safety fact inlines its own harness smoke test (revoke-then-fetch) rather than depending on run order across facts — xUnit gives no ordering guarantee across facts, each of which clears the database independently
+- [Phase 84]: Task 3's real-device subscription checkpoint was deferred to deployment by operator decision, not approved and not failed -- Outlook and Google Calendar fetch server-side and cannot reach a localhost or LAN address — Server-side coverage (104 test methods) and an external RFC 5545 validator pass (0 errors, 0 warnings) independently prove the document; client poll-and-render behaviour remains genuinely unverified and is tracked as an open WINDOWS.md unrun-verify item
+- [Phase 84]: 84-08: three UAT-found UI defects fixed centrally during the Task 3 review window -- modals freed from a backdrop-filter stacking-context trap, the subscription row rebalanced to 68px, and the address stopped being displayed on screen (kept in DOM, readonly, revealed only by the clipboard-denied fallback) — CALFEED-03 and 84-UI-SPEC E3/E4 amended accordingly; address is a bearer credential with no expiry and should not be visible on a screen-shared or screenshotted page
 
 ### Roadmap Evolution
 
@@ -122,8 +125,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-18T09:20:48.736Z
-Stopped at: Completed 84-05-PLAN.md
+Last session: 2026-09-18T13:06:02.667Z
+Stopped at: Completed 84-08-PLAN.md (Phase 84 closed)
 Resume file: None
 
 ## Operator Next Steps
