@@ -119,23 +119,23 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Calendar Feed — One-Shot Quest Sessions
 
-- [ ] **QUESTFEED-01**: The calendar address a member already holds starts carrying their one-shot quest sessions alongside events, with no second address, no second endpoint, no new page and no new Profile control
-- [ ] **QUESTFEED-02**: A finalized quest on a one-shot board the member belongs to, where that member holds a confirmed seat, appears in their feed as a calendar entry
+- [x] **QUESTFEED-01**: The calendar address a member already holds starts carrying their one-shot quest sessions alongside events, with no second address, no second endpoint, no new page and no new Profile control
+- [x] **QUESTFEED-02**: A finalized quest on a one-shot board the member belongs to, where that member holds a confirmed seat, appears in their feed as a calendar entry
 - [x] **QUESTFEED-03**: A finalized quest the member is running as Dungeon Master appears in their feed even though a Dungeon Master holds no signup row on their own quest
 - [x] **QUESTFEED-04**: A quest where the member is both the Dungeon Master and the holder of a confirmed seat appears exactly once, as a single calendar entry carrying a single identifier
 - [x] **QUESTFEED-05**: A waitlisted signup never reaches the feed, only a confirmed seat does, and a promotion off the waitlist reaches the phone at the next fetch like any other change
 - [x] **QUESTFEED-06**: A Player seat, a Spectator seat and an Assistant Dungeon Master seat all reach the feed identically, with no seat kind singled out
 - [x] **QUESTFEED-07**: A quest flagged as a Dungeon Master session still reaches the feed for anyone holding a confirmed seat on it
-- [ ] **QUESTFEED-08**: A quest becomes a timed entry starting at its finalized date and time and running for a configured number of hours, four by default, and is never emitted as an all-day entry
-- [ ] **QUESTFEED-09**: The quest session length is changeable through configuration with no code change, and the application refuses to start when it is configured below one hour
-- [ ] **QUESTFEED-10**: Every quest entry is marked transparent, exactly like an event, so a subscriber never reads as busy
-- [ ] **QUESTFEED-11**: A quest entry's title is the board name in square brackets followed by the quest title, with no marker identifying the entry as a quest and no marker identifying a session the member runs rather than plays
-- [ ] **QUESTFEED-12**: A quest entry's title never gains a parenthesised availability answer, for any availability value the entry could hold
+- [x] **QUESTFEED-08**: A quest becomes a timed entry starting at its finalized date and time and running for a configured number of hours, four by default, and is never emitted as an all-day entry
+- [x] **QUESTFEED-09**: The quest session length is changeable through configuration with no code change, and the application refuses to start when it is configured below one hour
+- [x] **QUESTFEED-10**: Every quest entry is marked transparent, exactly like an event, so a subscriber never reads as busy
+- [x] **QUESTFEED-11**: A quest entry's title is the board name in square brackets followed by the quest title, with no marker identifying the entry as a quest and no marker identifying a session the member runs rather than plays
+- [x] **QUESTFEED-12**: A quest entry's title never gains a parenthesised availability answer, for any availability value the entry could hold
 - [x] **QUESTFEED-13**: A quest that stops qualifying, whether by being un-finalized, deleted, moved out of the window, or losing the member's seat, simply disappears from the feed at the next fetch with no cancellation marker emitted
 - [x] **QUESTFEED-14**: Quests use the same rolling window as events, governed by the existing configuration bounds and no second pair of knobs
 - [x] **QUESTFEED-15**: A finalized quest the member holds a confirmed seat on never reaches the feed when its board is a campaign board, while that same board's events keep appearing
 - [x] **QUESTFEED-16**: A quest from a board the member does not belong to never reaches the feed, and a quest row that survives the feed query's predicate but falls outside the member's one-shot board set is dropped before the response and recorded as an error in the application log
-- [ ] **QUESTFEED-17**: A quest and an event that share the same numeric identifier produce two distinct calendar identifiers, so neither can overwrite the other in a subscriber's calendar
+- [x] **QUESTFEED-17**: A quest and an event that share the same numeric identifier produce two distinct calendar identifiers, so neither can overwrite the other in a subscriber's calendar
 - [x] **QUESTFEED-18**: The combined document orders every entry by date and then start time regardless of which source it came from, and a fetch that turns up no qualifying quest produces the same document the event-only feed produced before this phase
 
 ### Link Previews — Foundation and Quests
@@ -353,23 +353,23 @@ Explicit exclusions for v9.0, with reasoning.
 | CALFEED-15 | Phase 84 | Complete |
 | CALFEED-16 | Phase 84 | Complete |
 | CALFEED-17 | Phase 84 | Complete |
-| QUESTFEED-01 | Phase 85 | Pending |
-| QUESTFEED-02 | Phase 85 | Pending |
+| QUESTFEED-01 | Phase 85 | Complete |
+| QUESTFEED-02 | Phase 85 | Complete |
 | QUESTFEED-03 | Phase 85 | Complete |
 | QUESTFEED-04 | Phase 85 | Complete |
 | QUESTFEED-05 | Phase 85 | Complete |
 | QUESTFEED-06 | Phase 85 | Complete |
 | QUESTFEED-07 | Phase 85 | Complete |
-| QUESTFEED-08 | Phase 85 | Pending |
-| QUESTFEED-09 | Phase 85 | Pending |
-| QUESTFEED-10 | Phase 85 | Pending |
-| QUESTFEED-11 | Phase 85 | Pending |
-| QUESTFEED-12 | Phase 85 | Pending |
+| QUESTFEED-08 | Phase 85 | Complete |
+| QUESTFEED-09 | Phase 85 | Complete |
+| QUESTFEED-10 | Phase 85 | Complete |
+| QUESTFEED-11 | Phase 85 | Complete |
+| QUESTFEED-12 | Phase 85 | Complete |
 | QUESTFEED-13 | Phase 85 | Complete |
 | QUESTFEED-14 | Phase 85 | Complete |
 | QUESTFEED-15 | Phase 85 | Complete |
 | QUESTFEED-16 | Phase 85 | Complete |
-| QUESTFEED-17 | Phase 85 | Pending |
+| QUESTFEED-17 | Phase 85 | Complete |
 | QUESTFEED-18 | Phase 85 | Complete |
 
 **Coverage:**

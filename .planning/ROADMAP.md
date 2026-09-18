@@ -886,7 +886,7 @@ Plans:
 **Goal**: The same subscription also carries the quest sessions the reader is actually part of — from their one-shot boards only — so a phone calendar shows the night they are playing, not just the board's informational events.
 **Requirements**: QUESTFEED-01, QUESTFEED-02, QUESTFEED-03, QUESTFEED-04, QUESTFEED-05, QUESTFEED-06, QUESTFEED-07, QUESTFEED-08, QUESTFEED-09, QUESTFEED-10, QUESTFEED-11, QUESTFEED-12, QUESTFEED-13, QUESTFEED-14, QUESTFEED-15, QUESTFEED-16, QUESTFEED-17, QUESTFEED-18
 **Depends on**: Phase 84 (the token, the endpoint, the writer and the subscribe surface must all exist before a second source can be added to the feed)
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 **Origin:** raised by the operator on 2026-09-17 alongside Phase 84, with the board-type restriction stated up front.
 
@@ -902,18 +902,33 @@ Plans:
 - **Only quests the reader is signed up for.** Not every quest on their one-shot boards. This matches the event rule Phase 84 settled (84 D-17), so both sources in the feed read the same way.
 - **Only once the quest is finalized.** A quest with `FinalizedDate` set. Proposed dates never reach the feed — a phone should not fill with candidate dates that will mostly not happen, and a date vote in progress is not a commitment.
 
-**Decisions this phase must still reach before planning:**
+**Decisions reached** — settled in the discuss pass on 2026-09-18 and recorded in `.planning/phases/85-one-shot-quests-in-the-calendar-feed/85-CONTEXT.md`, which is authoritative over the summary below:
 
-- **Whether a quest the reader is running as DM counts.** The rule above is stated from a player's side; a DM holds no `PlayerSignup` row on their own quest, so a literal reading would leave a DM's own sessions off their calendar.
-- **Whether a waitlisted signup counts as signed up.** It is a row, but not a seat.
-- **What happens when a finalized date moves, or a quest is closed.** Phase 84 D-12 drops cancelled events from the feed rather than marking them; whether a closed quest follows the same rule is this phase's call on a different model.
-- **Whether the vote-marker convention carries over.** Phase 84 D-18 appends `(maybe)` / `(declined)` to event titles. A quest signup has no equivalent answer set, so there may be nothing to mark — or a waitlisted quest may want its own suffix.
+- **A session the reader runs as DM counts (D-01).** A DM holds no signup row on their own quest, so the query is a union of two branches — signup rows for the owner, plus quests where the reader is the Dungeon Master — deduplicated by quest id so a quest matching both branches still emits exactly one entry with one identifier.
+- **A waitlisted signup does not count (D-02).** Only a confirmed seat (`IsSelected == true`) reaches the feed; a promotion off the waitlist reaches the phone at the next fetch like any other change.
+- **All three signup roles count identically (D-03).** Player, Spectator and AssistantDM seats all reach the feed the same way once confirmed — this falls out of D-02 at zero extra cost, since only a Player ever lands on the waitlist.
+- **The `DungeonMasterSession` flag does not filter a quest out (D-04).** The flag hides a quest from the board listing but is not an access control anywhere else in the codebase; a granted seat is honoured regardless.
+- **A quest is a fixed, configurable block starting at `FinalizedDate` (D-05).** Four hours by default, always timed and never all-day, with the duration on `CalendarFeedOptions.QuestDurationHours` and a refuse-to-start guard below one hour.
+- **Every quest entry is `TRANSP:TRANSPARENT` (D-06).** One transparency rule for the whole feed, matching events; the operator considered and declined `OPAQUE`.
+- **A quest entry's title carries no quest marker (D-07).** `[Board] Title`, unchanged from the event convention — a narrow phone day view truncates a wider title anyway.
+- **A quest entry carries no `(DM)` suffix (D-08).** A session the reader runs reads identically to one they play; there is one `SUMMARY` rule for every quest row.
+- **A quest that stops qualifying disappears silently (D-09).** No `STATUS:CANCELLED`, matching the event rule for cancellations.
+- **Quests share the event feed's rolling window (D-10).** The existing `MonthsBack`/`MonthsAhead` bounds, no second pair of knobs.
+- **Query shape.** The D-01 union is expressed as a single `Quests`-rooted query with a seat-or-Dungeon-Master `Any()`/`||` disjunction inside one `Where`, rather than a literal `Union`+`Distinct` — each quest is visited at most once, so the dedup requirement is satisfied structurally rather than by a later distinct step.
+- **Merge ordering.** The combined event+quest document orders every entry by date, then start time with no sentinel substituted for an absent time, then source, then source id — matching the event query's own null-first ordering rather than reversing it with a sentinel.
+
+**Two of this section's original open questions became moot rather than being answered.** D-02 excludes every waitlisted signup, so there is nothing left to mark and no quest suffix was needed or added — the roadmap's "whether the vote-marker convention carries over" question dissolved along with it. And `Close` is rejected outright on a one-shot board (`QuestController.cs:760`), so `IsClosed` is unreachable for any quest this phase can ever emit — the "or a quest is closed" question never had a case to answer.
 
 **Risks this phase must actively avoid:**
 
-- **A brand-new cross-board read with no guard.** No cross-board quest query exists today — `GetUpcomingAcrossGroupsWithSignupsAsync` is the only one of its kind and it is events-only. This phase writes the second, and it must carry the same membership scoping, the same second-layer re-check and the same `LogError` on a surviving foreign row. A fresh query is exactly where that pattern gets forgotten.
-- **Two filters that can be confused for one.** Membership and board type are independent: a reader belongs to boards of both types, and the quest predicate has to apply *both*. Collapsing them — filtering on board type and trusting the tenant filter for membership, or the reverse — produces either a leak or a silently empty section.
-- **Colliding `UID`s with events.** A quest and an event can share an integer id. If the UID scheme is not namespaced per source, subscribing makes one silently overwrite the other in the reader's calendar.
+- **A brand-new cross-board read with no guard.** No cross-board quest query exists today — `GetUpcomingAcrossGroupsWithSignupsAsync` is the only one of its kind and it is events-only. This phase writes the second, and it must carry the same membership scoping, the same second-layer re-check and the same `LogError` on a surviving foreign row. A fresh query is exactly where that pattern gets forgotten. **Addressed:** `CalendarSubscriptionService.GetFeedAsync`'s quest branch carries the same pinned-membership-set query, the same `IgnoreQueryFilters()` + in-memory re-check, and the same `LogError` on a surviving foreign row that the event branch already had — proven by a unit suite (`CalendarSubscriptionQuestRecheckTests`) that drives the service directly with a misbehaving fake repository to reach the drop-and-log branch a real, filtered repository cannot trigger.
+- **Two filters that can be confused for one.** Membership and board type are independent: a reader belongs to boards of both types, and the quest predicate has to apply *both*. Collapsing them — filtering on board type and trusting the tenant filter for membership, or the reverse — produces either a leak or a silently empty section. **Addressed:** membership and board type are two independent predicates applied inside one condition (the reader's one-shot board-id set, derived from the same membership read the feed already holds), each proven independently against a second board in the same fetch — a campaign board's quest excluded while its event still appears, and a non-member board's seeded seat excluded while a genuinely qualifying quest still appears.
+- **Colliding `UID`s with events.** A quest and an event can share an integer id. If the UID scheme is not namespaced per source, subscribing makes one silently overwrite the other in the reader's calendar. **Addressed:** identifiers are namespaced by source (`CalendarFeedSource.Quest` alongside `Event`), with a unit fact pinning a quest and an event sharing the same numeric id to two distinct, non-colliding `UID`s.
+
+**Gaps this phase does not claim to have closed:**
+
+- **Relational translation of the new quest predicate is unproven.** Every integration fact in this phase runs on the EF Core in-memory provider, which cannot prove the seat-or-Dungeon-Master disjunction and the board-type predicate translate to SQL Server. This is the third consecutive phase to carry this gap; the compensating manual check is recorded in `85-VALIDATION.md`'s Manual-Only Verifications table and is not closed here.
+- **The real-device subscription check inherited from Phase 84 remains unobserved.** Outlook and Google Calendar fetch server-side and cannot reach a localhost or LAN address, so no client's poll-and-render behaviour — refresh latency, in-place update, or what a client does when an entry disappears between polls — has been observed by this phase or the one before it. No output of this phase makes any claim about it.
 
 Plans:
 
@@ -936,7 +951,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 85-06-PLAN.md — Requirement and roadmap ledger close-out, validation sign-off, and the phase static guard (wave 5)
+- [x] 85-06-PLAN.md — Requirement and roadmap ledger close-out, validation sign-off, and the phase static guard (wave 5)
 
 ---
 *Roadmap created: 2026-08-25*

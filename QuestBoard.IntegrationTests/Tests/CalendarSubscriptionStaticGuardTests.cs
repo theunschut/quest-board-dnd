@@ -130,6 +130,14 @@ public class CalendarSubscriptionStaticGuardTests
     // reading calendar application and is undocumented by its vendor; and at least one major
     // client is reported not to honour the calendar-name property, so promising an automatic
     // rename would be a promise this feature cannot keep.
+    //
+    // The four-hour quest-session block is invented for exactly the same reason as the event's
+    // one-hour block: nothing in the schema records when a session ends, and the block the feed
+    // emits exists purely so the entry has a length on a phone. Copy that presents that invented
+    // number as something the board knows would be telling a member a fact the board does not
+    // have, for the same reason the equivalent claim about an event is already forbidden above.
+    // No view ships this phase, so both layouts pass every case below today -- the cases exist to
+    // stop a future surface from introducing the claim, not to fix one that exists.
     public static IEnumerable<object[]> ForbiddenClaims() =>
     [
         ["one-hour session"],
@@ -146,6 +154,11 @@ public class CalendarSubscriptionStaticGuardTests
         ["automatically renamed"],
         ["renames your calendar"],
         ["names your calendar app"],
+        ["4-hour session"],
+        ["four-hour session"],
+        ["session lasts 4 hours"],
+        ["quest runs for 4 hours"],
+        ["session ends after 4 hours"],
     ];
 
     [Theory]
