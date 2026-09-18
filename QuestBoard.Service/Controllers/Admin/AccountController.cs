@@ -380,7 +380,11 @@ public class AccountController(
     {
         var user = await userService.GetUserAsync(User);
 
-        var trimmedName = name.Trim();
+        // Model binding's ConvertEmptyStringToNull treats a whitespace-only submission the same
+        // as an absent field, handing this action a null name rather than a string of spaces --
+        // the null-conditional keeps that case on the same "refused as empty" path below instead
+        // of throwing before the check ever runs.
+        var trimmedName = name?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(trimmedName) || trimmedName.Length > 60)
         {
             TempData["Error"] = "Couldn't rename this subscription. Try again, and if it keeps happening, let a Dungeon Master know.";
