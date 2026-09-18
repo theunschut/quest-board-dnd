@@ -394,4 +394,74 @@ public class CalendarFeedWriterTests
         var calNameIndex = body.IndexOf("X-WR-CALNAME:", StringComparison.Ordinal);
         calNameIndex.Should().BeLessThan(firstEventIndex);
     }
+
+    // --- Entry-identifier invariant guard ---
+    //
+    // A calendar client keys its stored copy of an entry by this identifier, so if the
+    // identifier ever changes shape, every existing subscriber's device accumulates a
+    // duplicate of every event it already holds, with no way to withdraw the old copies from
+    // the server side. The namespacing facts below defend the same door from the other side --
+    // a second kind of item sharing an event's numeric id would silently overwrite it in the
+    // reader's calendar. These facts must go red the moment either assumption is reintroduced.
+
+    [Fact]
+    public void BuildUid_EventFortyTwo_ReturnsExactLiteral()
+    {
+        Writer.BuildUid(CalendarFeedSource.Event, 42).Should().Be("questboard-event-42");
+    }
+
+    [Fact]
+    public void Write_SameEntryTwice_UidLineIsIdenticalAcrossRenders()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+        var entries = new List<CalendarFeedEntry> { entry };
+
+        var first = Writer.Write(entries, "My Calendar");
+        Thread.Sleep(20);
+        var second = Writer.Write(entries, "My Calendar");
+
+        var firstUid = ExtractFoldedProperty(first, "UID:");
+        var secondUid = ExtractFoldedProperty(second, "UID:");
+
+        secondUid.Should().Be(firstUid);
+    }
+
+    [Fact]
+    public void BuildUid_EveryDeclaredSource_YieldsDistinctIdentifierForSameNumericId()
+    {
+        // Enumerated rather than listed literally: this fact turns red the instant a member is
+        // added whose identifier collides with an existing one -- precisely when the mistake
+        // would otherwise ship silently.
+        var sources = Enum.GetValues<CalendarFeedSource>();
+
+        var identifiers = sources.Select(s => Writer.BuildUid(s, 7)).ToHashSet();
+
+        identifiers.Count.Should().Be(sources.Length);
+    }
+
+    [Fact]
+    public void BuildUid_AnySourceAndId_MatchesAnchoredNamespacedPattern()
+    {
+        // An anchored regular-expression assertion on the returned string, not a search for
+        // today's configured host -- a search for a particular host value would pass for any
+        // other host spliced in later.
+        foreach (var source in Enum.GetValues<CalendarFeedSource>())
+        {
+            var uid = Writer.BuildUid(source, 123);
+            Regex.IsMatch(uid, @"^questboard-[a-z]+-[0-9]+$").Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void Write_EmittedUidLine_EqualsBuildUidResultForSameSourceAndId()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 99, source: CalendarFeedSource.Event);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var expected = "UID:" + Writer.BuildUid(entry.Source, entry.SourceId);
+        var actual = ExtractFoldedProperty(body, "UID:");
+
+        actual.Should().Be(expected);
+    }
 }
