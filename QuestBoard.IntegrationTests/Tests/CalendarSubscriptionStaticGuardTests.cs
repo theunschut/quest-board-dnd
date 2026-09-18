@@ -10,30 +10,39 @@ namespace QuestBoard.IntegrationTests.Tests;
 // or tracking reference in shipped source are all defended here instead.
 public class CalendarSubscriptionStaticGuardTests
 {
-    // Resolves a repo-relative path by walking up from the test assembly's base directory until
-    // the joined path exists (as either a file or a directory), the same approach
-    // ContactCategoryContrastGuardTests' ResolveCssPath already uses, generalised beyond
-    // stylesheets so it can reach view files and whole source directories.
+    // Resolves a repo-relative path by first locating the repository root -- the one directory
+    // holding the solution file -- and only then joining the requested segments onto it.
+    //
+    // The root is found first, rather than walking up until the joined path happens to exist,
+    // because the test output directory contains build artifacts whose names collide with the
+    // project directory names this guard scans. On Linux a project's apphost is an
+    // extension-less binary, so a bare "does this path exist" probe inside bin/ matches that
+    // binary and stops the walk on a *file* where a directory was meant -- resolving
+    // "QuestBoard.Service" to the executable instead of the source folder. On Windows the same
+    // apphost carries an .exe suffix and the collision never appears, which is exactly why
+    // anchoring on an unambiguous marker matters rather than trusting first-match.
     private static string ResolveRepoFile(params string[] segments)
     {
         var joined = Path.Combine(segments);
+        var root = FindRepositoryRoot();
+        return Path.Combine(root.FullName, joined);
+    }
+
+    private static DirectoryInfo FindRepositoryRoot()
+    {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (dir != null)
         {
-            var candidate = Path.Combine(dir.FullName, joined);
-            if (File.Exists(candidate) || Directory.Exists(candidate))
-                return candidate;
+            if (dir.EnumerateFiles("*.slnx").Any() || dir.EnumerateDirectories(".git").Any())
+                return dir;
 
             dir = dir.Parent;
         }
 
-        var attemptedBase = AppContext.BaseDirectory;
-        var attemptedPath = Path.Combine(attemptedBase, joined);
-        throw new FileNotFoundException(
-            $"'{joined}' not found. Searched upward from '{attemptedBase}'. " +
-            $"Last attempted path: '{attemptedPath}'.",
-            attemptedPath);
+        throw new DirectoryNotFoundException(
+            $"Repository root not found: no directory containing a solution file or '.git' was " +
+            $"found walking up from '{AppContext.BaseDirectory}'.");
     }
 
     private static string ReadDesktopView() => File.ReadAllText(
