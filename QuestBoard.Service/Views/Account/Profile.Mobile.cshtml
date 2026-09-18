@@ -75,7 +75,7 @@
                             @:Never fetched yet
                         }
                     </div>
-                    <input type="text" readonly id="subscriptionAddressMobile-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address mt-2" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
+                    <input type="text" readonly id="subscriptionAddressMobile-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address mt-2 visually-hidden" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
                     <div class="d-flex gap-2 mt-2 flex-wrap">
                         <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn calendar-subscription-copy-btn" data-address-target="#subscriptionAddressMobile-@subscription.Id" aria-label="Copy address">
                             <i class="fas fa-copy"></i>
@@ -206,6 +206,11 @@
                 };
 
                 var showManualFallback = function () {
+                    // The address is hidden by default because it is a bearer credential and
+                    // nothing on the page needs a person to read it. This is the one path that
+                    // does: reveal it so the selection is visible, then leave it revealed --
+                    // the person is mid-copy and hiding it again under them would be hostile.
+                    field.classList.remove('visually-hidden');
                     field.focus();
                     field.select();
                     button.innerHTML = 'Press Ctrl+C';

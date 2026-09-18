@@ -1689,19 +1689,12 @@ input[type="radio"]:focus + .custom-radio-label {
    visible characters. */
 .calendar-subscription-section th:nth-child(1),
 .calendar-subscription-section td:nth-child(1) {
-    width: 29%;
+    width: 28%;
 }
 
-/* The address gets the bulk of the row now that the actions are icon-sized. */
-.calendar-subscription-section th:nth-child(2),
-.calendar-subscription-section td:nth-child(2) {
-    width: 49%;
-}
 
-/* Icon-only row actions still have to be comfortably clickable. */
-.calendar-subscription-actions .btn {
-    min-width: 38px;
-}
+
+
 
 /* The action buttons keep their labels on one line; wrapping inside a button is worse than
    wrapping the group. */

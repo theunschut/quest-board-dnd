@@ -101,7 +101,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 - [ ] **CALFEED-01**: A board member holds no calendar subscription until they press Add on their Profile page, and pressing Add mints exactly one new subscription carrying a 256-bit cryptographically random URL-safe address
 - [ ] **CALFEED-02**: A member can hold several calendar subscriptions at once, each separately named, separately addressed and separately revocable, so retiring one device leaves every other device working
-- [ ] **CALFEED-03**: Every subscription row on Profile shows its name, its full re-copyable address, the date it was created and when it was last fetched, and offers rename and delete
+- [ ] **CALFEED-03**: Every subscription row on Profile shows its name, the date it was created and when it was last fetched, offers rename and delete, and makes the full address copyable without displaying it — the address is a bearer credential and is revealed on screen only when the clipboard is unavailable and a manual copy is the remaining path
 - [x] **CALFEED-04**: Deleting a subscription retires it as a tombstone rather than removing the row, so its address answers 410 Gone for a bounded retention window while an address that never existed answers 404 Not Found
 - [x] **CALFEED-05**: A subscription's address serves a valid text/calendar document to an anonymous caller that sends no cookie, holds no session and has no active board, with the address itself as the only credential
 - [x] **CALFEED-06**: The feed carries exactly the events the subscription's owner holds a signup row on, drawn from every board they are still a member of, and never an event from a board they do not belong to
