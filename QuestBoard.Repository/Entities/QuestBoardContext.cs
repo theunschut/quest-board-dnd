@@ -54,6 +54,8 @@ public class QuestBoardContext(
 
     public DbSet<EventSignupEntity> EventSignups { get; set; }
 
+    public DbSet<CalendarSubscriptionEntity> CalendarSubscriptions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -545,6 +547,17 @@ public class QuestBoardContext(
             .HasQueryFilter(es =>
                 activeGroupContext.ActiveGroupId != null &&
                 es.Event.GroupId == activeGroupContext.ActiveGroupId);
+
+        // CalendarSubscriptions carries no GroupId and gets no group-scoping filter at all,
+        // deliberately -- this table belongs to a person rather than a board, and the endpoint
+        // that reads it has no active board. A board filter here would make every lookup
+        // return nothing, indistinguishable from an unknown address.
+        modelBuilder.Entity<CalendarSubscriptionEntity>()
+            .HasIndex(cs => cs.Token)
+            .IsUnique();
+
+        modelBuilder.Entity<CalendarSubscriptionEntity>()
+            .HasIndex(cs => cs.UserId);
 
         // UserEntity intentionally excluded — HasQueryFilter on UserEntity breaks ASP.NET Core Identity
         // (login, password reset, and email confirmation all fail silently)

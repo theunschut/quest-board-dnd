@@ -71,4 +71,41 @@ internal class EventSignupRepository(QuestBoardContext dbContext, IMapper mapper
 
         return Mapper.Map<IList<EventSignup>>(entities);
     }
+
+    /// <inheritdoc/>
+    public async Task<IList<EventFeedRow>> GetFeedRowsForUserAsync(
+        int userId,
+        IReadOnlyCollection<int> memberGroupIds,
+        DateOnly windowStart,
+        DateOnly windowEnd,
+        CancellationToken token = default)
+    {
+        // Rooted at EventSignups rather than Events -- an event the caller holds no signup row
+        // on can never appear here, which is what a calendar feed needs and what no existing
+        // cross-board event query provides. Scope is re-imposed immediately by memberGroupIds,
+        // supplied by the caller from a fresh membership read taken this same request -- this
+        // bypass is therefore strictly narrower than the ambient filter for any single board,
+        // never broader. No roster ever reaches an entry, so there is deliberately no
+        // Include(Signups).ThenInclude(User) here.
+        var entities = await DbContext.EventSignups
+            .IgnoreQueryFilters()
+            .Where(es => es.UserId == userId
+                && memberGroupIds.Contains(es.Event.GroupId)
+                && es.Event.CancelledAt == null
+                && es.Event.Date >= windowStart && es.Event.Date <= windowEnd)
+            .OrderBy(es => es.Event.Date)
+                .ThenBy(es => es.Event.StartTime)
+                .ThenBy(es => es.Event.Id)
+            .Include(es => es.Event)
+            .AsNoTracking()
+            .ToListAsync(token);
+
+        return entities
+            .Select(entity => new EventFeedRow
+            {
+                Event = Mapper.Map<Event>(entity.Event),
+                Availability = (VoteType)entity.Availability
+            })
+            .ToList();
+    }
 }

@@ -47,10 +47,14 @@ public static class ServiceExtensions
         services.AddScoped<IEventSignupService, EventSignupService>();
         services.AddScoped<IEventSeriesService, EventSeriesService>();
         services.AddScoped<IImageValidationService, ImageValidationService>();
+        services.AddScoped<ICalendarSubscriptionService, CalendarSubscriptionService>();
         // Singleton, not Scoped like everything above: this service is stateless -- it only holds
         // an immutable pre-built Markdig pipeline and two immutable sanitizer instances -- so it is
         // safe to share across concurrent requests without per-request allocation.
         services.AddSingleton<IMarkdownService, MarkdownService>();
+        // Singleton, same reasoning as IMarkdownService above: this writer holds no state of
+        // its own, so it is safe to share across concurrent requests.
+        services.AddSingleton<ICalendarFeedWriter, CalendarFeedWriter>();
 
         return services;
     }
