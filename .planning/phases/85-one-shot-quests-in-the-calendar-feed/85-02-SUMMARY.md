@@ -165,6 +165,15 @@ The tracer proves the full five-layer wire-up (repository → service → writer
 
 No blockers. The known environment-only test-runner limitation (above) does not block downstream plans, since it is orthogonal to the calendar-feed code path and reproduces identically regardless of which phase's tests are run.
 
+## Self-Check: PASSED
+
+- FOUND: `QuestBoard.IntegrationTests/Tests/CalendarSubscriptionQuestFeedTests.cs`
+- FOUND: `.planning/phases/85-one-shot-quests-in-the-calendar-feed/85-02-SUMMARY.md`
+- FOUND commit `2cc09833` (Task 1)
+- FOUND commit `418e5b3d` (Task 2)
+- FOUND commit `1e5008e4` (Task 3)
+- FOUND commit `8c5244af` (docs: SUMMARY + deferred-items)
+
 ---
 *Phase: 85-one-shot-quests-in-the-calendar-feed*
 *Completed: 2026-09-18*
