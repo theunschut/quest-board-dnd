@@ -93,4 +93,26 @@ internal class CalendarSubscriptionRepository(QuestBoardContext dbContext, IMapp
             await DbContext.SaveChangesAsync(token);
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<int> PurgeRetiredBeforeAsync(DateTime cutoff, CancellationToken cancellationToken = default)
+    {
+        // This is the only method on this repository permitted to remove a row. A member
+        // pressing Delete retires the row (RevokeAsync above) so its address can keep answering
+        // "gone" -- removing it there would make a just-deleted address indistinguishable from
+        // one that never existed. This table carries no query filter and no GroupId, so the
+        // purge needs no group scope: it scans every owner and every board in one pass.
+        var toRemove = await DbSet
+            .Where(cs => cs.RevokedAt != null && cs.RevokedAt.Value < cutoff)
+            .ToListAsync(cancellationToken);
+
+        if (toRemove.Count == 0)
+        {
+            return 0;
+        }
+
+        DbSet.RemoveRange(toRemove);
+        await DbContext.SaveChangesAsync(cancellationToken);
+        return toRemove.Count;
+    }
 }

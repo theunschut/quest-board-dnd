@@ -381,6 +381,15 @@ if (!app.Environment.IsEnvironment("Testing"))
         "recurring-occurrence-top-up",
         job => job.ExecuteAsync(CancellationToken.None),
         "0 3 * * *");
+
+    // Register nightly calendar-subscription retention sweep — runs at 04:00 server local
+    // time, a third distinct off-peak hour so no two sweeps can contend and one failing cannot
+    // be mistaken for the other. Daily rather than weekly so a missed run self-heals the next
+    // night; the sweep is idempotent because a purged row cannot be purged twice.
+    RecurringJob.AddOrUpdate<CalendarSubscriptionRetentionJob>(
+        "calendar-subscription-retention",
+        job => job.ExecuteAsync(CancellationToken.None),
+        "0 4 * * *");
 }
 
 // Fail fast in Production if email delivery is unconfigured — without this, SmtpClient creation

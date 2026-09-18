@@ -44,4 +44,14 @@ public interface ICalendarSubscriptionRepository : IBaseRepository<CalendarSubsc
     /// callers do not need to change when it does.
     /// </summary>
     Task TouchLastFetchedAsync(int id, DateTime fetchedAt, TimeSpan minimumInterval, CancellationToken token = default);
+
+    /// <summary>
+    /// Removes every subscription retired strictly before <paramref name="cutoff"/>, returning
+    /// the number removed. This is the only method on this repository permitted to remove a
+    /// row: a member pressing Delete retires the row so its address can keep answering "gone",
+    /// and removing it there would make a just-deleted address indistinguishable from one that
+    /// never existed. The purge scans every owner and every board -- this table carries no
+    /// query filter, so the caller needs no group scope.
+    /// </summary>
+    Task<int> PurgeRetiredBeforeAsync(DateTime cutoff, CancellationToken cancellationToken = default);
 }

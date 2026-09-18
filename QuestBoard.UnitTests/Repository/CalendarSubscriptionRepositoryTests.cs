@@ -146,6 +146,139 @@ public class CalendarSubscriptionRepositoryTests
         rows.Should().BeEmpty();
     }
 
+    // -------------------------------------------------------------------
+    // PurgeRetiredBeforeAsync
+    // -------------------------------------------------------------------
+
+    private static async Task<int> SeedSubscriptionWithRevocationAsync(QuestBoardContext context, DateTime? revokedAt, int userId = 101)
+    {
+        if (!await context.UserEntities.AnyAsync(u => u.Id == userId))
+        {
+            context.UserEntities.Add(new UserEntity { Id = userId, Name = $"User {userId}", Email = $"user{userId}@test.com" });
+        }
+
+        var entity = new CalendarSubscriptionEntity
+        {
+            UserId = userId,
+            Name = "Test subscription",
+            Token = Guid.NewGuid().ToString("N"),
+            CreatedAt = DateTime.UtcNow,
+            RevokedAt = revokedAt
+        };
+        context.CalendarSubscriptions.Add(entity);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        return entity.Id;
+    }
+
+    [Fact]
+    public async Task PurgeRetiredBeforeAsync_NeverRetired_IsNeverPurgedHoweverOldItIs()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(PurgeRetiredBeforeAsync_NeverRetired_IsNeverPurgedHoweverOldItIs));
+        var id = await SeedSubscriptionWithRevocationAsync(context, revokedAt: null);
+        var repository = new CalendarSubscriptionRepository(context, CreateMapper());
+
+        // Act: a cutoff far in the future would purge anything retired before it, but this row
+        // was never retired at all.
+        var purged = await repository.PurgeRetiredBeforeAsync(DateTime.UtcNow.AddYears(10), TestContext.Current.CancellationToken);
+
+        // Assert
+        purged.Should().Be(0);
+        (await context.CalendarSubscriptions.AnyAsync(cs => cs.Id == id, TestContext.Current.CancellationToken)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PurgeRetiredBeforeAsync_RetiredFewerDaysAgoThanRetentionWindow_IsNotPurged()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(PurgeRetiredBeforeAsync_RetiredFewerDaysAgoThanRetentionWindow_IsNotPurged));
+        var now = new DateTime(2026, 9, 18, 4, 0, 0, DateTimeKind.Utc);
+        var revokedAt = now.AddDays(-10);
+        var id = await SeedSubscriptionWithRevocationAsync(context, revokedAt);
+        var repository = new CalendarSubscriptionRepository(context, CreateMapper());
+        var cutoff = now.AddDays(-30);
+
+        // Act
+        var purged = await repository.PurgeRetiredBeforeAsync(cutoff, TestContext.Current.CancellationToken);
+
+        // Assert
+        purged.Should().Be(0);
+        (await context.CalendarSubscriptions.AnyAsync(cs => cs.Id == id, TestContext.Current.CancellationToken)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PurgeRetiredBeforeAsync_RetiredExactlyAtWindowBoundary_IsNotPurged()
+    {
+        // Arrange: the comparison is strictly older-than, so an off-by-one cannot shorten the
+        // guarantee.
+        await using var context = CreateContext(nameof(PurgeRetiredBeforeAsync_RetiredExactlyAtWindowBoundary_IsNotPurged));
+        var cutoff = new DateTime(2026, 9, 18, 4, 0, 0, DateTimeKind.Utc);
+        var id = await SeedSubscriptionWithRevocationAsync(context, revokedAt: cutoff);
+        var repository = new CalendarSubscriptionRepository(context, CreateMapper());
+
+        // Act
+        var purged = await repository.PurgeRetiredBeforeAsync(cutoff, TestContext.Current.CancellationToken);
+
+        // Assert
+        purged.Should().Be(0);
+        (await context.CalendarSubscriptions.AnyAsync(cs => cs.Id == id, TestContext.Current.CancellationToken)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PurgeRetiredBeforeAsync_RetiredLongerAgoThanWindow_IsPurgedAndAddressThenAnswers404()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(PurgeRetiredBeforeAsync_RetiredLongerAgoThanWindow_IsPurgedAndAddressThenAnswers404));
+        var now = new DateTime(2026, 9, 18, 4, 0, 0, DateTimeKind.Utc);
+        var revokedAt = now.AddDays(-31);
+        var id = await SeedSubscriptionWithRevocationAsync(context, revokedAt);
+        var repository = new CalendarSubscriptionRepository(context, CreateMapper());
+        var cutoff = now.AddDays(-30);
+
+        // Act
+        var purged = await repository.PurgeRetiredBeforeAsync(cutoff, TestContext.Current.CancellationToken);
+
+        // Assert: the row is gone, so a subsequent lookup by token finds nothing -- the same
+        // "unknown address" shape as one that never existed (404, not 410).
+        purged.Should().Be(1);
+        (await context.CalendarSubscriptions.AnyAsync(cs => cs.Id == id, TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PurgeRetiredBeforeAsync_NothingToPurge_PerformsNoWriteAndReturnsZero()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(PurgeRetiredBeforeAsync_NothingToPurge_PerformsNoWriteAndReturnsZero));
+        var repository = new CalendarSubscriptionRepository(context, CreateMapper());
+
+        // Act
+        var purged = await repository.PurgeRetiredBeforeAsync(DateTime.UtcNow, TestContext.Current.CancellationToken);
+
+        // Assert
+        purged.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PurgeRetiredBeforeAsync_RowsAcrossMultipleOwners_AreAllCounted()
+    {
+        // Arrange: this table carries no query filter, so the sweep needs no group scope --
+        // rows for two different users are both purged in one call.
+        await using var context = CreateContext(nameof(PurgeRetiredBeforeAsync_RowsAcrossMultipleOwners_AreAllCounted));
+        var now = new DateTime(2026, 9, 18, 4, 0, 0, DateTimeKind.Utc);
+        var revokedAt = now.AddDays(-31);
+        await SeedSubscriptionWithRevocationAsync(context, revokedAt, userId: 101);
+        await SeedSubscriptionWithRevocationAsync(context, revokedAt, userId: 202);
+        var repository = new CalendarSubscriptionRepository(context, CreateMapper());
+        var cutoff = now.AddDays(-30);
+
+        // Act
+        var purged = await repository.PurgeRetiredBeforeAsync(cutoff, TestContext.Current.CancellationToken);
+
+        // Assert
+        purged.Should().Be(2);
+    }
+
     private sealed class TestActiveGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId => null;
