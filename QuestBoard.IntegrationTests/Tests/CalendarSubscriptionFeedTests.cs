@@ -140,4 +140,120 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         string.Join("\r\n", lines).Should().Be(body);
         body.Replace("\r\n", string.Empty).Should().NotContain("\n");
     }
+
+    // Matches the "calendar-feed" rate-limiting policy's PermitLimit in Program.cs. The policy
+    // is defined in code rather than configuration, so this cannot be read at runtime -- kept
+    // as a single named constant with this comment so a future change to the policy's
+    // PermitLimit does not silently desynchronize this fact from the value it must exceed.
+    private const int CalendarFeedPolicyPermitLimit = 20;
+
+    [Fact]
+    public async Task Feed_LogsNoSubscriptionAddress_WhenServingALiveAddress()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_logsafe", "calfeed_logsafe@example.com", name: "Calendar Feed Log Safety User");
+
+        await SeedBoardAsync(2, "Calendar Feed Log Safety Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventDate = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
+        var eventId = await SeedEventAsync(2, "Calendar Feed Log Safety Session", eventDate, new TimeOnly(19, 0));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        factory.LogCapture.Clear();
+
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // The address itself must never reach a captured record -- neither in a rendered
+        // message nor as a structured state value, which is exactly what CapturingLoggerProvider
+        // renders alongside the message.
+        factory.LogCapture.Records.Should().NotContain(record => record.Contains(subscription.Token));
+
+        // This does not by itself prove the harness is collecting anything: an accidentally
+        // disabled provider would also produce zero records and this assertion would pass for
+        // the wrong reason. A revoked-subscription fetch is guaranteed to log --
+        // CalendarFeedController's Revoked branch calls LogInformation on every request -- so it
+        // is used here as the harness's own smoke test, independent of whether the live-fetch
+        // path above happens to log anything at all.
+        var revokedSubscription = await MintSubscriptionAsync(user.Id);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var subscriptionService = scope.ServiceProvider.GetRequiredService<ICalendarSubscriptionService>();
+            await subscriptionService.RevokeAsync(revokedSubscription.Id, user.Id, TestContext.Current.CancellationToken);
+        }
+
+        var revokedResponse = await client.GetAsync(
+            $"/feeds/calendar/{revokedSubscription.Token}.ics", TestContext.Current.CancellationToken);
+        revokedResponse.StatusCode.Should().Be(HttpStatusCode.Gone);
+
+        factory.LogCapture.Records.Should().NotBeEmpty();
+        factory.LogCapture.Records.Should().NotContain(record => record.Contains(revokedSubscription.Token));
+    }
+
+    [Fact]
+    public async Task Feed_LogsNothing_ForAnAddressThatNeverExisted()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        factory.LogCapture.Clear();
+
+        // Well-formed (43 URL-safe characters, matching a real minted address's shape) but
+        // never minted.
+        var unknownAddress = new string('A', 43);
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{unknownAddress}.ics", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // A stream of unknown addresses is what guessing looks like, so the NotFound branch logs
+        // nothing at all rather than converting an attacker's traffic into unbounded log volume.
+        // Checked against the category rather than the message text, so a future log call added
+        // to this branch under a different category still fails this fact.
+        factory.LogCapture.Records.Should().NotContain(record => record.Contains("CalendarFeedController"));
+    }
+
+    [Fact]
+    public async Task Feed_Returns429_WhenTheAddressExceedsItsRequestBudget()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_budget", "calfeed_budget@example.com", name: "Calendar Feed Budget User");
+
+        await SeedBoardAsync(2, "Calendar Feed Budget Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventDate = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
+        var eventId = await SeedEventAsync(2, "Calendar Feed Budget Session", eventDate, new TimeOnly(19, 0));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        // A dedicated address used by no other fact in this suite: the rate-limit budget is
+        // partitioned per address (Program.cs), so exhausting a shared one here would poison
+        // every other fact that fetches it.
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+
+        HttpResponseMessage? lastResponse = null;
+        for (var i = 0; i < CalendarFeedPolicyPermitLimit + 1; i++)
+        {
+            lastResponse = await client.GetAsync(
+                $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        }
+
+        lastResponse!.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
 }
