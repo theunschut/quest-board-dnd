@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 85
-current_phase_name: one-shot-quests-in-the-calendar-feed
-status: executing
+status: completed
 stopped_at: Phase 85 context gathered
-last_updated: "2026-09-18T15:25:01.726Z"
+last_updated: "2026-09-18T17:28:26.970Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
 progress:
   total_phases: 14
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 97
-  completed_plans: 82
-  percent: 79
+  completed_plans: 88
+  percent: 86
+current_phase_name: one-shot-quests-in-the-calendar-feed
 state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 ## Current Position
 
-Phase: 85 (one-shot-quests-in-the-calendar-feed) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 85
-Last activity: 2026-09-18 — Phase 85 execution started
+Phase: 85
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-09-18 — Phase 85 complete
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
