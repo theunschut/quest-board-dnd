@@ -97,6 +97,47 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **EVTNAME-06**: The two header cross-buttons between Board Availability and My Agenda render only for a Dungeon Master, in both directions and on both layouts, while the unconditional My Agenda entry in each layout's user menu stays visible to every authenticated user
 - [x] **EVTNAME-07**: Board Availability itself keeps no authorization gate — a player who reaches it still receives a normal 200 and the full grid, proven by an automated case rather than assumed from the absence of an attribute
 
+### Calendar Feed — Foundation and Event Subscription
+
+- [x] **CALFEED-01**: A board member holds no calendar subscription until they press Add on their Profile page, and pressing Add mints exactly one new subscription carrying a 256-bit cryptographically random URL-safe address
+- [x] **CALFEED-02**: A member can hold several calendar subscriptions at once, each separately named, separately addressed and separately revocable, so retiring one device leaves every other device working
+- [x] **CALFEED-03**: Every subscription row on Profile shows its name, the date it was created and when it was last fetched, offers rename and delete, and makes the full address copyable without displaying it — the address is a bearer credential and is revealed on screen only when the clipboard is unavailable and a manual copy is the remaining path
+- [x] **CALFEED-04**: Deleting a subscription retires it as a tombstone rather than removing the row, so its address answers 410 Gone for a bounded retention window while an address that never existed answers 404 Not Found
+- [x] **CALFEED-05**: A subscription's address serves a valid text/calendar document to an anonymous caller that sends no cookie, holds no session and has no active board, with the address itself as the only credential
+- [x] **CALFEED-06**: The feed carries exactly the events the subscription's owner holds a signup row on, drawn from every board they are still a member of, and never an event from a board they do not belong to
+- [x] **CALFEED-07**: A row that survives the feed query's board predicate but falls outside the owner's membership set is dropped before it reaches the response and recorded as an error in the application log
+- [x] **CALFEED-08**: A cancelled event never appears in the feed, on any board, for any subscription
+- [x] **CALFEED-09**: Each calendar entry's title is the board name in square brackets followed by the event title, with "(maybe)" or "(declined)" appended when the owner answered that way and nothing appended otherwise
+- [x] **CALFEED-10**: An event with a start time becomes a one-hour entry in floating local time with no timezone declared, and an event with no start time becomes a true all-day entry occupying exactly one day
+- [x] **CALFEED-11**: Every calendar entry is marked transparent so a subscriber never reads as busy, and carries no description, no link and no alarm
+- [x] **CALFEED-12**: Each calendar entry's identifier is unchanged across repeated fetches of the same occurrence and is namespaced by its source, so a phone updates an entry in place and a future quest source cannot collide with an event of the same numeric id
+- [x] **CALFEED-13**: The feed covers a rolling window of recent past and upcoming months, recomputed on every fetch, with both bounds changeable through configuration and no code change
+- [x] **CALFEED-14**: Both the desktop and the mobile Profile layout carry the subscription section, and every row offers a copy control, a webcal link and a scannable QR code for its address
+- [x] **CALFEED-15**: The feed endpoint is rate limited per address and no application log line ever contains a full subscription address
+- [x] **CALFEED-16**: Repeated fetching of one address updates its last-fetched timestamp at most once per throttle interval, so a hammered address cannot become a database write storm
+- [x] **CALFEED-17**: A retired subscription's tombstone is purged once it has been retired for longer than the configured retention window, after which its address answers 404 Not Found like any address that never existed
+
+### Calendar Feed — One-Shot Quest Sessions
+
+- [x] **QUESTFEED-01**: The calendar address a member already holds starts carrying their one-shot quest sessions alongside events, with no second address, no second endpoint, no new page and no new Profile control
+- [x] **QUESTFEED-02**: A finalized quest on a one-shot board the member belongs to, where that member holds a confirmed seat, appears in their feed as a calendar entry
+- [x] **QUESTFEED-03**: A finalized quest the member is running as Dungeon Master appears in their feed even though a Dungeon Master holds no signup row on their own quest
+- [x] **QUESTFEED-04**: A quest where the member is both the Dungeon Master and the holder of a confirmed seat appears exactly once, as a single calendar entry carrying a single identifier
+- [x] **QUESTFEED-05**: A waitlisted signup never reaches the feed, only a confirmed seat does, and a promotion off the waitlist reaches the phone at the next fetch like any other change
+- [x] **QUESTFEED-06**: A Player seat, a Spectator seat and an Assistant Dungeon Master seat all reach the feed identically, with no seat kind singled out
+- [x] **QUESTFEED-07**: A quest flagged as a Dungeon Master session still reaches the feed for anyone holding a confirmed seat on it
+- [x] **QUESTFEED-08**: A quest becomes a timed entry starting at its finalized date and time and running for a configured number of hours, four by default, and is never emitted as an all-day entry
+- [x] **QUESTFEED-09**: The quest session length is changeable through configuration with no code change, and the application refuses to start when it is configured below one hour
+- [x] **QUESTFEED-10**: Every quest entry is marked transparent, exactly like an event, so a subscriber never reads as busy
+- [x] **QUESTFEED-11**: A quest entry's title is the board name in square brackets followed by the quest title, with no marker identifying the entry as a quest and no marker identifying a session the member runs rather than plays
+- [x] **QUESTFEED-12**: A quest entry's title never gains a parenthesised availability answer, for any availability value the entry could hold
+- [x] **QUESTFEED-13**: A quest that stops qualifying, whether by being un-finalized, deleted, moved out of the window, or losing the member's seat, simply disappears from the feed at the next fetch with no cancellation marker emitted
+- [x] **QUESTFEED-14**: Quests use the same rolling window as events, governed by the existing configuration bounds and no second pair of knobs
+- [x] **QUESTFEED-15**: A finalized quest the member holds a confirmed seat on never reaches the feed when its board is a campaign board, while that same board's events keep appearing
+- [x] **QUESTFEED-16**: A quest from a board the member does not belong to never reaches the feed, and a quest row that survives the feed query's predicate but falls outside the member's one-shot board set is dropped before the response and recorded as an error in the application log
+- [x] **QUESTFEED-17**: A quest and an event that share the same numeric identifier produce two distinct calendar identifiers, so neither can overwrite the other in a subscriber's calendar
+- [x] **QUESTFEED-18**: The combined document orders every entry by date and then start time regardless of which source it came from, and a fetch that turns up no qualifying quest produces the same document the event-only feed produced before this phase
+
 ### Link Previews — Foundation and Quests
 
 - [ ] **LINKPREV-01**: The app generates correct absolute URLs behind the reverse proxy, honouring forwarded scheme and host
@@ -295,11 +336,46 @@ Explicit exclusions for v9.0, with reasoning.
 | CONTACTTAG-15 | Phase 81 | Not started |
 | CONTACTTAG-16 | Phase 81 | Not started |
 | CONTACTTAG-17 | Phase 81 | Not started |
+| CALFEED-01 | Phase 84 | Complete |
+| CALFEED-02 | Phase 84 | Complete |
+| CALFEED-03 | Phase 84 | Complete |
+| CALFEED-04 | Phase 84 | Complete |
+| CALFEED-05 | Phase 84 | Complete |
+| CALFEED-06 | Phase 84 | Complete |
+| CALFEED-07 | Phase 84 | Complete |
+| CALFEED-08 | Phase 84 | Complete |
+| CALFEED-09 | Phase 84 | Complete |
+| CALFEED-10 | Phase 84 | Complete |
+| CALFEED-11 | Phase 84 | Complete |
+| CALFEED-12 | Phase 84 | Complete |
+| CALFEED-13 | Phase 84 | Complete |
+| CALFEED-14 | Phase 84 | Complete |
+| CALFEED-15 | Phase 84 | Complete |
+| CALFEED-16 | Phase 84 | Complete |
+| CALFEED-17 | Phase 84 | Complete |
+| QUESTFEED-01 | Phase 85 | Complete |
+| QUESTFEED-02 | Phase 85 | Complete |
+| QUESTFEED-03 | Phase 85 | Complete |
+| QUESTFEED-04 | Phase 85 | Complete |
+| QUESTFEED-05 | Phase 85 | Complete |
+| QUESTFEED-06 | Phase 85 | Complete |
+| QUESTFEED-07 | Phase 85 | Complete |
+| QUESTFEED-08 | Phase 85 | Complete |
+| QUESTFEED-09 | Phase 85 | Complete |
+| QUESTFEED-10 | Phase 85 | Complete |
+| QUESTFEED-11 | Phase 85 | Complete |
+| QUESTFEED-12 | Phase 85 | Complete |
+| QUESTFEED-13 | Phase 85 | Complete |
+| QUESTFEED-14 | Phase 85 | Complete |
+| QUESTFEED-15 | Phase 85 | Complete |
+| QUESTFEED-16 | Phase 85 | Complete |
+| QUESTFEED-17 | Phase 85 | Complete |
+| QUESTFEED-18 | Phase 85 | Complete |
 
 **Coverage:**
 
-- v1 requirements: 99 total
-- Mapped to phases: 99/99 ✓
+- v1 requirements: 134 total
+- Mapped to phases: 134/134 ✓
 - Unmapped: 0
 
 ---

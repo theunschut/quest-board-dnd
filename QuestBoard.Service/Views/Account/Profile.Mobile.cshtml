@@ -47,6 +47,70 @@
         }
     </div>
 
+    <div class="calendar-subscription-section mb-3">
+        <h6 class="mb-3"><i class="fas fa-rss text-purple me-2"></i>Calendar Subscription</h6>
+
+        @if (!Model.CalendarSubscriptions.Any())
+        {
+            <div class="text-center py-4">
+                <i class="fas fa-rss fa-2x text-muted mb-2"></i>
+                <h5>No calendar subscriptions yet</h5>
+                <p class="text-muted">Get this board's schedule onto your phone's own calendar app. The address below acts like a password — anyone who has it can see your events, dates, and times, and it never expires on its own. Press Add Subscription to create one; nothing is generated until you do.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var subscription in Model.CalendarSubscriptions)
+            {
+                <div class="calendar-subscription-row">
+                    <div class="account-field-value calendar-subscription-name">@subscription.Name</div>
+                    <div class="account-field-label calendar-subscription-meta">
+                        Created @subscription.CreatedAt.ToString("MMM d, yyyy")<br />
+                        @if (subscription.LastFetchedAt.HasValue)
+                        {
+                            @:Last fetched @subscription.LastFetchedAt.Value.ToString("MMM d, yyyy h:mm tt")
+                        }
+                        else
+                        {
+                            @:Never fetched yet
+                        }
+                    </div>
+                    <input type="text" readonly id="subscriptionAddressMobile-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address mt-2 visually-hidden" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                        <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn calendar-subscription-copy-btn" data-address-target="#subscriptionAddressMobile-@subscription.Id" aria-label="Copy address">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
+                            <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
+                        </a>
+                        <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id" aria-label="Show QR Code">
+                            <i class="fas fa-qrcode"></i>
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
+                            <i class="fas fa-pen me-2"></i>Rename
+                        </button>
+                        <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@subscription.Id" />
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </button>
+                        </form>
+                    </div>
+                    <p class="account-field-label calendar-subscription-meta mt-1 mb-0">If nothing happens, copy the address and add it in your calendar app manually.</p>
+                </div>
+            }
+        }
+
+        <form asp-action="AddCalendarSubscription" method="post" class="calendar-subscription-add-form mt-3">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-warning w-100">
+                <i class="fas fa-plus me-2"></i>Add Subscription
+            </button>
+        </form>
+
+    </div>
+
     <hr>
 
     <div class="d-flex justify-content-between">
@@ -58,3 +122,160 @@
         </a>
     </div>
 </div>
+
+@* Modals live outside the card: the card applies a backdrop filter, which makes it the
+   containing block for fixed-position descendants. A modal nested inside it is trapped in
+   the card's stacking context, so the body-level backdrop paints over it and swallows every
+   click, including Close. *@
+@if (Model.CalendarSubscriptions.Any())
+{
+    <div class="modal fade" id="renameSubscriptionModal" tabindex="-1" aria-labelledby="renameSubscriptionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="RenameCalendarSubscription" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="renameSubscriptionModalLabel">Rename Subscription</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" id="renameSubscriptionId" value="" />
+                        <label for="renameSubscriptionName" class="form-label">Name</label>
+                        <input type="text" name="name" id="renameSubscriptionName" class="form-control" maxlength="60" placeholder="e.g. My Phone" required />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @foreach (var subscription in Model.CalendarSubscriptions)
+    {
+        <div class="modal fade" id="qrSubscriptionModal-@subscription.Id" tabindex="-1" aria-labelledby="qrSubscriptionModalLabel-@subscription.Id" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="qrSubscriptionModalLabel-@subscription.Id">Scan to Subscribe</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <p>Point your phone's camera at this code to add @subscription.Name to your calendar app.</p>
+                        @if (!string.IsNullOrEmpty(subscription.QrCodeSvg))
+                        {
+                            <div class="calendar-subscription-qr" role="img" aria-label="QR code encoding the @subscription.Name calendar subscription address">
+                                @Html.Raw(subscription.QrCodeSvg)
+                            </div>
+                        }
+                        <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+                            <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn calendar-subscription-copy-btn" data-address-target="#subscriptionAddressMobile-@subscription.Id" aria-label="Copy address">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
+                                <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.calendar-subscription-copy-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var targetSelector = button.dataset.addressTarget;
+                var field = targetSelector ? document.querySelector(targetSelector) : null;
+                if (!field) {
+                    return;
+                }
+
+                var restoreLabel = function (label, iconClass, extraButtonClass) {
+                    setTimeout(function () {
+                        button.classList.remove('btn-success');
+                        if (extraButtonClass) {
+                            button.classList.remove(extraButtonClass);
+                        }
+                        button.classList.add('btn-primary');
+                        button.innerHTML = '<i class="fas fa-copy me-2"></i>Copy';
+                    }, 2000);
+                };
+
+                var showManualFallback = function () {
+                    // The address is hidden by default because it is a bearer credential and
+                    // nothing on the page needs a person to read it. This is the one path that
+                    // does: reveal it so the selection is visible, then leave it revealed --
+                    // the person is mid-copy and hiding it again under them would be hostile.
+                    field.classList.remove('visually-hidden');
+                    field.focus();
+                    field.select();
+                    button.innerHTML = 'Press Ctrl+C';
+                    restoreLabel();
+                };
+
+                if (!navigator.clipboard || !navigator.clipboard.writeText) {
+                    showManualFallback();
+                    return;
+                }
+
+                navigator.clipboard.writeText(field.value).then(function () {
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-success');
+                    button.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+                    restoreLabel();
+                }).catch(function () {
+                    showManualFallback();
+                });
+            });
+        });
+
+        // The disable-and-relabel here is a courtesy for the common case; the actual guard
+        // against a double-submitted mint is the server-side ten-second window enforced in
+        // AccountController, so removing this script would not remove the protection.
+        var addSubscriptionForm = document.querySelector('.calendar-subscription-add-form');
+        if (addSubscriptionForm) {
+            addSubscriptionForm.addEventListener('submit', function () {
+                var submitButton = addSubscriptionForm.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = 'Adding…';
+                }
+            });
+        }
+
+        var renameSubscriptionModal = document.getElementById('renameSubscriptionModal');
+        if (renameSubscriptionModal) {
+            renameSubscriptionModal.addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                if (!trigger) {
+                    return;
+                }
+
+                var subscriptionId = trigger.dataset.subscriptionId || '';
+                var subscriptionName = trigger.dataset.subscriptionName || '';
+
+                document.getElementById('renameSubscriptionId').value = subscriptionId;
+                var nameInput = document.getElementById('renameSubscriptionName');
+                nameInput.value = subscriptionName;
+            });
+
+            renameSubscriptionModal.addEventListener('shown.bs.modal', function () {
+                document.getElementById('renameSubscriptionName').focus();
+            });
+        }
+
+        document.querySelectorAll('.calendar-subscription-delete-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                var name = form.dataset.subscriptionName;
+                var message = 'Delete "' + name + '"? Any device using this address will silently stop receiving updates the next time it checks — this cannot be undone. You can always create a new subscription afterward.';
+                if (!confirm(message)) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+}

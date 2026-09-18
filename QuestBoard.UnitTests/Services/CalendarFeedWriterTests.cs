@@ -1,0 +1,578 @@
+using System.Text;
+using System.Text.RegularExpressions;
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Services;
+
+namespace QuestBoard.UnitTests.Services;
+
+// Exact-byte assertion style, matching MarkdownServiceTests: plain string and regex assertions,
+// no mocking and no snapshot framework. The writer is a pure function, so every fact here is
+// deterministic given its inputs.
+public class CalendarFeedWriterTests
+{
+    private static readonly ICalendarFeedWriter Writer = new CalendarFeedWriter();
+
+    private static CalendarFeedEntry MakeEntry(
+        DateOnly date,
+        TimeOnly? startTime = null,
+        string boardName = "The Last Bastion",
+        string title = "Session 12",
+        VoteType availability = VoteType.Yes,
+        DateTime? createdAt = null,
+        int sourceId = 1,
+        CalendarFeedSource source = CalendarFeedSource.Event,
+        TimeSpan? duration = null)
+    {
+        return new CalendarFeedEntry
+        {
+            Source = source,
+            SourceId = sourceId,
+            BoardName = boardName,
+            Title = title,
+            Date = date,
+            StartTime = startTime,
+            Duration = duration ?? TimeSpan.FromHours(1),
+            Availability = availability,
+            CreatedAt = createdAt ?? new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
+        };
+    }
+
+    // Reconstructs a folded content line's full logical value by concatenating its first
+    // physical line with every continuation line, stripping the single leading space each
+    // continuation carries -- the exact unfolding rule RFC 5545 defines.
+    private static string ExtractFoldedProperty(string body, string propertyPrefix)
+    {
+        var lines = body.Split("\r\n");
+        var result = new StringBuilder();
+        var found = false;
+
+        foreach (var line in lines)
+        {
+            if (!found)
+            {
+                if (line.StartsWith(propertyPrefix, StringComparison.Ordinal))
+                {
+                    found = true;
+                    result.Append(line);
+                }
+
+                continue;
+            }
+
+            if (line.StartsWith(' '))
+            {
+                result.Append(line[1..]);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return result.ToString();
+    }
+
+    // Reverse of the writer's escaper, applied in the opposite order the escaper used --
+    // newline undo first, backslash undo last -- so a doubled escape backslash is never
+    // mistaken for an escape sequence introduced by an earlier step.
+    private static string UnescapeText(string escaped)
+    {
+        var result = escaped.Replace("\\n", "\n");
+        result = result.Replace("\\,", ",");
+        result = result.Replace("\\;", ";");
+        result = result.Replace("\\\\", "\\");
+        return result;
+    }
+
+    private static void AssertNoPhysicalLineExceeds75Octets(string body)
+    {
+        foreach (var line in body.Split("\r\n"))
+        {
+            Encoding.UTF8.GetByteCount(line).Should().BeLessThanOrEqualTo(75);
+        }
+    }
+
+    [Fact]
+    public void Write_TimedEntry_EmitsStartAndEndOneHourApart()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("DTSTART:20260920T190000");
+        body.Should().Contain("DTEND:20260920T200000");
+        body.Should().NotContain("DTSTART:20260920T190000Z");
+        body.Should().NotContain("TZID");
+    }
+
+    [Fact]
+    public void Write_TimedEntryLateStart_RollsDateForwardForEnd()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(23, 30));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("DTSTART:20260920T233000");
+        body.Should().Contain("DTEND:20260921T003000");
+    }
+
+    [Fact]
+    public void Write_NullStartTimeEntry_EmitsDateValuedStartAndExclusiveNextDayEnd()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 21), startTime: null);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("DTSTART;VALUE=DATE:20260921");
+        body.Should().Contain("DTEND;VALUE=DATE:20260922");
+    }
+
+    [Theory]
+    [InlineData(2026, 1, 1)]
+    [InlineData(2026, 2, 28)]
+    [InlineData(2026, 12, 31)]
+    public void Write_AllDayEntries_AlwaysSpanExactlyOneDay(int year, int month, int day)
+    {
+        var date = new DateOnly(year, month, day);
+        var entry = MakeEntry(date, startTime: null);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var start = ExtractFoldedProperty(body, "DTSTART;VALUE=DATE:")["DTSTART;VALUE=DATE:".Length..];
+        var end = ExtractFoldedProperty(body, "DTEND;VALUE=DATE:")["DTEND;VALUE=DATE:".Length..];
+        var startDate = DateOnly.ParseExact(start, "yyyyMMdd");
+        var endDate = DateOnly.ParseExact(end, "yyyyMMdd");
+
+        endDate.DayNumber.Should().Be(startDate.DayNumber + 1);
+    }
+
+    [Fact]
+    public void Write_AnyEntry_EmitsTransparent()
+    {
+        var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+        var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
+
+        var body = Writer.Write([timed, allDay], "My Calendar");
+
+        body.Split("TRANSP:TRANSPARENT").Length.Should().Be(3); // 2 occurrences => 3 segments
+    }
+
+    [Fact]
+    public void Write_AnyEntry_EmitsSequenceZero()
+    {
+        var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+        var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
+
+        var body = Writer.Write([timed, allDay], "My Calendar");
+
+        body.Split("SEQUENCE:0").Length.Should().Be(3);
+    }
+
+    [Fact]
+    public void Write_Entry_DtstampMatchesCreatedAt()
+    {
+        var createdAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), createdAt: createdAt);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("DTSTAMP:20260304T050607Z");
+    }
+
+    [Fact]
+    public void Write_SameEntryTwice_ProducesByteIdenticalOutputAcrossAClockChange()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+        var entries = new List<CalendarFeedEntry> { entry };
+
+        var first = Writer.Write(entries, "My Calendar");
+        Thread.Sleep(20); // simulate the clock moving between two polls
+        var second = Writer.Write(entries, "My Calendar");
+
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Write_TitleWithSpecialCharacters_EscapesAndRoundTrips()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: "A, B; C\\D");
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        var unescaped = UnescapeText(summary);
+
+        unescaped.Should().Be("[The Last Bastion] A, B; C\\D");
+    }
+
+    [Fact]
+    public void Write_TitleWithLineBreak_EscapesToLiteralBackslashN()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: "Line one\nLine two");
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+
+        summary.Should().Contain("Line one\\nLine two");
+        summary.Should().NotContain("Line one\nLine two");
+    }
+
+    [Fact]
+    public void Write_LongTitle_FoldsAt75OctetsAndUnfoldsToOriginal()
+    {
+        var longTitle = new string('a', 300);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: longTitle);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        AssertNoPhysicalLineExceeds75Octets(body);
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        var unescaped = UnescapeText(summary);
+
+        unescaped.Should().Be($"[The Last Bastion] {longTitle}");
+
+        // Every continuation line for SUMMARY begins with exactly one space, never two.
+        var lines = body.Split("\r\n");
+        var summaryLineIndex = Array.FindIndex(lines, l => l.StartsWith("SUMMARY:", StringComparison.Ordinal));
+        summaryLineIndex.Should().BeGreaterThanOrEqualTo(0);
+        for (var i = summaryLineIndex + 1; i < lines.Length && lines[i].StartsWith(' '); i++)
+        {
+            lines[i].Should().NotStartWith("  ");
+        }
+    }
+
+    [Fact]
+    public void Write_MultiByteTitle_FoldsOnCharacterBoundaryAndRoundTrips()
+    {
+        // U+3042 (hiragana "a") is 3 bytes in UTF-8; 40 repeats is 120 bytes, forcing a fold
+        // whose naive byte-count cut would land mid-character since 75 and 74 are not multiples
+        // of 3.
+        var multiByteTitle = new string('あ', 40);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: multiByteTitle);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        AssertNoPhysicalLineExceeds75Octets(body);
+        body.Should().NotContain("�"); // no replacement character from a corrupted split
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        var unescaped = UnescapeText(summary);
+
+        unescaped.Should().Be($"[The Last Bastion] {multiByteTitle}");
+    }
+
+    [Fact]
+    public void Write_Document_NeverEmitsForbiddenProperties()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().NotContain("VALARM");
+        body.Should().NotContain("VTIMEZONE");
+        body.Should().NotContain("TZID");
+        body.Should().NotContain("STATUS:CANCELLED");
+        body.Should().NotContain("DESCRIPTION");
+        body.Should().NotContain("URL");
+    }
+
+    [Fact]
+    public void Write_EmptyEntryList_EmitsValidDocumentWithNoEvents()
+    {
+        var body = Writer.Write([], "My Calendar");
+
+        body.Should().StartWith("BEGIN:VCALENDAR");
+        body.Should().Contain("END:VCALENDAR");
+        body.Should().NotContain("BEGIN:VEVENT");
+    }
+
+    [Fact]
+    public void Write_Document_EveryLineEndsWithCrlfAndTerminatesWithCalendarEnd()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().EndWith("END:VCALENDAR\r\n");
+        body.Replace("\r\n", string.Empty).Should().NotContain("\n");
+        body.Replace("\r\n", string.Empty).Should().NotContain("\r");
+    }
+
+    [Fact]
+    public void Write_YesAnswer_EmitsPlainTitleWithNoSuffix()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.Yes);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("SUMMARY:[The Last Bastion] Session 12" + "\r\n");
+    }
+
+    [Fact]
+    public void Write_MaybeAnswer_AppendsMaybeSuffix()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.Maybe);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        UnescapeText(summary).Should().Be("[The Last Bastion] Session 12 (maybe)");
+    }
+
+    [Fact]
+    public void Write_NoAnswer_AppendsDeclinedSuffix()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.No);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        UnescapeText(summary).Should().Be("[The Last Bastion] Session 12 (declined)");
+    }
+
+    [Fact]
+    public void Write_Summary_OpensWithBoardNameBracket()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        summary.Should().StartWith("[");
+    }
+
+    [Fact]
+    public void Write_BoardNameWithComma_EscapesAndRoundTrips()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), boardName: "Smith, Jones", title: "Title");
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
+        UnescapeText(summary).Should().Be("[Smith, Jones] Title");
+    }
+
+    [Fact]
+    public void Write_Document_EmitsCalNameTtlAndRefreshInterval()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("X-WR-CALNAME:My Calendar");
+        body.Should().Contain("X-PUBLISHED-TTL:PT4H");
+        body.Should().Contain("REFRESH-INTERVAL;VALUE=DURATION:PT4H");
+    }
+
+    [Fact]
+    public void Write_Document_EmitsVersionProdidCalscaleAndNoMethod()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("VERSION:2.0");
+        body.Should().Contain("PRODID:");
+        body.Should().Contain("CALSCALE:GREGORIAN");
+        body.Should().NotContain("METHOD:");
+    }
+
+    [Fact]
+    public void Write_MultipleEntries_CalendarHeadersAppearExactlyOnceBeforeFirstEvent()
+    {
+        var first = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1);
+        var second = MakeEntry(new DateOnly(2026, 9, 21), new TimeOnly(19, 0), sourceId: 2);
+
+        var body = Writer.Write([first, second], "My Calendar");
+
+        Regex.Matches(body, "X-WR-CALNAME:").Count.Should().Be(1);
+        Regex.Matches(body, "VERSION:2.0").Count.Should().Be(1);
+
+        var firstEventIndex = body.IndexOf("BEGIN:VEVENT", StringComparison.Ordinal);
+        var calNameIndex = body.IndexOf("X-WR-CALNAME:", StringComparison.Ordinal);
+        calNameIndex.Should().BeLessThan(firstEventIndex);
+    }
+
+    // --- Entry-identifier invariant guard ---
+    //
+    // A calendar client keys its stored copy of an entry by this identifier, so if the
+    // identifier ever changes shape, every existing subscriber's device accumulates a
+    // duplicate of every event it already holds, with no way to withdraw the old copies from
+    // the server side. The namespacing facts below defend the same door from the other side --
+    // a second kind of item sharing an event's numeric id would silently overwrite it in the
+    // reader's calendar. These facts must go red the moment either assumption is reintroduced.
+
+    [Fact]
+    public void BuildUid_EventFortyTwo_ReturnsExactLiteral()
+    {
+        Writer.BuildUid(CalendarFeedSource.Event, 42).Should().Be("questboard-event-42");
+    }
+
+    [Fact]
+    public void Write_SameEntryTwice_UidLineIsIdenticalAcrossRenders()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+        var entries = new List<CalendarFeedEntry> { entry };
+
+        var first = Writer.Write(entries, "My Calendar");
+        Thread.Sleep(20);
+        var second = Writer.Write(entries, "My Calendar");
+
+        var firstUid = ExtractFoldedProperty(first, "UID:");
+        var secondUid = ExtractFoldedProperty(second, "UID:");
+
+        secondUid.Should().Be(firstUid);
+    }
+
+    [Fact]
+    public void BuildUid_EveryDeclaredSource_YieldsDistinctIdentifierForSameNumericId()
+    {
+        // Enumerated rather than listed literally: this fact turns red the instant a member is
+        // added whose identifier collides with an existing one -- precisely when the mistake
+        // would otherwise ship silently.
+        var sources = Enum.GetValues<CalendarFeedSource>();
+
+        var identifiers = sources.Select(s => Writer.BuildUid(s, 7)).ToHashSet();
+
+        identifiers.Count.Should().Be(sources.Length);
+    }
+
+    [Fact]
+    public void BuildUid_AnySourceAndId_MatchesAnchoredNamespacedPattern()
+    {
+        // An anchored regular-expression assertion on the returned string, not a search for
+        // today's configured host -- a search for a particular host value would pass for any
+        // other host spliced in later.
+        foreach (var source in Enum.GetValues<CalendarFeedSource>())
+        {
+            var uid = Writer.BuildUid(source, 123);
+            Regex.IsMatch(uid, @"^questboard-[a-z]+-[0-9]+$").Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void Write_EmittedUidLine_EqualsBuildUidResultForSameSourceAndId()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 99, source: CalendarFeedSource.Event);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var expected = "UID:" + Writer.BuildUid(entry.Source, entry.SourceId);
+        var actual = ExtractFoldedProperty(body, "UID:");
+
+        actual.Should().Be(expected);
+    }
+
+    // --- Quest-source behaviour: duration is data, not a literal ---
+
+    [Fact]
+    public void Write_QuestSourcedEntryWithFourHourDuration_EmitsEndFourHoursAfterStart()
+    {
+        var start = new TimeOnly(19, 0);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), start, source: CalendarFeedSource.Quest, duration: TimeSpan.FromHours(4));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var startInstant = entry.Date.ToDateTime(start);
+        var endInstant = startInstant.Add(TimeSpan.FromHours(4));
+
+        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+    }
+
+    [Fact]
+    public void Write_QuestSourcedEntryWithTwoHourDuration_EmitsEndTwoHoursAfterStart()
+    {
+        var start = new TimeOnly(19, 0);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), start, source: CalendarFeedSource.Quest, duration: TimeSpan.FromHours(2));
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var startInstant = entry.Date.ToDateTime(start);
+        var endInstant = startInstant.Add(TimeSpan.FromHours(2));
+
+        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+    }
+
+    // Regression guard for the duration default: proves the event projection can keep saying
+    // nothing about Duration and still get a one-hour block, exactly as before this phase.
+    [Fact]
+    public void Write_EventSourcedEntryBuiltWithDefaults_StillEmitsAOneHourBlock()
+    {
+        var start = new TimeOnly(19, 0);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), start);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        var startInstant = entry.Date.ToDateTime(start);
+        var endInstant = startInstant.Add(TimeSpan.FromHours(1));
+
+        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+    }
+
+    // --- Quest-source behaviour: the answer suffix is unreachable for a non-event source ---
+
+    [Theory]
+    [InlineData(VoteType.Yes)]
+    [InlineData(VoteType.Maybe)]
+    [InlineData(VoteType.No)]
+    public void Write_QuestSourcedEntry_NeverAppendsAnAnswerSuffix_ForAnyAvailabilityValue(VoteType availability)
+    {
+        // The availability answer belongs to one source, and the enum's default value (No) is a
+        // real answer rather than an absence -- an entry that never set it would otherwise
+        // render a marker the reader never chose. Gating on Source before the switch is ever
+        // evaluated removes that landmine for every value, not just the ones a construction
+        // site remembers to avoid.
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), source: CalendarFeedSource.Quest, availability: availability);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().Contain("SUMMARY:[The Last Bastion] Session 12\r\n");
+    }
+
+    // If VoteType ever grows a fourth member, this fails the suite rather than letting the
+    // theory above silently leave the new value unproven.
+    [Fact]
+    public void Write_QuestSourcedEntry_NoMarkerTheoryCoversEveryDeclaredAvailabilityValue()
+    {
+        Enum.GetValues<VoteType>().Length.Should().Be(3);
+    }
+
+    // --- Quest-source behaviour: identifier namespacing at a colliding numeric id ---
+
+    [Fact]
+    public void Write_EventAndQuestSharingNumericId_EmitTwoDistinctIdentifierLines()
+    {
+        var eventEntry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 7, source: CalendarFeedSource.Event);
+        var questEntry = MakeEntry(new DateOnly(2026, 9, 21), new TimeOnly(19, 0), sourceId: 7, source: CalendarFeedSource.Quest);
+
+        var body = Writer.Write([eventEntry, questEntry], "My Calendar");
+
+        var eventUid = "UID:" + Writer.BuildUid(CalendarFeedSource.Event, 7);
+        var questUid = "UID:" + Writer.BuildUid(CalendarFeedSource.Quest, 7);
+
+        eventUid.Should().NotBe(questUid);
+        body.Should().Contain(eventUid);
+        body.Should().Contain(questUid);
+    }
+
+    // --- Quest-source behaviour: always timed, never all-day ---
+
+    [Fact]
+    public void Write_QuestSourcedEntryWithStartTime_NeverEmitsADateValuedStartOrEnd()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), source: CalendarFeedSource.Quest);
+
+        var body = Writer.Write([entry], "My Calendar");
+
+        body.Should().NotContain("DTSTART;VALUE=DATE:");
+        body.Should().NotContain("DTEND;VALUE=DATE:");
+        body.Should().Contain("DTSTART:20260920T190000");
+    }
+}

@@ -14,6 +14,8 @@ Appended 2026-08-26: **Link Previews**, spanning two phases, so that a quest, ch
 
 Appended 2026-08-27: **NPC Contact Organisation**, spanning two phases, from a board user's request — categories first, so a long flat Contacts list can be broken into named headings, then free-form tags with a filter on top. The two are split because the requester staged them that way and because they are different data models: a category is a single grouping a contact sits under, a tag is a many-to-many label it carries. Phase 81 can sit unplanned indefinitely without blocking 80.
 
+Appended 2026-09-17: **Calendar Subscription**, spanning two phases, from the operator — a personal `text/calendar` feed at a token-authenticated URL so a phone's calendar picks up board dates on its own instead of having them retyped. The two are split because they draw on different reads: events already have a membership-scoped cross-board query from Phase 82, while quests have none and must be restricted to one-shot boards on top of it. Phase 84 is a complete, subscribable feed on its own; Phase 85 adds a second source to it.
+
 ## Phases
 
 ### Phase 72: Change Character on an Existing Signup
@@ -730,8 +732,43 @@ Plans:
 | CONTACTTAG-15 | Phase 81 |
 | CONTACTTAG-16 | Phase 81 |
 | CONTACTTAG-17 | Phase 81 |
+| CALFEED-01 | Phase 84 |
+| CALFEED-02 | Phase 84 |
+| CALFEED-03 | Phase 84 |
+| CALFEED-04 | Phase 84 |
+| CALFEED-05 | Phase 84 |
+| CALFEED-06 | Phase 84 |
+| CALFEED-07 | Phase 84 |
+| CALFEED-08 | Phase 84 |
+| CALFEED-09 | Phase 84 |
+| CALFEED-10 | Phase 84 |
+| CALFEED-11 | Phase 84 |
+| CALFEED-12 | Phase 84 |
+| CALFEED-13 | Phase 84 |
+| CALFEED-14 | Phase 84 |
+| CALFEED-15 | Phase 84 |
+| CALFEED-16 | Phase 84 |
+| CALFEED-17 | Phase 84 |
+| QUESTFEED-01 | Phase 85 |
+| QUESTFEED-02 | Phase 85 |
+| QUESTFEED-03 | Phase 85 |
+| QUESTFEED-04 | Phase 85 |
+| QUESTFEED-05 | Phase 85 |
+| QUESTFEED-06 | Phase 85 |
+| QUESTFEED-07 | Phase 85 |
+| QUESTFEED-08 | Phase 85 |
+| QUESTFEED-09 | Phase 85 |
+| QUESTFEED-10 | Phase 85 |
+| QUESTFEED-11 | Phase 85 |
+| QUESTFEED-12 | Phase 85 |
+| QUESTFEED-13 | Phase 85 |
+| QUESTFEED-14 | Phase 85 |
+| QUESTFEED-15 | Phase 85 |
+| QUESTFEED-16 | Phase 85 |
+| QUESTFEED-17 | Phase 85 |
+| QUESTFEED-18 | Phase 85 |
 
-**Coverage:** 99/99 requirements mapped ✓ · 0 unmapped · 0 orphaned phases
+**Coverage:** 134/134 requirements mapped ✓ · 0 unmapped · 0 phases awaiting requirements
 
 ## Research Flags
 
@@ -742,6 +779,8 @@ Phases 72 and 73 needed no research step — both were researched to implementat
 **Phases 80 and 81 need no external research.** Both are ordinary EF Core schema-plus-CRUD work against a feature that already exists in this codebase; what they need is a discuss-phase pass on the modelling questions noted under each phase, not a web search.
 
 **Phase 82 needs no external research.** The two safe cross-group read mechanisms it must choose between already exist in this codebase and are named in its scope notes; what it needs is a discuss-phase pass, not a web search.
+
+**Phase 84 needs a research step.** RFC 5545 defines the file format but not how a client behaves, and the behaviour is what decides whether a subscription works: Apple Calendar, Google Calendar and Outlook differ on how often they refetch a subscribed URL (Google's interval is measured in hours and is not controllable by the publisher), on whether they honour `X-PUBLISHED-TTL` and `REFRESH-INTERVAL` at all, on how they treat `STATUS:CANCELLED` versus a VEVENT that simply vanishes, and on floating-time versus `TZID` interpretation. Every one of those fails silently — a feed that parses cleanly and shows the wrong day, or never updates — so the limits need establishing before planning rather than after a subscriber notices. This is the same class of problem as the Phase 78 unfurl research. Phase 85 inherits the findings and needs no separate pass; its open questions are product decisions about which quests count, which belong in a discuss pass.
 
 ### Phase 83: Availability Surface Naming and Placement
 
@@ -781,6 +820,138 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 83-04-PLAN.md — Player reachability case for the deliberately open page, the retired-label guard class across all three surfaces, and the requirement and roadmap ledger close-out (wave 2)
+
+### Phase 84: Calendar Feed Foundation and Event Subscription
+
+**Goal**: A board member can point their phone's calendar at a personal subscription URL once and have every event from every board they belong to appear there on its own — all-day entries, timed entries, later edits, and cancellations included — without opening the quest board.
+**Requirements**: CALFEED-01, CALFEED-02, CALFEED-03, CALFEED-04, CALFEED-05, CALFEED-06, CALFEED-07, CALFEED-08, CALFEED-09, CALFEED-10, CALFEED-11, CALFEED-12, CALFEED-13, CALFEED-14, CALFEED-15, CALFEED-16, CALFEED-17
+**Depends on**: Phase 82 (reuses the membership-scoped cross-board event read built there) and Phase 83 (the two availability surfaces must be settled before a third read surface is added over the same data)
+**Plans**: 8/8 plans complete
+
+**Origin:** raised by the operator on 2026-09-17 — the board already knows every date, but getting those dates onto a phone means retyping them by hand.
+
+**Scope notes:**
+
+- **A one-way subscription feed, not two-way sync.** The endpoint serves `text/calendar` over HTTPS and the calendar client polls it on its own schedule. This is deliberately not CalDAV: answering availability and signing up stay on the board, and nothing a reader does in their calendar app ever writes back.
+- **One personal feed per user, covering every board they belong to.** This follows the Phase 82 agenda precedent rather than the board-scoped overview's. There is deliberately no per-board feed URL — a reader who wants one board only can filter in their calendar client, and a second URL shape would double the token surface for no gain.
+- **The URL is the credential.** A calendar client sends no cookies and cannot be asked to log in, so the endpoint is anonymous and the token in the path is what authorises it. That makes the token a bearer secret with no expiry: it must be unguessable, per-user, and revocable.
+- **Series occurrences are emitted one VEVENT per occurrence, not as an `RRULE`.** Phase 76 already materialises each occurrence as its own row with its own `CancelledAt` tombstone, so a recurrence rule would have to reconstruct exceptions that the rows already express exactly.
+- **Both Profile layouts ship together.** `Views/Account/Profile.cshtml` has a `.Mobile` twin, and shipping a control on one and not the other is a recorded failure mode in this codebase (Phases 43, 54, 72). The subscribe surface is the whole point of the phase for a phone user, so a desktop-only version delivers nothing.
+- **Revocation ships with minting, not after.** See the first risk below.
+
+**Decisions reached** — settled in the discuss pass on 2026-09-17 and recorded in `.planning/phases/84-calendar-feed-foundation-and-event-subscription/84-CONTEXT.md`, which is authoritative over the summaries below:
+
+- **What a wall-clock time means.** The codebase has no timezone handling anywhere — `grep TimeZoneInfo` across the solution returns nothing, and an event stores a naive `DateOnly` plus a nullable `TimeOnly`. A calendar client has to be told how to read `19:00`. Floating local time (no `TZID`) is the smallest change and matches the naive model exactly, but a reader whose phone is in another timezone sees the wrong hour. A real `VTIMEZONE` block is correct but introduces this application's first timezone concept.
+- **How long an event lasts.** There is no end time in the schema at all. The feed has to emit something — a fixed default duration, or a start-only entry — and the choice is visible on every row of every subscriber's calendar.
+- **Whether a cancellation is emitted or omitted.** `STATUS:CANCELLED` shows the reader that the thing was called off; dropping the VEVENT entirely relies on the client noticing its disappearance, which clients handle inconsistently.
+- **Hand-rolled writer or a library.** RFC 5545 requires CRLF line endings, folding at 75 octets with a specific continuation rule, and escaping of `,`, `;`, `\` and newlines inside text values. Getting any of these subtly wrong produces a feed that one client accepts and another silently rejects. This project has taken on focused packages before (Markdig, HtmlSanitizer, AngleSharp) where the format was the risk.
+
+**Risks this phase must actively avoid:**
+
+- **A leaked subscription URL cannot be un-leaked.** Apple and Google store the URL on their own servers and refetch it indefinitely, so it outlives the device it was entered on. The only remedy is rotation, which is why a regenerate control belongs in the same phase that mints the first token — and why the token must never be written to a log line in full.
+- **Losing the tenancy guard on a surface nobody watches.** The cross-board agenda pairs its membership-scoped query with a second-layer re-check and a `LogError` on any surviving foreign row, precisely because a dropped predicate is invisible in a rendered page. A feed is worse: it is read by a machine, so a leak could run for months with no reader to notice. The same guard has to apply here.
+- **Assuming an active group.** Every read surface in this application except the agenda leans on `IActiveGroupContext` and the tenant query filter. This endpoint has no session, no cookie and no active group, so any dependency that quietly expects one will either throw or return an empty feed that looks like "no events scheduled".
+- **Unstable VEVENT `UID`s.** A UID that changes between polls makes the subscriber's phone accumulate a fresh copy of every event on every refresh rather than updating in place. The UID has to derive from the event's identity, not from anything regenerated per request.
+- ~~**Markdown leaking into `DESCRIPTION`.**~~ **Retired** — 84 D-10 drops the description entirely, so there is nothing for Markdown to leak into and `IMarkdownService` needs no plain-text target.
+- **Updates that clients refuse.** `EventEntity` carries `CreatedAt` but no modified timestamp, so there is nothing to drive a `SEQUENCE` bump when an event is edited. Clients that honour `SEQUENCE` may keep serving the stale copy.
+- **Real-device subscription check deferred to deployment, not observed.** The closing plan's real-phone checkpoint was deferred by operator decision rather than run: Outlook and Google Calendar fetch server-side from their own infrastructure, so no localhost or LAN address can satisfy them, and the check needs either a public tunnel or the deployed application. Refresh latency and whether an edited event ever stays stale after several refreshes were therefore not observed and are not recorded here — they remain open until someone runs the check against a real deployment. Independently of that gap, a live feed response was run through an external RFC 5545 conformance validator and returned zero errors and zero warnings, so the document itself is proven even though no client's actual poll-and-render behaviour has been.
+
+Plans:
+
+**Wave 1**
+
+- [x] 84-01-PLAN.md — Mint the CALFEED requirement family into REQUIREMENTS.md and ROADMAP.md, and complete the phase validation contract (wave 1)
+- [x] 84-02-PLAN.md — End-to-end tracer: subscription table and migration, the signup-rooted cross-board feed query with its second-layer re-check, a minimal RFC 5545 writer, and the anonymous token-authenticated feed endpoint (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 84-03-PLAN.md — Full RFC 5545 writer: timed and all-day branches, floating local time, transparency, board-prefixed titles with vote suffixes, source-namespaced stable identifiers, folding and escaping, plus the exact-byte unit suite (wave 2)
+- [x] 84-04-PLAN.md — Feed hardening: configurable rolling window, tombstone status codes, throttled last-fetched write, per-address rate limiting and address-free logging (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 84-05-PLAN.md — Feed behaviour suite: log-capture harness, four two-group tenant isolation cases, every response code, the inclusion and exclusion rules, both window bounds and the fetch-time throttle (wave 3)
+- [x] 84-06-PLAN.md — Subscription management plumbing: QR package and renderer, absolute address builder, view models, and the add, rename and revoke Profile POST actions (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 84-07-PLAN.md — The Calendar Subscription section on both Profile layouts, with copy, calendar-handoff link, QR modal, rename modal and delete confirm (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 84-08-PLAN.md — Both-layout markup and round-trip suite, the phase static guard, the real-device subscription check, and the requirement and roadmap ledger close-out (wave 5)
+
+### Phase 85: One-Shot Quests in the Calendar Feed
+
+**Goal**: The same subscription also carries the quest sessions the reader is actually part of — from their one-shot boards only — so a phone calendar shows the night they are playing, not just the board's informational events.
+**Requirements**: QUESTFEED-01, QUESTFEED-02, QUESTFEED-03, QUESTFEED-04, QUESTFEED-05, QUESTFEED-06, QUESTFEED-07, QUESTFEED-08, QUESTFEED-09, QUESTFEED-10, QUESTFEED-11, QUESTFEED-12, QUESTFEED-13, QUESTFEED-14, QUESTFEED-15, QUESTFEED-16, QUESTFEED-17, QUESTFEED-18
+**Depends on**: Phase 84 (the token, the endpoint, the writer and the subscribe surface must all exist before a second source can be added to the feed)
+**Plans**: 6/6 plans executed
+
+**Origin:** raised by the operator on 2026-09-17 alongside Phase 84, with the board-type restriction stated up front.
+
+**Scope notes:**
+
+- **Quests come only from boards where `BoardType` is `OneShot`.** This is the operator's constraint, not an inference: a campaign board's quests are not wanted in a personal calendar. `BoardType` already sits on `GroupEntity` as an int (`OneShot = 0`, `Campaign = 1`, `QuestBoard.Domain/Enums/BoardType.cs`), so this is a predicate on the query rather than anything new in the schema.
+- **`IBoardTypeResolver` cannot be used here.** It resolves the *active* group's type and returns null when no group is active — and this feed has no session and no active group by construction. The board type has to be read per-group from the rows the query already loads. Its own doc comment warns that the null case is a distinct state and must not be defaulted, which is exactly the trap a cross-board caller would fall into.
+- **Events keep their existing reach.** Phase 84 puts events from *every* board in the feed. This phase narrows quests only; it must not retroactively restrict events to one-shot boards.
+- **No new read surface in the application UI.** This phase adds quests to a feed, not a page. If a cross-board quest list turns out to be useful on screen, that is its own phase.
+
+**Locked by the operator during Phase 84's discuss pass (2026-09-17)** — recorded here so this phase does not relitigate them. Full context in `.planning/phases/84-calendar-feed-foundation-and-event-subscription/84-CONTEXT.md`:
+
+- **Only quests the reader is signed up for.** Not every quest on their one-shot boards. This matches the event rule Phase 84 settled (84 D-17), so both sources in the feed read the same way.
+- **Only once the quest is finalized.** A quest with `FinalizedDate` set. Proposed dates never reach the feed — a phone should not fill with candidate dates that will mostly not happen, and a date vote in progress is not a commitment.
+
+**Decisions reached** — settled in the discuss pass on 2026-09-18 and recorded in `.planning/phases/85-one-shot-quests-in-the-calendar-feed/85-CONTEXT.md`, which is authoritative over the summary below:
+
+- **A session the reader runs as DM counts (D-01).** A DM holds no signup row on their own quest, so the query is a union of two branches — signup rows for the owner, plus quests where the reader is the Dungeon Master — deduplicated by quest id so a quest matching both branches still emits exactly one entry with one identifier.
+- **A waitlisted signup does not count (D-02).** Only a confirmed seat (`IsSelected == true`) reaches the feed; a promotion off the waitlist reaches the phone at the next fetch like any other change.
+- **All three signup roles count identically (D-03).** Player, Spectator and AssistantDM seats all reach the feed the same way once confirmed — this falls out of D-02 at zero extra cost, since only a Player ever lands on the waitlist.
+- **The `DungeonMasterSession` flag does not filter a quest out (D-04).** The flag hides a quest from the board listing but is not an access control anywhere else in the codebase; a granted seat is honoured regardless.
+- **A quest is a fixed, configurable block starting at `FinalizedDate` (D-05).** Four hours by default, always timed and never all-day, with the duration on `CalendarFeedOptions.QuestDurationHours` and a refuse-to-start guard below one hour.
+- **Every quest entry is `TRANSP:TRANSPARENT` (D-06).** One transparency rule for the whole feed, matching events; the operator considered and declined `OPAQUE`.
+- **A quest entry's title carries no quest marker (D-07).** `[Board] Title`, unchanged from the event convention — a narrow phone day view truncates a wider title anyway.
+- **A quest entry carries no `(DM)` suffix (D-08).** A session the reader runs reads identically to one they play; there is one `SUMMARY` rule for every quest row.
+- **A quest that stops qualifying disappears silently (D-09).** No `STATUS:CANCELLED`, matching the event rule for cancellations.
+- **Quests share the event feed's rolling window (D-10).** The existing `MonthsBack`/`MonthsAhead` bounds, no second pair of knobs.
+- **Query shape.** The D-01 union is expressed as a single `Quests`-rooted query with a seat-or-Dungeon-Master `Any()`/`||` disjunction inside one `Where`, rather than a literal `Union`+`Distinct` — each quest is visited at most once, so the dedup requirement is satisfied structurally rather than by a later distinct step.
+- **Merge ordering.** The combined event+quest document orders every entry by date, then start time with no sentinel substituted for an absent time, then source, then source id — matching the event query's own null-first ordering rather than reversing it with a sentinel.
+
+**Two of this section's original open questions became moot rather than being answered.** D-02 excludes every waitlisted signup, so there is nothing left to mark and no quest suffix was needed or added — the roadmap's "whether the vote-marker convention carries over" question dissolved along with it. And `Close` is rejected outright on a one-shot board (`QuestController.cs:760`), so `IsClosed` is unreachable for any quest this phase can ever emit — the "or a quest is closed" question never had a case to answer.
+
+**Risks this phase must actively avoid:**
+
+- **A brand-new cross-board read with no guard.** No cross-board quest query exists today — `GetUpcomingAcrossGroupsWithSignupsAsync` is the only one of its kind and it is events-only. This phase writes the second, and it must carry the same membership scoping, the same second-layer re-check and the same `LogError` on a surviving foreign row. A fresh query is exactly where that pattern gets forgotten. **Addressed:** `CalendarSubscriptionService.GetFeedAsync`'s quest branch carries the same pinned-membership-set query, the same `IgnoreQueryFilters()` + in-memory re-check, and the same `LogError` on a surviving foreign row that the event branch already had — proven by a unit suite (`CalendarSubscriptionQuestRecheckTests`) that drives the service directly with a misbehaving fake repository to reach the drop-and-log branch a real, filtered repository cannot trigger.
+- **Two filters that can be confused for one.** Membership and board type are independent: a reader belongs to boards of both types, and the quest predicate has to apply *both*. Collapsing them — filtering on board type and trusting the tenant filter for membership, or the reverse — produces either a leak or a silently empty section. **Addressed:** membership and board type are two independent predicates applied inside one condition (the reader's one-shot board-id set, derived from the same membership read the feed already holds), each proven independently against a second board in the same fetch — a campaign board's quest excluded while its event still appears, and a non-member board's seeded seat excluded while a genuinely qualifying quest still appears.
+- **Colliding `UID`s with events.** A quest and an event can share an integer id. If the UID scheme is not namespaced per source, subscribing makes one silently overwrite the other in the reader's calendar. **Addressed:** identifiers are namespaced by source (`CalendarFeedSource.Quest` alongside `Event`), with a unit fact pinning a quest and an event sharing the same numeric id to two distinct, non-colliding `UID`s.
+
+**Gaps this phase does not claim to have closed:**
+
+- **Relational translation of the new quest predicate is unproven.** Every integration fact in this phase runs on the EF Core in-memory provider, which cannot prove the seat-or-Dungeon-Master disjunction and the board-type predicate translate to SQL Server. This is the third consecutive phase to carry this gap; the compensating manual check is recorded in `85-VALIDATION.md`'s Manual-Only Verifications table and is not closed here.
+- **The real-device subscription check inherited from Phase 84 remains unobserved.** Outlook and Google Calendar fetch server-side and cannot reach a localhost or LAN address, so no client's poll-and-render behaviour — refresh latency, in-place update, or what a client does when an entry disappears between polls — has been observed by this phase or the one before it. No output of this phase makes any claim about it.
+
+Plans:
+
+**Wave 1**
+
+- [x] 85-01-PLAN.md — Mint the QUESTFEED requirement family into REQUIREMENTS.md and ROADMAP.md, and key the phase validation contract to real task ids (wave 1)
+- [x] 85-02-PLAN.md — End-to-end tracer: the quest source wired through repository, service, writer and the live feed address, plus the configurable session length and the source-aware writer suite (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 85-03-PLAN.md — Seat and Dungeon Master predicate suite: both branches that put a quest in the feed, the single-entry guarantee when a reader is both, the confirmed-seat rule, all three seat kinds, and the Dungeon Master session flag (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 85-04-PLAN.md — Disappearance and window suite: every way a quest stops qualifying, and both bounds of the shared rolling window (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 85-05-PLAN.md — Board-type narrowing, cross-board isolation with its logged drop, the events-keep-their-reach guard, and merged-document ordering (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 85-06-PLAN.md — Requirement and roadmap ledger close-out, validation sign-off, and the phase static guard (wave 5)
 
 ---
 *Roadmap created: 2026-08-25*

@@ -18,7 +18,7 @@
 - Files: `QuestBoard.Service/Jobs/SessionReminderJob.cs`, `QuestBoard.Service/Services/HangfireReminderJobDispatcher.cs`
 - Impact: Minor user experience (inbox clutter on busy scheduling days) and marginal Resend API quota usage multiplier.
 - Fix approach: Implement a batching layer in `IReminderJobDispatcher` that deduplicates player+date combinations across all pending reminder jobs, emitting a single combined email per player per day. Requires grouping `SessionReminderJob` by (PlayerId, FinalizedDate).
-- Status: Deferred — same-day quests have never occurred in one year of operation (17 members, low scheduling density). Complexity not justified without real demand.
+- Status: Deferred — same-day quests have never occurred in one year of operation (low scheduling density). Complexity not justified without real demand.
 
 **Profile picture crop/avatar selection (issue #78):**
 - Issue: Character profile picture upload exists, but no client-side crop/selection feature. Implementation requires `SkiaSharp` for image manipulation.
@@ -134,7 +134,7 @@
 **Full table loads via `ToListAsync()` in repository:**
 - Problem: Several repository methods call `ToListAsync()` on large result sets without pagination or projection, materializing all rows into memory.
 - Files: `QuestRepository.cs` (`GetQuestsWithSignupsForRoleAsync`), `CharacterRepository.cs` (guild member loads), `GroupRepository.cs` (member count queries)
-- Current scale: 17 users, ~100 characters, ~50 quests total — queries return dozens of rows, acceptable performance.
+- Current scale: a single private board — queries return dozens of rows, acceptable performance.
 - Improvement path: Implement `IAsyncPageable<T>` pattern or cursor-based pagination for views that render unbounded lists. Add `.Select(e => new { Id, Title })` projections for read-only views that don't need full entity graph. Composite index on `Quests(IsFinalized, FinalizedDate)` added in Phase 34.2 helps finalized-quest queries.
 - Priority: Low — no user complaints, but flag for revisit if user base grows beyond ~50 members or quest volume increases
 
@@ -213,7 +213,7 @@
 ## Scaling Limits
 
 **Email relay quota (Resend 3000/month):**
-- Current capacity: 3000 emails/month Resend relay limit, 17 members
+- Current capacity: 3000 emails/month Resend relay limit across the board's membership
 - Usage: ~50 emails/month (5 quests * 1 finalized-email + 1 reminder-email per quest, manually triggered + automated). Headroom: 2950/month unused.
 - Limit: 3000 emails/month is a hard Resend API rate limit. Hitting it suspends all email delivery until quota resets.
 - Scaling path: Monitor actual email volume (`ResendStatsAggregator` dashboard at `/admin/email-stats`). If volume exceeds 2500/month:
@@ -231,7 +231,7 @@
 - Current state: `AspNetSessionState` table grows by one row per session (distributed cache backing). Default expiry: 20 minutes (ASP.NET Core session default).
 - Scaling limit: `AddDistributedSqlServerCache` auto-purges expired rows every 30 minutes (SqlServerCache internals). No manual cleanup needed.
 - Capacity: No performance impact observed; schema validated in Phase 33 integration tests.
-- Monitor: If session volume exceeds 100K concurrent sessions (never at 17 members), review cache eviction policy and consider external Redis
+- Monitor: If session volume exceeds 100K concurrent sessions (far beyond this app's scale), review cache eviction policy and consider external Redis
 
 **Hangfire job queue:**
 - Current state: 1 background worker (Hangfire configuration in Program.cs)

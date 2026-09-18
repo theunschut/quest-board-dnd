@@ -97,4 +97,19 @@ public interface IQuestRepository : IBaseRepository<Quest>
     /// Bypasses the group query filter — use only for system-wide sweep operations (DailyReminderJob).
     /// </summary>
     Task<IList<Quest>> GetQuestsForTomorrowAllGroupsAsync(DateTime date, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns one row per finalized quest, within the given window, on a board in
+    /// <paramref name="oneShotGroupIds"/>, that the given user holds a confirmed seat on or is
+    /// the Dungeon Master of. The caller must supply <paramref name="userId"/> from the
+    /// authenticated principal and never from request input, and <paramref name="oneShotGroupIds"/>
+    /// must come from a membership read taken in the same request and already narrowed to
+    /// one-shot boards. Returns no rows for an empty set rather than widening.
+    /// </summary>
+    Task<IList<Quest>> GetFeedQuestsForUserAsync(
+        int userId,
+        IReadOnlyCollection<int> oneShotGroupIds,
+        DateTime windowStart,
+        DateTime windowEnd,
+        CancellationToken token = default);
 }

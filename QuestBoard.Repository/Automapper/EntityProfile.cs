@@ -182,6 +182,14 @@ public class EntityProfile : Profile
             .ForMember(dest => dest.Event, opt => opt.Ignore())
             .ForMember(dest => dest.User, opt => opt.Ignore());
 
+        // CalendarSubscription mapping. User is ignored on the reverse map so mapping a domain
+        // model onto an already-tracked entity during rename/revoke never replaces the loaded
+        // navigation with null.
+        CreateMap<CalendarSubscriptionEntity, CalendarSubscription>();
+
+        CreateMap<CalendarSubscription, CalendarSubscriptionEntity>()
+            .ForMember(dest => dest.User, opt => opt.Ignore());
+
         // DungeonMasterProfile mappings
         CreateMap<DungeonMasterProfileEntity, DungeonMasterProfile>()
             .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src =>

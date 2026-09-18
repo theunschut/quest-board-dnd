@@ -6,6 +6,7 @@ using Hangfire.States;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
 namespace QuestBoard.IntegrationTests;
@@ -15,6 +16,7 @@ public class WebApplicationFactoryBase : WebApplicationFactory<Program>
     public TestDatabase Database { get; }
     public MutableGroupContext TestGroupContext { get; } = new MutableGroupContext();
     public CapturingBackgroundJobClient JobClient { get; } = new CapturingBackgroundJobClient();
+    public CapturingLoggerProvider LogCapture { get; } = new();
 
     public WebApplicationFactoryBase()
     {
@@ -39,6 +41,8 @@ public class WebApplicationFactoryBase : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        builder.ConfigureLogging(logging => logging.AddProvider(LogCapture));
 
         builder.ConfigureServices(services =>
         {
