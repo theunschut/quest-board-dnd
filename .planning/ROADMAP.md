@@ -808,7 +808,7 @@ Plans:
 **Goal**: A board member can point their phone's calendar at a personal subscription URL once and have every event from every board they belong to appear there on its own — all-day entries, timed entries, later edits, and cancellations included — without opening the quest board.
 **Requirements**: CALFEED-01, CALFEED-02, CALFEED-03, CALFEED-04, CALFEED-05, CALFEED-06, CALFEED-07, CALFEED-08, CALFEED-09, CALFEED-10, CALFEED-11, CALFEED-12, CALFEED-13, CALFEED-14, CALFEED-15, CALFEED-16, CALFEED-17
 **Depends on**: Phase 82 (reuses the membership-scoped cross-board event read built there) and Phase 83 (the two availability surfaces must be settled before a third read surface is added over the same data)
-**Plans**: 5/8 plans executed
+**Plans**: 8/8 plans complete
 
 **Origin:** raised by the operator on 2026-09-17 — the board already knows every date, but getting those dates onto a phone means retyping them by hand.
 
@@ -836,6 +836,7 @@ Plans:
 - **Unstable VEVENT `UID`s.** A UID that changes between polls makes the subscriber's phone accumulate a fresh copy of every event on every refresh rather than updating in place. The UID has to derive from the event's identity, not from anything regenerated per request.
 - ~~**Markdown leaking into `DESCRIPTION`.**~~ **Retired** — 84 D-10 drops the description entirely, so there is nothing for Markdown to leak into and `IMarkdownService` needs no plain-text target.
 - **Updates that clients refuse.** `EventEntity` carries `CreatedAt` but no modified timestamp, so there is nothing to drive a `SEQUENCE` bump when an event is edited. Clients that honour `SEQUENCE` may keep serving the stale copy.
+- **Real-device subscription check deferred to deployment, not observed.** The closing plan's real-phone checkpoint was deferred by operator decision rather than run: Outlook and Google Calendar fetch server-side from their own infrastructure, so no localhost or LAN address can satisfy them, and the check needs either a public tunnel or the deployed application. Refresh latency and whether an edited event ever stays stale after several refreshes were therefore not observed and are not recorded here — they remain open until someone runs the check against a real deployment. Independently of that gap, a live feed response was run through an external RFC 5545 conformance validator and returned zero errors and zero warnings, so the document itself is proven even though no client's actual poll-and-render behaviour has been.
 
 Plans:
 
@@ -852,15 +853,15 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 84-05-PLAN.md — Feed behaviour suite: log-capture harness, four two-group tenant isolation cases, every response code, the inclusion and exclusion rules, both window bounds and the fetch-time throttle (wave 3)
-- [ ] 84-06-PLAN.md — Subscription management plumbing: QR package and renderer, absolute address builder, view models, and the add, rename and revoke Profile POST actions (wave 3)
+- [x] 84-06-PLAN.md — Subscription management plumbing: QR package and renderer, absolute address builder, view models, and the add, rename and revoke Profile POST actions (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 84-07-PLAN.md — The Calendar Subscription section on both Profile layouts, with copy, calendar-handoff link, QR modal, rename modal and delete confirm (wave 4)
+- [x] 84-07-PLAN.md — The Calendar Subscription section on both Profile layouts, with copy, calendar-handoff link, QR modal, rename modal and delete confirm (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 84-08-PLAN.md — Both-layout markup and round-trip suite, the phase static guard, the real-device subscription check, and the requirement and roadmap ledger close-out (wave 5)
+- [x] 84-08-PLAN.md — Both-layout markup and round-trip suite, the phase static guard, the real-device subscription check, and the requirement and roadmap ledger close-out (wave 5)
 
 ### Phase 85: One-Shot Quests in the Calendar Feed
 

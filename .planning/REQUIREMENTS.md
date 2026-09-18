@@ -99,9 +99,9 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Calendar Feed — Foundation and Event Subscription
 
-- [ ] **CALFEED-01**: A board member holds no calendar subscription until they press Add on their Profile page, and pressing Add mints exactly one new subscription carrying a 256-bit cryptographically random URL-safe address
-- [ ] **CALFEED-02**: A member can hold several calendar subscriptions at once, each separately named, separately addressed and separately revocable, so retiring one device leaves every other device working
-- [ ] **CALFEED-03**: Every subscription row on Profile shows its name, the date it was created and when it was last fetched, offers rename and delete, and makes the full address copyable without displaying it — the address is a bearer credential and is revealed on screen only when the clipboard is unavailable and a manual copy is the remaining path
+- [x] **CALFEED-01**: A board member holds no calendar subscription until they press Add on their Profile page, and pressing Add mints exactly one new subscription carrying a 256-bit cryptographically random URL-safe address
+- [x] **CALFEED-02**: A member can hold several calendar subscriptions at once, each separately named, separately addressed and separately revocable, so retiring one device leaves every other device working
+- [x] **CALFEED-03**: Every subscription row on Profile shows its name, the date it was created and when it was last fetched, offers rename and delete, and makes the full address copyable without displaying it — the address is a bearer credential and is revealed on screen only when the clipboard is unavailable and a manual copy is the remaining path
 - [x] **CALFEED-04**: Deleting a subscription retires it as a tombstone rather than removing the row, so its address answers 410 Gone for a bounded retention window while an address that never existed answers 404 Not Found
 - [x] **CALFEED-05**: A subscription's address serves a valid text/calendar document to an anonymous caller that sends no cookie, holds no session and has no active board, with the address itself as the only credential
 - [x] **CALFEED-06**: The feed carries exactly the events the subscription's owner holds a signup row on, drawn from every board they are still a member of, and never an event from a board they do not belong to
@@ -112,7 +112,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **CALFEED-11**: Every calendar entry is marked transparent so a subscriber never reads as busy, and carries no description, no link and no alarm
 - [x] **CALFEED-12**: Each calendar entry's identifier is unchanged across repeated fetches of the same occurrence and is namespaced by its source, so a phone updates an entry in place and a future quest source cannot collide with an event of the same numeric id
 - [x] **CALFEED-13**: The feed covers a rolling window of recent past and upcoming months, recomputed on every fetch, with both bounds changeable through configuration and no code change
-- [ ] **CALFEED-14**: Both the desktop and the mobile Profile layout carry the subscription section, and every row offers a copy control, a webcal link and a scannable QR code for its address
+- [x] **CALFEED-14**: Both the desktop and the mobile Profile layout carry the subscription section, and every row offers a copy control, a webcal link and a scannable QR code for its address
 - [x] **CALFEED-15**: The feed endpoint is rate limited per address and no application log line ever contains a full subscription address
 - [x] **CALFEED-16**: Repeated fetching of one address updates its last-fetched timestamp at most once per throttle interval, so a hammered address cannot become a database write storm
 - [x] **CALFEED-17**: A retired subscription's tombstone is purged once it has been retired for longer than the configured retention window, after which its address answers 404 Not Found like any address that never existed
@@ -315,9 +315,9 @@ Explicit exclusions for v9.0, with reasoning.
 | CONTACTTAG-15 | Phase 81 | Not started |
 | CONTACTTAG-16 | Phase 81 | Not started |
 | CONTACTTAG-17 | Phase 81 | Not started |
-| CALFEED-01 | Phase 84 | Pending |
-| CALFEED-02 | Phase 84 | Pending |
-| CALFEED-03 | Phase 84 | Pending |
+| CALFEED-01 | Phase 84 | Complete |
+| CALFEED-02 | Phase 84 | Complete |
+| CALFEED-03 | Phase 84 | Complete |
 | CALFEED-04 | Phase 84 | Complete |
 | CALFEED-05 | Phase 84 | Complete |
 | CALFEED-06 | Phase 84 | Complete |
@@ -328,7 +328,7 @@ Explicit exclusions for v9.0, with reasoning.
 | CALFEED-11 | Phase 84 | Complete |
 | CALFEED-12 | Phase 84 | Complete |
 | CALFEED-13 | Phase 84 | Complete |
-| CALFEED-14 | Phase 84 | Pending |
+| CALFEED-14 | Phase 84 | Complete |
 | CALFEED-15 | Phase 84 | Complete |
 | CALFEED-16 | Phase 84 | Complete |
 | CALFEED-17 | Phase 84 | Complete |
