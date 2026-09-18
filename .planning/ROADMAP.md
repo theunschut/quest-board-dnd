@@ -808,7 +808,7 @@ Plans:
 **Goal**: A board member can point their phone's calendar at a personal subscription URL once and have every event from every board they belong to appear there on its own — all-day entries, timed entries, later edits, and cancellations included — without opening the quest board.
 **Requirements**: CALFEED-01, CALFEED-02, CALFEED-03, CALFEED-04, CALFEED-05, CALFEED-06, CALFEED-07, CALFEED-08, CALFEED-09, CALFEED-10, CALFEED-11, CALFEED-12, CALFEED-13, CALFEED-14, CALFEED-15, CALFEED-16, CALFEED-17
 **Depends on**: Phase 82 (reuses the membership-scoped cross-board event read built there) and Phase 83 (the two availability surfaces must be settled before a third read surface is added over the same data)
-**Plans**: 2/8 plans executed
+**Plans**: 3/8 plans executed
 
 **Origin:** raised by the operator on 2026-09-17 — the board already knows every date, but getting those dates onto a phone means retyping them by hand.
 
@@ -846,7 +846,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 84-03-PLAN.md — Full RFC 5545 writer: timed and all-day branches, floating local time, transparency, board-prefixed titles with vote suffixes, source-namespaced stable identifiers, folding and escaping, plus the exact-byte unit suite (wave 2)
+- [x] 84-03-PLAN.md — Full RFC 5545 writer: timed and all-day branches, floating local time, transparency, board-prefixed titles with vote suffixes, source-namespaced stable identifiers, folding and escaping, plus the exact-byte unit suite (wave 2)
 - [ ] 84-04-PLAN.md — Feed hardening: configurable rolling window, tombstone status codes, throttled last-fetched write, per-address rate limiting and address-free logging (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*

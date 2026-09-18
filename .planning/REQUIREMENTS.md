@@ -107,10 +107,10 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **CALFEED-06**: The feed carries exactly the events the subscription's owner holds a signup row on, drawn from every board they are still a member of, and never an event from a board they do not belong to
 - [ ] **CALFEED-07**: A row that survives the feed query's board predicate but falls outside the owner's membership set is dropped before it reaches the response and recorded as an error in the application log
 - [ ] **CALFEED-08**: A cancelled event never appears in the feed, on any board, for any subscription
-- [ ] **CALFEED-09**: Each calendar entry's title is the board name in square brackets followed by the event title, with "(maybe)" or "(declined)" appended when the owner answered that way and nothing appended otherwise
-- [ ] **CALFEED-10**: An event with a start time becomes a one-hour entry in floating local time with no timezone declared, and an event with no start time becomes a true all-day entry occupying exactly one day
-- [ ] **CALFEED-11**: Every calendar entry is marked transparent so a subscriber never reads as busy, and carries no description, no link and no alarm
-- [ ] **CALFEED-12**: Each calendar entry's identifier is unchanged across repeated fetches of the same occurrence and is namespaced by its source, so a phone updates an entry in place and a future quest source cannot collide with an event of the same numeric id
+- [x] **CALFEED-09**: Each calendar entry's title is the board name in square brackets followed by the event title, with "(maybe)" or "(declined)" appended when the owner answered that way and nothing appended otherwise
+- [x] **CALFEED-10**: An event with a start time becomes a one-hour entry in floating local time with no timezone declared, and an event with no start time becomes a true all-day entry occupying exactly one day
+- [x] **CALFEED-11**: Every calendar entry is marked transparent so a subscriber never reads as busy, and carries no description, no link and no alarm
+- [x] **CALFEED-12**: Each calendar entry's identifier is unchanged across repeated fetches of the same occurrence and is namespaced by its source, so a phone updates an entry in place and a future quest source cannot collide with an event of the same numeric id
 - [ ] **CALFEED-13**: The feed covers a rolling window of recent past and upcoming months, recomputed on every fetch, with both bounds changeable through configuration and no code change
 - [ ] **CALFEED-14**: Both the desktop and the mobile Profile layout carry the subscription section, and every row offers a copy control, a webcal link and a scannable QR code for its address
 - [ ] **CALFEED-15**: The feed endpoint is rate limited per address and no application log line ever contains a full subscription address
@@ -323,10 +323,10 @@ Explicit exclusions for v9.0, with reasoning.
 | CALFEED-06 | Phase 84 | Pending |
 | CALFEED-07 | Phase 84 | Pending |
 | CALFEED-08 | Phase 84 | Pending |
-| CALFEED-09 | Phase 84 | Pending |
-| CALFEED-10 | Phase 84 | Pending |
-| CALFEED-11 | Phase 84 | Pending |
-| CALFEED-12 | Phase 84 | Pending |
+| CALFEED-09 | Phase 84 | Complete |
+| CALFEED-10 | Phase 84 | Complete |
+| CALFEED-11 | Phase 84 | Complete |
+| CALFEED-12 | Phase 84 | Complete |
 | CALFEED-13 | Phase 84 | Pending |
 | CALFEED-14 | Phase 84 | Pending |
 | CALFEED-15 | Phase 84 | Pending |
