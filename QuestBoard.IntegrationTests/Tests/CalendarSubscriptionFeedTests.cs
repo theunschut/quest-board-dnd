@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
@@ -48,8 +49,9 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         }
     }
 
-    // Seeds one event on the named board and returns its id.
-    private async Task<int> SeedEventAsync(int groupId, string title, DateOnly date, TimeOnly? startTime = null)
+    // Seeds one event on the named board and returns its id. cancelledAt matches
+    // EventEntity.CancelledAt's own meaning -- null is live, a value is a tombstone.
+    private async Task<int> SeedEventAsync(int groupId, string title, DateOnly date, TimeOnly? startTime = null, DateTime? cancelledAt = null)
     {
         await using var ctx = factory.Database.CreateContext();
         var newEvent = new EventEntity
@@ -58,6 +60,7 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
             GroupId = groupId,
             Date = date,
             StartTime = startTime,
+            CancelledAt = cancelledAt,
             CreatedAt = DateTime.UtcNow
         };
         ctx.Events.Add(newEvent);
@@ -73,8 +76,11 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    // Seeds a signup row for the given user on the given event.
-    private async Task SeedSignupAsync(int eventId, int userId, VoteType availability)
+    // Seeds a signup row for the given user on the given event. UpdatedAt null is what an
+    // automatically created board-wide row looks like -- no person ever set that answer -- so
+    // callers proving that shape pass answered: false rather than seeding a plain row and
+    // hoping the default matches.
+    private async Task SeedSignupAsync(int eventId, int userId, VoteType availability, bool answered = true)
     {
         await using var ctx = factory.Database.CreateContext();
         ctx.EventSignups.Add(new EventSignupEntity
@@ -83,7 +89,7 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
             UserId = userId,
             Availability = (int)availability,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = answered ? DateTime.UtcNow : null
         });
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
@@ -108,6 +114,36 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         var membership = ctx.UserGroups.First(ug => ug.UserId == userId && ug.GroupId == groupId);
         ctx.UserGroups.Remove(membership);
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Retires a subscription through the real service, matching the production write path a
+    // member's Delete control will call in a later plan.
+    private async Task RevokeSubscriptionAsync(int subscriptionId, int userId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var subscriptionService = scope.ServiceProvider.GetRequiredService<ICalendarSubscriptionService>();
+        await subscriptionService.RevokeAsync(subscriptionId, userId, TestContext.Current.CancellationToken);
+    }
+
+    // Reads the persisted last-fetched timestamp back through a fresh, unfiltered context, so
+    // a throttle fact observes the write the request path actually made rather than a value
+    // held in memory from before the request.
+    private async Task<DateTime?> ReadLastFetchedAsync(int subscriptionId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var entity = await ctx.CalendarSubscriptions
+            .AsNoTracking()
+            .FirstAsync(cs => cs.Id == subscriptionId, TestContext.Current.CancellationToken);
+        return entity.LastFetchedAt;
+    }
+
+    // Reads the configured window and throttle values from the running host's own DI
+    // container, so a window fact derives its dates from configuration rather than from a
+    // literal that silently drifts out of sync with a future change to the defaults.
+    private CalendarFeedOptions GetFeedOptions()
+    {
+        using var scope = factory.Services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<IOptions<CalendarFeedOptions>>().Value;
     }
 
     [Fact]
@@ -434,5 +470,605 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         }
 
         lastResponse!.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
+
+    // ---- Response codes ----
+
+    [Fact]
+    public async Task Feed_Returns410_ForARetiredAddress()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_retired", "calfeed_retired@example.com", name: "Calendar Feed Retired User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        await RevokeSubscriptionAsync(subscription.Id, user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Gone);
+    }
+
+    [Fact]
+    public async Task Feed_Returns404_ForAnAddressThatNeverExisted()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        // Well-formed (43 URL-safe characters, matching a real minted address's shape) but
+        // never minted.
+        var unknownAddress = new string('B', 43);
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{unknownAddress}.ics", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Feed_Returns404_ForAnAddressThatIsNotWellFormed()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        // Short and containing characters outside the Base64Url alphabet a real address is
+        // always drawn from. An ill-formed address simply matches no row in the lookup, so
+        // this is defence in depth rather than a separate validation rule -- the endpoint does
+        // not need to recognise "malformed" as its own case to answer correctly.
+        var malformedAddress = "not!well@formed";
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{malformedAddress}.ics", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Feed_KeepsAnsweringGone_AfterARetiredAddressIsFetchedRepeatedly()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_retired_twice", "calfeed_retired_twice@example.com", name: "Calendar Feed Retired Twice User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        await RevokeSubscriptionAsync(subscription.Id, user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+
+        // Proves the tombstone persists rather than being cleaned up on first ask.
+        var first = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        var second = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        first.StatusCode.Should().Be(HttpStatusCode.Gone);
+        second.StatusCode.Should().Be(HttpStatusCode.Gone);
+    }
+
+    // ---- Which events reach the feed ----
+
+    [Fact]
+    public async Task Feed_ExcludesAnEventTheViewerHoldsNoSignupRowOn()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_no_signup", "calfeed_no_signup@example.com", name: "Calendar Feed No Signup User");
+
+        await SeedBoardAsync(2, "No Signup Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var answeredEventId = await SeedEventAsync(2, "No Signup Suite Answered Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedSignupAsync(answeredEventId, user.Id, VoteType.Yes);
+
+        // No signup row is ever seeded for this event -- a one-shot session nobody has
+        // answered yet never reaches the phone, which is the accepted cost stated at decision
+        // time (84-CONTEXT.md D-17).
+        await SeedEventAsync(2, "No Signup Suite Unanswered Session", DateOnly.FromDateTime(DateTime.Today).AddDays(2));
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("No Signup Suite Answered Session");
+        body.Should().NotContain("No Signup Suite Unanswered Session");
+    }
+
+    [Fact]
+    public async Task Feed_ExcludesACancelledEvent()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_cancelled", "calfeed_cancelled@example.com", name: "Calendar Feed Cancelled User");
+
+        await SeedBoardAsync(2, "Cancelled Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        // A live signup row on a cancelled event -- the cancellation reaches the subscriber
+        // only as a silent disappearance, the accepted cost of dropping rather than marking
+        // (84-CONTEXT.md D-12).
+        var eventId = await SeedEventAsync(
+            2, "Cancelled Suite Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1), cancelledAt: DateTime.UtcNow);
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().NotContain("Cancelled Suite Session");
+    }
+
+    [Fact]
+    public async Task Feed_IncludesAnAutomaticallyCreatedSignupRow_WithAPlainTitle()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_auto_row", "calfeed_auto_row@example.com", name: "Calendar Feed Auto Row User");
+
+        await SeedBoardAsync(2, "Auto Row Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventId = await SeedEventAsync(2, "Auto Row Suite Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        // answered: false is what an automatically created board-wide signup row looks like --
+        // a Yes nobody chose.
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes, answered: false);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        body.Should().Contain("SUMMARY:[Auto Row Suite Board] Auto Row Suite Session\r\n");
+        body.Should().NotContain("(maybe)");
+        body.Should().NotContain("(declined)");
+    }
+
+    [Fact]
+    public async Task Feed_MarksAMaybeAnswer()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_maybe", "calfeed_maybe@example.com", name: "Calendar Feed Maybe User");
+
+        await SeedBoardAsync(2, "Maybe Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventId = await SeedEventAsync(2, "Maybe Suite Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Maybe);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("SUMMARY:[Maybe Suite Board] Maybe Suite Session (maybe)\r\n");
+    }
+
+    [Fact]
+    public async Task Feed_MarksADeclinedAnswer()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_declined", "calfeed_declined@example.com", name: "Calendar Feed Declined User");
+
+        await SeedBoardAsync(2, "Declined Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventId = await SeedEventAsync(2, "Declined Suite Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedSignupAsync(eventId, user.Id, VoteType.No);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("SUMMARY:[Declined Suite Board] Declined Suite Session (declined)\r\n");
+    }
+
+    [Fact]
+    public async Task Feed_EmitsADateValuedEntry_ForAnEventWithNoStartTime()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_allday", "calfeed_allday@example.com", name: "Calendar Feed All Day User");
+
+        await SeedBoardAsync(2, "All Day Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        // No startTime -- a true all-day entry (84-CONTEXT.md D-02).
+        var eventDate = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
+        var eventId = await SeedEventAsync(2, "All Day Suite Session", eventDate);
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain($"DTSTART;VALUE=DATE:{eventDate:yyyyMMdd}");
+    }
+
+    // ---- Window bounds, both directions ----
+
+    [Fact]
+    public async Task Feed_ExcludesAnEventBeforeTheWindowStarts()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var options = GetFeedOptions();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var windowStart = today.AddMonths(-options.MonthsBack);
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_before_window", "calfeed_before_window@example.com", name: "Calendar Feed Before Window User");
+
+        await SeedBoardAsync(2, "Before Window Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        // One day before the configured window start -- derived from the running host's own
+        // configuration, not a literal, so a future change to MonthsBack cannot silently
+        // invalidate this fact.
+        var eventId = await SeedEventAsync(2, "Before Window Suite Session", windowStart.AddDays(-1));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain("Before Window Suite Session");
+    }
+
+    [Fact]
+    public async Task Feed_IncludesAnEventInsideThePastWindow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var options = GetFeedOptions();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var windowStart = today.AddMonths(-options.MonthsBack);
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_inside_past", "calfeed_inside_past@example.com", name: "Calendar Feed Inside Past Window User");
+
+        await SeedBoardAsync(2, "Inside Past Window Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        // One day inside the configured window start -- derived from configuration, mirroring
+        // the excluded fact above so the two together pin the exact boundary.
+        var eventId = await SeedEventAsync(2, "Inside Past Window Suite Session", windowStart.AddDays(1));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("Inside Past Window Suite Session");
+    }
+
+    [Fact]
+    public async Task Feed_ExcludesAnEventBeyondTheWindowEnd()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var options = GetFeedOptions();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var windowEnd = today.AddMonths(options.MonthsAhead);
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_beyond_window", "calfeed_beyond_window@example.com", name: "Calendar Feed Beyond Window User");
+
+        await SeedBoardAsync(2, "Beyond Window Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventId = await SeedEventAsync(2, "Beyond Window Suite Session", windowEnd.AddDays(1));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain("Beyond Window Suite Session");
+    }
+
+    [Fact]
+    public async Task Feed_IncludesAnEventInsideTheFutureWindow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var options = GetFeedOptions();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var windowEnd = today.AddMonths(options.MonthsAhead);
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_inside_future", "calfeed_inside_future@example.com", name: "Calendar Feed Inside Future Window User");
+
+        // Shorter names than the past-window fact's, deliberately: the board-prefixed,
+        // suffix-carrying SUMMARY line folds at 75 octets (RFC 5545), and a folded line would
+        // break this fact's own substring assertion across the fold rather than the feature it
+        // is testing.
+        await SeedBoardAsync(2, "Future Window Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventId = await SeedEventAsync(2, "Future Window Suite Session", windowEnd.AddDays(-1));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("Future Window Suite Session");
+    }
+
+    // ---- The throttle, over HTTP ----
+
+    [Fact]
+    public async Task Feed_RecordsAFetchTime_OnTheFirstFetch()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_first_fetch", "calfeed_first_fetch@example.com", name: "Calendar Feed First Fetch User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        (await ReadLastFetchedAsync(subscription.Id)).Should().BeNull();
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await ReadLastFetchedAsync(subscription.Id)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Feed_DoesNotRewriteTheFetchTime_OnAnImmediateSecondFetch()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_second_fetch", "calfeed_second_fetch@example.com", name: "Calendar Feed Second Fetch User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        await client.GetAsync($"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        var afterFirst = await ReadLastFetchedAsync(subscription.Id);
+        afterFirst.Should().NotBeNull();
+
+        // Works against the real clock precisely because the configured throttle interval is
+        // minutes and this second request lands within milliseconds -- no fake clock needed.
+        await client.GetAsync($"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        var afterSecond = await ReadLastFetchedAsync(subscription.Id);
+
+        afterSecond.Should().Be(afterFirst);
+    }
+
+    // ---- Conditional requests ----
+
+    [Fact]
+    public async Task Feed_ReturnsAnEntityTag_OnALiveResponse()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_etag", "calfeed_etag@example.com", name: "Calendar Feed ETag User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+
+        response.Headers.ETag.Should().NotBeNull();
+        response.Headers.ETag!.IsWeak.Should().BeFalse();
+        response.Headers.ETag!.Tag.Should().StartWith("\"").And.EndWith("\"");
+    }
+
+    [Fact]
+    public async Task Feed_Returns304_WhenTheClientPresentsTheMatchingEntityTag()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_matching_etag", "calfeed_matching_etag@example.com", name: "Calendar Feed Matching ETag User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var first = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        var tag = first.Headers.ETag!.Tag;
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/feeds/calendar/{subscription.Token}.ics");
+        request.Headers.TryAddWithoutValidation("If-None-Match", tag);
+        var second = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        second.StatusCode.Should().Be(HttpStatusCode.NotModified);
+        var body = await second.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Feed_ReturnsAFreshBody_WhenTheClientPresentsAStaleEntityTag()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_stale_etag", "calfeed_stale_etag@example.com", name: "Calendar Feed Stale ETag User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/feeds/calendar/{subscription.Token}.ics");
+        request.Headers.TryAddWithoutValidation("If-None-Match", "\"not-the-real-tag\"");
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().StartWith("BEGIN:VCALENDAR");
+    }
+
+    [Fact]
+    public async Task Feed_ChangesTheEntityTag_WhenAnEventIsEdited()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_etag_changes", "calfeed_etag_changes@example.com", name: "Calendar Feed ETag Changes User");
+
+        await SeedBoardAsync(2, "ETag Changes Suite Board");
+        await SeedMembershipAsync(user.Id, 2);
+
+        var eventId = await SeedEventAsync(2, "ETag Changes Suite Session", DateOnly.FromDateTime(DateTime.Today).AddDays(1));
+        await SeedSignupAsync(eventId, user.Id, VoteType.Yes);
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var first = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        var firstTag = first.Headers.ETag!.Tag;
+
+        // The tag is taken over the emitted document, so an edit produces a new tag with no
+        // modified-timestamp column the schema does not have. IgnoreQueryFilters() is
+        // load-bearing here: this context's own ActiveGroupId is null (an anonymous request
+        // selects no board), and EventEntity's HasQueryFilter treats a null active group as
+        // zero rows rather than every row, so an unfiltered read is required to reach the row
+        // at all.
+        await using (var ctx = factory.Database.CreateContext())
+        {
+            var eventEntity = await ctx.Events.IgnoreQueryFilters().FirstAsync(e => e.Id == eventId);
+            eventEntity.Title = "ETag Changes Suite Session (Edited)";
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var second = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        var secondTag = second.Headers.ETag!.Tag;
+
+        secondTag.Should().NotBe(firstTag);
+        var body = await second.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("ETag Changes Suite Session (Edited)");
+    }
+
+    [Fact]
+    public async Task Feed_RecordsTheFetchTime_EvenOnANotModifiedResponse()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "calfeed_touch_on_304", "calfeed_touch_on_304@example.com", name: "Calendar Feed Touch On 304 User");
+
+        var subscription = await MintSubscriptionAsync(user.Id);
+        factory.TestGroupContext.ActiveGroupId = null;
+
+        var client = factory.CreateClient();
+        var first = await client.GetAsync(
+            $"/feeds/calendar/{subscription.Token}.ics", TestContext.Current.CancellationToken);
+        var tag = first.Headers.ETag!.Tag;
+
+        // Arranges a stored fetch time older than the configured throttle interval by writing
+        // it directly, rather than waiting out the real interval, so this fact runs in
+        // milliseconds like every other fact in the suite.
+        var options = GetFeedOptions();
+        var staleFetchTime = DateTime.UtcNow - TimeSpan.FromMinutes(options.LastFetchedThrottleMinutes) - TimeSpan.FromMinutes(1);
+        await using (var ctx = factory.Database.CreateContext())
+        {
+            var entity = await ctx.CalendarSubscriptions.FirstAsync(cs => cs.Id == subscription.Id);
+            entity.LastFetchedAt = staleFetchTime;
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/feeds/calendar/{subscription.Token}.ics");
+        request.Headers.TryAddWithoutValidation("If-None-Match", tag);
+        var second = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        second.StatusCode.Should().Be(HttpStatusCode.NotModified);
+
+        // A poll that transferred nothing is still a poll -- the fetch time is the only way to
+        // tell a live subscription from a dead one before retiring it.
+        var fetchTimeAfter = await ReadLastFetchedAsync(subscription.Id);
+        fetchTimeAfter.Should().NotBeNull();
+        fetchTimeAfter.Should().BeAfter(staleFetchTime);
     }
 }
