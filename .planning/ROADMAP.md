@@ -749,8 +749,26 @@ Plans:
 | CALFEED-15 | Phase 84 |
 | CALFEED-16 | Phase 84 |
 | CALFEED-17 | Phase 84 |
+| QUESTFEED-01 | Phase 85 |
+| QUESTFEED-02 | Phase 85 |
+| QUESTFEED-03 | Phase 85 |
+| QUESTFEED-04 | Phase 85 |
+| QUESTFEED-05 | Phase 85 |
+| QUESTFEED-06 | Phase 85 |
+| QUESTFEED-07 | Phase 85 |
+| QUESTFEED-08 | Phase 85 |
+| QUESTFEED-09 | Phase 85 |
+| QUESTFEED-10 | Phase 85 |
+| QUESTFEED-11 | Phase 85 |
+| QUESTFEED-12 | Phase 85 |
+| QUESTFEED-13 | Phase 85 |
+| QUESTFEED-14 | Phase 85 |
+| QUESTFEED-15 | Phase 85 |
+| QUESTFEED-16 | Phase 85 |
+| QUESTFEED-17 | Phase 85 |
+| QUESTFEED-18 | Phase 85 |
 
-**Coverage:** 116/116 requirements mapped ✓ · 0 unmapped · 1 phase awaiting requirements (85 — minted during its discuss pass)
+**Coverage:** 134/134 requirements mapped ✓ · 0 unmapped · 0 phases awaiting requirements
 
 ## Research Flags
 
@@ -866,7 +884,7 @@ Plans:
 ### Phase 85: One-Shot Quests in the Calendar Feed
 
 **Goal**: The same subscription also carries the quest sessions the reader is actually part of — from their one-shot boards only — so a phone calendar shows the night they are playing, not just the board's informational events.
-**Requirements**: TBD
+**Requirements**: QUESTFEED-01, QUESTFEED-02, QUESTFEED-03, QUESTFEED-04, QUESTFEED-05, QUESTFEED-06, QUESTFEED-07, QUESTFEED-08, QUESTFEED-09, QUESTFEED-10, QUESTFEED-11, QUESTFEED-12, QUESTFEED-13, QUESTFEED-14, QUESTFEED-15, QUESTFEED-16, QUESTFEED-17, QUESTFEED-18
 **Depends on**: Phase 84 (the token, the endpoint, the writer and the subscribe surface must all exist before a second source can be added to the feed)
 **Plans**: 6 plans
 
