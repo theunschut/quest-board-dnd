@@ -99,11 +99,27 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
         builder.Append("END:VEVENT").Append(LineBreak);
     }
 
-    // Composes the board-prefixed, escaped SUMMARY value shared by both branches.
+    // Composes the board-prefixed, answer-suffixed, escaped SUMMARY value shared by both
+    // branches. The board name is a prefix and the answer is a suffix, deliberately: a second
+    // prefix can consume a narrow phone day view's entire visible width before the event name
+    // begins, and a suffix is what truncation should sacrifice first.
     private static string BuildSummary(CalendarFeedEntry entry)
     {
         var title = "[" + entry.BoardName + "] " + entry.Title;
-        return EscapeText(title);
+
+        // Branches on Availability alone and deliberately does not consult HasAnswered. An
+        // automatically created board-wide row is a Yes that nobody chose (HasAnswered ==
+        // false for it), and every Yes -- chosen or not -- renders with a plain title. This is
+        // an accepted cost, not an oversight: there is no third marker for the never-answered
+        // case -- a no answer marker was proposed and dropped, and no such literal appears here.
+        var suffix = entry.Availability switch
+        {
+            VoteType.Maybe => " (maybe)",
+            VoteType.No => " (declined)",
+            _ => string.Empty,
+        };
+
+        return EscapeText(title + suffix);
     }
 
     /// <inheritdoc/>
