@@ -115,7 +115,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [ ] **CALFEED-14**: Both the desktop and the mobile Profile layout carry the subscription section, and every row offers a copy control, a webcal link and a scannable QR code for its address
 - [ ] **CALFEED-15**: The feed endpoint is rate limited per address and no application log line ever contains a full subscription address
 - [ ] **CALFEED-16**: Repeated fetching of one address updates its last-fetched timestamp at most once per throttle interval, so a hammered address cannot become a database write storm
-- [ ] **CALFEED-17**: A retired subscription's tombstone is purged once it has been retired for longer than the configured retention window, after which its address answers 404 Not Found like any address that never existed
+- [x] **CALFEED-17**: A retired subscription's tombstone is purged once it has been retired for longer than the configured retention window, after which its address answers 404 Not Found like any address that never existed
 
 ### Link Previews — Foundation and Quests
 
@@ -331,7 +331,7 @@ Explicit exclusions for v9.0, with reasoning.
 | CALFEED-14 | Phase 84 | Pending |
 | CALFEED-15 | Phase 84 | Pending |
 | CALFEED-16 | Phase 84 | Pending |
-| CALFEED-17 | Phase 84 | Pending |
+| CALFEED-17 | Phase 84 | Complete |
 
 **Coverage:**
 
