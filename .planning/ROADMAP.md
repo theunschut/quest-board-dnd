@@ -958,7 +958,7 @@ Plans:
 **Goal**: A reader sees every real timestamp in their own browser's timezone instead of UTC, and the three nightly sweeps fire at the hour their registration claims — without moving a single game night by so much as a minute.
 **Requirements**: None — `.planning/REQUIREMENTS.md` carries no Phase 86 rows. Traceability runs on `86-CONTEXT.md`'s locked decision IDs D-01…D-07 instead; no REQ-IDs were invented.
 **Depends on**: No hard dependency. It must not regress Phase 84's floating-local-time contract or Phase 85's quest entries — see the first risk below.
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 **Origin:** raised by the operator on 2026-09-18, immediately after noticing that the Calendar Subscription section's "Last fetched" timestamp reads two hours behind a Dutch wall clock. The investigation that followed found the display defect the operator reported *and* a scheduling defect they had assumed was working.
 
@@ -1003,7 +1003,7 @@ The right-hand column is what a Dungeon Master typed — "seven o'clock on the t
 Plans:
 **Wave 1**
 
-- [ ] 86-01-PLAN.md — Board-clock seam (`TimeZoneOptions`/`IBoardClock`), `Html.LocalTime`, `site.js` hydration, proven end-to-end on the Profile "Last fetched" timestamp (wave 1)
+- [x] 86-01-PLAN.md — Board-clock seam (`TimeZoneOptions`/`IBoardClock`), `Html.LocalTime`, `site.js` hydration, proven end-to-end on the Profile "Last fetched" timestamp (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

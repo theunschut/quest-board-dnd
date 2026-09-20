@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 85
-status: completed
+current_phase: 86
+current_phase_name: viewer-local-times-and-correct-job-scheduling
+status: executing
 stopped_at: Phase 86 UI-SPEC approved
-last_updated: "2026-09-20T12:27:47.427Z"
-last_activity: 2026-09-18
-last_activity_desc: Phase 84 execution resumed (wave continue)
+last_updated: "2026-09-20T12:33:49.683Z"
+last_activity: 2026-09-20
+last_activity_desc: Phase 86 execution started
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 103
   completed_plans: 88
   percent: 80
-current_phase_name: one-shot-quests-in-the-calendar-feed
 state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 ---
 
@@ -25,14 +25,14 @@ state_head: 593a8cdabc723218783c1a4b5b8ff9b64eeca830
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 85 — one-shot-quests-in-the-calendar-feed
+**Current focus:** Phase 86 — viewer-local-times-and-correct-job-scheduling
 
 ## Current Position
 
-Phase: 85
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-09-18 — Phase 85 complete
+Phase: 86 (viewer-local-times-and-correct-job-scheduling) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 86
+Last activity: 2026-09-20 — Phase 86 execution started
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
