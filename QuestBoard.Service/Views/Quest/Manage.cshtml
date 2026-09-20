@@ -8,6 +8,7 @@
     ViewData["Title"] = $"Manage Quest: {Model.Title}";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
 }
 
 
@@ -706,7 +707,7 @@ else
                                 string statusIcon;
                                 string statusText;
 
-                                if (Model.IsFinalized == true && Model.FinalizedDate.HasValue == true && Model.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+                                if (Model.HasFinalizedGameNightPassed(boardToday))
                                 {
                                     statusBadge = "bg-dark";
                                     statusIcon = "fas fa-flag-checkered";

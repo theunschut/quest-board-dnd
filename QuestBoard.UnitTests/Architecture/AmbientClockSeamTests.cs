@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace QuestBoard.UnitTests.Architecture;
 
-// Enforces a closed, seven-file list at the source level -- the only thing that can stop a
+// Enforces a closed, explicit file list at the source level -- the only thing that can stop a
 // later phase from reintroducing an ambient clock read once the written classification behind
 // today's migration has scrolled out of context. Reads production source files from disk with
 // the same upward-walk resolver MobileCssTests uses, so it catches a regression even at a call
@@ -10,34 +10,95 @@ namespace QuestBoard.UnitTests.Architecture;
 public class AmbientClockSeamTests
 {
     // The closed, explicit list that makes this test enforceable rather than aspirational.
-    // Adding an eighth ambient-clock call site anywhere else in the codebase is not caught by
-    // this test -- it only re-checks that these seven paths never regress.
+    // Adding a call site anywhere outside this list is not caught by this test -- it only
+    // re-checks that these paths never regress.
     private static readonly string[] GuardedRelativePaths =
     [
+        "QuestBoard.Domain/Extensions/QuestExtensions.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
+        "QuestBoard.Domain/Services/QuestService.cs",
         "QuestBoard.Repository/GroupRepository.cs",
+        "QuestBoard.Repository/QuestRepository.cs",
+        "QuestBoard.Service/Controllers/Admin/AdminController.cs",
         "QuestBoard.Service/Controllers/QuestBoard/CalendarController.cs",
+        "QuestBoard.Service/Controllers/QuestBoard/QuestController.cs",
+        "QuestBoard.Service/Controllers/QuestBoard/QuestLogController.cs",
         "QuestBoard.Service/Controllers/Events/EventsController.cs",
         "QuestBoard.Service/Controllers/Events/SeriesController.cs",
         "QuestBoard.Service/Jobs/DailyReminderJob.cs",
+        "QuestBoard.Service/Views/Admin/Quests.cshtml",
+        "QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml",
+        "QuestBoard.Service/Views/Quest/Details.cshtml",
+        "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
+        "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Quest/Manage.cshtml",
+        "QuestBoard.Service/Views/Quest/_QuestCard.cshtml",
         "QuestBoard.Service/Views/Series/Details.cshtml",
     ];
 
-    // EventsController.cs carries one deliberate DateTime.UtcNow write -- SetCancelledAsync's
-    // second parameter, a real instant recorded on cancellation, unrelated to the ambient
-    // "what day is it" reads this test guards against. It is exempted by matching the call
-    // site's own text, not by skipping the file entirely, so a second, unrelated
-    // DateTime.UtcNow anywhere else in this file still fails this test.
-    private const string EventsControllerRelativePath = "QuestBoard.Service/Controllers/Events/EventsController.cs";
-    private const string EventsControllerExemptToken = "SetCancelledAsync";
+    // A handful of guarded files carry a deliberate DateTime.UtcNow read of a *real instant* --
+    // a moment actually being recorded or measured -- as opposed to the ambient "what day is
+    // it" reads this test guards against. Each is exempted by matching the call site's own text
+    // on the same line, not by skipping the file, so a second, unrelated DateTime.UtcNow
+    // anywhere else in the same file still fails. The exemption never covers DateTime.Today or
+    // DateTime.Now, which have no legitimate real-instant use.
+    private static readonly Dictionary<string, string[]> RealInstantExemptions = new(StringComparer.Ordinal)
+    {
+        // The cancellation moment written by SetCancelledAsync's second parameter.
+        ["QuestBoard.Service/Controllers/Events/EventsController.cs"] = ["SetCancelledAsync"],
+        // The Resend stats window and the "as of" stamp shown beside the figures -- both real
+        // instants measured against an external API's own timeline, never against a board date.
+        ["QuestBoard.Service/Controllers/Admin/AdminController.cs"] = ["cutoff", "AsOf"],
+        // The moment a player's signup was recorded.
+        ["QuestBoard.Domain/Services/QuestService.cs"] = ["SignupTime"],
+        // The moment a quest was closed.
+        ["QuestBoard.Repository/QuestRepository.cs"] = ["ClosedDate"],
+    };
+
+    // The .cs files expected to resolve the board's own zone through the seam itself. Listed
+    // explicitly rather than derived from the extension, because a guarded file may legitimately
+    // take the board-local date as a parameter instead of injecting the clock -- QuestExtensions
+    // is exactly that case, and must still never read a clock of its own.
+    private static readonly string[] BoardClockConsumerPaths =
+    [
+        "QuestBoard.Domain/Services/EventSeriesService.cs",
+        "QuestBoard.Domain/Services/QuestService.cs",
+        "QuestBoard.Repository/GroupRepository.cs",
+        "QuestBoard.Repository/QuestRepository.cs",
+        "QuestBoard.Service/Controllers/Admin/AdminController.cs",
+        "QuestBoard.Service/Controllers/QuestBoard/CalendarController.cs",
+        "QuestBoard.Service/Controllers/QuestBoard/QuestController.cs",
+        "QuestBoard.Service/Controllers/QuestBoard/QuestLogController.cs",
+        "QuestBoard.Service/Controllers/Events/EventsController.cs",
+        "QuestBoard.Service/Controllers/Events/SeriesController.cs",
+        "QuestBoard.Service/Jobs/DailyReminderJob.cs",
+    ];
+
+    // The guarded Razor views, each paired with the token proving it consumes a board-local
+    // today handed to it from outside rather than reading a clock of its own. Series/Details
+    // takes it on its view model; the quest views take it off ViewBag, which is how those
+    // domain-model-bound views already receive every other scalar the controller resolves.
+    private static readonly Dictionary<string, string> RoutedTodayViewTokens = new(StringComparer.Ordinal)
+    {
+        ["QuestBoard.Service/Views/Series/Details.cshtml"] = "Model.Today",
+        ["QuestBoard.Service/Views/Admin/Quests.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Quest/Details.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Quest/Details.Mobile.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Quest/Index.Mobile.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Quest/Manage.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Quest/_QuestCard.cshtml"] = "ViewBag.BoardToday",
+    };
 
     private const string EmailPreviewControllerRelativePath = "QuestBoard.Service/Controllers/Admin/EmailPreviewController.cs";
 
+    private static readonly string[] AmbientReadShapes = ["DateTime.Today", "DateTime.Now", "DateTime.UtcNow"];
+
     /// <summary>
     /// Resolves a path relative to the repository root by walking up from
-    /// AppContext.BaseDirectory until a directory named "QuestBoard.Service" is found -- the
-    /// same upward-walk resolver MobileCssTests uses. Fails with a descriptive message naming
-    /// the attempted path if the target file cannot be located.
+    /// AppContext.BaseDirectory until the target file is found -- the same upward-walk resolver
+    /// MobileCssTests uses. Fails with a descriptive message naming the attempted path if the
+    /// target file cannot be located.
     /// </summary>
     private static string ResolveRepoRelativePath(string relativePath)
     {
@@ -61,10 +122,10 @@ public class AmbientClockSeamTests
             relativePath);
     }
 
-    // Strips every comment form the seven guarded files can carry, so a plain-language comment
-    // that happens to mention "DateTime.Today" can never fail the gate, and a real call can
-    // never hide inside one: C#-style line comments (//), C#-style block comments (/* ... */),
-    // and Razor comment blocks (@* ... *@). Both block forms are removed in full, across lines,
+    // Strips every comment form the guarded files can carry, so a plain-language comment that
+    // happens to mention "DateTime.Today" can never fail the gate, and a real call can never
+    // hide inside one: C#-style line comments (//), C#-style block comments (/* ... */), and
+    // Razor comment blocks (@* ... *@). Both block forms are removed in full, across lines,
     // before the line-based scan below runs, since a real call site can never span either form.
     private static string StripComments(string source)
     {
@@ -107,29 +168,35 @@ public class AmbientClockSeamTests
         return count;
     }
 
-    public static IEnumerable<object[]> GuardedPathsExceptEventsController()
-    {
-        foreach (var path in GuardedRelativePaths)
-        {
-            if (!string.Equals(path, EventsControllerRelativePath, StringComparison.Ordinal))
-                yield return [path];
-        }
-    }
+    public static IEnumerable<object[]> GuardedPathsWithoutExemptions() =>
+        GuardedRelativePaths
+            .Where(path => !RealInstantExemptions.ContainsKey(path))
+            .Select(path => new object[] { path });
 
-    // Covers six of the seven guarded paths with one straightforward rule: after stripping
-    // comments, none of the three ambient-clock call shapes may appear anywhere in the file.
-    // EventsController.cs needs its own fact below because of its one documented exception.
+    public static IEnumerable<object[]> GuardedPathsWithExemptions() =>
+        GuardedRelativePaths
+            .Where(RealInstantExemptions.ContainsKey)
+            .Select(path => new object[] { path });
+
+    public static IEnumerable<object[]> BoardClockConsumers() =>
+        BoardClockConsumerPaths.Select(path => new object[] { path });
+
+    public static IEnumerable<object[]> RoutedTodayViews() =>
+        RoutedTodayViewTokens.Select(pair => new object[] { pair.Key, pair.Value });
+
+    // Covers every guarded path that carries no exemption with one straightforward rule: after
+    // stripping comments, none of the three ambient-clock call shapes may appear anywhere in
+    // the file.
     [Theory]
-    [MemberData(nameof(GuardedPathsExceptEventsController))]
+    [MemberData(nameof(GuardedPathsWithoutExemptions))]
     public void GuardedPath_ContainsNoAmbientClockRead(string relativePath)
     {
         var fullPath = ResolveRepoRelativePath(relativePath);
         var stripped = StripComments(File.ReadAllText(fullPath));
 
-        var offenders = new List<string>();
-        if (stripped.Contains("DateTime.Today", StringComparison.Ordinal)) offenders.Add("DateTime.Today");
-        if (stripped.Contains("DateTime.Now", StringComparison.Ordinal)) offenders.Add("DateTime.Now");
-        if (stripped.Contains("DateTime.UtcNow", StringComparison.Ordinal)) offenders.Add("DateTime.UtcNow");
+        var offenders = AmbientReadShapes
+            .Where(shape => stripped.Contains(shape, StringComparison.Ordinal))
+            .ToList();
 
         offenders.Should().BeEmpty(
             because: $"every clock read in '{relativePath}' must go through the board-clock seam " +
@@ -137,10 +204,16 @@ public class AmbientClockSeamTests
                      string.Join(", ", offenders));
     }
 
-    [Fact]
-    public void EventsController_ContainsNoAmbientClockRead_ExceptTheDocumentedCancelledAtWrite()
+    // The same rule for the files carrying a documented real-instant read, checked line by line
+    // so the exemption covers only the call site whose own text names it. DateTime.Today and
+    // DateTime.Now stay banned outright in these files -- only DateTime.UtcNow can be exempted,
+    // and only on a line naming the exempted call site.
+    [Theory]
+    [MemberData(nameof(GuardedPathsWithExemptions))]
+    public void GuardedPathWithExemption_ContainsNoAmbientClockRead_ExceptItsDocumentedRealInstantWrites(string relativePath)
     {
-        var fullPath = ResolveRepoRelativePath(EventsControllerRelativePath);
+        var fullPath = ResolveRepoRelativePath(relativePath);
+        var exemptTokens = RealInstantExemptions[relativePath];
         var lines = StripComments(File.ReadAllText(fullPath)).Split('\n');
 
         var offendingLines = new List<string>();
@@ -156,34 +229,25 @@ public class AmbientClockSeamTests
                 offendingLines.Add($"line {lineNumber} (DateTime.Now): {line.Trim()}");
 
             if (line.Contains("DateTime.UtcNow", StringComparison.Ordinal)
-                && !line.Contains(EventsControllerExemptToken, StringComparison.Ordinal))
+                && !exemptTokens.Any(token => line.Contains(token, StringComparison.Ordinal)))
             {
                 offendingLines.Add($"line {lineNumber} (DateTime.UtcNow): {line.Trim()}");
             }
         }
 
         offendingLines.Should().BeEmpty(
-            because: $"every clock read in '{EventsControllerRelativePath}' must go through the board-clock " +
-                     "seam (IBoardClock) instead of reading the ambient system clock directly, except the " +
-                     $"documented real-instant write inside {EventsControllerExemptToken} -- offenders: " +
-                     string.Join("; ", offendingLines));
-    }
-
-    public static IEnumerable<object[]> GuardedCsPaths()
-    {
-        foreach (var path in GuardedRelativePaths)
-        {
-            if (path.EndsWith(".cs", StringComparison.Ordinal))
-                yield return [path];
-        }
+            because: $"every clock read in '{relativePath}' must go through the board-clock seam " +
+                     "(IBoardClock) instead of reading the ambient system clock directly, except the " +
+                     $"documented real-instant writes named by [{string.Join(", ", exemptTokens)}] -- " +
+                     "offenders: " + string.Join("; ", offendingLines));
     }
 
     // Positive assertion so this test cannot pass vacuously: a file that stopped resolving the
     // board's own zone at all (rather than reverting to one of the three literal ambient-read
     // shapes this test scans for) would still fail this one.
     [Theory]
-    [MemberData(nameof(GuardedCsPaths))]
-    public void GuardedCsPath_MentionsIBoardClock(string relativePath)
+    [MemberData(nameof(BoardClockConsumers))]
+    public void BoardClockConsumer_MentionsIBoardClock(string relativePath)
     {
         var fullPath = ResolveRepoRelativePath(relativePath);
         var content = File.ReadAllText(fullPath);
@@ -192,18 +256,35 @@ public class AmbientClockSeamTests
             because: $"'{relativePath}' is expected to resolve the board's own wall-clock zone through IBoardClock");
     }
 
-    // A second positive assertion for the one guarded path that is a Razor view rather than a
-    // C# file: it consumes the controller-filled Today/TodayLabel pair instead of mentioning
-    // IBoardClock itself.
-    [Fact]
-    public void SeriesDetailsView_MentionsModelToday()
+    // The same positive assertion for the guarded Razor views, which consume a board-local today
+    // handed to them from outside instead of mentioning IBoardClock themselves.
+    [Theory]
+    [MemberData(nameof(RoutedTodayViews))]
+    public void RoutedTodayView_ConsumesTheTodayItWasHanded(string relativePath, string expectedToken)
     {
-        var fullPath = ResolveRepoRelativePath("QuestBoard.Service/Views/Series/Details.cshtml");
+        var fullPath = ResolveRepoRelativePath(relativePath);
         var content = File.ReadAllText(fullPath);
 
-        content.Should().Contain("Model.Today",
-            because: "the view's own ambient DateTime.Today read was replaced by the controller filling " +
-                     "SeriesDetailsViewModel.Today, which the view consumes instead of reading the clock itself");
+        content.Should().Contain(expectedToken,
+            because: $"'{relativePath}' had its own ambient clock read replaced by a board-local today " +
+                     $"resolved in the controller and routed into the view, which it reads as '{expectedToken}'");
+    }
+
+    // The shared rule itself must take the board-local date as a parameter rather than reaching
+    // for a clock -- otherwise every call site that now delegates to it would be reading an
+    // ambient clock again at one remove, with nothing in the guarded list to catch it.
+    [Fact]
+    public void QuestExtensions_TakesTheBoardLocalDateRatherThanResolvingOne()
+    {
+        var fullPath = ResolveRepoRelativePath("QuestBoard.Domain/Extensions/QuestExtensions.cs");
+        var content = File.ReadAllText(fullPath);
+
+        content.Should().Contain("DateOnly boardToday",
+            because: "the shared 'has this game night passed' rule is handed the board-local today by its " +
+                     "caller, so it holds no clock of its own to read");
+        content.Should().NotContain("IBoardClock",
+            because: "injecting the clock into the rule would hide a second clock resolution behind every " +
+                     "call site that delegates to it");
     }
 
     // Documents the boundary rather than leaving it implicit: EmailPreviewController's five

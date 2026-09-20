@@ -1,4 +1,5 @@
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
@@ -8,6 +9,7 @@
 @{
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
 }
 
 <div class="card modern-card">
@@ -84,7 +86,7 @@
                                     statusText = "Open";
                                 }
                             }
-                            else if (quest.IsFinalized && quest.FinalizedDate.HasValue && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+                            else if (quest.HasFinalizedGameNightPassed(boardToday))
                             {
                                 statusBadge = "bg-dark";
                                 statusIcon = "fas fa-flag-checkered";

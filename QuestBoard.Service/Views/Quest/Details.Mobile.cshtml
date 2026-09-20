@@ -13,6 +13,7 @@
     var isPlayerSignedUp = (bool)ViewBag.IsPlayerSignedUp;
     var canManage = (bool)ViewBag.CanManage;
     var boardType = (BoardType)ViewBag.BoardType;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
 
     var selectedPlayers = Model.Quest?.PlayerSignups
         .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
@@ -76,8 +77,7 @@
                 statusText = "Open";
             }
         }
-        else if (Model.Quest?.IsFinalized == true && Model.Quest.FinalizedDate.HasValue
-            && Model.Quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+        else if (Model.Quest.HasFinalizedGameNightPassed(boardToday))
         {
             statusBadge = "bg-secondary";
             statusText = "Done";

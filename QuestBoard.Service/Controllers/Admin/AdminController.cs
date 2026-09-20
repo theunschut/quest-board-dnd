@@ -18,7 +18,7 @@ using System.Threading.RateLimiting;
 namespace QuestBoard.Service.Controllers.Admin;
 
 [Authorize(Policy = "AdminOnly")]
-public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient, IBoardTypeResolver boardTypeResolver) : Controller
+public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient, IBoardTypeResolver boardTypeResolver, IBoardClock boardClock) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Users()
@@ -424,6 +424,9 @@ public class AdminController(IUserService userService, IQuestService questServic
             .ToList();
 
         ViewBag.BoardType = await boardTypeResolver.GetBoardTypeAsync() ?? BoardType.OneShot;
+        // The status badge decides "Done" against a floating wall-clock game night, so the view
+        // is handed the board's own today rather than reading a clock itself.
+        ViewBag.BoardToday = boardClock.Today;
 
         return View(sortedQuests);
     }

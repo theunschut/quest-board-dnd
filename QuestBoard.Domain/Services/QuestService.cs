@@ -11,7 +11,8 @@ internal class QuestService(
     IQuestRepository repository,
     IPlayerSignupRepository playerSignupRepository,
     IQuestEmailDispatcher dispatcher,
-    IMapper mapper) : BaseService<Quest>(repository, mapper), IQuestService
+    IMapper mapper,
+    IBoardClock boardClock) : BaseService<Quest>(repository, mapper), IQuestService
 {
     /// <inheritdoc/>
     public async Task FinalizeQuestAsync(int questId, DateTime finalizedDate, IList<int> selectedPlayerSignupIds, CancellationToken token = default)
@@ -177,11 +178,10 @@ internal class QuestService(
     {
         var quests = await repository.GetQuestsWithDetailsAsync(token);
 
+        var boardToday = boardClock.Today;
+
         return quests
-            .Where(q => (q.IsFinalized
-                         && q.FinalizedDate.HasValue
-                         && q.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
-                         && !q.DungeonMasterSession)
+            .Where(q => (q.HasFinalizedGameNightPassed(boardToday) && !q.DungeonMasterSession)
                         || (q.IsClosed && !q.DungeonMasterSession))
             .OrderByDescending(q => q.IsClosed ? q.ClosedDate : q.FinalizedDate)
             .ToList();
