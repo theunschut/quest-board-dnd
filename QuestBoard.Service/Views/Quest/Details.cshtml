@@ -11,6 +11,7 @@
     ViewData["BodyClass"] = "quest-details-page";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
     // Characters the viewer owns on the active board. ViewBag hands this over as a dynamic,
     // so read it once through a widened, null-safe local rather than casting to a concrete
     // list type at each use site -- a cast that would only hold as long as the mapper keeps
@@ -778,7 +779,7 @@
                                 string statusIcon;
                                 string statusText;
 
-                                if (Model.Quest?.IsFinalized == true && Model.Quest?.FinalizedDate.HasValue == true && Model.Quest?.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+                                if (Model.Quest.HasFinalizedGameNightPassed(boardToday))
                                 {
                                     statusBadge = "bg-dark";
                                     statusIcon = "fas fa-flag-checkered";

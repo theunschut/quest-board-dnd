@@ -4,6 +4,7 @@ using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Domain.Services;
+using QuestBoard.UnitTests.Helpers;
 using NSubstitute;
 
 namespace QuestBoard.UnitTests.Services;
@@ -14,6 +15,7 @@ public class QuestServiceTests
     private readonly IPlayerSignupRepository _playerSignupRepository;
     private readonly IQuestEmailDispatcher _dispatcher;
     private readonly IMapper _mapper;
+    private readonly FakeBoardClock _boardClock;
     private readonly QuestService _sut;
 
     public QuestServiceTests()
@@ -22,8 +24,9 @@ public class QuestServiceTests
         _playerSignupRepository = Substitute.For<IPlayerSignupRepository>();
         _dispatcher = Substitute.For<IQuestEmailDispatcher>();
         _mapper = Substitute.For<IMapper>();
+        _boardClock = new FakeBoardClock { Today = new DateOnly(2026, 9, 20), Now = new DateTime(2026, 9, 20, 12, 0, 0) };
 
-        _sut = new QuestService(_repository, _playerSignupRepository, _dispatcher, _mapper);
+        _sut = new QuestService(_repository, _playerSignupRepository, _dispatcher, _mapper, _boardClock);
     }
 
     // Helper: create a quest with specified signups

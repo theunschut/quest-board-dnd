@@ -19,7 +19,8 @@ public class QuestController(
     ICharacterService characterService,
     IReminderJobDispatcher reminderJobDispatcher,
     IActiveGroupContext activeGroupContext,
-    IGroupService groupService
+    IGroupService groupService,
+    IBoardClock boardClock
     ) : Controller
 {
     [HttpGet]
@@ -60,6 +61,9 @@ public class QuestController(
         ViewBag.CurrentUserName = currentUserName;
         ViewBag.CurrentUserId = currentUserId;
         ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
+        // The status badge decides "Done" against a floating wall-clock game night, so the view
+        // is handed the board's own today rather than reading a clock itself.
+        ViewBag.BoardToday = boardClock.Today;
         return View(quests);
     }
 
@@ -364,6 +368,7 @@ public class QuestController(
         ViewBag.CurrentQuestId = id;
         ViewBag.CurrentUserId = currentUser?.Id;
         ViewBag.BoardType = await GetActiveBoardTypeAsync(token);
+        ViewBag.BoardToday = boardClock.Today;
 
         var signup = new PlayerSignup
         {
@@ -911,6 +916,7 @@ public class QuestController(
         ViewBag.IsAuthorized = isQuestDm || isAdmin;
         ViewBag.IsAdmin = isAdmin;
         ViewBag.BoardType = await GetActiveBoardTypeAsync();
+        ViewBag.BoardToday = boardClock.Today;
 
         return View(quest);
     }
