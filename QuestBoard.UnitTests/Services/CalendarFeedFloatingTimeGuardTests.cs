@@ -8,10 +8,11 @@ using QuestBoard.Domain.Services;
 
 namespace QuestBoard.UnitTests.Services;
 
-// Pins the calendar feed's floating-local-time contract with a test rather than a comment, per
-// this phase's own T-86-10 mitigation: CalendarFeedWriter.cs and CalendarSubscriptionService.cs
-// must never appear in this phase's diff, and these facts are the guard that would catch it if
-// either ever did. Exact-byte assertion style, matching CalendarFeedWriterTests: plain string
+// Pins the calendar feed's floating-local-time contract with a test rather than a comment. A
+// subscribed session must keep the same wall-clock hour on every subscriber's device, so the feed
+// emits DTSTART with no Z, no TZID and no VTIMEZONE. These facts are the guard that would catch a
+// well-meaning change to CalendarFeedWriter or CalendarSubscriptionService that started emitting a
+// real instant instead. Exact-byte assertion style, matching CalendarFeedWriterTests: plain string
 // assertions, no mocking of the writer itself, no snapshot framework.
 public class CalendarFeedFloatingTimeGuardTests
 {

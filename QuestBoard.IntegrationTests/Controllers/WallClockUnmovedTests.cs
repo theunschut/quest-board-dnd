@@ -132,8 +132,8 @@ public class WallClockUnmovedTests(WebApplicationFactoryBase factory) : IClassFi
     private static readonly Regex WallClockElementPattern =
         new("<time class=\"wall-clock\"[^>]*>.*?</time>", RegexOptions.Singleline);
 
-    // Proves the QuestLog Details "Completed On:" finalized branch (86-07's gap closure) renders
-    // through Html.WallClock with no timezone conversion applied anywhere in the pipeline. A
+    // Proves the QuestLog Details "Completed On:" finalized branch renders through Html.WallClock
+    // with no timezone conversion applied anywhere in the pipeline. A
     // deliberately non-UTC, non-default board zone (Asia/Tokyo, +09:00) is configured so that if
     // WallClock ever grew a zone dependency by accident, this fact would show the wrong digit.
     [Fact]

@@ -1,11 +1,10 @@
 namespace QuestBoard.IntegrationTests.Mobile;
 
 /// <summary>
-/// File-content tests over site.js pinning hydrateLocalTimes()'s contract from
-/// 86-UI-SPEC.md's "## UI Considerations" E2 rows: one shared listener, the scoped selector,
-/// per-element failure isolation, no default-style fallback, and no explicit locale argument.
-/// Assertions match on substrings rather than exact line text, so a later reformat of the file
-/// does not break this test.
+/// File-content tests over site.js pinning the timestamp hydration contract: one shared
+/// listener, the scoped selector, per-element failure isolation, no default-style fallback, and
+/// no explicit locale argument. Assertions match on substrings rather than exact line text, so a
+/// later reformat of the file does not break this test.
 /// </summary>
 public class SiteJsHydrationTests
 {
@@ -62,6 +61,34 @@ public class SiteJsHydrationTests
         }
 
         throw new InvalidOperationException("Could not find the closing brace of hydrateLocalTimes().");
+    }
+
+    // Isolates the one shared style table both hydration passes read from, using the same
+    // brace-depth walk as the function extractors so a nested options object cannot end the
+    // match early.
+    private static string ExtractTimestampFormatsTable(string source)
+    {
+        var declarationIndex = source.IndexOf("const TIMESTAMP_FORMATS", StringComparison.Ordinal);
+        declarationIndex.Should().BeGreaterThanOrEqualTo(0, "the shared style table must be declared in site.js");
+
+        var braceStart = source.IndexOf('{', declarationIndex);
+        braceStart.Should().BeGreaterThan(declarationIndex);
+
+        var depth = 0;
+        for (var i = braceStart; i < source.Length; i++)
+        {
+            if (source[i] == '{') depth++;
+            else if (source[i] == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return source.Substring(declarationIndex, i - declarationIndex + 1);
+                }
+            }
+        }
+
+        throw new InvalidOperationException("Could not find the closing brace of TIMESTAMP_FORMATS.");
     }
 
     // Mirrors ExtractHydrateLocalTimesBody's brace-depth walk for the sibling wall-clock pass,
@@ -144,13 +171,36 @@ public class SiteJsHydrationTests
         var source = File.ReadAllText(ResolveSiteJsPath());
         var body = ExtractHydrateLocalTimesBody(source);
 
-        body.Should().Contain("date-time-compact");
-        body.Should().Contain("date-compact");
-        body.Should().Contain("date-time");
-        body.Should().Contain("'date'");
+        // The four canonical styles live in one shared table rather than a copy per pass, so that
+        // a new style can never reach one hydration pass but not its sibling. Assert against the
+        // shared table, and assert that this pass actually reads from it.
+        var sharedTable = ExtractTimestampFormatsTable(source);
+        sharedTable.Should().Contain("date-time-compact");
+        sharedTable.Should().Contain("date-compact");
+        sharedTable.Should().Contain("date-time");
+        sharedTable.Should().Contain("'date'");
+
+        body.Should().Contain(
+            "TIMESTAMP_FORMATS[style]",
+            because: "the pass must resolve its options from the one shared table, not a local copy");
         body.Should().Contain(
             "Intl.DateTimeFormat(undefined",
             because: "no explicit locale argument is passed, so the browser's own resolved locale applies");
+    }
+
+    [Fact]
+    public void SiteJs_DefinesExactlyOneStyleTable_SharedByBothHydrationPasses()
+    {
+        var source = File.ReadAllText(ResolveSiteJsPath());
+
+        // A second table literal would reintroduce the drift this shared constant exists to
+        // prevent: the two passes could then disagree on what a style name means.
+        (source.Split("'date-time-compact':").Length - 1).Should().Be(
+            1,
+            because: "exactly one client-side style table may exist, shared by both passes");
+
+        ExtractHydrateLocalTimesBody(source).Should().Contain("TIMESTAMP_FORMATS[style]");
+        ExtractHydrateWallClockTimesBody(source).Should().Contain("TIMESTAMP_FORMATS[style]");
     }
 
     [Fact]

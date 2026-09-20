@@ -231,21 +231,23 @@ function cleanDateTimeValue(input) {
 // first-paint value, so this is a correction pass, not a fill of empty content -- a page with
 // no such elements, or a browser that cannot format one of them, is left exactly as the server
 // rendered it.
-function hydrateLocalTimes() {
-    // Kept in sync with the server-side format table in HtmlHelperExtensions.BuildLocalTime --
-    // the two must agree on what each style name means.
-    const localTimeFormats = {
-        'date': { year: 'numeric', month: 'short', day: 'numeric' },
-        'date-time': { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
-        'date-compact': { month: 'short', day: 'numeric' },
-        'date-time-compact': { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
-    };
+// The one client-side style table, shared by both hydration passes below exactly as the server
+// shares a single format dictionary between BuildLocalTime and BuildWallClock. Keep it in sync
+// with that dictionary in HtmlHelperExtensions -- the two sides must agree on what each style
+// name means. Defining it once means a new style can never reach one pass but not the other.
+const TIMESTAMP_FORMATS = {
+    'date': { year: 'numeric', month: 'short', day: 'numeric' },
+    'date-time': { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+    'date-compact': { month: 'short', day: 'numeric' },
+    'date-time-compact': { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+};
 
+function hydrateLocalTimes() {
     const elements = document.querySelectorAll('time.local-time[datetime]');
     elements.forEach(el => {
         try {
             const style = el.getAttribute('data-style');
-            const options = localTimeFormats[style];
+            const options = TIMESTAMP_FORMATS[style];
             if (!options) {
                 // Unknown or missing style: leave the server-rendered board-zone text alone
                 // rather than guessing at a default granularity.
@@ -267,20 +269,11 @@ function hydrateLocalTimes() {
 // viewer's own zone cannot enter the calculation at all. A page with no such elements, or a
 // browser that cannot format one of them, is left exactly as the server rendered it.
 function hydrateWallClockTimes() {
-    // Kept in sync with the server-side format table in HtmlHelperExtensions.BuildWallClock --
-    // the two must agree on what each style name means.
-    const wallClockFormats = {
-        'date': { year: 'numeric', month: 'short', day: 'numeric' },
-        'date-time': { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
-        'date-compact': { month: 'short', day: 'numeric' },
-        'date-time-compact': { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
-    };
-
     const elements = document.querySelectorAll('time.wall-clock[datetime]');
     elements.forEach(el => {
         try {
             const style = el.getAttribute('data-style');
-            const options = wallClockFormats[style];
+            const options = TIMESTAMP_FORMATS[style];
             if (!options) {
                 // Unknown or missing style: leave the server-rendered invariant-culture text
                 // alone rather than guessing at a default granularity.
