@@ -49,7 +49,7 @@
                                     <strong>Completed:</strong>
                                     @if (quest.FinalizedDate.HasValue)
                                     {
-                                        @quest.FinalizedDate.Value.ToString("MMMM dd, yyyy")
+                                        @Html.WallClock(quest.FinalizedDate.Value, "date")
                                     }
                                     else if (quest.ClosedDate.HasValue)
                                     {

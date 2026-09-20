@@ -38,7 +38,7 @@
                                 <strong>Completed On:</strong>
                                 @if (Model.Quest.FinalizedDate.HasValue)
                                 {
-                                    @Model.Quest.FinalizedDate.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                                    @Html.WallClock(Model.Quest.FinalizedDate.Value, "date-time")
                                 }
                                 else if (Model.Quest.ClosedDate.HasValue)
                                 {
