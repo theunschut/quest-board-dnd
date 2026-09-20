@@ -4,8 +4,8 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 85
 status: completed
-stopped_at: Phase 85 context gathered
-last_updated: "2026-09-18T17:28:26.970Z"
+stopped_at: Phase 86 context gathered
+last_updated: "2026-09-20T09:37:44.131Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
 progress:
@@ -128,9 +128,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-18T14:17:56.808Z
-Stopped at: Phase 85 context gathered
-Resume file: .planning/phases/85-one-shot-quests-in-the-calendar-feed/85-CONTEXT.md
+Last session: 2026-09-20T09:37:44.057Z
+Stopped at: Phase 86 context gathered
+Resume file: .planning/phases/86-viewer-local-times-and-correct-job-scheduling/86-CONTEXT.md
 
 ## Operator Next Steps
 
