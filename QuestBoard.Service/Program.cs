@@ -21,6 +21,7 @@ using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.SqlServer;
 using QuestBoard.Service.Jobs;
+using QuestBoard.Service.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,7 +39,7 @@ builder.Services.Configure<RazorViewEngineOptions>(options =>
 });
 
 // Add health checks
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks().AddCheck<BoardTimeZoneHealthCheck>("board-timezone");
 
 // Add Identity using existing QuestBoardContext
 builder.Services.AddIdentity<UserEntity, IdentityRole<int>>(options =>
@@ -168,8 +169,8 @@ builder.Services.AddRateLimiter(options =>
 // EditUser's email-change branch), partitioned per TARGET userId so no single recipient's inbox is
 // spammed regardless of which admin triggers it. This is a singleton PartitionedRateLimiter<int>
 // consumed via AttemptAcquire in AdminController — NOT an AddRateLimiter policy, because userId/Id
-// are POST form fields (not route values) and the policy-factory path runs before MVC model binding
-// (RESEARCH.md Pitfall 1). 3 requests / 1 hour per target user, key "email-resend:{userId}".
+// are POST form fields (not route values) and the policy-factory path runs before MVC model binding.
+// 3 requests / 1 hour per target user, key "email-resend:{userId}".
 // CreateUser's one-shot automated welcome email is explicitly exempt.
 builder.Services.AddSingleton(_ => PartitionedRateLimiter.Create<int, string>(userId =>
     RateLimitPartition.GetFixedWindowLimiter(
@@ -367,29 +368,38 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     app.Services.ConfigureDatabase();
 
-    // Register daily session reminder sweep — runs at 09:00 server local time (CET/CEST).
-    // Placed after ConfigureDatabase to ensure migrations have run before the job can fire (RESEARCH.md Pitfall 4).
+    var boardClock = app.Services.GetRequiredService<IBoardClock>();
+    var recurringJobOptions = RecurringJobOptionsFactory.ForBoardZone(boardClock);
+
+    // Register daily session reminder sweep — runs at 09:00 in the board's configured time
+    // zone (read from configuration, defaulting to the board's own zone), not the container's.
+    // Placed after ConfigureDatabase, since this block runs after the database is configured
+    // so the job's target tables already exist.
     RecurringJob.AddOrUpdate<DailyReminderJob>(
         "daily-session-reminders",
         job => job.ExecuteAsync(CancellationToken.None),
-        "0 9 * * *");
+        "0 9 * * *",
+        recurringJobOptions);
 
-    // Register nightly recurring-series top-up sweep — runs at 03:00 server local time, a
-    // distinct off-peak hour from the reminder sweep above so neither job's failure can affect
-    // the other. Daily rather than weekly so a failed run self-heals the next night.
+    // Register nightly recurring-series top-up sweep — runs at 03:00 in the board's configured
+    // time zone, a distinct off-peak hour from the reminder sweep above so neither job's failure
+    // can affect the other. Daily rather than weekly so a failed run self-heals the next night.
     RecurringJob.AddOrUpdate<RecurringOccurrenceTopUpJob>(
         "recurring-occurrence-top-up",
         job => job.ExecuteAsync(CancellationToken.None),
-        "0 3 * * *");
+        "0 3 * * *",
+        recurringJobOptions);
 
-    // Register nightly calendar-subscription retention sweep — runs at 04:00 server local
-    // time, a third distinct off-peak hour so no two sweeps can contend and one failing cannot
-    // be mistaken for the other. Daily rather than weekly so a missed run self-heals the next
-    // night; the sweep is idempotent because a purged row cannot be purged twice.
+    // Register nightly calendar-subscription retention sweep — runs at 04:00 in the board's
+    // configured time zone, a third distinct off-peak hour so no two sweeps can contend and one
+    // failing cannot be mistaken for the other. Daily rather than weekly so a missed run
+    // self-heals the next night; the sweep is idempotent because a purged row cannot be purged
+    // twice.
     RecurringJob.AddOrUpdate<CalendarSubscriptionRetentionJob>(
         "calendar-subscription-retention",
         job => job.ExecuteAsync(CancellationToken.None),
-        "0 4 * * *");
+        "0 4 * * *",
+        recurringJobOptions);
 }
 
 // Fail fast in Production if email delivery is unconfigured — without this, SmtpClient creation
