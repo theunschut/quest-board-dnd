@@ -9,6 +9,7 @@ using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Services;
 using QuestBoard.Repository;
 using QuestBoard.Repository.Entities;
+using QuestBoard.UnitTests.Helpers;
 
 namespace QuestBoard.UnitTests.Repository;
 
@@ -49,7 +50,12 @@ public class EventSeriesMaterializationTests
         var seriesRepository = new EventSeriesRepository(context, mapper, eventRepository);
         var seriesOptions = Options.Create(new EventSeriesOptions { RunwaySize = runwaySize, PreviewCount = previewCount });
 
-        return new EventSeriesService(seriesRepository, eventRepository, userRepository, boardTypeResolver, groupContext, seriesOptions);
+        // Fixed to the host's own today so every test's own "var today = DateOnly.FromDateTime(DateTime.Today);"
+        // still lines up with what the service resolves internally, now that it reads a board clock instead of
+        // the ambient clock directly.
+        var boardClock = new FakeBoardClock { Today = DateOnly.FromDateTime(DateTime.Today) };
+
+        return new EventSeriesService(seriesRepository, eventRepository, userRepository, boardTypeResolver, groupContext, seriesOptions, boardClock);
     }
 
     private static IBoardTypeResolver OneShotResolver()
