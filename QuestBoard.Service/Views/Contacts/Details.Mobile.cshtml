@@ -132,7 +132,7 @@
                 <div class="note-item border rounded p-3 mb-3" data-note-id="@note.Id">
                     <small class="text-muted">
                         <i class="fas fa-user me-1"></i>@note.AuthorName
-                        <i class="fas fa-clock me-1 ms-2"></i>@note.CreatedAt.ToString("MMM d, yyyy h:mm tt")
+                        <i class="fas fa-clock me-1 ms-2"></i>@Html.LocalTime(note.CreatedAt, "date-time")
                         @if (note.UpdatedAt != null)
                         {
                             <text> (edited)</text>
