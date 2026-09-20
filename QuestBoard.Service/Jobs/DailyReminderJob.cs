@@ -8,14 +8,15 @@ namespace QuestBoard.Service.Jobs;
 public class DailyReminderJob(
     IServiceScopeFactory scopeFactory,
     IBackgroundJobClient backgroundJobClient,
+    IBoardClock boardClock,
     ILogger<DailyReminderJob> logger)
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        // FinalizedDate is stored as server local time (no UTC annotation on QuestEntity).
-        // DateTime.Today is server local time on the LXC container (CET/CEST).
-        // Comparison is correct — no timezone conversion needed.
-        var tomorrow = DateTime.Today.AddDays(1);
+        // FinalizedDate is a naive wall-clock value the DM typed, with no zone attached, so
+        // "tomorrow" is computed on the board's configured clock rather than the container's --
+        // keeping this comparison correct through the hours either side of midnight.
+        var tomorrow = boardClock.Today.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
         await HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId: null, async sp =>
         {
