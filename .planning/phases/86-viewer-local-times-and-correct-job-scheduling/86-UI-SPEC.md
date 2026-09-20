@@ -168,22 +168,69 @@ Converting the value where it already renders is this phase's job; adding a bran
 - **New helper location:** `QuestBoard.Service/Extensions/HtmlHelperExtensions.cs`, following the existing `Html.Markdown` precedent exactly — an `internal static` `IHtmlHelper` extension method that resolves `IBoardClock` from `RequestServices` (mirroring `Html.Markdown`'s `IMarkdownService` resolution), not a `TagHelper` (none exist in this solution).
 - **Hydration script location:** `QuestBoard.Service/wwwroot/js/site.js`, the one shared, un-bundled script both `_Layout.cshtml:256` and `_Layout.Mobile.cshtml:217` already load identically. Implement as a plain function (e.g. `hydrateLocalTimes()`) invoked from inside the file's existing single bottom `DOMContentLoaded` listener — the same block that already initializes toasts and Bootstrap tooltips — rather than registering a second `DOMContentLoaded` listener, matching the file's existing one-listener convention.
 - Selector: `document.querySelectorAll('time.local-time[datetime]')`, reading `data-style` to pick the matching `Intl.DateTimeFormat` options table from §3, and `Intl.DateTimeFormat().resolvedOptions().timeZone` (no argument passed to the locale, so the browser's own locale formatting conventions apply too — this is intentional, not just the timezone).
+- **Null contract:** `Html.LocalTime` takes a **non-nullable** `DateTime`. Every existing call-site null guard stays exactly as it is today — no nullable overload, no `—` placeholder, no change to any conditional-render branch. See `## UI Considerations` → E1/empty.
+- **Failure contract:** per-element `try`/`catch` inside the loop. A malformed `datetime`, a missing or unrecognised `data-style`, or an `Intl` throw skips that element with its server-rendered board-zone text intact and the loop continues. Never a default-style fallback, never a blank, never an aborted pass. See `## UI Considerations` → E2/error and E2/partial.
 
 ---
 
 ## UI Considerations
 
-Applicable state considerations resolved: 2 covered, 1 backstop, 0 unresolved (relevance-filtered — see below).
+> Produced by the `ui-consideration-probe` engine after checker approval, then resolved
+> item-by-item. Engine output: **16 applicable** across 2 elements, 0 pre-resolved.
+> Final: **11 resolved** (10 explicit, 1 backstop) · **5 dismissed with reason** · **0 unresolved**.
+> The engine applies no relevance filter — every category is raised for every element and must be
+> dispositioned explicitly. A dismissal carries a reason; nothing is silently dropped.
 
-The only UI element this phase introduces is the `Html.LocalTime`-rendered `<time>` node itself, classified `static-content` (a display value substituted into existing markup, non-interactive, not a list/form/media/nav in its own right — the tables and cards it sits inside are pre-existing surfaces out of this phase's scope). Per the probe's relevance filter, `static-content` only raises `overflow` and `long-text`; the other six categories (`empty`, `loading`, `error`, `populated`, `partial`, `zero-one-many`) do not apply to this element kind and are not raised as gaps.
+**Elements probed**
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| overflow | `<time class="local-time">` inside existing table cells / cards | ✅ covered | No new container and no `white-space: nowrap` is introduced; the element inherits the existing cell's normal text flow, which already wraps arbitrary-length content today. All four canonical styles (§3) produce short strings (≤ ~24 characters worst case), well within what every existing cell already accommodates. |
-| long-text | `<time class="local-time">` rendered via `Intl.DateTimeFormat` with no explicit locale (browser default) | 🧪 backstop | The client-formatted string's length varies by the viewer's browser locale (e.g. a `de-DE` or `ru-RU` reader may see a longer month name or a 24-hour clock than the `en-US` example strings in §3). No existing test exercises this. Recommend a held-out visual/unit check that renders at least one non-`en-US` locale (e.g. force `Intl.DateTimeFormat('de-DE', ...)` in a script-level test) against the narrowest mobile table cell this phase touches (`Account/Profile.Mobile.cshtml`'s subscription row) and confirms no clipping. Lifts as a backstop truth for plan-phase per the probe's status vocabulary — not silently assumed safe. |
-| n/a (relevance-filtered out) | — | — | `empty`/`loading`/`error`/`populated`/`partial`/`zero-one-many` apply to `form`/`list-collection`/`media`/`nav`/`interactive-control` element kinds, none of which this phase's single element kind (`static-content`) matches. The pre-existing null-guard branches that decide *whether* a value renders at all (e.g. `LastFetchedAt.HasValue`) are untouched by this phase and out of its scope — see Copywriting Contract's "Empty state" rows. |
+| ID | Element | Kind |
+|----|---------|------|
+| E1 | The `Html.LocalTime`-rendered `<time class="local-time">` display value | static-content |
+| E2 | The `site.js` hydration pass traversing `time.local-time[datetime]` | collection-traversal |
 
----
+### E1 — the `<time>` element
+
+| Category | Status | Resolution / reason |
+|----------|--------|---------------------|
+| empty | ✅ resolved (explicit) | `Html.LocalTime` accepts a **non-nullable** `DateTime`. Every existing call-site null guard (`subscription.LastFetchedAt.HasValue`, `Model.Quest?.CreatedAt`, `item.DeniedAt != null`) is preserved verbatim — this phase changes no conditional-render logic and adds no null overload, no empty-state copy and no `—` placeholder. |
+| loading | ✅ resolved (explicit) | The pre-hydration window **is** the loading state, and §2 fixes it: the board-zone formatted string, in the same canonical style the client will apply. Never a spinner, skeleton, shimmer, placeholder, or empty element. |
+| error | ✅ resolved (explicit) | A formatting failure on this element leaves the server-rendered board-zone text in place — see E2/error for the mechanism. The reader never sees a blank, a raw ISO string, or `Invalid Date`. |
+| populated | ✅ resolved (explicit) | Fully specified by §1 (markup + four attributes) and §3 (call-site → style mapping for all 19 real-instant sites). No site keeps a bespoke format string. |
+| partial | ⛔ dismissed | A timestamp is atomic — there is no partially-available instant. The value either renders (guard passes) or is absent entirely. |
+| overflow | ✅ resolved (explicit) | No new container and no `white-space: nowrap` is introduced; the element inherits the existing cell's normal text flow, which already wraps arbitrary content. All four styles produce ≤ ~24 characters, within what every touched cell already accommodates. |
+| zero-one-many | ⛔ dismissed | Cardinality is a property of the page-level collection, resolved under E2. A single `<time>` element has no multiplicity. |
+| long-text | 🧪 resolved (backstop) | Client-formatted length varies by the viewer's browser locale — a `de-DE` or `ru-RU` reader may get a longer month name or a 24-hour clock than the `en-US` examples in §3. No existing test exercises this. |
+
+### E2 — the hydration pass
+
+| Category | Status | Resolution / reason |
+|----------|--------|---------------------|
+| empty | ✅ resolved (explicit) | On a page with no real-instant renders, `querySelectorAll` returns an empty `NodeList`; the loop is a no-op and throws nothing. No guard, no early return, no console output. |
+| loading | ⛔ dismissed | The pass is synchronous inside the existing `DOMContentLoaded` listener, with no fetch, no `await`, and no async resource. There is no loading window to design for. |
+| error | ✅ resolved (explicit) | **Per-element `try`/`catch`.** A malformed `datetime`, a missing or unrecognised `data-style`, or an `Intl.DateTimeFormat` throw skips that element — leaving its server-rendered board-zone text intact — and the loop continues to the remaining elements. One bad element can never abort hydration for the rest of the page. |
+| populated | ✅ resolved (explicit) | Selector `time.local-time[datetime]`; read `data-style` to pick the options object from §3; format with `Intl.DateTimeFormat()` using the browser's own resolved locale *and* timezone; overwrite `el.textContent` in place. |
+| partial | ✅ resolved (explicit) | An element missing `data-style`, or carrying a style name not in §3's four, is skipped with its server text intact — the same path as `error`. It must **not** silently fall back to an arbitrary default style, which would render a different granularity than the server chose. |
+| overflow | ⛔ dismissed | A script has no visual box. Overflow is E1's concern and is resolved there. |
+| zero-one-many | ✅ resolved (explicit) | Zero, one, and many are the same code path — an unconditional loop over the `NodeList`, no special-casing, no minimum-count branch, no "if any exist" wrapper. |
+| long-text | ⛔ dismissed | Rendered string length is a property of the element, resolved under E1's `long-text` backstop. |
+
+### Liftable truths for plan-phase
+
+```yaml
+truths:
+  - Html.LocalTime accepts a non-nullable DateTime; every existing call-site null guard is preserved unchanged and no null overload is added.
+  - The server-rendered first-paint value is the board-zone formatted string in the same canonical style the client applies — never a spinner, skeleton, placeholder, empty element, or raw UTC.
+  - Every one of the 19 real-instant render sites maps to exactly one of the four canonical styles; no site retains a bespoke format string.
+  - The <time> element introduces no new container and no white-space:nowrap; it inherits the existing cell's text flow.
+  - The hydration pass wraps per-element formatting in try/catch; a failing element keeps its server-rendered board-zone text and the loop continues to the remaining elements.
+  - An element with a missing or unrecognised data-style is skipped with its server text intact, never falling back to a default style.
+  - The hydration pass runs the same code path for zero, one, and many elements — an unconditional loop over the NodeList with no count branch.
+  - On a page with no real-instant renders the hydration pass is a silent no-op.
+  - The hydration pass is synchronous inside site.js's existing single DOMContentLoaded listener; no second listener is registered.
+  - The client formats with Intl.DateTimeFormat() using the browser's own resolved locale and timezone, passing no explicit locale argument.
+  - statement: A timestamp rendered under a non-en-US browser locale (e.g. de-DE, ru-RU) does not clip or wrap destructively in the narrowest mobile cell this phase touches (Account/Profile.Mobile.cshtml's subscription row).
+    verification: backstop
+```
 
 ## Registry Safety
 
