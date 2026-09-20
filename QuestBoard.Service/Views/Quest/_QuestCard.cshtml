@@ -8,7 +8,7 @@
     var statusIcon = "";
     var statusText = "";
     
-    if (Model.HasFinalizedGameNightPassed(boardToday))
+    if (Model.HasBeenPlayed(boardToday))
     {
         questStatus = "quest-status-done";
         statusIcon = "fas fa-flag-checkered";

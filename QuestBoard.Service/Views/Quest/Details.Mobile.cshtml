@@ -77,7 +77,7 @@
                 statusText = "Open";
             }
         }
-        else if (Model.Quest.HasFinalizedGameNightPassed(boardToday))
+        else if (Model.Quest.HasBeenPlayed(boardToday))
         {
             statusBadge = "bg-secondary";
             statusText = "Done";

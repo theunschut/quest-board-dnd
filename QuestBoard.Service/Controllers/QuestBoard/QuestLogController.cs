@@ -42,7 +42,7 @@ public class QuestLogController(
 
         // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
         // admitting closed campaign quests even though they never set FinalizedDate.
-        var isCompletedOneShot = quest.HasFinalizedGameNightPassed(boardClock.Today)
+        var isCompletedOneShot = quest.HasBeenPlayed(boardClock.Today)
             && !quest.DungeonMasterSession;
         if (!isCompletedOneShot && !quest.IsClosed)
         {
@@ -89,7 +89,7 @@ public class QuestLogController(
 
         // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
         // admitting closed campaign quests even though they never set FinalizedDate.
-        var isCompletedOneShot = quest.HasFinalizedGameNightPassed(boardClock.Today)
+        var isCompletedOneShot = quest.HasBeenPlayed(boardClock.Today)
             && !quest.DungeonMasterSession;
         if (!isCompletedOneShot && !quest.IsClosed)
         {
@@ -117,7 +117,7 @@ public class QuestLogController(
 
         // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
         // admitting closed campaign quests even though they never set FinalizedDate.
-        var isCompletedOneShot = quest.HasFinalizedGameNightPassed(boardClock.Today)
+        var isCompletedOneShot = quest.HasBeenPlayed(boardClock.Today)
             && !quest.DungeonMasterSession;
         if (!isCompletedOneShot && !quest.IsClosed)
         {

@@ -779,7 +779,7 @@
                                 string statusIcon;
                                 string statusText;
 
-                                if (Model.Quest.HasFinalizedGameNightPassed(boardToday))
+                                if (Model.Quest.HasBeenPlayed(boardToday))
                                 {
                                     statusBadge = "bg-dark";
                                     statusIcon = "fas fa-flag-checkered";

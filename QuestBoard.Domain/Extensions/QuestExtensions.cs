@@ -18,9 +18,9 @@ public static class QuestExtensions
     /// </remarks>
     /// <param name="quest">
     /// Nullable so the views that hold an optional quest can call this without a null dance --
-    /// a quest that is not there has no game night to have passed.
+    /// a quest that is not there has not been played.
     /// </param>
-    public static bool HasFinalizedGameNightPassed(this Quest? quest, DateOnly boardToday) =>
+    public static bool HasBeenPlayed(this Quest? quest, DateOnly boardToday) =>
         quest is { IsFinalized: true, FinalizedDate: { } finalizedDate }
         && DateOnly.FromDateTime(finalizedDate) <= boardToday.AddDays(-1);
 }

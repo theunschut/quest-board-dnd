@@ -181,7 +181,7 @@ internal class QuestService(
         var boardToday = boardClock.Today;
 
         return quests
-            .Where(q => (q.HasFinalizedGameNightPassed(boardToday) && !q.DungeonMasterSession)
+            .Where(q => (q.HasBeenPlayed(boardToday) && !q.DungeonMasterSession)
                         || (q.IsClosed && !q.DungeonMasterSession))
             .OrderByDescending(q => q.IsClosed ? q.ClosedDate : q.FinalizedDate)
             .ToList();

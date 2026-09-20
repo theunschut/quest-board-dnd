@@ -25,7 +25,7 @@
             string statusIcon;
             string statusText;
 
-            if (quest.HasFinalizedGameNightPassed(boardToday))
+            if (quest.HasBeenPlayed(boardToday))
             {
                 statusBadge = "bg-dark";
                 statusIcon = "fas fa-flag-checkered";

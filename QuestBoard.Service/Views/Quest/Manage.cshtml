@@ -707,7 +707,7 @@ else
                                 string statusIcon;
                                 string statusText;
 
-                                if (Model.HasFinalizedGameNightPassed(boardToday))
+                                if (Model.HasBeenPlayed(boardToday))
                                 {
                                     statusBadge = "bg-dark";
                                     statusIcon = "fas fa-flag-checkered";

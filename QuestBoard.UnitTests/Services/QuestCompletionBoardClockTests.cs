@@ -35,46 +35,46 @@ public class QuestCompletionBoardClockTests
     [InlineData(2026, 9, 6, false)]
     // Nor has a future one.
     [InlineData(2026, 9, 7, false)]
-    public void HasFinalizedGameNightPassed_TurnsOverAtBoardLocalMidnight(int year, int month, int day, bool expected)
+    public void HasBeenPlayed_TurnsOverAtBoardLocalMidnight(int year, int month, int day, bool expected)
     {
         var quest = MakeFinalizedQuest(new DateTime(year, month, day, 18, 0, 0));
 
-        quest.HasFinalizedGameNightPassed(BoardToday).Should().Be(expected);
+        quest.HasBeenPlayed(BoardToday).Should().Be(expected);
     }
 
     [Fact]
-    public void HasFinalizedGameNightPassed_IgnoresTheTimeOfDayOnTheGameNight()
+    public void HasBeenPlayed_IgnoresTheTimeOfDayOnTheGameNight()
     {
         // Both ends of the same board-local day answer identically: the rule is a date
         // comparison, and a wall-clock time of day carries no instant to compare against.
-        MakeFinalizedQuest(new DateTime(2026, 9, 5, 0, 1, 0)).HasFinalizedGameNightPassed(BoardToday).Should().BeTrue();
-        MakeFinalizedQuest(new DateTime(2026, 9, 5, 23, 59, 0)).HasFinalizedGameNightPassed(BoardToday).Should().BeTrue();
+        MakeFinalizedQuest(new DateTime(2026, 9, 5, 0, 1, 0)).HasBeenPlayed(BoardToday).Should().BeTrue();
+        MakeFinalizedQuest(new DateTime(2026, 9, 5, 23, 59, 0)).HasBeenPlayed(BoardToday).Should().BeTrue();
     }
 
     [Fact]
-    public void HasFinalizedGameNightPassed_IsFalseForAQuestThatWasNeverFinalized()
+    public void HasBeenPlayed_IsFalseForAQuestThatWasNeverFinalized()
     {
         var unfinalized = MakeFinalizedQuest(new DateTime(2026, 1, 1, 18, 0, 0));
         unfinalized.IsFinalized = false;
 
-        unfinalized.HasFinalizedGameNightPassed(BoardToday).Should().BeFalse();
+        unfinalized.HasBeenPlayed(BoardToday).Should().BeFalse();
     }
 
     [Fact]
-    public void HasFinalizedGameNightPassed_IsFalseForAFinalizedQuestCarryingNoDate()
+    public void HasBeenPlayed_IsFalseForAFinalizedQuestCarryingNoDate()
     {
         var quest = MakeFinalizedQuest(new DateTime(2026, 1, 1, 18, 0, 0));
         quest.FinalizedDate = null;
 
-        quest.HasFinalizedGameNightPassed(BoardToday).Should().BeFalse();
+        quest.HasBeenPlayed(BoardToday).Should().BeFalse();
     }
 
     [Fact]
-    public void HasFinalizedGameNightPassed_IsFalseForAQuestThatIsNotThere()
+    public void HasBeenPlayed_IsFalseForAQuestThatIsNotThere()
     {
         Quest? absent = null;
 
-        absent.HasFinalizedGameNightPassed(BoardToday).Should().BeFalse();
+        absent.HasBeenPlayed(BoardToday).Should().BeFalse();
     }
 
     /// <summary>
