@@ -226,6 +226,39 @@ function cleanDateTimeValue(input) {
     input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+// Rewrites every server-rendered <time class="local-time"> element's text to the viewer's own
+// browser locale and timezone. The server already rendered the board's own zone as a safe
+// first-paint value, so this is a correction pass, not a fill of empty content -- a page with
+// no such elements, or a browser that cannot format one of them, is left exactly as the server
+// rendered it.
+function hydrateLocalTimes() {
+    // Kept in sync with the server-side format table in HtmlHelperExtensions.BuildLocalTime --
+    // the two must agree on what each style name means.
+    const localTimeFormats = {
+        'date': { year: 'numeric', month: 'short', day: 'numeric' },
+        'date-time': { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+        'date-compact': { month: 'short', day: 'numeric' },
+        'date-time-compact': { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+    };
+
+    const elements = document.querySelectorAll('time.local-time[datetime]');
+    elements.forEach(el => {
+        try {
+            const style = el.getAttribute('data-style');
+            const options = localTimeFormats[style];
+            if (!options) {
+                // Unknown or missing style: leave the server-rendered board-zone text alone
+                // rather than guessing at a default granularity.
+                return;
+            }
+            el.textContent = new Intl.DateTimeFormat(undefined, options).format(new Date(el.getAttribute('datetime')));
+        } catch {
+            // A malformed datetime or an Intl throw skips this element only -- one bad value
+            // must never abort hydration for the rest of the page.
+        }
+    });
+}
+
 // Make date blocks clickable for radio selection
 function makeDataOptionsClickable() {
     // Handle Details page custom radio buttons
@@ -301,6 +334,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Make date options clickable
     makeDataOptionsClickable();
+
+    // Rewrite every server-rendered real-instant timestamp to the viewer's own timezone.
+    hydrateLocalTimes();
 
     // Initialize toasts
     const toastElements = document.querySelectorAll('.toast');
