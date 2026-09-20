@@ -20,7 +20,6 @@
             {
                 // Calculate some stats for the quest
                 var selectedPlayers = quest.PlayerSignups.Where(ps => ps.IsSelected).ToList();
-                var questDate = (quest.FinalizedDate ?? quest.ClosedDate)?.ToString("MMMM dd, yyyy") ?? "Unknown Date";
 
                 <div class="quest-log-card" onclick="window.location.href='@Url.Action("Details", "QuestLog", new { id = quest.Id })'">
 
@@ -46,7 +45,21 @@
                             </div>
                             <div class="meta-item">
                                 <i class="fas fa-calendar-check me-2"></i>
-                                <span><strong>Completed:</strong> @questDate</span>
+                                <span>
+                                    <strong>Completed:</strong>
+                                    @if (quest.FinalizedDate.HasValue)
+                                    {
+                                        @quest.FinalizedDate.Value.ToString("MMMM dd, yyyy")
+                                    }
+                                    else if (quest.ClosedDate.HasValue)
+                                    {
+                                        @Html.LocalTime(quest.ClosedDate.Value, "date")
+                                    }
+                                    else
+                                    {
+                                        @:Unknown Date
+                                    }
+                                </span>
                             </div>
                             @if (boardType != BoardType.Campaign)
                             {
