@@ -173,7 +173,8 @@ public class QuestBoardContext(
             .Property(p => p.Id)
             .ValueGeneratedNever();
 
-        // UserEntity -> DungeonMasterProfileEntity (1:1, Cascade — single path, safe per RESEARCH.md pitfall #1)
+        // UserEntity -> DungeonMasterProfileEntity (1:1, Cascade — this is the only cascade path
+        // to DungeonMasterProfileEntity, so there's no multiple-cascade-paths conflict)
         modelBuilder.Entity<DungeonMasterProfileEntity>()
             .HasOne<UserEntity>()
             .WithOne()
