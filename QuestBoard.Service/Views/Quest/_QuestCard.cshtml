@@ -84,7 +84,7 @@
             {
                 <p class="card-text">
                     <strong class="text-warning">Signups:</strong> @Model.PlayerSignups.Count<br>
-                    <strong class="text-warning">Created:</strong> @Model.CreatedAt.ToString("MMM dd, yyyy")
+                    <strong class="text-warning">Created:</strong> @Html.LocalTime(Model.CreatedAt, "date")
                 </p>
             }
         </div>
