@@ -12,13 +12,14 @@ internal class EventSeriesService(
     IUserRepository userRepository,
     IBoardTypeResolver boardTypeResolver,
     IActiveGroupContext activeGroupContext,
-    IOptions<EventSeriesOptions> options) : IEventSeriesService
+    IOptions<EventSeriesOptions> options,
+    IBoardClock boardClock) : IEventSeriesService
 {
     /// <inheritdoc/>
     public Task<(IReadOnlyList<DateOnly> Dates, bool AnchorFullyInPast)> PreviewAsync(DateOnly anchorDate, int intervalWeeks, string cycleMask, DateOnly? endDate, CancellationToken token = default)
     {
         var mask = EventSeriesDateGenerator.ParseMask(cycleMask);
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = boardClock.Today;
         var previewCount = options.Value.PreviewCount;
 
         // Materialized once so the two views below (the anchor-relative window and the
@@ -55,7 +56,7 @@ internal class EventSeriesService(
         series.GroupId = groupId;
 
         var mask = EventSeriesDateGenerator.ParseMask(series.CycleMask);
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = boardClock.Today;
 
         // Only slots dated today or later are materialized; earlier slots are still walked by
         // the generator so slot numbering and cycle phase stay correct, but they are never
@@ -87,7 +88,7 @@ internal class EventSeriesService(
     /// <inheritdoc/>
     public async Task<int> TopUpAsync(int seriesId, CancellationToken token = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = boardClock.Today;
 
         var series = await repository.GetSeriesAsync(seriesId, token);
         if (series == null || (series.EndDate.HasValue && series.EndDate.Value < today))
@@ -169,7 +170,7 @@ internal class EventSeriesService(
     /// <inheritdoc/>
     public async Task<IList<EventSeries>> GetActiveSeriesForActiveGroupAsync(CancellationToken token = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = boardClock.Today;
         return await repository.GetActiveSeriesAsync(today, token);
     }
 
@@ -182,14 +183,14 @@ internal class EventSeriesService(
     /// <inheritdoc/>
     public async Task<IList<SeriesRunwayStatus>> GetSeriesBelowRunwayAsync(CancellationToken token = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = boardClock.Today;
         return await repository.GetSeriesBelowRunwayAsync(today, options.Value.RunwaySize, token);
     }
 
     /// <inheritdoc/>
     public async Task<SeriesRemovalImpact> GetRemovalImpactAsync(int seriesId, CancellationToken token = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = boardClock.Today;
         return await repository.GetRemovalImpactAsync(seriesId, today, token);
     }
 
@@ -226,7 +227,7 @@ internal class EventSeriesService(
             return 0;
         }
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = boardClock.Today;
         var occurrences = await eventRepository.GetOccurrencesForSeriesAsync(seriesId, token);
 
         // Eligibility is computed against the OLD template, before the series row below is
