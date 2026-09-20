@@ -956,9 +956,9 @@ Plans:
 ### Phase 86: Viewer-Local Times and Correct Job Scheduling
 
 **Goal**: A reader sees every real timestamp in their own browser's timezone instead of UTC, and the three nightly sweeps fire at the hour their registration claims — without moving a single game night by so much as a minute.
-**Requirements**: TBD
+**Requirements**: None — `.planning/REQUIREMENTS.md` carries no Phase 86 rows. Traceability runs on `86-CONTEXT.md`'s locked decision IDs D-01…D-07 instead; no REQ-IDs were invented.
 **Depends on**: No hard dependency. It must not regress Phase 84's floating-local-time contract or Phase 85's quest entries — see the first risk below.
-**Plans**: 0 plans
+**Plans**: 6 plans
 
 **Origin:** raised by the operator on 2026-09-18, immediately after noticing that the Calendar Subscription section's "Last fetched" timestamp reads two hours behind a Dutch wall clock. The investigation that followed found the display defect the operator reported *and* a scheduling defect they had assumed was working.
 
@@ -1002,7 +1002,12 @@ The right-hand column is what a Dungeon Master typed — "seven o'clock on the t
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 86 to break down)
+- [ ] 86-01-PLAN.md — Board-clock seam (`TimeZoneOptions`/`IBoardClock`), `Html.LocalTime`, `site.js` hydration, proven end-to-end on the Profile "Last fetched" timestamp (wave 1)
+- [ ] 86-02-PLAN.md — All three Hangfire sweeps pinned to the board zone, `board-timezone` health check reporting Degraded, `DailyReminderJob` on the same clock (wave 2)
+- [ ] 86-03-PLAN.md — The D-07 ambient-clock migration: `EventSeriesService` ×7, `GroupRepository`, `CalendarController`, `EventsController`, `SeriesController`, `Series/Details.cshtml` (wave 2)
+- [ ] 86-04-PLAN.md — Render sites A: QuestLog, Contacts, Platform Group — including splitting the four `FinalizedDate ?? ClosedDate` coalesce sites (wave 2)
+- [ ] 86-05-PLAN.md — Render sites B: Quest Manage/Details/_QuestCard, Shop, ShopManagement, Admin EmailStats (wave 2)
+- [ ] 86-06-PLAN.md — Regression guards (wall-clock unmoved, calendar feed untouched, ambient-clock invariant), tech-debt correction, human verification (wave 3)
 
 ## Backlog
 
