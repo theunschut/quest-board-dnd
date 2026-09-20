@@ -15,13 +15,14 @@ public class CalendarController(
     IEventSeriesService eventSeriesService,
     IUserService userService,
     IActiveGroupContext activeGroupContext,
-    IBoardTypeResolver boardTypeResolver) : Controller
+    IBoardTypeResolver boardTypeResolver,
+    IBoardClock boardClock) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int? year = null, int? month = null, CancellationToken token = default)
     {
         // Default to current month if not specified
-        var currentDate = DateTime.Now;
+        var currentDate = boardClock.Now;
         var selectedYear = year ?? currentDate.Year;
         var selectedMonth = month ?? currentDate.Month;
 
