@@ -859,8 +859,8 @@ public class QuestController(
         }
 
         // DM trigger sends to Yes + Maybe voters for the finalized date only.
-        // RESEARCH.md Pitfall 1: filter by finalized proposed date to avoid including
-        // players who voted Yes/Maybe on a different proposed date.
+        // Filter by finalized proposed date to avoid including players who voted
+        // Yes/Maybe on a different proposed date (a quest can have several proposed dates).
         var finalizedProposedDate = quest.ProposedDates
             .FirstOrDefault(pd => pd.Date.Date == quest.FinalizedDate.Value.Date);
 
