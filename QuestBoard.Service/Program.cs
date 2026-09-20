@@ -21,6 +21,7 @@ using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.SqlServer;
 using QuestBoard.Service.Jobs;
+using QuestBoard.Service.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,7 +39,7 @@ builder.Services.Configure<RazorViewEngineOptions>(options =>
 });
 
 // Add health checks
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks().AddCheck<BoardTimeZoneHealthCheck>("board-timezone");
 
 // Add Identity using existing QuestBoardContext
 builder.Services.AddIdentity<UserEntity, IdentityRole<int>>(options =>
