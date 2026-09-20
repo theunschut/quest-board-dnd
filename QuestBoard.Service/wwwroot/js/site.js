@@ -231,19 +231,21 @@ function cleanDateTimeValue(input) {
 // first-paint value, so this is a correction pass, not a fill of empty content -- a page with
 // no such elements, or a browser that cannot format one of them, is left exactly as the server
 // rendered it.
-const LOCAL_TIME_FORMATS = {
-    'date': { year: 'numeric', month: 'short', day: 'numeric' },
-    'date-time': { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
-    'date-compact': { month: 'short', day: 'numeric' },
-    'date-time-compact': { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
-};
-
 function hydrateLocalTimes() {
+    // Kept in sync with the server-side format table in HtmlHelperExtensions.BuildLocalTime --
+    // the two must agree on what each style name means.
+    const localTimeFormats = {
+        'date': { year: 'numeric', month: 'short', day: 'numeric' },
+        'date-time': { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+        'date-compact': { month: 'short', day: 'numeric' },
+        'date-time-compact': { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+    };
+
     const elements = document.querySelectorAll('time.local-time[datetime]');
     elements.forEach(el => {
         try {
             const style = el.getAttribute('data-style');
-            const options = LOCAL_TIME_FORMATS[style];
+            const options = localTimeFormats[style];
             if (!options) {
                 // Unknown or missing style: leave the server-rendered board-zone text alone
                 // rather than guessing at a default granularity.
