@@ -21,6 +21,14 @@ public class SeriesDetailsViewModel
 
     public DateOnly? EndDate { get; set; }
 
+    // The board-local today, filled by the controller from IBoardClock so the view and the
+    // controller can never disagree about which day it is.
+    public DateOnly Today { get; set; }
+
+    // Same rule as CadenceLabel/TimeLabel below -- a single place that words the board-local
+    // today so the "Today" divider and the end-series confirmation cannot drift apart.
+    public string TodayLabel => Today.ToString("MMMM d, yyyy");
+
     // The parsed mask, filled by the controller from the Domain parser so the read-only strip
     // renders from the same rule the generator uses rather than a second parse written here.
     public IList<bool> CyclePositions { get; set; } = [];
