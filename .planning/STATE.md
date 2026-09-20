@@ -4,14 +4,14 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 85
 status: completed
-stopped_at: Phase 86 context gathered
-last_updated: "2026-09-20T09:37:44.131Z"
+stopped_at: Phase 86 UI-SPEC approved
+last_updated: "2026-09-20T12:27:47.427Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 84 execution resumed (wave continue)
 progress:
   total_phases: 15
   completed_phases: 12
-  total_plans: 97
+  total_plans: 103
   completed_plans: 88
   percent: 80
 current_phase_name: one-shot-quests-in-the-calendar-feed
@@ -128,9 +128,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-20T09:37:44.057Z
-Stopped at: Phase 86 context gathered
-Resume file: .planning/phases/86-viewer-local-times-and-correct-job-scheduling/86-CONTEXT.md
+Last session: 2026-09-20T11:51:07.585Z
+Stopped at: Phase 86 UI-SPEC approved
+Resume file: .planning/phases/86-viewer-local-times-and-correct-job-scheduling/86-UI-SPEC.md
 
 ## Operator Next Steps
 

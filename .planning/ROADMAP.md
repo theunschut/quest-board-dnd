@@ -1001,12 +1001,19 @@ The right-hand column is what a Dungeon Master typed — "seven o'clock on the t
 - **A flash of UTC.** Client-side formatting rewrites the DOM after paint. Without a deliberate fallback the reader sees the wrong time first and the right one a moment later, which reads as a bug even though the final value is correct.
 
 Plans:
+**Wave 1**
 
 - [ ] 86-01-PLAN.md — Board-clock seam (`TimeZoneOptions`/`IBoardClock`), `Html.LocalTime`, `site.js` hydration, proven end-to-end on the Profile "Last fetched" timestamp (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 86-02-PLAN.md — All three Hangfire sweeps pinned to the board zone, `board-timezone` health check reporting Degraded, `DailyReminderJob` on the same clock (wave 2)
 - [ ] 86-03-PLAN.md — The D-07 ambient-clock migration: `EventSeriesService` ×7, `GroupRepository`, `CalendarController`, `EventsController`, `SeriesController`, `Series/Details.cshtml` (wave 2)
 - [ ] 86-04-PLAN.md — Render sites A: QuestLog, Contacts, Platform Group — including splitting the four `FinalizedDate ?? ClosedDate` coalesce sites (wave 2)
 - [ ] 86-05-PLAN.md — Render sites B: Quest Manage/Details/_QuestCard, Shop, ShopManagement, Admin EmailStats (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 86-06-PLAN.md — Regression guards (wall-clock unmoved, calendar feed untouched, ambient-clock invariant), tech-debt correction, human verification (wave 3)
 
 ## Backlog
