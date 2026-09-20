@@ -49,7 +49,7 @@
                         <i class="fas fa-calendar-check me-1"></i>
                         @if (quest.FinalizedDate.HasValue)
                         {
-                            @quest.FinalizedDate.Value.ToString("MMM dd, yyyy")
+                            @Html.WallClock(quest.FinalizedDate.Value, "date")
                         }
                         else if (quest.ClosedDate.HasValue)
                         {

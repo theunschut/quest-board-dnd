@@ -64,6 +64,34 @@ public class SiteJsHydrationTests
         throw new InvalidOperationException("Could not find the closing brace of hydrateLocalTimes().");
     }
 
+    // Mirrors ExtractHydrateLocalTimesBody's brace-depth walk for the sibling wall-clock pass,
+    // so assertions about the conversion-proof UTC anchoring do not accidentally match unrelated
+    // code elsewhere in the file.
+    private static string ExtractHydrateWallClockTimesBody(string source)
+    {
+        var declarationIndex = source.IndexOf("function hydrateWallClockTimes()", StringComparison.Ordinal);
+        declarationIndex.Should().BeGreaterThanOrEqualTo(0, "hydrateWallClockTimes must be declared in site.js");
+
+        var braceStart = source.IndexOf('{', declarationIndex);
+        braceStart.Should().BeGreaterThan(declarationIndex);
+
+        var depth = 0;
+        for (var i = braceStart; i < source.Length; i++)
+        {
+            if (source[i] == '{') depth++;
+            else if (source[i] == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return source.Substring(declarationIndex, i - declarationIndex + 1);
+                }
+            }
+        }
+
+        throw new InvalidOperationException("Could not find the closing brace of hydrateWallClockTimes().");
+    }
+
     [Fact]
     public void SiteJs_HasExactlyOneDOMContentLoadedListener()
     {
@@ -133,5 +161,62 @@ public class SiteJsHydrationTests
 
         body.Should().NotContain("aria-live");
         body.Should().NotContain("min-width");
+    }
+
+    [Fact]
+    public void SiteJs_DeclaresAndInvokesHydrateWallClockTimes()
+    {
+        var source = File.ReadAllText(ResolveSiteJsPath());
+
+        source.Should().Contain("function hydrateWallClockTimes()");
+        source.Should().Contain("hydrateWallClockTimes();");
+    }
+
+    [Fact]
+    public void SiteJs_ContainsTheWallClockScopedSelector()
+    {
+        var source = File.ReadAllText(ResolveSiteJsPath());
+
+        source.Should().Contain(
+            "time.wall-clock[datetime]",
+            because: "the wall-clock hydration pass must never touch time.local-time elements, and vice versa");
+    }
+
+    [Fact]
+    public void SiteJs_HydrateWallClockTimesBody_AnchorsAndFormatsInUtc()
+    {
+        var source = File.ReadAllText(ResolveSiteJsPath());
+        var body = ExtractHydrateWallClockTimesBody(source);
+
+        // The whole safety argument for a wall-clock render: the parsed components are
+        // re-anchored through Date.UTC(...) and formatted with timeZone: 'UTC', so the viewer's
+        // own zone is structurally unable to enter the calculation.
+        body.Should().Contain("Date.UTC(");
+        body.Should().Contain("timeZone: 'UTC'");
+    }
+
+    [Fact]
+    public void SiteJs_HydrateWallClockTimesBody_NeverBuildsADateFromBareLocalComponents()
+    {
+        var source = File.ReadAllText(ResolveSiteJsPath());
+        var body = ExtractHydrateWallClockTimesBody(source);
+
+        // Every "new Date(" in this function must be immediately followed by "Date.UTC(" -- a
+        // bare "new Date(y, m, d, h, min)" component constructor builds the value in the
+        // viewer's own local zone and can shift it across a DST gap, which is exactly the
+        // regression this whole helper exists to make structurally impossible.
+        body.Should().NotMatchRegex(
+            @"new Date\((?!Date\.UTC\()",
+            because: "a wall-clock value must only ever be constructed via new Date(Date.UTC(...)), never the local-zone component constructor");
+    }
+
+    [Fact]
+    public void SiteJs_HydrateWallClockTimesBody_WrapsPerElementFormattingInTryCatch()
+    {
+        var source = File.ReadAllText(ResolveSiteJsPath());
+        var body = ExtractHydrateWallClockTimesBody(source);
+
+        body.Should().Contain("try");
+        body.Should().Contain("catch");
     }
 }

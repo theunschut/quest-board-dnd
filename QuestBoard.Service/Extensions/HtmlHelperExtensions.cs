@@ -76,4 +76,43 @@ internal static class HtmlHelperExtensions
         var boardClock = html.ViewContext.HttpContext.RequestServices.GetRequiredService<IBoardClock>();
         return BuildLocalTime(utcInstant, style, boardClock.TimeZone);
     }
+
+    /// <summary>
+    /// Builds the `&lt;time&gt;` element a floating wall-clock value (a value with no UTC
+    /// instant, such as a finalized game night) renders as: invariant-culture text at first
+    /// paint, the raw local components in `datetime` with no `Z`/offset for the client to
+    /// re-format in the viewer's own locale. There is deliberately no `title` attribute -- a
+    /// UTC tooltip would claim a UTC instant this value does not have -- and this method takes
+    /// no <see cref="TimeZoneInfo"/>/<see cref="IBoardClock"/> parameter, because a wall-clock
+    /// value has no zone to convert from. A pure function with no <see cref="IHtmlHelper"/>
+    /// dependency, so it is directly unit-testable without a Razor context, mirroring
+    /// <see cref="BuildLocalTime"/> above.
+    /// </summary>
+    internal static IHtmlContent BuildWallClock(DateTime wallClock, string style)
+    {
+        if (!LocalTimeFormats.TryGetValue(style, out var format))
+        {
+            throw new ArgumentOutOfRangeException(nameof(style), style, "Unrecognised wall-clock style.");
+        }
+
+        var tag = new TagBuilder("time");
+        tag.MergeAttribute("class", "wall-clock");
+        tag.MergeAttribute("data-style", style);
+        tag.MergeAttribute("datetime", wallClock.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture));
+        tag.InnerHtml.SetContent(wallClock.ToString(format, CultureInfo.InvariantCulture));
+
+        return tag;
+    }
+
+    /// <summary>
+    /// Renders <paramref name="wallClock"/> as a floating local time -- no zone conversion
+    /// anywhere in this call, and none possible: <see cref="BuildWallClock"/> takes no zone
+    /// parameter. Reuses the exact same <see cref="LocalTimeFormats"/> style table as
+    /// <see cref="LocalTime"/> so the two rendering paths cannot drift apart on what a style
+    /// name means.
+    /// </summary>
+    internal static IHtmlContent WallClock(this IHtmlHelper html, DateTime wallClock, string style)
+    {
+        return BuildWallClock(wallClock, style);
+    }
 }
