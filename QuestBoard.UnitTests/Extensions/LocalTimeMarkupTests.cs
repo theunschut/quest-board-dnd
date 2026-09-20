@@ -6,7 +6,7 @@ namespace QuestBoard.UnitTests.Extensions;
 
 // Pins BuildLocalTime's markup contract directly, with no IHtmlHelper/Razor context needed --
 // the exact attribute shape (class, data-style, datetime, title) and the four canonical
-// styles' rendered text, per 86-UI-SPEC.md section 3. Each style gets its own fact (rather than
+// styles' rendered text. Each style gets its own fact (rather than
 // one parameterised theory) so the full-precision title assertion is pinned once per style in
 // the source itself, not just once per test run.
 public class LocalTimeMarkupTests
