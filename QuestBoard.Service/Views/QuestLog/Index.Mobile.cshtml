@@ -47,7 +47,18 @@
                     </div>
                     <small class="text-muted d-block">
                         <i class="fas fa-calendar-check me-1"></i>
-                        @((quest.FinalizedDate ?? quest.ClosedDate)?.ToString("MMM dd, yyyy") ?? "Unknown Date")
+                        @if (quest.FinalizedDate.HasValue)
+                        {
+                            @quest.FinalizedDate.Value.ToString("MMM dd, yyyy")
+                        }
+                        else if (quest.ClosedDate.HasValue)
+                        {
+                            @Html.LocalTime(quest.ClosedDate.Value, "date")
+                        }
+                        else
+                        {
+                            @:Unknown Date
+                        }
                     </small>
                     <small class="text-muted">
                         <i class="fas fa-crown me-1"></i>
