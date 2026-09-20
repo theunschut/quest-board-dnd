@@ -958,7 +958,7 @@ Plans:
 **Goal**: A reader sees every real timestamp in their own browser's timezone instead of UTC, and the three nightly sweeps fire at the hour their registration claims — without moving a single game night by so much as a minute.
 **Requirements**: None — `.planning/REQUIREMENTS.md` carries no Phase 86 rows. Traceability runs on `86-CONTEXT.md`'s locked decision IDs D-01…D-07 instead; no REQ-IDs were invented.
 **Depends on**: No hard dependency. It must not regress Phase 84's floating-local-time contract or Phase 85's quest entries — see the first risk below.
-**Plans**: 1/6 plans executed
+**Plans**: 5/6 plans executed
 
 **Origin:** raised by the operator on 2026-09-18, immediately after noticing that the Calendar Subscription section's "Last fetched" timestamp reads two hours behind a Dutch wall clock. The investigation that followed found the display defect the operator reported *and* a scheduling defect they had assumed was working.
 
@@ -1007,10 +1007,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 86-02-PLAN.md — All three Hangfire sweeps pinned to the board zone, `board-timezone` health check reporting Degraded, `DailyReminderJob` on the same clock (wave 2)
-- [ ] 86-03-PLAN.md — The D-07 ambient-clock migration: `EventSeriesService` ×7, `GroupRepository`, `CalendarController`, `EventsController`, `SeriesController`, `Series/Details.cshtml` (wave 2)
-- [ ] 86-04-PLAN.md — Render sites A: QuestLog, Contacts, Platform Group — including splitting the four `FinalizedDate ?? ClosedDate` coalesce sites (wave 2)
-- [ ] 86-05-PLAN.md — Render sites B: Quest Manage/Details/_QuestCard, Shop, ShopManagement, Admin EmailStats (wave 2)
+- [x] 86-02-PLAN.md — All three Hangfire sweeps pinned to the board zone, `board-timezone` health check reporting Degraded, `DailyReminderJob` on the same clock (wave 2)
+- [x] 86-03-PLAN.md — The D-07 ambient-clock migration: `EventSeriesService` ×7, `GroupRepository`, `CalendarController`, `EventsController`, `SeriesController`, `Series/Details.cshtml` (wave 2)
+- [x] 86-04-PLAN.md — Render sites A: QuestLog, Contacts, Platform Group — including splitting the four `FinalizedDate ?? ClosedDate` coalesce sites (wave 2)
+- [x] 86-05-PLAN.md — Render sites B: Quest Manage/Details/_QuestCard, Shop, ShopManagement, Admin EmailStats (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
