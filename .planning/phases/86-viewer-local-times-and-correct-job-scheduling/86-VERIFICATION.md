@@ -134,6 +134,15 @@ or job scheduling).
 quest-status phase) rather than reopening Phase 86 — it is pre-existing tech debt of the same
 shape D-07 fixed elsewhere, not a regression this phase introduced.
 
+**Resolved 2026-09-21 (after this report was written).** Commit `a161c07f` routed every one
+of these decisions through `IBoardClock` and collapsed the twelve duplicated comparisons into a
+single `Quest.HasFinalizedGameNightPassed(boardToday)` domain rule, since renamed to
+`Quest.HasBeenPlayed` by `5400b350`. The Razor views now receive the board-local today from their
+controller instead of reading a clock. `QuestRepository` keeps its comparison inline against
+`boardClock.Now` because it translates to SQL. A grep for `UtcNow` compared against `FinalizedDate`
+or an `AddDays(-1)` cutoff across all three projects now returns nothing. No follow-up item is
+outstanding.
+
 ### Requirements Coverage
 
 No REQ-IDs exist for Phase 86 by design (confirmed: `grep "Phase 86" .planning/REQUIREMENTS.md`
@@ -162,7 +171,7 @@ coalesce sites that mixed both categories are correctly split with matching styl
 Warning (client-side style-table duplication) and both Info findings were addressed in follow-up
 commits `afa10392`/`8c2d670d`, confirmed landed at HEAD. One notable pre-existing bug of the same
 shape was found outside this phase's declared scope (see above) — recommended as a follow-up, not
-a Phase 86 gap.
+a Phase 86 gap; that follow-up has since been resolved by `a161c07f`.
 
 ---
 
