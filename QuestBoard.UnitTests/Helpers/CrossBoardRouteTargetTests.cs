@@ -141,7 +141,10 @@ public class CrossBoardRouteTargetTests
     [Fact]
     public void TryFromLocalUrl_UnregisteredControllerActionPair_ResolvesToNothing()
     {
-        var found = CrossBoardRouteTarget.TryFromLocalUrl("/Quest/Manage/42", out var target);
+        // A real route that the registry deliberately leaves out: the image subresources arrive
+        // as a non-document fetch and are excluded on purpose, so this stays a meaningful example
+        // of "exists in the application, absent from the table" rather than a made-up path.
+        var found = CrossBoardRouteTarget.TryFromLocalUrl("/Characters/GetProfilePicture/42", out var target);
 
         found.Should().BeFalse();
         target.Should().BeNull();
