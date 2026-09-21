@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-09-21T21:36:54.020Z",
+  "phase": "87",
+  "phase_name": "cross-board-deep-link-recovery",
+  "phase_dir": ".planning/phases/87-cross-board-deep-link-recovery",
+  "plan": 4,
+  "task": 3,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "87-01 tracer slice on one route", "status": "done", "commit": "933a77ca"},
+    {"id": 2, "name": "87-02 widen to all 18 routes behind allowlist test", "status": "done", "commit": "ee7185bb"},
+    {"id": 3, "name": "87-03 group picker deep-link skip", "status": "done", "commit": "963c4607"},
+    {"id": 4, "name": "87-04 oracle parity + authorization boundary + mobile banner fixes", "status": "done", "commit": "f87ffb5b"},
+    {"id": 5, "name": "All three waves merged, worktrees removed, tracking committed", "status": "done", "commit": "8d6fa8dc"},
+    {"id": 6, "name": "Security gate — auditor returned SECURED, 18/18 threats closed, threats_open: 0; 87-SECURITY.md written and committed", "status": "done", "commit": "4941b2fc"}
+  ],
+  "remaining_tasks": [
+    {"id": 6, "name": "Capture code-review result into 87-REVIEW.md (agent was still running at pause)", "status": "in_progress"},
+    {"id": 8, "name": "Regression gate (execute-phase/steps/regression-gate.md)", "status": "not_started"},
+    {"id": 9, "name": "verify_phase_goal — spawn gsd-verifier, produce 87-VERIFICATION.md", "status": "not_started"},
+    {"id": 10, "name": "update_roadmap — gsd-tools query phase.complete 87", "status": "not_started"},
+    {"id": 11, "name": "close_phase_todos, update_project_md, offer_next", "status": "not_started"}
+  ],
+  "blockers": [
+    {
+      "description": "The code-review agent was still running when work paused. It writes 87-REVIEW.md itself, so its artifact survives the pause — but if the session ended mid-run, no REVIEW.md will exist and the review must be re-run.",
+      "type": "technical",
+      "workaround": "Check for 87-REVIEW.md in the phase directory. If absent, re-run /gsd-code-review 87. Advisory only — code review never blocks phase completion."
+    }
+  ],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {
+      "action": "Check the board-switch banner on a real phone",
+      "context": "87-04's human verification was approved conditionally. The mobile check was done with a Pixel 8 user-agent override at 375x812, not a physical device.",
+      "blocking": false
+    },
+    {
+      "action": "Use the app across two boards for a few minutes and judge whether the automatic switch removes friction or is more surprising than the old 404",
+      "context": "Check 4 of 87-04's human verification. Answered provisionally: 'I'll approve it for now. If there's anything broken, I'll let you know.'",
+      "blocking": false
+    },
+    {
+      "action": "Exercise the picker-skip path with a NON-SuperAdmin account that belongs to two or more boards",
+      "context": "The skip branch is gated on !isSuperAdmin, so it is structurally unreachable from the operator's own account. Accepted on 87-03's 9 integration facts instead of a live browser test.",
+      "blocking": false
+    },
+    {
+      "action": "Decide whether to stop the mssql-dev container",
+      "context": "Started this session from ~/Documents/SQLServer/docker-compose.yml with the operator's explicit permission. Left running deliberately. Named volume mssql-data, so data persists either way.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Keep D-12 — a SuperAdmin following a deep link to a board they are not a member of gets the same 404 as anyone else",
+      "rationale": "Operator hit it live and questioned it, then reaffirmed after review. A SuperAdmin can already reach any board by picking it explicitly, so the 404 costs a click rather than a capability; auto-repointing by an attacker-influenceable link would be unbounded across every board for the highest-authority account; and a role branch would break the structural no-branch parity that D-13 and 87-04's tests depend on.",
+      "phase": "87"
+    },
+    {
+      "decision": "Fix the three mobile banner defects inside 87-04 rather than deferring to gap closure",
+      "rationale": "Operator chose 'Fix now'. Contained CSS plus one button class, no logic touched, and the executor still held its worktree.",
+      "phase": "87"
+    },
+    {
+      "decision": "Accept 87-03's integration coverage for the picker-skip path instead of a live browser check",
+      "rationale": "Operator chose it. The path cannot be exercised from a SuperAdmin account at all, and 9 integration facts cover it with non-SuperAdmin test clients.",
+      "phase": "87"
+    },
+    {
+      "decision": "Spawn the security auditor rather than take secure-phase's threats_open:0 short-circuit",
+      "rationale": "The short-circuit requires asserting threats_open is 0, which cannot be claimed without evidence the mitigations exist. Taking it would have rubber-stamped the phase's own claims about a deliberate tenancy-filter bypass.",
+      "phase": "87"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Security is done (87-SECURITY.md, threats_open: 0). Check whether 87-REVIEW.md landed; if absent, re-run /gsd-code-review 87 (advisory, non-blocking). Then continue execute-phase's tail in order: regression gate, verify_phase_goal (spawn gsd-verifier, produce 87-VERIFICATION.md), phase.complete.",
+  "context_notes": "Phase 87 execution is functionally done — all 4 plans merged, build clean, 692 unit + 932 integration passing on the merged tree. What remains is the gate tail, not implementation. Two things distinguish this phase from a routine one: the post-merge gate caught a genuine cross-plan break that both executors passed in isolation, and human verification found three real mobile defects that the whole automated suite missed. Both are arguments for not trusting per-worktree self-checks. The operator's approval is explicitly conditional."
+}
