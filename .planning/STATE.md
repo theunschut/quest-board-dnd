@@ -1,21 +1,21 @@
 ---
-gsd_state_version: "1.0"
+gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 87
-current_phase_name: Cross-Board Deep Link Recovery
-status: completed
+current_phase_name: cross-board-deep-link-recovery
+status: executing
 stopped_at: Phase 87 context gathered
-last_updated: "2026-09-21T10:12:09.321Z"
-last_activity: 2026-09-20
-last_activity_desc: Phase 86 execution started
-state_head: 4740bfb1c26caeaedc2958dc717a2189a6fca8d7
+last_updated: "2026-09-21T18:47:08.434Z"
+last_activity: 2026-09-21
+last_activity_desc: Phase 87 execution started
 progress:
   total_phases: 16
   completed_phases: 13
   total_plans: 108
   completed_plans: 95
-  percent: 75
+  percent: 81
+state_head: 4740bfb1c26caeaedc2958dc717a2189a6fca8d7
 ---
 
 # Project State
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 86 — viewer-local-times-and-correct-job-scheduling
+**Current focus:** Phase 87 — cross-board-deep-link-recovery
 
 ## Current Position
 
-Phase: 87 (Cross-Board Deep Link Recovery) — READY TO EXECUTE
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-09-20 — Phase 86 complete
+Phase: 87 (cross-board-deep-link-recovery) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 87
+Last activity: 2026-09-21 — Phase 87 execution started
 
 Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
 
