@@ -7,5 +7,19 @@ namespace QuestBoard.Domain.Enums;
 /// </summary>
 public enum CrossBoardLookupKind
 {
-    Quest
+    Quest,
+    Event,
+    Character,
+    Contact,
+    ShopItem,
+    EventSeries,
+    ContactCategory,
+
+    /// <summary>
+    /// Resolved through <see cref="Interfaces.ICrossBoardLinkRepository.ResolveSharedBoardIdsForUserAsync"/>,
+    /// never through <see cref="Interfaces.ICrossBoardLinkRepository.ResolveBoardIdAsync"/> --
+    /// the id here is a target user, not an entity, and the ambiguity rule needs the whole set
+    /// of shared boards rather than the first match.
+    /// </summary>
+    BoardMember
 }
