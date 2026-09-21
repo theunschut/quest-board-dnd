@@ -254,7 +254,7 @@ public class CrossBoardDeepLinkMiddlewareTests(CrossBoardWebApplicationFactory f
         nonMemberBody.Should().Be(nonexistentBody);
     }
 
-    // The structural guarantee D-04 buys by dropping the return path from the switch-back form:
+    // The structural guarantee bought by dropping the return path from the switch-back form:
     // clicking it can never land back on the deep link that triggered the original switch.
     [Fact]
     public async Task SwitchBack_NeverReturnsToTheDeepLinkThatTriggeredTheSwitch()
