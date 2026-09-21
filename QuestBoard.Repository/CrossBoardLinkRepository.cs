@@ -20,6 +20,19 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
         return kind switch
         {
             CrossBoardLookupKind.Quest => await ResolveQuestBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.Event => await ResolveEventBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.Character => await ResolveCharacterBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.Contact => await ResolveContactBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.ShopItem => await ResolveShopItemBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.EventSeries => await ResolveEventSeriesBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.ContactCategory => await ResolveContactCategoryBoardIdAsync(id, memberGroupIds, token),
+            // BoardMember has a different answer shape -- the id is a target user, not an
+            // entity, and the ambiguity rule needs the whole set of shared boards, not the
+            // first match. A caller that reaches for this method with BoardMember anyway has
+            // the wrong method, and gets a loud failure instead of a plausible-looking wrong
+            // answer -- use ResolveSharedBoardIdsForUserAsync instead.
+            CrossBoardLookupKind.BoardMember => throw new InvalidOperationException(
+                $"{nameof(CrossBoardLookupKind.BoardMember)} is resolved through {nameof(ResolveSharedBoardIdsForUserAsync)}, not {nameof(ResolveBoardIdAsync)}."),
             // A lookup kind with no projection here is a build-time-visible mistake, not a
             // silent "no board found" -- the two would otherwise be indistinguishable from a
             // legitimate non-member miss, which is exactly the ambiguity this repository must
@@ -47,10 +60,66 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
     // no entity, no title, no navigation property, ever.
     private async Task<int?> ResolveQuestBoardIdAsync(int questId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
     {
+        // Also serves the quest log's routes -- the quest log has no table of its own, and
+        // QuestLogController resolves everything through the quest service.
         return await dbContext.Quests
             .IgnoreQueryFilters()
             .Where(q => q.Id == questId && memberGroupIds.Contains(q.GroupId))
             .Select(q => (int?)q.GroupId)
+            .FirstOrDefaultAsync(token);
+    }
+
+    private async Task<int?> ResolveEventBoardIdAsync(int eventId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    {
+        return await dbContext.Events
+            .IgnoreQueryFilters()
+            .Where(e => e.Id == eventId && memberGroupIds.Contains(e.GroupId))
+            .Select(e => (int?)e.GroupId)
+            .FirstOrDefaultAsync(token);
+    }
+
+    private async Task<int?> ResolveCharacterBoardIdAsync(int characterId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    {
+        return await dbContext.Characters
+            .IgnoreQueryFilters()
+            .Where(c => c.Id == characterId && memberGroupIds.Contains(c.GroupId))
+            .Select(c => (int?)c.GroupId)
+            .FirstOrDefaultAsync(token);
+    }
+
+    private async Task<int?> ResolveContactBoardIdAsync(int contactId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    {
+        return await dbContext.Contacts
+            .IgnoreQueryFilters()
+            .Where(c => c.Id == contactId && memberGroupIds.Contains(c.GroupId))
+            .Select(c => (int?)c.GroupId)
+            .FirstOrDefaultAsync(token);
+    }
+
+    private async Task<int?> ResolveShopItemBoardIdAsync(int shopItemId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    {
+        return await dbContext.ShopItems
+            .IgnoreQueryFilters()
+            .Where(s => s.Id == shopItemId && memberGroupIds.Contains(s.GroupId))
+            .Select(s => (int?)s.GroupId)
+            .FirstOrDefaultAsync(token);
+    }
+
+    private async Task<int?> ResolveEventSeriesBoardIdAsync(int eventSeriesId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    {
+        return await dbContext.EventSeries
+            .IgnoreQueryFilters()
+            .Where(es => es.Id == eventSeriesId && memberGroupIds.Contains(es.GroupId))
+            .Select(es => (int?)es.GroupId)
+            .FirstOrDefaultAsync(token);
+    }
+
+    private async Task<int?> ResolveContactCategoryBoardIdAsync(int contactCategoryId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    {
+        return await dbContext.ContactCategories
+            .IgnoreQueryFilters()
+            .Where(cc => cc.Id == contactCategoryId && memberGroupIds.Contains(cc.GroupId))
+            .Select(cc => (int?)cc.GroupId)
             .FirstOrDefaultAsync(token);
     }
 }
