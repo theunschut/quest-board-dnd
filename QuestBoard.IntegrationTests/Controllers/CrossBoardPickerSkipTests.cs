@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
@@ -285,5 +286,96 @@ public class CrossBoardPickerSkipTests(CrossBoardWebApplicationFactory factory)
         landed.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().Contain("PickerSkipSingleBoardQuest");
+    }
+
+    // The emailed-link case, followed the whole way: a link from an email opens in a browser
+    // that is already signed in, with no board active. Nothing about the link itself has to
+    // change for this to work -- which is the whole reason links already sitting in someone's
+    // mailbox are covered by this phase.
+    [Fact]
+    public async Task AuthenticatedViewerWithNoActiveBoard_FollowingEmailedLink_ReachesBoardBQuestThroughThreeHops()
+    {
+        var (client, _, boardBQuestId, _) = await SeedTwoBoardViewerAsync("chain");
+        var questUrl = $"/Quest/Details/{boardBQuestId}";
+
+        // Hop 1 — the board-session gate redirects the board-less request to the picker,
+        // preserving the original path in the return URL.
+        var firstHop = await client.GetAsync(questUrl, TestContext.Current.CancellationToken);
+        firstHop.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var firstLocation = firstHop.Headers.Location?.ToString() ?? string.Empty;
+        firstLocation.Should().Contain("/groups/pick");
+        var returnUrl = Uri.UnescapeDataString(firstLocation.Split("returnUrl=")[1]);
+        returnUrl.Should().Be(questUrl);
+
+        // Hop 2 — the picker resolves the return URL itself and redirects straight to the quest;
+        // no picker page is ever rendered in between.
+        var secondHop = await client.GetAsync(firstLocation, TestContext.Current.CancellationToken);
+        secondHop.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var secondLocation = secondHop.Headers.Location?.ToString() ?? string.Empty;
+        secondLocation.Should().Be(questUrl);
+
+        // Hop 3 — the quest page itself, board switched, banner rendered.
+        var thirdHop = await client.GetAsync(secondLocation, TestContext.Current.CancellationToken);
+        thirdHop.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await thirdHop.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("PickerSkipBoardBQuestchain");
+        body.Should().Contain("board-switch-toast");
+    }
+
+    // The login hop, asserted only where this suite can follow it. The shared harness makes a
+    // test scheme the default authenticate scheme (see WebApplicationFactoryBase), so a
+    // cookie-authenticated request issued after a real login is not something this client can
+    // carry onward -- attempting to follow the redirect below as the now-logged-in user would not
+    // exercise the code path it appears to. Everything from the picker onwards is instead proven
+    // by the authenticated-chain fact above, which drives a client the test harness already
+    // recognises as signed in.
+    [Fact]
+    public async Task SuccessfulLoginWithReturnUrl_RedirectsToGroupPickerPreservingReturnUrl()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var email = $"pickerskiplogin_{uniqueSuffix}@example.com";
+        var password = "PickerSkipLogin123!";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+            var user = new UserEntity { UserName = email, Email = email, EmailConfirmed = true, Name = "Picker Skip Login User" };
+            var createResult = await userManager.CreateAsync(user, password);
+            createResult.Succeeded.Should().BeTrue();
+        }
+
+        var returnUrl = "/Quest/Details/1";
+        var client = factory.CreateNonRedirectingClient();
+
+        // Drive a real login POST using this suite's established antiforgery idiom: GET the
+        // login page carrying the return URL, extract the token and cookie, attach the cookie,
+        // then post the form to a non-redirecting client.
+        var getResponse = await client.GetAsync($"/Account/Login?returnUrl={Uri.EscapeDataString(returnUrl)}", TestContext.Current.CancellationToken);
+        var (token, cookieValue) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(getResponse);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            client.DefaultRequestHeaders.Add("Cookie", $".AspNetCore.Antiforgery={cookieValue}");
+        }
+
+        var formContent = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(
+            new Dictionary<string, string>
+            {
+                ["Email"] = email,
+                ["Password"] = password,
+                ["RememberMe"] = "false"
+            },
+            token);
+
+        // Act
+        var response = await client.PostAsync(
+            $"/Account/Login?returnUrl={Uri.EscapeDataString(returnUrl)}", formContent, TestContext.Current.CancellationToken);
+
+        // Assert — a successful login redirects to the group picker, carrying the return URL
+        // forward exactly as it does today; nothing about this hop changed for this phase.
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var location = response.Headers.Location?.ToString() ?? string.Empty;
+        location.Should().Contain("GroupPicker");
+        Uri.UnescapeDataString(location).Should().Contain(returnUrl);
     }
 }
