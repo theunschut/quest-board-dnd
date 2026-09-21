@@ -31,6 +31,7 @@ public static class ServiceExtensions
         services.AddScoped<IEventSeriesRepository, EventSeriesRepository>();
         services.AddScoped<IEventSignupRepository, EventSignupRepository>();
         services.AddScoped<ICalendarSubscriptionRepository, CalendarSubscriptionRepository>();
+        services.AddScoped<ICrossBoardLinkRepository, CrossBoardLinkRepository>();
 
         // Register IdentityService (wraps UserManager/SignInManager; depends on UserEntity)
         services.AddScoped<IIdentityService, IdentityService>();
