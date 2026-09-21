@@ -93,7 +93,9 @@
                         @* No returnUrl field -- the page the viewer is on belongs to the board they
                            are being moved away from, so sending them back to it would immediately
                            re-trigger the switch and bounce them forward again. *@
-                        <button type="submit" class="btn btn-sm btn-outline-light">
+                        @* A filled button, not outline -- see modern-card.css for why and for the
+                           contrast ratio this relies on against this toast's own background. *@
+                        <button type="submit" class="btn btn-sm btn-dark">
                             Switch back to @TempData[TempDataKeys.BoardSwitchPreviousGroupName]
                         </button>
                     </form>

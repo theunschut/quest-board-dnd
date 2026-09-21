@@ -395,3 +395,30 @@
     border-radius: 2px;
 }
 
+/* The board-switch banner (_Toasts.cshtml) is the only toast in that shared partial that does
+   not auto-dismiss -- it has to stay up until the viewer reads and acts on it, which means it
+   can sit over other page content indefinitely instead of for a few seconds. Bootstrap's default
+   toast background is only 85% opaque, which is unnoticeable on a toast that is gone in five
+   seconds but lets whatever card is underneath bleed through for as long as this one is visible.
+   Shared by both layouts for the same reason every other rule in this file is: the mobile layout
+   loads mobile.css instead of site.css, and this partial has no mobile twin to carry a duplicate. */
+.board-switch-toast {
+    --bs-toast-bg: #ffffff;
+}
+
+/* btn-outline-light (white text, white border) assumes a dark background underneath it. Against
+   this toast's own opaque body that pairing is close to unreadable, and outline buttons are off
+   house style here regardless (see ui-guidelines.md). The button is styled btn-dark in the view;
+   white text on #212529 measures roughly 15:1, comfortably clearing both the 4.5:1 bar for normal
+   text and the 3:1 bar for a UI component boundary, against the white background set above. */
+
+/* On a narrow viewport the fixed navbar occupies roughly its top 64px, and this toast is the one
+   toast in the partial that can still be sitting there when a viewer reaches for it -- every other
+   toast in the partial auto-dismisses long before that could matter. Nudging this one down clears
+   the navbar without touching the shared toast-container or any other toast's position. */
+@media (max-width: 767.98px) {
+    .board-switch-toast {
+        margin-top: 56px;
+    }
+}
+
