@@ -2,14 +2,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
-using QuestBoard.Service.Constants;
+using QuestBoard.Service.Services;
 using QuestBoard.Service.ViewModels.GroupPickerViewModels;
 using System.Security.Claims;
 
 namespace QuestBoard.Service.Controllers;
 
 [Authorize]
-public class GroupPickerController(IGroupService groupService, IUserService userService) : Controller
+public class GroupPickerController(IGroupService groupService, IUserService userService, IActiveBoardSwitcher activeBoardSwitcher) : Controller
 {
     [HttpGet]
     [Route("groups/pick")]
@@ -30,9 +30,7 @@ public class GroupPickerController(IGroupService groupService, IUserService user
 
         if (!isSuperAdmin && groups.Count == 1)
         {
-            HttpContext.Session.SetInt32(SessionKeys.ActiveGroupId, groups[0].Id);
-            HttpContext.Session.SetString(SessionKeys.ActiveGroupName, groups[0].Name);
-            HttpContext.Session.SetString(SessionKeys.ActiveGroupValidatedAtUtc, DateTime.UtcNow.ToString("O"));
+            await activeBoardSwitcher.SwitchAsync(HttpContext, groups[0].Id, groups[0].Name);
             return RedirectToLocal(returnUrl);
         }
 
@@ -54,9 +52,7 @@ public class GroupPickerController(IGroupService groupService, IUserService user
             if (role == null) return NotFound();
         }
 
-        HttpContext.Session.SetInt32(SessionKeys.ActiveGroupId, group.Id);
-        HttpContext.Session.SetString(SessionKeys.ActiveGroupName, group.Name);
-        HttpContext.Session.SetString(SessionKeys.ActiveGroupValidatedAtUtc, DateTime.UtcNow.ToString("O"));
+        await activeBoardSwitcher.SwitchAsync(HttpContext, group.Id, group.Name);
         return RedirectToLocal(returnUrl);
     }
 

@@ -245,6 +245,10 @@ builder.Services.AddScoped<ActiveGroupContextService>();
 builder.Services.AddScoped<IActiveGroupContext>(sp =>
     sp.GetRequiredService<ActiveGroupContextService>());
 
+// The one place permitted to write the three active-board session keys -- registered right next
+// to IActiveGroupContext since both are session-facing.
+builder.Services.AddScoped<IActiveBoardSwitcher, ActiveBoardSwitcherService>();
+
 // IBoardTypeResolver is intentionally separate from IActiveGroupContext — it depends on
 // IGroupService, whose repository chain depends on QuestBoardContext, which itself depends
 // on IActiveGroupContext. Resolving BoardType via ActiveGroupContextService would create a
@@ -321,6 +325,11 @@ app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
 app.UseMiddleware<GroupSessionMiddleware>();
+// Runs before authorization, not merely before rate limiting: a viewer who is a Player on one
+// board and a Dungeon Master on another must have their policy check judged against the board
+// the request just switched to, and the authorization handlers read the active board live -- so
+// the switch has to have already happened.
+app.UseMiddleware<CrossBoardDeepLinkMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
 

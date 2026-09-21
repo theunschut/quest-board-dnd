@@ -1,3 +1,4 @@
+@using QuestBoard.Service.Constants
 @* Shared toast-notification partial. Renders Success/Error/Warning/Info flash messages
    plus the bespoke Shop GoldReceived toast from TempData. Rendered from every layout
    so any view can surface a flash message without its own local toast markup. *@
@@ -71,6 +72,32 @@
                         <small class="text-muted">@TempData["Success"]</small>
                     </div>
                 </div>
+            </div>
+        </div>
+    }
+    @if (TempData[TempDataKeys.BoardSwitchTargetName] != null)
+    {
+        <div class="toast show board-switch-toast" role="alert" data-bs-autohide="false">
+            <div class="toast-header bg-info text-white">
+                <i class="fas fa-right-left me-2"></i>
+                <strong class="me-auto">Switched board</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                Switched to <strong>@TempData[TempDataKeys.BoardSwitchTargetName]</strong> to open this.
+                @if (TempData[TempDataKeys.BoardSwitchPreviousGroupId] != null)
+                {
+                    <form asp-controller="GroupPicker" asp-action="SelectGroup" method="post" class="mt-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="groupId" value="@TempData[TempDataKeys.BoardSwitchPreviousGroupId]" />
+                        @* No returnUrl field -- the page the viewer is on belongs to the board they
+                           are being moved away from, so sending them back to it would immediately
+                           re-trigger the switch and bounce them forward again. *@
+                        <button type="submit" class="btn btn-sm btn-outline-light">
+                            Switch back to @TempData[TempDataKeys.BoardSwitchPreviousGroupName]
+                        </button>
+                    </form>
+                }
             </div>
         </div>
     }
