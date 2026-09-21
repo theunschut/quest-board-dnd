@@ -1022,7 +1022,7 @@ Plans:
 ### Phase 87: Cross-Board Deep Link Recovery
 
 **Goal:** A member who follows a link to a quest, event, character or contact on a board they belong to lands on that page, on that board -- instead of the error they get today because a different board happens to be selected in their session.
-**Requirements**: TBD -- no REQ-IDs assigned yet. The discuss pass decides whether this needs rows in `.planning/REQUIREMENTS.md` or runs on locked decision IDs the way Phase 86 did.
+**Requirements**: No REQ-IDs. Settled in the discuss pass -- this phase runs on the locked `D-NN` decision IDs in `87-CONTEXT.md`, the way Phase 86 did. The decisions are implementation choices about a single recovery path rather than independently verifiable user-facing capabilities, so REQUIREMENTS.md rows would restate the same content one level vaguer.
 **Depends on:** No hard dependency. Phase 82 built the only cross-board switch UX that exists today -- the Agenda's confirm-then-switch modal -- and this phase generalises it, so that work is a prerequisite in practice and already shipped.
 **Plans:** 0 plans
 
