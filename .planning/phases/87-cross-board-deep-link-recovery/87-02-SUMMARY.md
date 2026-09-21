@@ -139,3 +139,6 @@ None beyond the two auto-fixed seeding bugs above. `dotnet build` (0 new warning
 *Phase: 87-cross-board-deep-link-recovery*
 *Plan: 02*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+All created/modified files verified present on disk; all 4 commits (2e0ae5b7, df72c660, a87db17f, 5196a6ba) verified in git log.
