@@ -27,4 +27,59 @@ internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id)
         target = null;
         return false;
     }
+
+    // A second, narrower gate than the caller's own local-URL check -- it does not replace that
+    // check, it simply refuses to reason about any shape it does not recognise. The value is not
+    // URL-decoded here: it arrives model-bound and already decoded by ASP.NET Core, so decoding it
+    // a second time is exactly how an encoded separator (e.g. "%2F") could turn into a real path
+    // separator that was never present in the original URL.
+    internal static bool TryFromLocalUrl(string? url, out CrossBoardRouteTarget? target)
+    {
+        target = null;
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        // Only a single-slash site-relative path is accepted. An absolute URL never starts with
+        // '/' at all; "//host/..." is protocol-relative; "/\host/..." is a backslash-prefixed
+        // variant some browsers still resolve as a host. All three resolve to nothing here.
+        if (url[0] != '/' || (url.Length > 1 && (url[1] == '/' || url[1] == '\\')))
+        {
+            return false;
+        }
+
+        // A query string or fragment makes the value unparseable as a plain path, so it is cut
+        // off rather than treated as part of the route -- the caller only cares what page the
+        // link points at, not what it was carrying alongside that.
+        var path = url;
+        var cutIndex = path.IndexOfAny(['?', '#']);
+        if (cutIndex >= 0)
+        {
+            path = path[..cutIndex];
+        }
+
+        // Exactly three non-empty segments: controller, action, id. This application's default
+        // route pattern never produces anything shorter (a list route like the quest index has
+        // one segment) or longer (a deeper path is not a shape the default route produces).
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length != 3)
+        {
+            return false;
+        }
+
+        if (!int.TryParse(segments[2], out var id))
+        {
+            return false;
+        }
+
+        if (!CrossBoardLinkRegistry.TryGetLookupKind(segments[0], segments[1], out var kind))
+        {
+            return false;
+        }
+
+        target = new CrossBoardRouteTarget(kind, id);
+        return true;
+    }
 }
