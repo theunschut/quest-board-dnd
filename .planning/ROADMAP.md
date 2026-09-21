@@ -1019,6 +1019,41 @@ Plans:
 
 - [x] 86-06-PLAN.md — Regression guards (wall-clock unmoved, calendar feed untouched, ambient-clock invariant), tech-debt correction, human verification (wave 3)
 
+### Phase 87: Cross-Board Deep Link Recovery
+
+**Goal:** A member who follows a link to a quest, event, character or contact on a board they belong to lands on that page, on that board -- instead of the error they get today because a different board happens to be selected in their session.
+**Requirements**: TBD -- no REQ-IDs assigned yet. The discuss pass decides whether this needs rows in `.planning/REQUIREMENTS.md` or runs on locked decision IDs the way Phase 86 did.
+**Depends on:** No hard dependency. Phase 82 built the only cross-board switch UX that exists today -- the Agenda's confirm-then-switch modal -- and this phase generalises it, so that work is a prerequisite in practice and already shipped.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-09-21 from live use across two boards. Following a link that points at another board's page returns an error rather than the page, and the objection is that the restriction lands on the wrong person: "They have access to the board, so why restrict it?" This is deliberately a revision of a decision the operator remembers making -- strict session-scoped tenancy -- not a bug report against it. The complaint is about working in multiple boards being a pain, so "fewer clicks" is part of the goal, not a nice-to-have.
+
+**What actually happens today.** `IActiveGroupContext.ActiveGroupId` reads a single board id out of Session (`ActiveGroupContextService`), and `QuestBoardContext` keys 18 global query filters off it. A read for an entity on any other board therefore returns nothing, the controller cannot tell "does not exist" apart from "exists on your other board", and it answers `NotFound()` -- see `QuestController.Edit` and every sibling action shaped like it. The 404 is a correct consequence of the filter. What is wrong is the *response to a legitimate member*, and nothing in the current design carries enough information to answer differently.
+
+**The security property that must survive.** A viewer who is not a member of the target board must keep getting exactly what they get today, with no new signal. In particular, a recovery flow must not become an existence oracle: offering "switch to Board 2?" for a board the viewer does not belong to, while a nonexistent board returns a flat 404, leaks both board membership and board existence. Whatever this phase adds has to produce the same observable output in both cases.
+
+**The pattern to generalise, not invent.** Phase 82's Agenda already solves this once: `Views/Agenda/Index.cshtml` renders a confirm-then-switch modal that POSTs `GroupPicker.SelectGroup` with a `returnUrl`, and `SelectGroup` re-verifies membership server-side before it touches Session. That is the trusted seam, and it already carries the warning text explaining that switching changes what the viewer sees everywhere else. The open work is reaching that seam from an arbitrary deep link, rather than only from a page built knowing the target board up front.
+
+**Open questions for the discuss pass:**
+
+- **Auto-switch or confirm-then-switch.** Switching silently is the fewest clicks and the biggest surprise -- it repoints quests, shop, gold, characters and navigation, which is exactly what the Agenda modal warns about before doing it. Confirming keeps the warning but adds a click to every cross-board link, which is the friction the operator is complaining about.
+- **Where the resolution lives.** Middleware ahead of the query filters, a per-controller resolution helper, or board-qualified routes (`/b/{board}/quest/42`) that make the target explicit instead of inferred. The third removes the guessing entirely but touches every URL the app emits -- including links already sitting in somebody's mail.
+- **How the target board gets identified at all.** Current URLs carry an entity id and no board, so something has to resolve the entity with the filter off. That means a deliberate, narrow, audited escape hatch from the 18 filters and an answer to who may call it.
+- **Whether writes participate.** A POST arriving for another board cannot be answered with a redirect -- `GroupSessionMiddleware` already documents why a 302 re-issues as a GET and drops the body. The 409 it returns today may simply be the right answer for non-idempotent requests, leaving this phase to GET/HEAD.
+- **Whether emails and the calendar feed are in scope.** Those are the links most likely to be opened days later against a stale session, which makes them the strongest argument for the phase -- and also the ones that cannot be re-rendered after the fact.
+
+**Risks this phase must actively avoid:**
+
+- **Weakening the 18 query filters.** Any mechanism that reads across boards is a hole in the tenancy boundary by construction. It has to be one narrow call path with its own tests, not an `IgnoreQueryFilters()` that spreads by copy-paste.
+- **Becoming a membership oracle.** Covered above; it is the most likely way to get this phase wrong while appearing to work.
+- **Repointing a session as a side effect of a GET.** A link merely fetched -- a preview, a crawler, a browser prefetch -- must not silently change which board the viewer is on.
+- **Blurring into the no-active-board path.** `GroupSessionMiddleware`'s null-`ActiveGroupId` gate and its `returnUrl` round-trip are separately tested. A wrong-board path added beside it must stay distinguishable from a missing-board one.
+- **Missing the mobile twins.** Any new confirm surface needs its `.Mobile.cshtml` twin, and those are user-agent-selected rather than viewport-selected, so devtools emulation never exercises them. Shipping one layout and not the other is a recorded failure mode here (Phases 43, 54, 72).
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 87 to break down)
+
 ## Backlog
 
 Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
@@ -1047,6 +1082,3 @@ Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-b
 Plans:
 
 - [ ] TBD (promote with /gsd-review-backlog when ready)
-
----
-*Roadmap created: 2026-08-25*
