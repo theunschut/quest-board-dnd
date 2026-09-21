@@ -1024,7 +1024,7 @@ Plans:
 **Goal:** A member who follows a link to a quest, event, character or contact on a board they belong to lands on that page, on that board -- instead of the error they get today because a different board happens to be selected in their session.
 **Requirements**: No REQ-IDs. Settled in the discuss pass -- this phase runs on the locked `D-NN` decision IDs in `87-CONTEXT.md`, the way Phase 86 did. The decisions are implementation choices about a single recovery path rather than independently verifiable user-facing capabilities, so REQUIREMENTS.md rows would restate the same content one level vaguer.
 **Depends on:** No hard dependency. Phase 82 built the only cross-board switch UX that exists today -- the Agenda's confirm-then-switch modal -- and this phase generalises it, so that work is a prerequisite in practice and already shipped.
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 **Origin:** raised by the operator on 2026-09-21 from live use across two boards. Following a link that points at another board's page returns an error rather than the page, and the objection is that the restriction lands on the wrong person: "They have access to the board, so why restrict it?" This is deliberately a revision of a decision the operator remembers making -- strict session-scoped tenancy -- not a bug report against it. The complaint is about working in multiple boards being a pain, so "fewer clicks" is part of the goal, not a nice-to-have.
 
@@ -1052,7 +1052,10 @@ Plans:
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 87 to break down)
+- [ ] 87-01-PLAN.md — Tracer: one cross-board deep link end to end (registry, filter-bypassing lookup, shared switcher, middleware, banner)
+- [ ] 87-02-PLAN.md — Widen to all 18 routes, with the IgnoreQueryFilters allowlist test landing first
+- [ ] 87-03-PLAN.md — Skip the group picker when the return URL already names one of the viewer’s boards
+- [ ] 87-04-PLAN.md — Oracle parity and authorization-boundary proofs, then blocking human verification
 
 ## Backlog
 
