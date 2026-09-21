@@ -1051,10 +1051,17 @@ Plans:
 - **Missing the mobile twins.** Any new confirm surface needs its `.Mobile.cshtml` twin, and those are user-agent-selected rather than viewport-selected, so devtools emulation never exercises them. Shipping one layout and not the other is a recorded failure mode here (Phases 43, 54, 72).
 
 Plans:
+**Wave 1**
 
 - [ ] 87-01-PLAN.md — Tracer: one cross-board deep link end to end (registry, filter-bypassing lookup, shared switcher, middleware, banner)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 87-02-PLAN.md — Widen to all 18 routes, with the IgnoreQueryFilters allowlist test landing first
 - [ ] 87-03-PLAN.md — Skip the group picker when the return URL already names one of the viewer’s boards
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 87-04-PLAN.md — Oracle parity and authorization-boundary proofs, then blocking human verification
 
 ## Backlog

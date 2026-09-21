@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 86
+current_phase: 87
+current_phase_name: Cross-Board Deep Link Recovery
 status: completed
 stopped_at: Phase 87 context gathered
-last_updated: "2026-09-21T08:22:04.553Z"
+last_updated: "2026-09-21T10:12:09.321Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 86 execution started
-state_head: 2aca4b8d3599cdf8e3777ced73062116766ee7f8
+state_head: 4740bfb1c26caeaedc2958dc717a2189a6fca8d7
 progress:
   total_phases: 16
   completed_phases: 13
-  total_plans: 104
+  total_plans: 108
   completed_plans: 95
-  percent: 81
-current_phase_name: viewer-local-times-and-correct-job-scheduling
+  percent: 75
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
 
 ## Current Position
 
-Phase: 86
+Phase: 87 (Cross-Board Deep Link Recovery) — READY TO EXECUTE
 Plan: Not started
 Status: All phases complete
 Last activity: 2026-09-20 — Phase 86 complete

@@ -315,7 +315,7 @@ by email jobs.
 
 ### Claude's Discretion
 
-- **D-02's prefetch mechanism** — the operator deferred ("I don't know, leave it up to you. Whatever
+- **Prefetch mechanism for D-02** — the operator deferred ("I don't know, leave it up to you. Whatever
   is best"). The header set, the exact prefetch hints honoured, and the decision to make the failed
   gate fall through to today's 404 rather than to a confirm interstitial are all Claude's call.
   Research and planning may refine *which* headers are checked; they may not weaken the property

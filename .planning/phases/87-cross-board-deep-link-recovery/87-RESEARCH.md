@@ -723,9 +723,12 @@ Chromium blink-dev Intent-to-Ship thread; WebKit/Mozilla standards-positions thr
 decision, both are implementation-detail confirmations the planner should verify with a concrete test
 rather than a design change.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact TempData payload shape for the switch-back banner (previous board id/name).**
+Both questions below were settled during planning. Each carries its resolution inline; the binding
+record lives in `87-01-PLAN.md` `<recorded_choices>`.
+
+1. **RESOLVED — Exact TempData payload shape for the switch-back banner (previous board id/name).**
    - What we know: D-03 requires the banner to name both the target and the origin board and offer a
      switch-back control; D-04 requires the switch-back form to omit `returnUrl`.
    - What's unclear: Whether "previous board" means the board active *before* this middleware ran
@@ -737,8 +740,13 @@ rather than a design change.
      small scope decision the planner should settle explicitly rather than leaving implicit — it
      doesn't touch any locked D-NN decision, both variants are consistent with D-03's wording ("carrying
      a switch-back control" is stated in the context of D-01's wrong-board case specifically).
+   - **Resolution:** the partial branches on the presence of the previous-board id, not on which
+     caller set the banner. The middleware path always has a previous board (it only fires when
+     `ActiveGroupId` is non-null), so it writes all three TempData keys and the banner renders its
+     switch-back control. The picker-skip path (D-05) has no previous board, so it writes only the
+     target-name key and the partial renders the sentence without a switch-back form.
 
-2. **Where the closed registry (D-09) should live relative to `CrossBoardLinkRepository`.**
+2. **RESOLVED — Where the closed registry (D-09) should live relative to `CrossBoardLinkRepository`.**
    - What we know: D-09 wants "a closed `(controller, action)` registry"; D-11 wants "every cross-board
      id→board lookup lives in one dedicated repository class."
    - What's unclear: Whether the registry (the `(controller, action) → lookup kind` mapping) belongs in
@@ -751,6 +759,11 @@ rather than a design change.
      value the registry produces — this avoids the middleware needing repository access just to know
      whether a route is in scope, and keeps the repository itself string-free (matching this
      codebase's general preference for typed keys visible elsewhere, e.g. `SessionKeys`).
+   - **Resolution:** the recommendation was taken, with the layer made explicit. The
+     `(controller, action)` table lives in `QuestBoard.Service/Helpers/CrossBoardLinkRegistry.cs` —
+     Service layer, because controller and action names are Service-layer facts — and produces a
+     `CrossBoardLookupKind` enum value. The repository is keyed by that enum and never sees a route
+     string, so the middleware can early-exit on an unregistered route without touching the database.
 
 ## Environment Availability
 
