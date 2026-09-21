@@ -19,9 +19,9 @@ affects: []
 
 # Actuals (#2632)
 actuals:
-  tokens: 7300
+  tokens: 7600
   tasks: 2
-  commits: 2
+  commits: 3
 
 # Tech tracking
 tech-stack:
@@ -35,7 +35,9 @@ key-files:
   created:
     - QuestBoard.IntegrationTests/Security/CrossBoardOracleParityTests.cs
     - QuestBoard.IntegrationTests/Security/CrossBoardAuthorizationBoundaryTests.cs
-  modified: []
+  modified:
+    - QuestBoard.Service/Views/Shared/_Toasts.cshtml
+    - QuestBoard.Service/wwwroot/css/modern-card.css
 
 key-decisions:
   - "Family routes for the parity theory use each family's natural Details-style read route where one exists (Quest, Event, Character, Contact, ShopItem, EventSeries); ContactCategory and BoardMember have no registered Details route, so their one registered route (an Edit page, a Profile page) stands in for the family, per the plan's own recorded per-family (not per-route) scoping choice"
@@ -52,28 +54,29 @@ status: halted
 
 # Phase 87 Plan 4: Full-Width Oracle Parity and Authorization Boundary Summary
 
-**Both automated tasks land clean on the first test run -- 11 paired-parity facts across all 8 lookup-kind families (plus a SuperAdmin, a no-half-switch fact, and a bare-404 fact) and 4 authorization-boundary facts pinning the middleware's pre-authorization pipeline position in both directions -- with the plan's final task, a blocking human-verification checkpoint, deliberately left for the orchestrator to present.**
+**Both automated tasks land clean on the first test run -- 11 paired-parity facts across all 8 lookup-kind families (plus a SuperAdmin, a no-half-switch fact, and a bare-404 fact) and 4 authorization-boundary facts pinning the middleware's pre-authorization pipeline position in both directions -- and a first human-verification pass on the board-switch banner found and this pass fixed three real mobile defects (translucent background, navbar occlusion, a near-invisible switch-back button) without touching the shared toast partial's other toasts or its persistence behavior.**
 
 ## Performance
 
-- **Duration:** ~45 min
+- **Duration:** ~45 min (plus a mobile-defect fix pass after the first human-verify attempt)
 - **Started:** 2026-09-21 (worktree spawn)
-- **Completed:** 2026-09-21 (Tasks 1-2; Task 3 pending)
-- **Tasks:** 2 of 3 (Task 3 is a blocking human-verify checkpoint, not yet run)
-- **Files modified:** 2 (2 created, 0 modified)
+- **Completed:** 2026-09-21 (Tasks 1-2 and the mobile-defect fix; Task 3 re-checkpointed for human verification)
+- **Tasks:** 2 of 3 (Task 3 is a blocking human-verify checkpoint, not yet approved)
+- **Files modified:** 4 (2 created, 2 modified)
 
 ## Accomplishments
 
 - `CrossBoardOracleParityTests.cs` -- 11 facts proving the non-member response and the nonexistent-id response are indistinguishable in status code, response body, and every header not itself a function of wall-clock time or per-request tracing plumbing, across all 8 lookup-kind families (Quest, Event, Character, Contact, ShopItem, EventSeries, ContactCategory, BoardMember), for a SuperAdmin on the Quest family, and two structural facts: a failed resolution never leaves the board half-switched, and the unresolvable case is still the bare framework 404 (empty body, no rendered error page).
 - `CrossBoardAuthorizationBoundaryTests.cs` -- 4 facts proving the landed page's role check is judged against the board the request was just switched to: a Player-on-active/DungeonMaster-on-target viewer reaches the target board's quest edit page (and the board stays switched on a following request), while a DungeonMaster-on-active/Player-on-target viewer is refused that same page yet still ends up switched to the target board -- proving the resolver never consults roles. Two further facts show a cancelled event and a Draft-status shop item both resolve and switch the board even though each page's own rendering rules, not the resolver, are what withhold normal service.
 - Both test classes passed on the first full run against the real solution: `dotnet test QuestBoard.IntegrationTests --filter FullyQualifiedName~CrossBoardOracleParity` (11/11), `--filter FullyQualifiedName~CrossBoardAuthorizationBoundary` (4/4), the full `QuestBoard.UnitTests` suite (692/692), the full `QuestBoard.IntegrationTests` suite (932/932), and the solution-wide `dotnet test --filter "FullyQualifiedName~CrossBoard"` (82 unit + 63 integration, all green).
-- Task 3 -- the blocking human-verification checkpoint covering a real wrong-board link in a real browser, the signed-out emailed-link chain, and the banner on a real mobile user agent -- is deliberately not started. It requires a human, per this plan's `autonomous: false` frontmatter and the checkpoint's own `gate="blocking"` attribute.
+- Task 3 -- the blocking human-verification checkpoint covering a real wrong-board link in a real browser, the signed-out emailed-link chain, and the banner on a real mobile user agent -- was run once by a human against this worktree's app over a real SQL Server. Checks 1 and 2 (the wrong-board link, and the signed-out emailed-link chain) passed. Check 3 (the banner on a real mobile user agent) found three defects, all fixed in this pass and documented under Deviations below. The checkpoint has not yet been re-approved; it is not this executor's to self-approve.
 
 ## Task Commits
 
 1. **Task 1: Prove the non-member response and the nonexistent response are the same response, family by family** - `2f15fb48` (test)
 2. **Task 2: Prove the landed page is judged with the board it landed on** - `217bb864` (test)
-3. **Task 3: Human verification -- a real link, a real browser, a real phone** - not started (blocking checkpoint, awaiting the orchestrator/human)
+3. **Fix: opaque board-switch banner, mobile navbar clearance, readable switch-back button** - `409615eb` (fix) - see Deviations below
+4. **Task 3: Human verification -- a real link, a real browser, a real phone** - one round run (2 of 4 mobile checks passed, 3 defects found and fixed above); awaiting re-verification and sign-off, not started to completion
 
 **Plan metadata:** commit pending (this SUMMARY is the orchestrator's responsibility to commit centrally in this worktree-parallel run, per this plan's execution instructions)
 
@@ -81,6 +84,8 @@ status: halted
 
 - `QuestBoard.IntegrationTests/Security/CrossBoardOracleParityTests.cs` - paired non-member/nonexistent-id parity theory across all 8 lookup-kind families, a SuperAdmin fact, a no-half-switch fact, and a bare-404 fact
 - `QuestBoard.IntegrationTests/Security/CrossBoardAuthorizationBoundaryTests.cs` - both directions of the pre-authorization pipeline-position contract, plus the two resolves-but-page-refuses facts (cancelled event, Draft shop item)
+- `QuestBoard.Service/Views/Shared/_Toasts.cshtml` - the board-switch banner's switch-back button changed from `btn-outline-light` to `btn-dark`
+- `QuestBoard.Service/wwwroot/css/modern-card.css` - added `.board-switch-toast` rules: an opaque `--bs-toast-bg`, and a mobile-only (`max-width: 767.98px`) `margin-top` clearing the fixed navbar
 
 ## Decisions Made
 
@@ -91,23 +96,57 @@ status: halted
 
 ## Deviations from Plan
 
-None - plan executed exactly as written through Task 2. Both test files matched the plan's `<action>` specification on the first implementation, and every test passed on the first run with no seeding fixes required.
+Tasks 1 and 2 executed exactly as written, with no deviations. Task 3's first human-verification pass found three real mobile defects in the board-switch banner, all fixed in this pass (Rule 1 -- bugs found during the plan's own human-verify step, not scope creep: the banner is part of what this phase built in 87-01, and unreadable/unreachable UI on the phase's own core deliverable is squarely in scope).
+
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Board-switch banner was translucent, letting page content bleed through**
+- **Found during:** Task 3 (human verification), a real Android UA (Pixel 8, 375x812) against a real SQL Server
+- **Issue:** `.board-switch-toast` carries `data-bs-autohide="false"` (deliberately -- the viewer must not lose the banner before reading it) but otherwise inherited Bootstrap's default `--bs-toast-bg: rgba(255,255,255,0.85)`. Every other toast in the shared partial auto-dismisses in 5-6 seconds, so the same 85%-opacity default was never previously noticeable; this toast can sit on screen indefinitely, and on a phone it landed on top of a quest card with the card's title and status badge visibly bleeding through at 15%.
+- **Fix:** Added `.board-switch-toast { --bs-toast-bg: #ffffff; }` in `modern-card.css` -- opaque, scoped to this one toast, `.toast-container` and every other toast untouched.
+- **Files modified:** `QuestBoard.Service/wwwroot/css/modern-card.css`
+- **Verification:** `dotnet build` clean; full `QuestBoard.UnitTests` (692/692) and `QuestBoard.IntegrationTests` (932/932) suites green; the 11 oracle-parity and 4 authorization-boundary facts re-run individually, still green. Visual confirmation is the human's to make on re-verification -- this executor has no browser-preview tool in this environment.
+- **Committed in:** `409615eb`
+
+**2. [Rule 1 - Bug] Board-switch banner occluded the mobile navbar for as long as it stayed up**
+- **Found during:** Task 3 (human verification), same session
+- **Issue:** The toast occupies roughly the viewport's top 174px on a 375px-wide phone; the fixed mobile navbar occupies roughly its top 64px. `document.elementFromPoint` at the navbar's centre and at the hamburger toggler both resolved to the toast, not the navbar, for as long as the (deliberately persistent) banner was up.
+- **Fix:** Added a `@media (max-width: 767.98px)` rule giving `.board-switch-toast` a `margin-top: 56px` -- clearing the reported 64px navbar boundary with an 8px margin, scoped to this one toast, leaving the shared `.toast-container` and desktop layout (which does not match the media query) untouched.
+- **Files modified:** `QuestBoard.Service/wwwroot/css/modern-card.css`
+- **Verification:** Same build/test run as above. The media query only fires below Bootstrap's `md` breakpoint (768px), so desktop rendering is structurally unaffected.
+- **Committed in:** `409615eb`
+
+**3. [Rule 1 - Bug] Switch-back button was nearly invisible, and the fix for Defect 1 alone would have made it worse**
+- **Found during:** Task 3 (human verification), flagged after Defects 1 and 2, before the opacity fix landed
+- **Issue:** The switch-back `<button>` used `btn-outline-light` (white text, white border) -- a style meant for a dark background. Against the toast's *original* translucent body the darker page bleeding through accidentally gave the white text a little contrast; making the background opaque white (Defect 1's fix) would have taken that accidental contrast to exactly 1:1, i.e. invisible. `btn-outline-light` was also already off house style (`.claude/ui-guidelines.md` calls for filled buttons, not outline).
+- **Fix:** Changed the button to `btn-dark` in `_Toasts.cshtml` (filled, per house style). White text on `#212529` (Bootstrap's `--bs-dark`) measures approximately **15.4:1** by the WCAG relative-luminance formula -- comfortably clearing both the 4.5:1 bar for normal-size text and the 3:1 bar for a UI component boundary, against the new opaque white background from Defect 1's fix. `bg-info` (the header's own background, `#0dcaf0`) was deliberately avoided as a candidate: white text on it measures only about 1.9:1 and would not have cleared either bar.
+- **Files modified:** `QuestBoard.Service/Views/Shared/_Toasts.cshtml`
+- **Verification:** Same build/test run as above. The button's existing `btn-sm` sizing was left untouched -- it already measures 201x44px, meeting the 44px tap-target guideline.
+- **Committed in:** `409615eb`
+
+---
+
+**Total deviations:** 3 auto-fixed (all Rule 1 -- bugs in the phase's own UI found during its own human-verify step)
+**Impact on plan:** All three fixes are scoped entirely to `.board-switch-toast` and its own button; `.toast-container` and every other toast in the shared partial are untouched, `data-bs-autohide="false"` is untouched, and desktop rendering is untouched (the navbar-clearance rule only fires below the `md` breakpoint). No scope creep beyond the reported defects.
 
 ## Issues Encountered
 
-None. `dotnet build` succeeded with 0 new warnings (only the two pre-existing `NU1608` package-constraint warnings). No CLR flake was hit on this run; both `QuestBoard.UnitTests` (692/692) and `QuestBoard.IntegrationTests` (932/932) ran clean as full suites, and the solution-wide `dotnet test --filter "FullyQualifiedName~CrossBoard"` invocation also completed cleanly (82 unit + 63 integration, all passed) with no contention from a parallel worktree this time.
+Two things needed care during the fix, both resolved: (1) since `_Toasts.cshtml` has no `.Mobile.cshtml` twin and desktop/mobile layouts load separate stylesheets (`site.css` vs `mobile.css`), a fix living in either file alone would not reach the other layout -- resolved by adding the rules to `modern-card.css`, the file this codebase already uses for exactly this "shared by both layouts, no per-layout duplicate" situation (see its own file-level comment for `.modern-card`). (2) The opacity fix and the button-contrast fix are not independent -- making the background opaque without also fixing the button would have made the button's accidental low-contrast readability worse, not better; both were verified together in the same pass rather than one at a time.
+
+`dotnet build` succeeded with 0 new warnings (only the two pre-existing `NU1608` package-constraint warnings) on both the Task 1-2 run and the post-fix run. No CLR flake was hit on either run; `QuestBoard.UnitTests` (692/692) and `QuestBoard.IntegrationTests` (932/932) both ran clean as full suites after the fix, and the 11 `CrossBoardOracleParity` and 4 `CrossBoardAuthorizationBoundary` facts were re-run individually post-fix and stayed green (these facts exercise the resolver and authorization pipeline, not the toast's CSS, so they were never expected to be affected -- re-run anyway per the coordinator's instruction).
 
 ## Next Phase Readiness
 
 - Tasks 1 and 2 are complete, committed, and independently verified against the real solution. The phase's two governing properties -- no existence/membership oracle, and no authorization decision against the wrong board -- are now proven at the full 18-route, 8-family width the phase widened to.
-- Task 3 is a blocking `checkpoint:human-verify` (`gate="blocking"`) and has not been run. Per this plan's execution instructions, the orchestrator must present this checkpoint to a human rather than the executor self-approving it. The three things that need a human eye, per the plan: (1) the signed-out emailed-link chain's picker-vs-direct-landing hop, which the integration harness structurally cannot follow because it authenticates through a test scheme rather than the real login cookie; (2) the switch banner on a real mobile user agent; (3) whether the automatic switch actually removes the friction the phase exists to fix.
-- No blockers for a human to pick up Task 3. The application builds and all test suites pass; nothing in Tasks 1-2 touched `GroupSessionMiddleware`, `QuestBoardContext`, or any file outside the two new test classes listed above (`git status --porcelain` confirms no other production or test files were modified in this worktree).
+- Task 3 is a blocking `checkpoint:human-verify` (`gate="blocking"`). One round has been run: checks 1 and 2 (the wrong-board link, and the signed-out emailed-link chain) passed; check 3 (the banner on a real mobile user agent) found three defects, all fixed in this pass. Per this plan's execution instructions, the orchestrator must present this checkpoint to a human for re-verification and sign-off rather than the executor self-approving it -- the fix has not been re-verified in a real browser by this executor, which has no browser-preview tool in this environment.
+- What still needs a human eye on re-verification: (1) the banner renders opaque and readable over page content on a real phone, (2) the mobile navbar is reachable while the banner is up, (3) the switch-back button is clearly visible against the new background on both desktop and mobile, and (4) whether the automatic switch actually removes the friction the phase exists to fix.
+- No blockers. The application builds and all test suites pass; the fix is scoped entirely to `.board-switch-toast` and its own button, with `.toast-container`, every other toast, and desktop rendering all left untouched.
 
 ## Self-Check: PASSED
 
-Both created files confirmed present on disk; both commits (`2f15fb48`, `217bb864`) confirmed in `git log`.
+All four created/modified files confirmed present on disk; all three commits (`2f15fb48`, `217bb864`, `409615eb`) confirmed in `git log`.
 
 ---
 *Phase: 87-cross-board-deep-link-recovery*
 *Plan: 04*
-*Completed: 2026-09-21 (Tasks 1-2; Task 3 awaiting human verification)*
+*Completed: 2026-09-21 (Tasks 1-2 and the mobile-defect fix; Task 3 awaiting re-verification and sign-off)*
