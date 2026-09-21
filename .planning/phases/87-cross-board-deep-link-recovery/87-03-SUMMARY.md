@@ -102,6 +102,10 @@ None - plan executed as written. The only adjustments were within normal test-au
 - The picker-skip path is proven end to end, including the login hop's boundary and the full authenticated-chain sequence -- 87-04's oracle-parity hardening pass has both a working skip path and an already-proven no-oracle guarantee on it to build from.
 - No blockers. `GroupSessionMiddleware.cs`, the four email/notification job files, and the calendar feed writer/subscription service are all untouched (`git status --porcelain` confirmed clean against each), so the phase's scope boundaries hold.
 
+## Self-Check: PASSED
+
+All 5 created/modified files confirmed present on disk; all 4 commits (`f96236e5`, `77f828dc`, `2d0fb632`, `4ab221e8`) confirmed in `git log`.
+
 ---
 *Phase: 87-cross-board-deep-link-recovery*
 *Plan: 03*
