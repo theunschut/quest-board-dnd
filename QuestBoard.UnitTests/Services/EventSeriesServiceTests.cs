@@ -39,12 +39,16 @@ public class EventSeriesServiceTests
     [Fact]
     public async Task PreviewAsync_AnchorFullyInPast_MatchesBoardClockTodayBoundary()
     {
-        // Arrange: a single firing slot dated one day before the board clock's today. The host's
-        // real DateTime.Today sits on the slot's own date, so an ambient read would put the slot
-        // exactly on "today" rather than in the past, flipping this assertion.
-        var boardClock = new FakeBoardClock { Today = new DateOnly(2026, 9, 21) };
+        // Arrange: the board clock runs ahead of the host's own today, with the single firing slot
+        // placed between the two -- already past from the board's point of view, still future from
+        // the host's. An ambient read therefore reports the anchor as not-yet-past and flips this
+        // assertion. Both dates are offset from the same host read, so the gap stays fixed and the
+        // test keeps discriminating however far the real calendar moves; a slot on a hard-coded
+        // date would fall into the host's past too and quietly stop testing anything.
+        var hostToday = DateOnly.FromDateTime(DateTime.Today);
+        var boardClock = new FakeBoardClock { Today = hostToday.AddDays(2) };
         var service = CreateService(boardClock: boardClock);
-        var anchorDate = new DateOnly(2026, 9, 20);
+        var anchorDate = hostToday.AddDays(1);
 
         // Act
         var (dates, anchorFullyInPast) = await service.PreviewAsync(
