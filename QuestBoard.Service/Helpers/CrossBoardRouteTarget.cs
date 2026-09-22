@@ -13,12 +13,16 @@ internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id)
     // manual URL parsing is needed here.
     internal static bool TryFromRouteValues(HttpContext context, out CrossBoardRouteTarget? target)
     {
+        // The area is read alongside the other two rather than dropped: the registry is keyed on
+        // all three, so an area route that happens to reuse a registered controller and action
+        // name cannot borrow that route's lookup kind. It is null on the default route.
+        var area = context.GetRouteValue("area") as string;
         var controller = context.GetRouteValue("controller") as string;
         var action = context.GetRouteValue("action") as string;
         var idRaw = context.GetRouteValue("id") as string;
 
         if (int.TryParse(idRaw, out var id)
-            && CrossBoardLinkRegistry.TryGetLookupKind(controller, action, out var kind))
+            && CrossBoardLinkRegistry.TryGetLookupKind(area, controller, action, out var kind))
         {
             target = new CrossBoardRouteTarget(kind, id);
             return true;
@@ -62,7 +66,8 @@ internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id)
 
         // Exactly three non-empty segments: controller, action, id. This application's default
         // route pattern never produces anything shorter (a list route like the quest index has
-        // one segment) or longer (a deeper path is not a shape the default route produces).
+        // one segment) or longer (a deeper path is not a shape the default route produces). An
+        // area route puts the area first and so produces four, which is refused here too.
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length != 3)
         {
@@ -74,7 +79,9 @@ internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id)
             return false;
         }
 
-        if (!CrossBoardLinkRegistry.TryGetLookupKind(segments[0], segments[1], out var kind))
+        // Three segments can only have come from the default route, which has no area -- so no
+        // area is a statement about the shape already established above, not an assumption.
+        if (!CrossBoardLinkRegistry.TryGetLookupKind(null, segments[0], segments[1], out var kind))
         {
             return false;
         }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Service.Helpers;
 
@@ -148,5 +149,42 @@ public class CrossBoardRouteTargetTests
 
         found.Should().BeFalse();
         target.Should().BeNull();
+    }
+
+    // TryFromRouteValues reads the area alongside controller and action. A route landing in an
+    // area cannot resolve through a same-named default route's registry entry -- the deep-link
+    // middleware sits ahead of the query filters, so a wrong lookup kind here would mean an id
+    // resolved against the wrong table.
+    [Theory]
+    [InlineData("Platform")]
+    [InlineData("Admin")]
+    public void TryFromRouteValues_AreaScopedRouteReusingRegisteredName_ResolvesToNothing(string area)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.RouteValues["area"] = area;
+        context.Request.RouteValues["controller"] = "Quest";
+        context.Request.RouteValues["action"] = "Details";
+        context.Request.RouteValues["id"] = "42";
+
+        var found = CrossBoardRouteTarget.TryFromRouteValues(context, out var target);
+
+        found.Should().BeFalse();
+        target.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryFromRouteValues_DefaultRouteWithNoArea_Resolves()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.RouteValues["controller"] = "Quest";
+        context.Request.RouteValues["action"] = "Details";
+        context.Request.RouteValues["id"] = "42";
+
+        var found = CrossBoardRouteTarget.TryFromRouteValues(context, out var target);
+
+        found.Should().BeTrue();
+        target.Should().NotBeNull();
+        target!.Kind.Should().Be(CrossBoardLookupKind.Quest);
+        target.Id.Should().Be(42);
     }
 }

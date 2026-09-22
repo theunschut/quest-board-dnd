@@ -8,7 +8,7 @@ public class CrossBoardLinkRegistryTests
     [Fact]
     public void TryGetLookupKind_QuestDetailsRoute_ResolvesToQuestKind()
     {
-        var found = CrossBoardLinkRegistry.TryGetLookupKind("Quest", "Details", out var kind);
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(null, "Quest", "Details", out var kind);
 
         found.Should().BeTrue();
         kind.Should().Be(CrossBoardLookupKind.Quest);
@@ -21,7 +21,7 @@ public class CrossBoardLinkRegistryTests
     [InlineData("quest", "Details")]
     public void TryGetLookupKind_IsCaseInsensitiveInBothSegments(string controller, string action)
     {
-        var found = CrossBoardLinkRegistry.TryGetLookupKind(controller, action, out var kind);
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(null, controller, action, out var kind);
 
         found.Should().BeTrue();
         kind.Should().Be(CrossBoardLookupKind.Quest);
@@ -30,7 +30,7 @@ public class CrossBoardLinkRegistryTests
     [Fact]
     public void TryGetLookupKind_UnregisteredControllerActionPair_ReturnsFalse()
     {
-        var found = CrossBoardLinkRegistry.TryGetLookupKind("Quest", "SomeUnregisteredAction", out _);
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(null, "Quest", "SomeUnregisteredAction", out _);
 
         found.Should().BeFalse();
     }
@@ -41,7 +41,7 @@ public class CrossBoardLinkRegistryTests
     [InlineData(null, null)]
     public void TryGetLookupKind_NullSegment_ReturnsFalse(string? controller, string? action)
     {
-        var found = CrossBoardLinkRegistry.TryGetLookupKind(controller, action, out _);
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(null, controller, action, out _);
 
         found.Should().BeFalse();
     }
@@ -81,7 +81,7 @@ public class CrossBoardLinkRegistryTests
     [MemberData(nameof(RegisteredRoutePairs))]
     public void TryGetLookupKind_EachRegisteredRoute_ResolvesToItsNamedKind(string controller, string action, CrossBoardLookupKind expectedKind)
     {
-        var found = CrossBoardLinkRegistry.TryGetLookupKind(controller, action, out var kind);
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(null, controller, action, out var kind);
 
         found.Should().BeTrue();
         kind.Should().Be(expectedKind);
@@ -104,7 +104,52 @@ public class CrossBoardLinkRegistryTests
     [MemberData(nameof(ImageRoutes))]
     public void TryGetLookupKind_ImageRoute_ReturnsFalse(string controller, string action)
     {
-        var found = CrossBoardLinkRegistry.TryGetLookupKind(controller, action, out _);
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(null, controller, action, out _);
+
+        found.Should().BeFalse();
+    }
+
+    // An area-scoped route that reuses a registered controller and action name resolves to
+    // nothing, rather than borrowing the same-named default route's lookup kind. Platform is the
+    // one area this application actually has; the invented ones stand in for any area added
+    // later. No collision exists today -- these rows exist so that one cannot appear silently.
+    public static IEnumerable<object[]> AreaScopedRoutesWithCollidingNames()
+    {
+        yield return ["Platform", "Quest", "Details"];
+        yield return ["Platform", "Characters", "Edit"];
+        yield return ["Platform", "DungeonMaster", "Profile"];
+        yield return ["Admin", "Quest", "Manage"];
+        yield return ["Reporting", "Shop", "Details"];
+    }
+
+    [Theory]
+    [MemberData(nameof(AreaScopedRoutesWithCollidingNames))]
+    public void TryGetLookupKind_AreaScopedRouteReusingRegisteredName_ReturnsFalse(string area, string controller, string action)
+    {
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(area, controller, action, out _);
+
+        found.Should().BeFalse();
+    }
+
+    // The default route omits the area route value entirely, but a caller reconstructing a route
+    // by hand may pass an empty string -- both have to mean the same area-less route.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void TryGetLookupKind_NullAndEmptyArea_BothMeanTheDefaultRoute(string? area)
+    {
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(area, "Quest", "Details", out var kind);
+
+        found.Should().BeTrue();
+        kind.Should().Be(CrossBoardLookupKind.Quest);
+    }
+
+    [Fact]
+    public void TryGetLookupKind_AreaIsCaseInsensitiveLikeTheOtherSegments()
+    {
+        // Not a registered route in any casing -- the point is that an area cannot be smuggled
+        // past the key by changing its case either.
+        var found = CrossBoardLinkRegistry.TryGetLookupKind("PLATFORM", "Quest", "Details", out _);
 
         found.Should().BeFalse();
     }
@@ -124,7 +169,7 @@ public class CrossBoardLinkRegistryTests
     [MemberData(nameof(OrdinaryNonParticipatingRoutes))]
     public void TryGetLookupKind_OrdinaryNonParticipatingRoute_ReturnsFalse(string controller, string action)
     {
-        var found = CrossBoardLinkRegistry.TryGetLookupKind(controller, action, out _);
+        var found = CrossBoardLinkRegistry.TryGetLookupKind(null, controller, action, out _);
 
         found.Should().BeFalse();
     }

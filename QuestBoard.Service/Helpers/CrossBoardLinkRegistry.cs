@@ -9,10 +9,15 @@ using QuestBoard.Service.Controllers.Shop;
 namespace QuestBoard.Service.Helpers;
 
 /// <summary>
-/// The closed table of (controller, action) routes that can be resolved across boards. A route
-/// absent from this table can never be resolved across boards -- adding an action to the
+/// The closed table of (area, controller, action) routes that can be resolved across boards. A
+/// route absent from this table can never be resolved across boards -- adding an action to the
 /// application later never silently gains the ability to repoint a viewer's session; it has to
 /// be added here first.
+///
+/// The area is part of the key rather than an afterthought. Every route registered below sits on
+/// the default, area-less route, so an area-scoped controller that happens to reuse one of these
+/// controller and action names resolves to its own entry -- or, having none, to nothing at all --
+/// instead of silently borrowing the lookup kind of the same-named default route.
 ///
 /// The six image subresources (Characters/GetProfilePicture, Characters/GetCroppedPicture,
 /// Contacts/GetContactImage, Contacts/GetCroppedContactImage, DungeonMaster/GetDMProfilePicture,
@@ -27,34 +32,44 @@ internal static class CrossBoardLinkRegistry
 {
     private static readonly Dictionary<string, CrossBoardLookupKind> Routes = new(StringComparer.OrdinalIgnoreCase)
     {
-        [$"{ControllerNameOf<QuestController>()}/{nameof(QuestController.Details)}"] = CrossBoardLookupKind.Quest,
-        [$"{ControllerNameOf<QuestController>()}/{nameof(QuestController.Edit)}"] = CrossBoardLookupKind.Quest,
-        [$"{ControllerNameOf<QuestController>()}/{nameof(QuestController.Manage)}"] = CrossBoardLookupKind.Quest,
-        [$"{ControllerNameOf<QuestController>()}/{nameof(QuestController.CreateFollowUp)}"] = CrossBoardLookupKind.Quest,
+        [DefaultRoute<QuestController>(nameof(QuestController.Details))] = CrossBoardLookupKind.Quest,
+        [DefaultRoute<QuestController>(nameof(QuestController.Edit))] = CrossBoardLookupKind.Quest,
+        [DefaultRoute<QuestController>(nameof(QuestController.Manage))] = CrossBoardLookupKind.Quest,
+        [DefaultRoute<QuestController>(nameof(QuestController.CreateFollowUp))] = CrossBoardLookupKind.Quest,
         // The quest log has no table of its own -- QuestLogController resolves everything
         // through the quest service, so both of its routes reuse the quest kind.
-        [$"{ControllerNameOf<QuestLogController>()}/{nameof(QuestLogController.Details)}"] = CrossBoardLookupKind.Quest,
-        [$"{ControllerNameOf<QuestLogController>()}/{nameof(QuestLogController.EditRecap)}"] = CrossBoardLookupKind.Quest,
+        [DefaultRoute<QuestLogController>(nameof(QuestLogController.Details))] = CrossBoardLookupKind.Quest,
+        [DefaultRoute<QuestLogController>(nameof(QuestLogController.EditRecap))] = CrossBoardLookupKind.Quest,
 
-        [$"{ControllerNameOf<EventsController>()}/{nameof(EventsController.Details)}"] = CrossBoardLookupKind.Event,
-        [$"{ControllerNameOf<EventsController>()}/{nameof(EventsController.Edit)}"] = CrossBoardLookupKind.Event,
+        [DefaultRoute<EventsController>(nameof(EventsController.Details))] = CrossBoardLookupKind.Event,
+        [DefaultRoute<EventsController>(nameof(EventsController.Edit))] = CrossBoardLookupKind.Event,
 
-        [$"{ControllerNameOf<CharactersController>()}/{nameof(CharactersController.Details)}"] = CrossBoardLookupKind.Character,
-        [$"{ControllerNameOf<CharactersController>()}/{nameof(CharactersController.Edit)}"] = CrossBoardLookupKind.Character,
+        [DefaultRoute<CharactersController>(nameof(CharactersController.Details))] = CrossBoardLookupKind.Character,
+        [DefaultRoute<CharactersController>(nameof(CharactersController.Edit))] = CrossBoardLookupKind.Character,
 
-        [$"{ControllerNameOf<ContactsController>()}/{nameof(ContactsController.Details)}"] = CrossBoardLookupKind.Contact,
-        [$"{ControllerNameOf<ContactsController>()}/{nameof(ContactsController.Edit)}"] = CrossBoardLookupKind.Contact,
+        [DefaultRoute<ContactsController>(nameof(ContactsController.Details))] = CrossBoardLookupKind.Contact,
+        [DefaultRoute<ContactsController>(nameof(ContactsController.Edit))] = CrossBoardLookupKind.Contact,
 
-        [$"{ControllerNameOf<ShopController>()}/{nameof(ShopController.Details)}"] = CrossBoardLookupKind.ShopItem,
-        [$"{ControllerNameOf<ShopManagementController>()}/{nameof(ShopManagementController.Edit)}"] = CrossBoardLookupKind.ShopItem,
+        [DefaultRoute<ShopController>(nameof(ShopController.Details))] = CrossBoardLookupKind.ShopItem,
+        [DefaultRoute<ShopManagementController>(nameof(ShopManagementController.Edit))] = CrossBoardLookupKind.ShopItem,
 
-        [$"{ControllerNameOf<SeriesController>()}/{nameof(SeriesController.Details)}"] = CrossBoardLookupKind.EventSeries,
+        [DefaultRoute<SeriesController>(nameof(SeriesController.Details))] = CrossBoardLookupKind.EventSeries,
 
-        [$"{ControllerNameOf<ContactCategoryManagementController>()}/{nameof(ContactCategoryManagementController.Edit)}"] = CrossBoardLookupKind.ContactCategory,
+        [DefaultRoute<ContactCategoryManagementController>(nameof(ContactCategoryManagementController.Edit))] = CrossBoardLookupKind.ContactCategory,
 
-        [$"{ControllerNameOf<DungeonMasterController>()}/{nameof(DungeonMasterController.Profile)}"] = CrossBoardLookupKind.BoardMember,
-        [$"{ControllerNameOf<DungeonMasterController>()}/{nameof(DungeonMasterController.EditProfile)}"] = CrossBoardLookupKind.BoardMember
+        [DefaultRoute<DungeonMasterController>(nameof(DungeonMasterController.Profile))] = CrossBoardLookupKind.BoardMember,
+        [DefaultRoute<DungeonMasterController>(nameof(DungeonMasterController.EditProfile))] = CrossBoardLookupKind.BoardMember
     };
+
+    // Every route registered above sits on the default route, which carries no area.
+    private static string DefaultRoute<TController>(string action) where TController : Microsoft.AspNetCore.Mvc.Controller
+        => RouteKey(null, ControllerNameOf<TController>(), action);
+
+    // A missing area and an empty one are the same thing -- the default route omits the route
+    // value entirely, while a caller reconstructing a route by hand may well pass "" -- so both
+    // spellings have to produce the same key or one of them would silently miss the table.
+    private static string RouteKey(string? area, string controller, string action)
+        => $"{area ?? string.Empty}/{controller}/{action}";
 
     // Copied from GroupSessionMiddleware rather than shared, so a rename of either controller
     // remains visible in both files independently -- the call site keeps compiling, but a
@@ -66,7 +81,7 @@ internal static class CrossBoardLinkRegistry
         return name.EndsWith(suffix, StringComparison.Ordinal) ? name[..^suffix.Length] : name;
     }
 
-    internal static bool TryGetLookupKind(string? controller, string? action, out CrossBoardLookupKind kind)
+    internal static bool TryGetLookupKind(string? area, string? controller, string? action, out CrossBoardLookupKind kind)
     {
         if (controller == null || action == null)
         {
@@ -74,7 +89,7 @@ internal static class CrossBoardLinkRegistry
             return false;
         }
 
-        return Routes.TryGetValue($"{controller}/{action}", out kind);
+        return Routes.TryGetValue(RouteKey(area, controller, action), out kind);
     }
 
     internal static IReadOnlyCollection<string> RegisteredRoutes => Routes.Keys;
