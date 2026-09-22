@@ -1,40 +1,47 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 87
-current_phase_name: cross-board-deep-link-recovery
-status: executing
-stopped_at: Phase 87 context gathered
-last_updated: "2026-09-21T18:47:08.434Z"
-last_activity: 2026-09-21
-last_activity_desc: Phase 87 execution started
+status: completed
+stopped_at: Phase 87 complete — all phases complete
+last_updated: "2026-09-22T06:51:38.481Z"
+last_activity: 2026-09-22
+last_activity_desc: Phase 87 complete
+state_head: c79ae880606857c5990fb9b153a4e68c9c4d1ccc
 progress:
   total_phases: 16
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 108
-  completed_plans: 95
-  percent: 81
-state_head: 4740bfb1c26caeaedc2958dc717a2189a6fca8d7
+  completed_plans: 99
+  percent: 88
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-25 — v9.0 milestone start)
+See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 87 — cross-board-deep-link-recovery
+**Current focus:** None — Phase 87 closed. Next phase not chosen.
 
 ## Current Position
 
-Phase: 87 (cross-board-deep-link-recovery) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 87
-Last activity: 2026-09-21 — Phase 87 execution started
+Phase: 87 (cross-board-deep-link-recovery) — COMPLETE
+Plan: 4 of 4 — verified 21/21, security SECURED, review closed
+Status: Between phases — three roadmapped phases remain unstarted
+Last activity: 2026-09-22 — Phase 87 complete
 
-Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans)
+Roadmapped and not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
+none executed) and Phase 79 — Character and Contact Link Cards (not yet planned). Every other
+phase in the 72–87 range is complete with a verification report.
+
+Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
+shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
+rather than a checkbox on the phase heading, which is what the analyzer reads — so the derived
+phase counters understate progress. Pre-existing and consistent across every phase; not
+introduced by Phase 87.
 
 ## Performance Metrics
 
@@ -64,6 +71,11 @@ Also planned, not started: Phase 78 — Link Preview Foundation and Quest Cards 
 
 v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisions table and `.planning/milestones/v8.0-ROADMAP.md` Milestone Summary for the consolidated view. No open decisions carried forward.
 
+- [Phase 87]: D-12 kept -- a SuperAdmin following a deep link to a board they are not a member of gets the same 404 as anyone else. The operator hit it live, questioned it, then reaffirmed it. A SuperAdmin can already reach any board by picking it explicitly, so the 404 costs a click rather than a capability; auto-repointing by an attacker-influenceable link would be unbounded across every board for the highest-authority account; and a role branch would break the structural no-branch parity the oracle tests rest on
+- [Phase 87]: The three mobile banner defects found at human verification were fixed inside 87-04 rather than deferred to gap closure -- contained CSS plus one button class, and the executor still held its worktree
+- [Phase 87]: The picker-skip path was accepted on 9 integration facts instead of a live browser check, because the branch is gated on `!isSuperAdmin` and so is structurally unreachable from the operator's own account
+- [Phase 87]: The security auditor was spawned rather than taking secure-phase's `threats_open: 0` short-circuit -- the short-circuit requires asserting the mitigations exist, which would have rubber-stamped the phase's own claims about a deliberate tenancy-filter bypass
+- [Phase 87]: Code review's WR-01 was fixed rather than accepted. The registry documented itself as a table an action could never silently join, but its key omitted the MVC area; the guarantee is now true rather than nearly true. Both Info findings fixed too. `IgnoreQueryFilters()` on `UserGroups` was kept despite bypassing no filter today -- if membership ever gains a board-scoped filter, removing it would break cross-board resolution as a plausible-looking "not a member" rather than as an error
 - [Phase 83]: CalendarButtonStyleTests.cs written with post-write CRLF conversion (Write tool emitted LF; converted before running tests) to satisfy CLAUDE.md's Windows/CRLF convention
 - [Phase 84]: 84-02's four one-way concretizations approved as specified (table shape with RevokedAt tombstone, 32-byte Base64Url address stored plain, `questboard-event-{eventId}` identifiers, `/feeds/calendar/{feedToken}.ics` on its own anonymous controller)
 - [Phase 84]: Revoked-subscription tombstones get a bounded retention window (default 30 days) swept by a nightly Hangfire job. This made the `410` temporary, so CALFEED-04 was reworded and CALFEED-17 minted rather than dropping the sweep; 84-04 grew a fifth task
@@ -103,6 +115,11 @@ None open for v8.0. Carried forward from prior milestones, still unresolved:
 - `Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml` appears to be dead code (Platform area's `_ViewStart.cshtml` never selects it) — discovered during Phase 42 research, deliberately left unfixed as out-of-scope for that phase. See PROJECT.md Known Issues.
 - `GuildMembersController.Edit` POST's `SetAsMainCharacterAsync` demotion guard can never be true (dead code, predates Phase 56) — found during Phase 56 verification, flagged as a separate follow-up task, not yet actioned. See PROJECT.md Known Issues.
 
+New as of 2026-09-22:
+
+- Several unit tests pin a `FakeBoardClock` to a fixed date but build their fixtures from `DateTime.UtcNow`, so the gap they assert shrinks by a day for every real day that passes. `QuestServiceTests`' three completed-quest tests were fixed after one went red two days after being written; `EventSeriesMaterializationTests`, `GroupRepositoryTests`, `EmailConfirmationJobGuardTests`, `EventSeriesServiceTests` and `DailyReminderJobTests` still carry the construction. Not urgent, but each will fail on its own schedule.
+- Phase 87's human verification carries three items the operator accepted conditionally rather than proved: the board-switch banner was checked with a Pixel 8 user-agent override at 375x812 rather than on a physical device; the picker-skip path was never exercised from a real non-SuperAdmin account; and the overall approval was "approved for now, tell me if anything is broken". If friction is reported later, the useful question is which part — the switch being unasked-for reopens a design decision, the banner is styling.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -129,11 +146,14 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-21T08:22:00.697Z
-Stopped at: Phase 87 context gathered
-Resume file: .planning/phases/87-cross-board-deep-link-recovery/87-CONTEXT.md
+Last session: 2026-09-22T06:56:55.758Z
+Stopped at: Phase 87 closed — gate tail finished (code review, review fixes, regression gate, verification, roadmap)
+Resume file: none — no work in flight
 
 ## Operator Next Steps
 
-- Review `.planning/milestones/v8.0-ROADMAP.md` and `.planning/MILESTONES.md` for the shipped-milestone summary
-- Run `/gsd-new-milestone` to begin questioning → research → requirements → roadmap for the next milestone
+- Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
+- Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
+- Decide whether to stop the `mssql-dev` container left running from the previous session (named volume `mssql-data`, so data persists either way)
+- Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79 and 81 are roadmapped but unplanned
+- v9.0 has no fixed end state — run `/gsd-new-milestone` only when you decide to cut it
