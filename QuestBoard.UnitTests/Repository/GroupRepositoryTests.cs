@@ -5,6 +5,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Repository;
 using QuestBoard.Repository.Entities;
+using QuestBoard.UnitTests.Helpers;
 
 namespace QuestBoard.UnitTests.Repository;
 
@@ -33,6 +34,12 @@ public class GroupRepositoryTests
         var configuration = new MapperConfiguration(cfg => cfg.AddProfile<QuestBoard.Repository.Automapper.EntityProfile>(), NullLoggerFactory.Instance);
         return configuration.CreateMapper();
     }
+
+    // Fixed to the host's own today by default, so every test's own "var today =
+    // DateOnly.FromDateTime(DateTime.Today);" still lines up with what the repository resolves
+    // internally now that the campaign auto-signup sweep reads a board clock instead of the
+    // ambient clock directly.
+    private static FakeBoardClock CreateBoardClock() => new() { Today = DateOnly.FromDateTime(DateTime.Today) };
 
     // Always seeds BoardType as a real column value on a real row rather than relying on any
     // resolver stub, because AddMemberAsync/RemoveMemberAsync read the group row directly and a
@@ -98,7 +105,7 @@ public class GroupRepositoryTests
         // Act
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.AddMemberAsync(1, 201, GroupRole.Player, TestContext.Current.CancellationToken);
         }
 
@@ -131,7 +138,7 @@ public class GroupRepositoryTests
         // Act
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.AddMemberAsync(1, 201, GroupRole.Player, TestContext.Current.CancellationToken);
         }
 
@@ -163,7 +170,7 @@ public class GroupRepositoryTests
         // Act
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.AddMemberAsync(1, 201, GroupRole.Player, TestContext.Current.CancellationToken);
         }
 
@@ -195,14 +202,14 @@ public class GroupRepositoryTests
         // Act: case 1 — the acting caller's active board is an unrelated id
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 99 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.AddMemberAsync(1, 201, GroupRole.Player, TestContext.Current.CancellationToken);
         }
 
         // Act: case 2 — the acting caller has no active board at all
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = null }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.AddMemberAsync(1, 202, GroupRole.Player, TestContext.Current.CancellationToken);
         }
 
@@ -220,6 +227,40 @@ public class GroupRepositoryTests
 
         signupsUser201.Should().ContainSingle(s => s.EventId == 1 && s.Availability == (int)VoteType.Yes);
         signupsUser202.Should().ContainSingle(s => s.EventId == 1 && s.Availability == (int)VoteType.Yes);
+    }
+
+    [Fact]
+    public async Task AddMemberAsync_CampaignBoard_BackfillUsesBoardClockToday_NotHostClock()
+    {
+        // Arrange: the board clock's today is deliberately different from the host's own
+        // DateTime.Today, so a regression that reintroduced the ambient read would backfill an
+        // event it should have excluded.
+        var dbName = nameof(AddMemberAsync_CampaignBoard_BackfillUsesBoardClockToday_NotHostClock);
+        var boardToday = new DateOnly(2026, 9, 21);
+
+        await using (var seedContext = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = null }))
+        {
+            await SeedCampaignGroupAsync(seedContext, groupId: 1);
+            await SeedEventAsync(seedContext, eventId: 1, groupId: 1, boardToday.AddDays(-1)); // day before board-local today — excluded
+            await SeedEventAsync(seedContext, eventId: 2, groupId: 1, boardToday); // board-local today — included
+            await SeedUserAsync(seedContext, userId: 201);
+        }
+
+        // Act
+        await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
+        {
+            var repository = new GroupRepository(context, CreateMapper(), new FakeBoardClock { Today = boardToday });
+            await repository.AddMemberAsync(1, 201, GroupRole.Player, TestContext.Current.CancellationToken);
+        }
+
+        // Assert
+        await using var assertContext = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = null });
+        var signups = await assertContext.EventSignups
+            .IgnoreQueryFilters()
+            .Where(es => es.UserId == 201)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        signups.Should().ContainSingle(s => s.EventId == 2);
     }
 
     [Fact]
@@ -241,7 +282,7 @@ public class GroupRepositoryTests
         Func<Task> act;
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             act = async () => await repository.AddMemberAsync(1, 201, GroupRole.Player, TestContext.Current.CancellationToken);
 
             // Assert: the pre-existing race handling still holds
@@ -283,7 +324,7 @@ public class GroupRepositoryTests
         // Act
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.RemoveMemberAsync(1, 201, TestContext.Current.CancellationToken);
         }
 
@@ -323,7 +364,7 @@ public class GroupRepositoryTests
         // Act: leave board 1 only
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.RemoveMemberAsync(1, 201, TestContext.Current.CancellationToken);
         }
 
@@ -360,7 +401,7 @@ public class GroupRepositoryTests
         // Act: only user 201 leaves
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             await repository.RemoveMemberAsync(1, 201, TestContext.Current.CancellationToken);
         }
 
@@ -394,7 +435,7 @@ public class GroupRepositoryTests
         // Act & Assert
         await using (var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = 1 }))
         {
-            var repository = new GroupRepository(context, CreateMapper());
+            var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
             var act = async () => await repository.RemoveMemberAsync(1, 201, TestContext.Current.CancellationToken);
             await act.Should().NotThrowAsync();
         }

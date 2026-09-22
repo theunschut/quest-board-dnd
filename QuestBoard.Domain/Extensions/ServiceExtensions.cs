@@ -38,6 +38,12 @@ public static class ServiceExtensions
             .BindConfiguration(CalendarFeedOptions.SectionName)
             .Validate(o => o.IsValid(), "CalendarFeed MonthsBack must be at least 0, and MonthsAhead, LastFetchedThrottleMinutes, RetentionDays and QuestDurationHours must each be at least 1.")
             .ValidateOnStart();
+        // Only checks a value is present -- zone resolution itself happens once inside
+        // BoardClock, which degrades to UTC on a bad id instead of failing startup.
+        services.AddOptions<TimeZoneOptions>()
+            .BindConfiguration(TimeZoneOptions.SectionName)
+            .Validate(o => o.IsValid(), "TimeZone BoardTimeZoneId must be a non-empty IANA time zone id, for example Europe/Amsterdam.")
+            .ValidateOnStart();
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IEmailService, EmailService>();
@@ -54,6 +60,7 @@ public static class ServiceExtensions
         services.AddScoped<IEventSeriesService, EventSeriesService>();
         services.AddScoped<IImageValidationService, ImageValidationService>();
         services.AddScoped<ICalendarSubscriptionService, CalendarSubscriptionService>();
+        services.AddScoped<ICrossBoardLinkResolver, CrossBoardLinkResolverService>();
         // Singleton, not Scoped like everything above: this service is stateless -- it only holds
         // an immutable pre-built Markdig pipeline and two immutable sanitizer instances -- so it is
         // safe to share across concurrent requests without per-request allocation.
@@ -61,6 +68,9 @@ public static class ServiceExtensions
         // Singleton, same reasoning as IMarkdownService above: this writer holds no state of
         // its own, so it is safe to share across concurrent requests.
         services.AddSingleton<ICalendarFeedWriter, CalendarFeedWriter>();
+        // Singleton: the resolved zone never changes for the lifetime of the process, so every
+        // consumer shares the one resolution instead of re-resolving per request.
+        services.TryAddSingleton<IBoardClock, BoardClock>();
 
         return services;
     }

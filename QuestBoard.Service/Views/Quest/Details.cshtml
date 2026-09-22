@@ -11,6 +11,7 @@
     ViewData["BodyClass"] = "quest-details-page";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
     // Characters the viewer owns on the active board. ViewBag hands this over as a dynamic,
     // so read it once through a widened, null-safe local rather than casting to a concrete
     // list type at each use site -- a cast that would only hold as long as the mapper keeps
@@ -778,7 +779,7 @@
                                 string statusIcon;
                                 string statusText;
 
-                                if (Model.Quest?.IsFinalized == true && Model.Quest?.FinalizedDate.HasValue == true && Model.Quest?.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+                                if (Model.Quest.HasBeenPlayed(boardToday))
                                 {
                                     statusBadge = "bg-dark";
                                     statusIcon = "fas fa-flag-checkered";
@@ -841,7 +842,7 @@
                             <p><strong>Total Signups:</strong> @Model.Quest?.PlayerSignups.Count</p>
                         }
                     }
-                    <p><strong>Created:</strong> @Model.Quest?.CreatedAt.ToString("MMM dd, yyyy")</p>
+                    <p><strong>Created:</strong> @(Model.Quest != null ? Html.LocalTime(Model.Quest.CreatedAt, "date") : Html.Raw(string.Empty))</p>
 
                     @if (Model.Quest?.FollowUpQuest != null)
                     {
@@ -883,7 +884,7 @@
                                     {
                                         <div class="d-flex justify-content-between align-items-center py-1">
                                             <span>@signup.Player.Name</span>
-                                            <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
+                                            <small class="text-muted">@Html.LocalTime(signup.SignupTime, "date-compact")</small>
                                         </div>
                                     }
                                 </div>
@@ -904,7 +905,7 @@
                                     {
                                         <div class="d-flex justify-content-between align-items-center py-1">
                                             <span>@signup.Player.Name</span>
-                                            <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
+                                            <small class="text-muted">@Html.LocalTime(signup.SignupTime, "date-compact")</small>
                                         </div>
                                     }
                                 </div>
@@ -925,7 +926,7 @@
                                     {
                                         <div class="d-flex justify-content-between align-items-center py-1">
                                             <span>@signup.Player.Name</span>
-                                            <small class="text-muted">@signup.SignupTime.ToString("MMM dd")</small>
+                                            <small class="text-muted">@Html.LocalTime(signup.SignupTime, "date-compact")</small>
                                         </div>
                                     }
                                 </div>

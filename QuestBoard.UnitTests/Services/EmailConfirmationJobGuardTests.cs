@@ -4,6 +4,7 @@ using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Domain.Services;
+using QuestBoard.UnitTests.Helpers;
 using NSubstitute;
 
 namespace QuestBoard.UnitTests.Services;
@@ -27,7 +28,7 @@ public class EmailConfirmationJobGuardTests
         _dispatcher = Substitute.For<IQuestEmailDispatcher>();
         _mapper = Substitute.For<IMapper>();
 
-        _sut = new QuestService(_repository, _playerSignupRepository, _dispatcher, _mapper);
+        _sut = new QuestService(_repository, _playerSignupRepository, _dispatcher, _mapper, new FakeBoardClock());
     }
 
     // Helper: build a quest with the given signups

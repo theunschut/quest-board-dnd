@@ -65,10 +65,10 @@
                 <div class="calendar-subscription-row">
                     <div class="account-field-value calendar-subscription-name">@subscription.Name</div>
                     <div class="account-field-label calendar-subscription-meta">
-                        Created @subscription.CreatedAt.ToString("MMM d, yyyy")<br />
+                        Created @Html.LocalTime(subscription.CreatedAt, "date")<br />
                         @if (subscription.LastFetchedAt.HasValue)
                         {
-                            @:Last fetched @subscription.LastFetchedAt.Value.ToString("MMM d, yyyy h:mm tt")
+                            @:Last fetched @Html.LocalTime(subscription.LastFetchedAt.Value, "date-time")
                         }
                         else
                         {

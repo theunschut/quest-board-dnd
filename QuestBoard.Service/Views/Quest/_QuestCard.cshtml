@@ -1,12 +1,14 @@
+@using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @model Quest
 @{
+    var boardToday = (DateOnly)ViewBag.BoardToday;
     var questStatus = "";
     var statusIcon = "";
     var statusText = "";
     
-    if (Model.IsFinalized && Model.FinalizedDate.HasValue && Model.FinalizedDate.Value < DateTime.UtcNow.AddDays(-1))
+    if (Model.HasBeenPlayed(boardToday))
     {
         questStatus = "quest-status-done";
         statusIcon = "fas fa-flag-checkered";
@@ -84,7 +86,7 @@
             {
                 <p class="card-text">
                     <strong class="text-warning">Signups:</strong> @Model.PlayerSignups.Count<br>
-                    <strong class="text-warning">Created:</strong> @Model.CreatedAt.ToString("MMM dd, yyyy")
+                    <strong class="text-warning">Created:</strong> @Html.LocalTime(Model.CreatedAt, "date")
                 </p>
             }
         </div>

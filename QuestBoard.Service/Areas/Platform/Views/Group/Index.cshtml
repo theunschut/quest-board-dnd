@@ -48,7 +48,7 @@
                                     }
                                 </td>
                                 <td>@item.MemberCount</td>
-                                <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td>@Html.LocalTime(item.CreatedAt, "date")</td>
                                 <td class="text-end">
                                     <form asp-controller="GroupPicker" asp-action="SelectGroup" asp-area="" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()

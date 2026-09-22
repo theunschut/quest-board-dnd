@@ -102,7 +102,7 @@
                                     </small>
                                 </div>
                                 <small class="text-muted d-block">
-                                    <i class="fas fa-clock me-1"></i>@purchase.TransactionDate.ToString("MMM dd")
+                                    <i class="fas fa-clock me-1"></i>@Html.LocalTime(purchase.TransactionDate, "date-compact")
                                 </small>
 
                                 <!-- Return/Sell buttons (shown on hover, only if items remaining) -->
@@ -148,7 +148,7 @@
                                     </small>
                                 </div>
                                 <small class="text-muted d-block">
-                                    <i class="fas fa-clock me-1"></i>@purchase.TransactionDate.ToString("MMM dd")
+                                    <i class="fas fa-clock me-1"></i>@Html.LocalTime(purchase.TransactionDate, "date-compact")
                                 </small>
                             </div>
                         }

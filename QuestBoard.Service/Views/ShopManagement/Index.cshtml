@@ -145,7 +145,7 @@
                                                         @if (item.DeniedAt.HasValue)
                                                         {
                                                             <br>
-                                                            <span class="text-muted">Denied on @item.DeniedAt.Value.ToString("MMM dd, yyyy")</span>
+                                                            <span class="text-muted">Denied on @Html.LocalTime(item.DeniedAt.Value, "date")</span>
                                                         }
                                                     </small>
                                                 </div>

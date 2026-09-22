@@ -34,8 +34,18 @@
                             }
                         </div>
                         <div class="col-md-6">
-                            <p class="text-white"><strong>Completed On:</strong> @((Model.Quest.FinalizedDate ?? Model.Quest.ClosedDate)?.ToString("MMMM dd, yyyy 'at' h:mm tt"))</p>
-                            <p class="text-white"><strong>Created:</strong> @Model.Quest.CreatedAt.ToString("MMMM dd, yyyy")</p>
+                            <p class="text-white">
+                                <strong>Completed On:</strong>
+                                @if (Model.Quest.FinalizedDate.HasValue)
+                                {
+                                    @Html.WallClock(Model.Quest.FinalizedDate.Value, "date-time")
+                                }
+                                else if (Model.Quest.ClosedDate.HasValue)
+                                {
+                                    @Html.LocalTime(Model.Quest.ClosedDate.Value, "date-time")
+                                }
+                            </p>
+                            <p class="text-white"><strong>Created:</strong> @Html.LocalTime(Model.Quest.CreatedAt, "date")</p>
                         </div>
                     </div>
                 </div>

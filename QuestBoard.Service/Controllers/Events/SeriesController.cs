@@ -15,7 +15,8 @@ public class SeriesController(
     IEventService eventService,
     IUserService userService,
     IActiveGroupContext activeGroupContext,
-    IMapper mapper) : Controller
+    IMapper mapper,
+    IBoardClock boardClock) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Details(int id, CancellationToken token = default)
@@ -27,6 +28,7 @@ public class SeriesController(
         }
 
         var viewModel = mapper.Map<SeriesDetailsViewModel>(series);
+        viewModel.Today = boardClock.Today;
 
         // Filled from the Domain parser rather than a second parse written in the view, so the
         // read-only strip renders the same rule the generator uses.
@@ -65,7 +67,7 @@ public class SeriesController(
         // accepted states that upcoming sessions will be cleared, so the clearing is part of the
         // same action rather than a second step. Sessions dated today or earlier are always
         // kept -- they record sessions that happened.
-        await eventSeriesService.EndAsync(id, DateOnly.FromDateTime(DateTime.Today), removeFutureOccurrences: true, token);
+        await eventSeriesService.EndAsync(id, boardClock.Today, removeFutureOccurrences: true, token);
 
         TempData["Success"] = "Series ended successfully.";
 

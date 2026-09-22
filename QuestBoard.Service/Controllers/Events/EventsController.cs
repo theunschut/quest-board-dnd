@@ -20,7 +20,8 @@ public class EventsController(
     IEventSignupService eventSignupService,
     IBoardTypeResolver boardTypeResolver,
     IEventSeriesService eventSeriesService,
-    IOptions<EventsOverviewOptions> overviewOptions) : Controller
+    IOptions<EventsOverviewOptions> overviewOptions,
+    IBoardClock boardClock) : Controller
 {
     // Read-only and available to every board member: the same per-event availability is
     // already visible one event at a time on Details, so gating the aggregate would make
@@ -92,7 +93,7 @@ public class EventsController(
     [Authorize(Policy = "DungeonMasterOnly")]
     public IActionResult Create()
     {
-        return View(new EventViewModel { Date = DateOnly.FromDateTime(DateTime.Today) });
+        return View(new EventViewModel { Date = boardClock.Today });
     }
 
     [HttpPost]

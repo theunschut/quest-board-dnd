@@ -226,6 +226,81 @@ function cleanDateTimeValue(input) {
     input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+// Rewrites every server-rendered <time class="local-time"> element's text to the viewer's own
+// browser locale and timezone. The server already rendered the board's own zone as a safe
+// first-paint value, so this is a correction pass, not a fill of empty content -- a page with
+// no such elements, or a browser that cannot format one of them, is left exactly as the server
+// rendered it.
+// The one client-side style table, shared by both hydration passes below exactly as the server
+// shares a single format dictionary between BuildLocalTime and BuildWallClock. Keep it in sync
+// with that dictionary in HtmlHelperExtensions -- the two sides must agree on what each style
+// name means. Defining it once means a new style can never reach one pass but not the other.
+const TIMESTAMP_FORMATS = {
+    'date': { year: 'numeric', month: 'short', day: 'numeric' },
+    'date-time': { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+    'date-compact': { month: 'short', day: 'numeric' },
+    'date-time-compact': { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+};
+
+function hydrateLocalTimes() {
+    const elements = document.querySelectorAll('time.local-time[datetime]');
+    elements.forEach(el => {
+        try {
+            const style = el.getAttribute('data-style');
+            const options = TIMESTAMP_FORMATS[style];
+            if (!options) {
+                // Unknown or missing style: leave the server-rendered board-zone text alone
+                // rather than guessing at a default granularity.
+                return;
+            }
+            el.textContent = new Intl.DateTimeFormat(undefined, options).format(new Date(el.getAttribute('datetime')));
+        } catch {
+            // A malformed datetime or an Intl throw skips this element only -- one bad value
+            // must never abort hydration for the rest of the page.
+        }
+    });
+}
+
+// Rewrites every server-rendered <time class="wall-clock"> element's text to the viewer's own
+// browser locale -- but never their timezone, because a wall-clock value (a game night, a
+// proposed date) has no UTC instant to convert. The datetime attribute's year/month/day/hour/
+// minute components are re-anchored through Date.UTC(...) and formatted with timeZone: 'UTC',
+// which makes the displayed components arithmetically identical to the parsed ones -- the
+// viewer's own zone cannot enter the calculation at all. A page with no such elements, or a
+// browser that cannot format one of them, is left exactly as the server rendered it.
+function hydrateWallClockTimes() {
+    const elements = document.querySelectorAll('time.wall-clock[datetime]');
+    elements.forEach(el => {
+        try {
+            const style = el.getAttribute('data-style');
+            const options = TIMESTAMP_FORMATS[style];
+            if (!options) {
+                // Unknown or missing style: leave the server-rendered invariant-culture text
+                // alone rather than guessing at a default granularity.
+                return;
+            }
+
+            const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(el.getAttribute('datetime'));
+            if (!m) {
+                // A datetime that does not match the expected floating-local shape is left
+                // untouched rather than handed to the Date constructor, which would silently
+                // reinterpret it.
+                return;
+            }
+
+            // Anchor in UTC and format in UTC: the viewer's own zone is structurally unable to
+            // shift these components. Do NOT construct the Date from separate local
+            // year/month/day/hour/minute arguments -- that builds the value in the viewer's own
+            // local zone and can shift it across a DST gap.
+            const anchored = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
+            el.textContent = new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(anchored);
+        } catch {
+            // A malformed datetime or an Intl throw skips this element only -- one bad value
+            // must never abort hydration for the rest of the page.
+        }
+    });
+}
+
 // Make date blocks clickable for radio selection
 function makeDataOptionsClickable() {
     // Handle Details page custom radio buttons
@@ -301,6 +376,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Make date options clickable
     makeDataOptionsClickable();
+
+    // Rewrite every server-rendered real-instant timestamp to the viewer's own timezone.
+    hydrateLocalTimes();
+
+    // Rewrite every server-rendered wall-clock (floating local time) timestamp to the viewer's
+    // own locale wording -- never their timezone, since a wall-clock value has no UTC instant.
+    hydrateWallClockTimes();
 
     // Initialize toasts
     const toastElements = document.querySelectorAll('.toast');

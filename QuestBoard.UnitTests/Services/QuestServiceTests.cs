@@ -4,6 +4,7 @@ using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Domain.Services;
+using QuestBoard.UnitTests.Helpers;
 using NSubstitute;
 
 namespace QuestBoard.UnitTests.Services;
@@ -14,6 +15,7 @@ public class QuestServiceTests
     private readonly IPlayerSignupRepository _playerSignupRepository;
     private readonly IQuestEmailDispatcher _dispatcher;
     private readonly IMapper _mapper;
+    private readonly FakeBoardClock _boardClock;
     private readonly QuestService _sut;
 
     public QuestServiceTests()
@@ -22,8 +24,9 @@ public class QuestServiceTests
         _playerSignupRepository = Substitute.For<IPlayerSignupRepository>();
         _dispatcher = Substitute.For<IQuestEmailDispatcher>();
         _mapper = Substitute.For<IMapper>();
+        _boardClock = new FakeBoardClock { Today = new DateOnly(2026, 9, 20), Now = new DateTime(2026, 9, 20, 12, 0, 0) };
 
-        _sut = new QuestService(_repository, _playerSignupRepository, _dispatcher, _mapper);
+        _sut = new QuestService(_repository, _playerSignupRepository, _dispatcher, _mapper, _boardClock);
     }
 
     // Helper: create a quest with specified signups
@@ -251,8 +254,9 @@ public class QuestServiceTests
     [Fact]
     public async Task GetCompletedQuestsAsync_IncludesClosedCampaignQuest_WithNoNextDayWait()
     {
-        // Arrange: closed today, never finalized — must still appear immediately (no next-day wait)
-        var closedToday = MakeCompletedQuestCandidate(1, isFinalized: false, finalizedDate: null, isClosed: true, closedDate: DateTime.UtcNow);
+        // Arrange: closed on the board's today, never finalized — must still appear immediately
+        // (no next-day wait)
+        var closedToday = MakeCompletedQuestCandidate(1, isFinalized: false, finalizedDate: null, isClosed: true, closedDate: _boardClock.Now);
 
         _repository.GetQuestsWithDetailsAsync(Arg.Any<CancellationToken>())
             .Returns((IList<Quest>)[closedToday]);
@@ -267,9 +271,11 @@ public class QuestServiceTests
     [Fact]
     public async Task GetCompletedQuestsAsync_PreservesOneShotNextDayWait()
     {
-        // Arrange: one-shot finalized yesterday (included), one-shot finalized today (excluded — next-day wait)
-        var finalizedYesterday = MakeCompletedQuestCandidate(1, isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(-2), isClosed: false, closedDate: null);
-        var finalizedToday = MakeCompletedQuestCandidate(2, isFinalized: true, finalizedDate: DateTime.UtcNow, isClosed: false, closedDate: null);
+        // Arrange: one-shot finalized before the board's today (included), one-shot finalized on
+        // it (excluded — next-day wait). Both dates come off the same fake clock the service
+        // reads, so the gap being asserted is fixed rather than shrinking as real days pass.
+        var finalizedYesterday = MakeCompletedQuestCandidate(1, isFinalized: true, finalizedDate: _boardClock.Now.AddDays(-2), isClosed: false, closedDate: null);
+        var finalizedToday = MakeCompletedQuestCandidate(2, isFinalized: true, finalizedDate: _boardClock.Now, isClosed: false, closedDate: null);
 
         _repository.GetQuestsWithDetailsAsync(Arg.Any<CancellationToken>())
             .Returns((IList<Quest>)[finalizedYesterday, finalizedToday]);
@@ -287,8 +293,8 @@ public class QuestServiceTests
     {
         // Arrange: an older one-shot finalized quest and a just-closed campaign quest (ClosedDate=now, FinalizedDate=null)
         // The closed quest must sort by ClosedDate, not fall to the bottom as a null FinalizedDate.
-        var olderFinalized = MakeCompletedQuestCandidate(1, isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(-5), isClosed: false, closedDate: null);
-        var justClosed = MakeCompletedQuestCandidate(2, isFinalized: false, finalizedDate: null, isClosed: true, closedDate: DateTime.UtcNow);
+        var olderFinalized = MakeCompletedQuestCandidate(1, isFinalized: true, finalizedDate: _boardClock.Now.AddDays(-5), isClosed: false, closedDate: null);
+        var justClosed = MakeCompletedQuestCandidate(2, isFinalized: false, finalizedDate: null, isClosed: true, closedDate: _boardClock.Now);
 
         _repository.GetQuestsWithDetailsAsync(Arg.Any<CancellationToken>())
             .Returns((IList<Quest>)[olderFinalized, justClosed]);

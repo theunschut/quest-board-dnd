@@ -1,9 +1,11 @@
+@using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
 @model IEnumerable<Quest>
 
 @{
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardToday = (DateOnly)ViewBag.BoardToday;
 }
 
 @section Styles {
@@ -23,7 +25,7 @@
             string statusIcon;
             string statusText;
 
-            if (quest.IsFinalized && quest.FinalizedDate.HasValue && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+            if (quest.HasBeenPlayed(boardToday))
             {
                 statusBadge = "bg-dark";
                 statusIcon = "fas fa-flag-checkered";

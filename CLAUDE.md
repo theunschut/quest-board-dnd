@@ -2,13 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Environment
-
-**Platform**: Development is done on **Windows**. Use Windows-style paths and line endings (CRLF) when creating or editing files. Avoid Unix-only shell syntax.
-
-**Important**: SQL Server runs on the Windows host, not in WSL. Use `localhost` in the connection string for local development; Docker uses the `sqlserver` service name.
-
-**If running in a Linux environment** (not native Windows): there is no Windows host to provide SQL Server. Before running the app or migrations, check whether the standalone dev SQL Server container is up: `docker ps --filter name=mssql-dev`. If it isn't running, start it with `docker compose -f /home/theunschut/Documents/SQLServer/docker-compose.yml up -d` — it does not auto-start on boot. Note that the checked-in `appsettings.json` connection string uses `Trusted_Connection=true` (Windows Integrated Auth), which does not work against this container; a SQL-auth connection string (`User Id=sa`) is required instead. This does not apply on native Windows — ignore it there.
+@.claude/project-overview.md
+@.claude/architecture.md
+@.claude/rip-navigation.md
 
 ## Branching
 
@@ -17,133 +13,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Milestone work: `milestone/v<N>-<name>` (e.g. `milestone/v5-multi-tenancy`)
 - Feature work: `feature/<short-description>`
 
+Branch from the current working branch, not from `main`, unless the work genuinely has no dependency on what is in flight — branching a follow-up off `main` silently excludes the milestone's own changes.
+
 If you realize commits have landed on `main` by mistake: create the branch from current `main`, then `git reset --hard <pre-commit-sha>` on `main` to remove them.
+
+## Local database
+
+The app expects SQL Server at **`localhost:1433`** on every platform. How it got there is the user's business — a Windows host install, a Docker container, whatever. **Do not install, start, or provision it, and do not tear it down afterwards.** If it is unreachable, stop and tell the user what is missing.
+
+The one platform difference is **auth mode**. The committed `appsettings.json` uses `Trusted_Connection=true` (Windows Integrated Auth):
+
+- **Windows** — works as-is against a local install.
+- **Linux / Docker** — cannot work; a container has no Windows auth. Override with SQL auth via `dotnet user-secrets set "ConnectionStrings:DefaultConnection" "..."`, never by editing `appsettings.json` (it is committed).
+
+The failure symptom is misleading: `Cannot generate SSPI context` looks like a Kerberos or DNS problem, but it means the wrong auth mode for the platform. Do **not** "fix" it by deleting `Trusted_Connection=true` — that silently promotes the vestigial `User Id`/`Password` in the same string to being the live login.
+
+Integration tests use EF Core InMemory and need no database at all.
 
 ## Development Commands
 
-**Build failures due to locked files**: If `dotnet build` or `dotnet test` fails because output files are in use, Visual Studio is most likely running the app under the debugger. Ask the user to stop the debugger (Shift+F5) before retrying the build.
-
 ```bash
-# Build and run
 dotnet build
+dotnet test
 dotnet run --project QuestBoard.Service
-
-# Docker
-docker-compose up -d
-docker-compose logs -f questboard
 ```
 
-Migrations are **auto-applied on startup** via `context.Database.Migrate()` — no manual `database update` needed in dev.
+**Build failures due to locked files**: If `dotnet build` or `dotnet test` fails because output files are in use, Visual Studio is most likely running the app under the debugger. Ask the user to stop the debugger (Shift+F5) before retrying.
 
-```bash
-# Add/remove migrations (run from QuestBoard.Service/)
-dotnet ef migrations add MigrationName --project ../QuestBoard.Repository
-dotnet ef migrations remove --project ../QuestBoard.Repository
-```
+**On Linux**: never set `DOTNET_GCHeapHardLimit` or other GC-constraining env vars — they crash the Roslyn analyzers and surface as a wall of bogus compile errors. A `Fatal error. Internal CLR error. (0x80131506)` is a transient flake; re-run the same command once before treating it as real.
 
-## Architecture
-
-Three-layer clean architecture: **Service → Domain → Repository** (strict one-way dependency).
-
-- `QuestBoard.Service` — MVC controllers, Razor views, ViewModels, authorization handlers
-- `QuestBoard.Domain` — business logic, domain models, service interfaces
-- `QuestBoard.Repository` — EF Core entities, repositories, `QuestBoardContext`, migrations
-
-AutoMapper runs at two boundaries:
-- Entity ↔ DomainModel: `QuestBoard.Repository/Automapper/EntityProfile.cs`
-- DomainModel ↔ ViewModel: `QuestBoard.Service/Automapper/ViewModelProfile.cs`
-
-Authorization policies: `"DungeonMasterOnly"` (DungeonMaster or Admin role), `"AdminOnly"` (Admin role only).
-
-## Entity Framework
-
-**IMPORTANT**: EF packages belong only in `QuestBoard.Repository` — never add them to the Service project.
+Migration commands and the layer rules live in `.claude/architecture.md`, imported above.
 
 ## Code Comments
 
-**Never embed GSD planning/tracking references in source code** — no requirement IDs (`D-06`, `TENANT-03`, `EMAIL-04`), phase/plan numbers (`Phase 28`, `31-01`), or review-finding IDs (`WR-03`, `31-REVIEW`) in comments, XML doc comments, or string literals. These references go stale the moment a phase closes and become dead noise that a future cleanup phase has to hunt down and strip (see Phase 34). Write comments that explain the *why* in plain language that stays true independent of which phase touched the code — e.g. `// Backfill LockoutEnabled for existing users so the lockout policy applies retroactively`, not `// SEC-02: backfill LockoutEnabled...`. Planning/tracking context belongs in `.planning/`, not in source. This does not apply to git commit messages, which are expected to reference phase/plan IDs for traceability.
+**Never embed GSD planning/tracking references in source code** — no requirement IDs (`D-06`, `TENANT-03`, `EMAIL-04`), phase/plan numbers (`Phase 28`, `31-01`), review-finding IDs (`WR-03`, `31-REVIEW`), or planning document names (`RESEARCH.md`, `UI-SPEC.md`, `CONTEXT.md`) in comments, XML doc comments, or string literals. These references go stale the moment a phase closes and become dead noise that a future cleanup phase has to hunt down and strip. Write comments that explain the *why* in plain language that stays true independent of which phase touched the code — e.g. `// Backfill LockoutEnabled for existing users so the lockout policy applies retroactively`, not `// SEC-02: backfill LockoutEnabled...`. Planning/tracking context belongs in `.planning/`, not in source. This does not apply to git commit messages, which are expected to reference phase/plan IDs for traceability.
 
-## Code Navigation — RIP MCP
+## UI/UX
 
-If the `rip` MCP server is available (tools prefixed `mcp__rip__`), **always prefer it over reading files** for any symbol-navigation question. It has the full codebase indexed.
-
-| Goal | Tool |
-|---|---|
-| Find where a symbol is defined | `FindDefinition` |
-| Find a symbol by name (partial or exact) | `FindSymbol` |
-| Find every usage of a symbol across the codebase | `FindReferences` |
-| Read the source body of a function/class | `GetSymbolBody` |
-| List all fields and methods of a class | `GetClassMembers` |
-| List all values of an enum | `GetEnumValues` |
-| Who calls a function | `FindCallers` |
-| What does a function call | `FindCallees` |
-| Subclasses / implementors of a base | `FindImplementations` |
-| Full inheritance chain | `FindInheritanceTree` |
-| Trace a dependency path between two symbols | `FindDependencyPath` |
-| High-level subsystem dependency map | `GetArchitectureSummary` |
-
-### RIP Lookup Protocol
-
-When a user asks about a feature, system, or concept by name — even if the term is not obviously a symbol (e.g. "sota system", "payment flow") — follow this sequence:
-
-1. **`GetArchitectureSummary`** — identify which namespaces/subsystems relate to the term
-2. **`FindSymbol`** — try PascalCase variants: `sota` → `SotaHandler`, `Sota`, `SotaRequest`; try the plural, the base class name, the interface name
-3. **`GetClassMembers`** on each found type — get structure without reading files
-4. **`GetSymbolBody`** for specific methods of interest
-5. **`FindCallers` / `FindCallees`** to trace integrations
-6. **`FindImplementations`** for interfaces or base classes
-
-**Only after all of the above yield nothing:** use `Grep` with `output_mode: files_with_matches` to find file paths, then apply RIP tools (`GetSymbolBody`, `GetClassMembers`) to symbols found in those files. **Never `Read` a whole file** when RIP can answer the question.
-
-One failed `FindSymbol` query is not a reason to fall back — try at least 3 symbol-name variants before giving up on RIP.
-
-**When RIP is insufficient**, before falling back to file reads, output a short notice in this exact format so Thomas can improve the index:
-
-```
-⚠ RIP gap send to Thomas
-Query   : <tool name> / <symbol or query used>
-Reason  : <one sentence: why RIP couldn't answer — e.g. "symbol not indexed", "enum values missing", "FindCallers returned empty for X">
-Fallback: <what you are doing instead>
-```
-
-Then continue with the fallback. Do not block on this — emit the notice and proceed.
-
-## UI/UX Design Guidelines
-
-All new views must use the modern card pattern with these CSS classes: `modern-card`, `modern-card-header`, `modern-card-body`.
-
-```html
-<div class="card-header modern-card-header">
-    <h2 class="mb-0">
-        <i class="fas fa-icon-name text-color me-2"></i>
-        Page Title
-    </h2>
-</div>
-```
-
-- Always include `<hr>` before the button section
-- Use filled colored buttons (not outline), FontAwesome icons with `me-2` spacing
-- Button layout: `d-flex justify-content-between` — secondary (cancel) left, primary (submit) right
-
-## Project
-
-**D&D Quest Board — Milestone 4: Email Notifications**
-
-A D&D campaign management web application for a group of players and Dungeon Masters. It handles quest creation and scheduling, player signup with date voting, a character/guild system, a shop with gold economy, and email notifications. Built with ASP.NET Core 10 MVC, SQL Server, and Docker — deployed as a single container to a self-hosted environment.
-
-**Core Value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-
-### Constraints
-
-- **Compatibility:** No user-facing functionality may be removed or broken — all existing flows must work after the refactor
-- **Tech stack:** Stay on ASP.NET Core 10 MVC + SQL Server + EF Core — no framework changes
-- **Deployment:** Must remain deployable via `docker-compose up` with no additional setup steps
-- **Database:** All schema changes require EF Core migrations; auto-applied on startup
+**Before creating or editing any Razor view, read `.claude/ui-guidelines.md`** — card pattern, button layout, `.Mobile.cshtml` twins, and the date-rendering helpers.
 
 ## Reference Docs
 
 Read these on demand when needed — not loaded by default:
 
+- **Project state** — `.planning/PROJECT.md` — current milestone, shipped features, known debt
 - **Architecture** — `.planning/codebase/ARCHITECTURE.md` — layer structure, dependency direction, data flow, key abstractions
 - **Conventions** — `.planning/codebase/CONVENTIONS.md` — naming patterns, code style, AutoMapper patterns
 - **Tech Stack** — `.planning/codebase/STACK.md` — full dependency list, versions, configuration details

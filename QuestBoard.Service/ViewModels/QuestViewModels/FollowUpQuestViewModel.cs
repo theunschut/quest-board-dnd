@@ -34,7 +34,6 @@ public class FollowUpQuestViewModel
     /// <summary>
     /// Must contain at least one date before saving.
     /// No default date — DM must add dates explicitly.
-    /// Custom error message per UI-SPEC copywriting contract.
     /// </summary>
     public IList<DateTime> ProposedDates { get; set; } = [];
 }

@@ -953,5 +953,142 @@ Plans:
 
 - [x] 85-06-PLAN.md — Requirement and roadmap ledger close-out, validation sign-off, and the phase static guard (wave 5)
 
----
-*Roadmap created: 2026-08-25*
+### Phase 86: Viewer-Local Times and Correct Job Scheduling
+
+**Goal**: A reader sees every real timestamp in their own browser's timezone instead of UTC, and the three nightly sweeps fire at the hour their registration claims — without moving a single game night by so much as a minute.
+**Requirements**: None — `.planning/REQUIREMENTS.md` carries no Phase 86 rows. Traceability runs on `86-CONTEXT.md`'s locked decision IDs D-01…D-07 instead; no REQ-IDs were invented.
+**Depends on**: No hard dependency. It must not regress Phase 84's floating-local-time contract or Phase 85's quest entries — see the first risk below.
+**Plans**: 7/7 plans executed
+
+**Origin:** raised by the operator on 2026-09-18, immediately after noticing that the Calendar Subscription section's "Last fetched" timestamp reads two hours behind a Dutch wall clock. The investigation that followed found the display defect the operator reported *and* a scheduling defect they had assumed was working.
+
+**Two defects, one root cause — this application has no timezone concept at all.** `grep TimeZoneInfo` across the solution still returns nothing outside test fixtures, exactly as Phase 84's research recorded.
+
+- **Every rendered instant is UTC.** `CalendarSubscriptionService` stores `timeProvider.GetUtcNow().UtcDateTime` and `Profile.cshtml` renders it with no conversion and no zone label, which is representative rather than exceptional: there are roughly 71 date-render call sites across the views in 19 distinct format strings, none of which convert.
+- **The nightly sweeps do not fire when their comments say they do.** Two independent causes that compound. `docker-compose.yml` and `Dockerfile` set no `TZ` and mount no `/etc/localtime`, so the container clock is UTC and every `DateTime.Today`/`DateTime.Now` in production is UTC — 18 call sites across `EventSeriesService`, `CalendarController`, `GroupRepository` and `DailyReminderJob`. Independently, Hangfire's `RecurringJob.AddOrUpdate` defaults to `TimeZoneInfo.Utc` and none of the three registrations in `Program.cs` passes one. The "09:00" reminder sweep therefore fires at 11:00 Dutch summer time. The comments at `Program.cs` and `DailyReminderJob.cs` that assert "server local time (CET/CEST)" are wrong and must be corrected rather than preserved.
+
+**Scope notes:**
+
+- **The two defects ship together because they share the classifying work.** Deciding which `DateTime` is a real instant and which is naive wall-clock is the bulk of the effort for either half; splitting them would mean doing that analysis twice and risking two different answers.
+- **Rendering is client-side (operator's decision, 2026-09-18).** Emit the instant in a machine-readable `<time datetime="...Z">` attribute and format it in the browser with `Intl.DateTimeFormat` against the viewer's resolved zone. No stored preference, no cookie, no server-side zone detection, and DST handled by the platform. A server-rendered fallback must be present so a pre-hydration or no-JS view shows UTC *with an explicit zone label* rather than a bare wrong-looking time.
+- **The container's `TZ` stays unset.** Setting it would move `DateTime.Today` to local while Hangfire's cron stayed UTC, converting today's consistent-but-wrong behaviour into a genuine mismatch between the two clocks. The fix for job timing is an explicit `TimeZoneInfo` on each registration, not an ambient container setting.
+- **This is a display and scheduling phase, not a schema migration.** No stored value changes meaning and no column is rewritten. If the instant-versus-wall-clock distinction turns out to deserve expression in the type system, that is its own phase.
+
+**The distinction the whole phase turns on.** `DateTime` carries two incompatible meanings in this schema and the type does not tell them apart:
+
+| Real instants — stored UTC, *must* convert | Naive wall-clock — *must not* convert |
+|---|---|
+| `CreatedAt` (9 entities), `UpdatedAt`, `CancelledAt` | `QuestEntity.FinalizedDate` |
+| `LastFetchedAt`, `RevokedAt`, `SentAt` | `ProposedDateEntity.Date` |
+| `SignupTime`, `LastVoteChangeTime` | `EventEntity.Date` + `StartTime` |
+| `TransactionDate`, `ListedDate`, `DeniedAt` | `ShopItemEntity.AvailableFrom`/`AvailableUntil` |
+
+The right-hand column is what a Dungeon Master typed — "seven o'clock on the twelfth" — and is already local by intent. `QuestEntity.ClosedDate` and `FinalizedEmailSentForDate` are unclassified and need a decision in the discuss pass rather than an assumption.
+
+**Open questions for the discuss pass:**
+
+- Which side of the table `ClosedDate` and `FinalizedEmailSentForDate` fall on.
+- Which timezone the three sweeps should actually run in — a fixed `Europe/Amsterdam`, or configuration, given the board has no per-user zone and the operator is the only audience for job timing.
+- Whether emails (rendered server-side, with no browser to ask) should carry an explicit zone label, since the client-side mechanism cannot reach them.
+- Whether a relative rendering ("2 hours ago") is wanted for audit-style timestamps where the exact instant matters less than recency.
+
+**Risks this phase must actively avoid:**
+
+- **Shifting the calendar feed.** `QuestEntity.FinalizedDate` is what Phase 85 emits into the subscription, and Phase 84 D-09 fixed it as floating local time with no `TZID`. Anything that treats it as UTC moves every subscriber's session by the offset — and because a client refreshes on its own schedule, nobody would see it for hours. The feed writer must be provably untouched by this phase.
+- **Converting a wall-clock date.** The same mistake inside the application shifts a game night on the board, on the quest page, in the date-vote list and in every reminder email. The classification above is the control, and it needs tests that pin a wall-clock value as unmoved across a non-UTC viewer zone.
+- **Fixing one clock and not the other.** Today's two UTC clocks agree. Correcting the Hangfire schedule without correcting `DateTime.Today` inside `DailyReminderJob` — or the reverse — leaves the sweep computing "tomorrow" on a different clock than the one that woke it, which is a worse state than the one this phase starts from.
+- **Missing the mobile twins.** There are 53 `.Mobile.cshtml` views and 15 of them render dates. Shipping a change on one layout and not its twin is a recorded failure mode in this codebase (Phases 43, 54, 72, and called out again in Phase 84's scope notes).
+- **A flash of UTC.** Client-side formatting rewrites the DOM after paint. Without a deliberate fallback the reader sees the wrong time first and the right one a moment later, which reads as a bug even though the final value is correct.
+
+Plans:
+
+- [x] 86-07-PLAN.md
+
+**Wave 1**
+
+- [x] 86-01-PLAN.md — Board-clock seam (`TimeZoneOptions`/`IBoardClock`), `Html.LocalTime`, `site.js` hydration, proven end-to-end on the Profile "Last fetched" timestamp (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 86-02-PLAN.md — All three Hangfire sweeps pinned to the board zone, `board-timezone` health check reporting Degraded, `DailyReminderJob` on the same clock (wave 2)
+- [x] 86-03-PLAN.md — The D-07 ambient-clock migration: `EventSeriesService` ×7, `GroupRepository`, `CalendarController`, `EventsController`, `SeriesController`, `Series/Details.cshtml` (wave 2)
+- [x] 86-04-PLAN.md — Render sites A: QuestLog, Contacts, Platform Group — including splitting the four `FinalizedDate ?? ClosedDate` coalesce sites (wave 2)
+- [x] 86-05-PLAN.md — Render sites B: Quest Manage/Details/_QuestCard, Shop, ShopManagement, Admin EmailStats (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 86-06-PLAN.md — Regression guards (wall-clock unmoved, calendar feed untouched, ambient-clock invariant), tech-debt correction, human verification (wave 3)
+
+### Phase 87: Cross-Board Deep Link Recovery
+
+**Goal:** A member who follows a link to a quest, event, character or contact on a board they belong to lands on that page, on that board -- instead of the error they get today because a different board happens to be selected in their session.
+**Requirements**: No REQ-IDs. Settled in the discuss pass -- this phase runs on the locked `D-NN` decision IDs in `87-CONTEXT.md`, the way Phase 86 did. The decisions are implementation choices about a single recovery path rather than independently verifiable user-facing capabilities, so REQUIREMENTS.md rows would restate the same content one level vaguer.
+**Depends on:** No hard dependency. Phase 82 built the only cross-board switch UX that exists today -- the Agenda's confirm-then-switch modal -- and this phase generalises it, so that work is a prerequisite in practice and already shipped.
+**Plans:** 4/4 plans complete
+
+**Origin:** raised by the operator on 2026-09-21 from live use across two boards. Following a link that points at another board's page returns an error rather than the page, and the objection is that the restriction lands on the wrong person: "They have access to the board, so why restrict it?" This is deliberately a revision of a decision the operator remembers making -- strict session-scoped tenancy -- not a bug report against it. The complaint is about working in multiple boards being a pain, so "fewer clicks" is part of the goal, not a nice-to-have.
+
+**What actually happens today.** `IActiveGroupContext.ActiveGroupId` reads a single board id out of Session (`ActiveGroupContextService`), and `QuestBoardContext` keys 18 global query filters off it. A read for an entity on any other board therefore returns nothing, the controller cannot tell "does not exist" apart from "exists on your other board", and it answers `NotFound()` -- see `QuestController.Edit` and every sibling action shaped like it. The 404 is a correct consequence of the filter. What is wrong is the *response to a legitimate member*, and nothing in the current design carries enough information to answer differently.
+
+**The security property that must survive.** A viewer who is not a member of the target board must keep getting exactly what they get today, with no new signal. In particular, a recovery flow must not become an existence oracle: offering "switch to Board 2?" for a board the viewer does not belong to, while a nonexistent board returns a flat 404, leaks both board membership and board existence. Whatever this phase adds has to produce the same observable output in both cases.
+
+**The pattern to generalise, not invent.** Phase 82's Agenda already solves this once: `Views/Agenda/Index.cshtml` renders a confirm-then-switch modal that POSTs `GroupPicker.SelectGroup` with a `returnUrl`, and `SelectGroup` re-verifies membership server-side before it touches Session. That is the trusted seam, and it already carries the warning text explaining that switching changes what the viewer sees everywhere else. The open work is reaching that seam from an arbitrary deep link, rather than only from a page built knowing the target board up front.
+
+**Open questions for the discuss pass:**
+
+- **Auto-switch or confirm-then-switch.** Switching silently is the fewest clicks and the biggest surprise -- it repoints quests, shop, gold, characters and navigation, which is exactly what the Agenda modal warns about before doing it. Confirming keeps the warning but adds a click to every cross-board link, which is the friction the operator is complaining about.
+- **Where the resolution lives.** Middleware ahead of the query filters, a per-controller resolution helper, or board-qualified routes (`/b/{board}/quest/42`) that make the target explicit instead of inferred. The third removes the guessing entirely but touches every URL the app emits -- including links already sitting in somebody's mail.
+- **How the target board gets identified at all.** Current URLs carry an entity id and no board, so something has to resolve the entity with the filter off. That means a deliberate, narrow, audited escape hatch from the 18 filters and an answer to who may call it.
+- **Whether writes participate.** A POST arriving for another board cannot be answered with a redirect -- `GroupSessionMiddleware` already documents why a 302 re-issues as a GET and drops the body. The 409 it returns today may simply be the right answer for non-idempotent requests, leaving this phase to GET/HEAD.
+- **Whether emails and the calendar feed are in scope.** Those are the links most likely to be opened days later against a stale session, which makes them the strongest argument for the phase -- and also the ones that cannot be re-rendered after the fact.
+
+**Risks this phase must actively avoid:**
+
+- **Weakening the 18 query filters.** Any mechanism that reads across boards is a hole in the tenancy boundary by construction. It has to be one narrow call path with its own tests, not an `IgnoreQueryFilters()` that spreads by copy-paste.
+- **Becoming a membership oracle.** Covered above; it is the most likely way to get this phase wrong while appearing to work.
+- **Repointing a session as a side effect of a GET.** A link merely fetched -- a preview, a crawler, a browser prefetch -- must not silently change which board the viewer is on.
+- **Blurring into the no-active-board path.** `GroupSessionMiddleware`'s null-`ActiveGroupId` gate and its `returnUrl` round-trip are separately tested. A wrong-board path added beside it must stay distinguishable from a missing-board one.
+- **Missing the mobile twins.** Any new confirm surface needs its `.Mobile.cshtml` twin, and those are user-agent-selected rather than viewport-selected, so devtools emulation never exercises them. Shipping one layout and not the other is a recorded failure mode here (Phases 43, 54, 72).
+
+Plans:
+**Wave 1**
+
+- [x] 87-01-PLAN.md — Tracer: one cross-board deep link end to end (registry, filter-bypassing lookup, shared switcher, middleware, banner)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 87-02-PLAN.md — Widen to all 18 routes, with the IgnoreQueryFilters allowlist test landing first
+- [x] 87-03-PLAN.md — Skip the group picker when the return URL already names one of the viewer’s boards
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 87-04-PLAN.md — Oracle parity and authorization-boundary proofs, then blocking human verification
+
+## Backlog
+
+Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
+
+### Phase 999.1: Voting from a Phone Calendar Entry (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-09-18, after Phases 84 and 85 shipped and were tested on production — "would it be possible to vote in the calendar item on my phone, and will it then update my vote in the quest board?" Parked the same day, once the feasibility question was answered.
+
+**Feasibility verdict — the reason this is parked rather than planned.** It cannot be done through the subscription Phase 84 shipped, and no amount of design work changes that. A subscribed `.ics` URL is a one-way HTTP GET: the client polls, the server answers, and there is no return channel in the transport. Apple Calendar, Google Calendar's *From URL* calendars and Outlook's Internet Calendar Subscriptions all render a subscribed calendar read-only and run no scheduling against it, so emitting `ORGANIZER`, `ATTENDEE` and `RSVP=TRUE` would add bytes and produce no buttons. This confirms rather than contradicts Phase 84's own scope note ("a one-way subscription feed, not two-way sync … nothing a reader does in their calendar app ever writes back") and the writer's standing comment on why it emits no `METHOD` (`QuestBoard.Domain/Services/CalendarFeedWriter.cs`).
+
+**The two routes that could work, and what each costs:**
+
+- **iMIP — real email invitations.** The only mechanism that puts genuine Accept / Maybe / Decline buttons on a phone. The server mails a `METHOD:REQUEST` VEVENT from an `ORGANIZER` address it controls, with the reader as `ATTENDEE;RSVP=TRUE`; the client mails back a `METHOD:REPLY` carrying `PARTSTAT`. The data model fits unusually well — `ACCEPTED` / `TENTATIVE` / `DECLINED` is exactly `VoteType.Yes` / `Maybe` / `No`. The cost is not the outbound half. It is that **this codebase has no inbound mail of any kind**: `EmailService` is outbound `System.Net.Mail` SMTP only, and there is no MimeKit, no IMAP, no provider webhook anywhere in the solution. A real phase would have to add a mailbox plus polling or an inbound webhook, MIME parsing, iCalendar `REPLY` parsing, and `UID`-to-entity plus attendee-to-user matching. It would also have to answer two things that are not details: an inbound `From` header is forgeable, so a reply must carry its own secret (reply-address sub-addressing) or pass DKIM/SPF before it is allowed to change anyone's answer; and Gmail and Outlook auto-add invitations to the primary calendar, which would sit beside the identical session already arriving through the Phase 84 feed, because clients do not merge entries across calendars.
+- **Deep-link tap-through.** Reinstate `DESCRIPTION` (the reliable carrier; the `URL:` property is surfaced inconsistently, Google especially) with a token-authenticated link to a small Yes/Maybe/No page. Three taps — entry, link, answer — and it works in every client today with no inbound mail. Rejected for now on two grounds the operator weighed: it is not actually voting *in* the calendar item, only a shortcut back to the board; and it escalates what a leaked feed address costs, turning a read-only schedule disclosure into the ability to change someone's answers. Note it also reverses Phase 84 D-10, which dropped `DESCRIPTION` deliberately.
+
+**Scope correction that survives the parking:** quest *date* voting is out of reach on any route. The feed carries finalized quests only — Phase 85 locked candidate dates out on the grounds that a phone should not fill with dates that will mostly not happen — so there is nothing in the feed for a date vote to attach to. Event availability is the only thing a voting story can reach, and it is a natural fit: the feed already renders the answer outbound as the `(maybe)` / `(declined)` title suffix, so this would close a loop that is currently half-built.
+
+**Left open deliberately:** whether a decline should release a finalized quest seat and promote the waitlist. The operator chose to settle that in a discuss pass rather than now, so it is not decided here.
+
+**Revive this if:** manually opening the board to answer proves annoying enough in production use to justify the build, or inbound mail arrives in the project for some other reason — the iMIP route is a far smaller phase once a parsed inbound mailbox already exists.
+
+Plans:
+
+- [ ] TBD (promote with /gsd-review-backlog when ready)

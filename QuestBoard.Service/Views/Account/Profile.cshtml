@@ -105,10 +105,10 @@
                                         <td>
                                             <div>@subscription.Name</div>
                                             <div class="calendar-subscription-meta">
-                                                Created @subscription.CreatedAt.ToString("MMM d, yyyy")
+                                                Created @Html.LocalTime(subscription.CreatedAt, "date")
                                                 @if (subscription.LastFetchedAt.HasValue)
                                                 {
-                                                    @:&middot; Last fetched @subscription.LastFetchedAt.Value.ToString("MMM d, yyyy h:mm tt")
+                                                    @:&middot; Last fetched @Html.LocalTime(subscription.LastFetchedAt.Value, "date-time")
                                                 }
                                                 else
                                                 {

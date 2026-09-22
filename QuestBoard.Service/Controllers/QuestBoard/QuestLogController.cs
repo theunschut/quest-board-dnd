@@ -12,7 +12,8 @@ public class QuestLogController(
     IUserService userService,
     IQuestService questService,
     IActiveGroupContext activeGroupContext,
-    IGroupService groupService
+    IGroupService groupService,
+    IBoardClock boardClock
     ) : Controller
 {
     [HttpGet]
@@ -41,8 +42,7 @@ public class QuestLogController(
 
         // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
         // admitting closed campaign quests even though they never set FinalizedDate.
-        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
-            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+        var isCompletedOneShot = quest.HasBeenPlayed(boardClock.Today)
             && !quest.DungeonMasterSession;
         if (!isCompletedOneShot && !quest.IsClosed)
         {
@@ -89,8 +89,7 @@ public class QuestLogController(
 
         // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
         // admitting closed campaign quests even though they never set FinalizedDate.
-        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
-            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+        var isCompletedOneShot = quest.HasBeenPlayed(boardClock.Today)
             && !quest.DungeonMasterSession;
         if (!isCompletedOneShot && !quest.IsClosed)
         {
@@ -118,8 +117,7 @@ public class QuestLogController(
 
         // Verify this is a completed quest (DM-only sessions are not shown in the quest log),
         // admitting closed campaign quests even though they never set FinalizedDate.
-        var isCompletedOneShot = quest.IsFinalized && quest.FinalizedDate.HasValue
-            && quest.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date
+        var isCompletedOneShot = quest.HasBeenPlayed(boardClock.Today)
             && !quest.DungeonMasterSession;
         if (!isCompletedOneShot && !quest.IsClosed)
         {

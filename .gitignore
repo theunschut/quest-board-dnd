@@ -723,3 +723,5 @@ FodyWeavers.xsd
 .planning/research/.cache/
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,csharp,aspnetcore
+# GSD derived state cache — regenerated on every gsd-tools run
+.planning/state.json

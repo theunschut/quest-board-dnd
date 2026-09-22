@@ -7,7 +7,7 @@ using QuestBoard.Repository.Entities;
 
 namespace QuestBoard.Repository;
 
-internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
+internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoardClock boardClock)
     : BaseRepository<Group, GroupEntity>(dbContext, mapper), IGroupRepository
 {
     /// <inheritdoc/>
@@ -71,7 +71,7 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper)
         var group = await DbContext.Groups.FirstOrDefaultAsync(g => g.Id == groupId, token);
         if (group?.BoardType == (int)BoardType.Campaign)
         {
-            var today = DateOnly.FromDateTime(DateTime.Today);
+            var today = boardClock.Today;
             var futureEventIds = await GetFutureEventIdsForGroupIgnoringActiveBoardAsync(groupId, today, token);
             foreach (var eventId in futureEventIds)
             {

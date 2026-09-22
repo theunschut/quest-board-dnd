@@ -9,13 +9,12 @@
 @{
     ViewData["Title"] = Model.Title;
 
-    var todayLabel = DateTime.Today.ToString("MMMM d, yyyy");
     var endConfirmMessage = Model.AnsweredCount == 0
-        ? $"End this series after {todayLabel}? {Model.FutureCount} upcoming session(s) will no longer be generated. Sessions that already happened are always kept. This cannot be undone."
-        : $"End this series after {todayLabel}? {Model.FutureCount} upcoming session(s) will no longer be generated, and {Model.AnsweredCount} availability answer(s) already given for them will be cleared. Sessions that already happened are always kept. This cannot be undone.";
+        ? $"End this series after {Model.TodayLabel}? {Model.FutureCount} upcoming session(s) will no longer be generated. Sessions that already happened are always kept. This cannot be undone."
+        : $"End this series after {Model.TodayLabel}? {Model.FutureCount} upcoming session(s) will no longer be generated, and {Model.AnsweredCount} availability answer(s) already given for them will be cleared. Sessions that already happened are always kept. This cannot be undone.";
     var removalBodyMessage = $"{Model.TotalCount} session(s) will be affected — {Model.PastCount} already held, {Model.FutureCount} upcoming — along with {Model.AnsweredCount} availability answer(s) people actually gave. What should happen to them?";
 
-    var today = DateOnly.FromDateTime(DateTime.Today);
+    var today = Model.Today;
     var todayDividerRendered = false;
 }
 

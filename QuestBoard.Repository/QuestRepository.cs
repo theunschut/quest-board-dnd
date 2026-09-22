@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace QuestBoard.Repository;
 
-internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : BaseRepository<Quest, QuestEntity>(dbContext, mapper), IQuestRepository
+internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoardClock boardClock) : BaseRepository<Quest, QuestEntity>(dbContext, mapper), IQuestRepository
 {
     // Tolerance window for treating two proposed dates as the same slot;
     // accommodates minor timezone rounding when users resubmit dates.
@@ -56,7 +56,9 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsWithSignupsAsync(CancellationToken token = default)
     {
-        var oneDayAgo = DateTime.UtcNow.AddDays(-1);
+        // FinalizedDate is a floating wall-clock game night, so the cutoff that decides when it
+        // drops off the board has to be the board's own clock rather than a UTC instant.
+        var oneDayAgo = boardClock.Now.AddDays(-1);
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
             .Where(q => (!q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo)) && !q.IsClosed)
             .OrderByDescending(q => q.CreatedAt)
@@ -67,7 +69,7 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
     /// <inheritdoc/>
     public async Task<IList<Quest>> GetQuestsWithSignupsForRoleAsync(bool isAdminOrDm, CancellationToken token = default)
     {
-        var oneDayAgo = DateTime.UtcNow.AddDays(-1);
+        var oneDayAgo = boardClock.Now.AddDays(-1);
         var entities = await ProjectWithoutCharacterImages(DbContext.Quests)
             .Where(q => (!q.IsFinalized || (q.IsFinalized && q.FinalizedDate > oneDayAgo)) &&
                         (!q.DungeonMasterSession || isAdminOrDm) && !q.IsClosed)

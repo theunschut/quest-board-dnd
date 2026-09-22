@@ -8,6 +8,7 @@
     ViewData["Title"] = $"Manage Quest: {Model.Title}";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
 }
 
 
@@ -280,7 +281,7 @@ else
                                                             <label class="form-check-label" for="player_@player.Id">
                                                                 @player.Player.Name
                                                                 <small class="text-muted">
-                                                                    (Signed up: @player.SignupTime.ToString("MMM dd, h:mm tt"))
+                                                                    (Signed up: @Html.LocalTime(player.SignupTime, "date-time-compact"))
                                                                     <span class="availability-status">
                                                                         @if (availablePlayers.Contains(player))
                                                                         {
@@ -323,7 +324,7 @@ else
                                                             <label class="form-check-label" for="assistant_@assistant.Id">
                                                                 @assistant.Player.Name
                                                                 <small class="text-muted">
-                                                                    (Signed up: @assistant.SignupTime.ToString("MMM dd, h:mm tt"))
+                                                                    (Signed up: @Html.LocalTime(assistant.SignupTime, "date-time-compact"))
                                                                     @if (isAvailable)
                                                                     {
                                                                         <span class="text-success">- Available</span>
@@ -359,7 +360,7 @@ else
                                                         <div class="flex-grow-1">
                                                             <i class="fas fa-check-circle text-success me-2"></i>
                                                             @spectator.Player.Name
-                                                            <small>(Signed up: @spectator.SignupTime.ToString("MMM dd, h:mm tt"))</small>
+                                                            <small>(Signed up: @Html.LocalTime(spectator.SignupTime, "date-time-compact"))</small>
                                                         </div>
                                                         @if ((bool)ViewBag.IsAdmin)
                                                         {
@@ -512,7 +513,7 @@ else
                                                             </span>
                                                         }
                                                     </td>
-                                                    <td><small class="text-muted">@participant.SignupTime.ToString("MMM dd, h:mm tt")</small></td>
+                                                    <td><small class="text-muted">@Html.LocalTime(participant.SignupTime, "date-time-compact")</small></td>
                                                     @if ((bool)ViewBag.IsAdmin)
                                                     {
                                                         <td>
@@ -706,7 +707,7 @@ else
                                 string statusIcon;
                                 string statusText;
 
-                                if (Model.IsFinalized == true && Model.FinalizedDate.HasValue == true && Model.FinalizedDate.Value.Date <= DateTime.UtcNow.AddDays(-1).Date)
+                                if (Model.HasBeenPlayed(boardToday))
                                 {
                                     statusBadge = "bg-dark";
                                     statusIcon = "fas fa-flag-checkered";
@@ -751,7 +752,7 @@ else
                         <p><strong>Total Signups:</strong> @Model.PlayerSignups?.Count</p>
                         <p><strong>Target Players:</strong> @Model.TotalPlayerCount</p>
                     }
-                    <p><strong>Created:</strong> @Model.CreatedAt.ToString("MMM dd, yyyy")</p>
+                    <p><strong>Created:</strong> @Html.LocalTime(Model.CreatedAt, "date")</p>
 
                     @if (Model.FollowUpQuest != null)
                     {
