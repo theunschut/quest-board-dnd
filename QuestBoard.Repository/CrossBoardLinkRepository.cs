@@ -47,6 +47,12 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
         // The caller's own membership set is pinned inside the predicate, so this can only ever
         // report boards the caller already belongs to -- never a board the target user is on
         // that the caller is not.
+        //
+        // Membership rows carry no query filter today, so IgnoreQueryFilters() bypasses nothing
+        // here; it is deliberate and the one call in this class that is. If membership ever gains
+        // a board-scoped filter, this lookup still has to read across boards or cross-board
+        // resolution stops working -- and it would fail as a plausible-looking "not a member"
+        // rather than as an error, which is the hardest kind of break to notice.
         return await dbContext.UserGroups
             .IgnoreQueryFilters()
             .Where(ug => ug.UserId == targetUserId && memberGroupIds.Contains(ug.GroupId))
