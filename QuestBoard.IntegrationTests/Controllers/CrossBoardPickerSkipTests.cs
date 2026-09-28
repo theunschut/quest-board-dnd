@@ -209,8 +209,12 @@ public class CrossBoardPickerSkipTests(CrossBoardWebApplicationFactory factory)
         return html;
     }
 
+    // A SuperAdmin whose session lapsed, clicking a quest on a board they belong to. The picker is
+    // shown a platform-wide list for a SuperAdmin, but the skip answers only from their own
+    // memberships, so they land on the quest exactly as a regular member would -- being a
+    // SuperAdmin neither earns nor costs them anything on this path.
     [Fact]
-    public async Task SuperAdmin_WithResolvableReturnUrl_StillReceivesPicker()
+    public async Task SuperAdmin_ReturnUrlNamingQuestOnBoardTheyBelongTo_RedirectsStraightToQuest()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
 
@@ -222,9 +226,59 @@ public class CrossBoardPickerSkipTests(CrossBoardWebApplicationFactory factory)
         {
             var quest = new QuestEntity
             {
-                Title = "PickerSkipSuperAdminQuest",
-                Description = "Any board's quest.",
+                Title = "PickerSkipSuperAdminOwnBoardQuest",
+                Description = "Lives on a board the SuperAdmin is a member of.",
                 GroupId = 1,
+                DungeonMasterId = dm.Id,
+                ChallengeRating = 1,
+                TotalPlayerCount = 4,
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Quests.Add(quest);
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+            questId = quest.Id;
+        }
+
+        // The SuperAdmin helper seeds a group-1 membership alongside the Identity role, so this
+        // viewer genuinely belongs to the quest's board.
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory);
+        var returnUrl = $"/Quest/Details/{questId}";
+
+        var response = await client.GetAsync(
+            $"/GroupPicker/Index?returnUrl={Uri.EscapeDataString(returnUrl)}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        (response.Headers.Location?.ToString() ?? string.Empty).Should().Be(returnUrl);
+
+        var landed = await client.GetAsync(returnUrl, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("PickerSkipSuperAdminOwnBoardQuest");
+    }
+
+    // The other half, and the one that matters for safety: taking the role check off the skip must
+    // not hand a SuperAdmin a way onto a board they are not a member of. A SuperAdmin can still
+    // reach that board by picking it, so the picker -- not a switch -- is the right answer here.
+    [Fact]
+    public async Task SuperAdmin_ReturnUrlNamingQuestOnBoardTheyDoNotBelongTo_StillReceivesPicker()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "pickerskipdmsuperforeign", "pickerskipdmsuperforeign@example.com");
+
+        int questId;
+        await using (var ctx = factory.Database.CreateContext())
+        {
+            var foreignBoard = new GroupEntity { Name = "PickerSkipSuperAdminForeignBoard", CreatedAt = DateTime.UtcNow };
+            ctx.Groups.Add(foreignBoard);
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var quest = new QuestEntity
+            {
+                Title = "PickerSkipSuperAdminForeignQuest",
+                Description = "Lives on a board the SuperAdmin is not a member of.",
+                GroupId = foreignBoard.Id,
                 DungeonMasterId = dm.Id,
                 ChallengeRating = 1,
                 TotalPlayerCount = 4,
