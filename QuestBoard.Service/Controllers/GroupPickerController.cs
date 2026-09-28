@@ -35,15 +35,20 @@ public class GroupPickerController(
         }
 
         // The link that sent the viewer here already names which board the page lives on, so
-        // asking them to guess is asking for information the application already has. Never runs
-        // for a SuperAdmin: their board list above is drawn from every group on the platform, not
-        // from their own memberships, while the resolver below only ever answers from the
-        // viewer's own memberships -- a SuperAdmin could not be skipped onto anything even if
-        // this gate were removed, so today's picker is what they get. When the return URL does
-        // not name a board the viewer belongs to -- an unmapped route, a nonexistent id, or
-        // someone else's board -- nothing below says so: control falls straight through to the
-        // single-board branch or the picker view exactly as it renders today.
-        if (!isSuperAdmin && !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)
+        // asking them to guess is asking for information the application already has.
+        //
+        // This runs for a SuperAdmin exactly as for anyone else, and deliberately has no role
+        // check. The resolver answers only from the viewer's own memberships, never from the
+        // platform-wide list a SuperAdmin is shown above, so a SuperAdmin is skipped onto a board
+        // they belong to and onto nothing else -- the same outcome a regular member gets. Gating
+        // it off for SuperAdmins would not have protected anything; it only left them with a
+        // picker a regular member would never see, on their own boards.
+        //
+        // When the return URL does not name a board the viewer belongs to -- an unmapped route, a
+        // nonexistent id, or someone else's board -- nothing below says so: control falls
+        // straight through to the single-board branch or the picker view exactly as it renders
+        // today.
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)
             && CrossBoardRouteTarget.TryFromLocalUrl(returnUrl, out var target) && target != null)
         {
             var resolved = await crossBoardLinkResolver.ResolveAsync(target.Kind, target.Id, userId);
