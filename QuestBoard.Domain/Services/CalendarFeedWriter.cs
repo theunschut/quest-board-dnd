@@ -210,7 +210,13 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
         AppendFoldedLine(builder, "DTEND;TZID=" + tzidParameter + ":" + FormatBasicDateTime(end));
         AppendFoldedLine(builder, "SUMMARY:" + BuildSummary(entry));
         AppendFoldedLine(builder, "TRANSP:TRANSPARENT");
-        AppendFoldedLine(builder, "SEQUENCE:0");
+
+        // The identifier and the stamp of every entry a phone already holds never move, so a
+        // client that decides updates by revision number needs a higher number than the one it
+        // first saw before it will apply a changed start and end. Every entry therefore carries
+        // one. It is a constant, not stored data, and it must never go back down: a client that
+        // compares revisions would treat a lower number as older and ignore every later change.
+        AppendFoldedLine(builder, "SEQUENCE:1");
         builder.Append("END:VEVENT").Append(LineBreak);
     }
 
@@ -228,7 +234,7 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
         AppendFoldedLine(builder, "DTEND;VALUE=DATE:" + FormatBasicDate(end));
         AppendFoldedLine(builder, "SUMMARY:" + BuildSummary(entry));
         AppendFoldedLine(builder, "TRANSP:TRANSPARENT");
-        AppendFoldedLine(builder, "SEQUENCE:0");
+        AppendFoldedLine(builder, "SEQUENCE:1");
         builder.Append("END:VEVENT").Append(LineBreak);
     }
 

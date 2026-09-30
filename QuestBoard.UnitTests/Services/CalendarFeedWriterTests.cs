@@ -161,14 +161,61 @@ public class CalendarFeedWriterTests
     }
 
     [Fact]
-    public void Write_AnyEntry_EmitsSequenceZero()
+    public void Write_AnyEntry_EmitsSequenceOne()
     {
         var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
         var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
 
         var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
 
-        body.Split("SEQUENCE:0").Length.Should().Be(3);
+        body.Split("SEQUENCE:1\r\n").Length.Should().Be(3);
+        body.Should().NotContain("SEQUENCE:0");
+    }
+
+    [Fact]
+    public void Write_EmptyEntryList_EmitsNoSequenceLine()
+    {
+        var body = Writer.Write([], "My Calendar", AmsterdamZone);
+
+        body.Should().NotContain("SEQUENCE:");
+    }
+
+    [Fact]
+    public void Write_TimedEntry_EmitsTheExactEventBlock()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        body.Should().Contain(string.Join("\r\n",
+            "BEGIN:VEVENT",
+            "UID:questboard-event-1",
+            "DTSTAMP:20260917T120000Z",
+            "DTSTART;TZID=Europe/Amsterdam:20260920T190000",
+            "DTEND;TZID=Europe/Amsterdam:20260920T200000",
+            "SUMMARY:[The Last Bastion] Session 12",
+            "TRANSP:TRANSPARENT",
+            "SEQUENCE:1",
+            "END:VEVENT") + "\r\n");
+    }
+
+    [Fact]
+    public void Write_AllDayEntry_EmitsTheExactEventBlock()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        body.Should().Contain(string.Join("\r\n",
+            "BEGIN:VEVENT",
+            "UID:questboard-event-2",
+            "DTSTAMP:20260917T120000Z",
+            "DTSTART;VALUE=DATE:20260921",
+            "DTEND;VALUE=DATE:20260922",
+            "SUMMARY:[The Last Bastion] Session 12",
+            "TRANSP:TRANSPARENT",
+            "SEQUENCE:1",
+            "END:VEVENT") + "\r\n");
     }
 
     [Fact]
@@ -573,5 +620,337 @@ public class CalendarFeedWriterTests
         body.Should().NotContain("DTSTART;VALUE=DATE:");
         body.Should().NotContain("DTEND;VALUE=DATE:");
         body.Should().Contain("DTSTART;TZID=Europe/Amsterdam:20260920T190000");
+    }
+
+    // --- Zone document: the generated time-zone block, header and per-line zone parameters ---
+
+    // Joins content lines the way the writer terminates them: every line, the last included,
+    // ends in a carriage return and line feed.
+    private static string JoinLines(params string[] lines) => string.Join("\r\n", lines) + "\r\n";
+
+    // The substring from the block opener through the line break that ends the block closer.
+    private static string ExtractTimeZoneBlock(string body)
+    {
+        const string closer = "END:VTIMEZONE\r\n";
+        var start = body.IndexOf("BEGIN:VTIMEZONE", StringComparison.Ordinal);
+        var end = body.IndexOf(closer, StringComparison.Ordinal);
+        start.Should().BeGreaterThanOrEqualTo(0);
+        end.Should().BeGreaterThan(start);
+        return body[start..(end + closer.Length)];
+    }
+
+    // Two sessions either side of the 25 October 2026 clock change.
+    private static List<CalendarFeedEntry> OctoberEntries() =>
+    [
+        MakeEntry(new DateOnly(2026, 10, 2), new TimeOnly(18, 0), sourceId: 1, duration: TimeSpan.FromHours(4)),
+        MakeEntry(new DateOnly(2026, 10, 30), new TimeOnly(18, 0), sourceId: 2, duration: TimeSpan.FromHours(4)),
+    ];
+
+    [Fact]
+    public void Write_SpanReachingTheMarchClockChange_ListsBothChangesInChronologicalOrder()
+    {
+        var first = MakeEntry(new DateOnly(2026, 10, 2), new TimeOnly(18, 0), sourceId: 1);
+        var second = MakeEntry(new DateOnly(2027, 3, 31), new TimeOnly(18, 0), sourceId: 2);
+
+        var body = Writer.Write([first, second], "My Calendar", AmsterdamZone);
+
+        ExtractTimeZoneBlock(body).Should().Be(JoinLines(
+            "BEGIN:VTIMEZONE",
+            "TZID:Europe/Amsterdam",
+            "BEGIN:DAYLIGHT",
+            "DTSTART:19700101T000000",
+            "TZOFFSETFROM:+0200",
+            "TZOFFSETTO:+0200",
+            "END:DAYLIGHT",
+            "BEGIN:STANDARD",
+            "DTSTART:20261025T030000",
+            "TZOFFSETFROM:+0200",
+            "TZOFFSETTO:+0100",
+            "END:STANDARD",
+            "BEGIN:DAYLIGHT",
+            "DTSTART:20270328T020000",
+            "TZOFFSETFROM:+0100",
+            "TZOFFSETTO:+0200",
+            "END:DAYLIGHT",
+            "END:VTIMEZONE"));
+    }
+
+    [Fact]
+    public void Write_SummerOnlySpan_EmitsOnlyTheLeadingObservance()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 7, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        ExtractTimeZoneBlock(body).Should().Be(JoinLines(
+            "BEGIN:VTIMEZONE",
+            "TZID:Europe/Amsterdam",
+            "BEGIN:DAYLIGHT",
+            "DTSTART:19700101T000000",
+            "TZOFFSETFROM:+0200",
+            "TZOFFSETTO:+0200",
+            "END:DAYLIGHT",
+            "END:VTIMEZONE"));
+        Regex.Matches(body, "BEGIN:(STANDARD|DAYLIGHT)").Count.Should().Be(1);
+    }
+
+    [Fact]
+    public void Write_ZoneDocument_NeverEmitsARecurrenceRuleOrAZoneDisplayName()
+    {
+        var body = Writer.Write(OctoberEntries(), "My Calendar", AmsterdamZone);
+
+        // Display names differ by platform and recurrence rules would extend a fixed-date block
+        // past the span it was computed for, so neither may appear.
+        body.Should().NotContain("RRULE");
+        body.Should().NotContain("TZNAME");
+    }
+
+    [Fact]
+    public void Write_TimedEntries_EmitExactlyOneTimeZoneBlockAfterTheHeadersAndBeforeTheFirstEvent()
+    {
+        var body = Writer.Write(OctoberEntries(), "My Calendar", AmsterdamZone);
+
+        Regex.Matches(body, "BEGIN:VTIMEZONE").Count.Should().Be(1);
+        Regex.Matches(body, "END:VTIMEZONE").Count.Should().Be(1);
+
+        var refreshIndex = body.IndexOf("REFRESH-INTERVAL", StringComparison.Ordinal);
+        var blockStart = body.IndexOf("BEGIN:VTIMEZONE", StringComparison.Ordinal);
+        var blockEnd = body.IndexOf("END:VTIMEZONE", StringComparison.Ordinal);
+        var firstEvent = body.IndexOf("BEGIN:VEVENT", StringComparison.Ordinal);
+
+        refreshIndex.Should().BeGreaterThanOrEqualTo(0);
+        refreshIndex.Should().BeLessThan(blockStart);
+        blockEnd.Should().BeLessThan(firstEvent);
+    }
+
+    [Fact]
+    public void Write_ZoneHeader_AppearsOnceAfterTheCalendarNameAndMatchesEveryZoneReference()
+    {
+        var eventEntry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1);
+        var questEntry = MakeEntry(
+            new DateOnly(2026, 9, 27), new TimeOnly(19, 0), sourceId: 2, source: CalendarFeedSource.Quest);
+
+        var body = Writer.Write([eventEntry, questEntry], "My Calendar", AmsterdamZone);
+
+        Regex.Matches(body, "X-WR-TIMEZONE:").Count.Should().Be(1);
+
+        var lines = body.Split("\r\n");
+        var nameIndex = Array.FindIndex(lines, l => l.StartsWith("X-WR-CALNAME:", StringComparison.Ordinal));
+        nameIndex.Should().BeGreaterThanOrEqualTo(0);
+        lines[nameIndex + 1].Should().Be("X-WR-TIMEZONE:Europe/Amsterdam");
+
+        var references = Regex.Matches(body, @"(?:DTSTART|DTEND);TZID=([^:]+):");
+        references.Count.Should().Be(4);
+        references.Select(m => m.Groups[1].Value).Should().OnlyContain(v => v == "Europe/Amsterdam");
+        lines.Should().Contain("TZID:Europe/Amsterdam");
+    }
+
+    [Fact]
+    public void Write_EmptyEntryList_DeclaresTheZoneHeaderButNoBlockAndNoZoneParameter()
+    {
+        var body = Writer.Write([], "My Calendar", AmsterdamZone);
+
+        body.Should().Contain("X-WR-TIMEZONE:Europe/Amsterdam\r\n");
+        body.Should().NotContain("BEGIN:VTIMEZONE");
+        body.Should().NotContain("TZID");
+    }
+
+    [Fact]
+    public void Write_AllDayOnlyDocument_EmitsNoTimeZoneBlockAndNoZoneParameter()
+    {
+        var first = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 1);
+        var second = MakeEntry(new DateOnly(2026, 9, 22), startTime: null, sourceId: 2);
+
+        var body = Writer.Write([first, second], "My Calendar", AmsterdamZone);
+
+        body.Should().NotContain("BEGIN:VTIMEZONE");
+        body.Should().NotContain("TZID");
+        body.Should().Contain("X-WR-TIMEZONE:Europe/Amsterdam\r\n");
+        body.Should().Contain("DTSTART;VALUE=DATE:");
+    }
+
+    [Fact]
+    public void Write_MixedDocument_PutsTheZoneOnTimedLinesOnly()
+    {
+        var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1);
+        var allDay = MakeEntry(new DateOnly(2026, 9, 20), startTime: null, sourceId: 2);
+
+        var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
+
+        var lines = body.Split("\r\n");
+        lines.Where(l => l.StartsWith("DTSTART;", StringComparison.Ordinal)).Should().Equal(
+            "DTSTART;TZID=Europe/Amsterdam:20260920T190000",
+            "DTSTART;VALUE=DATE:20260920");
+
+        // The stamp is a real instant, so it stays in UTC and never carries a zone parameter.
+        var stamps = lines.Where(l => l.StartsWith("DTSTAMP", StringComparison.Ordinal)).ToList();
+        stamps.Count.Should().Be(2);
+        stamps.Should().OnlyContain(l => Regex.IsMatch(l, @"^DTSTAMP:\d{8}T\d{6}Z$"));
+    }
+
+    [Fact]
+    public void Write_EntriesInsideTheSpringGapAndTheAutumnOverlap_KeepTheirStoredDigits()
+    {
+        // 02:30 on 28 March 2027 does not exist in Amsterdam and 02:30 on 31 October 2027 exists
+        // twice. The stored digits are written as they are and the client resolves the ambiguity.
+        var gap = MakeEntry(new DateOnly(2027, 3, 28), new TimeOnly(2, 30), sourceId: 1);
+        var overlap = MakeEntry(new DateOnly(2027, 10, 31), new TimeOnly(2, 30), sourceId: 2);
+
+        var body = Writer.Write([gap, overlap], "My Calendar", AmsterdamZone);
+
+        body.Should().Contain("DTSTART;TZID=Europe/Amsterdam:20270328T023000\r\n");
+        body.Should().Contain("DTSTART;TZID=Europe/Amsterdam:20271031T023000\r\n");
+        ExtractTimeZoneBlock(body).Should().Be(JoinLines(
+            "BEGIN:VTIMEZONE",
+            "TZID:Europe/Amsterdam",
+            "BEGIN:STANDARD",
+            "DTSTART:19700101T000000",
+            "TZOFFSETFROM:+0100",
+            "TZOFFSETTO:+0100",
+            "END:STANDARD",
+            "BEGIN:DAYLIGHT",
+            "DTSTART:20270328T020000",
+            "TZOFFSETFROM:+0100",
+            "TZOFFSETTO:+0200",
+            "END:DAYLIGHT",
+            "BEGIN:STANDARD",
+            "DTSTART:20271031T030000",
+            "TZOFFSETFROM:+0200",
+            "TZOFFSETTO:+0100",
+            "END:STANDARD",
+            "END:VTIMEZONE"));
+    }
+
+    [Fact]
+    public void Write_TwoEntriesAtTheSameMoment_KeepTheirReceivedOrderAndTheSameZone()
+    {
+        var first = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1);
+        var second = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 2);
+
+        var body = Writer.Write([first, second], "My Calendar", AmsterdamZone);
+
+        body.IndexOf("UID:questboard-event-1", StringComparison.Ordinal)
+            .Should().BeLessThan(body.IndexOf("UID:questboard-event-2", StringComparison.Ordinal));
+        body.Split("DTSTART;TZID=Europe/Amsterdam:20260920T190000\r\n").Length.Should().Be(3);
+    }
+
+    [Fact]
+    public void Write_WindowsStyleZoneId_DeclaresTheIanaNameEverywhere()
+    {
+        var windowsZone = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
+
+        var body = Writer.Write(OctoberEntries(), "My Calendar", windowsZone);
+        var amsterdamBody = Writer.Write(OctoberEntries(), "My Calendar", AmsterdamZone);
+
+        body.Should().Contain("DTSTART;TZID=Europe/Berlin:20261002T180000\r\n");
+        body.Should().Contain("TZID:Europe/Berlin\r\n");
+        body.Should().Contain("X-WR-TIMEZONE:Europe/Berlin\r\n");
+        body.Should().NotContain("W. Europe");
+        ExtractTimeZoneBlock(body).Should().Be(
+            ExtractTimeZoneBlock(amsterdamBody).Replace("TZID:Europe/Amsterdam", "TZID:Europe/Berlin"));
+    }
+
+    [Fact]
+    public void Write_UtcZone_DeclaresUtcWithASingleZeroOffsetObservance()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar", TimeZoneInfo.Utc);
+
+        ExtractTimeZoneBlock(body).Should().Be(JoinLines(
+            "BEGIN:VTIMEZONE",
+            "TZID:UTC",
+            "BEGIN:STANDARD",
+            "DTSTART:19700101T000000",
+            "TZOFFSETFROM:+0000",
+            "TZOFFSETTO:+0000",
+            "END:STANDARD",
+            "END:VTIMEZONE"));
+        body.Should().Contain("DTSTART;TZID=UTC:20260920T190000\r\n");
+        body.Should().Contain("X-WR-TIMEZONE:UTC\r\n");
+        body.Should().NotContain("-0000");
+        body.Should().NotContain("Etc/UTC");
+    }
+
+    [Fact]
+    public void Write_SouthernHemisphereSpan_ListsTheSeptemberDaylightChange()
+    {
+        var auckland = TimeZoneInfo.FindSystemTimeZoneById("Pacific/Auckland");
+        var first = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1);
+        var second = MakeEntry(new DateOnly(2026, 10, 20), new TimeOnly(19, 0), sourceId: 2);
+
+        var body = Writer.Write([first, second], "My Calendar", auckland);
+
+        ExtractTimeZoneBlock(body).Should().Be(JoinLines(
+            "BEGIN:VTIMEZONE",
+            "TZID:Pacific/Auckland",
+            "BEGIN:STANDARD",
+            "DTSTART:19700101T000000",
+            "TZOFFSETFROM:+1200",
+            "TZOFFSETTO:+1200",
+            "END:STANDARD",
+            "BEGIN:DAYLIGHT",
+            "DTSTART:20260927T020000",
+            "TZOFFSETFROM:+1200",
+            "TZOFFSETTO:+1300",
+            "END:DAYLIGHT",
+            "END:VTIMEZONE"));
+    }
+
+    [Fact]
+    public void Write_ZoneIdCarryingReservedCharacters_QuotesTheParameterAndEscapesTheText()
+    {
+        var oddZone = TimeZoneInfo.CreateCustomTimeZone("Odd;Zone:Id,1", TimeSpan.FromHours(1), "Odd", "Odd");
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar", oddZone);
+
+        body.Should().Contain("DTSTART;TZID=\"Odd;Zone:Id,1\":20260920T190000\r\n");
+        body.Should().Contain("TZID:Odd\\;Zone:Id\\,1\r\n");
+        body.Should().Contain("X-WR-TIMEZONE:Odd\\;Zone:Id\\,1\r\n");
+        body.Should().Contain("TZOFFSETTO:+0100\r\n");
+    }
+
+    [Fact]
+    public void Write_BlockWindow_ReachesADayPastTheLatestEnd()
+    {
+        // The window is measured from the latest end, so a session that runs late still has the
+        // change after it described: this one starts on 23 October and ends early on the 24th, and
+        // the change falls in the small hours of the 25th.
+        var entry = MakeEntry(
+            new DateOnly(2026, 10, 23), new TimeOnly(22, 0), duration: TimeSpan.FromHours(4));
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        ExtractTimeZoneBlock(body).Should().Contain(JoinLines(
+            "BEGIN:STANDARD",
+            "DTSTART:20261025T030000",
+            "TZOFFSETFROM:+0200",
+            "TZOFFSETTO:+0100",
+            "END:STANDARD"));
+    }
+
+    [Fact]
+    public void Write_ZoneDocument_KeepsEveryPhysicalLineWithin75OctetsAndCrlfOnly()
+    {
+        var longTitle = new string('x', 300);
+        var first = MakeEntry(new DateOnly(2026, 10, 2), new TimeOnly(18, 0), title: longTitle, sourceId: 1);
+        var second = MakeEntry(new DateOnly(2026, 10, 30), new TimeOnly(18, 0), title: longTitle, sourceId: 2);
+
+        var body = Writer.Write([first, second], "My Calendar", AmsterdamZone);
+
+        AssertNoPhysicalLineExceeds75Octets(body);
+        var withoutBreaks = body.Replace("\r\n", string.Empty);
+        withoutBreaks.Should().NotContain("\r");
+        withoutBreaks.Should().NotContain("\n");
+    }
+
+    [Fact]
+    public void Write_SameZoneDocumentTwice_IsByteIdentical()
+    {
+        var first = Writer.Write(OctoberEntries(), "My Calendar", AmsterdamZone);
+        var second = Writer.Write(OctoberEntries(), "My Calendar", AmsterdamZone);
+
+        second.Should().Be(first);
     }
 }

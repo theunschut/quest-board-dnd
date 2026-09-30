@@ -264,6 +264,8 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{expectedEnd:yyyyMMdd}T{expectedEnd:HHmmss}\r\n");
 
         body.Should().Contain("TRANSP:TRANSPARENT");
+        body.Should().Contain("SEQUENCE:1\r\n");
+        body.Should().NotContain("SEQUENCE:0");
 
         CountVEvents(body).Should().Be(1);
 
@@ -681,6 +683,11 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         // instead of updating the existing entry in place, and nothing server-side would show it.
         secondUidLine.Should().Be(firstUidLine);
         CountVEvents(secondBody).Should().Be(1);
+
+        // The revision number is a constant, so a rescheduled entry carries the same one on
+        // both fetches: the moved start is what tells a client the entry changed.
+        (firstBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
+        (secondBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
 
         // Move the finalized date outside the window entirely -- the fourth exit route, and the
         // same predicate clause the window facts below pin from the other direction.
