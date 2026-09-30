@@ -3,9 +3,9 @@ phase: "88"
 slug: "calendar-feed-times-anchored-to-the-board-timezone"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
+status: validated
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: "2026-09-30"
 ---
 
@@ -54,7 +54,7 @@ Rows are keyed by requirement (minted into REQUIREMENTS.md by 88-01 Task 2). Tas
 | 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-07 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | ❌ W0 (new facts) | ✅ green |
 | 88-01-T1, 88-02-T1, 88-03-T1 | 88-01, 88-02, 88-03 | 1, 2 | CALTZ-08 | T-88-03 | N/A | unit + integration | quick unit command; integration filter | rewrite existing | ✅ green |
 | 88-01-T1, 88-02-T1, 88-04-T2 | 88-01, 88-02, 88-04 | 1, 2, 3 | CALTZ-10 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~AmbientClockSeamTests"` plus writer tests | ✅ exists | ✅ green |
-| 88-04-T2 | 88-04 | 3 | CALTZ-09 | — | N/A | manual | see Manual-Only Verifications | n/a | ⬜ pending |
+| 88-04-T2 | 88-04 | 3 | CALTZ-09 | — | N/A | manual | see Manual-Only Verifications; results in 88-UAT.md | n/a | ✅ green (manual, 2026-09-30) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -64,7 +64,7 @@ Rows are keyed by requirement (minted into REQUIREMENTS.md by 88-01 Task 2). Tas
 
 Existing infrastructure covers all phase requirements: the framework, `FakeBoardClock` (settable `TimeZone`, `IsDegraded`, `Today`, `Now`), the zone-variant host factory pattern from `WallClockUnmovedTests`, and the `Pacific/Auckland` id are already in use.
 
-- [ ] A shared `Amsterdam` `TimeZoneInfo` field in the test classes that construct the writer (added alongside the first rewritten fact, not a separate step) — 88-01 Task 1.
+- [x] A shared `Amsterdam` `TimeZoneInfo` field in the test classes that construct the writer (added alongside the first rewritten fact, not a separate step) — 88-01 Task 1. Present as `AmsterdamZone` in `CalendarFeedWriterTests` and `CalendarFeedBoardZoneGuardTests`.
 - [x] Optional cross-platform proof: run the quick unit filter inside the `mcr.microsoft.com/dotnet/sdk:10.0` container against the repo so the exact-byte `VTIMEZONE` facts also execute on Linux — planned as 88-04 Task 1. Run 2026-09-30 on mcr.microsoft.com/dotnet/sdk:10.0 against `git archive HEAD` (no volume mount): Windows 129 passed, Linux 129 passed, 0 failed on both.
 
 ---
@@ -85,9 +85,29 @@ Existing infrastructure covers all phase requirements: the framework, `FakeBoard
 
 - [x] All tasks have `<automated>` verify or Wave 0 dependencies
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
+- [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
 - [x] Feedback latency < 30s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-09-30
+
+---
+
+## Validation Audit 2026-09-30
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All nine automated requirements (CALTZ-01 to CALTZ-08, CALTZ-10) are COVERED by the tests in the Per-Task Map. The full suite is green at the audited HEAD (734 unit, 937 integration, 0 failed), including the five tests added with the code-review fixes: the board-clock feed window and the host-zone-free DTSTAMP, with their source guards. The Linux container run matched Windows at 129/129. No gaps were found, so no Nyquist auditor was spawned.
+
+CALTZ-09 is manual by nature and was verified on 2026-09-30 after the v5.3.2 deploy (88-UAT.md tests 1–3, 6):
+- Production endpoint: serves the zoned document, and all 82 timed lines agree with ICU's Europe/Amsterdam rules.
+- Google Calendar: shows the board's times. For entries it already held, Google needed a new subscription address; re-adding the same address was not enough, because Google caches each subscribed calendar by its address.
+- Apple Calendar: with Time Zone Override set to London, an 18:00 game night reads 17:00, so the iPhone reads the zoned entries.
+- Refresh latency: not measured. Google was not left long enough to show whether an existing subscription corrects itself, so no latency figure exists to put in user-facing copy.
+
+The optional reschedule check (88-UAT.md test 4) is still open. It is not a CALTZ-09 criterion.
