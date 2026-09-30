@@ -3,18 +3,19 @@ gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 87
+current_phase_name: cross-board-deep-link-recovery
 status: completed
-stopped_at: Phase 87 complete — all phases complete
-last_updated: "2026-09-22T06:51:38.481Z"
+stopped_at: Phase 88 context gathered
+last_updated: "2026-09-30T09:03:19.602Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 87 complete
-state_head: c79ae880606857c5990fb9b153a4e68c9c4d1ccc
+state_head: cd345b4d2231509dfd4ab246c7e10c0623a2589f
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 14
   total_plans: 108
   completed_plans: 99
-  percent: 88
+  percent: 82
 ---
 
 # Project State
@@ -103,6 +104,7 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Backlog 999.1 parked 2026-09-18: Voting from a Phone Calendar Entry — operator asked whether a vote could be cast in the phone calendar entry itself and flow back to the board. Answered no for the shipped subscription: an `.ics` URL subscription is one-way and every major client renders it read-only, so no feed property produces an RSVP button. The two routes that would work (iMIP email invitations, which need inbound mail this codebase does not have; or a token-linked tap-through page, which reverses 84 D-10 and makes a leaked feed address write-capable) were both judged disproportionate for now. Quest date voting is unreachable on any route because the feed carries finalized quests only.
 - Phase 86 added 2026-09-18: Viewer-Local Times and Correct Job Scheduling — render real instants in the viewer's browser timezone (client-side `<time>` + `Intl`, operator's decision) and give the three Hangfire sweeps an explicit `TimeZoneInfo`. Raised from the UTC "Last fetched" timestamp on the Profile page; investigation also found the container sets no `TZ` and Hangfire cron defaults to UTC, so the sweeps never ran at the CET/CEST hour their comments claim. Both halves ship together because classifying every `DateTime` as a real instant or naive wall-clock is the shared bulk of the work.
 - Phase 87 added 2026-09-21: Cross-Board Deep Link Recovery -- a member following a link to another board they belong to should land on the page instead of a 404. Raised by the operator from live two-board use, and explicitly a revision of the strict session-scoped tenancy decision rather than a bug against it. The 18 global query filters keyed on `ActiveGroupId` make a foreign-board read indistinguishable from a nonexistent one, so the controller cannot answer differently today. Phase 82's Agenda confirm-then-switch modal is the pattern to generalise; the non-negotiable constraint is that a non-member must see no new signal, so the recovery flow cannot become a board-membership oracle.
+- Phase 88 added 2026-09-30: Calendar Feed Times Anchored to the Board Timezone -- a quest set to 18:00 on the board shows as 19:00 on the operator's phone and 20:00 on a friend's. The feed writes timed entries as floating local time with no zone (Phase 84 D-01), and at least some clients read floating time as UTC. D-01's reason for avoiding a timezone went away once Phase 86 introduced `IBoardClock`'s board zone. This deliberately reverses the test-pinned floating-time contract, so the guard tests get rewritten, not deleted. Proving the fix needs real phones.
 
 ### Pending Todos
 
@@ -149,9 +151,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-22T06:56:55.758Z
-Stopped at: Phase 87 closed — gate tail finished (code review, review fixes, regression gate, verification, roadmap)
-Resume file: none — no work in flight
+Last session: 2026-09-30T09:03:16.447Z
+Stopped at: Phase 88 context gathered
+Resume file: .planning/phases/88-calendar-feed-times-anchored-to-the-board-timezone/88-CONTEXT.md
 
 ## Operator Next Steps
 

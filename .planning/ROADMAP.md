@@ -1064,6 +1064,31 @@ Plans:
 
 - [x] 87-04-PLAN.md — Oracle parity and authorization-boundary proofs, then blocking human verification
 
+### Phase 88: Calendar Feed Times Anchored to the Board Timezone
+
+**Goal:** A game night set for 18:00 on the board shows as 18:00 in every subscriber's phone calendar, whichever calendar app they use — instead of 19:00 on one phone and 20:00 on another, as it does today.
+**Requirements**: TBD — settle in the discuss pass.
+**Depends on:** No hard dependency. It builds on Phase 84's writer and Phase 85's quest entries, and needs the board timezone that Phase 86 introduced (`IBoardClock.TimeZone`, configured by `TimeZoneOptions.BoardTimeZoneId`, default `Europe/Amsterdam`).
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-09-30 from production use. A quest set to 18:00 on the board appears as 19:00 in the operator's phone calendar and as 20:00 on a friend's phone.
+
+**Root cause — the feed never says which timezone its times are in.** `CalendarFeedWriter.AppendTimedEvent` writes `DTSTART:yyyyMMddTHHmmss` and `DTEND` as floating local time: no trailing `Z`, no `TZID`, no `VTIMEZONE`, and no `X-WR-TIMEZONE` fallback. This was Phase 84's D-01, which assumed the phone would show a floating time in whatever zone the phone is in. Production shows that assumption does not hold for every client. Both wrong hours match a client reading 18:00 as UTC and converting it to Amsterdam time: +2 during summer time (until 25 October 2026) and +1 after it. So either the two entries fall on opposite sides of the clock change, or the two phones' calendar apps read floating time differently. Record which app and OS each phone runs, and the date of the affected entry, before choosing a fix.
+
+**D-01's reason for rejecting a timezone no longer applies.** It turned down `TZID=Europe/Amsterdam` because that "becomes this application's first written-down timezone". Phase 86 has since written one down. The board zone exists and is what `IBoardClock` already uses for every server-side "what day is it" read. One caveat carries straight into this phase: startup only checks that a zone id is *present*. `BoardClock` resolves the id once and falls back to UTC on an id it cannot resolve, instead of failing. A feed that stamps the *configured* id while the clock has quietly fallen back to UTC would be wrong in a new way. Whatever zone the feed declares must be the zone actually resolved.
+
+**Scope notes:**
+
+- **This deliberately reverses a test-pinned contract.** `CalendarFeedFloatingTimeGuardTests`, the `NotContain("TZID")` / `NotContain("VTIMEZONE")` facts in `CalendarFeedWriterTests`, and the `…Z`-absence assertions in `CalendarSubscriptionFeedTests` and `CalendarSubscriptionQuestFeedTests` were written to stop exactly this change. Rewrite them to pin the new contract; do not delete them. The same goes for `.claude/architecture.md`, whose "Time and the board clock" section describes the feed as floating, and for the writer's own comments.
+- **The stored value does not change meaning.** A game night stays a wall-clock value: 18:00 in the board's zone. The fix tells the client *which* zone that 18:00 belongs to. It must not convert the stored value into a different hour. A subscriber in the board's zone sees 18:00. A subscriber abroad sees the correct local equivalent, which is the right answer for a session held at a physical table.
+- **Candidate encodings for the discuss pass.** (a) `DTSTART;TZID=Europe/Amsterdam` plus a `VTIMEZONE` block carrying the DST rules. This is the RFC 5545-correct route; the block has to be generated from the configured zone, not hard-coded. (b) UTC with a trailing `Z`, converted per entry date using the board zone's rules. This is the simplest thing for a client to read, but a DST mistake makes the entry an hour off for part of the year. (c) `X-WR-TIMEZONE` alone. It is non-standard and not honoured everywhere, so it fits a supplement better than a fix.
+- **All-day entries are out of scope.** `DTSTART;VALUE=DATE` has no time of day to shift.
+- **Proving it needs real phones.** Unit tests can pin the bytes. They cannot show how iOS Calendar, Google Calendar and Outlook render them. Verification must include an already-subscribed phone correcting its *existing* entries on its next refresh, not just new ones, because the UID stays the same and `SEQUENCE` is fixed at 0.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 88 to break down)
+
 ## Backlog
 
 Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
