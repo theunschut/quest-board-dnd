@@ -148,7 +148,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **CALTZ-06**: Every entry, timed and all-day, carries sequence number 1 and never 0, while its identifier and its stamp stay exactly as they were, so a client that orders revisions by sequence number applies the corrected times to entries it already holds
 - [x] **CALTZ-07**: An all-day entry stays a date-valued entry with no zone on it, and a feed with no timed entry carries no time-zone block
 - [x] **CALTZ-08**: The feed never converts a stored wall-clock value: a game night stored as 18:00 is written with the digits 180000 whatever zone the board is configured with, and the entries handed to the writer carry the stored date and time untouched
-- [x] **CALTZ-09**: On production, a game night set for 18:00 reads 18:00 in Google Calendar on a subscribed phone — checked first on an entry Google already held before the fix and then on a new entry — and still reads 18:00 in Apple Calendar on an iPhone; if Google keeps an old time after a refresh, removing and re-adding the subscription once is an accepted resolution, and no copy anywhere promises a refresh latency
+- [ ] **CALTZ-09**: On production, a game night set for 18:00 reads 18:00 in Google Calendar on a subscribed phone — checked first on an entry Google already held before the fix and then on a new entry — and still reads 18:00 in Apple Calendar on an iPhone; if Google keeps an old time after a refresh, removing and re-adding the subscription once is an accepted resolution, and no copy anywhere promises a refresh latency
 - [x] **CALTZ-10**: Every standing statement that described the feed as floating — requirement CALFEED-10, the project's architecture guidance on time and the board clock, and the feed code's own comments — is rewritten to the zoned contract rather than deleted, and the guard tests that pinned the floating contract are rewritten to pin the zoned one
 
 ### Link Previews — Foundation and Quests
@@ -392,7 +392,7 @@ Explicit exclusions for v9.0, with reasoning.
 | CALTZ-06 | Phase 88 | Complete |
 | CALTZ-07 | Phase 88 | Complete |
 | CALTZ-08 | Phase 88 | Complete |
-| CALTZ-09 | Phase 88 | Complete |
+| CALTZ-09 | Phase 88 | Pending |
 | CALTZ-10 | Phase 88 | Complete |
 
 **Coverage:**
