@@ -725,3 +725,8 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,csharp,aspnetcore
 # GSD derived state cache — regenerated on every gsd-tools run
 .planning/state.json
+# GSD per-session runtime state — isolation sentinel and the active-phase lock
+.gsd/
+.planning/milestone.lock
+# GSD debug sessions live under .planning/debug/ and are tracked; the Visual Studio [Dd]ebug/ rule above would otherwise swallow them
+!.planning/debug/

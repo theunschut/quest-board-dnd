@@ -25,7 +25,13 @@ public class CalendarFeedEntry
 
     public VoteType Availability { get; set; }
 
-    // Carries the event's own creation time so the emitted timestamp property is stable
-    // between fetches rather than moving on every poll.
-    public DateTime CreatedAt { get; set; }
+    // The entry's stored revision number. The store only ever raises it, and it must never be
+    // lower than a number already published for this entry: a client that compares revisions
+    // treats a lower number as older and ignores every later change.
+    public int Sequence { get; set; } = 1;
+
+    // The real UTC instant at which what the feed shows for this entry last changed. It comes
+    // from stored data rather than a clock, so the emitted timestamp is stable between fetches
+    // instead of moving on every poll.
+    public DateTime LastRevisedAt { get; set; }
 }

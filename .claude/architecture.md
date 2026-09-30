@@ -19,6 +19,8 @@ Authorization policies: `"DungeonMasterOnly"` (DungeonMaster or Admin role), `"A
 
 Migrations are **auto-applied on startup** via `context.Database.Migrate()` — no manual `database update` needed in dev.
 
+Writes to `Events` and `Quests` must go through the change tracker — no bulk update, raw SQL, attaching a detached entity or setting an entry's state by hand — or the calendar feed revision does not rise, and a guard test fails.
+
 ```bash
 # Add/remove migrations (run from QuestBoard.Service/)
 dotnet ef migrations add MigrationName --project ../QuestBoard.Repository
@@ -49,6 +51,17 @@ hour belongs to is not converting it. A generated `VTIMEZONE` lists that zone's 
 span the entries cover, found by asking the zone for its offset at a moment so the block comes out
 identical on Windows and Linux, and `X-WR-TIMEZONE` names the same zone. All three come from
 `IBoardClock.TimeZone`, never from the configured id string, so a clock that fell back to UTC
-declares UTC. All-day entries stay date-valued and carry no zone. Every entry carries `SEQUENCE:1`,
-which must never go back down. `CalendarFeedWriter.cs` and `CalendarSubscriptionService.cs` are
-guarded by tests that pin this — treat changes there as high-risk.
+declares UTC. All-day entries stay date-valued and carry no zone. Each entry's
+`SEQUENCE` is its stored revision, `FeedRevision` on `Events` and `Quests`. `QuestBoardContext`
+raises it through `FeedRevisionStamper` on any save that changes what the feed shows: an event's
+title, date, start time, cancellation or board, or a quest's title, finalized date, finalized state
+or board. `DTSTAMP` and `LAST-MODIFIED` carry the matching `FeedRevisedAt`, a real UTC instant that
+is labelled and never converted; a reader's own availability answer moves only that reader's stamp.
+The sequence must never go down or below 1, and an entry nobody changed must stay byte-identical
+between fetches so the ETag and 304 hold. Known limitations:
+renaming a board does not re-signal existing calendar entries, so each entry picks up the new board
+name on its next real revision, and a change to the configured quest session length or board zone
+is configuration rather than a stored row, so it likewise reaches clients only with each entry's
+next revision. `CalendarFeedWriter.cs`,
+`CalendarSubscriptionService.cs` and `FeedRevisionStamper.cs` are guarded by tests that pin this —
+treat changes there as high-risk.

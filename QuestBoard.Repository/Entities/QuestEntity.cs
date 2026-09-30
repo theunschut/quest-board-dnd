@@ -24,6 +24,12 @@ public class QuestEntity : IEntity
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Both are owned by the store. They rise only on a save that changes what the calendar
+    // feed shows for this row, and the context sets them, so no caller does.
+    public int FeedRevision { get; set; } = 1;
+
+    public DateTime FeedRevisedAt { get; set; }
+
     public DateTime? FinalizedDate { get; set; }
 
     public bool IsFinalized { get; set; }

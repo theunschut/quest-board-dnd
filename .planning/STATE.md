@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 88
 current_phase_name: Calendar Feed Times Anchored to the Board Timezone
 status: verifying
-stopped_at: Completed 88-04-PLAN.md
-last_updated: "2026-09-30T11:32:33.565Z"
+stopped_at: Completed 88-09-PLAN.md
+last_updated: "2026-09-30T16:53:36.317Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 88 execution started
-state_head: 39de72b6e5d0c0f49b41ace7399a87cd72f02183
+state_head: d862392a5609fe45a2ae581255c2418f70b1dcc6
 progress:
   total_phases: 17
   completed_phases: 14
-  total_plans: 112
-  completed_plans: 103
+  total_plans: 117
+  completed_plans: 108
   percent: 82
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
 ## Current Position
 
 Phase: 88 (Calendar Feed Times Anchored to the Board Timezone) — EXECUTING
-Plan: 4 of 4
+Plan: 9 of 9 (88-05 complete)
 Status: Phase complete — ready for verification
 Last activity: 2026-09-30 — Phase 88 execution started
 
@@ -67,6 +67,8 @@ introduced by Phase 87.
 | Phase 84 P08 | 137min | 4 tasks | 10 files |
 | Phase 88 P01 | 6 min | 2 tasks | 10 files |
 | Phase 88 P04 | 4 min | 2 tasks | 2 files |
+| Phase 88 P05 | 12 min | 2 tasks | 19 files |
+| Phase 88 P09 | 8 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -92,6 +94,8 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 84]: 84-08: three UAT-found UI defects fixed centrally during the Task 3 review window -- modals freed from a backdrop-filter stacking-context trap, the subscription row rebalanced to 68px, and the address stopped being displayed on screen (kept in DOM, readonly, revealed only by the clipboard-denied fallback) — CALFEED-03 and 84-UI-SPEC E3/E4 amended accordingly; address is a bearer credential with no expiry and should not be visible on a screen-shared or screenshotted page
 - [Phase 88]: Board zone is a required per-document TimeZoneInfo parameter on ICalendarFeedWriter.Write; header, VTIMEZONE and every timed line share one derived tzid — One zone per document makes disagreement structurally impossible and keeps the writer pure
 - [Phase 88]: 88-04: Linux calendar byte-pin proof runs from git archive HEAD on stdin in a --rm SDK container with no volume mount — Uncommitted host files cannot leak in and nothing can be written back
+- [Phase 88]: 88-05: calendar feed revision is raised inside QuestBoardContext's SaveChanges overrides (not an interceptor); FeedRevision/FeedRevisedAt are store-owned, feed-visible fields are event Title/Date/StartTime/CancelledAt/GroupId and quest Title/FinalizedDate/IsFinalized/GroupId — Every construction path (DI, integration factory re-registration, direct test construction) gets the rule; comparing original to current values keeps unedited entries byte-identical
+- [Phase 88]: 88-09: architecture guidance states the revision contract and known limitations; FeedRevisionStamper.cs named high-risk; production re-test left to verify-work
 
 ### Roadmap Evolution
 
@@ -149,14 +153,14 @@ Items acknowledged and carried forward across milestone closes.
 | requirement | REMIND-02 — combined reminder for multi-quest days | Still deferred — same as EMAIL-04 | v4.0 close |
 | tech debt | `GroupSessionMiddleware` redirects on POST — data-loss risk if session expires mid-submission | Still deferred — flagged by code review in Phase 31, not yet fixed | v5.0 close |
 | requirement | EMAILMD-02 — real Outlook desktop verification for all 3 quest email templates | Deferred — untestable without production access (real relay + real AppUrl); Gmail-confirmed via operator override for Quest Finalized directly, Session Reminder/Waitlist Promoted on shared-engine grounds | v8.0 close |
-| requirement | CALFEED real-device subscription check — a real phone actually subscribing via iOS Calendar, Google Calendar and Outlook, what iOS names the calendar, refresh latency, and a camera QR scan | Deferred to deployment — Outlook and Google fetch server-side from their own infrastructure, so no localhost or LAN address can satisfy them; needs a public tunnel or the deployed app. The document itself is proven (external RFC 5545 validator: 0 errors, 0 warnings) and the server contract has 29 end-to-end HTTP facts, but no client's poll-and-render behaviour has been observed | v9.0, Phase 84 |
+| requirement | CALFEED real-device subscription check — a real phone actually subscribing via iOS Calendar, Google Calendar and Outlook, what iOS names the calendar, refresh latency, and a camera QR scan | Partly verified 2026-09-30 during Phase 88's production check (v5.3.2; see `88-UAT.md`). **Google Calendar:** a real subscription fetches and renders the board's times. An entry it already held did not correct itself in the time waited, and only a new subscription address fixed it, because Google caches a subscribed calendar per address. **Apple Calendar:** a direct iPhone subscription fetches and renders the zoned entries (confirmed with Time Zone Override). **Still unobserved:** Outlook, what iOS names the calendar, a camera QR scan, and any refresh latency. No latency figure was measured, and none may be promised in copy | v9.0, Phase 84 (updated Phase 88) |
 | verification | Phase 87 board-switch banner on a physical phone — the mobile pass used a Pixel 8 user-agent override at 375x812, and this codebase selects mobile views by user agent rather than viewport, so emulation never exercises the real twin | Deferred — operator approved conditionally ("approved for now"); three defects the full suite missed were already found by the UA-override pass, so the surface has a demonstrated history of failing only in the browser | v9.0, Phase 87 |
 | verification | Phase 87 group-picker skip path, live, after a lapsed session | Pending operator re-check once the fix deploys. This was recorded as unreachable from the operator's SuperAdmin account because the skip was gated on `!isSuperAdmin`. The operator then reached it anyway on 2026-09-28 — a lapsed session plus a click on a quest from their own board landed on the picker — which exposed the gate as a bug contradicting D-12 rather than a limit of the check. Gate removed; the skip now runs for SuperAdmins on boards they belong to, and a new integration fact confirms a SuperAdmin is still shown the picker for a board they are not a member of. The operator's own account is now a valid test of the path | v9.0, Phase 87 |
 
 ## Session Continuity
 
-Last session: 2026-09-30T11:32:29.451Z
-Stopped at: Completed 88-04-PLAN.md
+Last session: 2026-09-30T16:53:31.618Z
+Stopped at: Completed 88-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

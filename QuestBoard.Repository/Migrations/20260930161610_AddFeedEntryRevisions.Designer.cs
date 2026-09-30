@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QuestBoard.Repository.Entities;
 
@@ -11,9 +12,11 @@ using QuestBoard.Repository.Entities;
 namespace QuestBoard.Repository.Migrations
 {
     [DbContext(typeof(QuestBoardContext))]
-    partial class QuestBoardContextModelSnapshot : ModelSnapshot
+    [Migration("20260930161610_AddFeedEntryRevisions")]
+    partial class AddFeedEntryRevisions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -512,7 +515,6 @@ namespace QuestBoard.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("FeedRevision")
-                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int>("GroupId")
@@ -780,7 +782,6 @@ namespace QuestBoard.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("FeedRevision")
-                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("FinalizedDate")

@@ -189,6 +189,14 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         body.Should().Contain("TRANSP:TRANSPARENT");
         body.Should().Contain("SEQUENCE:1\r\n");
         body.Should().NotContain("SEQUENCE:0");
+
+        // Some clients read the last-modified line and some read the stamp, so both must name
+        // the same moment.
+        var bodyLines = body.Split("\r\n");
+        var stampLine = bodyLines.Single(l => l.StartsWith("DTSTAMP:", StringComparison.Ordinal));
+        var lastModifiedLine = bodyLines.Single(l => l.StartsWith("LAST-MODIFIED:", StringComparison.Ordinal));
+        lastModifiedLine["LAST-MODIFIED:".Length..].Should().Be(stampLine["DTSTAMP:".Length..]);
+
         body.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{eventDate:yyyyMMdd}T190000\r\n");
         body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{eventDate:yyyyMMdd}T200000\r\n");
         body.Should().NotContain($"{eventDate:yyyyMMdd}T190000Z");

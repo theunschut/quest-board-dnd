@@ -47,6 +47,8 @@ internal class CalendarSubscriptionService(
     public async Task<bool> RevokeAsync(int subscriptionId, int userId, CancellationToken token = default)
         => await subscriptionRepository.RevokeAsync(subscriptionId, userId, timeProvider.GetUtcNow().UtcDateTime, token);
 
+    private static DateTime LaterOf(DateTime first, DateTime second) => first >= second ? first : second;
+
     /// <inheritdoc/>
     public async Task<CalendarFeedResult> GetFeedAsync(string feedToken, CancellationToken token = default)
     {
@@ -76,7 +78,7 @@ internal class CalendarSubscriptionService(
         var oneShotGroupIds = memberships.Where(m => m.BoardType == BoardType.OneShot).Select(m => m.Id).ToList();
 
         var options = feedOptions.Value;
-        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        var today = boardClock.Today;
         var windowStart = today.AddMonths(-options.MonthsBack);
         var windowEnd = today.AddMonths(options.MonthsAhead);
 
@@ -108,15 +110,21 @@ internal class CalendarSubscriptionService(
                 Date = row.Event.Date,
                 StartTime = row.Event.StartTime,
                 Availability = row.Availability,
-                CreatedAt = row.Event.CreatedAt
+                // The sequence number is the event's own revision, shared by every reader of
+                // the event, and it must only ever go up. A single reader's answer therefore
+                // never touches it: that would change every other member's document too. The
+                // reader's own stamp moves instead, and it only moves forward, because the
+                // answer time is a real instant written on every answer, even when the answer
+                // row is deleted and made again.
+                Sequence = row.Event.FeedRevision,
+                LastRevisedAt = LaterOf(row.Event.FeedRevisedAt, row.AnswerWrittenAt)
             })
             .ToList();
 
-        // FinalizedDate is a wall-clock value in the board's own zone, while the window above is
-        // derived from UTC. At this window's month granularity the difference can move a quest
-        // across a bound only within a couple of hours of the bound itself, which is accepted as
-        // negligible rather than left implicit. Called unconditionally, including when
-        // oneShotGroupIds is empty, for the same reason the event read above is unconditional.
+        // FinalizedDate is a wall-clock value in the board's own zone, and the window above is
+        // measured from the board's own date, so both sides of the comparison share one zone.
+        // Called unconditionally, including when oneShotGroupIds is empty, for the same reason
+        // the event read above is unconditional.
         var fetchedQuests = await questRepository.GetFeedQuestsForUserAsync(
             subscription.UserId, oneShotGroupIds,
             windowStart.ToDateTime(TimeOnly.MinValue), windowEnd.ToDateTime(TimeOnly.MaxValue), token);
@@ -145,7 +153,8 @@ internal class CalendarSubscriptionService(
                 Date = DateOnly.FromDateTime(q.FinalizedDate!.Value),
                 StartTime = TimeOnly.FromDateTime(q.FinalizedDate.Value),
                 Duration = TimeSpan.FromHours(options.QuestDurationHours),
-                CreatedAt = q.CreatedAt
+                Sequence = q.FeedRevision,
+                LastRevisedAt = q.FeedRevisedAt
                 // Availability is deliberately left at its default -- BuildSummary now checks
                 // Source before it ever reads Availability, so a quest can never pick up an
                 // answer marker, and leaving it unset is safe by construction rather than by
@@ -169,8 +178,8 @@ internal class CalendarSubscriptionService(
         var body = writer.Write(allEntries, "D&D Quest Board", boardClock.TimeZone);
 
         // A strong fingerprint of the body's own bytes: it changes when and only when the
-        // emitted document changes, so an event edit produces a new tag automatically with no
-        // modified-timestamp column the schema does not have. The body is composed either way,
+        // emitted document changes, so an event edit produces a new tag automatically: the tag
+        // changes exactly when the document's bytes change. The body is composed either way,
         // so this saves nothing server-side -- only transfer, on a document of a few kilobytes
         // polled a handful of times a day. It is not a promise about refresh speed.
         var etag = $"\"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body)))}\"";

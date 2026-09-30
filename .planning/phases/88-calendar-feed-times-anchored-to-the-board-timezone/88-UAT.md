@@ -1,9 +1,9 @@
 ---
-status: testing
+status: partial
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T12:52:00Z
+updated: 2026-09-30T18:15:46Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -12,31 +12,55 @@ Test 5 is the local pre-deploy check of the same endpoint and has passed.
 
 ## Current Test
 
-number: 1
-name: Google Calendar, already-subscribed phone — a game night Google held before the fix
+number: 7
+name: Re-test of gap G-88-4 on production after the v5.3.3 deploy — a rescheduled or retitled entry moves in both apps
 expected: |
-  After Google's next refresh the entry reads 18:00 (the stored board time). If Google keeps the
-  old time, removing and re-adding the subscription once is the accepted resolution. Record the
-  observation only; promise no refresh latency.
-awaiting: user response
+  After v5.3.3 is deployed, a rescheduled or retitled entry that Google and Apple already hold shows
+  the new time or title in place, with no duplicate, after each app's next fetch.
+awaiting: user response (after the v5.3.3 deploy)
 
 ## Tests
 
 ### 1. Google Calendar, already-subscribed phone — a game night Google held before the fix (the entry that read 19:00 or 20:00)
 expected: After Google's next refresh the entry reads 18:00 (the stored board time). If Google keeps the old time, remove and re-add the subscription once; that is the accepted resolution. Record the observation only; promise no refresh latency.
-result: [pending]
+result: pass
+observed: |
+  2026-09-30, after the v5.3.2 deploy. The existing Google subscription did not pick up the corrected times
+  on its own in the time the user waited. Google caches a subscribed calendar per address and decides for
+  itself when to re-fetch, and this check did not wait long enough to see whether the old subscription
+  would eventually correct itself. Google showed the correct times after the user created a NEW
+  subscription in the Quest Board (a new feed address) and added that address as a source in Google.
+  That falls under the accepted resolution of re-subscribing once. Because Google caches by address, the
+  practical form of it is a new subscription address rather than re-adding the same URL.
 
 ### 2. Google Calendar — a new game night created at 18:00 on production, after Google fetches the feed
 expected: The new entry reads 18:00 on the subscribed phone.
-result: [pending]
+result: pass
+observed: |
+  2026-09-30: with the new subscription address added to Google, the calendar shows the board's times.
+  Reported as "google calendar works now".
 
 ### 3. Apple Calendar on an iPhone — the same event and quest
 expected: Still reads 18:00 (no regression from the previous floating form).
-result: [pending]
+result: pass
+observed: |
+  2026-09-30, after the v5.3.2 deploy: with Time Zone Override set to London, an 18:00 game night reads
+  17:00, so the iPhone is reading the zoned entries rather than a floating copy. The override had
+  previously been set to Amsterdam, which is why Apple showed even the old floating times correctly on
+  this phone. It may not have done so for someone without that override.
+note: |
+  2026-09-30, after the v5.3.2 deploy: Apple Calendar still shows the correct times, and the Profile page's
+  "Last fetched" is later than the deploy. That does not yet prove the iPhone read the new document. Apple
+  showed the old floating form correctly too, because the phone is in Amsterdam, and the post-deploy fetch
+  may have been Google's. To confirm, turn on Settings → Apps → Calendar → Time Zone Override and set it to
+  London: an 18:00 game night should then read 17:00. If it still reads 18:00, the iPhone is still showing
+  the floating copy.
 
 ### 4. Optional but recommended — reschedule an entry that both apps already hold and confirm it moves
 expected: The changed time shows in both apps. SEQUENCE is a constant 1 and DTSTAMP is the constant CreatedAt, so a client that applies updates only on a higher revision could ignore later reschedules; this is the one design risk the byte tests cannot rule out.
-result: [pending]
+result: issue
+reported: "doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
+severity: major
 
 Record the app, the phone's OS and the date of each entry checked.
 
@@ -58,13 +82,66 @@ observed: |
     VTIMEZONE as through ICU's Europe/Amsterdam rules (e.g. 20261002T180000 → 16:00Z, 20261031T190000 → 18:00Z).
   - The Profile page's subscription row updated "Last fetched" to the check's fetch time.
 
+### 6. Production endpoint check — the deployed feed serves the zoned document
+expected: A real production subscription address, fetched anonymously, returns the same zoned structure as the local check. Every timed entry carries TZID=Europe/Amsterdam with the board's wall-clock digits, and its VTIMEZONE agrees with the IANA rules.
+result: pass
+observed: |
+  2026-09-30, after the v5.3.2 deploy, using a temporary subscription the operator created for this check; revoked afterwards (GET returned 410 at 14:02Z).
+  - GET https://questboard.theunschut.com/feeds/calendar/{temporary token}.ics anonymously: 200,
+    Content-Type text/calendar; charset=utf-8, 405 lines, all CRLF.
+  - X-WR-TIMEZONE:Europe/Amsterdam; one VTIMEZONE with the 2026-10-25 and 2027-03-28 transitions.
+  - 42 VEVENTs: 41 timed (all TZID=Europe/Amsterdam, no trailing Z), 1 all-day (VALUE=DATE); SEQUENCE:1 on
+    every entry, SEQUENCE:0 nowhere. Start times 18:00 ×14, 19:00 ×25, 13:00 ×2.
+  - All 82 timed DTSTART/DTEND lines resolve to the same UTC instant through the feed's VTIMEZONE as through
+    ICU's Europe/Amsterdam rules, on both sides of the 25 October clock change.
+  - Spot-check against the board: Session Chris on 2026-11-14 reads 13:00 on the board (operator-confirmed)
+    and DTSTART;TZID=Europe/Amsterdam:20261114T130000 in the feed.
+  The server side is proven on production. Tests 1–4 are the client-side confirmation.
+
+### 7. Re-test of gap G-88-4 on production after the v5.3.3 deploy — a rescheduled or retitled entry moves in both apps
+expected: After v5.3.3 is deployed, reschedule (or retitle) an entry that Google Calendar and Apple Calendar already hold. After each app's next fetch, the entry shows the new time or title in place under the same event, with no duplicate. Entries held from before the deploy should also repair on their first fetch, because the migration moved every existing entry to SEQUENCE:2. To attribute the fetch, confirm "Last fetched" advances on an Apple-only subscription row before checking the iPhone. Promise no refresh latency. For Google, a new subscription address is the accepted fallback.
+result: [pending]
+
+### 8. Optional — two-tab concurrent edit against the local SQL Server
+expected: Open the same event in two browser tabs on the local dev server and save both with different feed-visible changes. Both saves succeed with no error page, the event's FeedRevision rises by one per save and never goes down, and the feed shows the later values. The concurrency-token retry has so far only been proven on the InMemory provider.
+result: [pending]
+
 ## Summary
 
-total: 5
-passed: 1
-issues: 0
-pending: 4
+total: 8
+passed: 5
+issues: 1
+pending: 2
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+- gap_id: G-88-4
+  truth: "Rescheduling an entry that Google and Apple Calendar already hold moves it to the new time in both apps after their next fetch"
+  status: failed
+  reason: "User reported: doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
+  severity: major
+  test: 4
+  root_cause: "After first publication the feed carries no revision signal. Every entry is written with a stable UID, DTSTAMP = its CreatedAt, the literal SEQUENCE:1 and no LAST-MODIFIED, so after a reschedule only DTSTART/DTEND differ. A client deciding whether a re-fetched copy is newer compares SEQUENCE, then DTSTAMP (RFC 5546 §2.1.5), finds them equal and keeps its stale copy. RFC 5545 §3.8.7.2 defines DTSTAMP without METHOD as the time the entry was last revised, so CreatedAt is wrong once an entry is edited. Enabling cause: Events and Quests have no UpdatedAt or revision column. Server side ruled out: the ETag is a SHA-256 of the body, and a reschedule yields a new ETag and a 200 with the new DTSTART. This is Phase 84 Assumption A5 (constant SEQUENCE harmless) proving wrong. Phase 88 D-07 bumped SEQUENCE once and left later edits unsignalled."
+  artifacts:
+    - path: "QuestBoard.Domain/Services/CalendarFeedWriter.cs"
+      issue: "SEQUENCE is the literal 1 (lines 219, 237); DTSTAMP is taken from CreatedAt (208, 232); no LAST-MODIFIED"
+    - path: "QuestBoard.Domain/Models/CalendarFeedEntry.cs"
+      issue: "carries only CreatedAt, so the writer has no revision input"
+    - path: "QuestBoard.Domain/Services/CalendarSubscriptionService.cs"
+      issue: "builds feed entries with no revision data (lines 101-153)"
+    - path: "QuestBoard.Repository/Entities/EventEntity.cs"
+      issue: "no UpdatedAt or revision column"
+    - path: "QuestBoard.Repository/Entities/QuestEntity.cs"
+      issue: "no UpdatedAt or revision column"
+    - path: "QuestBoard.Service/Controllers/Events/EventsController.cs, QuestBoard.Repository/EventRepository.cs (ApplyTemplateToOccurrencesAsync), QuestBoard.Repository/QuestRepository.cs (FinalizeQuestAsync)"
+      issue: "reschedule and retitle paths update rows in place without raising any revision"
+    - path: "QuestBoard.IntegrationTests/Tests/CalendarSubscriptionQuestFeedTests.cs, QuestBoard.UnitTests/Services/CalendarFeedWriterTests.cs"
+      issue: "pin SEQUENCE:1 on both fetches of a rescheduled quest and DTSTAMP == CreatedAt, so they enforce the defect"
+  missing:
+    - "A per-entry revision on Events and Quests (EF Core migration) raised on every write that changes what the feed shows: date, start time, title, finalized date and state"
+    - "SEQUENCE derived from that revision so it rises on each change and never drops below 1 (one-way rule, D-07)"
+    - "DTSTAMP (and optionally LAST-MODIFIED) from the entry's last revision time instead of CreatedAt"
+    - "Tests rewritten so a rescheduled entry proves a higher SEQUENCE and a later DTSTAMP, while an unedited entry stays byte-identical between fetches (ETag/304 and determinism pins intact)"
+  debug_session: ".planning/debug/calendar-reschedule-not-propagating.md"

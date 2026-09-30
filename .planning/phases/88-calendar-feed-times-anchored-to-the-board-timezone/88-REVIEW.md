@@ -2,106 +2,134 @@
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 reviewed: 2026-09-30T00:00:00Z
 depth: standard
-files_reviewed: 11
+files_reviewed: 28
 files_reviewed_list:
   - .claude/architecture.md
-  - QuestBoard.Domain/Interfaces/ICalendarFeedWriter.cs
+  - .gitignore
+  - QuestBoard.Domain/Models/CalendarFeedEntry.cs
+  - QuestBoard.Domain/Models/Event.cs
+  - QuestBoard.Domain/Models/EventFeedRow.cs
+  - QuestBoard.Domain/Models/QuestBoard/Quest.cs
   - QuestBoard.Domain/Services/CalendarFeedWriter.cs
   - QuestBoard.Domain/Services/CalendarSubscriptionService.cs
-  - QuestBoard.IntegrationTests/Tests/CalendarFeedBoardZoneHttpTests.cs
+  - QuestBoard.IntegrationTests/Tests/CalendarFeedEventRevisionTests.cs
+  - QuestBoard.IntegrationTests/Tests/CalendarFeedQuestRevisionTests.cs
   - QuestBoard.IntegrationTests/Tests/CalendarSubscriptionFeedTests.cs
   - QuestBoard.IntegrationTests/Tests/CalendarSubscriptionQuestFeedTests.cs
+  - QuestBoard.Repository/Automapper/EntityProfile.cs
+  - QuestBoard.Repository/Entities/EventEntity.cs
+  - QuestBoard.Repository/Entities/QuestBoardContext.cs
+  - QuestBoard.Repository/Entities/QuestEntity.cs
+  - QuestBoard.Repository/EventSignupRepository.cs
+  - QuestBoard.Repository/FeedRevisionStamper.cs
+  - QuestBoard.Repository/Migrations/20260930161610_AddFeedEntryRevisions.cs
+  - QuestBoard.Repository/Migrations/20260930161610_AddFeedEntryRevisions.Designer.cs
+  - QuestBoard.Repository/Migrations/QuestBoardContextModelSnapshot.cs
   - QuestBoard.UnitTests/Architecture/AmbientClockSeamTests.cs
+  - QuestBoard.UnitTests/Architecture/FeedRevisionWriteSeamTests.cs
+  - QuestBoard.UnitTests/Repository/FeedRevisionStamperTests.cs
   - QuestBoard.UnitTests/Services/CalendarFeedBoardZoneGuardTests.cs
+  - QuestBoard.UnitTests/Services/CalendarFeedRevisionInputTests.cs
   - QuestBoard.UnitTests/Services/CalendarFeedWriterTests.cs
   - QuestBoard.UnitTests/Services/CalendarSubscriptionQuestRecheckTests.cs
 findings:
   critical: 0
   warning: 2
-  info: 4
-  total: 6
+  info: 5
+  total: 7
 status: issues_found
 ---
 
-# Phase 88: Code Review Report
+# Phase 88: Code Review Report (incremental re-review)
 
 **Reviewed:** 2026-09-30
 **Depth:** standard
-**Files Reviewed:** 11
+**Files Reviewed:** 28
 **Status:** issues_found
+
+This is an incremental re-review of everything changed since commit 5e512668. It covers the WR-01 and WR-02 fixes from the previous review, plus the G-88-4 gap closure (feed entry revisions). The previous review's warnings are recorded as fixed in 88-REVIEW-FIX.md. This report overwrites it.
 
 ## Summary
 
-The zoned-feed change is correct on the core contract. Stored wall-clock digits are written unchanged. The TZID, the VTIMEZONE and X-WR-TIMEZONE come from one derived string. The zone reaches the writer only through `IBoardClock.TimeZone`. The VTIMEZONE onset arithmetic is right: the onset is written in the local time of the offset in force just before it. The bisect search, the leading observance, the fold logic and the all-day branch all behave as documented.
+The revision mechanism is sound on its main paths. I traced these and found no correctness defect in any of them:
 
-I ran the affected suites on this Windows host: 129 unit tests and 52 integration tests, all passing. I found no planning or tracking IDs in the source comments or string literals, so the CLAUDE.md comment rule holds.
+- **Write paths.** Every production write to `Events` and `Quests` goes through tracked entities: `BaseRepository.UpdateAsync` (FindAsync plus `Mapper.Map` onto the tracked entity), `ApplyTemplateToOccurrencesAsync`, `DetachOccurrencesAndDeleteAsync`, the quest finalize/open/property-update methods and `AddAsync`. A production-wide search finds no `ExecuteUpdate`, `ExecuteSql`, `Attach`, `Update(` or `Entry(`. The only `EntityState` references are in the stamper.
+- **Mapper.** Both AutoMapper entity maps ignore `FeedRevision` and `FeedRevisedAt`, so a domain model cannot overwrite them.
+- **Stamper.** It restores the stored values before it decides anything. It bumps by exactly one per save and never moves the stamp backwards. It clears `IsModified` on a no-change save, so the UPDATE carries neither column. A retried `SaveChanges` is idempotent because the bump is computed from the original values.
+- **Save overloads.** Both `SaveChanges(bool)` and `SaveChangesAsync(bool, ct)` are overridden, and every other overload funnels into them.
+- **Writer.** `SEQUENCE` is floored at 1. DTSTAMP and LAST-MODIFIED come from one string, labelled with `SpecifyKind` and never converted. The host-zone conversion shapes are banned in both feed files by a test.
+- **Tenancy.** The diff adds no `IgnoreQueryFilters` site. The stamper issues no query.
+- **Migration.** Up and Down are correct for SQL Server. `AddColumn` and the `UPDATE` run as separate commands, so the new column is visible to the bump. `DropColumn` removes the default constraints automatically. The bump uses the DB-side UTC clock.
+- **Tests.** The rewritten pins do catch a regression to a constant SEQUENCE or to CreatedAt. This holds at three layers:
+  - Writer: distinct per-entry sequences (3, 7, 4) and non-default stamps.
+  - Service: an assertion that the stored revision time is not the creation time.
+  - Integration: the SEQUENCE and DTSTAMP movement across fetches.
 
-There are no blockers. The two warnings concern ambient time reads that this phase's own architectural rule and guard tests were meant to exclude. The info items are comment drift and edge-case assumptions in the time-zone block generator.
+Two warnings remain, both about what the design claims to guarantee. The revision guarantee is enforced only by read-modify-write inside one context, and the write-path guard test has a hole that silently defeats the stamper. There are five info items.
 
 ## Warnings
 
-### WR-01: Feed window "today" still derives from UTC, not from the injected board clock
+### WR-01: Concurrent or stale saves can lose a bump or lower SEQUENCE
 
-**File:** `QuestBoard.Domain/Services/CalendarSubscriptionService.cs:79`
-**Issue:** This phase injects `IBoardClock` into the service, but `var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);` is still a server-side "what day is it" read that bypasses the seam. `.claude/architecture.md` says these reads go through `IBoardClock` and never through ambient UTC. `IBoardClock.Today` exists for this purpose.
+**File:** `QuestBoard.Repository/FeedRevisionStamper.cs:102-131`
+**Issue:** The stamper writes an absolute `originalRevision + 1`, and the UPDATE has no concurrency predicate on `FeedRevision`. Two contexts that load the same row therefore lose information:
 
-The phase also added the service to `BoardClockConsumerPaths` in `AmbientClockSeamTests`. That positive check is satisfied by the string "IBoardClock" appearing at all, and here it appears only because of the `.TimeZone` read. The test now reports the service as seam-compliant while the one date computation in it is not. The line 115 comment accepts the UTC/board-date skew as negligible, but the rule leaves no room for that exception.
+- **Lost bump.** A and B both load revision 2. A saves a title change and stores 3. B saves a date change and also stores 3. The row has changed twice but was published at revision 3 both times. A client that fetched A's version (SEQUENCE 3) and then B's version (SEQUENCE 3, later DTSTAMP) sees no higher sequence. Clients that compare the sequence first and the stamp second, as the writer's own comment says they do, may keep the stale copy.
+- **Backwards write.** B loads revision 2. Two other saves raise the row to 4. B then saves and writes 3. SEQUENCE goes backwards, which the docs and the writer's floor-at-1 logic explicitly say must never happen. A client holding 4 ignores every later revision until the number passes 4 again.
 
-The skew is real. Between local midnight and UTC midnight, `today` is a day off from the board date. Events on the edge of the `MonthsBack`/`MonthsAhead` bound can flip in or out of the feed.
-
-**Fix:**
+Both races are narrow for a DM edit form. They are real for a Hangfire or series sweep running alongside a DM edit. No test covers either case.
+**Fix:** Make the stored revision a concurrency token so a stale writer fails instead of overwriting:
 ```csharp
-var today = boardClock.Today;
+// QuestBoardContext.OnModelCreating
+modelBuilder.Entity<EventEntity>().Property(e => e.FeedRevision).IsConcurrencyToken();
+modelBuilder.Entity<QuestEntity>().Property(q => q.FeedRevision).IsConcurrencyToken();
 ```
-Keep `timeProvider` for the `TouchLastFetchedAsync` and `RevokeAsync` instants, which are real instants. Update the affected unit and integration fakes. `FakeBoardClock.Today` defaults to `default(DateOnly)`, so tests that rely on the window need to set it.
+This adds `WHERE FeedRevision = @original` to every UPDATE of these rows, and needs no schema change, only a snapshot update. Callers already have to tolerate `DbUpdateConcurrencyException` from the Identity stack. Alternatively, raise the revision atomically in SQL (`SET FeedRevision = FeedRevision + 1`). Either way, add a stamper test with two contexts saving from the same original.
 
-### WR-02: Writer's DTSTAMP relies on the host's local zone, and the new guard test does not cover it
+### WR-02: Write-path guard misses the state-setting shape that silently defeats the stamper
 
-**File:** `QuestBoard.Domain/Services/CalendarFeedWriter.cs:283-284`, guard at `QuestBoard.UnitTests/Architecture/AmbientClockSeamTests.cs:298-329`
-**Issue:** `value.ToUniversalTime()` converts through `TimeZoneInfo.Local` when `value.Kind` is `Unspecified` or `Local`. `CreatedAt` comes through EF and AutoMapper, and I found no UTC value converter or `DateTimeKind` handling in `QuestBoard.Repository`. SQL Server `datetime2` values therefore come back as `Unspecified`.
+**File:** `QuestBoard.UnitTests/Architecture/FeedRevisionWriteSeamTests.cs:29-37`
+**Issue:** `BannedWriteShapes` lists `ExecuteUpdate`, `ExecuteSql`, `.Attach(`, `.AttachRange(`, `.Update(` and `.UpdateRange(`. It omits `context.Entry(detached).State = EntityState.Modified`, which is the same failure mode. A detached entity marked Modified has original values equal to its current values. Every feed field therefore compares equal, `feedChanged` is false, and the stamper clears `IsModified` on the two revision columns. The edit is written (Title and the other properties are all flagged modified) but the revision is never raised. That is exactly the stale-copy bug this phase closes, and the guard exists to prevent it.
 
-The result is host-dependent DTSTAMP output: identical on a UTC container, shifted by the host offset on a Windows or non-UTC host. The `Unspecified` handling is an inference; no test exercises it. The writer's header comment says the feed "derives from the entry's own CreatedAt rather than any ambient clock". That is true for the clock but not for the zone.
-
-The new `CalendarFeedSources_TakeTheZoneOnlyFromTheBoardClock` test bans only `TimeZoneOptions`, `BoardTimeZoneId` and `FindSystemTimeZoneById`. It would pass code using `TimeZoneInfo.Local` or `ToUniversalTime()`, which is the same class of leak the test exists to stop. The DTSTAMP behaviour predates this phase. The phase now relies on DTSTAMP stability across hosts, because `SEQUENCE:1` is constant and revisions tie-break on DTSTAMP.
-
-**Fix:** Treat the stored value as UTC explicitly:
+The guard's own header says it fails the build "the moment such a write shape appears". It does not for this shape. Note also that `.Update(`/`.Attach(` are banned only as text in three roots. The comment-stripper cuts at the first `//` on a line, which could hide a banned call after a string literal containing `//` on the same line.
+**Fix:** Add the missing shapes to the list:
 ```csharp
-private static string FormatUtcStamp(DateTime value) =>
-    DateTime.SpecifyKind(value, DateTimeKind.Utc)
-        .ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+"EntityState.Modified",
+".Entry(",
 ```
-Add a test with an `Unspecified` `CreatedAt` that asserts the digits are unchanged. Add `TimeZoneInfo.Local` and `ToUniversalTime(` to the banned shapes in the guard test.
+The production search found no current use of either, so this adds no offender. Consider also pinning `.Database.ExecuteSql` explicitly, since the `ExecuteSql` substring only happens to cover it.
 
 ## Info
 
-### IN-01: Writer header comment still describes a "five-field VEVENT"
+### IN-01: Stale writer header comment
 
-**File:** `QuestBoard.Domain/Services/CalendarFeedWriter.cs:9-13`
-**Issue:** Timed entries now emit seven properties (UID, DTSTAMP, DTSTART, DTEND, SUMMARY, TRANSP, SEQUENCE). The comment also says "no recurrence rule". That remains true, but the "smaller surface than a library" justification now understates the generated VTIMEZONE logic in this class.
-**Fix:** Reword to match the current surface, for example "a small fixed set of VEVENT properties plus a generated time-zone block".
+**File:** `QuestBoard.Domain/Services/CalendarFeedWriter.cs:9-10`
+**Issue:** The class comment still says the feed "emits a five-field VEVENT". Each entry now carries UID, DTSTAMP, LAST-MODIFIED, DTSTART, DTEND, SUMMARY, TRANSP and SEQUENCE. This was already imprecise before this change and is wrong now.
+**Fix:** Drop the field count: "emits a small fixed VEVENT".
 
-### IN-02: Time-zone block generation assumes at most one offset change per 24-hour step and whole-minute alignment
+### IN-02: Garbled ETag comment
 
-**File:** `QuestBoard.Domain/Services/CalendarFeedWriter.cs:123-167`
-**Issue:** Two assumptions are unstated.
-- Two transitions inside one one-day step would leave `zone.GetUtcOffset(next) == previous`, and the block would silently drop both. No real zone does this today.
-- The bisect probes are anchored at `windowStart`, which carries the seconds of the earliest `StartTime`. A `StartTime` such as 19:00:30 makes every probe land on `:30`. The onset is then up to 59 seconds late and is written with non-zero seconds, for example `T030030`, contradicting the comment "onsets never carry fractional seconds". Current inputs come from HH:mm pickers, so this is latent.
+**File:** `QuestBoard.Domain/Services/CalendarSubscriptionService.cs:180-183`
+**Issue:** The edit left a tautology: "an event edit produces a new tag automatically: the tag changes exactly when the document's bytes change", directly after the sentence saying the same thing.
+**Fix:** Collapse to one sentence.
 
-**Fix:** Truncate `windowStart` and `windowEnd` to the minute before probing, for example `new DateTime(ticks - ticks % TimeSpan.TicksPerMinute, DateTimeKind.Utc)`. Document the one-change-per-day assumption at the loop.
+### IN-03: Re-posting the same availability moves the reader's stamp, and the write uses the ambient clock
 
-### IN-03: `SEQUENCE:1` is a one-time migration lever, and the contract does not say so
+**File:** `QuestBoard.Repository/EventSignupRepository.cs:27-28, 40-41`
+**Issue:** `SetAvailabilityAsync` sets `UpdatedAt = DateTime.UtcNow` even when the answer is unchanged. The reader's DTSTAMP and the ETag then change with no visible change, which is a mild breach of the byte-identical-when-unchanged rule. The file also reads `DateTime.UtcNow` twice on the create path, so `CreatedAt` and `UpdatedAt` can differ by ticks. The stamper uses the context's injected `TimeProvider` while this write uses the ambient clock. They only agree because both are the system clock today. The file is also not in the `AmbientClockSeamTests` closed list.
+**Fix:** Skip the write when `entity.Availability == (int)availability`. Take one `var now = timeProvider.GetUtcNow().UtcDateTime` and use it for both columns.
 
-**File:** `QuestBoard.Domain/Services/CalendarFeedWriter.cs:214-219`, `:237`
-**Issue:** The constant fixes the old-to-new migration, where floating-time events must be replaced by zoned ones. It does not signal later edits to a client that compares SEQUENCE and then DTSTAMP. DTSTAMP is `CreatedAt`, so it is also constant. A client that applies updates only on a higher revision will ignore a rescheduled event, and the integration test at `CalendarSubscriptionQuestFeedTests` pins this as intended.
+### IN-04: An availability change is signalled only through DTSTAMP
 
-If the target clients (Apple Calendar and Google in particular) replace subscribed feeds wholesale, this is fine. That is an assumption to record, and a future contract change cannot reuse the same trick without a code change.
-**Fix:** State in `architecture.md` that revision numbers are constant by design, and record that the real-phone check covers a rescheduled entry. Otherwise no change.
+**File:** `QuestBoard.Domain/Services/CalendarSubscriptionService.cs:113-120`
+**Issue:** The SUMMARY suffix "(maybe)" or "(declined)" is a visible change for one reader, but SEQUENCE stays the same by design. A client that compares only SEQUENCE, or that ignores same-sequence updates, will keep a stale availability suffix. This is the stated operator design and the tests pin it, so it is not a defect. It is a known client-dependent limitation that the architecture note's known-limitations list does not mention.
+**Fix:** Add one line to the known limitations in `.claude/architecture.md`.
 
-### IN-04: Timed and all-day event emission duplicate the property lines
+### IN-05: An unset revision stamp is published silently as year 1, and the added-row rule is weaker than documented
 
-**File:** `QuestBoard.Domain/Services/CalendarFeedWriter.cs:201-239`
-**Issue:** `AppendTimedEvent` and `AppendAllDayEvent` repeat UID, DTSTAMP, SUMMARY, TRANSP and SEQUENCE. Those lines must stay in the same order, and the `SEQUENCE` invariant is now written in two places. A future edit to one branch, such as a revision bump, can miss the other. Neither method uses instance state, so both could be `static`.
-**Fix:** Extract a shared `AppendEvent(builder, entry, startLine, endLine)` helper and make both branches static.
+**File:** `QuestBoard.Domain/Models/CalendarFeedEntry.cs:36`, `QuestBoard.Repository/FeedRevisionStamper.cs:85-98`
+**Issue:** The `LastRevisedAt` default is `default(DateTime)`, so a caller that forgets it emits `DTSTAMP:00010101T000000Z` with no failure. Separately, `StampNewRow` honours any caller-supplied revision of at least 1 and any non-default stamp on an inserted row, although the docs say no caller can set these columns. Through the mappers this cannot happen, because they ignore both members. A directly constructed entity with a far-future `FeedRevisedAt` would freeze that row's stamp permanently, since the never-backwards rule keeps the larger value.
+**Fix:** Mark `LastRevisedAt` as `required` on `CalendarFeedEntry`. For inserts, either always overwrite with revision 1 and `CreatedAt`, or cap the stamp at `utcNow`.
 
 ---
 

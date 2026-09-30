@@ -104,7 +104,10 @@ internal class EventSignupRepository(QuestBoardContext dbContext, IMapper mapper
             .Select(entity => new EventFeedRow
             {
                 Event = Mapper.Map<Event>(entity.Event),
-                Availability = (VoteType)entity.Availability
+                Availability = (VoteType)entity.Availability,
+                // A null UpdatedAt means no person ever set this answer (an automatically
+                // created row), so the row's creation time is the last time it was written.
+                AnswerWrittenAt = entity.UpdatedAt ?? entity.CreatedAt
             })
             .ToList();
     }

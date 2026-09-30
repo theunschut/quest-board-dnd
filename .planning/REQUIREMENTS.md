@@ -145,11 +145,17 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 - [x] **CALTZ-03**: The calendar carries exactly one calendar-level zone header naming the same zone id as every entry and the time-zone block, and all three derive from the one zone the board clock resolved, never from the configured zone string
 - [x] **CALTZ-04**: A board configured with a zone other than the default, including a southern-hemisphere zone and a Windows-style zone id, has that zone declared under an IANA-form name with its own offset changes listed, proving the block is generated from the zone rather than written out for one city
 - [x] **CALTZ-05**: When the configured zone cannot be resolved and the board clock has fallen back to UTC, the feed declares UTC through the same code path — every timed entry, a block with a single zero-offset observance, and the calendar zone header — with no zoneless branch anywhere
-- [x] **CALTZ-06**: Every entry, timed and all-day, carries sequence number 1 and never 0, while its identifier and its stamp stay exactly as they were, so a client that orders revisions by sequence number applies the corrected times to entries it already holds
+- [x] **CALTZ-06**: Every entry, timed and all-day, carries sequence number 1 and never 0, while its identifier and its stamp stay exactly as they were, so a client that orders revisions by sequence number applies the corrected times to entries it already holds — *its constant-sequence and unmoved-stamp clauses are superseded by CALTZ-11 and CALTZ-13: the sequence number is now the entry's stored revision, which never falls below 1, and the stamp is its last-revised time*
 - [x] **CALTZ-07**: An all-day entry stays a date-valued entry with no zone on it, and a feed with no timed entry carries no time-zone block
 - [x] **CALTZ-08**: The feed never converts a stored wall-clock value: a game night stored as 18:00 is written with the digits 180000 whatever zone the board is configured with, and the entries handed to the writer carry the stored date and time untouched
 - [ ] **CALTZ-09**: On production, a game night set for 18:00 reads 18:00 in Google Calendar on a subscribed phone — checked first on an entry Google already held before the fix and then on a new entry — and still reads 18:00 in Apple Calendar on an iPhone; if Google keeps an old time after a refresh, removing and re-adding the subscription once is an accepted resolution, and no copy anywhere promises a refresh latency
 - [x] **CALTZ-10**: Every standing statement that described the feed as floating — requirement CALFEED-10, the project's architecture guidance on time and the board clock, and the feed code's own comments — is rewritten to the zoned contract rather than deleted, and the guard tests that pinned the floating contract are rewritten to pin the zoned one
+- [x] **CALTZ-11**: Every event and quest carries a stored revision number and last-revised time, added by one schema change that also raises every existing event and quest once, so at the next fetch every entry a calendar already holds goes out with sequence number 2 and a stamp later than its creation time, which repairs copies that were left stale
+- [x] **CALTZ-12**: A save raises an entry's revision by exactly one and moves its last-revised time to the moment of the save, never backwards, when and only when it changes what the feed shows for that entry: an event's title, date, start time, cancellation or board; or a quest's title, finalized date, finalized state or board, including a quest reopened and then finalized again. This holds whichever write path makes the save, no write path can bypass it, and no mapped or posted value can overwrite the stored revision. Known limitations: renaming a board does not re-signal existing calendar entries; each entry picks up the new board name on its next real revision. Likewise a change to the configured quest session length or board zone is configuration rather than a stored row, so it reaches clients only with each entry's next revision
+- [x] **CALTZ-13**: Each entry's sequence number is its stored revision, never below 1 and never lower than a number already published for it, and its DTSTAMP and LAST-MODIFIED lines carry its last-revised time labelled as the UTC instant it is rather than converted, so a rescheduled or retitled entry reaches a client under the same identifier with a higher sequence number and a later stamp
+- [x] **CALTZ-14**: A reader's own availability change moves the stamp and last-modified line of that reader's entry to the time of the answer, never backwards, while leaving that entry's sequence number and every other reader's document unchanged
+- [x] **CALTZ-15**: An entry nobody changed is byte-identical between fetches, so the document's entity tag stays the same and a client presenting it gets 304 Not Modified, and every exact-byte feed pin, rewritten to the revision contract, passes on Linux as well as on Windows
+- [x] **CALTZ-16**: Every standing statement that described the sequence number as a constant or the stamp as the creation time — requirement CALTZ-06, the project's architecture guidance and the feed code's own comments — is rewritten to the revision contract, and the tests that pinned a constant sequence number or a creation-time stamp are rewritten to pin it rather than deleted
 
 ### Link Previews — Foundation and Quests
 
@@ -394,11 +400,17 @@ Explicit exclusions for v9.0, with reasoning.
 | CALTZ-08 | Phase 88 | Complete |
 | CALTZ-09 | Phase 88 | Pending |
 | CALTZ-10 | Phase 88 | Complete |
+| CALTZ-11 | Phase 88 | Complete |
+| CALTZ-12 | Phase 88 | Complete |
+| CALTZ-13 | Phase 88 | Complete |
+| CALTZ-14 | Phase 88 | Complete |
+| CALTZ-15 | Phase 88 | Complete |
+| CALTZ-16 | Phase 88 | Complete |
 
 **Coverage:**
 
-- v1 requirements: 144 total
-- Mapped to phases: 144/144 ✓
+- v1 requirements: 150 total
+- Mapped to phases: 150/150 ✓
 - Unmapped: 0
 
 ---

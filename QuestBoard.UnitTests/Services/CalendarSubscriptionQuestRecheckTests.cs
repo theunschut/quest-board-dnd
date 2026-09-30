@@ -117,7 +117,7 @@ public class CalendarSubscriptionQuestRecheckTests
             questRepository,
             groupService,
             writer,
-            new FakeBoardClock(),
+            new FakeBoardClock { Today = DateOnly.FromDateTime(DefaultClockInstant.UtcDateTime) },
             new FixedTimeProvider(DefaultClockInstant),
             feedOptions,
             logger);

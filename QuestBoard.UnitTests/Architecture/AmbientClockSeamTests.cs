@@ -19,6 +19,8 @@ public class AmbientClockSeamTests
         "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
+        "QuestBoard.Repository/Entities/QuestBoardContext.cs",
+        "QuestBoard.Repository/FeedRevisionStamper.cs",
         "QuestBoard.Repository/GroupRepository.cs",
         "QuestBoard.Repository/QuestRepository.cs",
         "QuestBoard.Service/Controllers/Admin/AdminController.cs",
@@ -324,6 +326,49 @@ public class AmbientClockSeamTests
         writerStripped.Should().NotContain("IBoardClock",
             because: "the writer is handed the resolved zone as data, so it holds no clock of its own " +
                      "that could disagree with the one the service read");
+    }
+
+    // The positive check above is satisfied by the clock's name appearing anywhere in the service,
+    // which the zone read alone already does. This one pins the date: the feed window is measured
+    // from the board-local today the clock reports, and no date is derived from the UTC instant of
+    // the time provider, which sits a day off the board date for part of every day.
+    [Fact]
+    public void CalendarSubscriptionService_MeasuresTheFeedWindowFromTheBoardClocksToday()
+    {
+        var stripped = StripComments(File.ReadAllText(
+            ResolveRepoRelativePath("QuestBoard.Domain/Services/CalendarSubscriptionService.cs")));
+
+        stripped.Should().Contain("boardClock.Today",
+            because: "the feed window is anchored to the board-local date, which only the board clock supplies");
+        var utcDerivedDateLines = stripped.Split('\n')
+            .Where(line => line.Contains("FromDateTime(", StringComparison.Ordinal)
+                && line.Contains("GetUtcNow", StringComparison.Ordinal))
+            .Select(line => line.Trim())
+            .ToList();
+        utcDerivedDateLines.Should().BeEmpty(
+            because: "a date built from a UTC instant is not the board's date for part of every day -- found: " +
+                     string.Join("; ", utcDerivedDateLines));
+    }
+
+    // The feed sources may hold real instants, but converting one through the host's own zone
+    // makes the output depend on the machine it renders on. A stored UTC value is stamped as the
+    // UTC value it is, and the only zone conversion permitted is the one against the zone the
+    // board clock supplied.
+    [Theory]
+    [InlineData("QuestBoard.Domain/Services/CalendarFeedWriter.cs")]
+    [InlineData("QuestBoard.Domain/Services/CalendarSubscriptionService.cs")]
+    public void CalendarFeedSources_NeverConvertThroughTheHostsLocalZone(string relativePath)
+    {
+        var stripped = StripComments(File.ReadAllText(ResolveRepoRelativePath(relativePath)));
+        var hostZoneShapes = new[] { "TimeZoneInfo.Local", "ToUniversalTime(", "ToLocalTime(" };
+
+        var offenders = hostZoneShapes
+            .Where(shape => stripped.Contains(shape, StringComparison.Ordinal))
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: $"'{relativePath}' must not convert through the host's local zone -- found: " +
+                     string.Join(", ", offenders));
     }
 
     // Documents the boundary rather than leaving it implicit: EmailPreviewController's five
