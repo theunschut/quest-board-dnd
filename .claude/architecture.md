@@ -43,6 +43,12 @@ Server-side "what day is it" reads go through `IBoardClock` (`QuestBoard.Domain`
 `DateTime.Now`/`UtcNow`/`Today` — the container clock is UTC and would misjudge board-local dates.
 `AmbientClockSeamTests` holds a closed list of permitted ambient reads; do not weaken it.
 
-The calendar feed emits floating local `DTSTART` with no `TZID`/`VTIMEZONE`. `CalendarFeedWriter.cs`
-and `CalendarSubscriptionService.cs` are guarded by tests that pin this — treat changes there as
-high-risk.
+The calendar feed declares the board's zone on every timed entry: `DTSTART;TZID=<zone>` and
+`DTEND;TZID=<zone>` carry the stored wall-clock digits unchanged, because declaring which zone an
+hour belongs to is not converting it. A generated `VTIMEZONE` lists that zone's offsets across the
+span the entries cover, found by asking the zone for its offset at a moment so the block comes out
+identical on Windows and Linux, and `X-WR-TIMEZONE` names the same zone. All three come from
+`IBoardClock.TimeZone`, never from the configured id string, so a clock that fell back to UTC
+declares UTC. All-day entries stay date-valued and carry no zone. Every entry carries `SEQUENCE:1`,
+which must never go back down. `CalendarFeedWriter.cs` and `CalendarSubscriptionService.cs` are
+guarded by tests that pin this — treat changes there as high-risk.

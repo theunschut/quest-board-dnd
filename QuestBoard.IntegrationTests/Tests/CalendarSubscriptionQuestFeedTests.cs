@@ -255,15 +255,17 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         // any kind (no quest marker, no Dungeon Master marker, no answer suffix) was appended.
         body.Should().Contain("SUMMARY:[Quest Feed Tracer Board] Quest Feed Tracer Session\r\n");
 
-        body.Should().Contain($"DTSTART:{finalizedDate:yyyyMMdd}T{finalizedDate:HHmmss}");
-        body.Should().NotContain($"DTSTART:{finalizedDate:yyyyMMdd}T{finalizedDate:HHmmss}Z");
+        body.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{finalizedDate:yyyyMMdd}T{finalizedDate:HHmmss}\r\n");
+        body.Should().NotContain($"{finalizedDate:yyyyMMdd}T{finalizedDate:HHmmss}Z");
 
         // The end is exactly the configured number of hours later, read from the running host's
         // own options rather than a literal four.
         var expectedEnd = finalizedDate.AddHours(options.QuestDurationHours);
-        body.Should().Contain($"DTEND:{expectedEnd:yyyyMMdd}T{expectedEnd:HHmmss}");
+        body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{expectedEnd:yyyyMMdd}T{expectedEnd:HHmmss}\r\n");
 
         body.Should().Contain("TRANSP:TRANSPARENT");
+        body.Should().Contain("SEQUENCE:1\r\n");
+        body.Should().NotContain("SEQUENCE:0");
 
         CountVEvents(body).Should().Be(1);
 
@@ -672,7 +674,7 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         var secondBody = await secondResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var secondUidLine = secondBody.Split("\r\n").Single(line => line.StartsWith($"UID:questboard-quest-{questId}", StringComparison.Ordinal));
 
-        secondBody.Should().Contain($"DTSTART:{newDate:yyyyMMdd}T{newDate:HHmmss}");
+        secondBody.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{newDate:yyyyMMdd}T{newDate:HHmmss}");
 
         // The load-bearing assertion: the identifier captured from the first fetch is
         // byte-identical to the one captured from the second, rather than a freshly-derived
@@ -681,6 +683,11 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         // instead of updating the existing entry in place, and nothing server-side would show it.
         secondUidLine.Should().Be(firstUidLine);
         CountVEvents(secondBody).Should().Be(1);
+
+        // The revision number is a constant, so a rescheduled entry carries the same one on
+        // both fetches: the moved start is what tells a client the entry changed.
+        (firstBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
+        (secondBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
 
         // Move the finalized date outside the window entirely -- the fourth exit route, and the
         // same predicate clause the window facts below pin from the other direction.

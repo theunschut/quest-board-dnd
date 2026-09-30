@@ -15,6 +15,7 @@ internal class CalendarSubscriptionService(
     IQuestRepository questRepository,
     IGroupService groupService,
     ICalendarFeedWriter writer,
+    IBoardClock boardClock,
     TimeProvider timeProvider,
     IOptions<CalendarFeedOptions> feedOptions,
     ILogger<CalendarSubscriptionService> logger) : ICalendarSubscriptionService
@@ -111,10 +112,9 @@ internal class CalendarSubscriptionService(
             })
             .ToList();
 
-        // The window is UTC-derived while FinalizedDate is stored in server local time (a
-        // standing, separately tracked known issue this phase does not touch). At this window's
-        // month granularity the host's UTC offset cannot move a quest across a bound except
-        // within a couple of hours of the boundary itself, so the discrepancy is accepted as
+        // FinalizedDate is a wall-clock value in the board's own zone, while the window above is
+        // derived from UTC. At this window's month granularity the difference can move a quest
+        // across a bound only within a couple of hours of the bound itself, which is accepted as
         // negligible rather than left implicit. Called unconditionally, including when
         // oneShotGroupIds is empty, for the same reason the event read above is unconditional.
         var fetchedQuests = await questRepository.GetFeedQuestsForUserAsync(
@@ -166,7 +166,7 @@ internal class CalendarSubscriptionService(
             .ThenBy(e => e.SourceId)
             .ToList();
 
-        var body = writer.Write(allEntries, "D&D Quest Board");
+        var body = writer.Write(allEntries, "D&D Quest Board", boardClock.TimeZone);
 
         // A strong fingerprint of the body's own bytes: it changes when and only when the
         // emitted document changes, so an event edit produces a new tag automatically with no

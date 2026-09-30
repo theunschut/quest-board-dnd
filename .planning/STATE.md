@@ -2,19 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 87
-status: completed
-stopped_at: Phase 87 complete — all phases complete
-last_updated: "2026-09-22T06:51:38.481Z"
-last_activity: 2026-09-22
-last_activity_desc: Phase 87 complete
-state_head: c79ae880606857c5990fb9b153a4e68c9c4d1ccc
+current_phase: 88
+current_phase_name: Calendar Feed Times Anchored to the Board Timezone
+status: verifying
+stopped_at: Completed 88-04-PLAN.md
+last_updated: "2026-09-30T11:32:33.565Z"
+last_activity: 2026-09-30
+last_activity_desc: Phase 88 execution started
+state_head: 39de72b6e5d0c0f49b41ace7399a87cd72f02183
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 14
-  total_plans: 108
-  completed_plans: 99
-  percent: 88
+  total_plans: 112
+  completed_plans: 103
+  percent: 82
 ---
 
 # Project State
@@ -24,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** None — Phase 87 closed. Next phase not chosen.
+**Current focus:** Phase 88 — Calendar Feed Times Anchored to the Board Timezone
 
 ## Current Position
 
-Phase: 87 (cross-board-deep-link-recovery) — COMPLETE
-Plan: 4 of 4 — verified 21/21, security SECURED, review closed
-Status: Between phases — three roadmapped phases remain unstarted
-Last activity: 2026-09-22 — Phase 87 complete
+Phase: 88 (Calendar Feed Times Anchored to the Board Timezone) — EXECUTING
+Plan: 4 of 4
+Status: Phase complete — ready for verification
+Last activity: 2026-09-30 — Phase 88 execution started
 
 Roadmapped and not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
 none executed) and Phase 79 — Character and Contact Link Cards (not yet planned). Every other
@@ -64,6 +65,8 @@ introduced by Phase 87.
 | Phase 84 P04 | 23min | 5 tasks | 11 files |
 | Phase 84 P05 | 24min | 3 tasks | 3 files |
 | Phase 84 P08 | 137min | 4 tasks | 10 files |
+| Phase 88 P01 | 6 min | 2 tasks | 10 files |
+| Phase 88 P04 | 4 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -87,6 +90,8 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 84]: Log-safety fact inlines its own harness smoke test (revoke-then-fetch) rather than depending on run order across facts — xUnit gives no ordering guarantee across facts, each of which clears the database independently
 - [Phase 84]: Task 3's real-device subscription checkpoint was deferred to deployment by operator decision, not approved and not failed -- Outlook and Google Calendar fetch server-side and cannot reach a localhost or LAN address — Server-side coverage (104 test methods) and an external RFC 5545 validator pass (0 errors, 0 warnings) independently prove the document; client poll-and-render behaviour remains genuinely unverified and is tracked as an open WINDOWS.md unrun-verify item
 - [Phase 84]: 84-08: three UAT-found UI defects fixed centrally during the Task 3 review window -- modals freed from a backdrop-filter stacking-context trap, the subscription row rebalanced to 68px, and the address stopped being displayed on screen (kept in DOM, readonly, revealed only by the clipboard-denied fallback) — CALFEED-03 and 84-UI-SPEC E3/E4 amended accordingly; address is a bearer credential with no expiry and should not be visible on a screen-shared or screenshotted page
+- [Phase 88]: Board zone is a required per-document TimeZoneInfo parameter on ICalendarFeedWriter.Write; header, VTIMEZONE and every timed line share one derived tzid — One zone per document makes disagreement structurally impossible and keeps the writer pure
+- [Phase 88]: 88-04: Linux calendar byte-pin proof runs from git archive HEAD on stdin in a --rm SDK container with no volume mount — Uncommitted host files cannot leak in and nothing can be written back
 
 ### Roadmap Evolution
 
@@ -103,6 +108,7 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Backlog 999.1 parked 2026-09-18: Voting from a Phone Calendar Entry — operator asked whether a vote could be cast in the phone calendar entry itself and flow back to the board. Answered no for the shipped subscription: an `.ics` URL subscription is one-way and every major client renders it read-only, so no feed property produces an RSVP button. The two routes that would work (iMIP email invitations, which need inbound mail this codebase does not have; or a token-linked tap-through page, which reverses 84 D-10 and makes a leaked feed address write-capable) were both judged disproportionate for now. Quest date voting is unreachable on any route because the feed carries finalized quests only.
 - Phase 86 added 2026-09-18: Viewer-Local Times and Correct Job Scheduling — render real instants in the viewer's browser timezone (client-side `<time>` + `Intl`, operator's decision) and give the three Hangfire sweeps an explicit `TimeZoneInfo`. Raised from the UTC "Last fetched" timestamp on the Profile page; investigation also found the container sets no `TZ` and Hangfire cron defaults to UTC, so the sweeps never ran at the CET/CEST hour their comments claim. Both halves ship together because classifying every `DateTime` as a real instant or naive wall-clock is the shared bulk of the work.
 - Phase 87 added 2026-09-21: Cross-Board Deep Link Recovery -- a member following a link to another board they belong to should land on the page instead of a 404. Raised by the operator from live two-board use, and explicitly a revision of the strict session-scoped tenancy decision rather than a bug against it. The 18 global query filters keyed on `ActiveGroupId` make a foreign-board read indistinguishable from a nonexistent one, so the controller cannot answer differently today. Phase 82's Agenda confirm-then-switch modal is the pattern to generalise; the non-negotiable constraint is that a non-member must see no new signal, so the recovery flow cannot become a board-membership oracle.
+- Phase 88 added 2026-09-30: Calendar Feed Times Anchored to the Board Timezone -- a quest set to 18:00 on the board shows as 19:00 on the operator's phone and 20:00 on a friend's. The feed writes timed entries as floating local time with no zone (Phase 84 D-01), and at least some clients read floating time as UTC. D-01's reason for avoiding a timezone went away once Phase 86 introduced `IBoardClock`'s board zone. This deliberately reverses the test-pinned floating-time contract, so the guard tests get rewritten, not deleted. Proving the fix needs real phones.
 
 ### Pending Todos
 
@@ -149,9 +155,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-22T06:56:55.758Z
-Stopped at: Phase 87 closed — gate tail finished (code review, review fixes, regression gate, verification, roadmap)
-Resume file: none — no work in flight
+Last session: 2026-09-30T11:32:29.451Z
+Stopped at: Completed 88-04-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
