@@ -4,17 +4,17 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 88
 current_phase_name: Calendar Feed Times Anchored to the Board Timezone
-status: verifying
-stopped_at: Completed 88-04-PLAN.md
-last_updated: "2026-09-30T11:32:33.565Z"
+status: executing
+stopped_at: Completed 88-05-PLAN.md
+last_updated: "2026-09-30T16:25:09.930Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 88 execution started
-state_head: 39de72b6e5d0c0f49b41ace7399a87cd72f02183
+state_head: 446a7e207aa9046a27d7ef8b5214fcefed7fa409
 progress:
   total_phases: 17
   completed_phases: 14
-  total_plans: 112
-  completed_plans: 103
+  total_plans: 117
+  completed_plans: 104
   percent: 82
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
 ## Current Position
 
 Phase: 88 (Calendar Feed Times Anchored to the Board Timezone) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Plan: 6 of 9 (88-05 complete)
+Status: Ready to execute
 Last activity: 2026-09-30 — Phase 88 execution started
 
 Roadmapped and not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -67,6 +67,7 @@ introduced by Phase 87.
 | Phase 84 P08 | 137min | 4 tasks | 10 files |
 | Phase 88 P01 | 6 min | 2 tasks | 10 files |
 | Phase 88 P04 | 4 min | 2 tasks | 2 files |
+| Phase 88 P05 | 12 min | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 84]: 84-08: three UAT-found UI defects fixed centrally during the Task 3 review window -- modals freed from a backdrop-filter stacking-context trap, the subscription row rebalanced to 68px, and the address stopped being displayed on screen (kept in DOM, readonly, revealed only by the clipboard-denied fallback) — CALFEED-03 and 84-UI-SPEC E3/E4 amended accordingly; address is a bearer credential with no expiry and should not be visible on a screen-shared or screenshotted page
 - [Phase 88]: Board zone is a required per-document TimeZoneInfo parameter on ICalendarFeedWriter.Write; header, VTIMEZONE and every timed line share one derived tzid — One zone per document makes disagreement structurally impossible and keeps the writer pure
 - [Phase 88]: 88-04: Linux calendar byte-pin proof runs from git archive HEAD on stdin in a --rm SDK container with no volume mount — Uncommitted host files cannot leak in and nothing can be written back
+- [Phase 88]: 88-05: calendar feed revision is raised inside QuestBoardContext's SaveChanges overrides (not an interceptor); FeedRevision/FeedRevisedAt are store-owned, feed-visible fields are event Title/Date/StartTime/CancelledAt/GroupId and quest Title/FinalizedDate/IsFinalized/GroupId — Every construction path (DI, integration factory re-registration, direct test construction) gets the rule; comparing original to current values keeps unedited entries byte-identical
 
 ### Roadmap Evolution
 
@@ -155,8 +157,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-30T11:32:29.451Z
-Stopped at: Completed 88-04-PLAN.md
+Last session: 2026-09-30T16:24:58.311Z
+Stopped at: Completed 88-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

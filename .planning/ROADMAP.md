@@ -1085,7 +1085,7 @@ Plans:
 **Goal:** A game night set for 18:00 on the board shows as 18:00 in every subscriber's phone calendar, whichever calendar app they use — instead of 19:00 on one phone and 20:00 on another, as it does today.
 **Requirements**: CALTZ-01, CALTZ-02, CALTZ-03, CALTZ-04, CALTZ-05, CALTZ-06, CALTZ-07, CALTZ-08, CALTZ-09, CALTZ-10, CALTZ-11, CALTZ-12, CALTZ-13, CALTZ-14, CALTZ-15, CALTZ-16
 **Depends on:** No hard dependency. It builds on Phase 84's writer and Phase 85's quest entries, and needs the board timezone that Phase 86 introduced (`IBoardClock.TimeZone`, configured by `TimeZoneOptions.BoardTimeZoneId`, default `Europe/Amsterdam`).
-**Plans:** 4/9 plans executed
+**Plans:** 5/9 plans executed
 
 **Origin:** raised by the operator on 2026-09-30 from production use. A quest set to 18:00 on the board appears as 19:00 in the operator's phone calendar and as 20:00 on a friend's phone.
 
@@ -1118,7 +1118,7 @@ Plans:
 
 **Gap closure G-88-4 — Wave 1** *(run with `/gsd-execute-phase 88 --gaps-only`; a rescheduled entry carried no revision signal, so revision-comparing clients kept the old time)*
 
-- [ ] 88-05-PLAN.md — Tracer: per-entry revision columns with a one-time bump of every existing row, the store-side revision hook, and a rescheduled quest going out with a higher SEQUENCE and a later DTSTAMP; plus the hook's unit proofs and write-seam guards (gap wave 1)
+- [x] 88-05-PLAN.md — Tracer: per-entry revision columns with a one-time bump of every existing row, the store-side revision hook, and a rescheduled quest going out with a higher SEQUENCE and a later DTSTAMP; plus the hook's unit proofs and write-seam guards (gap wave 1)
 
 **Gap closure G-88-4 — Wave 2** *(blocked on Wave 1 completion)*
 
