@@ -19,7 +19,7 @@ Authorization policies: `"DungeonMasterOnly"` (DungeonMaster or Admin role), `"A
 
 Migrations are **auto-applied on startup** via `context.Database.Migrate()` — no manual `database update` needed in dev.
 
-Writes to `Events` and `Quests` must go through the change tracker — no bulk update, raw SQL or attaching a detached entity — or the calendar feed revision does not rise, and a guard test fails.
+Writes to `Events` and `Quests` must go through the change tracker — no bulk update, raw SQL, attaching a detached entity or setting an entry's state by hand — or the calendar feed revision does not rise, and a guard test fails.
 
 ```bash
 # Add/remove migrations (run from QuestBoard.Service/)
