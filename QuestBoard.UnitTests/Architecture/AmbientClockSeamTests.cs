@@ -19,6 +19,8 @@ public class AmbientClockSeamTests
         "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
+        "QuestBoard.Repository/Entities/QuestBoardContext.cs",
+        "QuestBoard.Repository/FeedRevisionStamper.cs",
         "QuestBoard.Repository/GroupRepository.cs",
         "QuestBoard.Repository/QuestRepository.cs",
         "QuestBoard.Service/Controllers/Admin/AdminController.cs",
