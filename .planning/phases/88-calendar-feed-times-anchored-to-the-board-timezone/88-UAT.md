@@ -83,7 +83,7 @@ observed: |
 expected: A real production subscription address, fetched anonymously, returns the same zoned structure as the local check. Every timed entry carries TZID=Europe/Amsterdam with the board's wall-clock digits, and its VTIMEZONE agrees with the IANA rules.
 result: pass
 observed: |
-  2026-09-30, after the v5.3.2 deploy, using a temporary subscription the operator created for this check and then revoked.
+  2026-09-30, after the v5.3.2 deploy, using a temporary subscription the operator created for this check; revoked afterwards (GET returned 410 at 14:02Z).
   - GET https://questboard.theunschut.com/feeds/calendar/{temporary token}.ics anonymously: 200,
     Content-Type text/calendar; charset=utf-8, 405 lines, all CRLF.
   - X-WR-TIMEZONE:Europe/Amsterdam; one VTIMEZONE with the 2026-10-25 and 2027-03-28 transitions.
