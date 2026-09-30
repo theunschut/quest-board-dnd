@@ -777,8 +777,14 @@ Plans:
 | CALTZ-08 | Phase 88 |
 | CALTZ-09 | Phase 88 |
 | CALTZ-10 | Phase 88 |
+| CALTZ-11 | Phase 88 |
+| CALTZ-12 | Phase 88 |
+| CALTZ-13 | Phase 88 |
+| CALTZ-14 | Phase 88 |
+| CALTZ-15 | Phase 88 |
+| CALTZ-16 | Phase 88 |
 
-**Coverage:** 144/144 requirements mapped ✓ · 0 unmapped · 0 phases awaiting requirements
+**Coverage:** 150/150 requirements mapped ✓ · 0 unmapped · 0 phases awaiting requirements
 
 ## Research Flags
 
@@ -1077,9 +1083,9 @@ Plans:
 ### Phase 88: Calendar Feed Times Anchored to the Board Timezone
 
 **Goal:** A game night set for 18:00 on the board shows as 18:00 in every subscriber's phone calendar, whichever calendar app they use — instead of 19:00 on one phone and 20:00 on another, as it does today.
-**Requirements**: CALTZ-01, CALTZ-02, CALTZ-03, CALTZ-04, CALTZ-05, CALTZ-06, CALTZ-07, CALTZ-08, CALTZ-09, CALTZ-10
+**Requirements**: CALTZ-01, CALTZ-02, CALTZ-03, CALTZ-04, CALTZ-05, CALTZ-06, CALTZ-07, CALTZ-08, CALTZ-09, CALTZ-10, CALTZ-11, CALTZ-12, CALTZ-13, CALTZ-14, CALTZ-15, CALTZ-16
 **Depends on:** No hard dependency. It builds on Phase 84's writer and Phase 85's quest entries, and needs the board timezone that Phase 86 introduced (`IBoardClock.TimeZone`, configured by `TimeZoneOptions.BoardTimeZoneId`, default `Europe/Amsterdam`).
-**Plans:** 4/4 plans executed
+**Plans:** 4/9 plans executed
 
 **Origin:** raised by the operator on 2026-09-30 from production use. A quest set to 18:00 on the board appears as 19:00 in the operator's phone calendar and as 20:00 on a friend's phone.
 
@@ -1109,6 +1115,20 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 88-04-PLAN.md — Byte pins proven on Linux, the architecture guidance rewritten, full-suite gate and validation sign-off, and the production check on Google and Apple Calendar (wave 3)
+
+**Gap closure G-88-4 — Wave 1** *(run with `/gsd-execute-phase 88 --gaps-only`; a rescheduled entry carried no revision signal, so revision-comparing clients kept the old time)*
+
+- [ ] 88-05-PLAN.md — Tracer: per-entry revision columns with a one-time bump of every existing row, the store-side revision hook, and a rescheduled quest going out with a higher SEQUENCE and a later DTSTAMP; plus the hook's unit proofs and write-seam guards (gap wave 1)
+
+**Gap closure G-88-4 — Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 88-06-PLAN.md — Every event write path proven through the real controllers (edit, series sweep, cancel and restore, no-change save), and a reader's own availability change moving only that reader's stamp (gap wave 2)
+- [ ] 88-07-PLAN.md — Every quest write path proven through the real controllers (reopen then finalize, title edit, no-change save), and a board rename raising every entry on that board (gap wave 2)
+- [ ] 88-08-PLAN.md — The writer's revision contract pinned byte by byte: LAST-MODIFIED, the sequence floor, rewritten whole-block, stamp and guard pins (gap wave 2)
+
+**Gap closure G-88-4 — Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 88-09-PLAN.md — Architecture guidance and validation rewritten, full suite, byte pins proven on Linux, the migration and bump proven on the local SQL Server, and the production reschedule re-test handed to verify-work (gap wave 3)
 
 ## Backlog
 
