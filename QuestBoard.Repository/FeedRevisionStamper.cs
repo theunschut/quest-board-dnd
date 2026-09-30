@@ -80,6 +80,77 @@ internal static class FeedRevisionStamper
         }
     }
 
+    /// <summary>
+    /// Recovers from a save that lost a race on the revision: the stored revision had moved on
+    /// since the row was loaded, so the update matched no row. The context marks the revision a
+    /// concurrency token, which turns what would have been a silent lost bump, or a revision
+    /// written backwards, into this failure. The fix is to adopt the stored revision and stamp as
+    /// the new baseline and save again: the next bump is then the stored value plus one, and
+    /// only the properties this context changed are written.
+    /// </summary>
+    /// <returns>
+    /// False when the failure is not such a race, for instance because the row was deleted by
+    /// someone else. The caller must then let the original failure propagate.
+    /// </returns>
+    public static bool TryAdoptStoredRevision(DbUpdateConcurrencyException exception)
+    {
+        if (!IsRecoverable(exception))
+        {
+            return false;
+        }
+
+        foreach (var entry in exception.Entries)
+        {
+            var stored = entry.GetDatabaseValues();
+            if (stored is null)
+            {
+                return false;
+            }
+
+            AdoptStoredRevision(entry, stored);
+        }
+
+        return true;
+    }
+
+    /// <inheritdoc cref="TryAdoptStoredRevision"/>
+    public static async Task<bool> TryAdoptStoredRevisionAsync(
+        DbUpdateConcurrencyException exception, CancellationToken cancellationToken)
+    {
+        if (!IsRecoverable(exception))
+        {
+            return false;
+        }
+
+        foreach (var entry in exception.Entries)
+        {
+            var stored = await entry.GetDatabaseValuesAsync(cancellationToken);
+            if (stored is null)
+            {
+                return false;
+            }
+
+            AdoptStoredRevision(entry, stored);
+        }
+
+        return true;
+    }
+
+    // Only a failure confined to events and quests that are being updated or deleted is a
+    // revision race. Anything else, such as a conflict on an identity row, is not ours to
+    // resolve and must reach the caller unchanged.
+    private static bool IsRecoverable(DbUpdateConcurrencyException exception) =>
+        exception.Entries.Count > 0
+        && exception.Entries.All(entry =>
+            entry.Entity is EventEntity or QuestEntity
+            && entry.State is EntityState.Modified or EntityState.Deleted);
+
+    private static void AdoptStoredRevision(EntityEntry entry, PropertyValues stored)
+    {
+        entry.Property(RevisionField).OriginalValue = stored[RevisionField];
+        entry.Property(RevisedAtField).OriginalValue = stored[RevisedAtField];
+    }
+
     // A new row starts at revision 1, stamped with its own creation time, so an entry nobody
     // ever edits publishes the same revision number and stamp it always would have.
     private static void StampNewRow(EntityEntry entry)

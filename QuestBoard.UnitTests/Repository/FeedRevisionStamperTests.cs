@@ -479,6 +479,153 @@ public class FeedRevisionStamperTests
         stored.FeedRevisedAt.Should().Be(ClockNow);
     }
 
+    // ---- Concurrent and stale saves ----
+    //
+    // Two contexts that load the same row and save one after the other must publish two distinct
+    // revisions, and a context holding an old copy must never write a revision below the stored
+    // one: a calendar client ignores every later change until the number passes the one it holds.
+
+    private static async Task<EventEntity> LoadEventAsync(QuestBoardContext context, int id) =>
+        await context.Events.IgnoreQueryFilters().SingleAsync(e => e.Id == id, Token);
+
+    private static async Task<QuestEntity> LoadQuestAsync(QuestBoardContext context, int id) =>
+        await context.Quests.IgnoreQueryFilters().SingleAsync(q => q.Id == id, Token);
+
+    [Fact]
+    public async Task Event_TwoContextsSavingFeedChangesFromTheSameRevision_PublishTwoDistinctRevisions()
+    {
+        var store = new Store();
+        var id = await SeedEventAsync(store);
+
+        await using var first = store.NewContext();
+        await using var second = store.NewContext();
+        var firstCopy = await LoadEventAsync(first, id);
+        var secondCopy = await LoadEventAsync(second, id);
+
+        firstCopy.Title = "Renamed";
+        await first.SaveChangesAsync(Token);
+
+        store.Clock.Now = ClockNow.AddMinutes(5);
+        secondCopy.Date = secondCopy.Date.AddDays(1);
+        await second.SaveChangesAsync(Token);
+
+        var stored = await ReadEventAsync(store, id);
+        stored.FeedRevision.Should().Be(3);
+        stored.FeedRevisedAt.Should().Be(ClockNow.AddMinutes(5));
+        stored.Title.Should().Be("Renamed", because: "the second save wrote only the field it changed");
+        stored.Date.Should().Be(new DateOnly(2026, 10, 2));
+        secondCopy.FeedRevision.Should().Be(3, because: "the tracked copy reports what was stored");
+    }
+
+    [Fact]
+    public async Task Quest_TwoContextsSavingFeedChangesFromTheSameRevision_PublishTwoDistinctRevisions()
+    {
+        var store = new Store();
+        var id = await SeedQuestAsync(store);
+
+        await using var first = store.NewContext();
+        await using var second = store.NewContext();
+        var firstCopy = await LoadQuestAsync(first, id);
+        var secondCopy = await LoadQuestAsync(second, id);
+
+        firstCopy.Title = "Renamed";
+        await first.SaveChangesAsync(Token);
+
+        secondCopy.FinalizedDate = FinalizedFor.AddDays(3);
+        await second.SaveChangesAsync(Token);
+
+        var stored = await ReadQuestAsync(store, id);
+        stored.FeedRevision.Should().Be(3);
+        stored.Title.Should().Be("Renamed");
+        stored.FinalizedDate.Should().Be(FinalizedFor.AddDays(3));
+    }
+
+    [Fact]
+    public async Task Event_TwoContextsSavingSynchronouslyFromTheSameRevision_PublishTwoDistinctRevisions()
+    {
+        var store = new Store();
+        var id = await SeedEventAsync(store);
+
+        using (var first = store.NewContext())
+        using (var second = store.NewContext())
+        {
+            var firstCopy = first.Events.IgnoreQueryFilters().Single(e => e.Id == id);
+            var secondCopy = second.Events.IgnoreQueryFilters().Single(e => e.Id == id);
+
+            firstCopy.Title = "Renamed";
+            first.SaveChanges();
+            secondCopy.Date = secondCopy.Date.AddDays(1);
+            second.SaveChanges();
+        }
+
+        (await ReadEventAsync(store, id)).FeedRevision.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Event_AStaleContextSavingAfterTheRevisionMovedOn_NeverWritesALowerRevision()
+    {
+        var store = new Store();
+        var id = await SeedEventAsync(store);
+
+        await using var stale = store.NewContext();
+        var staleCopy = await LoadEventAsync(stale, id);
+
+        await ChangeEventAsync(store, id, e => e.Date = e.Date.AddDays(1));
+        await ChangeEventAsync(store, id, e => e.Date = e.Date.AddDays(1));
+        (await ReadEventAsync(store, id)).FeedRevision.Should().Be(3);
+
+        store.Clock.Now = ClockNow.AddHours(1);
+        staleCopy.Title = "Renamed from an old copy";
+        await stale.SaveChangesAsync(Token);
+
+        var stored = await ReadEventAsync(store, id);
+        stored.FeedRevision.Should().Be(4);
+        stored.FeedRevisedAt.Should().Be(ClockNow.AddHours(1));
+        stored.Title.Should().Be("Renamed from an old copy");
+        stored.Date.Should().Be(new DateOnly(2026, 10, 3), because: "the stale save did not touch the date");
+    }
+
+    [Fact]
+    public async Task Event_AStaleContextSavingAFieldTheFeedDoesNotShow_LeavesTheStoredRevisionAndStampAlone()
+    {
+        var store = new Store();
+        var id = await SeedEventAsync(store);
+
+        await using var stale = store.NewContext();
+        var staleCopy = await LoadEventAsync(stale, id);
+
+        await ChangeEventAsync(store, id, e => e.Title = "Renamed");
+
+        store.Clock.Now = ClockNow.AddHours(1);
+        staleCopy.Description = "A new description";
+        await stale.SaveChangesAsync(Token);
+
+        var stored = await ReadEventAsync(store, id);
+        stored.Description.Should().Be("A new description");
+        stored.FeedRevision.Should().Be(2);
+        stored.FeedRevisedAt.Should().Be(ClockNow);
+    }
+
+    [Fact]
+    public async Task Event_AStaleContextSavingARowAnotherContextDeleted_StillFails()
+    {
+        var store = new Store();
+        var id = await SeedEventAsync(store);
+
+        await using var stale = store.NewContext();
+        var staleCopy = await LoadEventAsync(stale, id);
+
+        await using (var remover = store.NewContext())
+        {
+            remover.Events.Remove(await LoadEventAsync(remover, id));
+            await remover.SaveChangesAsync(Token);
+        }
+
+        staleCopy.Title = "Renamed";
+        await FluentActions.Awaiting(() => stale.SaveChangesAsync(Token))
+            .Should().ThrowAsync<DbUpdateConcurrencyException>();
+    }
+
     // ---- Both save overloads ----
 
     [Fact]

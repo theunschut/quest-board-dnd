@@ -157,7 +157,7 @@ public class FeedRevisionWriteSeamTests
         var source = StripComments(File.ReadAllText(contextPath));
 
         source.Should().Contain("override int SaveChanges(bool");
-        source.Should().Contain("override Task<int> SaveChangesAsync(");
+        Regex.IsMatch(source, @"override\s+(async\s+)?Task<int>\s+SaveChangesAsync\(").Should().BeTrue();
         source.Should().Contain("bool acceptAllChangesOnSuccess");
         Regex.Matches(source, @"FeedRevisionStamper\.Apply").Should().HaveCount(2,
             because: "the synchronous and the asynchronous save must each run the stamper before the base save");

@@ -64,22 +64,64 @@ public class QuestBoardContext(
     // context gets the rule with no registration to forget, including a test factory that
     // re-registers the context and code that builds one directly. Both overloads are overridden
     // because every other save method funnels into one of them.
+    //
+    // The stored revision is a concurrency token, so a save made from a stale copy of a row
+    // fails instead of writing a revision that is too low or one that another save already used.
+    // That failure is a race between two benign saves, not an error the user should see: the
+    // save adopts the stored revision as its baseline and runs again, so both changes are
+    // published under distinct, rising revisions. The attempts are bounded; a row that keeps
+    // changing under every retry surfaces the failure rather than looping.
+    private const int MaxRevisionRaceRetries = 5;
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
-        FeedRevisionStamper.Apply(ChangeTracker, clock.GetUtcNow().UtcDateTime);
-        return base.SaveChanges(acceptAllChangesOnSuccess);
+        for (var attempt = 0; ; attempt++)
+        {
+            FeedRevisionStamper.Apply(ChangeTracker, clock.GetUtcNow().UtcDateTime);
+            try
+            {
+                return base.SaveChanges(acceptAllChangesOnSuccess);
+            }
+            catch (DbUpdateConcurrencyException exception)
+            {
+                if (attempt >= MaxRevisionRaceRetries || !FeedRevisionStamper.TryAdoptStoredRevision(exception))
+                {
+                    throw;
+                }
+            }
+        }
     }
 
-    public override Task<int> SaveChangesAsync(
+    public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
-        FeedRevisionStamper.Apply(ChangeTracker, clock.GetUtcNow().UtcDateTime);
-        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        for (var attempt = 0; ; attempt++)
+        {
+            FeedRevisionStamper.Apply(ChangeTracker, clock.GetUtcNow().UtcDateTime);
+            try
+            {
+                return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException exception)
+            {
+                if (attempt >= MaxRevisionRaceRetries
+                    || !await FeedRevisionStamper.TryAdoptStoredRevisionAsync(exception, cancellationToken))
+                {
+                    throw;
+                }
+            }
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // The stored revision guards every update and delete of these rows. See the save
+        // overrides above for how a lost race is handled. This adds a predicate to the SQL and
+        // changes no column, so it needs no migration.
+        modelBuilder.Entity<EventEntity>().Property(e => e.FeedRevision).IsConcurrencyToken();
+        modelBuilder.Entity<QuestEntity>().Property(q => q.FeedRevision).IsConcurrencyToken();
 
         // Configure all foreign key relationships to use NO ACTION (Restrict) to avoid cascade cycles
         // This is the safest approach for SQL Server

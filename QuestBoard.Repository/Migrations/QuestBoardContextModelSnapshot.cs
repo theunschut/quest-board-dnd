@@ -512,6 +512,7 @@ namespace QuestBoard.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("FeedRevision")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int>("GroupId")
@@ -779,6 +780,7 @@ namespace QuestBoard.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("FeedRevision")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("FinalizedDate")
