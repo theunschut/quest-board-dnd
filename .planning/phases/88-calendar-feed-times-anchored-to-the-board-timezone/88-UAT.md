@@ -1,9 +1,9 @@
 ---
-status: complete
+status: partial
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T19:01:50Z
+updated: 2026-09-30T19:19:16Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -12,7 +12,7 @@ Test 5 is the local pre-deploy check of the same endpoint and has passed.
 
 ## Current Test
 
-[testing complete]
+[testing paused — 1 item outstanding: test 4, re-check a rescheduled entry in Google Calendar]
 
 ## Tests
 
@@ -53,10 +53,10 @@ note: |
 
 ### 4. Optional but recommended — reschedule an entry that both apps already hold and confirm it moves
 expected: The changed time shows in both apps. SEQUENCE is a constant 1 and DTSTAMP is the constant CreatedAt, so a client that applies updates only on a higher revision could ignore later reschedules; this is the one design risk the byte tests cannot rule out.
-result: issue
-reported: "doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
-severity: major
-resolved_by: "Gap G-88-4, closed by plans 88-05..88-09 in v5.3.3 and re-tested as test 7 (pass). This result records the pre-fix behaviour on v5.3.2."
+result: blocked
+blocked_by: third-party
+reason: "Re-test after gap G-88-4 was fixed in v5.3.3. Apple Calendar passes: test 7, an entry the iPhone already held updated after a real change. Google Calendar has not been re-checked for a reschedule since the fix; the operator can't check Google now. This closes once a rescheduled entry that Google already holds is seen moving in Google Calendar. Google refreshes subscribed calendars on its own schedule, and a new subscription address is the accepted fallback."
+first_run: "issue on v5.3.2: 'doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar' (major). Diagnosed as gap G-88-4 and fixed by plans 88-05..88-09."
 
 Record the app, the phone's OS and the date of each entry checked.
 
@@ -112,19 +112,19 @@ observed: |
   - The response came straight from Kestrel with a fresh ETag; no caching proxy is in the path.
   Google was not re-checked separately for this test. Its earlier behaviour is in tests 1–2.
 
-### 8. Optional — two-tab concurrent edit against the local SQL Server
-expected: Open the same event in two browser tabs on the local dev server and save both with different feed-visible changes. Both saves succeed with no error page, the event's FeedRevision rises by one per save and never goes down, and the feed shows the later values. The concurrency-token retry has so far only been proven on the InMemory provider.
-result: skipped
-reason: "Optional check, not run by the operator. The retry is covered by six FeedRevisionStamperTests on the InMemory provider. The remaining risk (the SQL Server predicate and rollback path) is narrow and can only err towards an extra upward bump, never a lower SEQUENCE."
+An optional test 8 (a two-tab concurrent edit against the local SQL Server) was dropped from this UAT
+by operator decision on 2026-09-30. Two browser tabs don't reach the race, because each save reloads
+the row. The concurrency fix rests on six FeedRevisionStamperTests (InMemory) and the security audit's
+hand trace. The SQL Server predicate and rollback path is recorded as a residual note in 88-SECURITY.md.
 
 ## Summary
 
-total: 8
+total: 7
 passed: 6
-issues: 1
+issues: 0
 pending: 0
-skipped: 1
-blocked: 0
+skipped: 0
+blocked: 1
 
 ## Gaps
 

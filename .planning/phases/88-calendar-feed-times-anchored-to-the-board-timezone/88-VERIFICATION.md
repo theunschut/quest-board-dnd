@@ -4,6 +4,7 @@ verified: 2026-09-30T18:00:00Z
 status: human_needed
 score: 15/16 requirements verified (CALTZ-09 open; reschedule re-test pending)
 covered_files:
+
   - ".claude/architecture.md"
   - ".planning/REQUIREMENTS.md"
   - ".planning/phases/88-calendar-feed-times-anchored-to-the-board-timezone/88-01-PLAN.md"
@@ -51,6 +52,7 @@ covered_files:
   - "QuestBoard.UnitTests/Services/CalendarFeedRevisionInputTests.cs"
   - "QuestBoard.UnitTests/Services/CalendarFeedWriterTests.cs"
   - "QuestBoard.UnitTests/Services/CalendarSubscriptionQuestRecheckTests.cs"
+
 covered_digest: "v1:sha256:32091c187a107030400437fe692f49494bba397da72e4d49e313271fad4b4146"
 behavior_unverified: 0
 overrides_applied: 0
@@ -62,6 +64,7 @@ re_verification:
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "Production reschedule re-test (UAT test 4 / gap G-88-4), after the v5.3.3 deploy: on a phone that already holds a game night from the subscription (Google Calendar and, separately, Apple Calendar), change that game night's time or title on the board, then let the calendar fetch the feed"
     expected: "The already-held entry moves to the new time or title in place, with no duplicate. The one-time migration bump means entries held before the deploy should also repair on the first fetch after it (SEQUENCE 2 and a later stamp). Record app, OS and date of each entry checked; promise no refresh latency. If Google keeps the old time, the accepted resolution is a new subscription address."
     why_human: "Whether a third-party client replaces a held entry on a higher SEQUENCE and later DTSTAMP is client behaviour; no byte test can show it. The first UAT run failed exactly here. This is CALTZ-09's open half and the only evidence that can close G-88-4 end to end."
