@@ -21,8 +21,8 @@ created: "2026-09-30"
 |----------|-------|
 | **Framework** | xunit.v3 3.2.2 on `net10.0`, FluentAssertions 8.10.0, NSubstitute 5.3.0 (unit) |
 | **Config file** | none beyond the test csproj files |
-| **Quick run command** | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed\|FullyQualifiedName~CalendarSubscriptionQuestRecheck\|FullyQualifiedName~AmbientClockSeamTests"` |
-| **Integration filter** | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~CalendarSubscriptionFeedTests\|FullyQualifiedName~CalendarSubscriptionQuestFeedTests\|FullyQualifiedName~BoardTimeZoneHealthCheckTests"` |
+| **Quick run command** | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed\|FullyQualifiedName~CalendarSubscriptionQuestRecheck\|FullyQualifiedName~AmbientClockSeamTests"` (103 tests at planning time; 129 once 88-02 and 88-03 land) |
+| **Integration filter** | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~CalendarSubscriptionFeedTests\|FullyQualifiedName~CalendarSubscriptionQuestFeedTests\|FullyQualifiedName~BoardTimeZoneHealthCheckTests\|FullyQualifiedName~CalendarFeedBoardZoneHttpTests"` (51 tests at planning time; 55 once 88-03 lands) |
 | **Full suite command** | `dotnet test` |
 | **Estimated runtime** | ~19 s quick (including build), ~6 s integration filter, full suite longer |
 
@@ -41,20 +41,20 @@ If `dotnet build` fails on locked files, ask the user to stop the Visual Studio 
 
 ## Per-Task Verification Map
 
-Task IDs are filled in once plans exist. Rows are keyed by requirement (drafted in 88-RESEARCH.md `## Phase Requirements`; minted into REQUIREMENTS.md by the first plan).
+Rows are keyed by requirement (minted into REQUIREMENTS.md by 88-01 Task 2). Task ids read `88-<plan>-T<n>`, where `<n>` is the task position in that plan. The new integration class `CalendarFeedBoardZoneHttpTests` (88-03) joins the integration filter as `|FullyQualifiedName~CalendarFeedBoardZoneHttpTests`; the renamed guard `CalendarFeedBoardZoneGuardTests` (88-02) is already matched by `FullyQualifiedName~CalendarFeed`.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | CALTZ-01 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-02 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-03 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-04 | — | Declared zone never taken from the raw configured string | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-05 | — | Declared zone equals resolved zone (UTC fallback declared as UTC) | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-06 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-07 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | ❌ W0 (new facts) | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-08 | — | N/A | unit + integration | quick unit command; integration filter | rewrite existing | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-10 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~AmbientClockSeamTests"` plus writer tests | ✅ exists | ⬜ pending |
-| TBD | TBD | TBD | CALTZ-09 | — | N/A | manual | see Manual-Only Verifications | n/a | ⬜ pending |
+| 88-01-T1 | 88-01 | 1 | CALTZ-01 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ⬜ pending |
+| 88-02-T1, 88-02-T2, 88-04-T1 | 88-02, 88-04 | 2, 3 | CALTZ-02 | T-88-01 | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ⬜ pending |
+| 88-01-T1, 88-02-T2, 88-03-T2 | 88-01, 88-02, 88-03 | 1, 2 | CALTZ-03 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ⬜ pending |
+| 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-04 | T-88-02 | Declared zone never taken from the raw configured string | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ⬜ pending |
+| 88-02-T1, 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-05 | T-88-02, T-88-06 | Declared zone equals resolved zone (UTC fallback declared as UTC) | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ⬜ pending |
+| 88-02-T3 | 88-02 | 2 | CALTZ-06 | T-88-05 | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ⬜ pending |
+| 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-07 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | ❌ W0 (new facts) | ⬜ pending |
+| 88-01-T1, 88-02-T1, 88-03-T1 | 88-01, 88-02, 88-03 | 1, 2 | CALTZ-08 | T-88-03 | N/A | unit + integration | quick unit command; integration filter | rewrite existing | ⬜ pending |
+| 88-01-T1, 88-02-T1, 88-04-T2 | 88-01, 88-02, 88-04 | 1, 2, 3 | CALTZ-10 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~AmbientClockSeamTests"` plus writer tests | ✅ exists | ⬜ pending |
+| 88-04-T2 | 88-04 | 3 | CALTZ-09 | — | N/A | manual | see Manual-Only Verifications | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -64,8 +64,8 @@ Task IDs are filled in once plans exist. Rows are keyed by requirement (drafted 
 
 Existing infrastructure covers all phase requirements: the framework, `FakeBoardClock` (settable `TimeZone`, `IsDegraded`, `Today`, `Now`), the zone-variant host factory pattern from `WallClockUnmovedTests`, and the `Pacific/Auckland` id are already in use.
 
-- [ ] A shared `Amsterdam` `TimeZoneInfo` field in the test classes that construct the writer (added alongside the first rewritten fact, not a separate step).
-- [ ] Optional cross-platform proof: run the quick unit filter inside the `mcr.microsoft.com/dotnet/sdk:10.0` container against the repo so the exact-byte `VTIMEZONE` facts also execute on Linux.
+- [ ] A shared `Amsterdam` `TimeZoneInfo` field in the test classes that construct the writer (added alongside the first rewritten fact, not a separate step) — 88-01 Task 1.
+- [ ] Optional cross-platform proof: run the quick unit filter inside the `mcr.microsoft.com/dotnet/sdk:10.0` container against the repo so the exact-byte `VTIMEZONE` facts also execute on Linux — planned as 88-04 Task 1.
 
 ---
 
