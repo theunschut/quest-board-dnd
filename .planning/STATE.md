@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 87
-current_phase_name: cross-board-deep-link-recovery
+current_phase: 88
+current_phase_name: Calendar Feed Times Anchored to the Board Timezone
 status: completed
 stopped_at: Phase 88 context gathered
-last_updated: "2026-09-30T09:03:19.602Z"
+last_updated: "2026-09-30T10:33:57.540Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 87 complete
-state_head: cd345b4d2231509dfd4ab246c7e10c0623a2589f
+state_head: 0048e3033fe6cdb64d9a4e66e8d0575c3f2b37d6
 progress:
   total_phases: 17
   completed_phases: 14
-  total_plans: 108
+  total_plans: 112
   completed_plans: 99
-  percent: 82
+  percent: 71
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
 
 ## Current Position
 
-Phase: 87 (cross-board-deep-link-recovery) — COMPLETE
+Phase: 88 (Calendar Feed Times Anchored to the Board Timezone) — READY TO EXECUTE
 Plan: 4 of 4 — verified 21/21, security SECURED, review closed
 Status: Between phases — three roadmapped phases remain unstarted
 Last activity: 2026-09-22 — Phase 87 complete

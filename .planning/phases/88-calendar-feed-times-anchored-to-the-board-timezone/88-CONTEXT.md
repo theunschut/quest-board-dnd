@@ -67,7 +67,7 @@ correctly.
   changes what each client receives at its next poll.
 
 - **D-03: The `VTIMEZONE` block is generated from the resolved zone and lists fixed-date
-  observances: only the actual offset changes inside the span the feed covers.** The changes are
+  observances — only the actual offset changes inside the span the feed covers.** The changes are
   found by asking the zone for its UTC offset at a moment (`TimeZoneInfo.GetUtcOffset`), not by
   translating `TimeZoneInfo.GetAdjustmentRules()` into a yearly `RRULE`.
 
