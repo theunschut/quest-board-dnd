@@ -142,12 +142,12 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 - [x] **CALTZ-01**: Every timed calendar entry, event and quest alike, declares the board's zone by name on both its start and its end, carrying the stored wall-clock digits unchanged and no trailing UTC designator
 - [ ] **CALTZ-02**: A feed holding at least one timed entry carries exactly one time-zone block, after the calendar headers and before the first entry, whose zone id equals the entries' zone and which lists the offset in effect before the earliest entry plus every offset change up to the latest end as fixed-date observances with no recurrence rule, built only from the zone's offset at each moment so the same entries produce the same bytes on Windows and on Linux
-- [ ] **CALTZ-03**: The calendar carries exactly one calendar-level zone header naming the same zone id as every entry and the time-zone block, and all three derive from the one zone the board clock resolved, never from the configured zone string
-- [ ] **CALTZ-04**: A board configured with a zone other than the default, including a southern-hemisphere zone and a Windows-style zone id, has that zone declared under an IANA-form name with its own offset changes listed, proving the block is generated from the zone rather than written out for one city
-- [ ] **CALTZ-05**: When the configured zone cannot be resolved and the board clock has fallen back to UTC, the feed declares UTC through the same code path — every timed entry, a block with a single zero-offset observance, and the calendar zone header — with no zoneless branch anywhere
-- [ ] **CALTZ-06**: Every entry, timed and all-day, carries sequence number 1 and never 0, while its identifier and its stamp stay exactly as they were, so a client that orders revisions by sequence number applies the corrected times to entries it already holds
-- [ ] **CALTZ-07**: An all-day entry stays a date-valued entry with no zone on it, and a feed with no timed entry carries no time-zone block
-- [ ] **CALTZ-08**: The feed never converts a stored wall-clock value: a game night stored as 18:00 is written with the digits 180000 whatever zone the board is configured with, and the entries handed to the writer carry the stored date and time untouched
+- [x] **CALTZ-03**: The calendar carries exactly one calendar-level zone header naming the same zone id as every entry and the time-zone block, and all three derive from the one zone the board clock resolved, never from the configured zone string
+- [x] **CALTZ-04**: A board configured with a zone other than the default, including a southern-hemisphere zone and a Windows-style zone id, has that zone declared under an IANA-form name with its own offset changes listed, proving the block is generated from the zone rather than written out for one city
+- [x] **CALTZ-05**: When the configured zone cannot be resolved and the board clock has fallen back to UTC, the feed declares UTC through the same code path — every timed entry, a block with a single zero-offset observance, and the calendar zone header — with no zoneless branch anywhere
+- [x] **CALTZ-06**: Every entry, timed and all-day, carries sequence number 1 and never 0, while its identifier and its stamp stay exactly as they were, so a client that orders revisions by sequence number applies the corrected times to entries it already holds
+- [x] **CALTZ-07**: An all-day entry stays a date-valued entry with no zone on it, and a feed with no timed entry carries no time-zone block
+- [x] **CALTZ-08**: The feed never converts a stored wall-clock value: a game night stored as 18:00 is written with the digits 180000 whatever zone the board is configured with, and the entries handed to the writer carry the stored date and time untouched
 - [ ] **CALTZ-09**: On production, a game night set for 18:00 reads 18:00 in Google Calendar on a subscribed phone — checked first on an entry Google already held before the fix and then on a new entry — and still reads 18:00 in Apple Calendar on an iPhone; if Google keeps an old time after a refresh, removing and re-adding the subscription once is an accepted resolution, and no copy anywhere promises a refresh latency
 - [ ] **CALTZ-10**: Every standing statement that described the feed as floating — requirement CALFEED-10, the project's architecture guidance on time and the board clock, and the feed code's own comments — is rewritten to the zoned contract rather than deleted, and the guard tests that pinned the floating contract are rewritten to pin the zoned one
 
@@ -386,12 +386,12 @@ Explicit exclusions for v9.0, with reasoning.
 | QUESTFEED-18 | Phase 85 | Complete |
 | CALTZ-01 | Phase 88 | Complete |
 | CALTZ-02 | Phase 88 | Pending |
-| CALTZ-03 | Phase 88 | Pending |
-| CALTZ-04 | Phase 88 | Pending |
-| CALTZ-05 | Phase 88 | Pending |
-| CALTZ-06 | Phase 88 | Pending |
-| CALTZ-07 | Phase 88 | Pending |
-| CALTZ-08 | Phase 88 | Pending |
+| CALTZ-03 | Phase 88 | Complete |
+| CALTZ-04 | Phase 88 | Complete |
+| CALTZ-05 | Phase 88 | Complete |
+| CALTZ-06 | Phase 88 | Complete |
+| CALTZ-07 | Phase 88 | Complete |
+| CALTZ-08 | Phase 88 | Complete |
 | CALTZ-09 | Phase 88 | Pending |
 | CALTZ-10 | Phase 88 | Pending |
 

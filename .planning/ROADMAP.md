@@ -1079,7 +1079,7 @@ Plans:
 **Goal:** A game night set for 18:00 on the board shows as 18:00 in every subscriber's phone calendar, whichever calendar app they use — instead of 19:00 on one phone and 20:00 on another, as it does today.
 **Requirements**: CALTZ-01, CALTZ-02, CALTZ-03, CALTZ-04, CALTZ-05, CALTZ-06, CALTZ-07, CALTZ-08, CALTZ-09, CALTZ-10
 **Depends on:** No hard dependency. It builds on Phase 84's writer and Phase 85's quest entries, and needs the board timezone that Phase 86 introduced (`IBoardClock.TimeZone`, configured by `TimeZoneOptions.BoardTimeZoneId`, default `Europe/Amsterdam`).
-**Plans:** 1/4 plans executed
+**Plans:** 3/4 plans executed
 
 **Origin:** raised by the operator on 2026-09-30 from production use. A quest set to 18:00 on the board appears as 19:00 in the operator's phone calendar and as 20:00 on a friend's phone.
 
@@ -1103,8 +1103,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 88-02-PLAN.md — The zone document pinned byte by byte: guard renamed and rewritten, clock-change, southern-hemisphere, Windows-id, UTC, all-day and quoting facts, and the one-way SEQUENCE bump (wave 2)
-- [ ] 88-03-PLAN.md — Live-feed zone variants (non-default, unresolvable and Windows-style zone) and the board-clock seam guard extended to the feed (wave 2)
+- [x] 88-02-PLAN.md — The zone document pinned byte by byte: guard renamed and rewritten, clock-change, southern-hemisphere, Windows-id, UTC, all-day and quoting facts, and the one-way SEQUENCE bump (wave 2)
+- [x] 88-03-PLAN.md — Live-feed zone variants (non-default, unresolvable and Windows-style zone) and the board-clock seam guard extended to the feed (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
