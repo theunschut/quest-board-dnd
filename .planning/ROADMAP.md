@@ -1123,7 +1123,7 @@ Plans:
 **Gap closure G-88-4 — Wave 2** *(blocked on Wave 1 completion)*
 
 - [ ] 88-06-PLAN.md — Every event write path proven through the real controllers (edit, series sweep, cancel and restore, no-change save), and a reader's own availability change moving only that reader's stamp (gap wave 2)
-- [ ] 88-07-PLAN.md — Every quest write path proven through the real controllers (reopen then finalize, title edit, no-change save), and a board rename raising every entry on that board (gap wave 2)
+- [ ] 88-07-PLAN.md — Every quest write path proven through the real controllers (reopen then finalize at another date and at the same date, title edit, no-change save) (gap wave 2)
 - [ ] 88-08-PLAN.md — The writer's revision contract pinned byte by byte: LAST-MODIFIED, the sequence floor, rewritten whole-block, stamp and guard pins (gap wave 2)
 
 **Gap closure G-88-4 — Wave 3** *(blocked on Wave 2 completion)*
