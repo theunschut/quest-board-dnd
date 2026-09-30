@@ -66,6 +66,7 @@ Existing infrastructure covers all phase requirements: the framework, `FakeBoard
 
 - [x] A shared `Amsterdam` `TimeZoneInfo` field in the test classes that construct the writer (added alongside the first rewritten fact, not a separate step) — 88-01 Task 1. Present as `AmsterdamZone` in `CalendarFeedWriterTests` and `CalendarFeedBoardZoneGuardTests`.
 - [x] Optional cross-platform proof: run the quick unit filter inside the `mcr.microsoft.com/dotnet/sdk:10.0` container against the repo so the exact-byte `VTIMEZONE` facts also execute on Linux — planned as 88-04 Task 1. Run 2026-09-30 on mcr.microsoft.com/dotnet/sdk:10.0 against `git archive HEAD` (no volume mount): Windows 129 passed, Linux 129 passed, 0 failed on both.
+- [x] Gap run of the same cross-platform proof, after the revision contract landed (88-05 to 88-08). Run 2026-09-30 on mcr.microsoft.com/dotnet/sdk:10.0 against `git archive HEAD` (no volume mount, archive fed on standard input and deleted afterwards), filter `FullyQualifiedName~CalendarFeed|FullyQualifiedName~CalendarSubscriptionQuestRecheck|FullyQualifiedName~AmbientClockSeamTests|FullyQualifiedName~FeedRevision`: Windows Total 187 passed, Linux Total 187 passed, 0 failed on both. The rewritten SEQUENCE, DTSTAMP and LAST-MODIFIED byte pins therefore also hold on the platform production runs.
 
 ---
 
