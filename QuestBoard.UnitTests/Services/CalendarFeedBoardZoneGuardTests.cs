@@ -35,7 +35,7 @@ public class CalendarFeedBoardZoneGuardTests
             Date = date,
             StartTime = startTime,
             Duration = TimeSpan.FromHours(4),
-            CreatedAt = new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
+            LastRevisedAt = new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
         };
     }
 

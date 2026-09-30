@@ -23,6 +23,12 @@ public class Quest : IModel
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Read from the store and ignored on write: the store raises the revision itself when a
+    // save changes what the calendar feed shows for this quest.
+    public int FeedRevision { get; set; } = 1;
+
+    public DateTime FeedRevisedAt { get; set; }
+
     public DateTime? FinalizedDate { get; set; }
 
     public bool IsFinalized { get; set; }

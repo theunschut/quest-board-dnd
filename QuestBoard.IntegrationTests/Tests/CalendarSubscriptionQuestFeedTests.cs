@@ -59,8 +59,9 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
 
     // Seeds a finalized quest on the named board with the given Dungeon Master, through the
     // unfiltered seeding context -- field shapes copied from TestDataHelper.CreateTestQuestAsync.
-    // dungeonMasterSession defaults to false so every existing call site keeps its prior meaning.
-    private async Task<int> SeedQuestAsync(int groupId, int dungeonMasterId, string title, DateTime finalizedDate, bool dungeonMasterSession = false)
+    // dungeonMasterSession defaults to false and createdAt to the current time, so every existing
+    // call site keeps its prior meaning.
+    private async Task<int> SeedQuestAsync(int groupId, int dungeonMasterId, string title, DateTime finalizedDate, bool dungeonMasterSession = false, DateTime? createdAt = null)
     {
         await using var ctx = factory.Database.CreateContext();
         var quest = new QuestEntity
@@ -74,7 +75,7 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
             FinalizedDate = finalizedDate,
             TotalPlayerCount = 4,
             DungeonMasterSession = dungeonMasterSession,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = createdAt ?? DateTime.UtcNow
         };
         ctx.Quests.Add(quest);
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -207,6 +208,20 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
     }
 
     private static int CountVEvents(string body) => body.Split("BEGIN:VEVENT").Length - 1;
+
+    // Reads the single stamp line out of a one-entry document as the UTC instant it names.
+    private static DateTime ParseStamp(string body)
+    {
+        var line = body.Split("\r\n").Single(l => l.StartsWith("DTSTAMP:", StringComparison.Ordinal));
+        return DateTime.ParseExact(
+            line["DTSTAMP:".Length..],
+            "yyyyMMdd'T'HHmmss'Z'",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal);
+    }
+
+    private static DateTime TruncateToSeconds(DateTime value) =>
+        new(value.Ticks - (value.Ticks % TimeSpan.TicksPerSecond), value.Kind);
 
     // Counts occurrences rather than checking mere containment -- a duplicate is invisible to a
     // containment assertion, so the single-entry guarantee below needs a count.
@@ -656,7 +671,9 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
 
         var options = GetFeedOptions();
         var finalizedDate = DateTime.Today.AddDays(3).AddHours(19);
-        var questId = await SeedQuestAsync(12, dungeonMaster.Id, "Quest Feed Reschedule Session", finalizedDate);
+        var questId = await SeedQuestAsync(
+            12, dungeonMaster.Id, "Quest Feed Reschedule Session", finalizedDate,
+            createdAt: new DateTime(2026, 1, 5, 9, 30, 0, DateTimeKind.Utc));
         await SeedPlayerSignupAsync(questId, reader.Id);
 
         var subscription = await MintSubscriptionAsync(reader.Id);
@@ -666,8 +683,14 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         var firstBody = await firstResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var firstUidLine = firstBody.Split("\r\n").Single(line => line.StartsWith($"UID:questboard-quest-{questId}", StringComparison.Ordinal));
 
+        // A never-edited entry goes out as revision 1, stamped with the moment it was created.
+        (firstBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
+        firstBody.Should().Contain("DTSTAMP:20260105T093000Z");
+        var firstStamp = ParseStamp(firstBody);
+
         // Move the finalized date to a different date, still comfortably inside the window.
         var newDate = finalizedDate.AddDays(2);
+        var movedAt = TruncateToSeconds(DateTime.UtcNow);
         await MutateQuestAsync(questId, q => q.FinalizedDate = newDate);
 
         var secondResponse = await FetchFeedAsync(subscription.Token);
@@ -684,10 +707,14 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         secondUidLine.Should().Be(firstUidLine);
         CountVEvents(secondBody).Should().Be(1);
 
-        // The revision number is a constant, so a rescheduled entry carries the same one on
-        // both fetches: the moved start is what tells a client the entry changed.
-        (firstBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
-        (secondBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
+        // A client decides whether a re-fetched copy of an entry it holds is newer by the
+        // sequence number and then the stamp, so both must rise under the same identifier or the
+        // moved start is ignored.
+        (secondBody.Split("SEQUENCE:2\r\n").Length - 1).Should().Be(1);
+        secondBody.Should().NotContain("SEQUENCE:1\r\n");
+        var secondStamp = ParseStamp(secondBody);
+        secondStamp.Should().BeOnOrAfter(movedAt);
+        secondStamp.Should().BeAfter(firstStamp);
 
         // Move the finalized date outside the window entirely -- the fourth exit route, and the
         // same predicate clause the window facts below pin from the other direction.

@@ -7,9 +7,12 @@ namespace QuestBoard.Repository.Entities;
 
 public class QuestBoardContext(
     DbContextOptions<QuestBoardContext> options,
-    IActiveGroupContext activeGroupContext)
+    IActiveGroupContext activeGroupContext,
+    TimeProvider? timeProvider = null)
     : IdentityDbContext<UserEntity, IdentityRole<int>, int>(options)
 {
+    private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
+
     public DbSet<QuestEntity> Quests { get; set; }
 
     public DbSet<PlayerSignupEntity> PlayerSignups { get; set; }
@@ -55,6 +58,24 @@ public class QuestBoardContext(
     public DbSet<EventSignupEntity> EventSignups { get; set; }
 
     public DbSet<CalendarSubscriptionEntity> CalendarSubscriptions { get; set; }
+
+    // The calendar feed revision of events and quests is raised here, inside the context's own
+    // save methods, rather than in a registered interceptor: every way of constructing this
+    // context gets the rule with no registration to forget, including a test factory that
+    // re-registers the context and code that builds one directly. Both overloads are overridden
+    // because every other save method funnels into one of them.
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        FeedRevisionStamper.Apply(ChangeTracker, clock.GetUtcNow().UtcDateTime);
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        FeedRevisionStamper.Apply(ChangeTracker, clock.GetUtcNow().UtcDateTime);
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -25,9 +25,13 @@ public class EntityProfile : Profile
                     ? null
                     : new Quest { Id = src.FollowUpQuest.Id, Title = src.FollowUpQuest.Title }));
 
+        // The feed revision belongs to the store: the context raises it on save, so a domain
+        // model mapped over a tracked entity must never carry a value into it.
         CreateMap<Quest, QuestEntity>()
             .ForMember(dest => dest.OriginalQuest, opt => opt.Ignore())
-            .ForMember(dest => dest.FollowUpQuest, opt => opt.Ignore());
+            .ForMember(dest => dest.FollowUpQuest, opt => opt.Ignore())
+            .ForMember(dest => dest.FeedRevision, opt => opt.Ignore())
+            .ForMember(dest => dest.FeedRevisedAt, opt => opt.Ignore());
 
         // User mapping
         CreateMap<User, UserEntity>()
@@ -157,10 +161,13 @@ public class EntityProfile : Profile
         // navigation with null.
         CreateMap<EventEntity, Event>();
 
+        // The feed revision belongs to the store, same as on the quest map above.
         CreateMap<Event, EventEntity>()
             .ForMember(dest => dest.Group, opt => opt.Ignore())
             .ForMember(dest => dest.Series, opt => opt.Ignore())
-            .ForMember(dest => dest.Signups, opt => opt.Ignore());
+            .ForMember(dest => dest.Signups, opt => opt.Ignore())
+            .ForMember(dest => dest.FeedRevision, opt => opt.Ignore())
+            .ForMember(dest => dest.FeedRevisedAt, opt => opt.Ignore());
 
         // EventSeries mapping. Group is ignored on the reverse map for the same reason as
         // Event above - it stops mapping a domain model onto a tracked entity from replacing

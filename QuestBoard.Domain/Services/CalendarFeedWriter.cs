@@ -205,18 +205,12 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
 
         builder.Append("BEGIN:VEVENT").Append(LineBreak);
         AppendFoldedLine(builder, "UID:" + BuildUid(entry.Source, entry.SourceId));
-        AppendFoldedLine(builder, "DTSTAMP:" + FormatUtcStamp(entry.CreatedAt));
+        AppendFoldedLine(builder, "DTSTAMP:" + FormatUtcStamp(entry.LastRevisedAt));
         AppendFoldedLine(builder, "DTSTART;TZID=" + tzidParameter + ":" + FormatBasicDateTime(start));
         AppendFoldedLine(builder, "DTEND;TZID=" + tzidParameter + ":" + FormatBasicDateTime(end));
         AppendFoldedLine(builder, "SUMMARY:" + BuildSummary(entry));
         AppendFoldedLine(builder, "TRANSP:TRANSPARENT");
-
-        // The identifier and the stamp of every entry a phone already holds never move, so a
-        // client that decides updates by revision number needs a higher number than the one it
-        // first saw before it will apply a changed start and end. Every entry therefore carries
-        // one. It is a constant, not stored data, and it must never go back down: a client that
-        // compares revisions would treat a lower number as older and ignore every later change.
-        AppendFoldedLine(builder, "SEQUENCE:1");
+        AppendFoldedLine(builder, BuildSequenceLine(entry));
         builder.Append("END:VEVENT").Append(LineBreak);
     }
 
@@ -229,14 +223,23 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
 
         builder.Append("BEGIN:VEVENT").Append(LineBreak);
         AppendFoldedLine(builder, "UID:" + BuildUid(entry.Source, entry.SourceId));
-        AppendFoldedLine(builder, "DTSTAMP:" + FormatUtcStamp(entry.CreatedAt));
+        AppendFoldedLine(builder, "DTSTAMP:" + FormatUtcStamp(entry.LastRevisedAt));
         AppendFoldedLine(builder, "DTSTART;VALUE=DATE:" + FormatBasicDate(entry.Date));
         AppendFoldedLine(builder, "DTEND;VALUE=DATE:" + FormatBasicDate(end));
         AppendFoldedLine(builder, "SUMMARY:" + BuildSummary(entry));
         AppendFoldedLine(builder, "TRANSP:TRANSPARENT");
-        AppendFoldedLine(builder, "SEQUENCE:1");
+        AppendFoldedLine(builder, BuildSequenceLine(entry));
         builder.Append("END:VEVENT").Append(LineBreak);
     }
+
+    // The revision number is the entry's stored revision, which the store only ever raises. A
+    // client decides whether a re-fetched copy of an entry it holds is newer by this number
+    // first and the stamp second, so a moved start is only applied when the number has risen
+    // under the same identifier. It is floored at 1 because every entry was once published at
+    // 1, and a client that compares revisions treats a lower number as older and ignores every
+    // later change.
+    private static string BuildSequenceLine(CalendarFeedEntry entry) =>
+        "SEQUENCE:" + Math.Max(1, entry.Sequence).ToString(CultureInfo.InvariantCulture);
 
     // Composes the board-prefixed, answer-suffixed, escaped SUMMARY value shared by both
     // branches. The board name is a prefix and the answer is a suffix, deliberately: a second
@@ -277,12 +280,12 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
         return $"questboard-{source.ToString().ToLowerInvariant()}-{sourceId}";
     }
 
-    // DTSTAMP records when this representation of the entry was produced. It derives from the
-    // entry's own CreatedAt rather than any ambient clock, so re-rendering the same occurrence
-    // twice -- even separated by a real clock change -- produces byte-identical output. The stored
-    // value is UTC but reaches here with no kind attached, so it is labelled as UTC rather than
-    // converted: a conversion would go through the host's own zone and stamp the same row
-    // differently on different machines.
+    // For a calendar published with no method, the stamp is when the entry was last revised. It
+    // comes from the entry's stored data rather than any ambient clock, so re-rendering the same
+    // occurrence twice -- even separated by a real clock change -- produces byte-identical
+    // output. The stored value is UTC but reaches here with no kind attached, so it is labelled
+    // as UTC rather than converted: a conversion would go through the host's own zone and stamp
+    // the same row differently on different machines.
     private static string FormatUtcStamp(DateTime value) =>
         DateTime.SpecifyKind(value, DateTimeKind.Utc).ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 

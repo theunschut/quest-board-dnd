@@ -21,7 +21,7 @@ public class CalendarFeedWriterTests
         string boardName = "The Last Bastion",
         string title = "Session 12",
         VoteType availability = VoteType.Yes,
-        DateTime? createdAt = null,
+        DateTime? revisedAt = null,
         int sourceId = 1,
         CalendarFeedSource source = CalendarFeedSource.Event,
         TimeSpan? duration = null)
@@ -36,7 +36,7 @@ public class CalendarFeedWriterTests
             StartTime = startTime,
             Duration = duration ?? TimeSpan.FromHours(1),
             Availability = availability,
-            CreatedAt = createdAt ?? new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
+            LastRevisedAt = revisedAt ?? new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
         };
     }
 
@@ -219,10 +219,10 @@ public class CalendarFeedWriterTests
     }
 
     [Fact]
-    public void Write_Entry_DtstampMatchesCreatedAt()
+    public void Write_Entry_DtstampMatchesTheLastRevisionTime()
     {
-        var createdAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc);
-        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), createdAt: createdAt);
+        var revisedAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), revisedAt: revisedAt);
 
         var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
@@ -230,13 +230,13 @@ public class CalendarFeedWriterTests
     }
 
     [Fact]
-    public void Write_EntryWithUnspecifiedKindCreatedAt_StampsTheStoredDigitsUnshifted()
+    public void Write_EntryWithUnspecifiedKindRevisionTime_StampsTheStoredDigitsUnshifted()
     {
-        // A stored UTC value comes back from the database with no kind attached. Converting it
-        // would treat it as the host's local time and shift the stamp by the host's offset, so the
-        // same row would stamp differently on a UTC container and on a workstation.
-        var createdAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Unspecified);
-        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), createdAt: createdAt);
+        // A stored revision time comes back from the database with no kind attached. Converting
+        // it would treat it as the host's local time and shift the stamp by the host's offset, so
+        // the same row would stamp differently on a UTC container and on a workstation.
+        var revisedAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Unspecified);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), revisedAt: revisedAt);
 
         var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 

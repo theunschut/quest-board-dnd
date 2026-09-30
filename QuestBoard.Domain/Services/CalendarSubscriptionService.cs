@@ -108,7 +108,8 @@ internal class CalendarSubscriptionService(
                 Date = row.Event.Date,
                 StartTime = row.Event.StartTime,
                 Availability = row.Availability,
-                CreatedAt = row.Event.CreatedAt
+                Sequence = row.Event.FeedRevision,
+                LastRevisedAt = row.Event.FeedRevisedAt
             })
             .ToList();
 
@@ -144,7 +145,8 @@ internal class CalendarSubscriptionService(
                 Date = DateOnly.FromDateTime(q.FinalizedDate!.Value),
                 StartTime = TimeOnly.FromDateTime(q.FinalizedDate.Value),
                 Duration = TimeSpan.FromHours(options.QuestDurationHours),
-                CreatedAt = q.CreatedAt
+                Sequence = q.FeedRevision,
+                LastRevisedAt = q.FeedRevisedAt
                 // Availability is deliberately left at its default -- BuildSummary now checks
                 // Source before it ever reads Availability, so a quest can never pick up an
                 // answer marker, and leaving it unset is safe by construction rather than by
@@ -168,8 +170,8 @@ internal class CalendarSubscriptionService(
         var body = writer.Write(allEntries, "D&D Quest Board", boardClock.TimeZone);
 
         // A strong fingerprint of the body's own bytes: it changes when and only when the
-        // emitted document changes, so an event edit produces a new tag automatically with no
-        // modified-timestamp column the schema does not have. The body is composed either way,
+        // emitted document changes, so an event edit produces a new tag automatically: the tag
+        // changes exactly when the document's bytes change. The body is composed either way,
         // so this saves nothing server-side -- only transfer, on a document of a few kilobytes
         // polled a handful of times a day. It is not a promise about refresh speed.
         var etag = $"\"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body)))}\"";
