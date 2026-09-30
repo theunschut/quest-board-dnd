@@ -4,18 +4,18 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 88
 current_phase_name: Calendar Feed Times Anchored to the Board Timezone
-status: completed
-stopped_at: Phase 88 context gathered
+status: executing
+stopped_at: Phase 88 planned (4 plans, checker passed)
 last_updated: "2026-09-30T10:33:57.540Z"
-last_activity: 2026-09-22
-last_activity_desc: Phase 87 complete
+last_activity: 2026-09-30
+last_activity_desc: Phase 88 planned
 state_head: 0048e3033fe6cdb64d9a4e66e8d0575c3f2b37d6
 progress:
   total_phases: 17
   completed_phases: 14
   total_plans: 112
   completed_plans: 99
-  percent: 71
+  percent: 82
 ---
 
 # Project State
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** None — Phase 87 closed. Next phase not chosen.
+**Current focus:** Phase 88 — Calendar Feed Times Anchored to the Board Timezone (planned, ready to execute)
 
 ## Current Position
 
 Phase: 88 (Calendar Feed Times Anchored to the Board Timezone) — READY TO EXECUTE
-Plan: 4 of 4 — verified 21/21, security SECURED, review closed
-Status: Between phases — three roadmapped phases remain unstarted
-Last activity: 2026-09-22 — Phase 87 complete
+Plan: Not started — 4 plans in 3 waves, plan checker passed
+Status: Ready to execute
+Last activity: 2026-09-30 — Phase 88 planned
 
 Roadmapped and not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
 none executed) and Phase 79 — Character and Contact Link Cards (not yet planned). Every other
