@@ -3,7 +3,7 @@ status: testing
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T13:49:00Z
+updated: 2026-09-30T13:52:07Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -12,11 +12,10 @@ Test 5 is the local pre-deploy check of the same endpoint and has passed.
 
 ## Current Test
 
-number: 3
-name: Apple Calendar on an iPhone — the same event and quest
+number: 4
+name: Optional — reschedule an entry that both apps already hold and confirm it moves
 expected: |
-  Still reads 18:00. To confirm the iPhone has read the zoned document, not a cached floating copy:
-  with Settings → Apps → Calendar → Time Zone Override set to London, an 18:00 game night reads 17:00.
+  The changed time shows in both Google and Apple Calendar.
 awaiting: user response
 
 ## Tests
@@ -42,7 +41,12 @@ observed: |
 
 ### 3. Apple Calendar on an iPhone — the same event and quest
 expected: Still reads 18:00 (no regression from the previous floating form).
-result: [pending]
+result: pass
+observed: |
+  2026-09-30, after the v5.3.2 deploy: with Time Zone Override set to London, an 18:00 game night reads
+  17:00, so the iPhone is reading the zoned entries rather than a floating copy. The override had
+  previously been set to Amsterdam, which is why Apple showed even the old floating times correctly on
+  this phone. It may not have done so for someone without that override.
 note: |
   2026-09-30, after the v5.3.2 deploy: Apple Calendar still shows the correct times, and the Profile page's
   "Last fetched" is later than the deploy. That does not yet prove the iPhone read the new document. Apple
@@ -94,9 +98,9 @@ observed: |
 ## Summary
 
 total: 6
-passed: 4
+passed: 5
 issues: 0
-pending: 2
+pending: 1
 skipped: 0
 blocked: 0
 
