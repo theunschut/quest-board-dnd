@@ -3,7 +3,7 @@ status: partial
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T18:15:46Z
+updated: 2026-09-30T18:36:42Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -100,7 +100,9 @@ observed: |
 
 ### 7. Re-test of gap G-88-4 on production after the v5.3.3 deploy — a rescheduled or retitled entry moves in both apps
 expected: After v5.3.3 is deployed, reschedule (or retitle) an entry that Google Calendar and Apple Calendar already hold. After each app's next fetch, the entry shows the new time or title in place under the same event, with no duplicate. Entries held from before the deploy should also repair on their first fetch, because the migration moved every existing entry to SEQUENCE:2. To attribute the fetch, confirm "Last fetched" advances on an Apple-only subscription row before checking the iPhone. Promise no refresh latency. For Google, a new subscription address is the accepted fallback.
-result: [pending]
+result: issue
+reported: "it's merged and deployed. However, my iphone still shows the old time after a fetch"
+severity: major
 
 ### 8. Optional — two-tab concurrent edit against the local SQL Server
 expected: Open the same event in two browser tabs on the local dev server and save both with different feed-visible changes. Both saves succeed with no error page, the event's FeedRevision rises by one per save and never goes down, and the feed shows the later values. The concurrency-token retry has so far only been proven on the InMemory provider.
@@ -110,8 +112,8 @@ result: [pending]
 
 total: 8
 passed: 5
-issues: 1
-pending: 2
+issues: 2
+pending: 1
 skipped: 0
 blocked: 0
 
@@ -145,3 +147,12 @@ blocked: 0
     - "DTSTAMP (and optionally LAST-MODIFIED) from the entry's last revision time instead of CreatedAt"
     - "Tests rewritten so a rescheduled entry proves a higher SEQUENCE and a later DTSTAMP, while an unedited entry stays byte-identical between fetches (ETag/304 and determinism pins intact)"
   debug_session: ".planning/debug/calendar-reschedule-not-propagating.md"
+
+- gap_id: G-88-7
+  truth: "After the v5.3.3 deploy, a rescheduled entry that Apple Calendar already holds moves to its new time after the iPhone's next fetch"
+  status: failed
+  reason: "User reported: it's merged and deployed. However, my iphone still shows the old time after a fetch"
+  severity: major
+  test: 7
+  artifacts: []  # Filled by diagnosis
+  missing: []    # Filled by diagnosis
