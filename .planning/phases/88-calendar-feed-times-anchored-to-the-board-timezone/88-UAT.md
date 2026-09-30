@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: partial
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T14:39:53Z
+updated: 2026-09-30T18:15:46Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -12,7 +12,12 @@ Test 5 is the local pre-deploy check of the same endpoint and has passed.
 
 ## Current Test
 
-[testing complete]
+number: 7
+name: Re-test of gap G-88-4 on production after the v5.3.3 deploy — a rescheduled or retitled entry moves in both apps
+expected: |
+  After v5.3.3 is deployed, a rescheduled or retitled entry that Google and Apple already hold shows
+  the new time or title in place, with no duplicate, after each app's next fetch.
+awaiting: user response (after the v5.3.3 deploy)
 
 ## Tests
 
@@ -93,12 +98,20 @@ observed: |
     and DTSTART;TZID=Europe/Amsterdam:20261114T130000 in the feed.
   The server side is proven on production. Tests 1–4 are the client-side confirmation.
 
+### 7. Re-test of gap G-88-4 on production after the v5.3.3 deploy — a rescheduled or retitled entry moves in both apps
+expected: After v5.3.3 is deployed, reschedule (or retitle) an entry that Google Calendar and Apple Calendar already hold. After each app's next fetch, the entry shows the new time or title in place under the same event, with no duplicate. Entries held from before the deploy should also repair on their first fetch, because the migration moved every existing entry to SEQUENCE:2. To attribute the fetch, confirm "Last fetched" advances on an Apple-only subscription row before checking the iPhone. Promise no refresh latency. For Google, a new subscription address is the accepted fallback.
+result: [pending]
+
+### 8. Optional — two-tab concurrent edit against the local SQL Server
+expected: Open the same event in two browser tabs on the local dev server and save both with different feed-visible changes. Both saves succeed with no error page, the event's FeedRevision rises by one per save and never goes down, and the feed shows the later values. The concurrency-token retry has so far only been proven on the InMemory provider.
+result: [pending]
+
 ## Summary
 
-total: 6
+total: 8
 passed: 5
 issues: 1
-pending: 0
+pending: 2
 skipped: 0
 blocked: 0
 
