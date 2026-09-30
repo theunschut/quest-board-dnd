@@ -7,6 +7,7 @@ using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Domain.Services;
+using QuestBoard.UnitTests.Helpers;
 
 namespace QuestBoard.UnitTests.Services;
 
@@ -116,6 +117,7 @@ public class CalendarSubscriptionQuestRecheckTests
             questRepository,
             groupService,
             writer,
+            new FakeBoardClock(),
             new FixedTimeProvider(DefaultClockInstant),
             feedOptions,
             logger);

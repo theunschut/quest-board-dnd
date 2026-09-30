@@ -13,6 +13,7 @@ namespace QuestBoard.UnitTests.Services;
 public class CalendarFeedWriterTests
 {
     private static readonly ICalendarFeedWriter Writer = new CalendarFeedWriter();
+    private static readonly TimeZoneInfo AmsterdamZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Amsterdam");
 
     private static CalendarFeedEntry MakeEntry(
         DateOnly date,
@@ -99,12 +100,12 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
-        body.Should().Contain("DTSTART:20260920T190000");
-        body.Should().Contain("DTEND:20260920T200000");
-        body.Should().NotContain("DTSTART:20260920T190000Z");
-        body.Should().NotContain("TZID");
+        body.Should().Contain("DTSTART;TZID=Europe/Amsterdam:20260920T190000\r\n");
+        body.Should().Contain("DTEND;TZID=Europe/Amsterdam:20260920T200000\r\n");
+        body.Should().NotContain("20260920T190000Z");
+        body.Should().Contain("BEGIN:VTIMEZONE\r\n");
     }
 
     [Fact]
@@ -112,10 +113,10 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(23, 30));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
-        body.Should().Contain("DTSTART:20260920T233000");
-        body.Should().Contain("DTEND:20260921T003000");
+        body.Should().Contain("DTSTART;TZID=Europe/Amsterdam:20260920T233000\r\n");
+        body.Should().Contain("DTEND;TZID=Europe/Amsterdam:20260921T003000\r\n");
     }
 
     [Fact]
@@ -123,7 +124,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 21), startTime: null);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain("DTSTART;VALUE=DATE:20260921");
         body.Should().Contain("DTEND;VALUE=DATE:20260922");
@@ -138,7 +139,7 @@ public class CalendarFeedWriterTests
         var date = new DateOnly(year, month, day);
         var entry = MakeEntry(date, startTime: null);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var start = ExtractFoldedProperty(body, "DTSTART;VALUE=DATE:")["DTSTART;VALUE=DATE:".Length..];
         var end = ExtractFoldedProperty(body, "DTEND;VALUE=DATE:")["DTEND;VALUE=DATE:".Length..];
@@ -154,7 +155,7 @@ public class CalendarFeedWriterTests
         var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
         var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
 
-        var body = Writer.Write([timed, allDay], "My Calendar");
+        var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
 
         body.Split("TRANSP:TRANSPARENT").Length.Should().Be(3); // 2 occurrences => 3 segments
     }
@@ -165,7 +166,7 @@ public class CalendarFeedWriterTests
         var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
         var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
 
-        var body = Writer.Write([timed, allDay], "My Calendar");
+        var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
 
         body.Split("SEQUENCE:0").Length.Should().Be(3);
     }
@@ -176,7 +177,7 @@ public class CalendarFeedWriterTests
         var createdAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc);
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), createdAt: createdAt);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain("DTSTAMP:20260304T050607Z");
     }
@@ -187,9 +188,9 @@ public class CalendarFeedWriterTests
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
         var entries = new List<CalendarFeedEntry> { entry };
 
-        var first = Writer.Write(entries, "My Calendar");
+        var first = Writer.Write(entries, "My Calendar", AmsterdamZone);
         Thread.Sleep(20); // simulate the clock moving between two polls
-        var second = Writer.Write(entries, "My Calendar");
+        var second = Writer.Write(entries, "My Calendar", AmsterdamZone);
 
         second.Should().Be(first);
     }
@@ -199,7 +200,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: "A, B; C\\D");
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
         var unescaped = UnescapeText(summary);
@@ -212,7 +213,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: "Line one\nLine two");
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
 
@@ -226,7 +227,7 @@ public class CalendarFeedWriterTests
         var longTitle = new string('a', 300);
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: longTitle);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         AssertNoPhysicalLineExceeds75Octets(body);
 
@@ -254,7 +255,7 @@ public class CalendarFeedWriterTests
         var multiByteTitle = new string('あ', 40);
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), title: multiByteTitle);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         AssertNoPhysicalLineExceeds75Octets(body);
         body.Should().NotContain("�"); // no replacement character from a corrupted split
@@ -270,11 +271,9 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().NotContain("VALARM");
-        body.Should().NotContain("VTIMEZONE");
-        body.Should().NotContain("TZID");
         body.Should().NotContain("STATUS:CANCELLED");
         body.Should().NotContain("DESCRIPTION");
         body.Should().NotContain("URL");
@@ -283,7 +282,7 @@ public class CalendarFeedWriterTests
     [Fact]
     public void Write_EmptyEntryList_EmitsValidDocumentWithNoEvents()
     {
-        var body = Writer.Write([], "My Calendar");
+        var body = Writer.Write([], "My Calendar", AmsterdamZone);
 
         body.Should().StartWith("BEGIN:VCALENDAR");
         body.Should().Contain("END:VCALENDAR");
@@ -295,7 +294,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().EndWith("END:VCALENDAR\r\n");
         body.Replace("\r\n", string.Empty).Should().NotContain("\n");
@@ -307,7 +306,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.Yes);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain("SUMMARY:[The Last Bastion] Session 12" + "\r\n");
     }
@@ -317,7 +316,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.Maybe);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
         UnescapeText(summary).Should().Be("[The Last Bastion] Session 12 (maybe)");
@@ -328,7 +327,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), availability: VoteType.No);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
         UnescapeText(summary).Should().Be("[The Last Bastion] Session 12 (declined)");
@@ -339,7 +338,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
         summary.Should().StartWith("[");
@@ -350,7 +349,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), boardName: "Smith, Jones", title: "Title");
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var summary = ExtractFoldedProperty(body, "SUMMARY:")["SUMMARY:".Length..];
         UnescapeText(summary).Should().Be("[Smith, Jones] Title");
@@ -361,7 +360,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain("X-WR-CALNAME:My Calendar");
         body.Should().Contain("X-PUBLISHED-TTL:PT4H");
@@ -373,7 +372,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain("VERSION:2.0");
         body.Should().Contain("PRODID:");
@@ -387,7 +386,7 @@ public class CalendarFeedWriterTests
         var first = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1);
         var second = MakeEntry(new DateOnly(2026, 9, 21), new TimeOnly(19, 0), sourceId: 2);
 
-        var body = Writer.Write([first, second], "My Calendar");
+        var body = Writer.Write([first, second], "My Calendar", AmsterdamZone);
 
         Regex.Matches(body, "X-WR-CALNAME:").Count.Should().Be(1);
         Regex.Matches(body, "VERSION:2.0").Count.Should().Be(1);
@@ -418,9 +417,9 @@ public class CalendarFeedWriterTests
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
         var entries = new List<CalendarFeedEntry> { entry };
 
-        var first = Writer.Write(entries, "My Calendar");
+        var first = Writer.Write(entries, "My Calendar", AmsterdamZone);
         Thread.Sleep(20);
-        var second = Writer.Write(entries, "My Calendar");
+        var second = Writer.Write(entries, "My Calendar", AmsterdamZone);
 
         var firstUid = ExtractFoldedProperty(first, "UID:");
         var secondUid = ExtractFoldedProperty(second, "UID:");
@@ -459,7 +458,7 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 99, source: CalendarFeedSource.Event);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var expected = "UID:" + Writer.BuildUid(entry.Source, entry.SourceId);
         var actual = ExtractFoldedProperty(body, "UID:");
@@ -475,13 +474,13 @@ public class CalendarFeedWriterTests
         var start = new TimeOnly(19, 0);
         var entry = MakeEntry(new DateOnly(2026, 9, 20), start, source: CalendarFeedSource.Quest, duration: TimeSpan.FromHours(4));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var startInstant = entry.Date.ToDateTime(start);
         var endInstant = startInstant.Add(TimeSpan.FromHours(4));
 
-        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
-        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+        body.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
     }
 
     [Fact]
@@ -490,13 +489,13 @@ public class CalendarFeedWriterTests
         var start = new TimeOnly(19, 0);
         var entry = MakeEntry(new DateOnly(2026, 9, 20), start, source: CalendarFeedSource.Quest, duration: TimeSpan.FromHours(2));
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var startInstant = entry.Date.ToDateTime(start);
         var endInstant = startInstant.Add(TimeSpan.FromHours(2));
 
-        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
-        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+        body.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
     }
 
     // Regression guard for the duration default: proves the event projection can keep saying
@@ -507,13 +506,13 @@ public class CalendarFeedWriterTests
         var start = new TimeOnly(19, 0);
         var entry = MakeEntry(new DateOnly(2026, 9, 20), start);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         var startInstant = entry.Date.ToDateTime(start);
         var endInstant = startInstant.Add(TimeSpan.FromHours(1));
 
-        body.Should().Contain($"DTSTART:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
-        body.Should().Contain($"DTEND:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
+        body.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{startInstant:yyyyMMdd}T{startInstant:HHmmss}");
+        body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{endInstant:yyyyMMdd}T{endInstant:HHmmss}");
     }
 
     // --- Quest-source behaviour: the answer suffix is unreachable for a non-event source ---
@@ -531,7 +530,7 @@ public class CalendarFeedWriterTests
         // site remembers to avoid.
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), source: CalendarFeedSource.Quest, availability: availability);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain("SUMMARY:[The Last Bastion] Session 12\r\n");
     }
@@ -552,7 +551,7 @@ public class CalendarFeedWriterTests
         var eventEntry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 7, source: CalendarFeedSource.Event);
         var questEntry = MakeEntry(new DateOnly(2026, 9, 21), new TimeOnly(19, 0), sourceId: 7, source: CalendarFeedSource.Quest);
 
-        var body = Writer.Write([eventEntry, questEntry], "My Calendar");
+        var body = Writer.Write([eventEntry, questEntry], "My Calendar", AmsterdamZone);
 
         var eventUid = "UID:" + Writer.BuildUid(CalendarFeedSource.Event, 7);
         var questUid = "UID:" + Writer.BuildUid(CalendarFeedSource.Quest, 7);
@@ -569,10 +568,10 @@ public class CalendarFeedWriterTests
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), source: CalendarFeedSource.Quest);
 
-        var body = Writer.Write([entry], "My Calendar");
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().NotContain("DTSTART;VALUE=DATE:");
         body.Should().NotContain("DTEND;VALUE=DATE:");
-        body.Should().Contain("DTSTART:20260920T190000");
+        body.Should().Contain("DTSTART;TZID=Europe/Amsterdam:20260920T190000");
     }
 }

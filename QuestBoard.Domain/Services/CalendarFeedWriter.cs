@@ -7,18 +7,28 @@ using QuestBoard.Domain.Models;
 namespace QuestBoard.Domain.Services;
 
 // Hand-rolled on purpose: after dropping DESCRIPTION and URL, this feed emits a five-field
-// VEVENT with no timezone and no recurrence, which is a smaller surface than adopting and
-// pinning a full RFC 5545 library would justify. Stateless and pure text-in/text-out, so it
-// is registered as a singleton alongside IMarkdownService.
+// VEVENT whose timed entries declare the board's zone through a generated time-zone block,
+// with no recurrence rule, which is a smaller surface than adopting and pinning a full
+// RFC 5545 library would justify. Stateless and pure text-in/text-out, so it is registered as
+// a singleton alongside IMarkdownService.
 internal class CalendarFeedWriter : ICalendarFeedWriter
 {
     private const string LineBreak = "\r\n";
 
     /// <inheritdoc/>
-    public string Write(IReadOnlyList<CalendarFeedEntry> entries, string calendarName)
+    public string Write(IReadOnlyList<CalendarFeedEntry> entries, string calendarName, TimeZoneInfo boardZone)
     {
+        ArgumentNullException.ThrowIfNull(boardZone);
+
+        // Derived exactly once: the calendar header, the time-zone block and every timed line
+        // all use this one string, so they cannot disagree. There is no zoneless branch -- a
+        // clock that fell back to UTC declares UTC through this same path.
+        var tzid = ResolveTzid(boardZone);
+        var tzidParameter = FormatTzidParameter(tzid);
+
         var builder = new StringBuilder();
-        AppendCalendarHeaders(builder, calendarName);
+        AppendCalendarHeaders(builder, calendarName, tzid);
+        AppendTimeZone(builder, boardZone, tzid, entries);
 
         foreach (var entry in entries)
         {
@@ -27,7 +37,7 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
             // "unknown duration" case.
             if (entry.StartTime.HasValue)
             {
-                AppendTimedEvent(builder, entry);
+                AppendTimedEvent(builder, entry, tzidParameter);
             }
             else
             {
@@ -41,13 +51,17 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
 
     // Calendar-level headers, emitted in this order and exactly once per document, before the
     // first event opener.
-    private static void AppendCalendarHeaders(StringBuilder builder, string calendarName)
+    private static void AppendCalendarHeaders(StringBuilder builder, string calendarName, string tzid)
     {
         builder.Append("BEGIN:VCALENDAR").Append(LineBreak);
         AppendFoldedLine(builder, "VERSION:2.0");
         AppendFoldedLine(builder, "PRODID:-//D&D Quest Board//Calendar Feed//EN");
         AppendFoldedLine(builder, "CALSCALE:GREGORIAN");
         AppendFoldedLine(builder, "X-WR-CALNAME:" + EscapeText(calendarName));
+
+        // A hint for clients that honour it. It names the same id as every entry's zone and the
+        // time-zone block, so the three cannot disagree.
+        AppendFoldedLine(builder, "X-WR-TIMEZONE:" + EscapeText(tzid));
 
         // Both hints below are advisory only, never a promise: the reading application picks
         // its own polling interval (anywhere from minutes to about a day), and at least one
@@ -63,11 +77,128 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
         // subscription that carries no ORGANIZER/ATTENDEE at all.
     }
 
-    // Timed branch: floating local time (no zone parameter, no trailing Z) matching the
-    // codebase's own naive time model. The block's length is whatever the entry carries,
-    // invented purely for rendering -- an event's default one-hour block and a quest's longer
-    // configured session length are both just Duration.
-    private void AppendTimedEvent(StringBuilder builder, CalendarFeedEntry entry)
+    // Calendar clients such as Google resolve a zone by its IANA name, so a Windows-style id is
+    // mapped to its region's canonical IANA zone. Their offsets are identical, and the
+    // time-zone block below carries the rules anyway. An id already in IANA form (or the UTC
+    // fallback, written as the literal id the clock resolved) is kept verbatim; with no mapping
+    // available the raw id is declared rather than guessed at.
+    private static string ResolveTzid(TimeZoneInfo zone)
+    {
+        var id = zone.Id;
+        if (id.Contains('/') || id == "UTC")
+        {
+            return id;
+        }
+
+        return TimeZoneInfo.TryConvertWindowsIdToIanaId(id, out var iana) ? iana : id;
+    }
+
+    // A parameter value carrying a semicolon, colon or comma must be quoted. Ids the operating
+    // system resolves never do, so this is defence in depth.
+    private static string FormatTzidParameter(string tzid) =>
+        tzid.IndexOfAny([';', ':', ',']) >= 0 ? "\"" + tzid + "\"" : tzid;
+
+    // Emits one time-zone block covering the span of the timed entries, and nothing at all when
+    // there are none. Offsets are found by asking the zone for its offset at a moment, because
+    // Windows and Linux describe a zone's rules in different shapes (a short repeating rule
+    // versus a year-by-year list) yet agree on the offset at any moment -- so this block is
+    // byte-identical on both, which is why the platform's rule objects are not read. No zone
+    // name is written because display names differ by platform. Observances are fixed-date and
+    // carry no recurrence rule because they cover exactly the window the entries span.
+    private static void AppendTimeZone(
+        StringBuilder builder, TimeZoneInfo zone, string tzid, IReadOnlyList<CalendarFeedEntry> entries)
+    {
+        var timed = entries
+            .Where(e => e.StartTime.HasValue)
+            .Select(e => (Start: e.Date.ToDateTime(e.StartTime!.Value), e.Duration))
+            .ToList();
+        if (timed.Count == 0)
+        {
+            return;
+        }
+
+        // The stored digits are read as UTC instants only to bound the probe. The one-day pad
+        // exists because a wall-clock value lies within a day of the same digits read as UTC in
+        // every real zone, so the padded span always contains the true instants.
+        var windowStart = DateTime.SpecifyKind(timed.Min(t => t.Start), DateTimeKind.Utc).AddDays(-1);
+        var windowEnd = DateTime.SpecifyKind(timed.Max(t => t.Start + t.Duration), DateTimeKind.Utc).AddDays(1);
+
+        AppendFoldedLine(builder, "BEGIN:VTIMEZONE");
+        AppendFoldedLine(builder, "TZID:" + EscapeText(tzid));
+
+        // Leading observance: the offset in effect at the start of the window, dated far in the
+        // past so it precedes every entry. From equals to because nothing changes at that onset.
+        var previous = zone.GetUtcOffset(windowStart);
+        AppendObservance(builder, zone.IsDaylightSavingTime(windowStart), "19700101T000000", previous, previous);
+
+        var step = TimeSpan.FromDays(1);
+        for (var current = windowStart; current < windowEnd;)
+        {
+            var next = current + step < windowEnd ? current + step : windowEnd;
+            if (zone.GetUtcOffset(next) != previous)
+            {
+                // Bisect on whole minutes so onsets never carry fractional seconds. The low bound
+                // is still on the old offset and the high bound is already on the new one.
+                long low = 0;
+                long high = (long)(next - current).TotalMinutes;
+                while (high - low > 1)
+                {
+                    var middle = (low + high) / 2;
+                    if (zone.GetUtcOffset(current.AddMinutes(middle)) == previous)
+                    {
+                        low = middle;
+                    }
+                    else
+                    {
+                        high = middle;
+                    }
+                }
+
+                // The onset is written in the local time of the offset that applied just before
+                // it, which is how a time-zone observance combines its start with its from-offset.
+                var instant = current.AddMinutes(high);
+                var after = zone.GetUtcOffset(instant);
+                AppendObservance(
+                    builder, zone.IsDaylightSavingTime(instant), FormatBasicDateTime(instant + previous), previous, after);
+                previous = after;
+            }
+
+            current = next;
+        }
+
+        AppendFoldedLine(builder, "END:VTIMEZONE");
+    }
+
+    private static void AppendObservance(
+        StringBuilder builder, bool daylight, string dtstartLocal, TimeSpan offsetFrom, TimeSpan offsetTo)
+    {
+        var kind = daylight ? "DAYLIGHT" : "STANDARD";
+        AppendFoldedLine(builder, "BEGIN:" + kind);
+        AppendFoldedLine(builder, "DTSTART:" + dtstartLocal);
+        AppendFoldedLine(builder, "TZOFFSETFROM:" + FormatUtcOffset(offsetFrom));
+        AppendFoldedLine(builder, "TZOFFSETTO:" + FormatUtcOffset(offsetTo));
+        AppendFoldedLine(builder, "END:" + kind);
+    }
+
+    // The sign is always present, hours and minutes are two digits, and seconds are appended
+    // only when non-zero. A zero offset is written +0000, never -0000.
+    private static string FormatUtcOffset(TimeSpan offset)
+    {
+        var magnitude = offset.Duration();
+        var sign = offset < TimeSpan.Zero ? "-" : "+";
+        var text = string.Create(
+            CultureInfo.InvariantCulture, $"{sign}{magnitude.Hours:00}{magnitude.Minutes:00}");
+        return magnitude.Seconds != 0
+            ? text + magnitude.Seconds.ToString("00", CultureInfo.InvariantCulture)
+            : text;
+    }
+
+    // Timed branch: the stored wall-clock digits are written exactly as they are, with no
+    // trailing Z, and the zone parameter only says which zone those digits belong to --
+    // declaring a zone is not converting a time. The block's length is whatever the entry
+    // carries, invented purely for rendering -- an event's default one-hour block and a quest's
+    // longer configured session length are both just Duration.
+    private void AppendTimedEvent(StringBuilder builder, CalendarFeedEntry entry, string tzidParameter)
     {
         var start = entry.Date.ToDateTime(entry.StartTime!.Value);
         var end = start.Add(entry.Duration);
@@ -75,8 +206,8 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
         builder.Append("BEGIN:VEVENT").Append(LineBreak);
         AppendFoldedLine(builder, "UID:" + BuildUid(entry.Source, entry.SourceId));
         AppendFoldedLine(builder, "DTSTAMP:" + FormatUtcStamp(entry.CreatedAt));
-        AppendFoldedLine(builder, "DTSTART:" + FormatBasicDateTime(start));
-        AppendFoldedLine(builder, "DTEND:" + FormatBasicDateTime(end));
+        AppendFoldedLine(builder, "DTSTART;TZID=" + tzidParameter + ":" + FormatBasicDateTime(start));
+        AppendFoldedLine(builder, "DTEND;TZID=" + tzidParameter + ":" + FormatBasicDateTime(end));
         AppendFoldedLine(builder, "SUMMARY:" + BuildSummary(entry));
         AppendFoldedLine(builder, "TRANSP:TRANSPARENT");
         AppendFoldedLine(builder, "SEQUENCE:0");
@@ -146,8 +277,8 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
     private static string FormatUtcStamp(DateTime value) =>
         value.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 
-    // DTSTART/DTEND for a timed entry are floating local time -- no zone designator -- matching
-    // the codebase's own naive time model.
+    // The local date-time form used for zoned entry times and for time-zone observance onsets.
+    // It never carries a zone designator itself; the zone is declared beside it, not inside it.
     private static string FormatBasicDateTime(DateTime value) =>
         value.ToString("yyyyMMdd'T'HHmmss", CultureInfo.InvariantCulture);
 

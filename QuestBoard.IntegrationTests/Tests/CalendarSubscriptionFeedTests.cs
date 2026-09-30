@@ -187,8 +187,17 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         body.Should().Contain($"UID:questboard-event-{eventId}");
         body.Should().Contain("SUMMARY:[Calendar Feed Tracer Board] Calendar Feed Tracer Session");
         body.Should().Contain("TRANSP:TRANSPARENT");
-        body.Should().Contain($"DTSTART:{eventDate:yyyyMMdd}T190000");
-        body.Should().NotContain($"DTSTART:{eventDate:yyyyMMdd}T190000Z");
+        body.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{eventDate:yyyyMMdd}T190000\r\n");
+        body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{eventDate:yyyyMMdd}T200000\r\n");
+        body.Should().NotContain($"{eventDate:yyyyMMdd}T190000Z");
+
+        // The board's zone is declared once in the calendar header and once as a time-zone
+        // block, and that block closes before the first event opens.
+        body.Should().Contain("X-WR-TIMEZONE:Europe/Amsterdam\r\n");
+        body.Should().Contain("BEGIN:VTIMEZONE\r\nTZID:Europe/Amsterdam\r\n");
+        (body.Split("BEGIN:VTIMEZONE").Length - 1).Should().Be(1);
+        body.IndexOf("END:VTIMEZONE", StringComparison.Ordinal)
+            .Should().BeLessThan(body.IndexOf("BEGIN:VEVENT", StringComparison.Ordinal));
 
         var vEventCount = body.Split("BEGIN:VEVENT").Length - 1;
         vEventCount.Should().Be(1);
