@@ -16,15 +16,19 @@ namespace QuestBoard.UnitTests.Services;
 // exactly the zone the board clock resolved, UTC included when the clock has fallen back. These
 // facts are the guard that would catch a well-meaning change to CalendarFeedWriter or
 // CalendarSubscriptionService that started converting a stored wall-clock value into another
-// hour, or declared a different zone than the one the board runs on. Exact-byte assertion style,
-// matching CalendarFeedWriterTests: plain string assertions, no snapshot framework.
+// hour, or declared a different zone than the one the board runs on. The guard also catches a
+// change that went back to publishing the creation time or a constant sequence number, which
+// would leave a rescheduled entry looking unchanged to a client that compares revisions.
+// Exact-byte assertion style, matching CalendarFeedWriterTests: plain string assertions, no
+// snapshot framework.
 public class CalendarFeedBoardZoneGuardTests
 {
     private static readonly ICalendarFeedWriter Writer = new CalendarFeedWriter();
     private static readonly TimeZoneInfo AmsterdamZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Amsterdam");
     private static readonly TimeZoneInfo AucklandZone = TimeZoneInfo.FindSystemTimeZoneById("Pacific/Auckland");
 
-    private static CalendarFeedEntry MakeFinalizedQuestEntry(DateOnly date, TimeOnly startTime, int sourceId = 1)
+    private static CalendarFeedEntry MakeFinalizedQuestEntry(
+        DateOnly date, TimeOnly startTime, int sourceId = 1, int sequence = 1, DateTime? revisedAt = null)
     {
         return new CalendarFeedEntry
         {
@@ -35,8 +39,20 @@ public class CalendarFeedBoardZoneGuardTests
             Date = date,
             StartTime = startTime,
             Duration = TimeSpan.FromHours(4),
-            LastRevisedAt = new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
+            Sequence = sequence,
+            LastRevisedAt = revisedAt ?? new DateTime(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc),
         };
+    }
+
+    // The lines of the one VEVENT block whose UID line is exactly the one given, so a revision
+    // number can be tied to the entry that carries it rather than to the document as a whole.
+    private static string[] EventBlockLines(string body, string uid)
+    {
+        var lines = body.Split("\r\n");
+        var start = Array.IndexOf(lines, "UID:" + uid);
+        start.Should().BeGreaterThan(0);
+        var end = Array.IndexOf(lines, "END:VEVENT", start);
+        return lines[start..end];
     }
 
     // Joins content lines the way the writer terminates them: every line, the last included,
@@ -46,10 +62,15 @@ public class CalendarFeedBoardZoneGuardTests
     [Fact]
     public void Write_EntriesEitherSideOfTheOctoberClockChange_DeclareTheZoneAndKeepTheirLocalDigits()
     {
-        var before = MakeFinalizedQuestEntry(new DateOnly(2026, 10, 2), new TimeOnly(18, 0), sourceId: 1);
-        var after = MakeFinalizedQuestEntry(new DateOnly(2026, 10, 30), new TimeOnly(18, 0), sourceId: 2);
+        var before = MakeFinalizedQuestEntry(new DateOnly(2026, 10, 2), new TimeOnly(18, 0), sourceId: 1, sequence: 2);
+        var after = MakeFinalizedQuestEntry(new DateOnly(2026, 10, 30), new TimeOnly(18, 0), sourceId: 2, sequence: 5);
 
         var body = Writer.Write([before, after], "D&D Quest Board", AmsterdamZone);
+
+        // Each entry publishes its own revision, not a shared or constant number.
+        EventBlockLines(body, "questboard-quest-1").Should().Contain("SEQUENCE:2");
+        EventBlockLines(body, "questboard-quest-2").Should().Contain("SEQUENCE:5");
+        body.Should().NotContain("SEQUENCE:1\r\n");
 
         // Both sessions read 18:00 on the wall even though the two dates sit either side of the
         // 25 October clock change: the offset differs, the digits do not.
@@ -102,6 +123,13 @@ public class CalendarFeedBoardZoneGuardTests
         body.Should().Contain(expectedBlock);
     }
 
+    // The stored revision of the fixture's quest. Its stored time has no kind attached, as a
+    // value read back from SQL Server has, and it differs from the quest's creation time so a
+    // stamp taken from the wrong field cannot pass by coincidence.
+    private const int QuestRevision = 4;
+    private static readonly DateTime QuestRevisedAt = new(2026, 9, 18, 10, 11, 12, DateTimeKind.Unspecified);
+    private static readonly DateTime QuestCreatedAt = new(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+
     // Hand-rolled rather than substituted: CalendarSubscriptionService is internal, so a
     // dynamic proxy over ILogger<CalendarSubscriptionService> cannot be generated (Castle
     // DynamicProxy has no InternalsVisibleTo grant for an internal generic type argument).
@@ -149,7 +177,9 @@ public class CalendarFeedBoardZoneGuardTests
             DungeonMasterId = 1,
             FinalizedDate = new DateTime(2026, 9, 20, 19, 0, 0),
             IsFinalized = true,
-            CreatedAt = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAt = QuestCreatedAt,
+            FeedRevision = QuestRevision,
+            FeedRevisedAt = QuestRevisedAt,
         };
 
         var subscriptionRepository = Substitute.For<ICalendarSubscriptionRepository>();
@@ -220,6 +250,17 @@ public class CalendarFeedBoardZoneGuardTests
         var questEntry = capturedEntries!.Single(e => e.Source == CalendarFeedSource.Quest && e.SourceId == QuestId);
         questEntry.Date.Should().Be(new DateOnly(2026, 9, 20));
         questEntry.StartTime.Should().Be(new TimeOnly(19, 0));
+        AssertCarriesTheStoredRevision(questEntry);
+    }
+
+    // The entry handed to the writer carries the quest's stored revision number and last-revised
+    // time. A change that went back to the creation time or to a constant number would leave a
+    // rescheduled entry looking unchanged to a client that compares revisions.
+    private static void AssertCarriesTheStoredRevision(CalendarFeedEntry questEntry)
+    {
+        questEntry.Sequence.Should().Be(QuestRevision);
+        questEntry.LastRevisedAt.Should().Be(QuestRevisedAt);
+        questEntry.LastRevisedAt.Should().NotBe(QuestCreatedAt);
     }
 
     [Fact]
@@ -248,6 +289,7 @@ public class CalendarFeedBoardZoneGuardTests
         var questEntry = capturedEntries!.Single(e => e.Source == CalendarFeedSource.Quest && e.SourceId == QuestId);
         questEntry.Date.Should().Be(new DateOnly(2026, 9, 20));
         questEntry.StartTime.Should().Be(new TimeOnly(19, 0));
+        AssertCarriesTheStoredRevision(questEntry);
     }
 
     [Fact]
@@ -265,6 +307,13 @@ public class CalendarFeedBoardZoneGuardTests
         body.Should().Contain("X-WR-TIMEZONE:UTC\r\n");
         body.Should().Contain("TZOFFSETTO:+0000\r\n");
         body.Should().NotContain("Europe/Amsterdam");
+
+        // The published revision is the stored one: its number, and its time as a UTC stamp on
+        // both revision lines, never the quest's creation time.
+        body.Should().Contain("SEQUENCE:4\r\n");
+        body.Should().Contain("DTSTAMP:20260918T101112Z\r\n");
+        body.Should().Contain("LAST-MODIFIED:20260918T101112Z\r\n");
+        body.Should().NotContain("DTSTAMP:20260901T000000Z");
     }
 
     // The instant is fixed just before midnight UTC, when Auckland has already rolled over to the
