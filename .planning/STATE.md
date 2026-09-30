@@ -4,17 +4,17 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 88
 current_phase_name: Calendar Feed Times Anchored to the Board Timezone
-status: executing
-stopped_at: Completed 88-01-PLAN.md
-last_updated: "2026-09-30T11:25:56.169Z"
+status: verifying
+stopped_at: Completed 88-04-PLAN.md
+last_updated: "2026-09-30T11:32:33.565Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 88 execution started
-state_head: 95b5579fd20fef1aa725562858341843a16e2657
+state_head: 39de72b6e5d0c0f49b41ace7399a87cd72f02183
 progress:
   total_phases: 17
   completed_phases: 14
   total_plans: 112
-  completed_plans: 102
+  completed_plans: 103
   percent: 82
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
 
 Phase: 88 (Calendar Feed Times Anchored to the Board Timezone) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-30 — Phase 88 execution started
 
 Roadmapped and not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -66,6 +66,7 @@ introduced by Phase 87.
 | Phase 84 P05 | 24min | 3 tasks | 3 files |
 | Phase 84 P08 | 137min | 4 tasks | 10 files |
 | Phase 88 P01 | 6 min | 2 tasks | 10 files |
+| Phase 88 P04 | 4 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 84]: Task 3's real-device subscription checkpoint was deferred to deployment by operator decision, not approved and not failed -- Outlook and Google Calendar fetch server-side and cannot reach a localhost or LAN address — Server-side coverage (104 test methods) and an external RFC 5545 validator pass (0 errors, 0 warnings) independently prove the document; client poll-and-render behaviour remains genuinely unverified and is tracked as an open WINDOWS.md unrun-verify item
 - [Phase 84]: 84-08: three UAT-found UI defects fixed centrally during the Task 3 review window -- modals freed from a backdrop-filter stacking-context trap, the subscription row rebalanced to 68px, and the address stopped being displayed on screen (kept in DOM, readonly, revealed only by the clipboard-denied fallback) — CALFEED-03 and 84-UI-SPEC E3/E4 amended accordingly; address is a bearer credential with no expiry and should not be visible on a screen-shared or screenshotted page
 - [Phase 88]: Board zone is a required per-document TimeZoneInfo parameter on ICalendarFeedWriter.Write; header, VTIMEZONE and every timed line share one derived tzid — One zone per document makes disagreement structurally impossible and keeps the writer pure
+- [Phase 88]: 88-04: Linux calendar byte-pin proof runs from git archive HEAD on stdin in a --rm SDK container with no volume mount — Uncommitted host files cannot leak in and nothing can be written back
 
 ### Roadmap Evolution
 
@@ -153,8 +155,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-30T11:09:11.818Z
-Stopped at: Completed 88-01-PLAN.md
+Last session: 2026-09-30T11:32:29.451Z
+Stopped at: Completed 88-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
