@@ -187,6 +187,8 @@ public class CalendarSubscriptionFeedTests(WebApplicationFactoryBase factory)
         body.Should().Contain($"UID:questboard-event-{eventId}");
         body.Should().Contain("SUMMARY:[Calendar Feed Tracer Board] Calendar Feed Tracer Session");
         body.Should().Contain("TRANSP:TRANSPARENT");
+        body.Should().Contain("SEQUENCE:1\r\n");
+        body.Should().NotContain("SEQUENCE:0");
         body.Should().Contain($"DTSTART;TZID=Europe/Amsterdam:{eventDate:yyyyMMdd}T190000\r\n");
         body.Should().Contain($"DTEND;TZID=Europe/Amsterdam:{eventDate:yyyyMMdd}T200000\r\n");
         body.Should().NotContain($"{eventDate:yyyyMMdd}T190000Z");
