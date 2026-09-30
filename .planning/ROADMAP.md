@@ -767,8 +767,18 @@ Plans:
 | QUESTFEED-16 | Phase 85 |
 | QUESTFEED-17 | Phase 85 |
 | QUESTFEED-18 | Phase 85 |
+| CALTZ-01 | Phase 88 |
+| CALTZ-02 | Phase 88 |
+| CALTZ-03 | Phase 88 |
+| CALTZ-04 | Phase 88 |
+| CALTZ-05 | Phase 88 |
+| CALTZ-06 | Phase 88 |
+| CALTZ-07 | Phase 88 |
+| CALTZ-08 | Phase 88 |
+| CALTZ-09 | Phase 88 |
+| CALTZ-10 | Phase 88 |
 
-**Coverage:** 134/134 requirements mapped ✓ · 0 unmapped · 0 phases awaiting requirements
+**Coverage:** 144/144 requirements mapped ✓ · 0 unmapped · 0 phases awaiting requirements
 
 ## Research Flags
 
@@ -1067,7 +1077,7 @@ Plans:
 ### Phase 88: Calendar Feed Times Anchored to the Board Timezone
 
 **Goal:** A game night set for 18:00 on the board shows as 18:00 in every subscriber's phone calendar, whichever calendar app they use — instead of 19:00 on one phone and 20:00 on another, as it does today.
-**Requirements**: TBD — settle in the discuss pass.
+**Requirements**: CALTZ-01, CALTZ-02, CALTZ-03, CALTZ-04, CALTZ-05, CALTZ-06, CALTZ-07, CALTZ-08, CALTZ-09, CALTZ-10
 **Depends on:** No hard dependency. It builds on Phase 84's writer and Phase 85's quest entries, and needs the board timezone that Phase 86 introduced (`IBoardClock.TimeZone`, configured by `TimeZoneOptions.BoardTimeZoneId`, default `Europe/Amsterdam`).
 **Plans:** 4 plans
 
