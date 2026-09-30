@@ -140,7 +140,7 @@ Requirements for the v9.0 milestone. Each maps to a roadmap phase.
 
 ### Calendar Feed — Board Timezone
 
-- [ ] **CALTZ-01**: Every timed calendar entry, event and quest alike, declares the board's zone by name on both its start and its end, carrying the stored wall-clock digits unchanged and no trailing UTC designator
+- [x] **CALTZ-01**: Every timed calendar entry, event and quest alike, declares the board's zone by name on both its start and its end, carrying the stored wall-clock digits unchanged and no trailing UTC designator
 - [ ] **CALTZ-02**: A feed holding at least one timed entry carries exactly one time-zone block, after the calendar headers and before the first entry, whose zone id equals the entries' zone and which lists the offset in effect before the earliest entry plus every offset change up to the latest end as fixed-date observances with no recurrence rule, built only from the zone's offset at each moment so the same entries produce the same bytes on Windows and on Linux
 - [ ] **CALTZ-03**: The calendar carries exactly one calendar-level zone header naming the same zone id as every entry and the time-zone block, and all three derive from the one zone the board clock resolved, never from the configured zone string
 - [ ] **CALTZ-04**: A board configured with a zone other than the default, including a southern-hemisphere zone and a Windows-style zone id, has that zone declared under an IANA-form name with its own offset changes listed, proving the block is generated from the zone rather than written out for one city
@@ -384,7 +384,7 @@ Explicit exclusions for v9.0, with reasoning.
 | QUESTFEED-16 | Phase 85 | Complete |
 | QUESTFEED-17 | Phase 85 | Complete |
 | QUESTFEED-18 | Phase 85 | Complete |
-| CALTZ-01 | Phase 88 | Pending |
+| CALTZ-01 | Phase 88 | Complete |
 | CALTZ-02 | Phase 88 | Pending |
 | CALTZ-03 | Phase 88 | Pending |
 | CALTZ-04 | Phase 88 | Pending |
