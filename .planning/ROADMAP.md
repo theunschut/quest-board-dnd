@@ -1085,7 +1085,7 @@ Plans:
 **Goal:** A game night set for 18:00 on the board shows as 18:00 in every subscriber's phone calendar, whichever calendar app they use — instead of 19:00 on one phone and 20:00 on another, as it does today.
 **Requirements**: CALTZ-01, CALTZ-02, CALTZ-03, CALTZ-04, CALTZ-05, CALTZ-06, CALTZ-07, CALTZ-08, CALTZ-09, CALTZ-10, CALTZ-11, CALTZ-12, CALTZ-13, CALTZ-14, CALTZ-15, CALTZ-16
 **Depends on:** No hard dependency. It builds on Phase 84's writer and Phase 85's quest entries, and needs the board timezone that Phase 86 introduced (`IBoardClock.TimeZone`, configured by `TimeZoneOptions.BoardTimeZoneId`, default `Europe/Amsterdam`).
-**Plans:** 5/9 plans executed
+**Plans:** 8/9 plans executed
 
 **Origin:** raised by the operator on 2026-09-30 from production use. A quest set to 18:00 on the board appears as 19:00 in the operator's phone calendar and as 20:00 on a friend's phone.
 
@@ -1122,9 +1122,9 @@ Plans:
 
 **Gap closure G-88-4 — Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 88-06-PLAN.md — Every event write path proven through the real controllers (edit, series sweep, cancel and restore, no-change save), and a reader's own availability change moving only that reader's stamp (gap wave 2)
-- [ ] 88-07-PLAN.md — Every quest write path proven through the real controllers (reopen then finalize at another date and at the same date, title edit, no-change save) (gap wave 2)
-- [ ] 88-08-PLAN.md — The writer's revision contract pinned byte by byte: LAST-MODIFIED, the sequence floor, rewritten whole-block, stamp and guard pins (gap wave 2)
+- [x] 88-06-PLAN.md — Every event write path proven through the real controllers (edit, series sweep, cancel and restore, no-change save), and a reader's own availability change moving only that reader's stamp (gap wave 2)
+- [x] 88-07-PLAN.md — Every quest write path proven through the real controllers (reopen then finalize at another date and at the same date, title edit, no-change save) (gap wave 2)
+- [x] 88-08-PLAN.md — The writer's revision contract pinned byte by byte: LAST-MODIFIED, the sequence floor, rewritten whole-block, stamp and guard pins (gap wave 2)
 
 **Gap closure G-88-4 — Wave 3** *(blocked on Wave 2 completion)*
 
