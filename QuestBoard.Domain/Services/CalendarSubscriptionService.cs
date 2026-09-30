@@ -47,6 +47,8 @@ internal class CalendarSubscriptionService(
     public async Task<bool> RevokeAsync(int subscriptionId, int userId, CancellationToken token = default)
         => await subscriptionRepository.RevokeAsync(subscriptionId, userId, timeProvider.GetUtcNow().UtcDateTime, token);
 
+    private static DateTime LaterOf(DateTime first, DateTime second) => first >= second ? first : second;
+
     /// <inheritdoc/>
     public async Task<CalendarFeedResult> GetFeedAsync(string feedToken, CancellationToken token = default)
     {
@@ -108,8 +110,14 @@ internal class CalendarSubscriptionService(
                 Date = row.Event.Date,
                 StartTime = row.Event.StartTime,
                 Availability = row.Availability,
+                // The sequence number is the event's own revision, shared by every reader of
+                // the event, and it must only ever go up. A single reader's answer therefore
+                // never touches it: that would change every other member's document too. The
+                // reader's own stamp moves instead, and it only moves forward, because the
+                // answer time is a real instant written on every answer, even when the answer
+                // row is deleted and made again.
                 Sequence = row.Event.FeedRevision,
-                LastRevisedAt = row.Event.FeedRevisedAt
+                LastRevisedAt = LaterOf(row.Event.FeedRevisedAt, row.AnswerWrittenAt)
             })
             .ToList();
 

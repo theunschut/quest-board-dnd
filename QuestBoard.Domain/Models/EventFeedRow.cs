@@ -11,4 +11,10 @@ public class EventFeedRow
     public Event Event { get; init; } = new();
 
     public VoteType Availability { get; init; }
+
+    // The last time this reader's own answer row was written: when a person last set the
+    // answer, or when the row was created if no person ever has. It is a real instant that only
+    // moves forward, even if the row is deleted and made again, which is what lets the feed use
+    // it as the reader's own revision stamp without touching the event's shared revision.
+    public DateTime AnswerWrittenAt { get; init; }
 }

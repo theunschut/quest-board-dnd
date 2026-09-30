@@ -81,16 +81,20 @@ public class CalendarFeedEventRevisionTests(WebApplicationFactoryBase factory)
         return series.Id;
     }
 
-    private async Task SeedSignupAsync(int eventId, int userId, VoteType availability)
+    // answered: false seeds the shape of an automatically created board-wide row, which no
+    // person ever set, so its UpdatedAt is null.
+    private async Task SeedSignupAsync(
+        int eventId, int userId, VoteType availability, DateTime? createdAt = null, bool answered = true)
     {
+        var created = createdAt ?? SeedInstant;
         await using var ctx = factory.Database.CreateContext();
         ctx.EventSignups.Add(new EventSignupEntity
         {
             EventId = eventId,
             UserId = userId,
             Availability = (int)availability,
-            CreatedAt = SeedInstant,
-            UpdatedAt = SeedInstant
+            CreatedAt = created,
+            UpdatedAt = answered ? created : null
         });
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
@@ -452,5 +456,139 @@ public class CalendarFeedEventRevisionTests(WebApplicationFactoryBase factory)
         var conditional = await FetchAsync(reader.Token, ifNoneMatch: first.ETag);
         conditional.Status.Should().Be(HttpStatusCode.NotModified);
         conditional.Body.Should().BeEmpty();
+    }
+
+    // ---- a reader's own availability answer ----
+
+    private async Task PostAvailabilityAsync(Reader reader, int eventId, string availability)
+    {
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var response = await reader.Client.PostAsync(
+            $"/Events/SetAvailability/{eventId}",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["availability"] = availability }),
+            TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    private async Task WithdrawAsync(Reader reader, int eventId)
+    {
+        factory.TestGroupContext.ActiveGroupId = 1;
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/Events/Withdraw/{eventId}");
+        var response = await reader.Client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Feed_ReaderChangesTheirOwnAnswer_MovesOnlyThatReadersStampAndNeverTheSequence()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var readerA = await CreateReaderAsync("rev_answer_a");
+        var readerB = await CreateReaderAsync("rev_answer_b");
+
+        var eventId = await SeedEventAsync("Shared Answer Session", BaseDate(), new TimeOnly(19, 0));
+        await SeedSignupAsync(eventId, readerA.UserId, VoteType.Yes);
+        await SeedSignupAsync(eventId, readerB.UserId, VoteType.Yes);
+
+        var firstA = await FetchAsync(readerA.Token);
+        var firstB = await FetchAsync(readerB.Token);
+        var firstEntryA = RequireEntry(firstA.Body, eventId);
+        SequenceOf(firstEntryA).Should().Be(1);
+        StampOf(firstEntryA).Should().Be(SeedInstant);
+
+        var beforeMaybe = UtcNowInWholeSeconds();
+        await PostAvailabilityAsync(readerA, eventId, "Maybe");
+
+        var maybeA = await FetchAsync(readerA.Token);
+        var maybeEntryA = RequireEntry(maybeA.Body, eventId);
+        LineStartingWith(maybeEntryA, "UID:").Should().Be(LineStartingWith(firstEntryA, "UID:"));
+        LineStartingWith(maybeEntryA, "SUMMARY:").Should().EndWith(" (maybe)");
+        SequenceOf(maybeEntryA).Should().Be(1);
+        StampOf(maybeEntryA).Should().BeOnOrAfter(beforeMaybe);
+        maybeA.ETag.Should().NotBe(firstA.ETag);
+
+        // Reader B answered nothing, so B's document is untouched and B's earlier tag still
+        // matches.
+        var maybeB = await FetchAsync(readerB.Token);
+        maybeB.Body.Should().Be(firstB.Body);
+        maybeB.ETag.Should().Be(firstB.ETag);
+        var conditionalB = await FetchAsync(readerB.Token, ifNoneMatch: firstB.ETag);
+        conditionalB.Status.Should().Be(HttpStatusCode.NotModified);
+
+        var beforeNo = UtcNowInWholeSeconds();
+        await PostAvailabilityAsync(readerA, eventId, "No");
+
+        var noA = await FetchAsync(readerA.Token);
+        var noEntryA = RequireEntry(noA.Body, eventId);
+        LineStartingWith(noEntryA, "SUMMARY:").Should().EndWith(" (declined)");
+        SequenceOf(noEntryA).Should().Be(1);
+        StampOf(noEntryA).Should().BeOnOrAfter(beforeNo);
+        StampOf(noEntryA).Should().BeOnOrAfter(StampOf(maybeEntryA));
+
+        var noB = await FetchAsync(readerB.Token);
+        noB.Body.Should().Be(firstB.Body);
+    }
+
+    [Fact]
+    public async Task Feed_AnswerRowNobodyHasSet_StampsWithTheRowCreationTimeUntilThePersonAnswers()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await CreateReaderAsync("rev_automatic_reader");
+
+        var eventId = await SeedEventAsync("Automatic Answer Session", BaseDate(), new TimeOnly(19, 0));
+        var rowCreatedAt = SeedInstant.AddDays(2);
+        await SeedSignupAsync(eventId, reader.UserId, VoteType.Yes, createdAt: rowCreatedAt, answered: false);
+
+        // The row was created after the event was last revised, and no person has answered, so
+        // the row's creation time is the later of the two.
+        var automatic = await FetchAsync(reader.Token);
+        StampOf(RequireEntry(automatic.Body, eventId)).Should().Be(rowCreatedAt);
+
+        var beforeAnswer = UtcNowInWholeSeconds();
+        await PostAvailabilityAsync(reader, eventId, "Yes");
+
+        var answered = await FetchAsync(reader.Token);
+        var answeredEntry = RequireEntry(answered.Body, eventId);
+        SequenceOf(answeredEntry).Should().Be(1);
+        StampOf(answeredEntry).Should().BeOnOrAfter(beforeAnswer);
+    }
+
+    [Fact]
+    public async Task Feed_ReaderWithdrawsAndAnswersAgain_KeepsTheSequenceAndNeverMovesTheStampBackwards()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var reader = await CreateReaderAsync("rev_withdraw_reader");
+
+        var eventId = await SeedEventAsync("Withdraw And Return Session", BaseDate(), new TimeOnly(19, 0));
+        await SeedSignupAsync(eventId, reader.UserId, VoteType.Yes);
+
+        var seeded = await FetchAsync(reader.Token);
+        var seededEntry = RequireEntry(seeded.Body, eventId);
+
+        await PostAvailabilityAsync(reader, eventId, "Maybe");
+        var answered = await FetchAsync(reader.Token);
+        var answeredEntry = RequireEntry(answered.Body, eventId);
+        var stampBeforeWithdrawing = StampOf(answeredEntry);
+        stampBeforeWithdrawing.Should().BeAfter(SeedInstant);
+
+        await WithdrawAsync(reader, eventId);
+        var withdrawn = await FetchAsync(reader.Token);
+        EntryBlock(withdrawn.Body, eventId).Should().BeNull();
+
+        var beforeReturning = UtcNowInWholeSeconds();
+        await PostAvailabilityAsync(reader, eventId, "Yes");
+
+        var returned = await FetchAsync(reader.Token);
+        var returnedEntry = RequireEntry(returned.Body, eventId);
+        LineStartingWith(returnedEntry, "UID:").Should().Be(LineStartingWith(seededEntry, "UID:"));
+        SequenceOf(returnedEntry).Should().Be(1);
+        StampOf(returnedEntry).Should().BeOnOrAfter(beforeReturning);
+        StampOf(returnedEntry).Should().BeOnOrAfter(stampBeforeWithdrawing);
+        StampOf(returnedEntry).Should().BeOnOrAfter(StampOf(seededEntry));
     }
 }
