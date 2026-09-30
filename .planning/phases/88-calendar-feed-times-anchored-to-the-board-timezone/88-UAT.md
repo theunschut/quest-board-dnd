@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T14:26:15Z
+updated: 2026-09-30T14:39:53Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -110,5 +110,25 @@ blocked: 0
   reason: "User reported: doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
   severity: major
   test: 4
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  root_cause: "After first publication the feed carries no revision signal. Every entry is written with a stable UID, DTSTAMP = its CreatedAt, the literal SEQUENCE:1 and no LAST-MODIFIED, so after a reschedule only DTSTART/DTEND differ. A client deciding whether a re-fetched copy is newer compares SEQUENCE, then DTSTAMP (RFC 5546 §2.1.5), finds them equal and keeps its stale copy. RFC 5545 §3.8.7.2 defines DTSTAMP without METHOD as the time the entry was last revised, so CreatedAt is wrong once an entry is edited. Enabling cause: Events and Quests have no UpdatedAt or revision column. Server side ruled out: the ETag is a SHA-256 of the body, and a reschedule yields a new ETag and a 200 with the new DTSTART. This is Phase 84 Assumption A5 (constant SEQUENCE harmless) proving wrong. Phase 88 D-07 bumped SEQUENCE once and left later edits unsignalled."
+  artifacts:
+    - path: "QuestBoard.Domain/Services/CalendarFeedWriter.cs"
+      issue: "SEQUENCE is the literal 1 (lines 219, 237); DTSTAMP is taken from CreatedAt (208, 232); no LAST-MODIFIED"
+    - path: "QuestBoard.Domain/Models/CalendarFeedEntry.cs"
+      issue: "carries only CreatedAt, so the writer has no revision input"
+    - path: "QuestBoard.Domain/Services/CalendarSubscriptionService.cs"
+      issue: "builds feed entries with no revision data (lines 101-153)"
+    - path: "QuestBoard.Repository/Entities/EventEntity.cs"
+      issue: "no UpdatedAt or revision column"
+    - path: "QuestBoard.Repository/Entities/QuestEntity.cs"
+      issue: "no UpdatedAt or revision column"
+    - path: "QuestBoard.Service/Controllers/Events/EventsController.cs, QuestBoard.Repository/EventRepository.cs (ApplyTemplateToOccurrencesAsync), QuestBoard.Repository/QuestRepository.cs (FinalizeQuestAsync)"
+      issue: "reschedule and retitle paths update rows in place without raising any revision"
+    - path: "QuestBoard.IntegrationTests/Tests/CalendarSubscriptionQuestFeedTests.cs, QuestBoard.UnitTests/Services/CalendarFeedWriterTests.cs"
+      issue: "pin SEQUENCE:1 on both fetches of a rescheduled quest and DTSTAMP == CreatedAt, so they enforce the defect"
+  missing:
+    - "A per-entry revision on Events and Quests (EF Core migration) raised on every write that changes what the feed shows: date, start time, title, finalized date and state"
+    - "SEQUENCE derived from that revision so it rises on each change and never drops below 1 (one-way rule, D-07)"
+    - "DTSTAMP (and optionally LAST-MODIFIED) from the entry's last revision time instead of CreatedAt"
+    - "Tests rewritten so a rescheduled entry proves a higher SEQUENCE and a later DTSTAMP, while an unedited entry stays byte-identical between fetches (ETag/304 and determinism pins intact)"
+  debug_session: ".planning/debug/calendar-reschedule-not-propagating.md"
