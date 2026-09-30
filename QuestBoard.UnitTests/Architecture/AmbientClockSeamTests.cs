@@ -15,6 +15,8 @@ public class AmbientClockSeamTests
     private static readonly string[] GuardedRelativePaths =
     [
         "QuestBoard.Domain/Extensions/QuestExtensions.cs",
+        "QuestBoard.Domain/Services/CalendarFeedWriter.cs",
+        "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
         "QuestBoard.Repository/GroupRepository.cs",
@@ -61,6 +63,7 @@ public class AmbientClockSeamTests
     // is exactly that case, and must still never read a clock of its own.
     private static readonly string[] BoardClockConsumerPaths =
     [
+        "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
         "QuestBoard.Repository/GroupRepository.cs",
@@ -285,6 +288,42 @@ public class AmbientClockSeamTests
         content.Should().NotContain("IBoardClock",
             because: "injecting the clock into the rule would hide a second clock resolution behind every " +
                      "call site that delegates to it");
+    }
+
+    // A feed that read the configured zone id directly would declare a zone the board clock may
+    // have fallen back from -- an unresolvable id would be named in a document read by third-party
+    // servers while every entry was really anchored to UTC. So the only zone the document may name
+    // is the one the board clock resolved: the service takes it from the clock, and the writer
+    // receives it as data and keeps no clock of its own.
+    [Fact]
+    public void CalendarFeedSources_TakeTheZoneOnlyFromTheBoardClock()
+    {
+        var feedPaths = new[]
+        {
+            "QuestBoard.Domain/Services/CalendarFeedWriter.cs",
+            "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
+        };
+        var configuredZoneShapes = new[] { "TimeZoneOptions", "BoardTimeZoneId", "FindSystemTimeZoneById" };
+
+        foreach (var relativePath in feedPaths)
+        {
+            var stripped = StripComments(File.ReadAllText(ResolveRepoRelativePath(relativePath)));
+
+            var offenders = configuredZoneShapes
+                .Where(shape => stripped.Contains(shape, StringComparison.Ordinal))
+                .ToList();
+
+            offenders.Should().BeEmpty(
+                because: $"'{relativePath}' must not read the configured zone string -- the zone it " +
+                         "declares is whatever the board clock resolved, never the raw configured id -- " +
+                         "found: " + string.Join(", ", offenders));
+        }
+
+        var writerStripped = StripComments(
+            File.ReadAllText(ResolveRepoRelativePath("QuestBoard.Domain/Services/CalendarFeedWriter.cs")));
+        writerStripped.Should().NotContain("IBoardClock",
+            because: "the writer is handed the resolved zone as data, so it holds no clock of its own " +
+                     "that could disagree with the one the service read");
     }
 
     // Documents the boundary rather than leaving it implicit: EmailPreviewController's five
