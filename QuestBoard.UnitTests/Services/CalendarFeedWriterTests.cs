@@ -24,10 +24,12 @@ public class CalendarFeedWriterTests
         DateTime? revisedAt = null,
         int sourceId = 1,
         CalendarFeedSource source = CalendarFeedSource.Event,
-        TimeSpan? duration = null)
+        TimeSpan? duration = null,
+        int sequence = 1)
     {
         return new CalendarFeedEntry
         {
+            Sequence = sequence,
             Source = source,
             SourceId = sourceId,
             BoardName = boardName,
@@ -161,15 +163,47 @@ public class CalendarFeedWriterTests
     }
 
     [Fact]
-    public void Write_AnyEntry_EmitsSequenceOne()
+    public void Write_EachEntry_EmitsItsOwnRevisionAsTheSequenceNumber()
     {
-        var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
-        var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
+        var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sequence: 3);
+        var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2, sequence: 7);
 
         var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
 
-        body.Split("SEQUENCE:1\r\n").Length.Should().Be(3);
+        var sequenceLines = body.Split("\r\n").Where(l => l.StartsWith("SEQUENCE:", StringComparison.Ordinal));
+        sequenceLines.Should().Equal("SEQUENCE:3", "SEQUENCE:7");
+        body.Should().NotContain("SEQUENCE:1\r\n");
         body.Should().NotContain("SEQUENCE:0");
+    }
+
+    [Fact]
+    public void Write_NeverEditedEntry_StartsAtSequenceOne()
+    {
+        // The default entry has never been revised, so it is published at the first number.
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        body.Split("\r\n").Where(l => l.StartsWith("SEQUENCE:", StringComparison.Ordinal))
+            .Should().Equal("SEQUENCE:1");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void Write_RevisionBelowOne_IsWrittenAsSequenceOne(int revision)
+    {
+        // A client that compares revisions treats a lower number as older, so the number is never
+        // published below the first one however the stored value came out.
+        var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sequence: revision);
+        var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2, sequence: revision);
+
+        var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
+
+        body.Split("\r\n").Where(l => l.StartsWith("SEQUENCE:", StringComparison.Ordinal))
+            .Should().Equal("SEQUENCE:1", "SEQUENCE:1");
+        body.Should().NotContain("SEQUENCE:0");
+        body.Should().NotContain("SEQUENCE:-");
     }
 
     [Fact]
@@ -181,40 +215,116 @@ public class CalendarFeedWriterTests
     }
 
     [Fact]
+    public void Write_EmptyEntryList_EmitsNoLastModifiedLine()
+    {
+        var body = Writer.Write([], "My Calendar", AmsterdamZone);
+
+        body.Should().NotContain("LAST-MODIFIED");
+    }
+
+    [Fact]
+    public void Write_EveryEntry_CarriesALastModifiedLineEqualToItsStamp()
+    {
+        var timed = MakeEntry(
+            new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sourceId: 1,
+            revisedAt: new DateTime(2026, 9, 25, 8, 15, 30, DateTimeKind.Utc));
+        var allDay = MakeEntry(
+            new DateOnly(2026, 9, 21), startTime: null, sourceId: 2,
+            revisedAt: new DateTime(2026, 9, 26, 22, 1, 2, DateTimeKind.Utc));
+
+        var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
+
+        var lines = body.Split("\r\n");
+        var stampIndexes = Enumerable.Range(0, lines.Length)
+            .Where(i => lines[i].StartsWith("DTSTAMP:", StringComparison.Ordinal))
+            .ToList();
+        stampIndexes.Count.Should().Be(2);
+        lines.Count(l => l.StartsWith("LAST-MODIFIED:", StringComparison.Ordinal)).Should().Be(2);
+
+        foreach (var index in stampIndexes)
+        {
+            lines[index + 1].Should().Be("LAST-MODIFIED:" + lines[index]["DTSTAMP:".Length..]);
+        }
+
+        lines[stampIndexes[0]].Should().Be("DTSTAMP:20260925T081530Z");
+        lines[stampIndexes[1]].Should().Be("DTSTAMP:20260926T220102Z");
+    }
+
+    [Fact]
+    public void Write_SameEntryBeforeAndAfterARevision_DiffersOnlyInItsRevisionLinesAndMovedTimes()
+    {
+        var before = MakeEntry(
+            new DateOnly(2026, 9, 20), new TimeOnly(19, 0), sequence: 2,
+            revisedAt: new DateTime(2026, 9, 18, 10, 0, 0, DateTimeKind.Utc));
+        var after = MakeEntry(
+            new DateOnly(2026, 9, 27), new TimeOnly(20, 0), sequence: 3,
+            revisedAt: new DateTime(2026, 9, 25, 8, 15, 30, DateTimeKind.Utc));
+
+        var linesBefore = Writer.Write([before], "My Calendar", AmsterdamZone).Split("\r\n");
+        var linesAfter = Writer.Write([after], "My Calendar", AmsterdamZone).Split("\r\n");
+
+        linesBefore.Length.Should().Be(linesAfter.Length);
+        linesBefore.Single(l => l.StartsWith("UID:", StringComparison.Ordinal))
+            .Should().Be(linesAfter.Single(l => l.StartsWith("UID:", StringComparison.Ordinal)));
+        linesBefore.Single(l => l.StartsWith("SEQUENCE:", StringComparison.Ordinal)).Should().Be("SEQUENCE:2");
+        linesAfter.Single(l => l.StartsWith("SEQUENCE:", StringComparison.Ordinal)).Should().Be("SEQUENCE:3");
+        linesBefore.Single(l => l.StartsWith("DTSTAMP:", StringComparison.Ordinal)).Should().Be("DTSTAMP:20260918T100000Z");
+        linesAfter.Single(l => l.StartsWith("DTSTAMP:", StringComparison.Ordinal)).Should().Be("DTSTAMP:20260925T081530Z");
+        linesBefore.Single(l => l.StartsWith("LAST-MODIFIED:", StringComparison.Ordinal)).Should().Be("LAST-MODIFIED:20260918T100000Z");
+        linesAfter.Single(l => l.StartsWith("LAST-MODIFIED:", StringComparison.Ordinal)).Should().Be("LAST-MODIFIED:20260925T081530Z");
+
+        var revisionPrefixes = new[] { "DTSTAMP:", "LAST-MODIFIED:", "SEQUENCE:", "DTSTART;", "DTEND;" };
+        var differing = Enumerable.Range(0, linesBefore.Length)
+            .Where(i => linesBefore[i] != linesAfter[i])
+            .Select(i => linesBefore[i])
+            .ToList();
+
+        differing.Should().NotBeEmpty();
+        differing.Should().OnlyContain(l => revisionPrefixes.Any(p => l.StartsWith(p, StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void Write_TimedEntry_EmitsTheExactEventBlock()
     {
-        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+        // A non-default sequence number and revision time, so a fallback to either default fails.
+        var entry = MakeEntry(
+            new DateOnly(2026, 9, 20), new TimeOnly(19, 0),
+            revisedAt: new DateTime(2026, 9, 25, 8, 15, 30, DateTimeKind.Utc), sequence: 4);
 
         var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain(string.Join("\r\n",
             "BEGIN:VEVENT",
             "UID:questboard-event-1",
-            "DTSTAMP:20260917T120000Z",
+            "DTSTAMP:20260925T081530Z",
+            "LAST-MODIFIED:20260925T081530Z",
             "DTSTART;TZID=Europe/Amsterdam:20260920T190000",
             "DTEND;TZID=Europe/Amsterdam:20260920T200000",
             "SUMMARY:[The Last Bastion] Session 12",
             "TRANSP:TRANSPARENT",
-            "SEQUENCE:1",
+            "SEQUENCE:4",
             "END:VEVENT") + "\r\n");
     }
 
     [Fact]
     public void Write_AllDayEntry_EmitsTheExactEventBlock()
     {
-        var entry = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
+        var entry = MakeEntry(
+            new DateOnly(2026, 9, 21), startTime: null, sourceId: 2,
+            revisedAt: new DateTime(2026, 9, 25, 8, 15, 30, DateTimeKind.Utc), sequence: 4);
 
         var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
         body.Should().Contain(string.Join("\r\n",
             "BEGIN:VEVENT",
             "UID:questboard-event-2",
-            "DTSTAMP:20260917T120000Z",
+            "DTSTAMP:20260925T081530Z",
+            "LAST-MODIFIED:20260925T081530Z",
             "DTSTART;VALUE=DATE:20260921",
             "DTEND;VALUE=DATE:20260922",
             "SUMMARY:[The Last Bastion] Session 12",
             "TRANSP:TRANSPARENT",
-            "SEQUENCE:1",
+            "SEQUENCE:4",
             "END:VEVENT") + "\r\n");
     }
 
@@ -226,7 +336,8 @@ public class CalendarFeedWriterTests
 
         var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
-        body.Should().Contain("DTSTAMP:20260304T050607Z");
+        body.Should().Contain("DTSTAMP:20260304T050607Z\r\n");
+        body.Should().Contain("LAST-MODIFIED:20260304T050607Z\r\n");
     }
 
     [Fact]
@@ -240,7 +351,8 @@ public class CalendarFeedWriterTests
 
         var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
 
-        body.Should().Contain("DTSTAMP:20260304T050607Z");
+        body.Should().Contain("DTSTAMP:20260304T050607Z\r\n");
+        body.Should().Contain("LAST-MODIFIED:20260304T050607Z\r\n");
     }
 
     [Fact]
@@ -800,6 +912,11 @@ public class CalendarFeedWriterTests
         var stamps = lines.Where(l => l.StartsWith("DTSTAMP", StringComparison.Ordinal)).ToList();
         stamps.Count.Should().Be(2);
         stamps.Should().OnlyContain(l => Regex.IsMatch(l, @"^DTSTAMP:\d{8}T\d{6}Z$"));
+
+        // The last-modified lines are the same real instant, so they are UTC as well.
+        var modified = lines.Where(l => l.StartsWith("LAST-MODIFIED", StringComparison.Ordinal)).ToList();
+        modified.Count.Should().Be(2);
+        modified.Should().OnlyContain(l => Regex.IsMatch(l, @"^LAST-MODIFIED:\d{8}T\d{6}Z$"));
     }
 
     [Fact]

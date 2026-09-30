@@ -205,7 +205,12 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
 
         builder.Append("BEGIN:VEVENT").Append(LineBreak);
         AppendFoldedLine(builder, "UID:" + BuildUid(entry.Source, entry.SourceId));
-        AppendFoldedLine(builder, "DTSTAMP:" + FormatUtcStamp(entry.LastRevisedAt));
+        // In a calendar published without a method, DTSTAMP and LAST-MODIFIED both mean the
+        // moment the entry was last revised. Some clients read one and some read the other, so
+        // both are written from one computed string and cannot disagree.
+        var stamp = FormatUtcStamp(entry.LastRevisedAt);
+        AppendFoldedLine(builder, "DTSTAMP:" + stamp);
+        AppendFoldedLine(builder, "LAST-MODIFIED:" + stamp);
         AppendFoldedLine(builder, "DTSTART;TZID=" + tzidParameter + ":" + FormatBasicDateTime(start));
         AppendFoldedLine(builder, "DTEND;TZID=" + tzidParameter + ":" + FormatBasicDateTime(end));
         AppendFoldedLine(builder, "SUMMARY:" + BuildSummary(entry));
@@ -223,7 +228,10 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
 
         builder.Append("BEGIN:VEVENT").Append(LineBreak);
         AppendFoldedLine(builder, "UID:" + BuildUid(entry.Source, entry.SourceId));
-        AppendFoldedLine(builder, "DTSTAMP:" + FormatUtcStamp(entry.LastRevisedAt));
+        // Same pair of revision lines as the timed branch, from one computed string.
+        var stamp = FormatUtcStamp(entry.LastRevisedAt);
+        AppendFoldedLine(builder, "DTSTAMP:" + stamp);
+        AppendFoldedLine(builder, "LAST-MODIFIED:" + stamp);
         AppendFoldedLine(builder, "DTSTART;VALUE=DATE:" + FormatBasicDate(entry.Date));
         AppendFoldedLine(builder, "DTEND;VALUE=DATE:" + FormatBasicDate(end));
         AppendFoldedLine(builder, "SUMMARY:" + BuildSummary(entry));

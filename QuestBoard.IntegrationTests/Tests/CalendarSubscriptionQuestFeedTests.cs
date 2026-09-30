@@ -220,6 +220,14 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
             System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal);
     }
 
+    // The single last-modified line of a one-entry document, without its property name. Some
+    // clients read this line and some read the stamp, so the two must always name the same moment.
+    private static string LastModifiedValue(string body) =>
+        body.Split("\r\n").Single(l => l.StartsWith("LAST-MODIFIED:", StringComparison.Ordinal))["LAST-MODIFIED:".Length..];
+
+    private static string StampValue(string body) =>
+        body.Split("\r\n").Single(l => l.StartsWith("DTSTAMP:", StringComparison.Ordinal))["DTSTAMP:".Length..];
+
     private static DateTime TruncateToSeconds(DateTime value) =>
         new(value.Ticks - (value.Ticks % TimeSpan.TicksPerSecond), value.Kind);
 
@@ -687,6 +695,7 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         (firstBody.Split("SEQUENCE:1\r\n").Length - 1).Should().Be(1);
         firstBody.Should().Contain("DTSTAMP:20260105T093000Z");
         var firstStamp = ParseStamp(firstBody);
+        LastModifiedValue(firstBody).Should().Be(StampValue(firstBody));
 
         // Move the finalized date to a different date, still comfortably inside the window.
         var newDate = finalizedDate.AddDays(2);
@@ -715,6 +724,7 @@ public class CalendarSubscriptionQuestFeedTests(WebApplicationFactoryBase factor
         var secondStamp = ParseStamp(secondBody);
         secondStamp.Should().BeOnOrAfter(movedAt);
         secondStamp.Should().BeAfter(firstStamp);
+        LastModifiedValue(secondBody).Should().Be(StampValue(secondBody));
 
         // Move the finalized date outside the window entirely -- the fourth exit route, and the
         // same predicate clause the window facts below pin from the other direction.
