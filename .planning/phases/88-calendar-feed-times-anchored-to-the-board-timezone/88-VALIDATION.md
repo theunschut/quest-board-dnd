@@ -65,7 +65,7 @@ Rows are keyed by requirement (minted into REQUIREMENTS.md by 88-01 Task 2). Tas
 Existing infrastructure covers all phase requirements: the framework, `FakeBoardClock` (settable `TimeZone`, `IsDegraded`, `Today`, `Now`), the zone-variant host factory pattern from `WallClockUnmovedTests`, and the `Pacific/Auckland` id are already in use.
 
 - [ ] A shared `Amsterdam` `TimeZoneInfo` field in the test classes that construct the writer (added alongside the first rewritten fact, not a separate step) — 88-01 Task 1.
-- [ ] Optional cross-platform proof: run the quick unit filter inside the `mcr.microsoft.com/dotnet/sdk:10.0` container against the repo so the exact-byte `VTIMEZONE` facts also execute on Linux — planned as 88-04 Task 1.
+- [x] Optional cross-platform proof: run the quick unit filter inside the `mcr.microsoft.com/dotnet/sdk:10.0` container against the repo so the exact-byte `VTIMEZONE` facts also execute on Linux — planned as 88-04 Task 1. Run 2026-09-30 on mcr.microsoft.com/dotnet/sdk:10.0 against `git archive HEAD` (no volume mount): Windows 129 passed, Linux 129 passed, 0 failed on both.
 
 ---
 
