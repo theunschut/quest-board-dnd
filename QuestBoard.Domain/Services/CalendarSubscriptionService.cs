@@ -76,7 +76,7 @@ internal class CalendarSubscriptionService(
         var oneShotGroupIds = memberships.Where(m => m.BoardType == BoardType.OneShot).Select(m => m.Id).ToList();
 
         var options = feedOptions.Value;
-        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        var today = boardClock.Today;
         var windowStart = today.AddMonths(-options.MonthsBack);
         var windowEnd = today.AddMonths(options.MonthsAhead);
 
@@ -112,11 +112,10 @@ internal class CalendarSubscriptionService(
             })
             .ToList();
 
-        // FinalizedDate is a wall-clock value in the board's own zone, while the window above is
-        // derived from UTC. At this window's month granularity the difference can move a quest
-        // across a bound only within a couple of hours of the bound itself, which is accepted as
-        // negligible rather than left implicit. Called unconditionally, including when
-        // oneShotGroupIds is empty, for the same reason the event read above is unconditional.
+        // FinalizedDate is a wall-clock value in the board's own zone, and the window above is
+        // measured from the board's own date, so both sides of the comparison share one zone.
+        // Called unconditionally, including when oneShotGroupIds is empty, for the same reason
+        // the event read above is unconditional.
         var fetchedQuests = await questRepository.GetFeedQuestsForUserAsync(
             subscription.UserId, oneShotGroupIds,
             windowStart.ToDateTime(TimeOnly.MinValue), windowEnd.ToDateTime(TimeOnly.MaxValue), token);

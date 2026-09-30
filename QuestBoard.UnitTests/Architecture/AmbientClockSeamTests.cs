@@ -326,6 +326,28 @@ public class AmbientClockSeamTests
                      "that could disagree with the one the service read");
     }
 
+    // The positive check above is satisfied by the clock's name appearing anywhere in the service,
+    // which the zone read alone already does. This one pins the date: the feed window is measured
+    // from the board-local today the clock reports, and no date is derived from the UTC instant of
+    // the time provider, which sits a day off the board date for part of every day.
+    [Fact]
+    public void CalendarSubscriptionService_MeasuresTheFeedWindowFromTheBoardClocksToday()
+    {
+        var stripped = StripComments(File.ReadAllText(
+            ResolveRepoRelativePath("QuestBoard.Domain/Services/CalendarSubscriptionService.cs")));
+
+        stripped.Should().Contain("boardClock.Today",
+            because: "the feed window is anchored to the board-local date, which only the board clock supplies");
+        var utcDerivedDateLines = stripped.Split('\n')
+            .Where(line => line.Contains("FromDateTime(", StringComparison.Ordinal)
+                && line.Contains("GetUtcNow", StringComparison.Ordinal))
+            .Select(line => line.Trim())
+            .ToList();
+        utcDerivedDateLines.Should().BeEmpty(
+            because: "a date built from a UTC instant is not the board's date for part of every day -- found: " +
+                     string.Join("; ", utcDerivedDateLines));
+    }
+
     // Documents the boundary rather than leaving it implicit: EmailPreviewController's five
     // DateTime.Today uses generate sample data for the admin preview page, are never compared
     // against a stored board-local date, and are deliberately outside the seam. This file is

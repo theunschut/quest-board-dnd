@@ -121,9 +121,17 @@ public class CalendarFeedBoardZoneGuardTests
 
     private const int QuestId = 42;
 
+    // The board-local date the fake clock reports. The feed window is measured from this date,
+    // so a fake clock that left it at its default would put the window at the start of year 1.
+    private static readonly DateOnly BoardToday = new(2026, 9, 20);
+
     // One subscription for token "test-token", no event rows, and one finalized quest on a
     // one-shot board (2026-09-20 19:00), so the only entry the service builds is that quest.
-    private static CalendarSubscriptionService BuildService(IBoardClock boardClock, ICalendarFeedWriter writer)
+    private static CalendarSubscriptionService BuildService(
+        IBoardClock boardClock,
+        ICalendarFeedWriter writer,
+        TimeProvider? timeProvider = null,
+        IEventSignupRepository? eventSignupRepository = null)
     {
         var subscription = new CalendarSubscription
         {
@@ -148,10 +156,15 @@ public class CalendarFeedBoardZoneGuardTests
         subscriptionRepository.GetByTokenAsync("test-token", Arg.Any<CancellationToken>())
             .Returns(subscription);
 
-        var eventSignupRepository = Substitute.For<IEventSignupRepository>();
-        eventSignupRepository
-            .GetFeedRowsForUserAsync(Arg.Any<int>(), Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(new List<EventFeedRow>());
+        // A caller that passes its own repository has already configured the feed read it wants to
+        // observe, so the default empty-result setup is applied only to the repository built here.
+        if (eventSignupRepository == null)
+        {
+            eventSignupRepository = Substitute.For<IEventSignupRepository>();
+            eventSignupRepository
+                .GetFeedRowsForUserAsync(Arg.Any<int>(), Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                .Returns(new List<EventFeedRow>());
+        }
 
         var questRepository = Substitute.For<IQuestRepository>();
         questRepository
@@ -172,7 +185,7 @@ public class CalendarFeedBoardZoneGuardTests
             groupService,
             writer,
             boardClock,
-            TimeProvider.System,
+            timeProvider ?? TimeProvider.System,
             Options.Create(new CalendarFeedOptions()),
             new SilentLogger());
     }
@@ -185,7 +198,7 @@ public class CalendarFeedBoardZoneGuardTests
         // to the writer, and the entry it builds must still carry the stored date and time
         // untouched. This fact fails if the service substitutes another zone, or if anyone routes
         // the finalized date through a conversion upstream of the writer.
-        var clock = new FakeBoardClock { TimeZone = AucklandZone };
+        var clock = new FakeBoardClock { TimeZone = AucklandZone, Today = BoardToday };
 
         IReadOnlyList<CalendarFeedEntry>? capturedEntries = null;
         TimeZoneInfo? capturedZone = null;
@@ -214,7 +227,7 @@ public class CalendarFeedBoardZoneGuardTests
     {
         // A clock that could not resolve its configured zone falls back to UTC and says so; the
         // service still hands the writer whatever zone the clock exposes, never a fresh default.
-        var clock = new FakeBoardClock { TimeZone = TimeZoneInfo.Utc, IsDegraded = true };
+        var clock = new FakeBoardClock { TimeZone = TimeZoneInfo.Utc, IsDegraded = true, Today = BoardToday };
 
         IReadOnlyList<CalendarFeedEntry>? capturedEntries = null;
         TimeZoneInfo? capturedZone = null;
@@ -242,7 +255,7 @@ public class CalendarFeedBoardZoneGuardTests
     {
         // No special branch for a degraded clock: the same zoned path runs, and the document
         // simply declares UTC with a zero-offset observance.
-        var clock = new FakeBoardClock { TimeZone = TimeZoneInfo.Utc, IsDegraded = true };
+        var clock = new FakeBoardClock { TimeZone = TimeZoneInfo.Utc, IsDegraded = true, Today = BoardToday };
         var service = BuildService(clock, new CalendarFeedWriter());
 
         var result = await service.GetFeedAsync("test-token", TestContext.Current.CancellationToken);
@@ -252,5 +265,41 @@ public class CalendarFeedBoardZoneGuardTests
         body.Should().Contain("X-WR-TIMEZONE:UTC\r\n");
         body.Should().Contain("TZOFFSETTO:+0000\r\n");
         body.Should().NotContain("Europe/Amsterdam");
+    }
+
+    // The instant is fixed just before midnight UTC, when Auckland has already rolled over to the
+    // next day. The window has to be measured from the board's own date, so it must start from the
+    // clock's Today and never from the UTC date of the same instant.
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    [Fact]
+    public async Task GetFeedAsync_WindowIsMeasuredFromTheBoardClocksToday_NotTheUtcDate()
+    {
+        var utcInstant = new DateTimeOffset(2026, 9, 19, 23, 30, 0, TimeSpan.Zero);
+        var clock = new FakeBoardClock { TimeZone = AucklandZone, Today = new DateOnly(2026, 9, 20) };
+
+        var options = new CalendarFeedOptions();
+        DateOnly? capturedStart = null;
+        DateOnly? capturedEnd = null;
+        var eventSignupRepository = Substitute.For<IEventSignupRepository>();
+        eventSignupRepository
+            .GetFeedRowsForUserAsync(
+                Arg.Any<int>(),
+                Arg.Any<IReadOnlyCollection<int>>(),
+                Arg.Do<DateOnly>(start => capturedStart = start),
+                Arg.Do<DateOnly>(end => capturedEnd = end),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<EventFeedRow>());
+
+        var service = BuildService(
+            clock, new CalendarFeedWriter(), new FixedTimeProvider(utcInstant), eventSignupRepository);
+
+        await service.GetFeedAsync("test-token", TestContext.Current.CancellationToken);
+
+        capturedStart.Should().Be(clock.Today.AddMonths(-options.MonthsBack));
+        capturedEnd.Should().Be(clock.Today.AddMonths(options.MonthsAhead));
     }
 }
