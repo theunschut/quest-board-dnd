@@ -1,9 +1,9 @@
 ---
-status: testing
+status: complete
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T13:52:07Z
+updated: 2026-09-30T14:26:15Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -12,11 +12,7 @@ Test 5 is the local pre-deploy check of the same endpoint and has passed.
 
 ## Current Test
 
-number: 4
-name: Optional — reschedule an entry that both apps already hold and confirm it moves
-expected: |
-  The changed time shows in both Google and Apple Calendar.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -57,7 +53,9 @@ note: |
 
 ### 4. Optional but recommended — reschedule an entry that both apps already hold and confirm it moves
 expected: The changed time shows in both apps. SEQUENCE is a constant 1 and DTSTAMP is the constant CreatedAt, so a client that applies updates only on a higher revision could ignore later reschedules; this is the one design risk the byte tests cannot rule out.
-result: [pending]
+result: issue
+reported: "doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
+severity: major
 
 Record the app, the phone's OS and the date of each entry checked.
 
@@ -99,9 +97,18 @@ observed: |
 
 total: 6
 passed: 5
-issues: 0
-pending: 1
+issues: 1
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+- gap_id: G-88-4
+  truth: "Rescheduling an entry that Google and Apple Calendar already hold moves it to the new time in both apps after their next fetch"
+  status: failed
+  reason: "User reported: doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
+  severity: major
+  test: 4
+  artifacts: []  # Filled by diagnosis
+  missing: []    # Filled by diagnosis
