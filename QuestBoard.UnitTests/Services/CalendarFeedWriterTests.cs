@@ -161,14 +161,61 @@ public class CalendarFeedWriterTests
     }
 
     [Fact]
-    public void Write_AnyEntry_EmitsSequenceZero()
+    public void Write_AnyEntry_EmitsSequenceOne()
     {
         var timed = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
         var allDay = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
 
         var body = Writer.Write([timed, allDay], "My Calendar", AmsterdamZone);
 
-        body.Split("SEQUENCE:0").Length.Should().Be(3);
+        body.Split("SEQUENCE:1\r\n").Length.Should().Be(3);
+        body.Should().NotContain("SEQUENCE:0");
+    }
+
+    [Fact]
+    public void Write_EmptyEntryList_EmitsNoSequenceLine()
+    {
+        var body = Writer.Write([], "My Calendar", AmsterdamZone);
+
+        body.Should().NotContain("SEQUENCE:");
+    }
+
+    [Fact]
+    public void Write_TimedEntry_EmitsTheExactEventBlock()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        body.Should().Contain(string.Join("\r\n",
+            "BEGIN:VEVENT",
+            "UID:questboard-event-1",
+            "DTSTAMP:20260917T120000Z",
+            "DTSTART;TZID=Europe/Amsterdam:20260920T190000",
+            "DTEND;TZID=Europe/Amsterdam:20260920T200000",
+            "SUMMARY:[The Last Bastion] Session 12",
+            "TRANSP:TRANSPARENT",
+            "SEQUENCE:1",
+            "END:VEVENT") + "\r\n");
+    }
+
+    [Fact]
+    public void Write_AllDayEntry_EmitsTheExactEventBlock()
+    {
+        var entry = MakeEntry(new DateOnly(2026, 9, 21), startTime: null, sourceId: 2);
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        body.Should().Contain(string.Join("\r\n",
+            "BEGIN:VEVENT",
+            "UID:questboard-event-2",
+            "DTSTAMP:20260917T120000Z",
+            "DTSTART;VALUE=DATE:20260921",
+            "DTEND;VALUE=DATE:20260922",
+            "SUMMARY:[The Last Bastion] Session 12",
+            "TRANSP:TRANSPARENT",
+            "SEQUENCE:1",
+            "END:VEVENT") + "\r\n");
     }
 
     [Fact]
