@@ -4,7 +4,7 @@ slug: "calendar-feed-times-anchored-to-the-board-timezone"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: "2026-09-30"
 ---
@@ -45,15 +45,15 @@ Rows are keyed by requirement (minted into REQUIREMENTS.md by 88-01 Task 2). Tas
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 88-01-T1 | 88-01 | 1 | CALTZ-01 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ⬜ pending |
-| 88-02-T1, 88-02-T2, 88-04-T1 | 88-02, 88-04 | 2, 3 | CALTZ-02 | T-88-01 | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ⬜ pending |
-| 88-01-T1, 88-02-T2, 88-03-T2 | 88-01, 88-02, 88-03 | 1, 2 | CALTZ-03 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ⬜ pending |
-| 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-04 | T-88-02 | Declared zone never taken from the raw configured string | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ⬜ pending |
-| 88-02-T1, 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-05 | T-88-02, T-88-06 | Declared zone equals resolved zone (UTC fallback declared as UTC) | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ⬜ pending |
-| 88-02-T3 | 88-02 | 2 | CALTZ-06 | T-88-05 | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ⬜ pending |
-| 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-07 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | ❌ W0 (new facts) | ⬜ pending |
-| 88-01-T1, 88-02-T1, 88-03-T1 | 88-01, 88-02, 88-03 | 1, 2 | CALTZ-08 | T-88-03 | N/A | unit + integration | quick unit command; integration filter | rewrite existing | ⬜ pending |
-| 88-01-T1, 88-02-T1, 88-04-T2 | 88-01, 88-02, 88-04 | 1, 2, 3 | CALTZ-10 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~AmbientClockSeamTests"` plus writer tests | ✅ exists | ⬜ pending |
+| 88-01-T1 | 88-01 | 1 | CALTZ-01 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ✅ green |
+| 88-02-T1, 88-02-T2, 88-04-T1 | 88-02, 88-04 | 2, 3 | CALTZ-02 | T-88-01 | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ✅ green |
+| 88-01-T1, 88-02-T2, 88-03-T2 | 88-01, 88-02, 88-03 | 1, 2 | CALTZ-03 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeed"` | ❌ W0 (new facts) | ✅ green |
+| 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-04 | T-88-02 | Declared zone never taken from the raw configured string | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ✅ green |
+| 88-02-T1, 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-05 | T-88-02, T-88-06 | Declared zone equals resolved zone (UTC fallback declared as UTC) | unit + integration | quick unit command; integration filter | ❌ W0 (new facts) | ✅ green |
+| 88-02-T3 | 88-02 | 2 | CALTZ-06 | T-88-05 | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | rewrite existing | ✅ green |
+| 88-02-T2, 88-03-T1 | 88-02, 88-03 | 2 | CALTZ-07 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CalendarFeedWriterTests"` | ❌ W0 (new facts) | ✅ green |
+| 88-01-T1, 88-02-T1, 88-03-T1 | 88-01, 88-02, 88-03 | 1, 2 | CALTZ-08 | T-88-03 | N/A | unit + integration | quick unit command; integration filter | rewrite existing | ✅ green |
+| 88-01-T1, 88-02-T1, 88-04-T2 | 88-01, 88-02, 88-04 | 1, 2, 3 | CALTZ-10 | — | N/A | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~AmbientClockSeamTests"` plus writer tests | ✅ exists | ✅ green |
 | 88-04-T2 | 88-04 | 3 | CALTZ-09 | — | N/A | manual | see Manual-Only Verifications | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -83,11 +83,11 @@ Existing infrastructure covers all phase requirements: the framework, `FakeBoard
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
