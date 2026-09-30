@@ -279,9 +279,12 @@ internal class CalendarFeedWriter : ICalendarFeedWriter
 
     // DTSTAMP records when this representation of the entry was produced. It derives from the
     // entry's own CreatedAt rather than any ambient clock, so re-rendering the same occurrence
-    // twice -- even separated by a real clock change -- produces byte-identical output.
+    // twice -- even separated by a real clock change -- produces byte-identical output. The stored
+    // value is UTC but reaches here with no kind attached, so it is labelled as UTC rather than
+    // converted: a conversion would go through the host's own zone and stamp the same row
+    // differently on different machines.
     private static string FormatUtcStamp(DateTime value) =>
-        value.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+        DateTime.SpecifyKind(value, DateTimeKind.Utc).ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 
     // The local date-time form used for zoned entry times and for time-zone observance onsets.
     // It never carries a zone designator itself; the zone is declared beside it, not inside it.

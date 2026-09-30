@@ -230,6 +230,20 @@ public class CalendarFeedWriterTests
     }
 
     [Fact]
+    public void Write_EntryWithUnspecifiedKindCreatedAt_StampsTheStoredDigitsUnshifted()
+    {
+        // A stored UTC value comes back from the database with no kind attached. Converting it
+        // would treat it as the host's local time and shift the stamp by the host's offset, so the
+        // same row would stamp differently on a UTC container and on a workstation.
+        var createdAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Unspecified);
+        var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0), createdAt: createdAt);
+
+        var body = Writer.Write([entry], "My Calendar", AmsterdamZone);
+
+        body.Should().Contain("DTSTAMP:20260304T050607Z");
+    }
+
+    [Fact]
     public void Write_SameEntryTwice_ProducesByteIdenticalOutputAcrossAClockChange()
     {
         var entry = MakeEntry(new DateOnly(2026, 9, 20), new TimeOnly(19, 0));

@@ -348,6 +348,27 @@ public class AmbientClockSeamTests
                      string.Join("; ", utcDerivedDateLines));
     }
 
+    // The feed sources may hold real instants, but converting one through the host's own zone
+    // makes the output depend on the machine it renders on. A stored UTC value is stamped as the
+    // UTC value it is, and the only zone conversion permitted is the one against the zone the
+    // board clock supplied.
+    [Theory]
+    [InlineData("QuestBoard.Domain/Services/CalendarFeedWriter.cs")]
+    [InlineData("QuestBoard.Domain/Services/CalendarSubscriptionService.cs")]
+    public void CalendarFeedSources_NeverConvertThroughTheHostsLocalZone(string relativePath)
+    {
+        var stripped = StripComments(File.ReadAllText(ResolveRepoRelativePath(relativePath)));
+        var hostZoneShapes = new[] { "TimeZoneInfo.Local", "ToUniversalTime(", "ToLocalTime(" };
+
+        var offenders = hostZoneShapes
+            .Where(shape => stripped.Contains(shape, StringComparison.Ordinal))
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: $"'{relativePath}' must not convert through the host's local zone -- found: " +
+                     string.Join(", ", offenders));
+    }
+
     // Documents the boundary rather than leaving it implicit: EmailPreviewController's five
     // DateTime.Today uses generate sample data for the admin preview page, are never compared
     // against a stored board-local date, and are deliberately outside the seam. This file is
