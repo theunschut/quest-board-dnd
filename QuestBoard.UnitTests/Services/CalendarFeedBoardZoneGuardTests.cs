@@ -15,7 +15,7 @@ namespace QuestBoard.UnitTests.Services;
 // CalendarFeedWriter or CalendarSubscriptionService that started converting a stored wall-clock
 // value into another hour. Exact-byte assertion style, matching CalendarFeedWriterTests: plain
 // string assertions, no mocking of the writer itself, no snapshot framework.
-public class CalendarFeedFloatingTimeGuardTests
+public class CalendarFeedBoardZoneGuardTests
 {
     private static readonly ICalendarFeedWriter Writer = new CalendarFeedWriter();
     private static readonly TimeZoneInfo AmsterdamZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Amsterdam");
