@@ -3,13 +3,12 @@ gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 88
-current_phase_name: Calendar Feed Times Anchored to the Board Timezone
-status: verifying
-stopped_at: Completed 88-09-PLAN.md
-last_updated: "2026-09-30T16:53:36.317Z"
-last_activity: 2026-09-30
-last_activity_desc: Phase 88 execution started
-state_head: d862392a5609fe45a2ae581255c2418f70b1dcc6
+status: completed
+stopped_at: Phase 88 complete — Phases 78 and 79 still open
+last_updated: "2026-10-01T07:27:07.990Z"
+last_activity: 2026-10-01
+last_activity_desc: Phase 88 complete
+state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 progress:
   total_phases: 17
   completed_phases: 14
@@ -22,21 +21,22 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-22 — after Phase 87)
+See: .planning/PROJECT.md (updated 2026-10-01 — after Phase 88)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 88 — Calendar Feed Times Anchored to the Board Timezone
+**Current focus:** None active. Phase 88 is complete; next candidates are Phase 78 (planned) or Phase 79 (unplanned).
 
 ## Current Position
 
-Phase: 88 (Calendar Feed Times Anchored to the Board Timezone) — EXECUTING
-Plan: 9 of 9 (88-05 complete)
-Status: Phase complete — ready for verification
-Last activity: 2026-09-30 — Phase 88 execution started
+Phase: 88 complete (9/9 plans; shipped as v5.3.2 and v5.3.3)
+Plan: Not started
+Status: Phase 88 complete; not all phases complete (see below)
+Last activity: 2026-10-01 — Phase 88 complete
 
-Roadmapped and not started: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
-none executed) and Phase 79 — Character and Contact Link Cards (not yet planned). Every other
-phase in the 72–87 range is complete with a verification report.
+`phase.complete` reported Phase 88 as the milestone's last phase only because it is the highest
+phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
+none executed) and Phase 79 — Character and Contact Link Cards (not yet planned) are still open.
+Every other phase in the 72–88 range is complete with a verification report.
 
 Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
 shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
@@ -96,6 +96,10 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 88]: 88-04: Linux calendar byte-pin proof runs from git archive HEAD on stdin in a --rm SDK container with no volume mount — Uncommitted host files cannot leak in and nothing can be written back
 - [Phase 88]: 88-05: calendar feed revision is raised inside QuestBoardContext's SaveChanges overrides (not an interceptor); FeedRevision/FeedRevisedAt are store-owned, feed-visible fields are event Title/Date/StartTime/CancelledAt/GroupId and quest Title/FinalizedDate/IsFinalized/GroupId — Every construction path (DI, integration factory re-registration, direct test construction) gets the rule; comparing original to current values keeps unedited entries byte-identical
 - [Phase 88]: 88-09: architecture guidance states the revision contract and known limitations; FeedRevisionStamper.cs named high-risk; production re-test left to verify-work
+- [Phase 88]: The migration bumped every existing row once (operator choice), so entries calendars already held stale repaired themselves on the first fetch after v5.3.3. Production showed all 41 untouched entries at SEQUENCE:2, stamped at the deploy migration
+- [Phase 88]: Board rename dropped from the revision rules (operator choice). Re-signalling every entry on a renamed board needs a new IgnoreQueryFilters site; documented as a known limitation instead
+- [Phase 88]: Concurrent saves use an EF concurrency token on FeedRevision plus adopt-stored-and-retry (max 5) inside SaveChanges. A lower SEQUENCE would be a permanent lock-out, and surfacing DbUpdateConcurrencyException would turn a benign race into a 500 at any call site that missed handling it
+- [Phase 88]: Production checks run on a dedicated temporary subscription, revoked afterwards with a 410 confirmed. The "never paste the address" instruction failed twice this phase; the second time the permanent iPhone token was printed into the transcript via a token-named download file (T-88-22)
 
 ### Roadmap Evolution
 
@@ -131,6 +135,17 @@ New as of 2026-09-22:
 - Several unit tests pin a `FakeBoardClock` to a fixed date but build their fixtures from `DateTime.UtcNow`, so the gap they assert shrinks by a day for every real day that passes. `QuestServiceTests`' three completed-quest tests were fixed after one went red two days after being written; `EventSeriesMaterializationTests`, `GroupRepositoryTests`, `EmailConfirmationJobGuardTests`, `EventSeriesServiceTests` and `DailyReminderJobTests` still carry the construction. Not urgent, but each will fail on its own schedule.
 - Phase 87's human verification carries three items the operator accepted conditionally rather than proved: the board-switch banner was checked with a Pixel 8 user-agent override at 375x812 rather than on a physical device; the picker-skip path has not yet been re-checked live since its SuperAdmin gate was removed on 2026-09-28 (the operator's own account now exercises it); and the overall approval was "approved for now, tell me if anything is broken". If friction is reported later, the useful question is which part — the switch being unasked-for reopens a design decision, the banner is styling.
 
+New as of 2026-10-01 (Phase 88):
+
+- **Rolling back v5.3.3 lowers published revisions.** Redeploying v5.3.2 would publish SEQUENCE:1, and running the migration's `Down()` then `Up()` would reset every row to revision 2. Either lowers entries clients already hold at a higher SEQUENCE, so they would ignore every later change. Any rollback must be followed by a forward fix, not left in place.
+- **SQL Server concurrency path is unexercised.** The `UPDATE … WHERE FeedRevision = @original` predicate and its rollback have only been proven on the InMemory provider; UAT's optional two-tab check was dropped. The failure mode is narrow and only ever bumps upward.
+- **Phase 88 code-review info items are open, all optional:**
+  - stale "five-field VEVENT" comment
+  - garbled ETag comment
+  - availability re-post re-stamps from ambient `DateTime.UtcNow`
+  - an unset `LastRevisedAt` would publish year 1
+  - the SEQUENCE-only "(maybe)" marker limitation is missing from `.claude/architecture.md`
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -159,11 +174,13 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-09-30T16:53:31.618Z
-Stopped at: Completed 88-09-PLAN.md
+Last session: 2026-10-01
+Stopped at: Phase 88 complete; ready to pick the next phase (78 planned, 79 unplanned)
 Resume file: None
 
 ## Operator Next Steps
+
+- Rotate the iPhone calendar subscription: revoke it on the Profile page, re-subscribe the iPhone with a fresh address, and delete the downloaded `.ics` file from Downloads. Its address was exposed in a session transcript (Phase 88 T-88-22, the only open threat)
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport

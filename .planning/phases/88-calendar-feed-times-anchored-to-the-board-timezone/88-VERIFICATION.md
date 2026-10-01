@@ -1,7 +1,7 @@
 ---
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 verified: 2026-09-30T18:00:00Z
-status: human_needed
+status: passed
 score: 15/16 requirements verified (CALTZ-09 open; reschedule re-test pending)
 covered_files:
 
@@ -53,7 +53,7 @@ covered_files:
   - "QuestBoard.UnitTests/Services/CalendarFeedWriterTests.cs"
   - "QuestBoard.UnitTests/Services/CalendarSubscriptionQuestRecheckTests.cs"
 
-covered_digest: "v1:sha256:32091c187a107030400437fe692f49494bba397da72e4d49e313271fad4b4146"
+covered_digest: "v1:sha256:f7314bc506e1baab72d6c85688949eb2d5988e3f26bc42ec59c0311e9e3bf010"
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
@@ -244,3 +244,15 @@ What is not established, and cannot be from the code, is that Google and Apple a
 
 _Verified: 2026-09-30_
 _Verifier: Claude (gsd-verifier)_
+
+## Human Verification Outcome (2026-10-01)
+
+All human-verification items are complete. `88-UAT.md` is `status: complete` with 7/7 passed and 0 issues.
+
+- **Production reschedule re-test (gap G-88-4, CALTZ-09's open half):** passed on v5.3.3.
+  - Apple Calendar (test 7, 2026-09-30): an entry the iPhone already held updated after a real change. Production and the iPhone's own address both served it at `SEQUENCE:3`, with `LAST-MODIFIED`.
+  - Google Calendar (test 4, operator-confirmed 2026-10-01): a rescheduled entry Google already held moved.
+- **Two-tab concurrent edit (optional):** dropped from UAT by operator decision. The SQL Server concurrency path remains a residual note in `88-SECURITY.md`.
+- **CALTZ-09:** marked complete in REQUIREMENTS.md. That is the only change to a covered file since this report was written, so `covered_digest` was recomputed with `verification.fingerprint` over the same 47 covered files.
+
+Status moved from `human_needed` to `passed`.
