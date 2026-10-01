@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T19:19:16Z
+updated: 2026-10-01T07:25:35Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -12,7 +12,7 @@ Test 5 is the local pre-deploy check of the same endpoint and has passed.
 
 ## Current Test
 
-[testing paused — 1 item outstanding: test 4, re-check a rescheduled entry in Google Calendar]
+[testing complete]
 
 ## Tests
 
@@ -53,9 +53,8 @@ note: |
 
 ### 4. Optional but recommended — reschedule an entry that both apps already hold and confirm it moves
 expected: The changed time shows in both apps. SEQUENCE is a constant 1 and DTSTAMP is the constant CreatedAt, so a client that applies updates only on a higher revision could ignore later reschedules; this is the one design risk the byte tests cannot rule out.
-result: blocked
-blocked_by: third-party
-reason: "Re-test after gap G-88-4 was fixed in v5.3.3. Apple Calendar passes: test 7, an entry the iPhone already held updated after a real change. Google Calendar has not been re-checked for a reschedule since the fix; the operator can't check Google now. This closes once a rescheduled entry that Google already holds is seen moving in Google Calendar. Google refreshes subscribed calendars on its own schedule, and a new subscription address is the accepted fallback."
+result: pass
+observed: "Re-tested on v5.3.3 after gap G-88-4 was fixed. Apple Calendar: test 7 (2026-09-30). Google Calendar: operator confirmed pass on 2026-10-01, a rescheduled entry Google already held moved."
 first_run: "issue on v5.3.2: 'doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar' (major). Diagnosed as gap G-88-4 and fixed by plans 88-05..88-09."
 
 Record the app, the phone's OS and the date of each entry checked.
@@ -120,17 +119,17 @@ hand trace. The SQL Server predicate and rollback path is recorded as a residual
 ## Summary
 
 total: 7
-passed: 6
+passed: 7
 issues: 0
 pending: 0
 skipped: 0
-blocked: 1
+blocked: 0
 
 ## Gaps
 
 - gap_id: G-88-4
   truth: "Rescheduling an entry that Google and Apple Calendar already hold moves it to the new time in both apps after their next fetch"
-  status: failed
+  status: resolved
   reason: "User reported: doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
   severity: major
   test: 4
