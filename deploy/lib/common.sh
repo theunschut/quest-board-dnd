@@ -45,6 +45,21 @@ questboard_die() {
   exit 1
 }
 
+# Creates each DIR with MODE, including when it already exists with another
+# mode. Missing parent directories are created first and are always 755,
+# whatever the caller's umask, so a private leaf never makes its parent
+# unreadable. A plain mkdir -p -m would apply MODE to the leaf only, leave an
+# existing directory untouched, and gives no say over the parents' mode.
+# Usage: questboard_make_dir MODE DIR...
+questboard_make_dir() {
+  local mode="$1" dir
+  shift
+  for dir in "$@"; do
+    ( umask 022 && mkdir -p "$(dirname "$dir")" )
+    install -d -m "$mode" "$dir"
+  done
+}
+
 # Checks one configuration value against the pattern for its key. Prints
 # nothing; the exit status is the answer.
 questboard__conf_value_ok() {
@@ -319,15 +334,16 @@ questboard_render_mail() {
   fi
 }
 
-# Sends the rendered message in MSGFILE through the configured SMTP relay. The
-# machine's own mail transfer agent is deliberately not used. A failed send is
-# logged and never changes the deploy result: this function always returns 0.
+# Sends the rendered message in MSGFILE from FROM to TO through the SMTP relay
+# at HOST and PORT. The machine's own mail transfer agent is deliberately not
+# used. A failed send is logged and never changes the deploy result: this
+# function always returns 0. Usage: questboard_send_mail MSGFILE TO FROM HOST PORT
 questboard_send_mail() {
   local msgfile="${1:-}"
-  local to="${QUESTBOARD_NOTIFY_EMAIL:-}"
-  local from="${QUESTBOARD_MAIL_FROM:-}"
-  local host="${QUESTBOARD_SMTP_HOST:-}"
-  local port="${QUESTBOARD_SMTP_PORT:-}"
+  local to="${2:-}"
+  local from="${3:-}"
+  local host="${4:-}"
+  local port="${5:-}"
 
   if [ -z "$to" ]; then
     questboard_log "no notification recipient configured, skipping outcome mail"

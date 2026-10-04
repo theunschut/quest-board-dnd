@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced by the offline tests. Puts stand-ins for the commands that manage
 # the host (systemctl, systemd-run, pkexec, apt-get) first on PATH, so no test
 # can ever restart a service, trigger an authentication prompt or install a

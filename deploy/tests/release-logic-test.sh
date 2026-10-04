@@ -420,7 +420,7 @@ check "health: 503 never passes" "1" "$(health_status "$HEALTH_URL" 1.2.3 1 1)"
 export STUB_HEALTH_CODE=200 STUB_HEALTH_BODY=Unhealthy
 check "health: a 200 with an Unhealthy body never passes" "1" "$(health_status "$HEALTH_URL" 1.2.3 1 1)"
 
-export STUB_HEALTH_CODE=000 STUB_HEALTH_BODY= STUB_HEALTH_EXIT=7
+export STUB_HEALTH_CODE=000 STUB_HEALTH_BODY='' STUB_HEALTH_EXIT=7
 check "health: a refused connection never passes" "1" "$(health_status "$HEALTH_URL" 1.2.3 1 1)"
 unset STUB_HEALTH_EXIT
 
