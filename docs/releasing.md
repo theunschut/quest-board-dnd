@@ -128,16 +128,16 @@ gh api --method POST /repos/theunschut/quest-board-dnd/environments/deploy/deplo
 Only the repository admin role may create, move or delete a release tag.
 
 ```bash
-gh api --method POST /repos/theunschut/quest-board-dnd/rulesets \
-  -f name='release tags' \
-  -f target='tag' \
-  -f enforcement='active' \
-  -f 'conditions[ref_name][include][]=refs/tags/v*' \
-  -f 'rules[][type]=creation' \
-  -f 'rules[][type]=update' \
-  -f 'rules[][type]=deletion' \
-  -f 'bypass_actors[][actor_type]=RepositoryRole' \
-  -F 'bypass_actors[][actor_id]=5'
+gh api --method POST /repos/theunschut/quest-board-dnd/rulesets --input - <<'EOF'
+{
+  "name": "release tags",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
+  "rules": [ { "type": "creation" }, { "type": "update" }, { "type": "deletion" } ],
+  "bypass_actors": [ { "actor_type": "RepositoryRole", "actor_id": 5, "bypass_mode": "always" } ]
+}
+EOF
 ```
 
 Repository role 5 is the built-in admin role. With this ruleset, anyone who is not an admin cannot
