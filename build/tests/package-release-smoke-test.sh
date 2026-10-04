@@ -58,7 +58,9 @@ check "sha256 file verifies the zip" "0" "$?"
 
 ENTRIES="$(unzip -Z1 "$ZIP")"
 for entry in release-manifest.json app/QuestBoard.Service.dll migrator/QuestBoard.Migrator.dll deploy/systemd/questboard.service.d/10-release-layout.conf; do
-  if printf '%s\n' "$ENTRIES" | grep -qxF "$entry"; then
+  # A here-string, not a pipe: grep -q exits on the first match, and under
+  # pipefail the writer's broken pipe would turn a hit into a false miss.
+  if grep -qxF "$entry" <<<"$ENTRIES"; then
     check "zip contains $entry" "present" "present"
   else
     check "zip contains $entry" "present" "missing"

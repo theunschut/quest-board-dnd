@@ -84,7 +84,10 @@ PY
 questboard_setup__gh_version() {
   command -v gh >/dev/null 2>&1 || return 0
   local line
-  line="$(gh --version 2>/dev/null | head -n 1)" || return 0
+  # Take the first line in the shell rather than through head, so an early
+  # close cannot fail the pipeline under pipefail.
+  line="$(gh --version 2>/dev/null)" || return 0
+  line="${line%%$'\n'*}"
   printf '%s\n' "$line" | sed -n 's/^gh version \([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p'
 }
 
