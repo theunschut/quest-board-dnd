@@ -1,0 +1,28 @@
+[Unit]
+Description=Quest Board release poll and install
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/questboard-deploy poll
+RuntimeDirectory=questboard-deploy
+RuntimeDirectoryPreserve=yes
+
+# The installer runs as root, hands the database work to the application user
+# through systemd and talks to GitHub, so there is deliberately no capability
+# bounding set and no address-family restriction here. Instead the filesystem is
+# read-only except for the two places the installer has to write.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+ReadWritePaths=/opt/questboard /var/lib/questboard-deploy
