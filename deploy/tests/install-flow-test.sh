@@ -530,6 +530,155 @@ run_deploy install v1.3.0
 check "a configuration without a repository is refused" "1" "$RC"
 check "a configuration without a repository touches nothing" "" "$(calls)"
 
+# --- manual rollback ------------------------------------------------------
+
+# 1.3.0 active, 1.2.0 still on disk as the previous release.
+rollback_case() {
+  new_case "$1"
+  install_release 1.3.0
+  activate_installed 1.3.0
+  mkdir -p "${ROOT}/var/lib/questboard-deploy/state"
+  printf '1.2.0\n' > "${ROOT}/var/lib/questboard-deploy/state/previous"
+}
+
+rollback_case rb-ok
+run_deploy rollback 1.2.0
+check "rollback: exit 0" "0" "$RC"
+check "rollback: status, stop, switch, start" \
+  "migrator status 1.2.0 current=1.3.0|systemctl stop questboard.service current=1.3.0|systemctl start questboard.service current=1.2.0" \
+  "$(calls)"
+check "rollback: current names the target" "1.2.0" "$(current_version)"
+check "rollback: recorded as a manual rollback" "v1.2.0 rolled_back_manual" "$(last_attempt)"
+check "rollback: sends no mail" "0" "$(mail_count)"
+check "rollback: reports on the terminal" "yes" "$(out_has 'rolled back to release 1.2.0')"
+
+rollback_case rb-unknown
+export STUB_STATUS_EXIT=2 STUB_STATUS_JSON=""
+run_deploy rollback 1.2.0
+check "rollback to a release unaware of applied migrations: refused" "1" "$RC"
+check "rollback unknown: says why" "yes" "$(out_has 'the database holds migrations release 1.2.0 does not know')"
+check "rollback unknown: nothing changes" "migrator status 1.2.0 current=1.3.0" "$(calls)"
+check "rollback unknown: current unchanged" "1.3.0" "$(current_version)"
+check "rollback unknown: nothing recorded" "" "$(last_attempt)"
+
+rollback_case rb-pending
+export STUB_STATUS_JSON="$STATUS_PENDING"
+run_deploy rollback 1.2.0
+check "rollback to a release with pending migrations: refused" "1" "$RC"
+check "rollback pending: says to install instead" "yes" "$(out_has 'install it instead')"
+check "rollback pending: nothing changes" "migrator status 1.2.0 current=1.3.0" "$(calls)"
+
+rollback_case rb-unreadable
+export STUB_STATUS_EXIT=4 STUB_STATUS_JSON=""
+run_deploy rollback 1.2.0
+check "rollback with an unreadable database: refused" "1" "$RC"
+check "rollback unreadable: nothing changes" "migrator status 1.2.0 current=1.3.0" "$(calls)"
+
+rollback_case rb-adopted
+rm -rf "${ROOT}/opt/questboard/releases/1.2.0"
+install_release 1.2.0 adopted
+run_deploy rollback 1.2.0
+check "rollback to the adopted release: refused" "1" "$RC"
+check "rollback adopted: points at the manual restore steps" "yes" "$(out_has 'docs/deploy.md')"
+check "rollback adopted: the migrator was never run" "" "$(calls)"
+check "rollback adopted: current unchanged" "1.3.0" "$(current_version)"
+
+rollback_case rb-missing
+run_deploy rollback 1.1.0
+check "rollback to a version not on disk: refused" "1" "$RC"
+check "rollback missing: nothing runs" "" "$(calls)"
+
+rollback_case rb-active
+run_deploy rollback 1.3.0
+check "rollback to the active version: refused" "1" "$RC"
+check "rollback active: nothing runs" "" "$(calls)"
+
+rollback_case rb-badarg
+run_deploy rollback v1.2.0
+check "rollback with a tag instead of a version: refused" "1" "$RC"
+
+# --- redeploy and older tags ----------------------------------------------
+
+new_case redeploy
+run_deploy install v1.2.0
+check "redeploy: exit 0" "0" "$RC"
+check "redeploy: restart only" "systemctl restart questboard.service current=1.2.0" "$(calls)"
+check "redeploy: nothing downloaded" "0" "$(downloads_made)"
+check "redeploy: one mail" "1" "$(mail_count)"
+check "redeploy: mail says installed" "installed" "$(mail_result)"
+check "redeploy: current unchanged" "1.2.0" "$(current_version)"
+
+new_case redeploy-unhealthy
+export STUB_UNHEALTHY_VERSION=1.2.0
+run_deploy install v1.2.0
+check "redeploy unhealthy: exit non-zero" "1" "$RC"
+check "redeploy unhealthy: one mail" "1" "$(mail_count)"
+check "redeploy unhealthy: mail says failed" "failed (the service could not be restarted)" "$(mail_result)"
+
+new_case older
+run_deploy install v1.1.0
+check "an older tag: refused" "1" "$RC"
+check "an older tag: points at rollback" "yes" "$(out_has 'use rollback')"
+check "an older tag: no mail" "0" "$(mail_count)"
+check "an older tag: no record" "" "$(last_attempt)"
+check "an older tag: nothing downloaded or run" "" "$(calls)"
+check "an older tag: nothing downloaded" "0" "$(downloads_made)"
+
+new_case badtag
+run_deploy install 1.3.0
+check "a tag without the v prefix: refused" "1" "$RC"
+check "a tag without the v prefix: no mail" "0" "$(mail_count)"
+
+# --- installer update notice ----------------------------------------------
+
+new_case update-notice
+printf '# local change\n' >> "${ROOT}/usr/local/lib/questboard-deploy/common.sh"
+before="$(sha256sum "${ROOT}/usr/local/lib/questboard-deploy/common.sh" "${ROOT}/usr/local/sbin/questboard-deploy" | paste -sd' ' -)"
+run_deploy install v1.3.0
+after="$(sha256sum "${ROOT}/usr/local/lib/questboard-deploy/common.sh" "${ROOT}/usr/local/sbin/questboard-deploy" | paste -sd' ' -)"
+check "update notice: install succeeds" "0" "$RC"
+check "update notice: mail announces the update" "yes" \
+  "$(has_text "${ROOT}/mail/mail-1.eml" 'Installer update available: run setup from release 1.3.0')"
+check "update notice: installed files are never modified" "$before" "$after"
+
+new_case missing-installed-copy
+rm -f "${ROOT}/usr/local/lib/questboard-deploy/release.sh"
+run_deploy install v1.3.0
+check "update notice: a missing installed file counts as a difference" "yes" \
+  "$(has_text "${ROOT}/mail/mail-1.eml" 'Installer update available')"
+
+# --- a real packaged release installs through its own installer -----------
+
+if [ -n "${QUESTBOARD_TEST_PACKAGED_ZIP:-}" ]; then
+  zip_path="$QUESTBOARD_TEST_PACKAGED_ZIP"
+  pkg_version="$(unzip -p "$zip_path" release-manifest.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
+  new_case packaged
+  rm -rf "${ROOT}/opt/questboard/releases/1.2.0"
+  install_release 0.0.0
+  activate_installed 0.0.0
+  rm -rf "${ROOT}/dl"
+  mkdir -p "${ROOT}/dl/v${pkg_version}"
+  cp "$zip_path" "${ROOT}/dl/v${pkg_version}/questboard-v${pkg_version}.zip"
+  ( cd "${ROOT}/dl/v${pkg_version}" \
+    && sha256sum "questboard-v${pkg_version}.zip" > "questboard-v${pkg_version}.zip.sha256" )
+  printf 'bundle' > "${ROOT}/dl/v${pkg_version}/questboard-v${pkg_version}.zip.sigstore.json"
+  export STUB_LATEST_TAG="v${pkg_version}"
+  shipped="${BASE}/shipped"
+  rm -rf "$shipped"
+  mkdir -p "$shipped"
+  unzip -q "$zip_path" 'deploy/bin/*' 'deploy/lib/*' -d "$shipped"
+  install_deploy_copies "${shipped}/deploy"
+  RC=0
+  bash "${shipped}/deploy/bin/questboard-deploy" install "v${pkg_version}" > "${ROOT}/out.log" 2>&1 || RC=$?
+  check "packaged zip: the shipped installer installs it" "0" "$RC"
+  check "packaged zip: current names its version" "$pkg_version" "$(current_version)"
+  check "packaged zip: one mail" "1" "$(mail_count)"
+  check "packaged zip: mail says installed" "installed" "$(mail_result)"
+  check "packaged zip: recorded" "v${pkg_version} installed" "$(last_attempt)"
+else
+  printf 'SKIP: packaged zip not supplied\n'
+fi
+
 check "host commands were never called" "" "$(host_guard_calls)"
 
 if [ "$FAILURES" -gt 0 ]; then
