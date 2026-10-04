@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 88
-current_phase_name: 9/9 plans; shipped as v5.3.2 and v5.3.3
+current_phase: 89
+current_phase_name: pull-based-release-deployment
 status: executing
 stopped_at: Phase 89 context gathered
-last_updated: "2026-10-04T19:25:51.298Z"
-last_activity: 2026-10-01
-last_activity_desc: Phase 88 complete
+last_updated: "2026-10-04T19:32:06.816Z"
+last_activity: 2026-10-04
+last_activity_desc: Phase 89 execution started
 progress:
   total_phases: 18
   completed_phases: 15
@@ -25,14 +25,14 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 See: .planning/PROJECT.md (updated 2026-10-01 — after Phase 88)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** None active. Phase 88 is complete; next candidates are Phase 78 (planned) or Phase 79 (unplanned).
+**Current focus:** Phase 89 — pull-based-release-deployment
 
 ## Current Position
 
-Phase: 88 complete (9/9 plans; shipped as v5.3.2 and v5.3.3)
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-01 — Phase 88 complete
+Phase: 89 (pull-based-release-deployment) — EXECUTING
+Plan: 1 of 12
+Status: Executing Phase 89
+Last activity: 2026-10-04 — Phase 89 execution started
 
 `phase.complete` reported Phase 88 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
