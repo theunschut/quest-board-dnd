@@ -28,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="..\QuestBoard.Service\QuestBoard.Service.csproj" />
     <ProjectReference Include="..\QuestBoard.Repository\QuestBoard.Repository.csproj" />
+    <ProjectReference Include="..\QuestBoard.Migrator\QuestBoard.Migrator.csproj" />
   </ItemGroup>
 
   <ItemGroup>
