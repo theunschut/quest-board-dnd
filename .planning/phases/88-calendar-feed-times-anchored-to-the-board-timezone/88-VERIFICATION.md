@@ -1,9 +1,10 @@
 ---
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 verified: 2026-09-30T18:00:00Z
-status: human_needed
+status: passed
 score: 15/16 requirements verified (CALTZ-09 open; reschedule re-test pending)
 covered_files:
+
   - ".claude/architecture.md"
   - ".planning/REQUIREMENTS.md"
   - ".planning/phases/88-calendar-feed-times-anchored-to-the-board-timezone/88-01-PLAN.md"
@@ -51,7 +52,8 @@ covered_files:
   - "QuestBoard.UnitTests/Services/CalendarFeedRevisionInputTests.cs"
   - "QuestBoard.UnitTests/Services/CalendarFeedWriterTests.cs"
   - "QuestBoard.UnitTests/Services/CalendarSubscriptionQuestRecheckTests.cs"
-covered_digest: "v1:sha256:32091c187a107030400437fe692f49494bba397da72e4d49e313271fad4b4146"
+
+covered_digest: "v1:sha256:f7314bc506e1baab72d6c85688949eb2d5988e3f26bc42ec59c0311e9e3bf010"
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
@@ -62,6 +64,7 @@ re_verification:
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "Production reschedule re-test (UAT test 4 / gap G-88-4), after the v5.3.3 deploy: on a phone that already holds a game night from the subscription (Google Calendar and, separately, Apple Calendar), change that game night's time or title on the board, then let the calendar fetch the feed"
     expected: "The already-held entry moves to the new time or title in place, with no duplicate. The one-time migration bump means entries held before the deploy should also repair on the first fetch after it (SEQUENCE 2 and a later stamp). Record app, OS and date of each entry checked; promise no refresh latency. If Google keeps the old time, the accepted resolution is a new subscription address."
     why_human: "Whether a third-party client replaces a held entry on a higher SEQUENCE and later DTSTAMP is client behaviour; no byte test can show it. The first UAT run failed exactly here. This is CALTZ-09's open half and the only evidence that can close G-88-4 end to end."
@@ -241,3 +244,15 @@ What is not established, and cannot be from the code, is that Google and Apple a
 
 _Verified: 2026-09-30_
 _Verifier: Claude (gsd-verifier)_
+
+## Human Verification Outcome (2026-10-01)
+
+All human-verification items are complete. `88-UAT.md` is `status: complete` with 7/7 passed and 0 issues.
+
+- **Production reschedule re-test (gap G-88-4, CALTZ-09's open half):** passed on v5.3.3.
+  - Apple Calendar (test 7, 2026-09-30): an entry the iPhone already held updated after a real change. Production and the iPhone's own address both served it at `SEQUENCE:3`, with `LAST-MODIFIED`.
+  - Google Calendar (test 4, operator-confirmed 2026-10-01): a rescheduled entry Google already held moved.
+- **Two-tab concurrent edit (optional):** dropped from UAT by operator decision. The SQL Server concurrency path remains a residual note in `88-SECURITY.md`.
+- **CALTZ-09:** marked complete in REQUIREMENTS.md. That is the only change to a covered file since this report was written, so `covered_digest` was recomputed with `verification.fingerprint` over the same 47 covered files.
+
+Status moved from `human_needed` to `passed`.

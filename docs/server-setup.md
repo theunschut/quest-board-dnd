@@ -1,6 +1,6 @@
 # Self-Hosted Server Setup
 
-Deploys the Quest Board app to Proxmox using LXC containers. The GitHub Actions runner lives on the App CT itself — no separate deploy CT needed.
+Deploys the Quest Board app to Proxmox using LXC containers. The App CT pulls attested releases from GitHub on a timer, verifies them and installs them itself. GitHub has no runner or credential on the App CT, so no separate deploy CT is needed.
 
 ## Architecture
 
@@ -8,13 +8,17 @@ Deploys the Quest Board app to Proxmox using LXC containers. The GitHub Actions 
 Internet ──80/443──► [Traefik]  already running, handles SSL
                           │
                      :5000│
-                     [App CT]  .NET 10 + systemd + GitHub Actions runner
+                     [App CT]  .NET 10 + systemd + release poll timer
                           │
                     :1433 │
                     [SQL Server CT]  already exists
 
-GitHub ──HTTPS──► [App CT runner]  outbound only, no inbound ports needed
+[App CT] ──HTTPS──► GitHub  the App CT polls outbound; nothing on GitHub connects to it
 ```
+
+Cutting a release is described in [releasing.md](releasing.md). Operating the installer on the
+server (outcomes, rollback, restoring a backup, moving an older install over) is described in
+[deploy.md](deploy.md).
 
 ---
 
@@ -46,7 +50,7 @@ apt update && apt install -y aspnetcore-runtime-10.0
 ```bash
 useradd -m -s /bin/bash questboard
 mkdir -p /opt/questboard
-chown questboard:questboard /opt/questboard
+chown root:root /opt/questboard
 mkdir -p /etc/questboard
 ```
 
@@ -67,44 +71,6 @@ EOF
 
 chmod 600 /etc/questboard/env
 chown questboard:questboard /etc/questboard/env
-```
-
-### Create the deploy script
-
-```bash
-cat > /home/questboard/deploy.sh <<'EOF'
-#!/bin/bash
-set -e
-
-TAG=$1
-REPO="theunschut/dnd-quest-board"   # update if repo name differs
-
-if [ -z "$TAG" ]; then
-  echo "Usage: deploy.sh <tag>"
-  exit 1
-fi
-
-echo "Deploying $TAG..."
-wget -q -O /tmp/questboard.zip "https://github.com/$REPO/releases/download/$TAG/questboard-$TAG.zip"
-
-sudo systemctl stop questboard
-rm -rf /opt/questboard/*
-unzip -q /tmp/questboard.zip -d /opt/questboard/
-rm /tmp/questboard.zip
-sudo systemctl start questboard
-echo "Done: $TAG deployed."
-EOF
-
-chmod +x /home/questboard/deploy.sh
-chown questboard:questboard /home/questboard/deploy.sh
-```
-
-### Allow questboard to restart the service
-
-```bash
-echo "questboard ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop questboard, /usr/bin/systemctl start questboard" \
-  > /etc/sudoers.d/questboard
-chmod 440 /etc/sudoers.d/questboard
 ```
 
 ### Create the systemd service
@@ -131,20 +97,22 @@ systemctl daemon-reload
 systemctl enable questboard
 ```
 
-### Install the GitHub Actions runner
+This is the base unit. The deploy tooling's `setup` command adds a drop-in
+(`/etc/systemd/system/questboard.service.d/10-release-layout.conf`) that points `WorkingDirectory`
+and `ExecStart` at `/opt/questboard/current/app`, so the base unit does not need to change when a
+release is installed. On a fresh CT, do not start the service yet: there is no release installed
+until the first install has run.
 
-Go to your GitHub repository → **Settings → Actions → Runners → New self-hosted runner**.
-Select **Linux / x64** and follow the shown commands. Install it under `/home/questboard/actions-runner/` as the `questboard` user.
+### Install the deploy tooling
 
-After configuration, install and start it as a service:
+The App CT installs releases with `questboard-deploy`, a root-owned installer that a systemd timer
+runs every few minutes. It is delivered inside each release and put in place once by its `setup`
+command, which also installs the GitHub CLI it needs, the poll units and the `deploy.conf`
+settings file, and arranges `/opt/questboard/releases` and the `current` link.
 
-```bash
-cd /home/questboard/actions-runner
-sudo ./svc.sh install questboard
-sudo ./svc.sh start
-```
-
-Verify the runner appears as **Online** in GitHub → Settings → Actions → Runners.
+Follow [deploy.md](deploy.md) for the steps, which depend on whether this is a fresh CT or an
+existing one that is already running an older install. Before the first release is cut, the
+one-time GitHub settings in [releasing.md](releasing.md) need to exist.
 
 ---
 
@@ -228,28 +196,22 @@ Do **not** expose port 5000 (app), 1433 (SQL Server), or 22 (SSH) to the interne
 
 ## 5. Deploying
 
-### First deploy (manual)
+Releases are cut from GitHub and installed by the App CT itself. Cutting one (tag, notes,
+approval) is in [releasing.md](releasing.md). What the server does with it, and what to do when an
+install fails or has to be put back, is in [deploy.md](deploy.md).
 
-After the CT is set up, trigger the first deploy from GitHub:
-
-**Actions → Binary Release → Run workflow** → enter the latest tag (e.g. `v1.0.0`)
-
-Or run it directly on the App CT:
+The two everyday commands, both run as root on the App CT:
 
 ```bash
-sudo -u questboard /opt/questboard/deploy.sh v1.0.0
+# Install or redeploy one release by hand (also overrides a release the poll is skipping)
+questboard-deploy install v1.2.3
+
+# Switch back to a release that is still on disk (version without the v)
+questboard-deploy rollback 1.2.2
 ```
 
-### Subsequent deploys
-
-Push a semver tag — the workflow builds, releases, and deploys automatically:
-
-```bash
-git tag v1.2.3
-git push origin v1.2.3
-```
-
-To redeploy an existing release without a new tag: **Actions → Binary Release → Run workflow** → enter the tag.
+Normally neither is needed: the timer installs a newly published release within about five
+minutes.
 
 ---
 
@@ -259,8 +221,8 @@ To redeploy an existing release without a new tag: **Actions → Binary Release 
 # App logs
 journalctl -u questboard -f
 
-# Runner logs
-journalctl -u actions.runner.* -f
+# Release poll and install logs
+journalctl -u questboard-deploy-poll.service -f
 
 # Traefik logs (on Traefik host)
 journalctl -u traefik -f

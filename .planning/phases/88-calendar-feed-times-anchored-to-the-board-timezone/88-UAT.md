@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 phase: 88-calendar-feed-times-anchored-to-the-board-timezone
 source: [88-VERIFICATION.md]
 started: 2026-09-30T11:45:23Z
-updated: 2026-09-30T18:15:46Z
+updated: 2026-10-01T07:25:35Z
 ---
 
 Tests 1–4 need the production deployment: Google and Apple fetch the feed from their own servers,
@@ -12,12 +12,7 @@ Test 5 is the local pre-deploy check of the same endpoint and has passed.
 
 ## Current Test
 
-number: 7
-name: Re-test of gap G-88-4 on production after the v5.3.3 deploy — a rescheduled or retitled entry moves in both apps
-expected: |
-  After v5.3.3 is deployed, a rescheduled or retitled entry that Google and Apple already hold shows
-  the new time or title in place, with no duplicate, after each app's next fetch.
-awaiting: user response (after the v5.3.3 deploy)
+[testing complete]
 
 ## Tests
 
@@ -58,9 +53,9 @@ note: |
 
 ### 4. Optional but recommended — reschedule an entry that both apps already hold and confirm it moves
 expected: The changed time shows in both apps. SEQUENCE is a constant 1 and DTSTAMP is the constant CreatedAt, so a client that applies updates only on a higher revision could ignore later reschedules; this is the one design risk the byte tests cannot rule out.
-result: issue
-reported: "doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
-severity: major
+result: pass
+observed: "Re-tested on v5.3.3 after gap G-88-4 was fixed. Apple Calendar: test 7 (2026-09-30). Google Calendar: operator confirmed pass on 2026-10-01, a rescheduled entry Google already held moved."
+first_run: "issue on v5.3.2: 'doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar' (major). Diagnosed as gap G-88-4 and fixed by plans 88-05..88-09."
 
 Record the app, the phone's OS and the date of each entry checked.
 
@@ -100,18 +95,33 @@ observed: |
 
 ### 7. Re-test of gap G-88-4 on production after the v5.3.3 deploy — a rescheduled or retitled entry moves in both apps
 expected: After v5.3.3 is deployed, reschedule (or retitle) an entry that Google Calendar and Apple Calendar already hold. After each app's next fetch, the entry shows the new time or title in place under the same event, with no duplicate. Entries held from before the deploy should also repair on their first fetch, because the migration moved every existing entry to SEQUENCE:2. To attribute the fetch, confirm "Last fetched" advances on an Apple-only subscription row before checking the iPhone. Promise no refresh latency. For Google, a new subscription address is the accepted fallback.
-result: [pending]
+result: pass
+observed: |
+  2026-09-30, on v5.3.3 in production. The operator changed "GameNight: Blood on the Clocktower"
+  (questboard-event-64), an entry the iPhone already held, and it updated on the iPhone (Apple Calendar,
+  direct "Subscribed" calendar). Before that, a first report ("it's merged and deployed. However, my iphone
+  still shows the old time after a fetch") turned out to be a mix-up, not a defect: the edit had been
+  made to a different event ("Gamenight", questboard-event-62, moved to 17:15) than the one being
+  watched on the phone.
+  Server-side evidence from the same session:
+  - A temporary production subscription (revoked afterwards) and the iPhone's own address, downloaded
+    in a browser, both served v5.3.3. All 42 entries carried LAST-MODIFIED. 41 untouched entries were
+    at SEQUENCE:2, stamped at the deploy migration (2026-09-30T18:33:25Z). The edited event was at
+    SEQUENCE:3, with DTSTAMP = LAST-MODIFIED = its save time (18:40:25Z) and the new DTSTART.
+  - The response came straight from Kestrel with a fresh ETag; no caching proxy is in the path.
+  Google was not re-checked separately for this test. Its earlier behaviour is in tests 1–2.
 
-### 8. Optional — two-tab concurrent edit against the local SQL Server
-expected: Open the same event in two browser tabs on the local dev server and save both with different feed-visible changes. Both saves succeed with no error page, the event's FeedRevision rises by one per save and never goes down, and the feed shows the later values. The concurrency-token retry has so far only been proven on the InMemory provider.
-result: [pending]
+An optional test 8 (a two-tab concurrent edit against the local SQL Server) was dropped from this UAT
+by operator decision on 2026-09-30. Two browser tabs don't reach the race, because each save reloads
+the row. The concurrency fix rests on six FeedRevisionStamperTests (InMemory) and the security audit's
+hand trace. The SQL Server predicate and rollback path is recorded as a residual note in 88-SECURITY.md.
 
 ## Summary
 
-total: 8
-passed: 5
-issues: 1
-pending: 2
+total: 7
+passed: 7
+issues: 0
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -119,7 +129,7 @@ blocked: 0
 
 - gap_id: G-88-4
   truth: "Rescheduling an entry that Google and Apple Calendar already hold moves it to the new time in both apps after their next fetch"
-  status: failed
+  status: resolved
   reason: "User reported: doesn't seem to work. I checked it's fetched after the change, but it's not updated in my calendar"
   severity: major
   test: 4
@@ -145,3 +155,18 @@ blocked: 0
     - "DTSTAMP (and optionally LAST-MODIFIED) from the entry's last revision time instead of CreatedAt"
     - "Tests rewritten so a rescheduled entry proves a higher SEQUENCE and a later DTSTAMP, while an unedited entry stays byte-identical between fetches (ETag/304 and determinism pins intact)"
   debug_session: ".planning/debug/calendar-reschedule-not-propagating.md"
+  resolved_by: [88-05, 88-06, 88-07, 88-08, 88-09]
+  resolved_at: 2026-09-30
+  resolution: "Shipped in v5.3.3 and re-tested on production as test 7 (pass)."
+
+- gap_id: G-88-7
+  truth: "After the v5.3.3 deploy, a rescheduled entry that Apple Calendar already holds moves to its new time after the iPhone's next fetch"
+  status: resolved
+  reason: "User reported: it's merged and deployed. However, my iphone still shows the old time after a fetch"
+  severity: major
+  test: 7
+  root_cause: "Not a defect. The edit had been made to a different event (Gamenight, questboard-event-62) than the one being watched on the iPhone (GameNight: Blood on the Clocktower, questboard-event-64). Production and the iPhone's own address both served the edited event at SEQUENCE:3 with its new DTSTART. Once the watched event was changed, it updated on the iPhone."
+  artifacts: []
+  missing: []
+  resolved_at: 2026-09-30
+  resolution: "Closed without a code change; test 7 passes."

@@ -1085,7 +1085,7 @@ Plans:
 **Goal:** A game night set for 18:00 on the board shows as 18:00 in every subscriber's phone calendar, whichever calendar app they use — instead of 19:00 on one phone and 20:00 on another, as it does today.
 **Requirements**: CALTZ-01, CALTZ-02, CALTZ-03, CALTZ-04, CALTZ-05, CALTZ-06, CALTZ-07, CALTZ-08, CALTZ-09, CALTZ-10, CALTZ-11, CALTZ-12, CALTZ-13, CALTZ-14, CALTZ-15, CALTZ-16
 **Depends on:** No hard dependency. It builds on Phase 84's writer and Phase 85's quest entries, and needs the board timezone that Phase 86 introduced (`IBoardClock.TimeZone`, configured by `TimeZoneOptions.BoardTimeZoneId`, default `Europe/Amsterdam`).
-**Plans:** 9/9 plans executed
+**Plans:** 9/9 plans complete
 
 **Origin:** raised by the operator on 2026-09-30 from production use. A quest set to 18:00 on the board appears as 19:00 in the operator's phone calendar and as 20:00 on a friend's phone.
 
@@ -1129,6 +1129,72 @@ Plans:
 **Gap closure G-88-4 — Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 88-09-PLAN.md — Architecture guidance and validation rewritten, full suite, byte pins proven on Linux, the migration and bump proven on the local SQL Server, and the production reschedule re-test handed to verify-work (gap wave 3)
+
+### Phase 89: Pull-Based Release Deployment
+
+**Goal:** A tagged release reaches production because the server goes and fetches it, not because GitHub pushes it there. The server checks for new releases on a timer, verifies the download, installs it, and confirms the app came back healthy. GitHub does not need a runner, credential or any other link to the production box.
+**Requirements**: TBD
+**Depends on:** No hard dependency on earlier v9.0 phases. It touches the release pipeline and the server, not application behaviour.
+**Plans:** 9/12 plans executed
+
+**Origin:** raised by the operator on 2026-10-04: bring this app's deployment in line with the `ing-dashboard` project. The deploy should be a pull, not a push through a runner, so GitHub never has a handle on the server.
+
+**How it works today:** `binary-release.yml` builds and publishes `questboard-<tag>.zip` to a GitHub release on a hosted runner when a `v*.*.*` tag is pushed. Its `deploy` job then runs with `runs-on: self-hosted` and calls `/home/questboard/deploy.sh <tag>`. That runner is a GitHub Actions runner registered to this public repository and installed on the production App CT (`docs/server-setup.md`, section "Install the GitHub Actions runner"). Any workflow that targets `self-hosted` therefore runs code on the production server. The deploy script exists only on the server, not in the repo. It downloads the zip with `wget`, runs `rm -rf /opt/questboard/*`, unzips and restarts. It does no integrity check, no health check and no rollback.
+
+**Reference model — `ing-dashboard` (`deploy/`, `.github/workflows/release.yml`, `docs/deploy.md`):**
+
+- A hosted runner builds the archive and attests its provenance with `actions/attest-build-provenance`. It saves the sigstore bundle as a release asset and attaches everything to a **draft** release. Approval through a `deploy` environment publishes that release, and approval is the only manual step.
+- On the server, a systemd timer (`*-deploy-poll.timer`: 2 min after boot, then every 5 min with jitter) reads the public `releases/latest` endpoint without a token. When it finds a newer version, it hands the tag to an installer that lives in the repo and ships inside each release.
+- The installer downloads the archive and its bundle and runs `gh attestation verify` offline, refusing anything that fails. It unpacks into a versioned `releases/<version>` directory and switches the active release. It then restarts the app and waits for `/health`. If the new release comes up unhealthy and no migration ran, it rolls back automatically; if a migration ran, it stops for a person instead. It records the outcome by email, in metrics and in the journal.
+- Manual subcommands are `poll`, `install <tag>`, `rollback <version>` and `verify`.
+
+**Scope notes:**
+
+- **This is a port, not a copy.** `ing-dashboard` runs a separate EF migration bundle before activating a release. This app applies migrations in `context.Database.Migrate()` on startup instead, so "did a migration run" has to be worked out differently. One option is to compare the release's migration list with `__EFMigrationsHistory` before and after. The rollback hazard is unchanged: once a newer schema is in place, putting the previous release back is unsafe.
+- **Remove the push path completely.** Delete the `deploy` job and its `workflow_dispatch` redeploy input from `binary-release.yml`. A manual redeploy becomes an `install <tag>` run on the server. Deregistering the runner from the repository and uninstalling it from the App CT are operator steps, so the plan has to hand them over explicitly. If the runner stays registered, a later workflow could still target it.
+- **The installer moves into the repo.** Replace the server-only `/home/questboard/deploy.sh` with a versioned script and systemd units under a `deploy/` directory, and rewrite `docs/server-setup.md` sections 3–5 to match.
+- **The Docker path is untouched.** `docker-publish.yml`, the `Dockerfile` and `docker-compose.yml` stay a working self-host route with no new setup steps.
+- **Mind the email budget.** The Resend relay has a hard daily send limit. A 5-minute poll that emails on every run would use it up, so only install outcomes should send mail, not idle polls.
+- **Keep the existing paths.** `/opt/questboard`, `/etc/questboard/.env` and `questboard.service` stay where they are unless the discuss pass decides otherwise, so the first pull-based deploy does not also become a relocation.
+
+**Requires a discuss-phase decision:** whether to adopt provenance attestation and offline verification, or settle for a checksum; whether to add the draft-release approval gate, or keep "push a tag, it ships"; how failed installs are reported (email, journal only, or metrics); and the poll interval.
+
+Plans:
+**Wave 1**
+
+- [x] 89-01-PLAN.md — Tracer: release artifact contract (package script, migrator status, /health version header, versioned-layout drop-in) plus DB-less migrator guards
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 89-02-PLAN.md — Migrator backup and all-or-nothing apply, gated real-SQL proof, migrator-sql CI job
+- [x] 89-03-PLAN.md — Installer core: config loader, secret-free mail, outcome decision, remember-and-skip, activation, pruning
+- [x] 89-04-PLAN.md — release.yml (build, test, attest, draft, approved publish), tag validation, GitHub settings checker; binary-release.yml removed
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 89-05-PLAN.md — Installer verification (checksum, pinned attestation, main ancestry) and release handling (staging, migrator via systemd-run, health wait)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 89-06-PLAN.md — questboard-deploy dispatcher: poll, install, rollback, verify; full outcome-matrix flow tests
+- [x] 89-07-PLAN.md — Poll unit and timer, deploy.conf, setup with adoption of the running install, SQL-CT backup pruning
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 89-08-PLAN.md — Network tamper-refusal test, workstation release verifier, CI jobs for scripts, lint and network
+- [x] 89-09-PLAN.md — docs/deploy.md, docs/releasing.md, server-setup.md rewrite, PROJECT.md env path fix
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 89-10-PLAN.md — Operator handover 1: hosted CI proof, GitHub gates, first attested release
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 89-11-PLAN.md — Operator handover 2: workstation verification, CT cutover with setup, first pull-based install
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 89-12-PLAN.md — Operator handover 3: retire the self-hosted runner, two-sided verification, idle-poll mail check
 
 ## Backlog
 
