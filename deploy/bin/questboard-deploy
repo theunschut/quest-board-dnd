@@ -1,0 +1,537 @@
+#!/usr/bin/env bash
+# questboard-deploy: pull-based installer for QuestBoard releases.
+#
+#   questboard-deploy poll                      install a strictly newer published release
+#   questboard-deploy install vX.Y.Z            install (or redeploy) one release by hand
+#   questboard-deploy rollback X.Y.Z            switch back to a release still on disk
+#   questboard-deploy verify --artifact F --bundle F --tag vX.Y.Z
+#   questboard-deploy setup [--from DIR] [--confirm-adopt-version X.Y.Z]
+#
+# Runs as root. Every state-changing subcommand holds one lock, so a timer run
+# and an operator can never act at the same time. Nothing here rewrites the
+# installer itself: updating it is always a separate, deliberate setup run.
+set -euo pipefail
+umask 022
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+DEPLOY_ROOT="${QUESTBOARD_DEPLOY_ROOT:-}"
+LOCK_PATH="${DEPLOY_ROOT}/run/questboard-deploy/deploy.lock"
+STATE_DIR="${DEPLOY_ROOT}/var/lib/questboard-deploy/state"
+DOWNLOAD_DIR="${DEPLOY_ROOT}/var/lib/questboard-deploy/downloads"
+RELEASES_DIR="${DEPLOY_ROOT}/opt/questboard/releases"
+CURRENT_LINK="${DEPLOY_ROOT}/opt/questboard/current"
+CONF_PATH="${QUESTBOARD_DEPLOY_CONF:-${DEPLOY_ROOT}/etc/questboard/deploy.conf}"
+ENV_FILE="${DEPLOY_ROOT}/etc/questboard/env"
+APP_SERVICE="questboard.service"
+
+if [ -f "${SCRIPT_DIR}/../lib/common.sh" ]; then
+  LIB_DIR="$(cd "${SCRIPT_DIR}/../lib" && pwd)"
+else
+  LIB_DIR="${DEPLOY_ROOT}/usr/local/lib/questboard-deploy"
+fi
+
+for _library in common.sh verify.sh release.sh deploy.sh; do
+  if [ ! -f "${LIB_DIR}/${_library}" ]; then
+    printf 'questboard-deploy: library %s not found in %s\n' "$_library" "$LIB_DIR" >&2
+    exit 1
+  fi
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/${_library}"
+done
+unset _library
+
+# Set by poll so a download that cannot reach GitHub is a quiet retry, not an error.
+INVOKED_BY_POLL=0
+
+# State of the install attempt in progress, read by finish.
+TAG=""
+VERSION=""
+STARTED=""
+
+# 1 while this script has stopped the application and not yet started it
+# again. The exit trap uses it to never leave the board down by accident.
+APP_STOPPED=0
+
+usage() {
+  cat <<'EOF'
+Usage:
+  questboard-deploy poll
+  questboard-deploy install vX.Y.Z
+  questboard-deploy rollback X.Y.Z
+  questboard-deploy verify --artifact FILE --bundle FILE --tag vX.Y.Z
+  questboard-deploy setup [--from DIR] [--confirm-adopt-version X.Y.Z]
+EOF
+}
+
+require_root() {
+  if [ -n "$DEPLOY_ROOT" ]; then
+    return 0
+  fi
+  [ "$(id -u)" -eq 0 ] || questboard_die "must be run as root"
+}
+
+acquire_lock() {
+  mkdir -p "$(dirname "$LOCK_PATH")"
+  exec 9>"$LOCK_PATH"
+  flock -n 9 || questboard_die "another questboard-deploy invocation is already running"
+}
+
+# Every effective value is either a default set here or a line the loader
+# validated. Same-named environment variables are deliberately ignored.
+load_configuration() {
+  QUESTBOARD_GITHUB_REPO=""
+  QUESTBOARD_SIGNER_WORKFLOW=".github/workflows/release.yml"
+  QUESTBOARD_NOTIFY_EMAIL=""
+  QUESTBOARD_MAIL_FROM=""
+  QUESTBOARD_SMTP_HOST=""
+  QUESTBOARD_SMTP_PORT=25
+  QUESTBOARD_KEEP_RELEASES=5
+  QUESTBOARD_HEALTH_TIMEOUT_SECONDS=120
+  QUESTBOARD_HEALTH_URL="http://127.0.0.1:5000/health"
+
+  questboard_load_conf "$CONF_PATH"
+  [ -n "$QUESTBOARD_GITHUB_REPO" ] || questboard_die "QUESTBOARD_GITHUB_REPO is not set in ${CONF_PATH}"
+}
+
+app_stop() {
+  systemctl stop "$APP_SERVICE" || return 1
+  APP_STOPPED=1
+}
+
+app_start() {
+  if systemctl start "$APP_SERVICE"; then
+    APP_STOPPED=0
+    return 0
+  fi
+  questboard_log "starting ${APP_SERVICE} returned an error"
+  APP_STOPPED=0
+  return 1
+}
+
+# Last resort when the script dies between stopping and starting the application.
+rescue_app() {
+  local status=$?
+  if [ "$APP_STOPPED" -eq 1 ]; then
+    questboard_log "exiting with the application stopped; starting it again"
+    systemctl start "$APP_SERVICE" || questboard_log "could not start ${APP_SERVICE}"
+  fi
+  return "$status"
+}
+trap rescue_app EXIT
+
+# Waits for the release VERSION to report healthy, asking for the version header
+# only when that release's manifest says it serves one.
+check_health() {
+  local version="$1" flag=0 header
+  header="$(questboard_manifest_get "${RELEASES_DIR}/${version}" healthVersionHeader 2>/dev/null || true)"
+  if [ "$header" = "true" ]; then
+    flag=1
+  fi
+  questboard_wait_for_health "$QUESTBOARD_HEALTH_URL" "$version" "$QUESTBOARD_HEALTH_TIMEOUT_SECONDS" "$flag"
+}
+
+# Runs one migrator subcommand for RELEASE_DIR. The migrator's final stdout line
+# goes to MIGRATOR_OUTPUT and its exit code to MIGRATOR_RC.
+MIGRATOR_OUTPUT=""
+MIGRATOR_RC=0
+run_migrator() {
+  local out="" rc=0
+  out="$(questboard_run_migrator "$@")" || rc=$?
+  MIGRATOR_OUTPUT="$(printf '%s\n' "$out" | sed '/^[[:space:]]*$/d' | tail -n 1)"
+  MIGRATOR_RC=$rc
+}
+
+# The single exit point of an install attempt: records it, sends the one
+# outcome mail, logs one line, cleans the download and exits. Nothing else in
+# this script sends mail.
+#   finish OUTCOME REASON [extra mail flags...]
+finish() {
+  local outcome="$1" reason="$2"
+  shift 2
+
+  questboard_record_attempt "$STATE_DIR" "$TAG" "$outcome"
+
+  local mailfile finished
+  finished="$(questboard_utc_now)"
+  if [ -n "$QUESTBOARD_NOTIFY_EMAIL" ]; then
+    mailfile="$(mktemp)"
+    local args=(--to "$QUESTBOARD_NOTIFY_EMAIL" --from "$QUESTBOARD_MAIL_FROM"
+      --outcome "$outcome" --version "$VERSION" --started "$STARTED" --finished "$finished")
+    if [ -n "$reason" ]; then
+      args+=(--reason "$reason")
+    fi
+    if questboard_render_mail "${args[@]}" "$@" > "$mailfile"; then
+      questboard_send_mail "$mailfile"
+    else
+      questboard_log "the outcome mail could not be composed"
+    fi
+    rm -f "$mailfile"
+  fi
+
+  questboard_log "outcome=${outcome} tag=${TAG} reason=${reason:-none}"
+  rm -rf "${DOWNLOAD_DIR:?}/${VERSION}"
+
+  if [ "$outcome" = "installed" ]; then
+    exit 0
+  fi
+  exit 1
+}
+
+# Asks the outcome table what a stage result means; sets OUTCOME and ACTION.
+OUTCOME=""
+ACTION=""
+decide() {
+  local decision
+  decision="$(questboard_decide_outcome "$@")" \
+    || questboard_die "internal error: no outcome for stage $1 result $2"
+  OUTCOME="${decision%% *}"
+  ACTION="${decision##* }"
+}
+
+# Ends the attempt for a stage that changed nothing on the running system:
+# the staged release (when there is one) is removed and the outcome comes from
+# the table.
+#   stop_attempt STAGE RESULT REASON HAS_PREVIOUS
+stop_attempt() {
+  local stage="$1" result="$2" reason="$3" has_previous="$4"
+  rm -rf "${RELEASES_DIR:?}/${VERSION}" "${RELEASES_DIR:?}/.staging-${VERSION}"
+  decide "$stage" "$result" 0 "$has_previous"
+  finish "$OUTCOME" "$reason"
+}
+
+# A manual redeploy of the active release: restart and health check, no download.
+redeploy_active() {
+  STARTED="$(questboard_utc_now)"
+  questboard_log "redeploying the active release ${VERSION}"
+  if ! systemctl restart "$APP_SERVICE"; then
+    questboard_log "restarting ${APP_SERVICE} returned an error"
+  fi
+  if check_health "$VERSION"; then
+    finish installed ""
+  fi
+  finish failed restart_failed
+}
+
+cmd_install() {
+  TAG="${1:-}"
+  questboard_is_strict_tag "$TAG" || questboard_die "install needs a release tag like v1.2.3"
+  VERSION="${TAG#v}"
+
+  local active=""
+  active="$(questboard_active_version "$CURRENT_LINK")"
+  local has_previous=0
+  if [ -n "$active" ]; then
+    questboard_is_plain_version "$active" \
+      || questboard_die "the active release directory is not named like a version: ${active}"
+    has_previous=1
+    if [ "$active" = "$VERSION" ]; then
+      redeploy_active
+    fi
+    if ! questboard_semver_gt "$VERSION" "$active"; then
+      questboard_die "refusing ${TAG}: not newer than the active release ${active}; use rollback"
+    fi
+  fi
+
+  STARTED="$(questboard_utc_now)"
+
+  local zip_name="questboard-${TAG}.zip"
+  local dl="${DOWNLOAD_DIR}/${VERSION}"
+  rm -rf "$dl"
+  mkdir -p "$DOWNLOAD_DIR"
+  chmod 700 "$DOWNLOAD_DIR"
+  mkdir -m 700 "$dl"
+
+  local asset rc
+  for asset in "$zip_name" "${zip_name}.sha256" "${zip_name}.sigstore.json"; do
+    rc=0
+    questboard_download_asset "$QUESTBOARD_GITHUB_REPO" "$TAG" "$asset" "${dl}/${asset}" || rc=$?
+    if [ "$rc" -eq 2 ]; then
+      stop_attempt verify fail asset_missing "$has_previous"
+    elif [ "$rc" -ne 0 ]; then
+      rm -rf "$dl"
+      if [ "$INVOKED_BY_POLL" -eq 1 ]; then
+        questboard_log "GitHub unreachable while downloading ${TAG}; the next poll retries"
+        exit 0
+      fi
+      questboard_die "could not download ${asset} for ${TAG}"
+    fi
+  done
+
+  if ! questboard_verify_checksum "$dl" "$zip_name"; then
+    stop_attempt verify fail checksum_mismatch "$has_previous"
+  fi
+
+  local commit=""
+  if ! commit="$(questboard_verify_attestation "${dl}/${zip_name}" "${dl}/${zip_name}.sigstore.json" \
+      "$QUESTBOARD_GITHUB_REPO" "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${TAG}")"; then
+    stop_attempt verify fail attestation_failed "$has_previous"
+  fi
+  if ! questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main; then
+    stop_attempt verify fail not_on_main "$has_previous"
+  fi
+
+  rc=0
+  questboard_stage_release "${dl}/${zip_name}" "$RELEASES_DIR" "$VERSION" || rc=$?
+  if [ "$rc" -eq 3 ]; then
+    stop_attempt content invalid invalid_content "$has_previous"
+  elif [ "$rc" -ne 0 ]; then
+    stop_attempt content disk insufficient_disk "$has_previous"
+  fi
+
+  local new_dir="${RELEASES_DIR}/${VERSION}"
+
+  run_migrator "$new_dir" "$ENV_FILE" status
+  if [ "$MIGRATOR_RC" -eq 2 ]; then
+    stop_attempt status unknown_applied database_ahead "$has_previous"
+  elif [ "$MIGRATOR_RC" -eq 3 ]; then
+    stop_attempt status non_transactional non_transactional_migration "$has_previous"
+  elif [ "$MIGRATOR_RC" -ne 0 ]; then
+    stop_attempt status error database_unreachable "$has_previous"
+  fi
+
+  local status_json="$MIGRATOR_OUTPUT" pending db_exists
+  pending="$(questboard_json_list_length "$status_json" pending 2>/dev/null)" || pending=""
+  db_exists="$(questboard_json_get "$status_json" databaseExists 2>/dev/null)" || db_exists=""
+  if ! [[ "$pending" =~ ^[0-9]+$ ]]; then
+    stop_attempt status error database_unreachable "$has_previous"
+  fi
+
+  local backup_name=""
+  if [ "$pending" -gt 0 ] && [ "$db_exists" = "true" ]; then
+    run_migrator "$new_dir" "$ENV_FILE" backup --label "$TAG"
+    if [ "$MIGRATOR_RC" -ne 0 ]; then
+      stop_attempt backup fail backup_failed "$has_previous"
+    fi
+    backup_name="$(questboard_json_get "$MIGRATOR_OUTPUT" backupName 2>/dev/null || true)"
+  fi
+
+  if ! app_stop; then
+    app_start || true
+    rm -rf "${RELEASES_DIR:?}/${VERSION}"
+    finish failed restart_failed
+  fi
+
+  local migrated=0
+  if [ "$pending" -gt 0 ]; then
+    run_migrator "$new_dir" "$ENV_FILE" apply
+    if [ "$MIGRATOR_RC" -ne 0 ]; then
+      # The migration ran in one transaction that rolled back, and the link
+      # was never moved, so the previous release is simply started again.
+      app_start || true
+      local previous_flag=()
+      if [ -n "$active" ]; then
+        if check_health "$active"; then
+          previous_flag=(--previous-healthy yes)
+        else
+          previous_flag=(--previous-healthy no)
+        fi
+      fi
+      rm -rf "${RELEASES_DIR:?}/${VERSION}"
+      decide apply fail 0 "$has_previous"
+      finish "$OUTCOME" apply_failed "${previous_flag[@]}"
+    fi
+    migrated=1
+  fi
+
+  local remembered_previous
+  remembered_previous="$(questboard_previous_version "$STATE_DIR")"
+  questboard_activate_release "$VERSION" "$RELEASES_DIR" "$CURRENT_LINK" "$STATE_DIR"
+  app_start || true
+
+  if check_health "$VERSION"; then
+    questboard_prune_releases "$RELEASES_DIR" "$CURRENT_LINK" "$STATE_DIR" "$QUESTBOARD_KEEP_RELEASES" || true
+    local extras=()
+    if questboard_deploy_files_differ "$new_dir" "$DEPLOY_ROOT"; then
+      extras=(--update-from "$VERSION")
+    fi
+    decide health ok "$migrated" "$has_previous"
+    finish "$OUTCOME" "" "${extras[@]}"
+  fi
+
+  decide health fail "$migrated" "$has_previous"
+  case "$ACTION" in
+    switch_back)
+      app_stop || true
+      questboard_activate_release "$active" "$RELEASES_DIR" "$CURRENT_LINK" "$STATE_DIR"
+      if [ -n "$remembered_previous" ]; then
+        printf '%s\n' "$remembered_previous" > "${STATE_DIR}/previous"
+      else
+        rm -f "${STATE_DIR}/previous"
+      fi
+      app_start || true
+      local prev_health=no
+      if check_health "$active"; then
+        prev_health=yes
+      fi
+      rm -rf "${RELEASES_DIR:?}/${VERSION}"
+      finish "$OUTCOME" unhealthy --previous-healthy "$prev_health"
+      ;;
+    leave)
+      # The new release stays active; systemd keeps retrying it.
+      if [ "$OUTCOME" = "halted" ] && [ -n "$backup_name" ]; then
+        finish "$OUTCOME" unhealthy --backup "$backup_name"
+      fi
+      finish "$OUTCOME" unhealthy
+      ;;
+    *)
+      questboard_die "internal error: unexpected action ${ACTION}"
+      ;;
+  esac
+}
+
+cmd_poll() {
+  local tag="" rc=0
+  tag="$(questboard_fetch_latest_tag "$QUESTBOARD_GITHUB_REPO")" || rc=$?
+  if [ "$rc" -eq 1 ]; then
+    questboard_log "GitHub unreachable; the next poll retries"
+    return 0
+  elif [ "$rc" -eq 3 ]; then
+    questboard_log "no published release yet"
+    return 0
+  elif [ "$rc" -ne 0 ]; then
+    questboard_log "could not read the latest release; the next poll retries"
+    return 0
+  fi
+
+  if ! questboard_is_strict_tag "$tag"; then
+    questboard_log "the latest release tag is not a plain vMAJOR.MINOR.PATCH version; ignoring it"
+    return 0
+  fi
+
+  local version="${tag#v}" active=""
+  active="$(questboard_active_version "$CURRENT_LINK")"
+  if [ -n "$active" ] && questboard_is_plain_version "$active" \
+      && ! questboard_semver_gt "$version" "$active"; then
+    questboard_log "nothing newer than ${active}"
+    return 0
+  fi
+
+  local remembered
+  remembered="$(questboard_remembered_outcome "$STATE_DIR" "$tag")"
+  if [ -n "$remembered" ]; then
+    questboard_log "skipping ${tag}: ${remembered} earlier; run questboard-deploy install ${tag} to try it again"
+    return 0
+  fi
+
+  INVOKED_BY_POLL=1
+  cmd_install "$tag"
+}
+
+cmd_rollback() {
+  local version="${1:-}"
+  questboard_is_plain_version "$version" || questboard_die "rollback needs a version like 1.2.3"
+  local target="${RELEASES_DIR}/${version}"
+  [ -d "$target" ] || questboard_die "release ${version} is not on disk"
+
+  local active=""
+  active="$(questboard_active_version "$CURRENT_LINK")"
+  [ "$active" != "$version" ] || questboard_die "release ${version} is already the active release"
+
+  local adopted=""
+  adopted="$(questboard_manifest_get "$target" adopted 2>/dev/null || true)"
+  if [ "$adopted" = "true" ] || ! questboard_release_has_migrator "$target"; then
+    questboard_die "release ${version} predates the bundled migrator, so whether the database still suits it cannot be checked; restore the pre-migration backup by hand as described in docs/deploy.md, then roll back"
+  fi
+
+  run_migrator "$target" "$ENV_FILE" status
+  if [ "$MIGRATOR_RC" -eq 2 ]; then
+    questboard_die "the database holds migrations release ${version} does not know"
+  elif [ "$MIGRATOR_RC" -ne 0 ]; then
+    questboard_die "cannot read the database state"
+  fi
+  local pending
+  pending="$(questboard_json_list_length "$MIGRATOR_OUTPUT" pending 2>/dev/null)" || pending=""
+  [[ "$pending" =~ ^[0-9]+$ ]] || questboard_die "cannot read the database state"
+  if [ "$pending" -gt 0 ]; then
+    questboard_die "the database is behind release ${version}; install it instead"
+  fi
+
+  app_stop || questboard_die "could not stop ${APP_SERVICE}"
+  questboard_activate_release "$version" "$RELEASES_DIR" "$CURRENT_LINK" "$STATE_DIR"
+  app_start || true
+
+  if ! check_health "$version"; then
+    questboard_die "release ${version} is active but did not become healthy"
+  fi
+
+  questboard_record_attempt "$STATE_DIR" "v${version}" rolled_back_manual
+  questboard_log "outcome=rolled_back_manual tag=v${version} reason=none"
+  printf 'rolled back to release %s\n' "$version"
+}
+
+cmd_verify() {
+  local artifact="" bundle="" tag=""
+  while [ $# -gt 0 ]; do
+    [ $# -ge 2 ] || questboard_die "missing value for $1"
+    case "$1" in
+      --artifact) artifact="$2" ;;
+      --bundle) bundle="$2" ;;
+      --tag) tag="$2" ;;
+      *) questboard_die "unknown option $1" ;;
+    esac
+    shift 2
+  done
+  [ -n "$artifact" ] && [ -n "$bundle" ] && [ -n "$tag" ] \
+    || questboard_die "verify needs --artifact, --bundle and --tag"
+  questboard_is_strict_tag "$tag" || questboard_die "verify needs a release tag like v1.2.3"
+
+  local commit=""
+  commit="$(questboard_verify_attestation "$artifact" "$bundle" "$QUESTBOARD_GITHUB_REPO" \
+    "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${tag}")" \
+    || questboard_die "attestation check failed for ${tag}"
+  questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main \
+    || questboard_die "the attested commit is not on main"
+  printf '%s\n' "$commit"
+}
+
+cmd_setup() {
+  [ -f "${LIB_DIR}/setup.sh" ] || questboard_die "setup library not found in ${LIB_DIR}"
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/setup.sh"
+  questboard_setup_main "$(cd "${SCRIPT_DIR}/../.." && pwd)" "$@"
+}
+
+main() {
+  local command="${1:-}"
+  [ $# -eq 0 ] || shift
+
+  case "$command" in
+    setup)
+      require_root
+      acquire_lock
+      cmd_setup "$@"
+      ;;
+    verify)
+      load_configuration
+      cmd_verify "$@"
+      ;;
+    poll)
+      require_root
+      load_configuration
+      acquire_lock
+      cmd_poll
+      ;;
+    install)
+      require_root
+      load_configuration
+      acquire_lock
+      cmd_install "${1:-}"
+      ;;
+    rollback)
+      require_root
+      load_configuration
+      acquire_lock
+      cmd_rollback "${1:-}"
+      ;;
+    -h|--help)
+      usage
+      ;;
+    *)
+      usage >&2
+      questboard_die "unknown command: ${command:-none}"
+      ;;
+  esac
+}
+
+main "$@"

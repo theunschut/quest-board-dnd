@@ -730,3 +730,6 @@ FodyWeavers.xsd
 .planning/milestone.lock
 # GSD debug sessions live under .planning/debug/ and are tracked; the Visual Studio [Dd]ebug/ rule above would otherwise swallow them
 !.planning/debug/
+
+# The [Bb]in/ rule above would hide the deploy installer entry point; re-include only that directory
+!/deploy/bin/
