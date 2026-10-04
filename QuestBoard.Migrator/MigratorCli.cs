@@ -63,7 +63,26 @@ public static class MigratorCli
                 return RunStatus(context, stdout);
             }
 
-            stderr.WriteLine("usage: QuestBoard.Migrator status");
+            if (args.Length == 1 && args[0] == "apply")
+            {
+                using var context = contextFactory();
+                return RunApply(context, stdout, stderr);
+            }
+
+            if (args.Length >= 1 && args[0] == "backup")
+            {
+                var label = args.Length == 3 && args[1] == "--label" ? args[2] : null;
+                if (!MigrationRunner.IsValidBackupLabel(label))
+                {
+                    stderr.WriteLine("usage: QuestBoard.Migrator backup --label <label> (label: 1-64 of A-Z a-z 0-9 . _ -)");
+                    return (int)MigratorExitCode.Error;
+                }
+
+                using var context = contextFactory();
+                return RunBackup(context, label!, stdout, stderr);
+            }
+
+            stderr.WriteLine("usage: QuestBoard.Migrator status | backup --label <label> | apply");
             return (int)MigratorExitCode.Error;
         }
         catch (MigratorConfigurationException ex)
@@ -84,6 +103,54 @@ public static class MigratorCli
             stderr.WriteLine($"unexpected failure: {ex.GetType().Name}");
             return (int)MigratorExitCode.Error;
         }
+    }
+
+    private static int RunBackup(DbContext context, string label, TextWriter stdout, TextWriter stderr)
+    {
+        try
+        {
+            var backupName = new MigrationRunner(context).Backup(label);
+            stdout.WriteLine(JsonSerializer.Serialize(new { backupName }, JsonOptions));
+            return (int)MigratorExitCode.Ok;
+        }
+        catch (MigratorBackupException ex)
+        {
+            // Statement-phase failure: the SQL error number and message come from executing
+            // BACKUP, not from the connection, so they are safe to show.
+            stderr.WriteLine(DescribeStatementFailure("backup failed", ex.SqlErrorNumber, ex.SqlErrorMessage ?? ex.Message));
+            return (int)MigratorExitCode.BackupFailed;
+        }
+    }
+
+    private static int RunApply(DbContext context, TextWriter stdout, TextWriter stderr)
+    {
+        try
+        {
+            var applied = new MigrationRunner(context).ApplyAtomically();
+            stdout.WriteLine(JsonSerializer.Serialize(new { applied }, JsonOptions));
+            return (int)MigratorExitCode.Ok;
+        }
+        catch (MigratorDatabaseAheadException ex)
+        {
+            stderr.WriteLine($"database is ahead of this build; unknown migrations: {string.Join(", ", ex.UnknownMigrations)}");
+            return (int)MigratorExitCode.DatabaseAhead;
+        }
+        catch (MigratorNonTransactionalException ex)
+        {
+            stderr.WriteLine($"refusing to apply; non-transactional pending migrations: {string.Join(", ", ex.Migrations)}");
+            return (int)MigratorExitCode.NonTransactionalPending;
+        }
+        catch (MigratorApplyException ex)
+        {
+            stderr.WriteLine(DescribeStatementFailure("apply failed and was rolled back", ex.SqlErrorNumber, ex.SqlErrorMessage));
+            return (int)MigratorExitCode.ApplyFailedRolledBack;
+        }
+    }
+
+    private static string DescribeStatementFailure(string text, int? sqlErrorNumber, string? sqlErrorMessage)
+    {
+        var line = sqlErrorNumber is { } number ? $"{text} (sql error {number})" : text;
+        return string.IsNullOrWhiteSpace(sqlErrorMessage) ? line : $"{line}: {sqlErrorMessage}";
     }
 
     private static int RunStatus(DbContext context, TextWriter stdout)

@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -42,16 +43,206 @@ public sealed class MigratorConnectionException : Exception
 }
 
 /// <summary>
+/// The database holds migrations this build does not ship, so applying would run an older
+/// schema over newer data. Carries migration ids only.
+/// </summary>
+public sealed class MigratorDatabaseAheadException(IReadOnlyList<string> unknownMigrations)
+    : Exception("the database holds migrations this build does not know")
+{
+    public IReadOnlyList<string> UnknownMigrations { get; } = unknownMigrations;
+}
+
+/// <summary>
+/// A pending migration cannot run inside a single transaction, so the batch is refused before
+/// anything is written. Carries migration ids only.
+/// </summary>
+public sealed class MigratorNonTransactionalException(IReadOnlyList<string> migrations)
+    : Exception("pending migrations cannot be applied atomically")
+{
+    public IReadOnlyList<string> Migrations { get; } = migrations;
+}
+
+/// <summary>The pre-migration backup could not be taken.</summary>
+public sealed class MigratorBackupException : Exception
+{
+    public MigratorBackupException(string message, int? sqlErrorNumber = null, string? sqlErrorMessage = null)
+        : base(message)
+    {
+        SqlErrorNumber = sqlErrorNumber;
+        SqlErrorMessage = sqlErrorMessage;
+    }
+
+    public int? SqlErrorNumber { get; }
+
+    public string? SqlErrorMessage { get; }
+}
+
+/// <summary>Applying migrations failed; the transaction was rolled back, so nothing changed.</summary>
+public sealed class MigratorApplyException : Exception
+{
+    public MigratorApplyException(int? sqlErrorNumber = null, string? sqlErrorMessage = null)
+        : base("applying migrations failed and was rolled back")
+    {
+        SqlErrorNumber = sqlErrorNumber;
+        SqlErrorMessage = sqlErrorMessage;
+    }
+
+    public int? SqlErrorNumber { get; }
+
+    public string? SqlErrorMessage { get; }
+}
+
+/// <summary>
 /// Inspects migrations for any <see cref="DbContext"/>. Kept generic over the context so the
 /// logic can be exercised in tests with small hand-written contexts and no database.
 /// </summary>
-public sealed class MigrationRunner(DbContext context)
+public sealed class MigrationRunner(DbContext context, TimeProvider? timeProvider = null)
 {
     // SQL Server refuses these inside a user transaction, or they change database-wide settings
     // that a rolled-back transaction cannot restore, so a migration using them cannot be applied atomically.
     private static readonly Regex ForbiddenText = new(
         @"ALTER\s+DATABASE|FULLTEXT|MEMORY_OPTIMIZED",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static readonly Regex BackupLabelPattern = new(
+        @"^[A-Za-z0-9._-]{1,64}$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static readonly TimeSpan BackupCommandTimeout = TimeSpan.FromMinutes(30);
+
+    private static readonly TimeSpan ApplyCommandTimeout = TimeSpan.FromMinutes(10);
+
+    private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
+
+    public static bool IsValidBackupLabel(string? label) =>
+        label is not null && BackupLabelPattern.IsMatch(label);
+
+    public static string BuildBackupFileName(string label, DateTimeOffset utcNow) =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"questboard-premigration-{label}-{utcNow.UtcDateTime:yyyyMMdd'T'HHmmss'Z'}.bak");
+
+    /// <summary>
+    /// Takes a copy-only backup so the regular backup chain is not disturbed. BACKUP cannot run
+    /// inside a transaction, so this never opens one. The file name is bare, which makes SQL
+    /// Server write it to the instance's default backup directory.
+    /// </summary>
+    public string Backup(string label)
+    {
+        if (!IsValidBackupLabel(label))
+        {
+            throw new ArgumentException("backup label must match ^[A-Za-z0-9._-]{1,64}$", nameof(label));
+        }
+
+        try
+        {
+            // The existence check talks to master, so it also works when the target database is missing.
+            if (!context.GetService<IRelationalDatabaseCreator>().Exists())
+            {
+                throw new MigratorBackupException("the database does not exist, so there is nothing to back up");
+            }
+
+            context.Database.OpenConnection();
+        }
+        catch (DbException ex)
+        {
+            throw new MigratorConnectionException((ex as SqlException)?.Number);
+        }
+
+        try
+        {
+            context.Database.SetCommandTimeout(BackupCommandTimeout);
+
+            var databaseName = context.Database.GetDbConnection().Database;
+            var fileName = BuildBackupFileName(label, clock.GetUtcNow());
+
+            // Interpolation turns every value into a SQL parameter; BACKUP accepts variables for
+            // the database, the device and the set name.
+            context.Database.ExecuteSql(
+                $"BACKUP DATABASE {databaseName} TO DISK = {fileName} WITH COPY_ONLY, CHECKSUM, INIT, NAME = {fileName}");
+
+            return fileName;
+        }
+        catch (DbException ex)
+        {
+            throw new MigratorBackupException("the backup failed", (ex as SqlException)?.Number, ex.Message);
+        }
+        finally
+        {
+            context.Database.CloseConnection();
+        }
+    }
+
+    /// <summary>
+    /// Applies every pending migration or none. EF Core commits after each migration unless the
+    /// caller owns the transaction, so the runner opens one around the whole batch; owning it
+    /// also skips EF's own migration lock, which is safe only because the app is stopped and the
+    /// installer holds its own lock. Refusals happen before anything is written.
+    /// </summary>
+    public IReadOnlyList<string> ApplyAtomically()
+    {
+        var status = GetStatus();
+
+        if (status.Unknown.Count > 0)
+        {
+            throw new MigratorDatabaseAheadException(status.Unknown);
+        }
+
+        if (status.NonTransactional.Count > 0)
+        {
+            throw new MigratorNonTransactionalException(status.NonTransactional);
+        }
+
+        if (status.Pending.Count == 0)
+        {
+            return [];
+        }
+
+        if (!status.DatabaseExists)
+        {
+            try
+            {
+                // CREATE DATABASE cannot run inside a transaction. If the batch then fails, a fresh
+                // host is left with an empty database, which the previous release can still start on.
+                context.GetService<IRelationalDatabaseCreator>().Create();
+            }
+            catch (DbException ex)
+            {
+                throw new MigratorApplyException((ex as SqlException)?.Number, ex.Message);
+            }
+        }
+
+        try
+        {
+            context.Database.OpenConnection();
+        }
+        catch (DbException ex)
+        {
+            throw new MigratorConnectionException((ex as SqlException)?.Number);
+        }
+
+        try
+        {
+            context.Database.SetCommandTimeout(ApplyCommandTimeout);
+
+            using var transaction = context.Database.BeginTransaction();
+            context.Database.Migrate();
+            transaction.Commit();
+        }
+        catch (Exception ex)
+        {
+            // Leaving the using block without Commit disposes the transaction, which rolls back
+            // the schema changes and the history rows together.
+            var sql = ex as SqlException ?? ex.InnerException as SqlException;
+            throw new MigratorApplyException(sql?.Number, sql?.Message);
+        }
+        finally
+        {
+            context.Database.CloseConnection();
+        }
+
+        return status.Pending;
+    }
 
     public MigrationStatus GetStatus()
     {
