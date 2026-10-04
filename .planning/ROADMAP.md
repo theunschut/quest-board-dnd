@@ -1135,7 +1135,7 @@ Plans:
 **Goal:** A tagged release reaches production because the server goes and fetches it, not because GitHub pushes it there. The server checks for new releases on a timer, verifies the download, installs it, and confirms the app came back healthy. GitHub does not need a runner, credential or any other link to the production box.
 **Requirements**: TBD
 **Depends on:** No hard dependency on earlier v9.0 phases. It touches the release pipeline and the server, not application behaviour.
-**Plans:** 1/12 plans executed
+**Plans:** 4/12 plans executed
 
 **Origin:** raised by the operator on 2026-10-04: bring this app's deployment in line with the `ing-dashboard` project. The deploy should be a pull, not a push through a runner, so GitHub never has a handle on the server.
 
@@ -1166,9 +1166,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 89-02-PLAN.md — Migrator backup and all-or-nothing apply, gated real-SQL proof, migrator-sql CI job
-- [ ] 89-03-PLAN.md — Installer core: config loader, secret-free mail, outcome decision, remember-and-skip, activation, pruning
-- [ ] 89-04-PLAN.md — release.yml (build, test, attest, draft, approved publish), tag validation, GitHub settings checker; binary-release.yml removed
+- [x] 89-02-PLAN.md — Migrator backup and all-or-nothing apply, gated real-SQL proof, migrator-sql CI job
+- [x] 89-03-PLAN.md — Installer core: config loader, secret-free mail, outcome decision, remember-and-skip, activation, pruning
+- [x] 89-04-PLAN.md — release.yml (build, test, attest, draft, approved publish), tag validation, GitHub settings checker; binary-release.yml removed
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
