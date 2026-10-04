@@ -214,7 +214,7 @@ questboard_setup_install_files() {
     questboard_log "created ${CONF_PATH} from the example"
   fi
 
-  mkdir -p -m 700 "$STATE_DIR" "$DOWNLOAD_DIR"
+  questboard_make_dir 700 "$STATE_DIR" "$DOWNLOAD_DIR"
   mkdir -p "$RELEASES_DIR"
 
   # The same defaults the dispatcher applies, so a configuration that omits a

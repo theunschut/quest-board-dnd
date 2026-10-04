@@ -298,17 +298,23 @@ check "an unknown reason has no label" "1" "$(status_of questboard_reason_label 
 
 printf 'Subject: test\r\n\r\nbody\r\n' > "$MAIL_FILE"
 
-export QUESTBOARD_NOTIFY_EMAIL="" QUESTBOARD_MAIL_FROM="noreply@example.com"
-export QUESTBOARD_SMTP_HOST="192.168.6.13" QUESTBOARD_SMTP_PORT="25"
+MAIL_FROM_ADDR="noreply@example.com"
+MAIL_RELAY_HOST="192.168.6.13"
+MAIL_RELAY_PORT="25"
 rm -f "$STUB_CURL_LOG"
-send_log="$(questboard_send_mail "$MAIL_FILE" 2>&1)"
+send_log="$(questboard_send_mail "$MAIL_FILE" "" "$MAIL_FROM_ADDR" "$MAIL_RELAY_HOST" "$MAIL_RELAY_PORT" 2>&1)"
 check "send_mail with an empty recipient does not call curl" "no" \
   "$([ -e "$STUB_CURL_LOG" ] && echo yes || echo no)"
 check "send_mail with an empty recipient logs one line" "1" "$(printf '%s\n' "$send_log" | wc -l)"
 
-export QUESTBOARD_NOTIFY_EMAIL="ops@example.com"
+rm -f "$STUB_CURL_LOG"
+send_log="$(questboard_send_mail "$MAIL_FILE" "ops@example.com" "$MAIL_FROM_ADDR" "" "$MAIL_RELAY_PORT" 2>&1)"
+check "send_mail with no relay host does not call curl" "no" \
+  "$([ -e "$STUB_CURL_LOG" ] && echo yes || echo no)"
+check "send_mail with no relay host logs one line" "1" "$(printf '%s\n' "$send_log" | wc -l)"
+
 export STUB_CURL_OUT="" STUB_CURL_EXIT=0
-questboard_send_mail "$MAIL_FILE"
+questboard_send_mail "$MAIL_FILE" "ops@example.com" "$MAIL_FROM_ADDR" "$MAIL_RELAY_HOST" "$MAIL_RELAY_PORT"
 check "send_mail targets the configured relay with a helo path" "yes" \
   "$(grep -qx 'smtp://192.168.6.13:25/questboard-deploy' "$STUB_CURL_LOG" && echo yes || echo no)"
 check "send_mail passes the sender" "yes" \
@@ -321,9 +327,25 @@ check "send_mail never touches the local mail agent" "" "$(host_guard_calls)"
 
 export STUB_CURL_EXIT=55
 fail_rc=0
-fail_log="$(questboard_send_mail "$MAIL_FILE" 2>&1)" || fail_rc=$?
+fail_log="$(questboard_send_mail "$MAIL_FILE" "ops@example.com" "$MAIL_FROM_ADDR" "$MAIL_RELAY_HOST" "$MAIL_RELAY_PORT" 2>&1)" || fail_rc=$?
 check "send_mail returns 0 when curl fails" "0" "$fail_rc"
 check "send_mail logs exactly one line when curl fails" "1" "$(printf '%s\n' "$fail_log" | wc -l)"
+
+# --- questboard_make_dir --------------------------------------------------
+
+DIR_BASE="${QUESTBOARD_DEPLOY_ROOT}/make-dir"
+mkdir -p "$DIR_BASE"
+( umask 077 && questboard_make_dir 700 "${DIR_BASE}/var/lib/tool/state" "${DIR_BASE}/var/lib/tool/downloads" )
+check "make_dir gives the leaf the requested mode" "700" "$(stat -c '%a' "${DIR_BASE}/var/lib/tool/state")"
+check "make_dir gives a second leaf the requested mode" "700" "$(stat -c '%a' "${DIR_BASE}/var/lib/tool/downloads")"
+check "make_dir creates the parents 755 even under a strict umask" "755 755 755" \
+  "$(stat -c '%a' "${DIR_BASE}/var" "${DIR_BASE}/var/lib" "${DIR_BASE}/var/lib/tool" | tr '\n' ' ' | sed 's/ $//')"
+
+mkdir -m 755 "${DIR_BASE}/existing"
+parent_mode_before="$(stat -c '%a' "$DIR_BASE")"
+questboard_make_dir 700 "${DIR_BASE}/existing"
+check "make_dir tightens a directory that already existed" "700" "$(stat -c '%a' "${DIR_BASE}/existing")"
+check "make_dir leaves the existing directory's parent alone" "$parent_mode_before" "$(stat -c '%a' "$DIR_BASE")"
 
 # --- questboard_log -------------------------------------------------------
 

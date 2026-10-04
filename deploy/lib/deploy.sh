@@ -80,7 +80,7 @@ questboard_record_attempt() {
     *) questboard_die "refusing to record an unknown outcome: ${outcome}" ;;
   esac
 
-  mkdir -p -m 700 "$state_dir"
+  questboard_make_dir 700 "$state_dir"
   printf '%s %s %s\n' "$tag" "$outcome" "$(questboard_utc_now)" >> "${state_dir}/attempts"
 }
 
@@ -133,7 +133,7 @@ questboard_activate_release() {
   local target="${releases_dir}/${version}"
   [ -d "$target" ] || questboard_die "cannot activate ${version}: ${target} does not exist"
 
-  mkdir -p -m 700 "$state_dir"
+  questboard_make_dir 700 "$state_dir"
 
   local active
   active="$(questboard_active_version "$current_link")"

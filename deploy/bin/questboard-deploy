@@ -162,7 +162,8 @@ finish() {
       args+=(--reason "$reason")
     fi
     if questboard_render_mail "${args[@]}" "$@" > "$mailfile"; then
-      questboard_send_mail "$mailfile"
+      questboard_send_mail "$mailfile" "$QUESTBOARD_NOTIFY_EMAIL" "$QUESTBOARD_MAIL_FROM" \
+        "$QUESTBOARD_SMTP_HOST" "$QUESTBOARD_SMTP_PORT"
     else
       questboard_log "the outcome mail could not be composed"
     fi
