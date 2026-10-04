@@ -160,7 +160,7 @@ The quest board must reliably let DMs post quests and players sign up — everyt
 - HtmlRenderer (`Microsoft.AspNetCore.Components.Web`) for email template rendering in job context
 - Markdig 1.3.2 + Ganss.Xss HtmlSanitizer 9.0.892 for Markdown rendering — one shared `IMarkdownService` pipeline used identically by page views and HTML emails (web/email differ only by sanitizer profile), plus a dedicated `RenderEmailHtml` path for inline-styled, Outlook-safe email output
 
-**Deployment:** Linux host at `/opt/questboard/`, env overrides at `/etc/questboard/.env`. Postfix for outbound mail → Resend SMTP relay. No Docker required — direct `dotnet run` on host.
+**Deployment:** Linux host with versioned releases under `/opt/questboard/releases`, `current` pointing at the active one, and a systemd timer that installs attested GitHub releases (see `docs/deploy.md`). Env overrides at `/etc/questboard/env`. Postfix for outbound mail → Resend SMTP relay. No Docker required — direct `dotnet run` on host.
 
 **Known issues / tech debt:**
 - Real Outlook desktop rendering of the 3 Quest email templates (Word's rendering engine — no CSS `overflow`/scroll support, historically needs MSO-conditional-comment fallback markup for `<ul>/<li>` bullets) has never been tested; only Gmail webmail has been operator-confirmed. Accepted as a verification override to close Phase 71/v8.0 rather than block on production access — see `71-VERIFICATION.md` `overrides`/`deferred` — v8.0 (Phase 71)

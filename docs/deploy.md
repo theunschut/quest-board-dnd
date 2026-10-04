@@ -434,6 +434,10 @@ directory until `setup` has run once. So the first release is fetched and checke
    The adopted release is now the automatic rollback target for that install. Expect an
    `installed` mail.
 
+On a fresh CT with nothing installed yet, `setup` has no running version to adopt and does not
+ask for one. Run it as in step 4, edit `deploy.conf` as in step 6 and run `setup` again, then run
+`questboard-deploy install vX.Y.Z` for the first release.
+
 ### Retiring the push-based deploy
 
 Do this once the first pull-based install has reported healthy. While the old runner stays
