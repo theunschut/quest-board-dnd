@@ -1,4 +1,4 @@
-[![.NET CI](https://github.com/theunschut/quest-board/actions/workflows/dotnet.yml/badge.svg?branch=main)](https://github.com/theunschut/quest-board/actions/workflows/dotnet.yml) [![Docker](https://github.com/theunschut/quest-board/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/theunschut/quest-board/actions/workflows/docker-publish.yml) [![Release](https://github.com/theunschut/quest-board/actions/workflows/binary-release.yml/badge.svg)](https://github.com/theunschut/quest-board/actions/workflows/binary-release.yml)
+[![.NET CI](https://github.com/theunschut/quest-board/actions/workflows/dotnet.yml/badge.svg?branch=main)](https://github.com/theunschut/quest-board/actions/workflows/dotnet.yml) [![Docker](https://github.com/theunschut/quest-board/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/theunschut/quest-board/actions/workflows/docker-publish.yml) [![Release](https://github.com/theunschut/quest-board-dnd/actions/workflows/release.yml/badge.svg)](https://github.com/theunschut/quest-board-dnd/actions/workflows/release.yml)
 
 # D&D Quest Board
 
