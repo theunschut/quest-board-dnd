@@ -1135,7 +1135,7 @@ Plans:
 **Goal:** A tagged release reaches production because the server goes and fetches it, not because GitHub pushes it there. The server checks for new releases on a timer, verifies the download, installs it, and confirms the app came back healthy. GitHub does not need a runner, credential or any other link to the production box.
 **Requirements**: TBD
 **Depends on:** No hard dependency on earlier v9.0 phases. It touches the release pipeline and the server, not application behaviour.
-**Plans:** 4/12 plans executed
+**Plans:** 5/12 plans executed
 
 **Origin:** raised by the operator on 2026-10-04: bring this app's deployment in line with the `ing-dashboard` project. The deploy should be a pull, not a push through a runner, so GitHub never has a handle on the server.
 
@@ -1172,7 +1172,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 89-05-PLAN.md — Installer verification (checksum, pinned attestation, main ancestry) and release handling (staging, migrator via systemd-run, health wait)
+- [x] 89-05-PLAN.md — Installer verification (checksum, pinned attestation, main ancestry) and release handling (staging, migrator via systemd-run, health wait)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
