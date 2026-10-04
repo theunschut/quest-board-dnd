@@ -126,11 +126,11 @@ refused, not skipped. See "Troubleshooting" for what to do afterwards.
 | Nothing newer than the active release | Nothing | none, journal only | no |
 | GitHub unreachable, or no release published | Nothing; the next poll retries | none, journal only | no |
 | A remembered tag turns up again | Skipped, with one journal line | none, journal only | already remembered |
-| `questboard-deploy rollback` by hand | Switches to the chosen release | none, terminal and journal only | no |
+| `questboard-deploy rollback` by hand | Switches to the chosen release | none, terminal and journal only | the release rolled back from is (as `abandoned`) |
 
-A tag that was refused, failed, rolled back or halted is remembered: later polls skip it without
-mailing, until a newer tag is published or you run `questboard-deploy install <tag>` by hand. Each
-bad release therefore costs exactly one mail.
+A tag that was refused, failed, rolled back, halted or abandoned by a manual rollback is
+remembered: later polls skip it without mailing, until a newer tag is published or you run
+`questboard-deploy install <tag>` by hand. Each bad release therefore costs exactly one mail.
 
 A release that fails its health check with no earlier release to go back to (the very first
 install on a fresh server) is reported as `failed` and left in place.
@@ -188,11 +188,13 @@ pending. It is refused when:
 - the release is the adopted one, which has no migrator to ask (see "Moving an existing push-based
   install over").
 
-It sends no mail. The tag you roll back to is recorded, but the release you rolled back from is
-not remembered, so the next poll will install the latest published release again if it is newer
-than the one you switched to. To hold a rollback, stop the timer
-(`systemctl stop questboard-deploy-poll.timer`), and start it again once a fixed release is
-published.
+It sends no mail. The tag you roll back to is recorded as `rolled_back_manual`, and the release
+you rolled back from is recorded as `abandoned` and remembered, so the poll does not install it
+again: it logs `skipping vX.Y.Z: abandoned earlier; run questboard-deploy install vX.Y.Z to try it
+again` and moves on. A release published later than the abandoned one is not held back, so the
+next poll installs it as usual. To go forward to the abandoned release again, run
+`questboard-deploy install vX.Y.Z` by hand; that records it as installed and clears the memory. A
+refused or failed rollback records nothing.
 
 ### `questboard-deploy verify --artifact FILE --bundle FILE --tag vX.Y.Z`
 
@@ -527,9 +529,9 @@ report it, because the sandbox settings need fixing.
 example after a large migration, can outlast the wait. Raise `QUESTBOARD_HEALTH_TIMEOUT_SECONDS`
 in `deploy.conf` and install the tag again by hand.
 
-**The poll keeps skipping a release.** It was refused, failed, rolled back or halted earlier and
-is remembered. Find out why from the mail and the journal, fix the cause, then run
-`questboard-deploy install vX.Y.Z`.
+**The poll keeps skipping a release.** It was refused, failed, rolled back, halted or abandoned
+by a manual rollback earlier and is remembered. Find out why from the mail and the journal, fix
+the cause, then run `questboard-deploy install vX.Y.Z`.
 
 **An outcome mail never arrived.** The send is logged but never fails the install. Check
 `journalctl -u questboard-deploy-poll.service` for `sending outcome mail failed`, and check the

@@ -73,7 +73,7 @@ STATE="${QUESTBOARD_DEPLOY_ROOT}/state-memory"
 
 check "an untried tag has no remembered outcome" "" "$(questboard_remembered_outcome "$STATE" v1.2.0)"
 
-for outcome in refused failed failed_rolled_back rolled_back halted; do
+for outcome in refused failed failed_rolled_back rolled_back halted abandoned; do
   questboard_record_attempt "$STATE" v1.2.0 "$outcome"
   check "a tag last recorded ${outcome} is remembered as ${outcome}" "$outcome" \
     "$(questboard_remembered_outcome "$STATE" v1.2.0)"
@@ -92,6 +92,12 @@ check "adopted is never remembered" "" "$(questboard_remembered_outcome "$STATE"
 questboard_record_attempt "$STATE" v1.3.0 failed
 questboard_record_attempt "$STATE" v1.3.0 rolled_back_manual
 check "rolled_back_manual is never remembered" "" "$(questboard_remembered_outcome "$STATE" v1.3.0)"
+
+questboard_record_attempt "$STATE" v1.5.0 abandoned
+check "abandoned is remembered so a poll skips the release rolled away from" "abandoned" \
+  "$(questboard_remembered_outcome "$STATE" v1.5.0)"
+questboard_record_attempt "$STATE" v1.5.0 installed
+check "an explicit install clears an abandoned tag" "" "$(questboard_remembered_outcome "$STATE" v1.5.0)"
 
 check "attempt lines are TAG OUTCOME UTC" "yes" \
   "$(grep -qE '^v1\.2\.0 installed [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "${STATE}/attempts" && echo yes || echo no)"

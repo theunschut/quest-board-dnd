@@ -552,6 +552,42 @@ check "rollback: recorded as a manual rollback" "v1.2.0 rolled_back_manual" "$(l
 check "rollback: sends no mail" "0" "$(mail_count)"
 check "rollback: reports on the terminal" "yes" "$(out_has 'rolled back to release 1.2.0')"
 
+check "rollback: the release rolled back from is abandoned" "yes" \
+  "$(has_text "${ROOT}/var/lib/questboard-deploy/state/attempts" 'v1.3.0 abandoned')"
+check "rollback: the abandon is logged" "yes" "$(out_has 'outcome=abandoned tag=v1.3.0')"
+
+# The rollback must stick: the abandoned release is still the latest published
+# one, and polls must leave it alone until it is installed by hand.
+export STUB_LATEST_TAG=v1.3.0
+: > "${ROOT}/calls.log"
+: > "${ROOT}/curl.log"
+run_deploy poll
+check "rollback sticks: the next poll exits 0" "0" "$RC"
+check "rollback sticks: the poll installs nothing" "" "$(calls)"
+check "rollback sticks: the poll downloads nothing" "0" "$(downloads_made)"
+check "rollback sticks: the poll sends no mail" "0" "$(mail_count)"
+check "rollback sticks: current is still the target" "1.2.0" "$(current_version)"
+check "rollback sticks: the poll names the manual command" "yes" "$(out_has 'skipping v1.3.0: abandoned earlier; run questboard-deploy install v1.3.0 to try it again')"
+check "rollback sticks: the poll adds no attempt" "v1.2.0 rolled_back_manual" "$(last_attempt)"
+run_deploy poll
+check "rollback sticks: a second poll still changes nothing" "" "$(calls)"
+
+# An explicit install of the abandoned tag still works and clears the memory.
+run_deploy install v1.3.0
+check "rollback then install by hand: exit 0" "0" "$RC"
+check "rollback then install by hand: the release is active" "1.3.0" "$(current_version)"
+check "rollback then install by hand: recorded installed" "v1.3.0 installed" "$(last_attempt)"
+
+# After the memory is cleared, a rollback again followed by a newer release.
+rollback_case rb-newer-release
+run_deploy rollback 1.2.0
+export STUB_LATEST_TAG=v1.3.1
+run_deploy poll
+check "a newer release than the abandoned one: the poll installs it" "0" "$RC"
+check "a newer release than the abandoned one: it is active" "1.3.1" "$(current_version)"
+check "a newer release than the abandoned one: one mail" "1" "$(mail_count)"
+check "a newer release than the abandoned one: recorded installed" "v1.3.1 installed" "$(last_attempt)"
+
 rollback_case rb-unknown
 export STUB_STATUS_EXIT=2 STUB_STATUS_JSON=""
 run_deploy rollback 1.2.0
@@ -567,6 +603,7 @@ run_deploy rollback 1.2.0
 check "rollback to a release with pending migrations: refused" "1" "$RC"
 check "rollback pending: says to install instead" "yes" "$(out_has 'install it instead')"
 check "rollback pending: nothing changes" "migrator status 1.2.0 current=1.3.0" "$(calls)"
+check "rollback pending: nothing abandoned or recorded" "" "$(last_attempt)"
 
 rollback_case rb-unreadable
 export STUB_STATUS_EXIT=4 STUB_STATUS_JSON=""
@@ -582,6 +619,13 @@ check "rollback to the adopted release: refused" "1" "$RC"
 check "rollback adopted: points at the manual restore steps" "yes" "$(out_has 'docs/deploy.md')"
 check "rollback adopted: the migrator was never run" "" "$(calls)"
 check "rollback adopted: current unchanged" "1.3.0" "$(current_version)"
+check "rollback adopted: nothing abandoned or recorded" "" "$(last_attempt)"
+
+rollback_case rb-unhealthy
+export STUB_UNHEALTHY_VERSION=1.2.0
+run_deploy rollback 1.2.0
+check "rollback to a release that never becomes healthy: fails" "1" "$RC"
+check "rollback unhealthy: nothing abandoned or recorded" "" "$(last_attempt)"
 
 rollback_case rb-missing
 run_deploy rollback 1.1.0
@@ -592,6 +636,7 @@ rollback_case rb-active
 run_deploy rollback 1.3.0
 check "rollback to the active version: refused" "1" "$RC"
 check "rollback active: nothing runs" "" "$(calls)"
+check "rollback active: nothing abandoned or recorded" "" "$(last_attempt)"
 
 rollback_case rb-badarg
 run_deploy rollback v1.2.0
