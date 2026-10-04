@@ -1160,18 +1160,40 @@ Plans:
 **Requires a discuss-phase decision:** whether to adopt provenance attestation and offline verification, or settle for a checksum; whether to add the draft-release approval gate, or keep "push a tag, it ships"; how failed installs are reported (email, journal only, or metrics); and the poll interval.
 
 Plans:
+**Wave 1**
 
 - [ ] 89-01-PLAN.md — Tracer: release artifact contract (package script, migrator status, /health version header, versioned-layout drop-in) plus DB-less migrator guards
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 89-02-PLAN.md — Migrator backup and all-or-nothing apply, gated real-SQL proof, migrator-sql CI job
 - [ ] 89-03-PLAN.md — Installer core: config loader, secret-free mail, outcome decision, remember-and-skip, activation, pruning
 - [ ] 89-04-PLAN.md — release.yml (build, test, attest, draft, approved publish), tag validation, GitHub settings checker; binary-release.yml removed
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 89-05-PLAN.md — Installer verification (checksum, pinned attestation, main ancestry) and release handling (staging, migrator via systemd-run, health wait)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 89-06-PLAN.md — questboard-deploy dispatcher: poll, install, rollback, verify; full outcome-matrix flow tests
 - [ ] 89-07-PLAN.md — Poll unit and timer, deploy.conf, setup with adoption of the running install, SQL-CT backup pruning
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 89-08-PLAN.md — Network tamper-refusal test, workstation release verifier, CI jobs for scripts, lint and network
 - [ ] 89-09-PLAN.md — docs/deploy.md, docs/releasing.md, server-setup.md rewrite, PROJECT.md env path fix
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 89-10-PLAN.md — Operator handover 1: hosted CI proof, GitHub gates, first attested release
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 89-11-PLAN.md — Operator handover 2: workstation verification, CT cutover with setup, first pull-based install
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 89-12-PLAN.md — Operator handover 3: retire the self-hosted runner, two-sided verification, idle-poll mail check
 
 ## Backlog
