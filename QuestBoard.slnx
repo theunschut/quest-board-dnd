@@ -9,6 +9,7 @@
     <Project Path="QuestBoard.UnitTests/QuestBoard.UnitTests.csproj" />
   </Folder>
   <Project Path="QuestBoard.Domain/QuestBoard.Domain.csproj" />
+  <Project Path="QuestBoard.Migrator/QuestBoard.Migrator.csproj" />
   <Project Path="QuestBoard.Repository/QuestBoard.Repository.csproj" />
   <Project Path="QuestBoard.Service/QuestBoard.Service.csproj" />
 </Solution>
