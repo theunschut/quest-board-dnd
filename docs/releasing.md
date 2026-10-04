@@ -77,7 +77,9 @@ by the server.
 
 ## Verifying a published release from a workstation
 
-You need the GitHub CLI (`gh`) and no login or token:
+You need the GitHub CLI (`gh`), `curl`, `python3` and `sha256sum`, and no login or token. Run the
+script from a checkout of this repository, because it sources the installer's own verification
+code from `deploy/lib/`:
 
 ```bash
 build/verify-published-release.sh vX.Y.Z
@@ -86,8 +88,8 @@ build/verify-published-release.sh vX.Y.Z
 It downloads the three assets, checks the checksum, verifies the attestation exactly as the server
 will (this repository, the `release.yml` workflow, the `refs/tags/vX.Y.Z` ref, hosted runners
 only), confirms the attested commit is on `main`, and confirms that a copy with one byte changed
-is refused. On success its last line is `sha256 questboard-vX.Y.Z.zip <hex>`: that is the hash to
-compare against when you carry the zip to the server for the first install (see
+is refused. On success it prints `all checks passed for vX.Y.Z`, followed by the last line,
+`sha256 questboard-vX.Y.Z.zip <hex>`: that is the hash to compare against when you carry the zip to the server for the first install (see
 [deploy.md](deploy.md)).
 
 Verification contacts GitHub and the Sigstore trust service, so it needs network access. It never
