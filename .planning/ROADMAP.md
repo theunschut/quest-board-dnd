@@ -1130,6 +1130,39 @@ Plans:
 
 - [x] 88-09-PLAN.md — Architecture guidance and validation rewritten, full suite, byte pins proven on Linux, the migration and bump proven on the local SQL Server, and the production reschedule re-test handed to verify-work (gap wave 3)
 
+### Phase 89: Pull-Based Release Deployment
+
+**Goal:** A tagged release reaches production because the server goes and fetches it, not because GitHub pushes it there. The server checks for new releases on a timer, verifies the download, installs it, and confirms the app came back healthy. GitHub does not need a runner, credential or any other link to the production box.
+**Requirements**: TBD
+**Depends on:** No hard dependency on earlier v9.0 phases. It touches the release pipeline and the server, not application behaviour.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-04: bring this app's deployment in line with the `ing-dashboard` project. The deploy should be a pull, not a push through a runner, so GitHub never has a handle on the server.
+
+**How it works today:** `binary-release.yml` builds and publishes `questboard-<tag>.zip` to a GitHub release on a hosted runner when a `v*.*.*` tag is pushed. Its `deploy` job then runs with `runs-on: self-hosted` and calls `/home/questboard/deploy.sh <tag>`. That runner is a GitHub Actions runner registered to this public repository and installed on the production App CT (`docs/server-setup.md`, section "Install the GitHub Actions runner"). Any workflow that targets `self-hosted` therefore runs code on the production server. The deploy script exists only on the server, not in the repo. It downloads the zip with `wget`, runs `rm -rf /opt/questboard/*`, unzips and restarts. It does no integrity check, no health check and no rollback.
+
+**Reference model — `ing-dashboard` (`deploy/`, `.github/workflows/release.yml`, `docs/deploy.md`):**
+
+- A hosted runner builds the archive and attests its provenance with `actions/attest-build-provenance`. It saves the sigstore bundle as a release asset and attaches everything to a **draft** release. Approval through a `deploy` environment publishes that release, and approval is the only manual step.
+- On the server, a systemd timer (`*-deploy-poll.timer`: 2 min after boot, then every 5 min with jitter) reads the public `releases/latest` endpoint without a token. When it finds a newer version, it hands the tag to an installer that lives in the repo and ships inside each release.
+- The installer downloads the archive and its bundle and runs `gh attestation verify` offline, refusing anything that fails. It unpacks into a versioned `releases/<version>` directory and switches the active release. It then restarts the app and waits for `/health`. If the new release comes up unhealthy and no migration ran, it rolls back automatically; if a migration ran, it stops for a person instead. It records the outcome by email, in metrics and in the journal.
+- Manual subcommands are `poll`, `install <tag>`, `rollback <version>` and `verify`.
+
+**Scope notes:**
+
+- **This is a port, not a copy.** `ing-dashboard` runs a separate EF migration bundle before activating a release. This app applies migrations in `context.Database.Migrate()` on startup instead, so "did a migration run" has to be worked out differently. One option is to compare the release's migration list with `__EFMigrationsHistory` before and after. The rollback hazard is unchanged: once a newer schema is in place, putting the previous release back is unsafe.
+- **Remove the push path completely.** Delete the `deploy` job and its `workflow_dispatch` redeploy input from `binary-release.yml`. A manual redeploy becomes an `install <tag>` run on the server. Deregistering the runner from the repository and uninstalling it from the App CT are operator steps, so the plan has to hand them over explicitly. If the runner stays registered, a later workflow could still target it.
+- **The installer moves into the repo.** Replace the server-only `/home/questboard/deploy.sh` with a versioned script and systemd units under a `deploy/` directory, and rewrite `docs/server-setup.md` sections 3–5 to match.
+- **The Docker path is untouched.** `docker-publish.yml`, the `Dockerfile` and `docker-compose.yml` stay a working self-host route with no new setup steps.
+- **Mind the email budget.** The Resend relay has a hard daily send limit. A 5-minute poll that emails on every run would use it up, so only install outcomes should send mail, not idle polls.
+- **Keep the existing paths.** `/opt/questboard`, `/etc/questboard/.env` and `questboard.service` stay where they are unless the discuss pass decides otherwise, so the first pull-based deploy does not also become a relocation.
+
+**Requires a discuss-phase decision:** whether to adopt provenance attestation and offline verification, or settle for a checksum; whether to add the draft-release approval gate, or keep "push a tag, it ships"; how failed installs are reported (email, journal only, or metrics); and the poll interval.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 89 to break down)
+
 ## Backlog
 
 Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
