@@ -87,7 +87,7 @@ account that cannot read the env file. They override anything in older docs.
   hand-write them today, e.g. "v5.3.3 - Rescheduled game nights update in your calendar". Creating
   the `deploy` environment with the operator as required reviewer is an operator step for the
   handover.
-- **D-03: Tag validation refuses:**
+- **D-03: Tag validation refuses**:
   - anything that isn't exactly `vX.Y.Z` (no leading zeros, no `-rc`/`+build` suffix),
   - a tag whose commit isn't reachable from `main`,
   - overwriting an already-published release.
@@ -139,8 +139,8 @@ account that cannot read the env file. They override anything in older docs.
     current migrations contain one.
   - This must be proven against a real SQL Server, because InMemory cannot run migrations. See
     research items.
-- **D-08: The startup `context.Database.Migrate()` in
-  `QuestBoard.Repository/Extensions/ServiceExtensions.cs` stays unchanged.** On the server it is
+- **D-08: The startup** `context.Database.Migrate()` in
+  `QuestBoard.Repository/Extensions/ServiceExtensions.cs` stays unchanged. On the server it is
   a no-op, because nothing is pending by the time the app starts. Docker and dev keep migrating on
   startup with no new setup step, which satisfies the self-hosting constraint.
 - **D-09: Back up the database before migrating, only when migrations are pending.** The
@@ -149,7 +149,7 @@ account that cannot read the env file. They override anything in older docs.
   install aborts before the running app is touched.** Keep the last few pre-migration backups.
   How pruning works (the files sit on the SQL CT's disk, not the App CT's) is a research item;
   if there is no clean way, document manual pruning.
-- **D-10: Install order:**
+- **D-10: Install order**:
   - With migrations pending: `status` → backup → **stop the app** → `apply` (atomic) → switch
     `current` → start → health check.
   - With nothing pending: stop → switch → start → health check.
@@ -174,7 +174,7 @@ account that cannot read the env file. They override anything in older docs.
 
 ### Polling and reporting
 
-- **D-13: Poll timer:** `OnBootSec=2min`, `OnUnitActiveSec=5min`, `RandomizedDelaySec=30`, the
+- **D-13: Poll timer**: `OnBootSec=2min`, `OnUnitActiveSec=5min`, `RandomizedDelaySec=30`, the
   same as ing-dashboard. The poll reads the public `releases/latest` endpoint **without a token**.
   The unauthenticated limit is 60 requests an hour per public IP, possibly shared with the Ledger
   CT (CT 108, `192.168.6.16`), which polls the same way. 12 per hour each fits.
@@ -197,7 +197,7 @@ account that cannot read the env file. They override anything in older docs.
 
 ### Server layout, installer identity, cutover
 
-- **D-18: Versioned layout inside the existing root:** `/opt/questboard/releases/<version>/`,
+- **D-18: Versioned layout inside the existing root**: `/opt/questboard/releases/<version>/`,
   plus a `/opt/questboard/current` symlink switched atomically.
   - `questboard.service` changes `WorkingDirectory` and `ExecStart` to point through `current`.
   - The service name, `User=questboard` and `EnvironmentFile=/etc/questboard/env` stay as they
@@ -214,7 +214,7 @@ account that cannot read the env file. They override anything in older docs.
     compromised app cannot rewrite its own code or the installer.
   - The app keeps running as `questboard`.
   - `/etc/sudoers.d/questboard` and `/home/questboard/deploy.sh` are no longer needed.
-- **D-20: Subcommands:**
+- **D-20: Subcommands**:
   - `poll`: what the timer runs.
   - `install <tag>`: manual install or redeploy. It is also the override for a remembered tag
     (D-15).

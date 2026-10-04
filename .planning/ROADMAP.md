@@ -1135,7 +1135,7 @@ Plans:
 **Goal:** A tagged release reaches production because the server goes and fetches it, not because GitHub pushes it there. The server checks for new releases on a timer, verifies the download, installs it, and confirms the app came back healthy. GitHub does not need a runner, credential or any other link to the production box.
 **Requirements**: TBD
 **Depends on:** No hard dependency on earlier v9.0 phases. It touches the release pipeline and the server, not application behaviour.
-**Plans:** 0 plans
+**Plans:** 12 plans
 
 **Origin:** raised by the operator on 2026-10-04: bring this app's deployment in line with the `ing-dashboard` project. The deploy should be a pull, not a push through a runner, so GitHub never has a handle on the server.
 
@@ -1161,7 +1161,18 @@ Plans:
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 89 to break down)
+- [ ] 89-01-PLAN.md — Tracer: release artifact contract (package script, migrator status, /health version header, versioned-layout drop-in) plus DB-less migrator guards
+- [ ] 89-02-PLAN.md — Migrator backup and all-or-nothing apply, gated real-SQL proof, migrator-sql CI job
+- [ ] 89-03-PLAN.md — Installer core: config loader, secret-free mail, outcome decision, remember-and-skip, activation, pruning
+- [ ] 89-04-PLAN.md — release.yml (build, test, attest, draft, approved publish), tag validation, GitHub settings checker; binary-release.yml removed
+- [ ] 89-05-PLAN.md — Installer verification (checksum, pinned attestation, main ancestry) and release handling (staging, migrator via systemd-run, health wait)
+- [ ] 89-06-PLAN.md — questboard-deploy dispatcher: poll, install, rollback, verify; full outcome-matrix flow tests
+- [ ] 89-07-PLAN.md — Poll unit and timer, deploy.conf, setup with adoption of the running install, SQL-CT backup pruning
+- [ ] 89-08-PLAN.md — Network tamper-refusal test, workstation release verifier, CI jobs for scripts, lint and network
+- [ ] 89-09-PLAN.md — docs/deploy.md, docs/releasing.md, server-setup.md rewrite, PROJECT.md env path fix
+- [ ] 89-10-PLAN.md — Operator handover 1: hosted CI proof, GitHub gates, first attested release
+- [ ] 89-11-PLAN.md — Operator handover 2: workstation verification, CT cutover with setup, first pull-based install
+- [ ] 89-12-PLAN.md — Operator handover 3: retire the self-hosted runner, two-sided verification, idle-poll mail check
 
 ## Backlog
 

@@ -40,21 +40,21 @@ created: 2026-10-04
 
 ## Per-Task Verification Map
 
-Task IDs are filled in by the planner/executor; rows below are keyed by must-have.
+Task IDs reference `<plan>-T<task>`; each row's command is wired into that task's `<verify>`.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | MH-2 | — | Every shipped migration is transactional; regression guard for future migrations | unit (no DB) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~Migrator"` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-2 | — | Preflight flags a synthetic `suppressTransaction: true` migration; status computes applied/pending/unknown; exit-code mapping | unit | same | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-2 | — | Failing second migration leaves history and schema unchanged; non-transactional pending refused | integration, real SQL, gated | `QUESTBOARD_MIGRATOR_TEST_CONNECTION=... dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~Migrator"` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-3 | — | `/health` 200 with version header equal to `AppVersion.Current` | integration (InMemory) | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~BoardTimeZoneHealthCheck"` | partial | ⬜ pending |
-| TBD | TBD | TBD | MH-4 | — | Semver gate, remember-and-skip, all six outcome-matrix rows, activation/prune, secret-free mail body, config owner/mode checks | bash logic | `bash deploy/tests/questboard-deploy-logic-test.sh` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-4 | — | Full install flow with stubbed `systemctl`/`systemd-run`/`gh`/`curl`; nothing changes on refusal | bash flow | `bash deploy/tests/install-flow-test.sh` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-1/4 | — | Tampered byte, wrong repo, wrong signer, wrong source ref all refused; no ambient token reaches `gh` | bash network | `QUESTBOARD_TEST_NETWORK=1 bash deploy/tests/verify-rejects-tampered-artifact-network-test.sh` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-4 | — | Poll unit carries the hardening set and write allow-list | bash static | `bash deploy/tests/sandboxing-test.sh` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-1 | — | Tag validation accepts `v1.2.3`, refuses `v01.2.3`, `v1.2.3-rc.1`, `v1.2`, off-main tags | bash | `bash build/tests/validate-release-tag-test.sh` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-1 | — | Hash-pinned actions, no `${{ }}` in `run:`, no `self-hosted` | lint | `actionlint` + `zizmor` in CI; `! grep -rn self-hosted .github/workflows` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MH-5/7 | — | Docs no longer reference runner, `deploy.sh` or `/etc/questboard/.env` outside the removal handover | grep | `! grep -rnE "deploy\.sh|actions-runner|/etc/questboard/\.env" docs .planning/PROJECT.md` (handover section excepted) | ❌ W0 | ⬜ pending |
+| 89-01-T2 | 89-01 | 1 | MH-2 | — | Every shipped migration is transactional; regression guard for future migrations | unit (no DB) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~Migrator"` | ❌ W0 | ⬜ pending |
+| 89-01-T2, 89-02-T1 | 89-01, 89-02 | 1, 2 | MH-2 | — | Preflight flags a synthetic `suppressTransaction: true` migration; status computes applied/pending/unknown; exit-code mapping | unit | same | ❌ W0 | ⬜ pending |
+| 89-02-T2 (CI: 89-02-T3) | 89-02 | 2 | MH-2 | — | Failing second migration leaves history and schema unchanged; non-transactional pending refused | integration, real SQL, gated | `QUESTBOARD_MIGRATOR_TEST_CONNECTION=... dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~Migrator"` | ❌ W0 | ⬜ pending |
+| 89-01-T1 (smoke), 89-01-T2 | 89-01 | 1 | MH-3 | — | `/health` 200 with version header equal to `AppVersion.Current` | integration (InMemory) | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~BoardTimeZoneHealthCheck"` | partial | ⬜ pending |
+| 89-03-T1, 89-03-T2 | 89-03 | 2 | MH-4 | — | Semver gate, remember-and-skip, all six outcome-matrix rows, activation/prune, secret-free mail body, config owner/mode checks | bash logic | `bash deploy/tests/questboard-deploy-logic-test.sh` | ❌ W0 | ⬜ pending |
+| 89-06-T1, 89-06-T2 | 89-06 | 4 | MH-4 | — | Full install flow with stubbed `systemctl`/`systemd-run`/`gh`/`curl`; nothing changes on refusal | bash flow | `bash deploy/tests/install-flow-test.sh` | ❌ W0 | ⬜ pending |
+| 89-08-T1 | 89-08 | 5 | MH-1/4 | — | Tampered byte, wrong repo, wrong signer, wrong source ref all refused; no ambient token reaches `gh` | bash network | `QUESTBOARD_TEST_NETWORK=1 bash deploy/tests/verify-rejects-tampered-artifact-network-test.sh` | ❌ W0 | ⬜ pending |
+| 89-07-T1 | 89-07 | 4 | MH-4 | — | Poll unit carries the hardening set and write allow-list | bash static | `bash deploy/tests/sandboxing-test.sh` | ❌ W0 | ⬜ pending |
+| 89-04-T1 | 89-04 | 2 | MH-1 | — | Tag validation accepts `v1.2.3`, refuses `v01.2.3`, `v1.2.3-rc.1`, `v1.2`, off-main tags | bash | `bash build/tests/validate-release-tag-test.sh` | ❌ W0 | ⬜ pending |
+| 89-04-T2, 89-08-T2 | 89-04, 89-08 | 2, 5 | MH-1 | — | Hash-pinned actions, no `${{ }}` in `run:`, no `self-hosted` | lint | `actionlint` + `zizmor` in CI; `! grep -rn self-hosted .github/workflows` | ❌ W0 | ⬜ pending |
+| 89-09-T1, 89-09-T2 | 89-09 | 5 | MH-5/7 | — | Docs no longer reference runner, `deploy.sh` or `/etc/questboard/.env` outside the removal handover | grep | `! grep -rnE "deploy\.sh|actions-runner|/etc/questboard/\.env" docs .planning/PROJECT.md` (handover section excepted) | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
