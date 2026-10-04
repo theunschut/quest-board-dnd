@@ -1,0 +1,25 @@
+# Settings for the Quest Board installer.
+#
+# Copy this file to /etc/questboard/deploy.conf, owned by root with mode 600
+# (the setup command does this for you when the file is absent). It is read by
+# an allow-list parser line by line and is never executed as shell code, so only
+# plain KEY=VALUE lines are accepted.
+
+QUESTBOARD_GITHUB_REPO=theunschut/quest-board-dnd
+QUESTBOARD_SIGNER_WORKFLOW=.github/workflows/release.yml
+
+# Outcome mail. The relay is the one the application itself uses (see the
+# committed defaults in appsettings.json), not this machine's local mail system,
+# which cannot relay. Only install outcomes are mailed, never an idle poll.
+# Replace the placeholder recipient with a real address: the poll timer is only
+# enabled once it is. Confirm the sender, host and port at cutover too.
+QUESTBOARD_NOTIFY_EMAIL=operator@example.com
+QUESTBOARD_MAIL_FROM=noreply@theunschut.com
+QUESTBOARD_SMTP_HOST=192.168.6.13
+QUESTBOARD_SMTP_PORT=25
+
+# Releases kept on disk (at least 2) and how long a new release has to report
+# healthy, in seconds (at least 10).
+QUESTBOARD_KEEP_RELEASES=5
+QUESTBOARD_HEALTH_TIMEOUT_SECONDS=120
+QUESTBOARD_HEALTH_URL=http://127.0.0.1:5000/health
