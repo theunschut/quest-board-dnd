@@ -8,6 +8,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -29,3 +30,34 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
+
+  # Runs the migrator tests against a real SQL Server, because migrations cannot run on the
+  # in-memory provider. The password below is a throwaway for an ephemeral CI-only container
+  # that holds no data; it guards nothing. The test helper waits for the server to start, so the
+  # service has no health command, and required mode makes a missing server a failure, not a skip.
+  migrator-sql:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "QuestBoard-CI-only-9"
+        ports:
+          - 1433:1433
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Setup .NET
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      with:
+        dotnet-version: '10.0.x'
+    - name: Migrator tests against SQL Server
+      run: dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~Migrator" --logger "console;verbosity=normal"
+      env:
+        QUESTBOARD_MIGRATOR_TEST_CONNECTION: "Server=127.0.0.1,1433;User Id=sa;Password=QuestBoard-CI-only-9;TrustServerCertificate=true;Encrypt=false"
+        QUESTBOARD_MIGRATOR_TEST_REQUIRED: "1"
