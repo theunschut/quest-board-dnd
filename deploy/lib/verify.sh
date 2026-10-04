@@ -4,7 +4,7 @@
 # release. Sourced, never executed directly; callers own `set -euo pipefail`
 # and source common.sh first.
 #
-# Every failure here is a refusal. There is no switch, variable or fallback
+# Every failure here stops the install. There is no switch, variable or fallback
 # that lets an unverified release through, and nothing in this file sends a
 # credential of any kind.
 
@@ -15,6 +15,18 @@ QUESTBOARD_VERIFY_SH_LOADED=1
 
 QUESTBOARD_GITHUB_API_URL='https://api.github.com'
 QUESTBOARD_GITHUB_DOWNLOAD_URL='https://github.com'
+
+# What `gh attestation verify` needs to reach to fetch its trusted roots, probed
+# only after gh has already failed. Fixed here and never read from the
+# environment or the configuration file.
+QUESTBOARD_SIGSTORE_TUF_URL='https://tuf-repo-cdn.sigstore.dev/'
+QUESTBOARD_GITHUB_TUF_URL='https://tuf-repo.github.com/'
+
+# Returned by questboard_verify_attestation, instead of 1, only when gh failed
+# and a connectivity probe then showed the verification services unreachable.
+# Nothing was judged about the artifact. It is still a non-zero status, so a
+# caller that does not know about it treats it as a refusal.
+QUESTBOARD_VERIFY_UNREACHABLE=3
 
 QUESTBOARD_SHA256_LINE_RE='^[0-9a-f]{64} [ *][A-Za-z0-9._-]+$'
 QUESTBOARD_COMMIT_SHA_RE='^[0-9a-f]{40}$'
@@ -49,16 +61,34 @@ questboard_verify_checksum() {
   return 0
 }
 
+# Succeeds (0) when at least one of the services gh needs for verification
+# cannot be reached at all: DNS, connection or timeout failure. Any HTTP answer,
+# whatever its status, counts as reachable. Fails (1) when every probe got an
+# answer. The probes carry no credential and are only meaningful after gh has
+# failed, to tell an outage apart from a rejected artifact.
+questboard_verification_services_unreachable() {
+  local url
+  for url in "$QUESTBOARD_SIGSTORE_TUF_URL" "$QUESTBOARD_GITHUB_TUF_URL" "${QUESTBOARD_GITHUB_API_URL}/"; do
+    if ! questboard_http_fetch 10 "$url" /dev/null >/dev/null 2>&1; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Verifies the signed provenance of ARTIFACT from BUNDLE, pinned to the
 # repository, the signing workflow and the release tag ref, and prints the
-# 40-character commit the artifact was built from. Returns 1 on any failure.
+# 40-character commit the artifact was built from. Returns 1 on any failure and
+# 3 (QUESTBOARD_VERIFY_UNREACHABLE) when gh failed and the services it needs
+# were then found unreachable, so that no verdict on the artifact exists.
 #
 # Verification needs the Sigstore trust root, which gh fetches over the network
 # into a cache directory, and it needs somewhere writable for its own state.
 # The service unit's home directory is read-only, so gh gets a private temp
 # directory for all of it, and every token variable is removed so the check can
-# never lean on a credential. An unreachable Sigstore service is a failed check
-# like any other: there is deliberately no way to proceed without it.
+# never lean on a credential. There is deliberately no way to proceed without a
+# successful check: an unreachable service yields 3, which is a non-zero status
+# like 1, and the artifact is not installed either way.
 questboard_verify_attestation() {
   local artifact="$1" bundle="$2" repo="$3" signer_workflow="$4" source_ref="$5"
 
@@ -86,6 +116,10 @@ questboard_verify_attestation() {
   rm -rf "$work"
 
   if [ "$rc" -ne 0 ]; then
+    if questboard_verification_services_unreachable; then
+      questboard_log "attestation verification could not run, the verification services are unreachable: ${output}"
+      return "$QUESTBOARD_VERIFY_UNREACHABLE"
+    fi
     questboard_log "attestation verification failed: ${output}"
     return 1
   fi

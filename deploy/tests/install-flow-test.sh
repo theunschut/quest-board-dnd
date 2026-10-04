@@ -84,6 +84,10 @@ case "$url" in
       } > "$hdr"
     fi
     ;;
+  *tuf-repo*|https://api.github.com/)
+    # The connectivity probe after a failed attestation check.
+    [ -n "${STUB_PROBE_EXIT:-}" ] && exit "$STUB_PROBE_EXIT"
+    ;;
   *)
     code=404
     ;;
@@ -256,7 +260,7 @@ EOF
   export STUB_LATEST_TAG="v1.3.0" STUB_COMPARE_STATUS="behind"
   export STUB_GH_JSON="$GH_OK" STUB_STATUS_JSON="$STATUS_CLEAN"
   unset STUB_LATEST_EXIT STUB_COMPARE_EXIT STUB_DOWNLOAD_EXIT STUB_UNHEALTHY_VERSION \
-    STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT
+    STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT
 }
 
 RC=0
@@ -325,6 +329,70 @@ new_case attest
 export STUB_GH_JSON=""
 run_deploy install v1.3.0
 assert_untouched_refusal "attestation failure" "the release signature check failed"
+
+# A refusal is remembered: the poll must not retry a tag the check rejected
+# while the verification services were reachable.
+run_deploy poll
+check "attestation failure: a later poll skips the refused tag" "0" "$RC"
+check "attestation failure: a later poll downloads nothing more" "3" "$(downloads_made)"
+check "attestation failure: a later poll names the manual command" "yes" "$(out_has 'skipping v1.3.0: refused earlier')"
+check "attestation failure: a later poll sends no further mail" "1" "$(mail_count)"
+
+# The verification services are down: no verdict exists, so nothing is staged,
+# stopped, mailed or remembered, and the tag is retried.
+assert_outage_changed_nothing() {
+  local label="$1"
+  check "${label}: no new release and no staging directory" "1.2.0" "$(releases_listing)"
+  check "${label}: the app was never touched" "" "$(calls)"
+  check "${label}: current unchanged" "1.2.0" "$(current_version)"
+  check "${label}: no mail" "0" "$(mail_count)"
+  check "${label}: no attempt recorded" "" "$(last_attempt)"
+  check "${label}: the tag is not remembered" "no" \
+    "$(has_text "${ROOT}/var/lib/questboard-deploy/state/attempts" 'v1.3.0')"
+  check "${label}: the download directory is cleaned up" "" "$(ls -A "${ROOT}/var/lib/questboard-deploy/downloads")"
+}
+
+new_case outage-install
+export STUB_GH_JSON="" STUB_PROBE_EXIT=6
+run_deploy install v1.3.0
+check "outage, install by hand: exit non-zero" "1" "$RC"
+check "outage, install by hand: says nothing changed and to retry" "yes" \
+  "$(out_has 'verification services unreachable; nothing changed, try again later')"
+assert_outage_changed_nothing "outage, install by hand"
+unset STUB_PROBE_EXIT
+export STUB_GH_JSON="$GH_OK"
+run_deploy install v1.3.0
+check "outage, install by hand: a retry once the services are back installs" "0" "$RC"
+check "outage, install by hand: a retry installs the release" "1.3.0" "$(current_version)"
+
+new_case outage-poll
+export STUB_GH_JSON="" STUB_PROBE_EXIT=6
+run_deploy poll
+check "outage, poll: exit 0" "0" "$RC"
+check "outage, poll: logs that the next poll retries" "yes" "$(out_has 'verification services unreachable')"
+assert_outage_changed_nothing "outage, poll"
+run_deploy poll
+check "outage, poll: a second poll in the outage is equally harmless" "0" "$RC"
+assert_outage_changed_nothing "outage, second poll"
+check "outage, poll: the tag is downloaded again by the retry" "6" "$(downloads_made)"
+unset STUB_PROBE_EXIT
+export STUB_GH_JSON="$GH_OK"
+run_deploy poll
+check "outage, poll: the next poll after the outage installs" "0" "$RC"
+check "outage, poll: the release is active" "1.3.0" "$(current_version)"
+check "outage, poll: one mail for the install" "1" "$(mail_count)"
+check "outage, poll: mail says installed" "installed" "$(mail_result)"
+check "outage, poll: recorded installed" "v1.3.0 installed" "$(last_attempt)"
+
+# gh failing while the probe finds the services reachable stays a refusal even
+# if some other tag was tried earlier during an outage.
+new_case outage-then-refused
+export STUB_GH_JSON="" STUB_PROBE_EXIT=6
+run_deploy poll
+unset STUB_PROBE_EXIT
+run_deploy poll
+check "outage then a real rejection: refused" "1" "$([ "$RC" -ne 0 ] && echo 1 || echo 0)"
+check "outage then a real rejection: remembered" "v1.3.0 refused" "$(last_attempt)"
 
 new_case diverged
 export STUB_COMPARE_STATUS="diverged"
@@ -552,6 +620,42 @@ check "rollback: recorded as a manual rollback" "v1.2.0 rolled_back_manual" "$(l
 check "rollback: sends no mail" "0" "$(mail_count)"
 check "rollback: reports on the terminal" "yes" "$(out_has 'rolled back to release 1.2.0')"
 
+check "rollback: the release rolled back from is abandoned" "yes" \
+  "$(has_text "${ROOT}/var/lib/questboard-deploy/state/attempts" 'v1.3.0 abandoned')"
+check "rollback: the abandon is logged" "yes" "$(out_has 'outcome=abandoned tag=v1.3.0')"
+
+# The rollback must stick: the abandoned release is still the latest published
+# one, and polls must leave it alone until it is installed by hand.
+export STUB_LATEST_TAG=v1.3.0
+: > "${ROOT}/calls.log"
+: > "${ROOT}/curl.log"
+run_deploy poll
+check "rollback sticks: the next poll exits 0" "0" "$RC"
+check "rollback sticks: the poll installs nothing" "" "$(calls)"
+check "rollback sticks: the poll downloads nothing" "0" "$(downloads_made)"
+check "rollback sticks: the poll sends no mail" "0" "$(mail_count)"
+check "rollback sticks: current is still the target" "1.2.0" "$(current_version)"
+check "rollback sticks: the poll names the manual command" "yes" "$(out_has 'skipping v1.3.0: abandoned earlier; run questboard-deploy install v1.3.0 to try it again')"
+check "rollback sticks: the poll adds no attempt" "v1.2.0 rolled_back_manual" "$(last_attempt)"
+run_deploy poll
+check "rollback sticks: a second poll still changes nothing" "" "$(calls)"
+
+# An explicit install of the abandoned tag still works and clears the memory.
+run_deploy install v1.3.0
+check "rollback then install by hand: exit 0" "0" "$RC"
+check "rollback then install by hand: the release is active" "1.3.0" "$(current_version)"
+check "rollback then install by hand: recorded installed" "v1.3.0 installed" "$(last_attempt)"
+
+# After the memory is cleared, a rollback again followed by a newer release.
+rollback_case rb-newer-release
+run_deploy rollback 1.2.0
+export STUB_LATEST_TAG=v1.3.1
+run_deploy poll
+check "a newer release than the abandoned one: the poll installs it" "0" "$RC"
+check "a newer release than the abandoned one: it is active" "1.3.1" "$(current_version)"
+check "a newer release than the abandoned one: one mail" "1" "$(mail_count)"
+check "a newer release than the abandoned one: recorded installed" "v1.3.1 installed" "$(last_attempt)"
+
 rollback_case rb-unknown
 export STUB_STATUS_EXIT=2 STUB_STATUS_JSON=""
 run_deploy rollback 1.2.0
@@ -567,6 +671,7 @@ run_deploy rollback 1.2.0
 check "rollback to a release with pending migrations: refused" "1" "$RC"
 check "rollback pending: says to install instead" "yes" "$(out_has 'install it instead')"
 check "rollback pending: nothing changes" "migrator status 1.2.0 current=1.3.0" "$(calls)"
+check "rollback pending: nothing abandoned or recorded" "" "$(last_attempt)"
 
 rollback_case rb-unreadable
 export STUB_STATUS_EXIT=4 STUB_STATUS_JSON=""
@@ -582,6 +687,13 @@ check "rollback to the adopted release: refused" "1" "$RC"
 check "rollback adopted: points at the manual restore steps" "yes" "$(out_has 'docs/deploy.md')"
 check "rollback adopted: the migrator was never run" "" "$(calls)"
 check "rollback adopted: current unchanged" "1.3.0" "$(current_version)"
+check "rollback adopted: nothing abandoned or recorded" "" "$(last_attempt)"
+
+rollback_case rb-unhealthy
+export STUB_UNHEALTHY_VERSION=1.2.0
+run_deploy rollback 1.2.0
+check "rollback to a release that never becomes healthy: fails" "1" "$RC"
+check "rollback unhealthy: nothing abandoned or recorded" "" "$(last_attempt)"
 
 rollback_case rb-missing
 run_deploy rollback 1.1.0
@@ -592,6 +704,7 @@ rollback_case rb-active
 run_deploy rollback 1.3.0
 check "rollback to the active version: refused" "1" "$RC"
 check "rollback active: nothing runs" "" "$(calls)"
+check "rollback active: nothing abandoned or recorded" "" "$(last_attempt)"
 
 rollback_case rb-badarg
 run_deploy rollback v1.2.0

@@ -76,7 +76,7 @@ questboard_record_attempt() {
   [[ "$tag" =~ ^[A-Za-z0-9._+-]+$ ]] \
     || questboard_die "refusing to record an attempt for an unusual tag"
   case "$outcome" in
-    installed|refused|failed|failed_rolled_back|rolled_back|halted|adopted|rolled_back_manual) ;;
+    installed|refused|failed|failed_rolled_back|rolled_back|halted|adopted|rolled_back_manual|abandoned) ;;
     *) questboard_die "refusing to record an unknown outcome: ${outcome}" ;;
   esac
 
@@ -85,10 +85,11 @@ questboard_record_attempt() {
 }
 
 # Prints the latest recorded outcome for TAG when it is one that later polls
-# must skip: refused, failed, failed_rolled_back, rolled_back or halted. Prints
-# nothing for a tag never tried, one that last installed, or one whose last
-# outcome is not a bad one (adopted, rolled_back_manual). An explicit later
-# install therefore clears the memory simply by recording installed.
+# must skip: refused, failed, failed_rolled_back, rolled_back, halted or
+# abandoned (the release an operator rolled away from by hand). Prints nothing
+# for a tag never tried, one that last installed, or one whose last outcome is
+# not a bad one (adopted, rolled_back_manual). An explicit later install
+# therefore clears the memory simply by recording installed.
 questboard_remembered_outcome() {
   local state_dir="$1" tag="$2"
   local attempts="${state_dir}/attempts"
@@ -97,7 +98,7 @@ questboard_remembered_outcome() {
   local latest
   latest="$(TAG="$tag" awk '$1 == ENVIRON["TAG"] { outcome = $2 } END { if (outcome != "") print outcome }' "$attempts")"
   case "$latest" in
-    refused|failed|failed_rolled_back|rolled_back|halted) printf '%s\n' "$latest" ;;
+    refused|failed|failed_rolled_back|rolled_back|halted|abandoned) printf '%s\n' "$latest" ;;
   esac
   return 0
 }
