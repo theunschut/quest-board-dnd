@@ -123,5 +123,94 @@ for wf in sorted(glob.glob(".github/workflows/*.yml") + glob.glob(".github/workf
 check("no workflow job targets a self-hosted runner" + (" (" + ", ".join(offenders) + ")" if offenders else ""),
       not offenders)
 
+# --- dotnet.yml: required jobs, pinning and the scripts both workflows call ---
+
+import shlex
+
+dotnet_path = ".github/workflows/dotnet.yml"
+check("dotnet.yml exists", os.path.isfile(dotnet_path))
+dotnet_jobs = {}
+if os.path.isfile(dotnet_path):
+    with open(dotnet_path, encoding="utf-8") as fh:
+        dotnet_jobs = (yaml.safe_load(fh) or {}).get("jobs", {}) or {}
+
+required_jobs = ["build", "migrator-sql", "deploy-scripts", "workflow-lint", "network-verify"]
+missing_jobs = [j for j in required_jobs if j not in dotnet_jobs]
+check("dotnet.yml has the jobs " + ", ".join(required_jobs)
+      + (" (missing: " + ", ".join(missing_jobs) + ")" if missing_jobs else ""),
+      not missing_jobs)
+
+# The original build job keeps its tag-pinned actions, so only the later jobs are held to SHA pins.
+pinned_jobs = ["migrator-sql", "deploy-scripts", "workflow-lint", "network-verify"]
+unpinned = []
+for name in pinned_jobs:
+    for step in (dotnet_jobs.get(name) or {}).get("steps", []) or []:
+        ref = step.get("uses")
+        if ref and not re.search(r"@[0-9a-f]{40}(\s|$)", ref):
+            unpinned.append(name + ": " + ref)
+check("every uses: in migrator-sql and the new jobs is pinned to a 40-hex SHA"
+      + (" (" + ", ".join(unpinned) + ")" if unpinned else ""), not unpinned)
+
+new_jobs = ["deploy-scripts", "workflow-lint", "network-verify"]
+check("new jobs run on ubuntu-24.04 with contents: read only",
+      all((dotnet_jobs.get(n) or {}).get("runs-on") == "ubuntu-24.04"
+          and (dotnet_jobs.get(n) or {}).get("permissions") == {"contents": "read"}
+          for n in new_jobs))
+new_checkouts = [s for n in new_jobs for s in (dotnet_jobs.get(n) or {}).get("steps", []) or []
+                 if str(s.get("uses", "")).startswith("actions/checkout@")]
+check("new jobs check out without persisting credentials",
+      len(new_checkouts) == len(new_jobs)
+      and all(s.get("with", {}).get("persist-credentials") is False for s in new_checkouts))
+
+workflow_runs = []
+for wf in sorted(glob.glob(".github/workflows/*.yml") + glob.glob(".github/workflows/*.yaml")):
+    with open(wf, encoding="utf-8") as fh:
+        doc = yaml.safe_load(fh) or {}
+    for jname, job in (doc.get("jobs") or {}).items():
+        for step in (job or {}).get("steps", []) or []:
+            if "run" in step:
+                workflow_runs.append((wf, jname, step["run"]))
+
+check("no run: in dotnet.yml contains a ${{ expression",
+      all("${{" not in run for wf, _, run in workflow_runs if wf.endswith("dotnet.yml")))
+
+# Every docker run image reference must carry a sha256 digest.
+bad_images = []
+option_values = {"-v", "-w", "-e", "-u", "--entrypoint", "--network", "--user", "--platform", "--name", "--workdir"}
+for wf, jname, run in workflow_runs:
+    joined = re.sub(r"\\\n", " ", run)
+    for line in joined.splitlines():
+        if "docker run" not in line:
+            continue
+        tokens = shlex.split(line[line.index("docker run") + len("docker run"):])
+        i = 0
+        image = None
+        while i < len(tokens):
+            tok = tokens[i]
+            if tok in option_values:
+                i += 2
+                continue
+            if tok.startswith("-"):
+                i += 1
+                continue
+            image = tok
+            break
+        if image is None or not re.search(r"@sha256:[0-9a-f]{64}$", image):
+            bad_images.append(wf + ":" + jname + ": " + str(image))
+check("every docker run image reference is pinned by sha256 digest"
+      + (" (" + ", ".join(bad_images) + ")" if bad_images else ""), not bad_images)
+
+# Every repository script a run: step names must exist; glob tokens are skipped.
+missing_scripts = []
+for wf, jname, run in workflow_runs:
+    for token in re.findall(r"(?<![A-Za-z0-9_./-])(?:build|deploy)/[^\s\"'`;|&()<>]*", run):
+        if "*" in token:
+            continue
+        if token.endswith(".sh") or token == "deploy/bin/questboard-deploy":
+            if not os.path.isfile(token):
+                missing_scripts.append(wf + ":" + jname + ": " + token)
+check("every repository script named in a run: step exists"
+      + (" (" + ", ".join(missing_scripts) + ")" if missing_scripts else ""), not missing_scripts)
+
 sys.exit(1 if failures else 0)
 PY

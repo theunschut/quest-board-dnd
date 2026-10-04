@@ -61,3 +61,87 @@ jobs:
       env:
         QUESTBOARD_MIGRATOR_TEST_CONNECTION: "Server=127.0.0.1,1433;User Id=sa;Password=QuestBoard-CI-only-9;TrustServerCertificate=true;Encrypt=false"
         QUESTBOARD_MIGRATOR_TEST_REQUIRED: "1"
+
+  # Every offline script test, a shellcheck pass, and the packaged zip run through the smoke
+  # test and the install flow, so the installer and the packaging are proven together on a
+  # machine that actually builds. The lint image is pinned by digest.
+  deploy-scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Setup .NET
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      with:
+        dotnet-version: '10.0.x'
+    - name: Ensure PyYAML for the workflow guard
+      run: python3 -c 'import yaml' 2>/dev/null || sudo apt-get install -y --no-install-recommends python3-yaml
+    - name: Syntax check every shell script
+      run: |
+        set -euo pipefail
+        for f in deploy/bin/questboard-deploy deploy/lib/*.sh deploy/tests/*.sh deploy/tests/lib/*.sh deploy/sql-ct/*.sh build/*.sh build/tests/*.sh; do
+          bash -n "$f"
+        done
+    - name: shellcheck
+      run: |
+        docker run --rm -v "$PWD:/repo:ro" -w /repo --entrypoint /bin/shellcheck \
+          koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d \
+          --severity=warning -x --source-path=/repo \
+          deploy/bin/questboard-deploy deploy/lib/*.sh deploy/tests/*.sh deploy/tests/lib/*.sh deploy/sql-ct/*.sh build/*.sh build/tests/*.sh
+    - name: Offline deploy script tests
+      run: bash deploy/tests/run-all.sh
+    - name: Release tag validation test
+      run: bash build/tests/validate-release-tag-test.sh
+    - name: Release workflow structure test
+      run: bash build/tests/release-workflow-test.sh
+    - name: Package a release zip
+      run: build/package-release.sh --version 0.0.0 --commit "$GITHUB_SHA" --output artifacts/ci
+    - name: Smoke test the packaged zip
+      run: bash build/tests/package-release-smoke-test.sh artifacts/ci/questboard-v0.0.0.zip
+    - name: Install flow against the packaged zip
+      run: QUESTBOARD_TEST_PACKAGED_ZIP="$PWD/artifacts/ci/questboard-v0.0.0.zip" bash deploy/tests/install-flow-test.sh
+
+  # Lints the release workflow. zizmor's hash-pin policy covers release.yml only: the original
+  # build job in this file pins its actions by tag, which predates the rule. Lint images are
+  # pinned by digest.
+  workflow-lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: actionlint
+      run: |
+        docker run --rm -v "$PWD:/repo:ro" -w /repo --entrypoint /usr/local/bin/actionlint \
+          rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
+          .github/workflows/release.yml .github/workflows/dotnet.yml
+    - name: zizmor
+      run: |
+        docker run --rm -v "$PWD:/repo:ro" -w /repo --entrypoint /usr/bin/zizmor \
+          ghcr.io/zizmorcore/zizmor:1.30.1@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 \
+          --offline --config .github/zizmor.yml .github/workflows/release.yml
+    - name: Ensure PyYAML for the workflow guard
+      run: python3 -c 'import yaml' 2>/dev/null || sudo apt-get install -y --no-install-recommends python3-yaml
+    - name: Release workflow structure test
+      run: bash build/tests/release-workflow-test.sh
+
+  # Real-network proof that the installer's verification refuses tampered and mismatched
+  # artifacts. It uses the gh that hosted runners provide and sends it no credential.
+  network-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Verification refuses tampered and mismatched artifacts
+      run: QUESTBOARD_TEST_NETWORK=1 bash deploy/tests/verify-rejects-tampered-artifact-network-test.sh
