@@ -23,7 +23,8 @@ export STUB_GH_ENV_LOG="${STUB_DIR}/gh-env.log"
 
 # A stand-in for curl: records every call's arguments (one per line, calls
 # separated by a marker), writes STUB_BODY_FILE to the --output path, prints
-# STUB_HTTP_CODE and exits with STUB_CURL_EXIT.
+# STUB_HTTP_CODE and exits with STUB_CURL_EXIT, or with 6 when the requested URL
+# (the last argument) contains STUB_CURL_FAIL_MATCH.
 cat > "${STUB_DIR}/curl" <<'EOF'
 #!/bin/sh
 out=""
@@ -34,6 +35,9 @@ for arg in "$@"; do
   if [ "$prev" = "--output" ]; then out="$arg"; fi
   prev="$arg"
 done
+if [ -n "${STUB_CURL_FAIL_MATCH:-}" ]; then
+  case "$prev" in *"$STUB_CURL_FAIL_MATCH"*) exit 6 ;; esac
+fi
 if [ -n "$out" ] && [ -n "${STUB_BODY_FILE:-}" ]; then
   cp "$STUB_BODY_FILE" "$out"
 fi
@@ -110,7 +114,7 @@ curl_calls() {
 
 reset_stubs() {
   rm -f "$STUB_CURL_LOG" "$STUB_GH_LOG" "$STUB_GH_ENV_LOG"
-  unset STUB_HTTP_CODE STUB_CURL_EXIT STUB_BODY_FILE STUB_GH_EXIT STUB_GH_JSON
+  unset STUB_HTTP_CODE STUB_CURL_EXIT STUB_CURL_FAIL_MATCH STUB_BODY_FILE STUB_GH_EXIT STUB_GH_JSON
 }
 
 WORK="${QUESTBOARD_DEPLOY_ROOT}/work"
@@ -234,6 +238,60 @@ check "attestation fails when the digest is not 40 hex characters" "1" \
 export STUB_GH_JSON='[{"verificationResult":{"signature":{"certificate":{"sourceRepositoryDigest":"0123456789ABCDEF0123456789ABCDEF01234567"}}}}]'
 check "attestation fails when the digest is upper case" "1" \
   "$(status_of questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)"
+
+# A failed gh run is a refusal unless the services it needs are then found
+# unreachable; only that finding yields the distinct unreachable status.
+ATT_ARGS=("$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)
+
+reset_stubs
+export STUB_GH_JSON="" STUB_GH_EXIT=1 STUB_HTTP_CODE=200
+check "a rejected artifact with every service reachable returns 1" "1" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+check "a rejected artifact prints no commit" "" \
+  "$(questboard_verify_attestation "${ATT_ARGS[@]}" 2>/dev/null || true)"
+check "the probe asked the Sigstore trust service" "yes" \
+  "$(grep -qxF 'https://tuf-repo-cdn.sigstore.dev/' "$STUB_CURL_LOG" && echo yes || echo no)"
+check "the probe asked the GitHub trust service" "yes" \
+  "$(grep -qxF 'https://tuf-repo.github.com/' "$STUB_CURL_LOG" && echo yes || echo no)"
+check "the probe asked the GitHub API" "yes" \
+  "$(grep -qxF 'https://api.github.com/' "$STUB_CURL_LOG" && echo yes || echo no)"
+check "the probe sends no credential" "0" \
+  "$(grep -ciE 'authorization|token|--header|-H$' "$STUB_CURL_LOG" || true)"
+
+reset_stubs
+export STUB_GH_JSON="" STUB_GH_EXIT=1 STUB_HTTP_CODE=500
+check "an error status from a service still counts as reachable" "1" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+
+reset_stubs
+export STUB_GH_JSON="" STUB_GH_EXIT=1 STUB_CURL_EXIT=6
+check "gh failing with every service unreachable returns 3" "3" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+check "an unreachable finding prints no commit" "" \
+  "$(questboard_verify_attestation "${ATT_ARGS[@]}" 2>/dev/null || true)"
+
+for service in tuf-repo-cdn.sigstore.dev tuf-repo.github.com api.github.com; do
+  reset_stubs
+  export STUB_GH_JSON="" STUB_GH_EXIT=1 STUB_CURL_FAIL_MATCH="$service"
+  check "gh failing with only ${service} unreachable returns 3" "3" \
+    "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+done
+
+reset_stubs
+export STUB_GH_JSON="$GOOD_JSON" STUB_GH_EXIT=0 STUB_CURL_EXIT=6
+check "a successful gh run never needs the probe, even with the network down" "0" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+check "a successful gh run makes no probe call" "0" "$(curl_calls)"
+
+reset_stubs
+export STUB_GH_JSON='not json at all' STUB_GH_EXIT=0 STUB_CURL_EXIT=6
+check "a bad result from a successful gh run is a refusal, not an outage" "1" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+
+reset_stubs
+check "the probe finds reachable services reachable" "1" "$(status_of questboard_verification_services_unreachable)"
+export STUB_CURL_EXIT=28
+check "the probe finds a timed-out service unreachable" "0" "$(status_of questboard_verification_services_unreachable)"
 
 reset_stubs
 check "attestation fails without a bundle file and never calls gh" "no" \

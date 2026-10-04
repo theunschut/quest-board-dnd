@@ -168,6 +168,7 @@ The outcomes and what each means are in [deploy.md](deploy.md).
 
 - If the release is faulty, fix forward: merge the fix and cut a new tag. The server installs it
   because it is newer.
-- If the cause was on the server (a full disk, an unreachable service) and the release itself is
+- If the cause was on the server (a full disk, an unreachable database) and the release itself is
   fine, fix the cause and run `questboard-deploy install vX.Y.Z` on the server. The server skips a
-  release it has already rejected until you do this or a newer tag appears.
+  release it has already rejected until you do this or a newer tag appears. An outage of the
+  verification services is not a rejection: nothing is remembered and the next poll retries it.

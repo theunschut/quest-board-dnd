@@ -84,6 +84,10 @@ case "$url" in
       } > "$hdr"
     fi
     ;;
+  *tuf-repo*|https://api.github.com/)
+    # The connectivity probe after a failed attestation check.
+    [ -n "${STUB_PROBE_EXIT:-}" ] && exit "$STUB_PROBE_EXIT"
+    ;;
   *)
     code=404
     ;;
@@ -256,7 +260,7 @@ EOF
   export STUB_LATEST_TAG="v1.3.0" STUB_COMPARE_STATUS="behind"
   export STUB_GH_JSON="$GH_OK" STUB_STATUS_JSON="$STATUS_CLEAN"
   unset STUB_LATEST_EXIT STUB_COMPARE_EXIT STUB_DOWNLOAD_EXIT STUB_UNHEALTHY_VERSION \
-    STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT
+    STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT
 }
 
 RC=0
@@ -325,6 +329,70 @@ new_case attest
 export STUB_GH_JSON=""
 run_deploy install v1.3.0
 assert_untouched_refusal "attestation failure" "the release signature check failed"
+
+# A refusal is remembered: the poll must not retry a tag the check rejected
+# while the verification services were reachable.
+run_deploy poll
+check "attestation failure: a later poll skips the refused tag" "0" "$RC"
+check "attestation failure: a later poll downloads nothing more" "3" "$(downloads_made)"
+check "attestation failure: a later poll names the manual command" "yes" "$(out_has 'skipping v1.3.0: refused earlier')"
+check "attestation failure: a later poll sends no further mail" "1" "$(mail_count)"
+
+# The verification services are down: no verdict exists, so nothing is staged,
+# stopped, mailed or remembered, and the tag is retried.
+assert_outage_changed_nothing() {
+  local label="$1"
+  check "${label}: no new release and no staging directory" "1.2.0" "$(releases_listing)"
+  check "${label}: the app was never touched" "" "$(calls)"
+  check "${label}: current unchanged" "1.2.0" "$(current_version)"
+  check "${label}: no mail" "0" "$(mail_count)"
+  check "${label}: no attempt recorded" "" "$(last_attempt)"
+  check "${label}: the tag is not remembered" "no" \
+    "$(has_text "${ROOT}/var/lib/questboard-deploy/state/attempts" 'v1.3.0')"
+  check "${label}: the download directory is cleaned up" "" "$(ls -A "${ROOT}/var/lib/questboard-deploy/downloads")"
+}
+
+new_case outage-install
+export STUB_GH_JSON="" STUB_PROBE_EXIT=6
+run_deploy install v1.3.0
+check "outage, install by hand: exit non-zero" "1" "$RC"
+check "outage, install by hand: says nothing changed and to retry" "yes" \
+  "$(out_has 'verification services unreachable; nothing changed, try again later')"
+assert_outage_changed_nothing "outage, install by hand"
+unset STUB_PROBE_EXIT
+export STUB_GH_JSON="$GH_OK"
+run_deploy install v1.3.0
+check "outage, install by hand: a retry once the services are back installs" "0" "$RC"
+check "outage, install by hand: a retry installs the release" "1.3.0" "$(current_version)"
+
+new_case outage-poll
+export STUB_GH_JSON="" STUB_PROBE_EXIT=6
+run_deploy poll
+check "outage, poll: exit 0" "0" "$RC"
+check "outage, poll: logs that the next poll retries" "yes" "$(out_has 'verification services unreachable')"
+assert_outage_changed_nothing "outage, poll"
+run_deploy poll
+check "outage, poll: a second poll in the outage is equally harmless" "0" "$RC"
+assert_outage_changed_nothing "outage, second poll"
+check "outage, poll: the tag is downloaded again by the retry" "6" "$(downloads_made)"
+unset STUB_PROBE_EXIT
+export STUB_GH_JSON="$GH_OK"
+run_deploy poll
+check "outage, poll: the next poll after the outage installs" "0" "$RC"
+check "outage, poll: the release is active" "1.3.0" "$(current_version)"
+check "outage, poll: one mail for the install" "1" "$(mail_count)"
+check "outage, poll: mail says installed" "installed" "$(mail_result)"
+check "outage, poll: recorded installed" "v1.3.0 installed" "$(last_attempt)"
+
+# gh failing while the probe finds the services reachable stays a refusal even
+# if some other tag was tried earlier during an outage.
+new_case outage-then-refused
+export STUB_GH_JSON="" STUB_PROBE_EXIT=6
+run_deploy poll
+unset STUB_PROBE_EXIT
+run_deploy poll
+check "outage then a real rejection: refused" "1" "$([ "$RC" -ne 0 ] && echo 1 || echo 0)"
+check "outage then a real rejection: remembered" "v1.3.0 refused" "$(last_attempt)"
 
 new_case diverged
 export STUB_COMPARE_STATUS="diverged"

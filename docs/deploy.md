@@ -59,6 +59,7 @@ A poll that finds nothing to do says so in the journal and exits successfully:
 
 - nothing newer than the active release;
 - GitHub unreachable, or no release published yet;
+- the verification services unreachable while checking a new release (the next poll retries it);
 - the newest release is one the installer already tried and rejected (see "Outcomes").
 
 None of these send mail. A poll also installs nothing that is not strictly newer than what is
@@ -107,9 +108,15 @@ skips one.
    contain the app, the migrator and the installer files, must contain no symlinks and no path
    that escapes the directory, and the disk must have room for it.
 
-Verification needs the Sigstore trust service to be reachable from the CT, because `gh` fetches
-the current trusted root over the network. If the service is unreachable the install is
-refused, not skipped. See "Troubleshooting" for what to do afterwards.
+Verification needs the Sigstore and GitHub trust services to be reachable from the CT, because
+`gh` fetches the current trusted roots over the network. When `gh` fails, the installer asks each
+of those services (and the GitHub API) for an answer, without any credential. If at least one gives
+no answer at all, no verdict on the release exists: nothing is staged, stopped or remembered, no
+mail is sent, and the next poll retries the same tag. A manual
+`questboard-deploy install` in that situation exits non-zero with `verification services
+unreachable; nothing changed, try again later`. This never lets an unverified release through: the
+release is simply not installed until verification has run. If every service answers and `gh`
+still fails, the release is refused as described below.
 
 ## Outcomes
 
@@ -125,6 +132,7 @@ refused, not skipped. See "Troubleshooting" for what to do afterwards.
 | Migrations committed, and the new release is not healthy | The new release is left active, systemd keeps retrying it, nothing is restored automatically | `halted - migrations applied`, naming the backup | yes |
 | Nothing newer than the active release | Nothing | none, journal only | no |
 | GitHub unreachable, or no release published | Nothing; the next poll retries | none, journal only | no |
+| The verification services (Sigstore, GitHub) cannot be reached | Nothing is staged or stopped; the next poll retries | none, journal only | no |
 | A remembered tag turns up again | Skipped, with one journal line | none, journal only | already remembered |
 | `questboard-deploy rollback` by hand | Switches to the chosen release | none, terminal and journal only | the release rolled back from is (as `abandoned`) |
 
@@ -512,12 +520,17 @@ ls -l /opt/questboard/current                                     # the active r
 ```
 
 **The installer refuses a release that verifies on a workstation.** The journal line
-`attestation verification failed` carries the reason. The usual causes are: the CT cannot reach
-the Sigstore trust service (verification needs it, so an outage refuses the release); `gh` is
-missing or older than 2.49.0 (run `setup` again); or `QUESTBOARD_GITHUB_REPO` or
-`QUESTBOARD_SIGNER_WORKFLOW` does not match what the release was built under. A refusal is
-remembered, so once the cause is fixed run `questboard-deploy install vX.Y.Z` to try that tag
-again.
+`attestation verification failed` carries the reason. The usual causes are: `gh` is missing or
+older than 2.49.0 (run `setup` again); or `QUESTBOARD_GITHUB_REPO` or `QUESTBOARD_SIGNER_WORKFLOW`
+does not match what the release was built under. A refusal is remembered, so once the cause is
+fixed run `questboard-deploy install vX.Y.Z` to try that tag again.
+
+**The journal says `verification services unreachable`.** The CT could not reach the Sigstore or
+GitHub trust services, so the release could not be checked. This is not a refusal and is not
+remembered: nothing changed, and the next poll retries by itself. Nothing needs to be run by hand
+unless you are installing manually; then run `questboard-deploy install vX.Y.Z` again once the
+CT has network access. If it persists, check DNS and outbound HTTPS from the CT to
+`tuf-repo-cdn.sigstore.dev`, `tuf-repo.github.com` and `api.github.com`.
 
 **A bus-connection error in the journal** (`Failed to connect to bus`) means the installer could
 not start the migrator through systemd from inside the sandboxed unit. The install stops before

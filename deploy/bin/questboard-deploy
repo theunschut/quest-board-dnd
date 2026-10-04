@@ -263,8 +263,19 @@ cmd_install() {
   fi
 
   local commit=""
-  if ! commit="$(questboard_verify_attestation "${dl}/${zip_name}" "${dl}/${zip_name}.sigstore.json" \
-      "$QUESTBOARD_GITHUB_REPO" "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${TAG}")"; then
+  rc=0
+  commit="$(questboard_verify_attestation "${dl}/${zip_name}" "${dl}/${zip_name}.sigstore.json" \
+      "$QUESTBOARD_GITHUB_REPO" "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${TAG}")" || rc=$?
+  if [ "$rc" -eq "$QUESTBOARD_VERIFY_UNREACHABLE" ]; then
+    # No verdict on the artifact exists, so this is neither a refusal nor
+    # remembered: nothing was staged or stopped, and the next poll retries.
+    rm -rf "$dl"
+    if [ "$INVOKED_BY_POLL" -eq 1 ]; then
+      questboard_log "verification services unreachable while verifying ${TAG}; nothing changed, the next poll retries"
+      exit 0
+    fi
+    questboard_die "verification services unreachable; nothing changed, try again later"
+  elif [ "$rc" -ne 0 ]; then
     stop_attempt verify fail attestation_failed "$has_previous"
   fi
   if ! questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main; then
@@ -483,10 +494,14 @@ cmd_verify() {
     || questboard_die "verify needs --artifact, --bundle and --tag"
   questboard_is_strict_tag "$tag" || questboard_die "verify needs a release tag like v1.2.3"
 
-  local commit=""
+  local commit="" rc=0
   commit="$(questboard_verify_attestation "$artifact" "$bundle" "$QUESTBOARD_GITHUB_REPO" \
-    "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${tag}")" \
-    || questboard_die "attestation check failed for ${tag}"
+    "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${tag}")" || rc=$?
+  if [ "$rc" -eq "$QUESTBOARD_VERIFY_UNREACHABLE" ]; then
+    questboard_die "verification services unreachable; try again later"
+  elif [ "$rc" -ne 0 ]; then
+    questboard_die "attestation check failed for ${tag}"
+  fi
   questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main \
     || questboard_die "the attested commit is not on main"
   printf '%s\n' "$commit"
