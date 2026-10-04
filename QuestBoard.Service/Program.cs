@@ -10,6 +10,7 @@ using QuestBoard.Service.Middleware;
 using QuestBoard.Service.Services;
 using QuestBoard.Service.ViewExpanders;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Razor;
@@ -22,6 +23,7 @@ using Hangfire;
 using Hangfire.SqlServer;
 using QuestBoard.Service.Jobs;
 using QuestBoard.Service.HealthChecks;
+using QuestBoard.Service.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -370,7 +372,16 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    // The version header lets a deployment confirm which build is answering; the body stays the bare status text.
+    ResponseWriter = (context, report) =>
+    {
+        context.Response.Headers["X-QuestBoard-Version"] = AppVersion.Current;
+        context.Response.ContentType = "text/plain";
+        return context.Response.WriteAsync(report.Status.ToString());
+    }
+});
 
 // Only run migrations if not in testing environment
 if (!app.Environment.IsEnvironment("Testing"))
