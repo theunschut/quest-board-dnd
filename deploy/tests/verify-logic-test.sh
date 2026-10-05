@@ -46,8 +46,9 @@ exit "${STUB_CURL_EXIT:-0}"
 EOF
 
 # A stand-in for gh: records its arguments and the environment that matters,
-# proves its cache and state directories are writable, prints STUB_GH_JSON and
-# exits with STUB_GH_EXIT.
+# proves its cache and state directories are writable, prints STUB_GH_JSON on
+# stdout and STUB_GH_STDERR (when set) on stderr, then exits with STUB_GH_EXIT.
+# STUB_GH_HANG_SECONDS makes it sleep first, standing in for a stalled network call.
 cat > "${STUB_DIR}/gh" <<'EOF'
 #!/bin/sh
 : > "$STUB_GH_LOG"
@@ -71,6 +72,12 @@ if mkdir -p "$XDG_CACHE_HOME/gh" "$XDG_STATE_HOME/gh" "$GH_CONFIG_DIR" \
   printf 'WRITABLE=yes\n' >> "$STUB_GH_ENV_LOG"
 else
   printf 'WRITABLE=no\n' >> "$STUB_GH_ENV_LOG"
+fi
+if [ -n "${STUB_GH_HANG_SECONDS:-}" ]; then
+  exec sleep "$STUB_GH_HANG_SECONDS"
+fi
+if [ -n "${STUB_GH_STDERR:-}" ]; then
+  printf '%s\n' "$STUB_GH_STDERR" >&2
 fi
 printf '%s' "${STUB_GH_JSON:-}"
 exit "${STUB_GH_EXIT:-0}"
@@ -114,7 +121,8 @@ curl_calls() {
 
 reset_stubs() {
   rm -f "$STUB_CURL_LOG" "$STUB_GH_LOG" "$STUB_GH_ENV_LOG"
-  unset STUB_HTTP_CODE STUB_CURL_EXIT STUB_CURL_FAIL_MATCH STUB_BODY_FILE STUB_GH_EXIT STUB_GH_JSON
+  unset STUB_HTTP_CODE STUB_CURL_EXIT STUB_CURL_FAIL_MATCH STUB_BODY_FILE STUB_GH_EXIT STUB_GH_JSON \
+    STUB_GH_STDERR STUB_GH_HANG_SECONDS
 }
 
 WORK="${QUESTBOARD_DEPLOY_ROOT}/work"
@@ -223,7 +231,20 @@ export STUB_GH_EXIT=0 STUB_GH_JSON='[{"verificationResult":{"signature":{"certif
 check "attestation fails when the digest is missing" "1" \
   "$(status_of questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)"
 
-export STUB_GH_JSON='not json at all'
+# gh may print notices on stderr while it succeeds. Only stdout is the result.
+reset_stubs
+export STUB_GH_JSON="$GOOD_JSON" STUB_GH_EXIT=0 STUB_GH_STDERR="A new release of gh is available: 2.0.0 -> 2.1.0"
+stderr_rc=0
+stderr_out="$(questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3 2>/dev/null)" || stderr_rc=$?
+check "a notice on gh's stderr does not spoil a valid result" "0" "$stderr_rc"
+check "a notice on gh's stderr still yields the attested commit" "$SHA" "$stderr_out"
+
+export STUB_GH_JSON='not json at all' STUB_GH_STDERR="a notice"
+check "a notice on stderr does not rescue a result that is not JSON" "1" \
+  "$(status_of questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)"
+
+reset_stubs
+export STUB_GH_EXIT=0 STUB_GH_JSON='not json at all'
 check "attestation fails when the output is not JSON" "1" \
   "$(status_of questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)"
 

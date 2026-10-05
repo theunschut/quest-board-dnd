@@ -98,8 +98,11 @@ questboard_verify_attestation() {
   local work
   work="$(mktemp -d)" || return 1
 
-  local output="" rc=0
-  output="$(env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN -u GH_HOST \
+  # The result is whatever gh prints on stdout. Anything it says on stderr (a
+  # notice, a deprecation warning, a trust-root refresh message) is kept apart
+  # so it can neither spoil a valid result nor pass for one.
+  local output="" errtext="" rc=0
+  env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN -u GH_HOST \
       GH_CONFIG_DIR="${work}/config" \
       XDG_CONFIG_HOME="${work}/config" \
       XDG_CACHE_HOME="${work}/cache" \
@@ -111,16 +114,18 @@ questboard_verify_attestation() {
         --signer-workflow "${repo}/${signer_workflow}" \
         --source-ref "$source_ref" \
         --deny-self-hosted-runners \
-        --format json 2>&1)" || rc=$?
+        --format json >"${work}/stdout" 2>"${work}/stderr" || rc=$?
 
+  output="$(cat "${work}/stdout" 2>/dev/null)" || output=""
+  errtext="$(head -c 4000 "${work}/stderr" 2>/dev/null)" || errtext=""
   rm -rf "$work"
 
   if [ "$rc" -ne 0 ]; then
     if questboard_verification_services_unreachable; then
-      questboard_log "attestation verification could not run, the verification services are unreachable: ${output}"
+      questboard_log "attestation verification could not run, the verification services are unreachable: ${errtext}"
       return "$QUESTBOARD_VERIFY_UNREACHABLE"
     fi
-    questboard_log "attestation verification failed: ${output}"
+    questboard_log "attestation verification failed: ${errtext}"
     return 1
   fi
 

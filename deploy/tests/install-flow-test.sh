@@ -96,13 +96,17 @@ printf '%s' "$code"
 exit 0
 EOF
 
-# gh: prints STUB_GH_JSON, or fails when it is empty.
+# gh: prints STUB_GH_JSON, or fails when it is empty. STUB_GH_STDERR is a
+# notice written to stderr alongside a successful result.
 cat > "${STUBS}/gh" <<'EOF'
 #!/bin/sh
 printf 'gh %s\n' "$*" >> "$STUB_CURL_LOG"
 if [ -z "${STUB_GH_JSON:-}" ]; then
   echo "verification failed" >&2
   exit 1
+fi
+if [ -n "${STUB_GH_STDERR:-}" ]; then
+  printf '%s\n' "$STUB_GH_STDERR" >&2
 fi
 printf '%s\n' "$STUB_GH_JSON"
 EOF
@@ -260,7 +264,8 @@ EOF
   export STUB_LATEST_TAG="v1.3.0" STUB_COMPARE_STATUS="behind"
   export STUB_GH_JSON="$GH_OK" STUB_STATUS_JSON="$STATUS_CLEAN"
   unset STUB_LATEST_EXIT STUB_COMPARE_EXIT STUB_DOWNLOAD_EXIT STUB_UNHEALTHY_VERSION \
-    STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT
+    STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT \
+    STUB_GH_STDERR
 }
 
 RC=0
@@ -295,6 +300,15 @@ check "happy: exactly one mail" "1" "$(mail_count)"
 check "happy: mail says installed" "installed" "$(mail_result)"
 check "happy: no installer update notice when files match" "no" "$(has_text "${ROOT}/mail/mail-1.eml" 'Installer update available')"
 check "happy: the download directory is cleaned up" "" "$(ls -A "${ROOT}/var/lib/questboard-deploy/downloads")"
+
+# gh may print a notice on stderr while it verifies successfully. That must not
+# turn a good release into a remembered refusal.
+new_case gh-notice
+export STUB_GH_STDERR="A new release of gh is available"
+run_deploy install v1.3.0
+check "gh notice on stderr: the release installs" "0" "$RC"
+check "gh notice on stderr: current names the new release" "1.3.0" "$(current_version)"
+check "gh notice on stderr: recorded installed" "v1.3.0 installed" "$(last_attempt)"
 
 new_case pending
 export STUB_STATUS_JSON="$STATUS_PENDING"
