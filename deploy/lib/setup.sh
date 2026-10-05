@@ -120,6 +120,9 @@ questboard_setup_install_gh() {
 
   if ! command -v gpg >/dev/null 2>&1; then
     questboard_log "installing gnupg to check the repository key"
+    # Refresh the lists first: on a host that has not run apt for a while the
+    # cached lists name package versions the mirror no longer serves.
+    apt-get update -qq || questboard_die "apt-get update failed"
     DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg \
       || questboard_die "could not install gnupg"
   fi

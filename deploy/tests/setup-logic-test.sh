@@ -40,6 +40,7 @@ cat > "${STUB_DIR}/apt-get" <<'EOF'
 printf 'apt-get %s\n' "$*" >> "$STUB_CALLS"
 case "$*" in
   *"install -y gh"*) printf '%s\n' "${STUB_GH_AFTER:-2.102.0}" > "${STUB_DIR}/gh-version" ;;
+  *"install -y gnupg"*) [ ! -f "${STUB_DIR}/gpg.absent" ] || mv "${STUB_DIR}/gpg.absent" "${STUB_DIR}/gpg" ;;
 esac
 exit 0
 EOF
@@ -307,6 +308,27 @@ check "gh source line names the packages host and architecture" "deb [arch=amd64
   "$(cat "${DEPLOY_ROOT}/etc/apt/sources.list.d/github-cli.list")"
 check "gh keyring is installed 0644" "644" "$(mode_of "${DEPLOY_ROOT}/usr/share/keyrings/githubcli-archive-keyring.gpg")"
 check "gh install never asks for jq" "0" "$(called 'jq')"
+
+# A host without gpg: the lists are refreshed before gnupg is installed, since
+# stale lists name package versions the mirror no longer serves. The PATH hides
+# any real gpg; the stub reappears when apt-get installs gnupg.
+new_root
+rm -f "${STUB_DIR}/gh-version"
+NO_GPG_BIN="${WORK}/no-gpg-bin"
+mkdir -p "$NO_GPG_BIN"
+for tool in /usr/bin/* /bin/*; do
+  case "${tool##*/}" in gpg|gpg2) continue ;; esac
+  [ -e "${NO_GPG_BIN}/${tool##*/}" ] || [ -L "${NO_GPG_BIN}/${tool##*/}" ] \
+    || ln -s "$tool" "${NO_GPG_BIN}/${tool##*/}"
+done
+mv "${STUB_DIR}/gpg" "${STUB_DIR}/gpg.absent"
+rc=0
+( PATH="${STUB_DIR}:${NO_GPG_BIN}"; questboard_setup_install_gh ) >/dev/null 2>&1 || rc=$?
+[ -f "${STUB_DIR}/gpg" ] || mv "${STUB_DIR}/gpg.absent" "${STUB_DIR}/gpg"
+check "gh install on a host without gpg succeeds" "0" "$rc"
+check "gnupg is installed when gpg is missing" "1" "$(called '^apt-get install -y gnupg')"
+check "the lists are refreshed before gnupg is installed" "apt-get update -qq" \
+  "$(grep -m 1 '^apt-get ' "$STUB_CALLS")"
 
 new_root
 rm -f "${STUB_DIR}/gh-version"
