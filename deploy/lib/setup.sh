@@ -51,10 +51,16 @@ questboard_setup_active_key_fingerprints() {
   '
 }
 
-# Prints X.Y.Z read from the informational version ("X.Y.Z+<hex>" followed by a
-# NUL byte) compiled into DLL. Fails when there is no such version or when the
-# file carries more than one different one, because guessing which release is
-# running would defeat the point of asking the operator to confirm it.
+# Prints X.Y.Z read from the informational version ("X.Y.Z+<hex>") compiled into
+# DLL. Fails when there is no such version or when the file carries more than
+# one different one, because guessing which release is running would defeat the
+# point of asking the operator to confirm it.
+#
+# The version is matched as the attribute record the compiler writes: the 01 00
+# prolog, a one-byte length, the string itself and two zero bytes. The length
+# byte must equal the string's length. A looser match that only looked at the
+# byte before the version broke on a real build: a 46-character version string
+# has the length byte 0x2E, which is ".".
 questboard_setup_detect_flat_version() {
   local dll="${1:-}"
   [ -f "$dll" ] || return 1
@@ -67,8 +73,12 @@ import sys
 with open(sys.argv[1], "rb") as handle:
     data = handle.read()
 
-pattern = re.compile(rb"(?<![0-9.])(\d+\.\d+\.\d+)\+[0-9a-f]{7,40}\x00")
-versions = sorted({match.group(1).decode("ascii") for match in pattern.finditer(data)})
+pattern = re.compile(rb"\x01\x00([\x01-\x7f])((\d+\.\d+\.\d+)\+[0-9a-f]{7,40})\x00\x00")
+versions = sorted({
+    match.group(3).decode("ascii")
+    for match in pattern.finditer(data)
+    if match.group(1)[0] == len(match.group(2))
+})
 if len(versions) != 1:
     sys.exit(1)
 print(versions[0])

@@ -161,9 +161,20 @@ check "empty input prints nothing" "" "$(questboard_setup_active_key_fingerprint
 # --- running version from an assembly ---------------------------------------
 
 HEX32="$(printf 'a%.0s' $(seq 1 32))"
+HEX40="0f947c3b${HEX32}"
+
+# Writes the attribute record the compiler emits for an informational version:
+# the 01 00 prolog, a one-byte length, the string, then two zero bytes.
+version_record() {
+  local text="$1"
+  printf '\001\000'
+  printf "\\$(printf '%03o' "${#text}")"
+  printf '%s\000\000' "$text"
+}
+
 make_dll() {
-  # make_dll FILE VERSION: embeds "VERSION+<40 hex>" followed by two NUL bytes.
-  printf 'MZ\000\000header %s+0f947c3b%s\000\000trailer' "$2" "$HEX32" > "$1"
+  # make_dll FILE VERSION: embeds the record for "VERSION+<40 hex>".
+  { printf 'MZ\000\000header'; version_record "$2+${HEX40}"; printf 'trailer'; } > "$1"
 }
 
 DLL_ONE="${WORK}/one.dll"
@@ -171,16 +182,49 @@ make_dll "$DLL_ONE" 5.3.3
 check "the version is read from the informational version" "5.3.3" \
   "$(questboard_setup_detect_flat_version "$DLL_ONE")"
 
+# A 46-character version string has the length byte 0x2E, which is "."; a
+# 49-character one has 0x31, which is "1". Both must still be read.
+DLL_DOT="${WORK}/dot.dll"
+make_dll "$DLL_DOT" 5.3.3
+check "the fixture really has the dot length byte" "1" \
+  "$(od -An -tx1 -v "$DLL_DOT" | tr -s ' \n' ' ' | grep -c ' 01 00 2e ')"
+check "a length byte that reads as a dot does not hide the version" "5.3.3" \
+  "$(questboard_setup_detect_flat_version "$DLL_DOT")"
+DLL_DIGIT="${WORK}/digit.dll"
+make_dll "$DLL_DIGIT" 10.20.30
+check "a length byte that reads as a digit does not hide the version" "10.20.30" \
+  "$(questboard_setup_detect_flat_version "$DLL_DIGIT")"
+
+DLL_SHORT="${WORK}/short.dll"
+{ printf 'MZ\000\000'; version_record "5.3.3+0f947c3"; } > "$DLL_SHORT"
+check "a short commit hash is read" "5.3.3" "$(questboard_setup_detect_flat_version "$DLL_SHORT")"
+
+DLL_LEN="${WORK}/len.dll"
+{ printf 'MZ\000\000\001\000\005'; printf '5.3.3+%s\000\000' "$HEX40"; } > "$DLL_LEN"
+check "a record whose length byte disagrees is ignored" "1" "$(status_of questboard_setup_detect_flat_version "$DLL_LEN")"
+
+DLL_DEV="${WORK}/dev.dll"
+{ printf 'MZ\000\000'; version_record "0.0.0-dev+${HEX40}"; } > "$DLL_DEV"
+check "a pre-release version is refused" "1" "$(status_of questboard_setup_detect_flat_version "$DLL_DEV")"
+
 DLL_TWO="${WORK}/two.dll"
 {
-  printf 'MZ\000\000first 5.3.3+0f947c3b%s\000\000' "$HEX32"
-  printf 'second 5.3.4+0f947c3b%s\000\000' "$HEX32"
+  printf 'MZ\000\000first'; version_record "5.3.3+${HEX40}"
+  printf 'second'; version_record "5.3.4+${HEX40}"
 } > "$DLL_TWO"
 check "two different versions are refused" "1" "$(status_of questboard_setup_detect_flat_version "$DLL_TWO")"
+
+DLL_SAME="${WORK}/same.dll"
+{ printf 'MZ\000\000'; version_record "5.3.3+${HEX40}"; printf 'x'; version_record "5.3.3+${HEX40}"; } > "$DLL_SAME"
+check "the same version twice is read once" "5.3.3" "$(questboard_setup_detect_flat_version "$DLL_SAME")"
 
 DLL_NONE="${WORK}/none.dll"
 printf 'MZ\000\000nothing to see 5.3.3 here' > "$DLL_NONE"
 check "no informational version is refused" "1" "$(status_of questboard_setup_detect_flat_version "$DLL_NONE")"
+
+DLL_BARE="${WORK}/bare.dll"
+printf 'MZ\000\000header 5.3.3+%s\000\000trailer' "$HEX40" > "$DLL_BARE"
+check "a version outside an attribute record is ignored" "1" "$(status_of questboard_setup_detect_flat_version "$DLL_BARE")"
 check "a missing file is refused" "1" "$(status_of questboard_setup_detect_flat_version "${WORK}/absent.dll")"
 
 # --- fixtures for the install and adoption scenarios ------------------------
