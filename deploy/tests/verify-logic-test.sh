@@ -309,6 +309,37 @@ export STUB_GH_JSON='not json at all' STUB_GH_EXIT=0 STUB_CURL_EXIT=6
 check "a bad result from a successful gh run is a refusal, not an outage" "1" \
   "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
 
+# A gh run that stalls is cut off after a fixed bound. Without that bound a
+# stalled network call would hold the installer's lock for good. The cut-off is
+# judged like any other gh failure: unreachable services mean no verdict, an
+# answering network means the artifact is refused.
+check "the gh time bound is a positive number of seconds" "yes" \
+  "$([[ "${QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS:-}" =~ ^[1-9][0-9]*$ ]] && echo yes || echo no)"
+QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS=1
+QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS=1
+
+reset_stubs
+export STUB_GH_HANG_SECONDS=30 STUB_CURL_EXIT=6
+hang_started=$SECONDS
+check "a stalled gh with the services unreachable returns 3" "3" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+check "a stalled gh is cut off long before it would have finished" "yes" \
+  "$([ $((SECONDS - hang_started)) -lt 15 ] && echo yes || echo no)"
+
+reset_stubs
+export STUB_GH_HANG_SECONDS=30 STUB_HTTP_CODE=200
+check "a stalled gh with every service reachable returns 1" "1" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+check "a stalled gh prints no commit" "" \
+  "$(questboard_verify_attestation "${ATT_ARGS[@]}" 2>/dev/null || true)"
+
+reset_stubs
+export STUB_GH_JSON="$GOOD_JSON" STUB_GH_EXIT=0
+check "a gh run inside the time bound still verifies" "0" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS=120
+QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS=10
+
 reset_stubs
 check "the probe finds reachable services reachable" "1" "$(status_of questboard_verification_services_unreachable)"
 export STUB_CURL_EXIT=28

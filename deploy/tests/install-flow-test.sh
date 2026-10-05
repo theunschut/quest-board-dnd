@@ -111,6 +111,25 @@ fi
 printf '%s\n' "$STUB_GH_JSON"
 EOF
 
+# timeout: records that the bound was applied and either lets the bound expire
+# at once (STUB_TIMEOUT_FIRES=1, exit 124 as the real one does) or runs the
+# bounded command.
+cat > "${STUBS}/timeout" <<'EOF'
+#!/bin/sh
+printf 'timeout %s\n' "$*" >> "$STUB_CURL_LOG"
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --kill-after=*) shift ;;
+    [0-9]*) shift; break ;;
+    *) break ;;
+  esac
+done
+if [ "${STUB_TIMEOUT_FIRES:-}" = "1" ]; then
+  exit 124
+fi
+exec "$@"
+EOF
+
 # systemctl: records the call and which release the current link names.
 cat > "${STUBS}/systemctl" <<'EOF'
 #!/bin/sh
@@ -265,7 +284,7 @@ EOF
   export STUB_GH_JSON="$GH_OK" STUB_STATUS_JSON="$STATUS_CLEAN"
   unset STUB_LATEST_EXIT STUB_COMPARE_EXIT STUB_DOWNLOAD_EXIT STUB_UNHEALTHY_VERSION \
     STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT \
-    STUB_GH_STDERR
+    STUB_GH_STDERR STUB_TIMEOUT_FIRES
 }
 
 RC=0
@@ -397,6 +416,29 @@ check "outage, poll: the release is active" "1.3.0" "$(current_version)"
 check "outage, poll: one mail for the install" "1" "$(mail_count)"
 check "outage, poll: mail says installed" "installed" "$(mail_result)"
 check "outage, poll: recorded installed" "v1.3.0 installed" "$(last_attempt)"
+
+# gh is always run under a time bound.
+new_case gh-bounded
+run_deploy install v1.3.0
+check "gh is run under a time bound" "yes" "$(has_text "${ROOT}/curl.log" 'timeout --kill-after=')"
+
+# A gh run that outlives its bound while the verification services are down is
+# an outage like any other: quiet, nothing remembered, retried by the next poll.
+new_case gh-timeout-outage
+export STUB_TIMEOUT_FIRES=1 STUB_PROBE_EXIT=6
+run_deploy poll
+check "gh timeout, services down, poll: exit 0" "0" "$RC"
+check "gh timeout, services down, poll: logs the outage" "yes" "$(out_has 'verification services unreachable')"
+assert_outage_changed_nothing "gh timeout, services down, poll"
+unset STUB_TIMEOUT_FIRES STUB_PROBE_EXIT
+run_deploy poll
+check "gh timeout, services down: the next poll installs" "1.3.0" "$(current_version)"
+
+# The same timeout while the services answer is not an outage: refuse.
+new_case gh-timeout-reachable
+export STUB_TIMEOUT_FIRES=1
+run_deploy install v1.3.0
+assert_untouched_refusal "gh timeout, services reachable" "the release signature check failed"
 
 # gh failing while the probe finds the services reachable stays a refusal even
 # if some other tag was tried earlier during an outage.

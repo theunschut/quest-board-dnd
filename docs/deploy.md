@@ -118,6 +118,11 @@ unreachable; nothing changed, try again later`. This never lets an unverified re
 release is simply not installed until verification has run. If every service answers and `gh`
 still fails, the release is refused as described below.
 
+The `gh` check is cut off after 120 seconds (then killed 10 seconds later if it ignores the
+stop), so a stalled network call can never hold the installer's lock and silence every later
+poll. A run that was cut off is judged exactly like any other failed run: services that give no
+answer mean a quiet retry, services that answer mean the release is refused.
+
 ## Outcomes
 
 | Situation | What the installer does | Mail | Remembered by the poll |

@@ -370,7 +370,7 @@ questboard_setup_main() {
   local opt_dir="${root}/opt/questboard"
 
   local tool
-  for tool in python3 curl unzip flock sha256sum systemctl systemd-run; do
+  for tool in python3 curl unzip flock timeout sha256sum systemctl systemd-run; do
     command -v "$tool" >/dev/null 2>&1 || questboard_die "required tool is missing: ${tool}"
   done
   [ -x "${root}/usr/bin/dotnet" ] || questboard_die "required tool is missing: /usr/bin/dotnet"

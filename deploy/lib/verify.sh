@@ -28,6 +28,15 @@ QUESTBOARD_GITHUB_TUF_URL='https://tuf-repo.github.com/'
 # caller that does not know about it treats it as a refusal.
 QUESTBOARD_VERIFY_UNREACHABLE=3
 
+# How long one `gh attestation verify` run may take, and how much longer a run
+# that ignores the polite stop gets before it is killed. gh fetches its trust
+# root and the attestation over the network; without a bound a stalled call
+# would hold the installer's lock for good, so no later poll or manual run could
+# ever start. Fixed here and never read from the environment or the
+# configuration file.
+QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS=120
+QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS=10
+
 QUESTBOARD_SHA256_LINE_RE='^[0-9a-f]{64} [ *][A-Za-z0-9._-]+$'
 QUESTBOARD_COMMIT_SHA_RE='^[0-9a-f]{40}$'
 QUESTBOARD_REPO_RE='^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'
@@ -79,8 +88,10 @@ questboard_verification_services_unreachable() {
 # Verifies the signed provenance of ARTIFACT from BUNDLE, pinned to the
 # repository, the signing workflow and the release tag ref, and prints the
 # 40-character commit the artifact was built from. Returns 1 on any failure and
-# 3 (QUESTBOARD_VERIFY_UNREACHABLE) when gh failed and the services it needs
-# were then found unreachable, so that no verdict on the artifact exists.
+# 3 (QUESTBOARD_VERIFY_UNREACHABLE) when gh failed (including by running past
+# its time bound) and the services it needs were then found unreachable, so that
+# no verdict on the artifact exists. A gh run that stalls while the services
+# answer is a refusal.
 #
 # Verification needs the Sigstore trust root, which gh fetches over the network
 # into a cache directory, and it needs somewhere writable for its own state.
@@ -108,6 +119,7 @@ questboard_verify_attestation() {
       XDG_CACHE_HOME="${work}/cache" \
       XDG_STATE_HOME="${work}/state" \
       GH_TELEMETRY=false GH_NO_UPDATE_NOTIFIER=1 GH_PROMPT_DISABLED=1 \
+      timeout --kill-after="${QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS}" "${QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS}" \
       gh attestation verify "$artifact" \
         --bundle "$bundle" \
         --repo "$repo" \
@@ -121,6 +133,11 @@ questboard_verify_attestation() {
   rm -rf "$work"
 
   if [ "$rc" -ne 0 ]; then
+    # timeout exits 124 when it stopped gh and 137 when it had to kill it. Either
+    # way gh gave no answer, which is judged below like any other failed run.
+    if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
+      errtext="gh did not finish within ${QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS} seconds. ${errtext}"
+    fi
     if questboard_verification_services_unreachable; then
       questboard_log "attestation verification could not run, the verification services are unreachable: ${errtext}"
       return "$QUESTBOARD_VERIFY_UNREACHABLE"
