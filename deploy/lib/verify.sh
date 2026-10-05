@@ -61,14 +61,17 @@ questboard_verify_checksum() {
   [ -f "$sum_file" ] && [ -f "${dir}/${zip_name}" ] || return 1
 
   local line_count
-  line_count="$(wc -l < "$sum_file")"
+  line_count="$(wc -l < "$sum_file")" || return 1
   # Counts newline characters: the file must be exactly one terminated line.
-  if [ "$line_count" -ne 1 ]; then
+  # Callers read this status through `if`, which switches errexit off, so a
+  # count that could not be read must end the check itself.
+  line_count="${line_count//[[:space:]]/}"
+  if [ "$line_count" != "1" ]; then
     return 1
   fi
 
   local line
-  line="$(head -n 1 "$sum_file")"
+  line="$(head -n 1 "$sum_file")" || return 1
   [[ "$line" =~ $QUESTBOARD_SHA256_LINE_RE ]] || return 1
   [ "${line:66}" = "$zip_name" ] || return 1
 

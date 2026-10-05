@@ -300,8 +300,10 @@ cmd_install() {
   questboard_stage_release "${dl}/${zip_name}" "$RELEASES_DIR" "$VERSION" || rc=$?
   if [ "$rc" -eq 3 ]; then
     stop_attempt content invalid invalid_content "$has_previous"
-  elif [ "$rc" -ne 0 ]; then
+  elif [ "$rc" -eq 4 ]; then
     stop_attempt content disk insufficient_disk "$has_previous"
+  elif [ "$rc" -ne 0 ]; then
+    stop_attempt content error staging_failed "$has_previous"
   fi
 
   local new_dir="${RELEASES_DIR}/${VERSION}"

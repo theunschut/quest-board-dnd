@@ -243,6 +243,7 @@ questboard_reason_label() {
     database_ahead) printf 'the database is newer than this release' ;;
     non_transactional_migration) printf 'a migration cannot run safely in a transaction' ;;
     insufficient_disk) printf 'there was not enough disk space' ;;
+    staging_failed) printf 'the release could not be put in place' ;;
     database_unreachable) printf 'the database could not be reached' ;;
     backup_failed) printf 'the pre-migration backup failed' ;;
     apply_failed) printf 'applying the migrations failed' ;;

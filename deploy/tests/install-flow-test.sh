@@ -131,6 +131,17 @@ fi
 exec "$@"
 EOF
 
+# chmod: fails on a staging directory while STUB_CHMOD_FAIL_STAGING=1, to stand
+# in for a hardening step that cannot be completed. Otherwise the real chmod.
+REAL_CHMOD="$(command -v chmod)"
+cat > "${STUBS}/chmod" <<EOF
+#!/bin/sh
+if [ "\${STUB_CHMOD_FAIL_STAGING:-}" = "1" ]; then
+  case "\$*" in *.staging-*) exit 1 ;; esac
+fi
+exec "${REAL_CHMOD}" "\$@"
+EOF
+
 # systemctl: records the call and which release the current link names.
 cat > "${STUBS}/systemctl" <<'EOF'
 #!/bin/sh
@@ -285,7 +296,7 @@ EOF
   export STUB_GH_JSON="$GH_OK" STUB_STATUS_JSON="$STATUS_CLEAN"
   unset STUB_LATEST_EXIT STUB_COMPARE_EXIT STUB_DOWNLOAD_EXIT STUB_UNHEALTHY_VERSION \
     STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT \
-    STUB_GH_STDERR STUB_TIMEOUT_FIRES STUB_COMPARE_CODE
+    STUB_GH_STDERR STUB_TIMEOUT_FIRES STUB_COMPARE_CODE STUB_CHMOD_FAIL_STAGING
 }
 
 RC=0
@@ -490,6 +501,19 @@ new_case compare-404
 export STUB_COMPARE_CODE=404
 run_deploy install v1.3.0
 assert_untouched_refusal "main check HTTP 404" "the release was not built from the main branch"
+
+# A hardening step that fails while staging must stop the install: the release
+# is never put in place, and the reason is accurate (not "disk space").
+new_case hardening-fails
+export STUB_CHMOD_FAIL_STAGING=1
+run_deploy install v1.3.0
+check "failed hardening: exit non-zero" "1" "$RC"
+check "failed hardening: no new release and no staging directory" "1.2.0" "$(releases_listing)"
+check "failed hardening: the app was never touched" "" "$(calls)"
+check "failed hardening: current unchanged" "1.2.0" "$(current_version)"
+check "failed hardening: mail says failed with the staging reason" \
+  "failed (the release could not be put in place)" "$(mail_result)"
+check "failed hardening: recorded failed" "v1.3.0 failed" "$(last_attempt)"
 
 new_case nobundle
 rm -f "${ROOT}/dl/v1.3.0/questboard-v1.3.0.zip.sigstore.json"

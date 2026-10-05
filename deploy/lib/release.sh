@@ -114,14 +114,18 @@ else:
 # cannot plant code that the next release switch would then run as part of an
 # installed tree. Ownership moves to root only when running as root, which is
 # the case in production and not in the offline tests.
+#
+# Returns non-zero if any step fails. Every step is checked here because callers
+# often run this where errexit is switched off.
 questboard_secure_tree() {
   local dir="$1"
 
   if [ "$(id -u)" -eq 0 ]; then
-    chown -R root:root "$dir"
+    chown -R root:root "$dir" || return 1
   fi
-  find "$dir" -type d -exec chmod 755 {} +
-  find "$dir" -type f -exec chmod go-w,a+r {} +
+  find "$dir" -type d -exec chmod 755 {} + || return 1
+  find "$dir" -type f -exec chmod go-w,a+r {} + || return 1
+  return 0
 }
 
 # Removes a staging directory and returns the given status.
@@ -132,17 +136,22 @@ questboard__stage_fail() {
 }
 
 # Stages the verified archive ZIP as RELEASES_DIR/VERSION. Returns 0 when it is
-# staged, 3 when the archive content is not acceptable and 4 when there is not
-# enough free disk space. Extraction happens in a staging directory beside the
+# staged, 3 when the archive content is not acceptable, 4 when there is not
+# enough free disk space and 5 when a step of putting the release in place failed
+# (creating the releases directory, hardening the tree, clearing a leftover
+# release, the final move). Extraction happens in a staging directory beside the
 # final one and is moved into place with a single rename, so a release directory
 # is either complete and hardened or absent. Every failing path removes the
 # staging directory.
+#
+# The caller reads the status through `||`, which switches errexit off for this
+# whole function, so no step may rely on it: each one checks its own result.
 questboard_stage_release() {
   local zip="$1" releases_dir="$2" version="$3"
 
   questboard_is_plain_version "$version" || questboard_die "refusing to stage an invalid version: ${version}"
   [ -f "$zip" ] || return 3
-  mkdir -p "$releases_dir"
+  mkdir -p "$releases_dir" || return 5
 
   local staging="${releases_dir}/.staging-${version}"
   local final="${releases_dir}/${version}"
@@ -155,7 +164,7 @@ questboard_stage_release() {
     questboard_die "release ${version} is the active release and cannot be restaged"
   fi
 
-  rm -rf "$staging"
+  rm -rf "$staging" || return 5
 
   # Extraction needs room for the unpacked tree plus headroom for the hardening
   # pass and for the release that is still running.
@@ -187,7 +196,9 @@ questboard_stage_release() {
     return
   fi
 
-  if [ -n "$(find "$staging" -type l -print -quit)" ]; then
+  # A find that cannot look is treated like a find that found a symlink.
+  local links
+  if ! links="$(find "$staging" -type l -print -quit)" || [ -n "$links" ]; then
     questboard__stage_fail "$staging" 3
     return
   fi
@@ -208,10 +219,12 @@ questboard_stage_release() {
     fi
   done
 
-  questboard_secure_tree "$staging"
-
-  rm -rf "$final"
-  mv -T "$staging" "$final"
+  # A release must never be put in place without its hardening, so a failed
+  # step ends the staging here instead of carrying on to the move.
+  questboard_secure_tree "$staging" || { questboard__stage_fail "$staging" 5; return; }
+  rm -rf "$final" || { questboard__stage_fail "$staging" 5; return; }
+  mv -T "$staging" "$final" || { questboard__stage_fail "$staging" 5; return; }
+  return 0
 }
 
 # Runs one migrator subcommand (status, backup or apply) as the application

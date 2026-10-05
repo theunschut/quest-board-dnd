@@ -62,7 +62,21 @@ cat > "${STUB_DIR}/df" <<'EOF'
 #!/bin/sh
 printf 'Avail\n%s\n' "${STUB_DF_AVAIL:-1000000000000}"
 EOF
-chmod +x "${STUB_DIR}/systemd-run" "${STUB_DIR}/curl" "${STUB_DIR}/df"
+# Stand-ins for chmod and mv that fail on demand (STUB_CHMOD_FAIL=1,
+# STUB_MV_FAIL=1) and otherwise run the real command.
+REAL_CHMOD="$(command -v chmod)"
+REAL_MV="$(command -v mv)"
+cat > "${STUB_DIR}/chmod" <<EOF
+#!/bin/sh
+[ "\${STUB_CHMOD_FAIL:-}" = "1" ] && exit 1
+exec "${REAL_CHMOD}" "\$@"
+EOF
+cat > "${STUB_DIR}/mv" <<EOF
+#!/bin/sh
+[ "\${STUB_MV_FAIL:-}" = "1" ] && exit 1
+exec "${REAL_MV}" "\$@"
+EOF
+chmod +x "${STUB_DIR}/systemd-run" "${STUB_DIR}/curl" "${STUB_DIR}/df" "${STUB_DIR}/chmod" "${STUB_DIR}/mv"
 export PATH="${STUB_DIR}:${PATH}"
 
 # shellcheck source=deploy/lib/common.sh
@@ -258,6 +272,51 @@ check "stage_release stages a different version beside the active one" "0" "$(st
 check "the active release is still intact after staging another" "yes" "$([ -f "${RELEASES}/1.2.3/live-marker" ] && echo yes || echo no)"
 
 check "stage_release refuses an invalid version string" "1" "$(stage_status "${ZIPS_DIR}/valid.zip" "$RELEASES" 'v1.2.3')"
+
+# Staging runs where errexit is switched off (the caller tests its status), so
+# every step has to check itself. A hardening step that fails must stop the
+# staging with its own status, remove the staging directory and never put a
+# release in place.
+assert_stage_failed_clean() {
+  local description="$1"
+  check "${description} returns 5" "5" "$(stage_status "${ZIPS_DIR}/valid.zip" "$RELEASES" 1.2.3)"
+  check "${description} leaves no release directory" "no" "$([ -e "${RELEASES}/1.2.3" ] && echo yes || echo no)"
+  check "${description} leaves no staging directory" "0" "$(staging_dirs)"
+}
+
+reset_install
+export STUB_CHMOD_FAIL=1
+assert_stage_failed_clean "a failing hardening step"
+unset STUB_CHMOD_FAIL
+
+reset_install
+check "questboard_secure_tree reports a failing chmod" "1" \
+  "$(mkdir -p "${INSTALL_ROOT}/tree" && STUB_CHMOD_FAIL=1 status_of questboard_secure_tree "${INSTALL_ROOT}/tree")"
+check "questboard_secure_tree succeeds when every step does" "0" \
+  "$(status_of questboard_secure_tree "${INSTALL_ROOT}/tree")"
+
+reset_install
+export STUB_MV_FAIL=1
+assert_stage_failed_clean "a failing move into place"
+unset STUB_MV_FAIL
+
+if [ "$(id -u)" -ne 0 ]; then
+  reset_install
+  mkdir -p "${RELEASES}/1.2.3/locked"
+  printf 'x' > "${RELEASES}/1.2.3/locked/file"
+  "$REAL_CHMOD" 555 "${RELEASES}/1.2.3/locked"
+  check "a leftover release that cannot be removed returns 5" "5" "$(stage_status "${ZIPS_DIR}/valid.zip" "$RELEASES" 1.2.3)"
+  check "a leftover release that cannot be removed leaves no staging directory" "0" "$(staging_dirs)"
+  "$REAL_CHMOD" 755 "${RELEASES}/1.2.3/locked"
+fi
+
+printf 'a file where a directory should be' > "${WORK}/not-a-directory"
+check "a releases directory that cannot be created returns 5" "5" \
+  "$(stage_status "${ZIPS_DIR}/valid.zip" "${WORK}/not-a-directory/releases" 1.2.3)"
+
+# Later checks read a staged 1.2.4 release.
+reset_install
+stage_status "${ZIPS_DIR}/next.zip" "$RELEASES" 1.2.4 >/dev/null
 
 # --- questboard_manifest_get ----------------------------------------------
 

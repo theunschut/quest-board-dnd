@@ -286,7 +286,7 @@ check "result labels cover the closed set" \
   "$(for o in installed refused failed failed_rolled_back rolled_back halted; do questboard_result_label "$o"; printf '|'; done | sed 's/|$//')"
 
 for code in checksum_mismatch attestation_failed not_on_main asset_missing invalid_content database_ahead \
-    non_transactional_migration insufficient_disk database_unreachable backup_failed apply_failed unhealthy restart_failed; do
+    non_transactional_migration insufficient_disk staging_failed database_unreachable backup_failed apply_failed unhealthy restart_failed; do
   label="$(questboard_reason_label "$code")"
   unsafe="$(printf '%s' "$label" | grep -cE '[/=]|Server|Password|Data Source' || true)"
   check "reason label for ${code} is non-empty and safe" "ok" \

@@ -136,7 +136,7 @@ answer mean a quiet retry, services that answer mean the release is refused.
 | Checksum, attestation or main-ancestry check fails; a release file is missing; the content is invalid | Nothing on disk or in the service changes; the staged release is removed | `refused` | yes |
 | The database holds migrations this release does not know | Install refused before anything changes | `refused` | yes |
 | A pending migration cannot run inside a transaction | Install refused before anything changes | `refused` | yes |
-| The pre-migration backup fails, the database cannot be reached, or there is not enough disk | Abort before the app is stopped; the running release is untouched | `failed` | yes |
+| The pre-migration backup fails, the database cannot be reached, there is not enough disk, or the release cannot be put in place (a hardening, clean-up or move step failed) | Abort before the app is stopped; the running release is untouched and nothing half-installed is left behind | `failed` | yes |
 | Applying the migrations fails | The transaction rolls back and the database is unchanged; the previous release is started again | `failed, rolled back` | yes |
 | No migrations, and the new release is not healthy | `current` is switched back, the previous release is restarted and confirmed healthy | `rolled back` | yes |
 | Migrations committed, and the new release is not healthy | The new release is left active, systemd keeps retrying it, nothing is restored automatically | `halted - migrations applied`, naming the backup | yes |
