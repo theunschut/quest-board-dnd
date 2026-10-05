@@ -142,6 +142,42 @@ run_migrator() {
   MIGRATOR_RC=$rc
 }
 
+# How often, and how far apart, the database is read again after a failed apply
+# when the first reads get no answer. A connection that dropped at the commit is
+# usually back within moments, and the answer decides whether the previous
+# release may be started. Fixed here and never read from the environment.
+RECHECK_ATTEMPTS=3
+RECHECK_PAUSE_SECONDS=2
+
+# After an apply that did not exit cleanly, reads the migration status of
+# RELEASE_DIR's migrator again and compares the pending count with the count
+# before the apply (PENDING_BEFORE). Sets APPLY_AFTERMATH to:
+#   unchanged  everything that was pending still is: the apply rolled back
+#   applied    fewer migrations are pending: some or all were committed
+#   unknown    the status could not be read (or makes no sense)
+APPLY_AFTERMATH=""
+inspect_database_after_failed_apply() {
+  local release_dir="$1" pending_before="$2" attempt=1 pending_after
+  APPLY_AFTERMATH="unknown"
+  while [ "$attempt" -le "$RECHECK_ATTEMPTS" ]; do
+    run_migrator "$release_dir" "$ENV_FILE" status
+    pending_after="$(questboard_json_list_length "$MIGRATOR_OUTPUT" pending 2>/dev/null)" || pending_after=""
+    if [[ "$pending_after" =~ ^[0-9]+$ ]]; then
+      if [ "$pending_after" -lt "$pending_before" ]; then
+        APPLY_AFTERMATH="applied"
+      elif [ "$pending_after" -eq "$pending_before" ]; then
+        APPLY_AFTERMATH="unchanged"
+      fi
+      return 0
+    fi
+    if [ "$attempt" -lt "$RECHECK_ATTEMPTS" ]; then
+      sleep "$RECHECK_PAUSE_SECONDS"
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 0
+}
+
 # The single exit point of an install attempt: records it, sends the one
 # outcome mail, logs one line, cleans the download and exits. Nothing else in
 # this script sends mail.
@@ -347,22 +383,43 @@ cmd_install() {
   if [ "$pending" -gt 0 ]; then
     run_migrator "$new_dir" "$ENV_FILE" apply
     if [ "$MIGRATOR_RC" -ne 0 ]; then
-      # The migration ran in one transaction that rolled back, and the link
-      # was never moved, so the previous release is simply started again.
-      app_start || true
-      local previous_flag=()
-      if [ -n "$active" ]; then
-        if check_health "$active"; then
-          previous_flag=(--previous-healthy yes)
-        else
-          previous_flag=(--previous-healthy no)
-        fi
-      fi
-      rm -rf "${RELEASES_DIR:?}/${VERSION}"
-      decide apply fail 0 "$has_previous"
-      finish "$OUTCOME" apply_failed "${previous_flag[@]}"
+      # A non-zero exit does not prove the migration rolled back: a commit whose
+      # acknowledgement was lost, or a migrator that died after committing, leaves
+      # the schema migrated. The previous release is only restarted when the
+      # database is read again and still holds everything that was pending.
+      questboard_log "the migrator exited with ${MIGRATOR_RC} while applying; reading the database to see what it left behind"
+      inspect_database_after_failed_apply "$new_dir" "$pending"
+      case "$APPLY_AFTERMATH" in
+        applied)
+          # The schema is migrated, so the previous release must not be started
+          # on it. Carry on as an applied install: the new release is activated,
+          # and the outcome matrix decides what an unhealthy start means.
+          questboard_log "the database already holds the migrations; continuing with the new release"
+          migrated=1
+          ;;
+        *)
+          if [ "$APPLY_AFTERMATH" = "unknown" ]; then
+            questboard_log "the database could not be read again, so nothing shows that the schema changed; starting the previous release"
+          fi
+          # The migration ran in one transaction that rolled back, and the link
+          # was never moved, so the previous release is simply started again.
+          app_start || true
+          local previous_flag=()
+          if [ -n "$active" ]; then
+            if check_health "$active"; then
+              previous_flag=(--previous-healthy yes)
+            else
+              previous_flag=(--previous-healthy no)
+            fi
+          fi
+          rm -rf "${RELEASES_DIR:?}/${VERSION}"
+          decide apply fail 0 "$has_previous"
+          finish "$OUTCOME" apply_failed "${previous_flag[@]}"
+          ;;
+      esac
+    else
+      migrated=1
     fi
-    migrated=1
   fi
 
   local remembered_previous

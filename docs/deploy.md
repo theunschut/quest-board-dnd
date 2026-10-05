@@ -142,7 +142,8 @@ answer mean a quiet retry, services that answer mean the release is refused.
 | The database holds migrations this release does not know | Install refused before anything changes | `refused` | yes |
 | A pending migration cannot run inside a transaction | Install refused before anything changes | `refused` | yes |
 | The pre-migration backup fails, the database cannot be reached, there is not enough disk, or the release cannot be put in place (a hardening, clean-up or move step failed) | Abort before the app is stopped; the running release is untouched and nothing half-installed is left behind | `failed` | yes |
-| Applying the migrations fails | The transaction rolls back and the database is unchanged; the previous release is started again | `failed, rolled back` | yes |
+| Applying the migrations fails | The transaction rolls back and the database is unchanged; the installer reads the database again to confirm it, then the previous release is started again | `failed, rolled back` | yes |
+| The migrator reports a failed apply, but the database turns out to hold the migrations (for example a commit whose acknowledgement was lost) | Treated as an applied install: the previous release is not started on the migrated schema, the new release is activated and checked like any other | `installed` if healthy, otherwise `halted - migrations applied` | no if installed, otherwise yes |
 | No migrations, and the new release is not healthy | `current` is switched back, the previous release is restarted and confirmed healthy | `rolled back` | yes |
 | Migrations committed, and the new release is not healthy | The new release is left active, systemd keeps retrying it, nothing is restored automatically | `halted - migrations applied`, naming the backup | yes |
 | Nothing newer than the active release | Nothing | none, journal only | no |
@@ -245,7 +246,14 @@ apply it from the release it names:
 
 Database migrations only go forward. The installer runs a migration in one transaction, so a
 failed apply leaves the database exactly as it was and the previous release can simply start
-again: that is `failed, rolled back`.
+again: that is `failed, rolled back`. A non-zero exit from the migrator is not taken on trust,
+though: the installer reads the database status again (up to three times, two seconds apart, if
+the first reads get no answer) and starts the previous release only when everything that was
+pending still is. If fewer migrations are pending, the schema has moved on, and the install
+continues as an applied one. If the database cannot be read at all, nothing shows that the schema
+changed, and the previous release is started as before; the journal says so. The migrator's own
+error line names the exception type of a failure that was not a SQL error, and says the outcome is
+unknown when the failure came while committing.
 
 Once a migration has committed, the previous release's code may no longer match the schema, so
 starting it again could do damage. If the new release then fails its health check, the installer

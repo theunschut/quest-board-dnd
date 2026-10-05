@@ -168,12 +168,19 @@ line="migrator ${sub} ${version}"
 printf '%s current=%s\n' "$line" "$cur" >> "$STUB_CALL_LOG"
 case "$sub" in
   status)
+    # After an apply ran, STUB_STATUS_AFTER_APPLY_JSON/EXIT (when set) say what
+    # the database holds then, e.g. a commit whose acknowledgement was lost.
+    if [ -f "${STUB_CALL_LOG}.applied" ] && [ "${STUB_STATUS_AFTER_APPLY_JSON+set}" = "set" ]; then
+      printf '%s\n' "$STUB_STATUS_AFTER_APPLY_JSON"
+      exit "${STUB_STATUS_AFTER_APPLY_EXIT:-0}"
+    fi
     printf '%s\n' "${STUB_STATUS_JSON:-}"
     exit "${STUB_STATUS_EXIT:-0}" ;;
   backup)
     printf '{"backupName":"questboard-premigration-%s-20261004T120000Z.bak"}\n' "$label"
     exit "${STUB_BACKUP_EXIT:-0}" ;;
   apply)
+    : > "${STUB_CALL_LOG}.applied"
     printf '{"applied":["Pending"]}\n'
     exit "${STUB_APPLY_EXIT:-0}" ;;
 esac
@@ -296,7 +303,8 @@ EOF
   export STUB_GH_JSON="$GH_OK" STUB_STATUS_JSON="$STATUS_CLEAN"
   unset STUB_LATEST_EXIT STUB_COMPARE_EXIT STUB_DOWNLOAD_EXIT STUB_UNHEALTHY_VERSION \
     STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT \
-    STUB_GH_STDERR STUB_TIMEOUT_FIRES STUB_COMPARE_CODE STUB_CHMOD_FAIL_STAGING
+    STUB_GH_STDERR STUB_TIMEOUT_FIRES STUB_COMPARE_CODE STUB_CHMOD_FAIL_STAGING \
+    STUB_STATUS_AFTER_APPLY_JSON STUB_STATUS_AFTER_APPLY_EXIT
 }
 
 RC=0
@@ -593,14 +601,68 @@ new_case applyfail
 export STUB_STATUS_JSON="$STATUS_PENDING" STUB_APPLY_EXIT=6
 run_deploy install v1.3.0
 check "apply failure: exit non-zero" "1" "$RC"
-check "apply failure: stop then start, previous release restarted" \
-  "migrator status 1.3.0 current=1.2.0|migrator backup 1.3.0 --label v1.3.0 current=1.2.0|systemctl stop questboard.service current=1.2.0|migrator apply 1.3.0 current=1.2.0|systemctl start questboard.service current=1.2.0" \
+check "apply failure: the database is read again, then the previous release is restarted" \
+  "migrator status 1.3.0 current=1.2.0|migrator backup 1.3.0 --label v1.3.0 current=1.2.0|systemctl stop questboard.service current=1.2.0|migrator apply 1.3.0 current=1.2.0|migrator status 1.3.0 current=1.2.0|systemctl start questboard.service current=1.2.0" \
   "$(calls)"
 check "apply failure: current still the previous release" "1.2.0" "$(current_version)"
 check "apply failure: new release removed" "1.2.0" "$(releases_listing)"
 check "apply failure: mail says failed, rolled back" "failed, rolled back (applying the migrations failed)" "$(mail_result)"
 check "apply failure: previous release reported healthy" "yes" "$(has_text "${ROOT}/mail/mail-1.eml" 'Previous release healthy: yes')"
 check "apply failure: recorded" "v1.3.0 failed_rolled_back" "$(last_attempt)"
+
+# A failed apply is only a rollback when the database still holds the same
+# pending migrations. If the commit went through even though the migrator
+# reported a failure (a lost acknowledgement), the old release must not be
+# started on the migrated schema: the install carries on as an applied one.
+new_case apply-failed-but-committed
+export STUB_STATUS_JSON="$STATUS_PENDING" STUB_APPLY_EXIT=6 STUB_STATUS_AFTER_APPLY_JSON="$STATUS_CLEAN"
+run_deploy install v1.3.0
+check "apply failed but committed: exit 0, the new release is healthy" "0" "$RC"
+check "apply failed but committed: the database is read again, then the new release starts" \
+  "migrator status 1.3.0 current=1.2.0|migrator backup 1.3.0 --label v1.3.0 current=1.2.0|systemctl stop questboard.service current=1.2.0|migrator apply 1.3.0 current=1.2.0|migrator status 1.3.0 current=1.2.0|systemctl start questboard.service current=1.3.0" \
+  "$(calls)"
+check "apply failed but committed: current names the new release" "1.3.0" "$(current_version)"
+check "apply failed but committed: one mail, installed" "installed" "$(mail_result)"
+check "apply failed but committed: recorded installed" "v1.3.0 installed" "$(last_attempt)"
+check "apply failed but committed: the journal says what happened" "yes" \
+  "$(out_has 'the database already holds the migrations')"
+
+new_case apply-failed-but-committed-unhealthy
+export STUB_STATUS_JSON="$STATUS_PENDING" STUB_APPLY_EXIT=6 STUB_STATUS_AFTER_APPLY_JSON="$STATUS_CLEAN" \
+  STUB_UNHEALTHY_VERSION=1.3.0
+run_deploy install v1.3.0
+check "apply failed but committed, unhealthy: exit non-zero" "1" "$RC"
+check "apply failed but committed, unhealthy: the new release stays active" "1.3.0" "$(current_version)"
+check "apply failed but committed, unhealthy: the previous release is never restarted" "no" \
+  "$(has_text "${ROOT}/calls.log" 'systemctl start questboard.service current=1.2.0')"
+check "apply failed but committed, unhealthy: mail says halted" \
+  "halted - migrations applied (the new release did not become healthy)" "$(mail_result)"
+check "apply failed but committed, unhealthy: mail carries the backup name" "yes" \
+  "$(has_text "${ROOT}/mail/mail-1.eml" 'Backup: questboard-premigration-v1.3.0-20261004T120000Z.bak')"
+check "apply failed but committed, unhealthy: recorded halted" "v1.3.0 halted" "$(last_attempt)"
+
+# Some but not all migrations gone from the pending list is also not a rollback.
+new_case apply-failed-partly-committed
+export STUB_STATUS_JSON='{"databaseExists":true,"applied":["A"],"pending":["B","C"],"unknown":[],"nonTransactional":[],"canBackup":true}' \
+  STUB_APPLY_EXIT=6 STUB_STATUS_AFTER_APPLY_JSON="$STATUS_PENDING"
+run_deploy install v1.3.0
+check "apply failed, partly committed: the previous release is not restarted on it" "no" \
+  "$(has_text "${ROOT}/calls.log" 'systemctl start questboard.service current=1.2.0')"
+check "apply failed, partly committed: the new release is made active" "1.3.0" "$(current_version)"
+
+# When the database cannot be read again, nothing proves the schema changed, so
+# the install ends as it always did: the previous release is started again.
+new_case apply-failed-unreadable
+export STUB_STATUS_JSON="$STATUS_PENDING" STUB_APPLY_EXIT=6 STUB_STATUS_AFTER_APPLY_JSON="" STUB_STATUS_AFTER_APPLY_EXIT=4
+run_deploy install v1.3.0
+check "apply failed, database unreadable: exit non-zero" "1" "$RC"
+check "apply failed, database unreadable: the database was asked three times" "3" \
+  "$(grep -c 'migrator status 1.3.0 current=1.2.0' "${ROOT}/calls.log" | awk '{print $1 - 1}')"
+check "apply failed, database unreadable: current is still the previous release" "1.2.0" "$(current_version)"
+check "apply failed, database unreadable: mail says failed, rolled back" \
+  "failed, rolled back (applying the migrations failed)" "$(mail_result)"
+check "apply failed, database unreadable: the journal says it could not be confirmed" "yes" \
+  "$(out_has 'could not be read again')"
 
 # --- unhealthy new release ------------------------------------------------
 
