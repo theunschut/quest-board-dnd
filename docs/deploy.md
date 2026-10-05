@@ -59,7 +59,8 @@ A poll that finds nothing to do says so in the journal and exits successfully:
 
 - nothing newer than the active release;
 - GitHub unreachable, or no release published yet;
-- the verification services unreachable while checking a new release (the next poll retries it);
+- the verification services unreachable, or GitHub's main-branch check giving no usable answer,
+  while checking a new release (the next poll retries it);
 - the newest release is one the installer already tried and rejected (see "Outcomes").
 
 None of these send mail. A poll also installs nothing that is not strictly newer than what is
@@ -83,6 +84,11 @@ With migrations pending:
 With nothing pending: status, stop the app, switch `current`, start, health check. No backup is
 taken.
 
+The backup is skipped only when the status says outright that the database does not exist yet,
+which is a fresh host with nothing to protect. A status that leaves that field out or reports it
+as anything other than true or false ends the attempt as `failed` (the database could not be
+read) before the app is stopped, rather than migrating without a backup.
+
 The health check polls `http://127.0.0.1:5000/health` until it gets HTTP 200 with a body of
 `Healthy` or `Degraded` and an `X-QuestBoard-Version` header equal to the new version, so an old
 process that is still answering is never mistaken for the new release. The wait lasts
@@ -103,7 +109,11 @@ skips one.
    `.github/workflows/release.yml`, to the source ref `refs/tags/<tag>`, and with
    `--deny-self-hosted-runners` so only a GitHub-hosted build is accepted.
 3. **Attested commit.** The commit the attestation names must be identical to, or behind, `main`,
-   asked of GitHub's public compare endpoint.
+   asked of GitHub's public compare endpoint. Only a definite answer is a verdict: a commit that is
+   ahead of or diverged from `main`, or one GitHub does not know, is refused. No answer at all, or
+   an answer that says nothing about the commit (the unauthenticated rate limit, HTTP 403 or 429,
+   or a 5xx), is treated like an unreachable verification service: nothing changes, nothing is
+   mailed or remembered, and the next poll retries.
 4. **Content.** The unpacked release must have a manifest whose version equals the tag, must
    contain the app, the migrator and the installer files, must contain no symlinks and no path
    that escapes the directory, and the disk must have room for it.
@@ -118,6 +128,11 @@ unreachable; nothing changed, try again later`. This never lets an unverified re
 release is simply not installed until verification has run. If every service answers and `gh`
 still fails, the release is refused as described below.
 
+The `gh` check is cut off after 120 seconds (then killed 10 seconds later if it ignores the
+stop), so a stalled network call can never hold the installer's lock and silence every later
+poll. A run that was cut off is judged exactly like any other failed run: services that give no
+answer mean a quiet retry, services that answer mean the release is refused.
+
 ## Outcomes
 
 | Situation | What the installer does | Mail | Remembered by the poll |
@@ -126,15 +141,17 @@ still fails, the release is refused as described below.
 | Checksum, attestation or main-ancestry check fails; a release file is missing; the content is invalid | Nothing on disk or in the service changes; the staged release is removed | `refused` | yes |
 | The database holds migrations this release does not know | Install refused before anything changes | `refused` | yes |
 | A pending migration cannot run inside a transaction | Install refused before anything changes | `refused` | yes |
-| The pre-migration backup fails, the database cannot be reached, or there is not enough disk | Abort before the app is stopped; the running release is untouched | `failed` | yes |
-| Applying the migrations fails | The transaction rolls back and the database is unchanged; the previous release is started again | `failed, rolled back` | yes |
+| The pre-migration backup fails, the database cannot be reached, there is not enough disk, or the release cannot be put in place (a hardening, clean-up or move step failed) | Abort before the app is stopped; the running release is untouched and nothing half-installed is left behind | `failed` | yes |
+| Applying the migrations fails | The transaction rolls back and the database is unchanged; the installer reads the database again to confirm it, then the previous release is started again | `failed, rolled back` | yes |
+| The migrator reports a failed apply, but the database turns out to hold the migrations (for example a commit whose acknowledgement was lost) | Treated as an applied install: the previous release is not started on the migrated schema, the new release is activated and checked like any other | `installed` if healthy, otherwise `halted - migrations applied` | no if installed, otherwise yes |
 | No migrations, and the new release is not healthy | `current` is switched back, the previous release is restarted and confirmed healthy | `rolled back` | yes |
 | Migrations committed, and the new release is not healthy | The new release is left active, systemd keeps retrying it, nothing is restored automatically | `halted - migrations applied`, naming the backup | yes |
 | Nothing newer than the active release | Nothing | none, journal only | no |
 | GitHub unreachable, or no release published | Nothing; the next poll retries | none, journal only | no |
-| The verification services (Sigstore, GitHub) cannot be reached | Nothing is staged or stopped; the next poll retries | none, journal only | no |
+| The verification services (Sigstore, GitHub) cannot be reached, or the main-branch check gets no usable answer (no response, HTTP 403, 429 or 5xx) | Nothing is staged or stopped; the next poll retries | none, journal only | no |
 | A remembered tag turns up again | Skipped, with one journal line | none, journal only | already remembered |
 | `questboard-deploy rollback` by hand | Switches to the chosen release | none, terminal and journal only | the release rolled back from is (as `abandoned`) |
+| `questboard-deploy rollback` by hand, and the chosen release does not become healthy | `current` has already moved and the app was restarted on it; the command exits with an error | none, terminal and journal only | the release rolled back from is (as `abandoned`), and the chosen release is recorded as `failed` |
 
 A tag that was refused, failed, rolled back, halted or abandoned by a manual rollback is
 remembered: later polls skip it without mailing, until a newer tag is published or you run
@@ -164,6 +181,19 @@ update available: run setup from release <version>`.
 ## Commands
 
 All of these run as root on the App CT.
+
+The installer takes its settings from `/etc/questboard/deploy.conf` and never from the
+environment. The two variables the offline tests use to run it against a temporary directory,
+`QUESTBOARD_DEPLOY_ROOT` and `QUESTBOARD_DEPLOY_CONF`, are refused (the run stops with `not a
+test tree owned by this user`) unless they name a directory that carries the test marker and is
+owned by the same user as the installer process, which a directory made by anyone else never is
+for a root run. If you run the installer through `sudo`, keep sudo's default environment
+handling: do not add `env_keep`, `SETENV` or `sudo -E` for it. To be certain, start it with a
+clean environment:
+
+```bash
+sudo env -i PATH=/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin questboard-deploy install vX.Y.Z
+```
 
 ### `questboard-deploy poll`
 
@@ -202,7 +232,10 @@ again: it logs `skipping vX.Y.Z: abandoned earlier; run questboard-deploy instal
 again` and moves on. A release published later than the abandoned one is not held back, so the
 next poll installs it as usual. To go forward to the abandoned release again, run
 `questboard-deploy install vX.Y.Z` by hand; that records it as installed and clears the memory. A
-refused or failed rollback records nothing.
+rollback that is refused before anything changes records nothing. A rollback that switched
+`current` and restarted the app but then saw the target fail its health check is recorded all the
+same: the target as `failed`, and the release rolled back from as `abandoned`, so the poll does not
+install it again behind your back. Fix or replace the target and install it by hand.
 
 ### `questboard-deploy verify --artifact FILE --bundle FILE --tag vX.Y.Z`
 
@@ -230,7 +263,14 @@ apply it from the release it names:
 
 Database migrations only go forward. The installer runs a migration in one transaction, so a
 failed apply leaves the database exactly as it was and the previous release can simply start
-again: that is `failed, rolled back`.
+again: that is `failed, rolled back`. A non-zero exit from the migrator is not taken on trust,
+though: the installer reads the database status again (up to three times, two seconds apart, if
+the first reads get no answer) and starts the previous release only when everything that was
+pending still is. If fewer migrations are pending, the schema has moved on, and the install
+continues as an applied one. If the database cannot be read at all, nothing shows that the schema
+changed, and the previous release is started as before; the journal says so. The migrator's own
+error line names the exception type of a failure that was not a SQL error, and says the outcome is
+unknown when the failure came while committing.
 
 Once a migration has committed, the previous release's code may no longer match the schema, so
 starting it again could do damage. If the new release then fails its health check, the installer
@@ -513,11 +553,17 @@ Useful commands:
 ```bash
 journalctl -u questboard-deploy-poll.service -n 100 --no-pager   # what the last runs did
 journalctl -u questboard-deploy-poll.service -f                  # follow a run
+journalctl -t questboard-deploy -n 100 --no-pager                 # runs started by hand (install, rollback, setup)
 systemctl list-timers questboard-deploy-poll.timer                # when it runs next
 systemctl status questboard-deploy-poll.service                   # shows failed after a rejected release
 cat /var/lib/questboard-deploy/state/attempts                     # what was tried and how it ended
 ls -l /opt/questboard/current                                     # the active release
 ```
+
+A poll run leaves its lines in the unit's journal. A run started from a root shell (`install`,
+`rollback`, `setup`, `verify`) writes the same lines to the terminal and also to the journal under
+the tag `questboard-deploy`, so a manual rollback or a refused manual install is not lost when the
+terminal closes. Under a systemd unit the installer adds no second copy.
 
 **The installer refuses a release that verifies on a workstation.** The journal line
 `attestation verification failed` carries the reason. The usual causes are: `gh` is missing or
@@ -531,6 +577,13 @@ remembered: nothing changed, and the next poll retries by itself. Nothing needs 
 unless you are installing manually; then run `questboard-deploy install vX.Y.Z` again once the
 CT has network access. If it persists, check DNS and outbound HTTPS from the CT to
 `tuf-repo-cdn.sigstore.dev`, `tuf-repo.github.com` and `api.github.com`.
+
+**The journal says `the main-branch check got no usable answer from GitHub`.** GitHub's compare
+endpoint did not answer, or answered with the rate limit (HTTP 403 or 429) or a server error. This
+is also not a refusal and is not remembered; the next poll retries. The unauthenticated allowance
+is shared with anything else on the CT's public address that polls GitHub, so if it keeps
+happening look for another poller on that address. A release that really is not on `main` is
+refused with a mail instead.
 
 **A bus-connection error in the journal** (`Failed to connect to bus`) means the installer could
 not start the migrator through systemd from inside the sandboxed unit. The install stops before

@@ -119,6 +119,64 @@ public class MigratorBackupAndApplyCliTests
         stderr.ToString().Should().Contain("--label");
     }
 
+    [Fact]
+    public void DescribeApplyFailure_ForANonSqlFailure_NamesTheExceptionTypeOnly()
+    {
+        // Arrange
+        var failure = new MigratorApplyException(failureTypeName: nameof(InvalidOperationException));
+
+        // Act
+        var description = MigratorCli.DescribeApplyFailure(failure);
+
+        // Assert
+        description.Should().Be("apply failed and was rolled back (InvalidOperationException)");
+    }
+
+    [Fact]
+    public void DescribeApplyFailure_NeverCarriesTheMessageOfANonSqlFailure()
+    {
+        // Arrange
+        var cause = new InvalidOperationException("Server=prod-sql;Password=hunter2");
+        var failure = new MigratorApplyException(failureTypeName: cause.GetType().Name);
+
+        // Act
+        var description = MigratorCli.DescribeApplyFailure(failure);
+
+        // Assert
+        description.Should().NotContain("prod-sql");
+        description.Should().NotContain("hunter2");
+        failure.Message.Should().NotContain("prod-sql");
+    }
+
+    [Fact]
+    public void DescribeApplyFailure_ForASqlError_KeepsTheNumberAndMessage()
+    {
+        // Arrange
+        var failure = new MigratorApplyException(50000, "probe failure");
+
+        // Act
+        var description = MigratorCli.DescribeApplyFailure(failure);
+
+        // Assert
+        description.Should().Be("apply failed and was rolled back (sql error 50000): probe failure");
+    }
+
+    [Fact]
+    public void DescribeApplyFailure_WhenTheCommitFailed_SaysTheOutcomeIsUnknownInsteadOfRolledBack()
+    {
+        // Arrange
+        var failure = new MigratorApplyException(failureTypeName: "InvalidOperationException", commitOutcomeUnknown: true);
+
+        // Act
+        var description = MigratorCli.DescribeApplyFailure(failure);
+
+        // Assert
+        failure.CommitOutcomeUnknown.Should().BeTrue();
+        description.Should().Contain("unknown");
+        description.Should().NotContain("rolled back");
+        description.Should().Contain("InvalidOperationException");
+    }
+
     [Theory]
     [InlineData("apply")]
     [InlineData("backup")]

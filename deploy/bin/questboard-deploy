@@ -15,7 +15,33 @@ umask 022
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-DEPLOY_ROOT="${QUESTBOARD_DEPLOY_ROOT:-}"
+# The offline tests run this script against a temporary tree by naming it in
+# QUESTBOARD_DEPLOY_ROOT (and, optionally, a configuration file in
+# QUESTBOARD_DEPLOY_CONF). Those two variables relax security-relevant checks:
+# the root check and the owner of the configuration file. An installer run
+# through sudo can inherit variables from the caller, so they are honoured only
+# for a tree that proves it is a test tree: a real directory, owned by the user
+# running this script, holding a marker file the same user owns. A non-root
+# caller cannot create such a tree owned by root, so a root run never accepts a
+# tree it did not make itself. Anything else that sets either variable is
+# refused outright instead of being silently ignored.
+DEPLOY_ROOT=""
+if [ -n "${QUESTBOARD_DEPLOY_ROOT:-}" ] || [ -n "${QUESTBOARD_DEPLOY_CONF:-}" ]; then
+  _seam_root="${QUESTBOARD_DEPLOY_ROOT:-}"
+  _seam_marker="${_seam_root}/.questboard-test-root"
+  _seam_uid="$(id -u)"
+  if [ -n "$_seam_root" ] && [ -d "$_seam_root" ] && [ ! -L "$_seam_root" ] \
+      && [ -f "$_seam_marker" ] && [ ! -L "$_seam_marker" ] \
+      && [ "$(stat -c '%u' "$_seam_root")" = "$_seam_uid" ] \
+      && [ "$(stat -c '%u' "$_seam_marker")" = "$_seam_uid" ]; then
+    DEPLOY_ROOT="$_seam_root"
+  else
+    printf 'questboard-deploy: refusing QUESTBOARD_DEPLOY_ROOT / QUESTBOARD_DEPLOY_CONF: not a test tree owned by this user\n' >&2
+    exit 1
+  fi
+  unset _seam_root _seam_marker _seam_uid
+fi
+
 LOCK_PATH="${DEPLOY_ROOT}/run/questboard-deploy/deploy.lock"
 STATE_DIR="${DEPLOY_ROOT}/var/lib/questboard-deploy/state"
 DOWNLOAD_DIR="${DEPLOY_ROOT}/var/lib/questboard-deploy/downloads"
@@ -65,6 +91,8 @@ EOF
 }
 
 require_root() {
+  # DEPLOY_ROOT is non-empty only for a tree that passed the test-tree check at
+  # the top of this file.
   if [ -n "$DEPLOY_ROOT" ]; then
     return 0
   fi
@@ -142,6 +170,42 @@ run_migrator() {
   MIGRATOR_RC=$rc
 }
 
+# How often, and how far apart, the database is read again after a failed apply
+# when the first reads get no answer. A connection that dropped at the commit is
+# usually back within moments, and the answer decides whether the previous
+# release may be started. Fixed here and never read from the environment.
+RECHECK_ATTEMPTS=3
+RECHECK_PAUSE_SECONDS=2
+
+# After an apply that did not exit cleanly, reads the migration status of
+# RELEASE_DIR's migrator again and compares the pending count with the count
+# before the apply (PENDING_BEFORE). Sets APPLY_AFTERMATH to:
+#   unchanged  everything that was pending still is: the apply rolled back
+#   applied    fewer migrations are pending: some or all were committed
+#   unknown    the status could not be read (or makes no sense)
+APPLY_AFTERMATH=""
+inspect_database_after_failed_apply() {
+  local release_dir="$1" pending_before="$2" attempt=1 pending_after
+  APPLY_AFTERMATH="unknown"
+  while [ "$attempt" -le "$RECHECK_ATTEMPTS" ]; do
+    run_migrator "$release_dir" "$ENV_FILE" status
+    pending_after="$(questboard_json_list_length "$MIGRATOR_OUTPUT" pending 2>/dev/null)" || pending_after=""
+    if [[ "$pending_after" =~ ^[0-9]+$ ]]; then
+      if [ "$pending_after" -lt "$pending_before" ]; then
+        APPLY_AFTERMATH="applied"
+      elif [ "$pending_after" -eq "$pending_before" ]; then
+        APPLY_AFTERMATH="unchanged"
+      fi
+      return 0
+    fi
+    if [ "$attempt" -lt "$RECHECK_ATTEMPTS" ]; then
+      sleep "$RECHECK_PAUSE_SECONDS"
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 0
+}
+
 # The single exit point of an install attempt: records it, sends the one
 # outcome mail, logs one line, cleans the download and exits. Nothing else in
 # this script sends mail.
@@ -199,6 +263,22 @@ stop_attempt() {
   rm -rf "${RELEASES_DIR:?}/${VERSION}" "${RELEASES_DIR:?}/.staging-${VERSION}"
   decide "$stage" "$result" 0 "$has_previous"
   finish "$OUTCOME" "$reason"
+}
+
+# Ends the attempt for a check that could not reach a verdict on the release (a
+# verification service or GitHub gave no usable answer). That is neither a
+# refusal nor remembered: nothing was staged or stopped, no mail is sent, and
+# the next poll retries the same tag. A poll exits quietly; a manual run says so
+# and exits non-zero.
+#   end_without_verdict REASON_TEXT
+end_without_verdict() {
+  local what="$1"
+  rm -rf "${DOWNLOAD_DIR:?}/${VERSION}"
+  if [ "$INVOKED_BY_POLL" -eq 1 ]; then
+    questboard_log "${what} while verifying ${TAG}; nothing changed, the next poll retries"
+    exit 0
+  fi
+  questboard_die "${what}; nothing changed, try again later"
 }
 
 # A manual redeploy of the active release: restart and health check, no download.
@@ -268,18 +348,15 @@ cmd_install() {
   commit="$(questboard_verify_attestation "${dl}/${zip_name}" "${dl}/${zip_name}.sigstore.json" \
       "$QUESTBOARD_GITHUB_REPO" "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${TAG}")" || rc=$?
   if [ "$rc" -eq "$QUESTBOARD_VERIFY_UNREACHABLE" ]; then
-    # No verdict on the artifact exists, so this is neither a refusal nor
-    # remembered: nothing was staged or stopped, and the next poll retries.
-    rm -rf "$dl"
-    if [ "$INVOKED_BY_POLL" -eq 1 ]; then
-      questboard_log "verification services unreachable while verifying ${TAG}; nothing changed, the next poll retries"
-      exit 0
-    fi
-    questboard_die "verification services unreachable; nothing changed, try again later"
+    end_without_verdict "verification services unreachable"
   elif [ "$rc" -ne 0 ]; then
     stop_attempt verify fail attestation_failed "$has_previous"
   fi
-  if ! questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main; then
+  rc=0
+  questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main || rc=$?
+  if [ "$rc" -eq "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT" ]; then
+    end_without_verdict "the main-branch check got no usable answer from GitHub"
+  elif [ "$rc" -ne 0 ]; then
     stop_attempt verify fail not_on_main "$has_previous"
   fi
 
@@ -287,8 +364,10 @@ cmd_install() {
   questboard_stage_release "${dl}/${zip_name}" "$RELEASES_DIR" "$VERSION" || rc=$?
   if [ "$rc" -eq 3 ]; then
     stop_attempt content invalid invalid_content "$has_previous"
-  elif [ "$rc" -ne 0 ]; then
+  elif [ "$rc" -eq 4 ]; then
     stop_attempt content disk insufficient_disk "$has_previous"
+  elif [ "$rc" -ne 0 ]; then
+    stop_attempt content error staging_failed "$has_previous"
   fi
 
   local new_dir="${RELEASES_DIR}/${VERSION}"
@@ -305,7 +384,11 @@ cmd_install() {
   local status_json="$MIGRATOR_OUTPUT" pending db_exists
   pending="$(questboard_json_list_length "$status_json" pending 2>/dev/null)" || pending=""
   db_exists="$(questboard_json_get "$status_json" databaseExists 2>/dev/null)" || db_exists=""
-  if ! [[ "$pending" =~ ^[0-9]+$ ]]; then
+  # The backup is the safety net for the migration, so it is skipped only when
+  # the status says outright that there is no database yet (a fresh host). A
+  # status that does not say, or says anything else, cannot be trusted to mean
+  # "nothing to protect" and ends the attempt before the app is touched.
+  if ! [[ "$pending" =~ ^[0-9]+$ ]] || { [ "$db_exists" != "true" ] && [ "$db_exists" != "false" ]; }; then
     stop_attempt status error database_unreachable "$has_previous"
   fi
 
@@ -328,22 +411,43 @@ cmd_install() {
   if [ "$pending" -gt 0 ]; then
     run_migrator "$new_dir" "$ENV_FILE" apply
     if [ "$MIGRATOR_RC" -ne 0 ]; then
-      # The migration ran in one transaction that rolled back, and the link
-      # was never moved, so the previous release is simply started again.
-      app_start || true
-      local previous_flag=()
-      if [ -n "$active" ]; then
-        if check_health "$active"; then
-          previous_flag=(--previous-healthy yes)
-        else
-          previous_flag=(--previous-healthy no)
-        fi
-      fi
-      rm -rf "${RELEASES_DIR:?}/${VERSION}"
-      decide apply fail 0 "$has_previous"
-      finish "$OUTCOME" apply_failed "${previous_flag[@]}"
+      # A non-zero exit does not prove the migration rolled back: a commit whose
+      # acknowledgement was lost, or a migrator that died after committing, leaves
+      # the schema migrated. The previous release is only restarted when the
+      # database is read again and still holds everything that was pending.
+      questboard_log "the migrator exited with ${MIGRATOR_RC} while applying; reading the database to see what it left behind"
+      inspect_database_after_failed_apply "$new_dir" "$pending"
+      case "$APPLY_AFTERMATH" in
+        applied)
+          # The schema is migrated, so the previous release must not be started
+          # on it. Carry on as an applied install: the new release is activated,
+          # and the outcome matrix decides what an unhealthy start means.
+          questboard_log "the database already holds the migrations; continuing with the new release"
+          migrated=1
+          ;;
+        *)
+          if [ "$APPLY_AFTERMATH" = "unknown" ]; then
+            questboard_log "the database could not be read again, so nothing shows that the schema changed; starting the previous release"
+          fi
+          # The migration ran in one transaction that rolled back, and the link
+          # was never moved, so the previous release is simply started again.
+          app_start || true
+          local previous_flag=()
+          if [ -n "$active" ]; then
+            if check_health "$active"; then
+              previous_flag=(--previous-healthy yes)
+            else
+              previous_flag=(--previous-healthy no)
+            fi
+          fi
+          rm -rf "${RELEASES_DIR:?}/${VERSION}"
+          decide apply fail 0 "$has_previous"
+          finish "$OUTCOME" apply_failed "${previous_flag[@]}"
+          ;;
+      esac
+    else
+      migrated=1
     fi
-    migrated=1
   fi
 
   local remembered_previous
@@ -463,17 +567,24 @@ cmd_rollback() {
   questboard_activate_release "$version" "$RELEASES_DIR" "$CURRENT_LINK" "$STATE_DIR"
   app_start || true
 
-  if ! check_health "$version"; then
-    questboard_die "release ${version} is active but did not become healthy"
-  fi
-
   # The release rolled away from stays remembered as abandoned, otherwise the
   # next poll would see it as newer than the target and install it again. The
   # target is recorded last so it stays the final line of the attempts file.
+  # This also holds when the target then fails its health check: the switch
+  # happened and the app was restarted, so the attempt is recorded (as failed,
+  # the target did not come up) and the operator's decision to leave the other
+  # release is not undone by a poll.
   if [ -n "$active" ] && questboard_is_plain_version "$active"; then
     questboard_record_attempt "$STATE_DIR" "v${active}" abandoned
     questboard_log "outcome=abandoned tag=v${active} reason=none"
   fi
+
+  if ! check_health "$version"; then
+    questboard_record_attempt "$STATE_DIR" "v${version}" failed
+    questboard_log "outcome=failed tag=v${version} reason=unhealthy"
+    questboard_die "release ${version} is active but did not become healthy"
+  fi
+
   questboard_record_attempt "$STATE_DIR" "v${version}" rolled_back_manual
   questboard_log "outcome=rolled_back_manual tag=v${version} reason=none"
   printf 'rolled back to release %s\n' "$version"
@@ -503,8 +614,13 @@ cmd_verify() {
   elif [ "$rc" -ne 0 ]; then
     questboard_die "attestation check failed for ${tag}"
   fi
-  questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main \
-    || questboard_die "the attested commit is not on main"
+  rc=0
+  questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main || rc=$?
+  if [ "$rc" -eq "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT" ]; then
+    questboard_die "the main-branch check got no usable answer from GitHub; try again later"
+  elif [ "$rc" -ne 0 ]; then
+    questboard_die "the attested commit is not on main"
+  fi
   printf '%s\n' "$commit"
 }
 

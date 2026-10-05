@@ -77,19 +77,40 @@ public sealed class MigratorBackupException : Exception
     public string? SqlErrorMessage { get; }
 }
 
-/// <summary>Applying migrations failed; the transaction was rolled back, so nothing changed.</summary>
+/// <summary>
+/// Applying migrations failed. Before the commit the transaction is rolled back, so nothing
+/// changed. When the failure came while committing, whether the server kept the batch is not
+/// known, which <see cref="CommitOutcomeUnknown"/> records.
+/// </summary>
 public sealed class MigratorApplyException : Exception
 {
-    public MigratorApplyException(int? sqlErrorNumber = null, string? sqlErrorMessage = null)
-        : base("applying migrations failed and was rolled back")
+    public MigratorApplyException(
+        int? sqlErrorNumber = null,
+        string? sqlErrorMessage = null,
+        string? failureTypeName = null,
+        bool commitOutcomeUnknown = false)
+        : base(commitOutcomeUnknown
+            ? "applying migrations failed while committing, so the outcome is unknown"
+            : "applying migrations failed and was rolled back")
     {
         SqlErrorNumber = sqlErrorNumber;
         SqlErrorMessage = sqlErrorMessage;
+        FailureTypeName = failureTypeName;
+        CommitOutcomeUnknown = commitOutcomeUnknown;
     }
 
     public int? SqlErrorNumber { get; }
 
     public string? SqlErrorMessage { get; }
+
+    /// <summary>
+    /// The type name of a failure that was not a SQL error. Only the type: an exception message
+    /// from outside the SQL statement can carry the server, login or connection string.
+    /// </summary>
+    public string? FailureTypeName { get; }
+
+    /// <summary>True when the failure came while committing, so the batch may have been kept.</summary>
+    public bool CommitOutcomeUnknown { get; }
 }
 
 /// <summary>
@@ -221,20 +242,28 @@ public sealed class MigrationRunner(DbContext context, TimeProvider? timeProvide
             throw new MigratorConnectionException((ex as SqlException)?.Number);
         }
 
+        var committing = false;
         try
         {
             context.Database.SetCommandTimeout(ApplyCommandTimeout);
 
             using var transaction = context.Database.BeginTransaction();
             context.Database.Migrate();
+            committing = true;
             transaction.Commit();
         }
         catch (Exception ex)
         {
             // Leaving the using block without Commit disposes the transaction, which rolls back
-            // the schema changes and the history rows together.
+            // the schema changes and the history rows together. A failure of Commit itself is
+            // different: the server may have applied the batch even though the acknowledgement
+            // was lost, so the caller is told the outcome is unknown rather than rolled back.
             var sql = ex as SqlException ?? ex.InnerException as SqlException;
-            throw new MigratorApplyException(sql?.Number, sql?.Message);
+            throw new MigratorApplyException(
+                sql?.Number,
+                sql?.Message,
+                sql is null ? ex.GetType().Name : null,
+                committing);
         }
         finally
         {

@@ -12,6 +12,10 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
+# shellcheck source=deploy/tests/lib/host-guard.sh
+source "${SCRIPT_DIR}/lib/host-guard.sh"
+host_guard_install "$WORK"
+
 # shellcheck source=deploy/lib/common.sh
 source "${REPO_ROOT}/deploy/lib/common.sh"
 
@@ -118,7 +122,7 @@ chmod 600 "$CONF_COPY"
 
 # Under a relocated root the loader expects the current user as owner.
 missing_report="$(
-  export QUESTBOARD_DEPLOY_ROOT="$WORK"
+  DEPLOY_ROOT="$WORK"
   for key in "${QUESTBOARD_CONF_ALLOWED_KEYS[@]}"; do unset "$key"; done
   questboard_load_conf "$CONF_COPY"
   for key in "${QUESTBOARD_CONF_ALLOWED_KEYS[@]}"; do

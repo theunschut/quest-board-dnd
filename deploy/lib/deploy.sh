@@ -17,6 +17,9 @@ QUESTBOARD_DEPLOY_SH_LOADED=1
 #
 #   STAGE     verify | content | status | backup | apply | health
 #   RESULT    fail | ok | invalid | disk | unknown_applied | non_transactional | error
+#             (error: a step failed for a reason that says nothing about the
+#             release itself, such as the database being unreachable or the
+#             release tree not being put in place)
 #   MIGRATED  1 when this install committed a migration, otherwise 0
 #   HAS_PREVIOUS  1 when a previous release exists to go back to, otherwise 0
 #
@@ -32,6 +35,8 @@ questboard_decide_outcome() {
     content:invalid)
       printf 'refused keep\n' ;;
     content:disk)
+      printf 'failed keep\n' ;;
+    content:error)
       printf 'failed keep\n' ;;
     status:unknown_applied)
       printf 'refused keep\n' ;;
