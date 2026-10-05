@@ -56,6 +56,37 @@ status_of() {
   printf '%s' "$rc"
 }
 
+# --- questboard_log / questboard_die: journal copy ------------------------
+
+# A run that is not under a systemd unit has its lines copied to the journal.
+: > "$HOST_GUARD_JOURNAL"
+unset JOURNAL_STREAM
+questboard_log "manual run line" 2>/dev/null
+check "a log line from a run outside a unit is copied to the journal" \
+  "logger -t questboard-deploy -p daemon.info -- manual run line" "$(host_guard_journal)"
+check "a log line still reaches stderr" "yes" \
+  "$(questboard_log "to stderr" 2>&1 >/dev/null | grep -q 'questboard-deploy: to stderr' && echo yes || echo no)"
+
+: > "$HOST_GUARD_JOURNAL"
+( questboard_die "it broke" ) >/dev/null 2>&1 || true
+check "an error line is copied to the journal at error priority" \
+  "logger -t questboard-deploy -p daemon.err -- ERROR: it broke" "$(host_guard_journal)"
+check "questboard_die still exits non-zero" "1" "$( ( questboard_die x ) >/dev/null 2>&1; echo $? )"
+
+# Under a unit stderr is already the journal, so a copy would be a duplicate.
+: > "$HOST_GUARD_JOURNAL"
+JOURNAL_STREAM="8:12345" questboard_log "under a unit" 2>/dev/null
+check "a log line from a run under a unit is not copied to the journal again" "" "$(host_guard_journal)"
+unset JOURNAL_STREAM
+
+# A logger that fails must not change what the installer does.
+FAILING_LOGGER_DIR="${QUESTBOARD_DEPLOY_ROOT}/failing-logger"
+mkdir -p "$FAILING_LOGGER_DIR"
+printf '#!/bin/sh\nexit 1\n' > "${FAILING_LOGGER_DIR}/logger"
+chmod +x "${FAILING_LOGGER_DIR}/logger"
+check "a failing logger does not fail a log call" "0" \
+  "$(PATH="${FAILING_LOGGER_DIR}:${PATH}" status_of questboard_log "still fine")"
+
 # --- questboard_semver_gt -------------------------------------------------
 
 check "1.2.10 > 1.2.9" "0" "$(status_of questboard_semver_gt 1.2.10 1.2.9)"

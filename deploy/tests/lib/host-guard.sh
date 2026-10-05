@@ -24,7 +24,28 @@ EOF
     chmod +x "${dir}/${cmd}"
   done
   export HOST_GUARD_LOG
+
+  # logger would write to the real journal of the machine running the tests, so
+  # it is a stand-in too. Its lines go to a separate file: they are expected,
+  # not a refused host command. A test run is never under a systemd unit, so
+  # the marker systemd sets for that is cleared.
+  HOST_GUARD_JOURNAL="${dir}/host-guard-journal.log"
+  : > "$HOST_GUARD_JOURNAL"
+  cat > "${dir}/logger" <<EOF
+#!/bin/sh
+printf '%s\n' "logger \$*" >> "${HOST_GUARD_JOURNAL}"
+exit 0
+EOF
+  chmod +x "${dir}/logger"
+  export HOST_GUARD_JOURNAL
+  unset JOURNAL_STREAM
+
   export PATH="${dir}:${PATH}"
+}
+
+# Prints what the logger stand-in recorded, one call per line.
+host_guard_journal() {
+  cat "${HOST_GUARD_JOURNAL:-/dev/null}" 2> /dev/null || true
 }
 
 # Marks DIR as a test tree for the dispatcher. The dispatcher honours

@@ -295,6 +295,8 @@ EOF
   cp -a "${BASE}/dl" "${ROOT}/dl"
   : > "${ROOT}/calls.log"
   : > "${ROOT}/curl.log"
+  : > "$HOST_GUARD_JOURNAL"
+  unset JOURNAL_STREAM
 
   export QUESTBOARD_DEPLOY_ROOT="$ROOT"
   unset QUESTBOARD_DEPLOY_CONF
@@ -340,6 +342,24 @@ check "happy: exactly one mail" "1" "$(mail_count)"
 check "happy: mail says installed" "installed" "$(mail_result)"
 check "happy: no installer update notice when files match" "no" "$(has_text "${ROOT}/mail/mail-1.eml" 'Installer update available')"
 check "happy: the download directory is cleaned up" "" "$(ls -A "${ROOT}/var/lib/questboard-deploy/downloads")"
+check "happy: a run from a shell leaves its outcome in the journal" "yes" \
+  "$(host_guard_journal | grep -qF 'logger -t questboard-deploy -p daemon.info -- outcome=installed tag=v1.3.0 reason=none' && echo yes || echo no)"
+
+# A run under a systemd unit already has its stderr in the journal, so the
+# installer adds no second copy.
+new_case journal-under-unit
+export JOURNAL_STREAM="8:4242"
+run_deploy install v1.3.0
+unset JOURNAL_STREAM
+check "under a unit: the install succeeds" "0" "$RC"
+check "under a unit: nothing is copied to the journal a second time" "" "$(host_guard_journal)"
+check "under a unit: the line is still on stderr" "yes" "$(out_has 'outcome=installed tag=v1.3.0 reason=none')"
+
+# An error from a manual run reaches the journal too.
+new_case journal-error
+run_deploy install v1.1.0
+check "a refusal from a shell is copied to the journal at error priority" "yes" \
+  "$(host_guard_journal | grep -q 'daemon.err -- ERROR: refusing v1.1.0' && echo yes || echo no)"
 
 # gh may print a notice on stderr while it verifies successfully. That must not
 # turn a good release into a remembered refusal.
@@ -871,6 +891,10 @@ check "rollback: current names the target" "1.2.0" "$(current_version)"
 check "rollback: recorded as a manual rollback" "v1.2.0 rolled_back_manual" "$(last_attempt)"
 check "rollback: sends no mail" "0" "$(mail_count)"
 check "rollback: reports on the terminal" "yes" "$(out_has 'rolled back to release 1.2.0')"
+check "rollback: the manual switch is in the journal" "yes" \
+  "$(host_guard_journal | grep -qF 'outcome=rolled_back_manual tag=v1.2.0 reason=none' && echo yes || echo no)"
+check "rollback: the abandon is in the journal" "yes" \
+  "$(host_guard_journal | grep -qF 'outcome=abandoned tag=v1.3.0 reason=none' && echo yes || echo no)"
 
 check "rollback: the release rolled back from is abandoned" "yes" \
   "$(has_text "${ROOT}/var/lib/questboard-deploy/state/attempts" 'v1.3.0 abandoned')"
@@ -945,7 +969,19 @@ rollback_case rb-unhealthy
 export STUB_UNHEALTHY_VERSION=1.2.0
 run_deploy rollback 1.2.0
 check "rollback to a release that never becomes healthy: fails" "1" "$RC"
-check "rollback unhealthy: nothing abandoned or recorded" "" "$(last_attempt)"
+# The link already moved and the app was restarted, so this is an attempt that
+# happened: it is recorded, and the release rolled away from is abandoned so a
+# poll does not undo the operator's decision.
+check "rollback unhealthy: the switch is recorded as a failed attempt" "v1.2.0 failed" "$(last_attempt)"
+check "rollback unhealthy: the release rolled back from is abandoned" "yes" \
+  "$(has_text "${ROOT}/var/lib/questboard-deploy/state/attempts" 'v1.3.0 abandoned')"
+check "rollback unhealthy: the attempt is logged" "yes" "$(out_has 'outcome=failed tag=v1.2.0 reason=unhealthy')"
+check "rollback unhealthy: sends no mail" "0" "$(mail_count)"
+check "rollback unhealthy: current is the target that was switched to" "1.2.0" "$(current_version)"
+export STUB_LATEST_TAG=v1.3.0
+: > "${ROOT}/calls.log"
+run_deploy poll
+check "rollback unhealthy: a later poll does not reinstall the abandoned release" "" "$(calls)"
 
 rollback_case rb-missing
 run_deploy rollback 1.1.0

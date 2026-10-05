@@ -567,17 +567,24 @@ cmd_rollback() {
   questboard_activate_release "$version" "$RELEASES_DIR" "$CURRENT_LINK" "$STATE_DIR"
   app_start || true
 
-  if ! check_health "$version"; then
-    questboard_die "release ${version} is active but did not become healthy"
-  fi
-
   # The release rolled away from stays remembered as abandoned, otherwise the
   # next poll would see it as newer than the target and install it again. The
   # target is recorded last so it stays the final line of the attempts file.
+  # This also holds when the target then fails its health check: the switch
+  # happened and the app was restarted, so the attempt is recorded (as failed,
+  # the target did not come up) and the operator's decision to leave the other
+  # release is not undone by a poll.
   if [ -n "$active" ] && questboard_is_plain_version "$active"; then
     questboard_record_attempt "$STATE_DIR" "v${active}" abandoned
     questboard_log "outcome=abandoned tag=v${active} reason=none"
   fi
+
+  if ! check_health "$version"; then
+    questboard_record_attempt "$STATE_DIR" "v${version}" failed
+    questboard_log "outcome=failed tag=v${version} reason=unhealthy"
+    questboard_die "release ${version} is active but did not become healthy"
+  fi
+
   questboard_record_attempt "$STATE_DIR" "v${version}" rolled_back_manual
   questboard_log "outcome=rolled_back_manual tag=v${version} reason=none"
   printf 'rolled back to release %s\n' "$version"

@@ -33,15 +33,29 @@ questboard_utc_now() {
   date -u '+%Y-%m-%dT%H:%M:%SZ'
 }
 
-# Writes a timestamped line to stderr. journald captures stderr for services
-# run by systemd; interactive runs simply see it on the terminal.
+# Writes one timestamped line to stderr and, for a run that is not already
+# under a systemd unit, a copy to the journal under the tag questboard-deploy.
+# journald captures the stderr of a service by itself (systemd then sets
+# JOURNAL_STREAM), so a poll run needs no copy and gets no duplicate. A run from
+# a root shell would otherwise leave no trace at all of what it changed. A
+# missing or failing logger never changes what the installer does.
+#   questboard__emit PRIORITY MESSAGE
+questboard__emit() {
+  local priority="$1" message="$2"
+  printf '%s questboard-deploy: %s\n' "$(questboard_utc_now)" "$message" >&2
+  if [ -z "${JOURNAL_STREAM:-}" ] && command -v logger >/dev/null 2>&1; then
+    logger -t questboard-deploy -p "daemon.${priority}" -- "$message" >/dev/null 2>&1 || true
+  fi
+  return 0
+}
+
 questboard_log() {
-  printf '%s questboard-deploy: %s\n' "$(questboard_utc_now)" "$*" >&2
+  questboard__emit info "$*"
 }
 
 # Logs an error-prefixed message and exits non-zero.
 questboard_die() {
-  questboard_log "ERROR: $*"
+  questboard__emit err "ERROR: $*"
   exit 1
 }
 

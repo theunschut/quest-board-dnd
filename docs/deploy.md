@@ -151,6 +151,7 @@ answer mean a quiet retry, services that answer mean the release is refused.
 | The verification services (Sigstore, GitHub) cannot be reached, or the main-branch check gets no usable answer (no response, HTTP 403, 429 or 5xx) | Nothing is staged or stopped; the next poll retries | none, journal only | no |
 | A remembered tag turns up again | Skipped, with one journal line | none, journal only | already remembered |
 | `questboard-deploy rollback` by hand | Switches to the chosen release | none, terminal and journal only | the release rolled back from is (as `abandoned`) |
+| `questboard-deploy rollback` by hand, and the chosen release does not become healthy | `current` has already moved and the app was restarted on it; the command exits with an error | none, terminal and journal only | the release rolled back from is (as `abandoned`), and the chosen release is recorded as `failed` |
 
 A tag that was refused, failed, rolled back, halted or abandoned by a manual rollback is
 remembered: later polls skip it without mailing, until a newer tag is published or you run
@@ -231,7 +232,10 @@ again: it logs `skipping vX.Y.Z: abandoned earlier; run questboard-deploy instal
 again` and moves on. A release published later than the abandoned one is not held back, so the
 next poll installs it as usual. To go forward to the abandoned release again, run
 `questboard-deploy install vX.Y.Z` by hand; that records it as installed and clears the memory. A
-refused or failed rollback records nothing.
+rollback that is refused before anything changes records nothing. A rollback that switched
+`current` and restarted the app but then saw the target fail its health check is recorded all the
+same: the target as `failed`, and the release rolled back from as `abandoned`, so the poll does not
+install it again behind your back. Fix or replace the target and install it by hand.
 
 ### `questboard-deploy verify --artifact FILE --bundle FILE --tag vX.Y.Z`
 
@@ -549,11 +553,17 @@ Useful commands:
 ```bash
 journalctl -u questboard-deploy-poll.service -n 100 --no-pager   # what the last runs did
 journalctl -u questboard-deploy-poll.service -f                  # follow a run
+journalctl -t questboard-deploy -n 100 --no-pager                 # runs started by hand (install, rollback, setup)
 systemctl list-timers questboard-deploy-poll.timer                # when it runs next
 systemctl status questboard-deploy-poll.service                   # shows failed after a rejected release
 cat /var/lib/questboard-deploy/state/attempts                     # what was tried and how it ended
 ls -l /opt/questboard/current                                     # the active release
 ```
+
+A poll run leaves its lines in the unit's journal. A run started from a root shell (`install`,
+`rollback`, `setup`, `verify`) writes the same lines to the terminal and also to the journal under
+the tag `questboard-deploy`, so a manual rollback or a refused manual install is not lost when the
+terminal closes. Under a systemd unit the installer adds no second copy.
 
 **The installer refuses a release that verifies on a workstation.** The journal line
 `attestation verification failed` carries the reason. The usual causes are: `gh` is missing or
