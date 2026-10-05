@@ -320,7 +320,11 @@ cmd_install() {
   local status_json="$MIGRATOR_OUTPUT" pending db_exists
   pending="$(questboard_json_list_length "$status_json" pending 2>/dev/null)" || pending=""
   db_exists="$(questboard_json_get "$status_json" databaseExists 2>/dev/null)" || db_exists=""
-  if ! [[ "$pending" =~ ^[0-9]+$ ]]; then
+  # The backup is the safety net for the migration, so it is skipped only when
+  # the status says outright that there is no database yet (a fresh host). A
+  # status that does not say, or says anything else, cannot be trusted to mean
+  # "nothing to protect" and ends the attempt before the app is touched.
+  if ! [[ "$pending" =~ ^[0-9]+$ ]] || { [ "$db_exists" != "true" ] && [ "$db_exists" != "false" ]; }; then
     stop_attempt status error database_unreachable "$has_previous"
   fi
 

@@ -84,6 +84,11 @@ With migrations pending:
 With nothing pending: status, stop the app, switch `current`, start, health check. No backup is
 taken.
 
+The backup is skipped only when the status says outright that the database does not exist yet,
+which is a fresh host with nothing to protect. A status that leaves that field out or reports it
+as anything other than true or false ends the attempt as `failed` (the database could not be
+read) before the app is stopped, rather than migrating without a backup.
+
 The health check polls `http://127.0.0.1:5000/health` until it gets HTTP 200 with a body of
 `Healthy` or `Degraded` and an `X-QuestBoard-Version` header equal to the new version, so an old
 process that is still answering is never mistaken for the new release. The wait lasts

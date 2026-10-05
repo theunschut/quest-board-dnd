@@ -553,6 +553,33 @@ check "database unreachable: mail says failed" "failed (the database could not b
 check "database unreachable: recorded failed" "v1.3.0 failed" "$(last_attempt)"
 check "database unreachable: staged release removed" "1.2.0" "$(releases_listing)"
 
+# The backup is skipped only when the status explicitly says there is no
+# database yet. A status that does not say, or says something else, stops the
+# install before the app is touched: a safety net must not fail open.
+new_case fresh-host
+export STUB_STATUS_JSON='{"databaseExists":false,"applied":[],"pending":["B"],"unknown":[],"nonTransactional":[],"canBackup":false}'
+run_deploy install v1.3.0
+check "fresh host: exit 0" "0" "$RC"
+check "fresh host: no backup is taken, the migrations apply" \
+  "migrator status 1.3.0 current=1.2.0|systemctl stop questboard.service current=1.2.0|migrator apply 1.3.0 current=1.2.0|systemctl start questboard.service current=1.3.0" \
+  "$(calls)"
+
+new_case status-without-database-flag
+export STUB_STATUS_JSON='{"applied":["A"],"pending":["B"],"unknown":[],"nonTransactional":[],"canBackup":true}'
+run_deploy install v1.3.0
+check "status without databaseExists: exit non-zero" "1" "$RC"
+check "status without databaseExists: nothing runs but the status check" "migrator status 1.3.0 current=1.2.0" "$(calls)"
+check "status without databaseExists: no migration was applied" "no" "$(has_text "${ROOT}/calls.log" 'migrator apply')"
+check "status without databaseExists: mail says failed" "failed (the database could not be reached)" "$(mail_result)"
+check "status without databaseExists: staged release removed" "1.2.0" "$(releases_listing)"
+check "status without databaseExists: current unchanged" "1.2.0" "$(current_version)"
+
+new_case status-database-flag-not-boolean
+export STUB_STATUS_JSON='{"databaseExists":"yes","applied":["A"],"pending":["B"],"unknown":[],"nonTransactional":[],"canBackup":true}'
+run_deploy install v1.3.0
+check "databaseExists that is not a boolean: nothing runs but the status check" "migrator status 1.3.0 current=1.2.0" "$(calls)"
+check "databaseExists that is not a boolean: recorded failed" "v1.3.0 failed" "$(last_attempt)"
+
 new_case nobackup
 export STUB_STATUS_JSON="$STATUS_PENDING" STUB_BACKUP_EXIT=5
 run_deploy install v1.3.0
