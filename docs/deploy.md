@@ -181,6 +181,19 @@ update available: run setup from release <version>`.
 
 All of these run as root on the App CT.
 
+The installer takes its settings from `/etc/questboard/deploy.conf` and never from the
+environment. The two variables the offline tests use to run it against a temporary directory,
+`QUESTBOARD_DEPLOY_ROOT` and `QUESTBOARD_DEPLOY_CONF`, are refused (the run stops with `not a
+test tree owned by this user`) unless they name a directory that carries the test marker and is
+owned by the same user as the installer process, which a directory made by anyone else never is
+for a root run. If you run the installer through `sudo`, keep sudo's default environment
+handling: do not add `env_keep`, `SETENV` or `sudo -E` for it. To be certain, start it with a
+clean environment:
+
+```bash
+sudo env -i PATH=/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin questboard-deploy install vX.Y.Z
+```
+
 ### `questboard-deploy poll`
 
 What the timer runs. It is also safe to run by hand, or to start through the unit so the sandbox

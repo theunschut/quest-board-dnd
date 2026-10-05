@@ -280,6 +280,7 @@ new_case() {
   ROOT="${BASE}/case-$1"
   rm -rf "$ROOT"
   mkdir -p "${ROOT}/etc/questboard" "${ROOT}/mail" "${ROOT}/opt/questboard/releases"
+  host_guard_mark_test_root "$ROOT"
   install_release 1.2.0
   activate_installed 1.2.0
   install_deploy_copies
@@ -791,6 +792,57 @@ export QUESTBOARD_HEALTH_URL="http://127.0.0.1:1/never"
 run_deploy install v1.3.0
 unset QUESTBOARD_HEALTH_URL
 check "an environment variable cannot override the configured health URL" "0" "$RC"
+
+# The variables that relocate the installer for these tests relax the root check
+# and the owner check on the configuration file. They are honoured only for a
+# tree that proves it is a test tree; a run that inherits them from somewhere
+# else is refused and touches nothing.
+assert_seam_refused() {
+  local label="$1"
+  check "${label}: refused" "1" "$RC"
+  check "${label}: says why" "yes" "$(out_has 'not a test tree owned by this user')"
+  check "${label}: nothing ran" "" "$(calls)"
+  check "${label}: current unchanged" "1.2.0" "$(current_version)"
+  check "${label}: no mail" "0" "$(mail_count)"
+  check "${label}: no state written" "no" "$([ -e "${ROOT}/var" ] && echo yes || echo no)"
+}
+
+new_case seam-no-marker
+rm -f "${ROOT}/.questboard-test-root"
+run_deploy install v1.3.0
+assert_seam_refused "a relocated root without the test marker"
+
+new_case seam-marker-symlink
+rm -f "${ROOT}/.questboard-test-root"
+ln -s /dev/null "${ROOT}/.questboard-test-root"
+run_deploy install v1.3.0
+assert_seam_refused "a test marker that is a symlink"
+
+new_case seam-conf-only
+RC=0
+env -u QUESTBOARD_DEPLOY_ROOT QUESTBOARD_DEPLOY_CONF="${ROOT}/etc/questboard/deploy.conf" \
+  "$DISPATCHER" install v1.3.0 > "${ROOT}/out.log" 2>&1 || RC=$?
+check "a configuration path without a test tree: refused" "1" "$RC"
+check "a configuration path without a test tree: says why" "yes" "$(out_has 'not a test tree owned by this user')"
+check "a configuration path without a test tree: nothing ran" "" "$(calls)"
+
+new_case seam-conf-in-test-tree
+printf 'QUESTBOARD_SMTP_PORT=25\n' > "${ROOT}/alt.conf"
+chmod 600 "${ROOT}/alt.conf"
+export QUESTBOARD_DEPLOY_CONF="${ROOT}/alt.conf"
+run_deploy install v1.3.0
+unset QUESTBOARD_DEPLOY_CONF
+check "a configuration path in a test tree is used" "yes" "$(out_has 'QUESTBOARD_GITHUB_REPO is not set')"
+check "a configuration path in a test tree: nothing ran" "" "$(calls)"
+
+if [ "$(id -u)" -ne 0 ]; then
+  new_case seam-absent-not-root
+  RC=0
+  env -u QUESTBOARD_DEPLOY_ROOT -u QUESTBOARD_DEPLOY_CONF "$DISPATCHER" install v1.3.0 > "${ROOT}/out.log" 2>&1 || RC=$?
+  check "without any relocation a non-root caller is refused" "1" "$RC"
+  check "without any relocation the root check says so" "yes" "$(out_has 'must be run as root')"
+  check "without any relocation nothing ran" "" "$(calls)"
+fi
 
 new_case missing-repo
 sed -i '/QUESTBOARD_GITHUB_REPO/d' "${ROOT}/etc/questboard/deploy.conf"

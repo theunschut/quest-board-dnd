@@ -112,9 +112,12 @@ questboard__conf_value_ok() {
 # pattern; any other line is an error. Values may be wrapped in one pair of
 # single or double quotes, which are stripped before validation.
 #
-# Under a relocated test root (QUESTBOARD_DEPLOY_ROOT set) the expected owner
-# is the current user rather than root, since the test root stands in for the
-# privileged installation root and is never itself created by root.
+# Under a relocated test root (the DEPLOY_ROOT variable of the dispatcher is
+# set) the expected owner is the current user rather than root, since the test
+# root stands in for the privileged installation root and is never itself
+# created by root. The dispatcher sets DEPLOY_ROOT only after it has checked
+# that the root is a genuine test tree; nothing in this file reads the
+# environment for it.
 questboard_load_conf() {
   local conf_file="${1:-}"
 
@@ -122,7 +125,7 @@ questboard_load_conf() {
     || questboard_die "configuration file not found: ${conf_file}"
 
   local expected_uid=0
-  if [ -n "${QUESTBOARD_DEPLOY_ROOT:-}" ]; then
+  if [ -n "${DEPLOY_ROOT:-}" ]; then
     expected_uid="$(id -u)"
   fi
 

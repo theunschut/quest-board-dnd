@@ -118,7 +118,7 @@ chmod 600 "$CONF_COPY"
 
 # Under a relocated root the loader expects the current user as owner.
 missing_report="$(
-  export QUESTBOARD_DEPLOY_ROOT="$WORK"
+  DEPLOY_ROOT="$WORK"
   for key in "${QUESTBOARD_CONF_ALLOWED_KEYS[@]}"; do unset "$key"; done
   questboard_load_conf "$CONF_COPY"
   for key in "${QUESTBOARD_CONF_ALLOWED_KEYS[@]}"; do

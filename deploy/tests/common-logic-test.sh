@@ -80,6 +80,11 @@ check "plain version rejects 1.02.3" "1" "$(status_of questboard_is_plain_versio
 CONF_DIR="${QUESTBOARD_DEPLOY_ROOT}/conf"
 mkdir -p "$CONF_DIR"
 
+# The loader expects a root-owned file unless the dispatcher's DEPLOY_ROOT names a
+# test tree, in which case it expects the current user. The test files below are
+# the current user's.
+DEPLOY_ROOT="$QUESTBOARD_DEPLOY_ROOT"
+
 write_conf() {
   local name="$1"
   local mode="$2"
@@ -172,8 +177,15 @@ check "a backtick value never runs" "absent" \
 if [ "$(id -u)" -ne 0 ]; then
   OWNER_CONF="$(write_conf owner.conf 600 'QUESTBOARD_SMTP_PORT=25')"
   owner_rc=0
-  ( unset QUESTBOARD_DEPLOY_ROOT; questboard_load_conf "$OWNER_CONF" ) >/dev/null 2>&1 || owner_rc=$?
+  ( DEPLOY_ROOT=""; questboard_load_conf "$OWNER_CONF" ) >/dev/null 2>&1 || owner_rc=$?
   check "load_conf rejects a file not owned by root outside a test root" "1" "$owner_rc"
+
+  # The environment cannot relax the owner check: only the dispatcher's own
+  # DEPLOY_ROOT variable, set after it has checked the test tree, does.
+  env_rc=0
+  ( DEPLOY_ROOT=""; export QUESTBOARD_DEPLOY_ROOT="$QUESTBOARD_DEPLOY_ROOT" QUESTBOARD_DEPLOY_CONF="$OWNER_CONF"
+    questboard_load_conf "$OWNER_CONF" ) >/dev/null 2>&1 || env_rc=$?
+  check "load_conf ignores QUESTBOARD_DEPLOY_ROOT in the environment for the owner check" "1" "$env_rc"
 fi
 
 # --- questboard_http_fetch ------------------------------------------------

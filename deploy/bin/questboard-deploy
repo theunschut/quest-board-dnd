@@ -15,7 +15,33 @@ umask 022
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-DEPLOY_ROOT="${QUESTBOARD_DEPLOY_ROOT:-}"
+# The offline tests run this script against a temporary tree by naming it in
+# QUESTBOARD_DEPLOY_ROOT (and, optionally, a configuration file in
+# QUESTBOARD_DEPLOY_CONF). Those two variables relax security-relevant checks:
+# the root check and the owner of the configuration file. An installer run
+# through sudo can inherit variables from the caller, so they are honoured only
+# for a tree that proves it is a test tree: a real directory, owned by the user
+# running this script, holding a marker file the same user owns. A non-root
+# caller cannot create such a tree owned by root, so a root run never accepts a
+# tree it did not make itself. Anything else that sets either variable is
+# refused outright instead of being silently ignored.
+DEPLOY_ROOT=""
+if [ -n "${QUESTBOARD_DEPLOY_ROOT:-}" ] || [ -n "${QUESTBOARD_DEPLOY_CONF:-}" ]; then
+  _seam_root="${QUESTBOARD_DEPLOY_ROOT:-}"
+  _seam_marker="${_seam_root}/.questboard-test-root"
+  _seam_uid="$(id -u)"
+  if [ -n "$_seam_root" ] && [ -d "$_seam_root" ] && [ ! -L "$_seam_root" ] \
+      && [ -f "$_seam_marker" ] && [ ! -L "$_seam_marker" ] \
+      && [ "$(stat -c '%u' "$_seam_root")" = "$_seam_uid" ] \
+      && [ "$(stat -c '%u' "$_seam_marker")" = "$_seam_uid" ]; then
+    DEPLOY_ROOT="$_seam_root"
+  else
+    printf 'questboard-deploy: refusing QUESTBOARD_DEPLOY_ROOT / QUESTBOARD_DEPLOY_CONF: not a test tree owned by this user\n' >&2
+    exit 1
+  fi
+  unset _seam_root _seam_marker _seam_uid
+fi
+
 LOCK_PATH="${DEPLOY_ROOT}/run/questboard-deploy/deploy.lock"
 STATE_DIR="${DEPLOY_ROOT}/var/lib/questboard-deploy/state"
 DOWNLOAD_DIR="${DEPLOY_ROOT}/var/lib/questboard-deploy/downloads"
@@ -65,6 +91,8 @@ EOF
 }
 
 require_root() {
+  # DEPLOY_ROOT is non-empty only for a tree that passed the test-tree check at
+  # the top of this file.
   if [ -n "$DEPLOY_ROOT" ]; then
     return 0
   fi
