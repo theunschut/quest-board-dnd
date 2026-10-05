@@ -366,13 +366,28 @@ check "commit on branch: behind is accepted" "0" "$(compare_status behind)"
 check "commit on branch: ahead is refused" "1" "$(compare_status ahead)"
 check "commit on branch: diverged is refused" "1" "$(compare_status diverged)"
 
-reset_stubs
-export STUB_HTTP_CODE=404 STUB_BODY_FILE="$BODY"
-check "commit on branch: HTTP 404 is refused" "1" "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+# A definite answer that the commit is not part of main's history is a refusal.
+# A 404 means GitHub does not know the commit in this repository, and any other
+# client error is an answer too.
+for code in 404 422; do
+  reset_stubs
+  export STUB_HTTP_CODE="$code" STUB_BODY_FILE="$BODY"
+  check "commit on branch: HTTP ${code} is refused (1)" "1" \
+    "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+done
+
+# No answer at all, or an answer that says nothing about the commit (rate limit,
+# server error), is no verdict: it must not be mistaken for a refusal.
+for code in 403 429 500 502 503 504; do
+  reset_stubs
+  export STUB_HTTP_CODE="$code" STUB_BODY_FILE="$BODY"
+  check "commit on branch: HTTP ${code} is no verdict (3)" "3" \
+    "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+done
 
 reset_stubs
 export STUB_HTTP_CODE=000 STUB_CURL_EXIT=28 STUB_BODY_FILE="$BODY"
-check "commit on branch: transport failure is refused" "1" "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+check "commit on branch: transport failure is no verdict (3)" "3" "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
 
 printf 'not json' > "$BODY"
 reset_stubs

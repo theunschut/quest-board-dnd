@@ -56,6 +56,7 @@ case "$url" in
   */compare/*)
     [ -n "${STUB_COMPARE_EXIT:-}" ] && exit "$STUB_COMPARE_EXIT"
     printf '{"status":"%s"}' "${STUB_COMPARE_STATUS:-behind}" > "$out"
+    [ -n "${STUB_COMPARE_CODE:-}" ] && code="$STUB_COMPARE_CODE"
     ;;
   */releases/download/*)
     [ -n "${STUB_DOWNLOAD_EXIT:-}" ] && exit "$STUB_DOWNLOAD_EXIT"
@@ -284,7 +285,7 @@ EOF
   export STUB_GH_JSON="$GH_OK" STUB_STATUS_JSON="$STATUS_CLEAN"
   unset STUB_LATEST_EXIT STUB_COMPARE_EXIT STUB_DOWNLOAD_EXIT STUB_UNHEALTHY_VERSION \
     STUB_STATUS_EXIT STUB_BACKUP_EXIT STUB_APPLY_EXIT STUB_SYSTEMCTL_EXIT STUB_PROBE_EXIT \
-    STUB_GH_STDERR STUB_TIMEOUT_FIRES
+    STUB_GH_STDERR STUB_TIMEOUT_FIRES STUB_COMPARE_CODE
 }
 
 RC=0
@@ -455,10 +456,40 @@ export STUB_COMPARE_STATUS="diverged"
 run_deploy install v1.3.0
 assert_untouched_refusal "commit off main" "the release was not built from the main branch"
 
-new_case compareunreachable
+# GitHub giving no usable answer to the main-branch check says nothing about the
+# release, so it is treated like the verification outage: nothing changes,
+# nothing is mailed or remembered, and the next poll retries.
+new_case compare-unreachable-install
 export STUB_COMPARE_EXIT=6
 run_deploy install v1.3.0
-assert_untouched_refusal "main check unreachable" "the release was not built from the main branch"
+check "main check unreachable, install by hand: exit non-zero" "1" "$RC"
+check "main check unreachable, install by hand: says nothing changed and to retry" "yes" \
+  "$(out_has 'nothing changed, try again later')"
+assert_outage_changed_nothing "main check unreachable, install by hand"
+unset STUB_COMPARE_EXIT
+run_deploy install v1.3.0
+check "main check unreachable: a retry once GitHub answers installs" "1.3.0" "$(current_version)"
+
+for compare_code in 403 429 503; do
+  new_case "compare-http-${compare_code}"
+  export STUB_COMPARE_CODE="$compare_code"
+  run_deploy poll
+  check "main check HTTP ${compare_code}, poll: exit 0" "0" "$RC"
+  check "main check HTTP ${compare_code}, poll: logs that the next poll retries" "yes" "$(out_has 'the next poll retries')"
+  assert_outage_changed_nothing "main check HTTP ${compare_code}, poll"
+  run_deploy poll
+  check "main check HTTP ${compare_code}: a second poll is equally harmless" "0" "$RC"
+  unset STUB_COMPARE_CODE
+  run_deploy poll
+  check "main check HTTP ${compare_code}: the next poll after it clears installs" "1.3.0" "$(current_version)"
+  check "main check HTTP ${compare_code}: one mail, for the install" "installed" "$(mail_result)"
+done
+
+# An answer that says the commit is unknown to the repository is definite.
+new_case compare-404
+export STUB_COMPARE_CODE=404
+run_deploy install v1.3.0
+assert_untouched_refusal "main check HTTP 404" "the release was not built from the main branch"
 
 new_case nobundle
 rm -f "${ROOT}/dl/v1.3.0/questboard-v1.3.0.zip.sigstore.json"

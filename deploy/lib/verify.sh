@@ -28,6 +28,12 @@ QUESTBOARD_GITHUB_TUF_URL='https://tuf-repo.github.com/'
 # caller that does not know about it treats it as a refusal.
 QUESTBOARD_VERIFY_UNREACHABLE=3
 
+# Returned by questboard_commit_on_branch, instead of 1, when GitHub gave no
+# usable answer (no response, the rate limit, a server error). Like the
+# unreachable status it is non-zero, so a caller that does not know about it
+# treats it as a refusal.
+QUESTBOARD_COMMIT_CHECK_NO_VERDICT=3
+
 # How long one `gh attestation verify` run may take, and how much longer a run
 # that ignores the polite stop gets before it is killed. gh fetches its trust
 # root and the attestation over the network; without a bound a stalled call
@@ -160,10 +166,18 @@ except Exception:
   printf '%s\n' "$digest"
 }
 
-# Succeeds when commit SHA is identical to or behind BRANCH of REPO, asked of
-# the public compare endpoint with no credential. A tag on some other branch can
-# be built by the same signing workflow, so the attested commit must be part of
-# main's history. Anything else, including an unreachable service, is a refusal.
+# Asks the public compare endpoint, with no credential, whether commit SHA is
+# identical to or behind BRANCH of REPO. A tag on some other branch can be built
+# by the same signing workflow, so the attested commit must be part of main's
+# history. Returns:
+#   0  the commit is identical to or behind the branch
+#   1  a definite refusal: the answer says the commit is ahead of or diverged
+#      from the branch, GitHub does not know the commit (404), the answer was a
+#      client error, or the answer could not be read
+#   3  no verdict (QUESTBOARD_COMMIT_CHECK_NO_VERDICT): the request got no answer
+#      at all, or an answer that says nothing about the commit (a 403 or 429 from
+#      the unauthenticated rate limit, a 5xx). The caller retries later.
+# Anything not named above, including invalid input, is a refusal.
 questboard_commit_on_branch() {
   local repo="$1" sha="$2" branch="$3"
 
@@ -175,10 +189,23 @@ questboard_commit_on_branch() {
   body="$(mktemp)" || return 1
   code="$(questboard_http_fetch 30 "${QUESTBOARD_GITHUB_API_URL}/repos/${repo}/compare/${branch}...${sha}" "$body")" || rc=$?
 
-  if [ "$rc" -ne 0 ] || [ "$code" != "200" ]; then
+  if [ "$rc" -ne 0 ]; then
     rm -f "$body"
-    return 1
+    questboard_log "the main-branch check got no answer from GitHub"
+    return "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT"
   fi
+  case "$code" in
+    200) ;;
+    403|429|5[0-9][0-9])
+      rm -f "$body"
+      questboard_log "the main-branch check got HTTP ${code} from GitHub, which says nothing about the commit"
+      return "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT"
+      ;;
+    *)
+      rm -f "$body"
+      return 1
+      ;;
+  esac
 
   status="$(python3 -c '
 import json, sys

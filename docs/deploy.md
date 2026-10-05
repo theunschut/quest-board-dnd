@@ -59,7 +59,8 @@ A poll that finds nothing to do says so in the journal and exits successfully:
 
 - nothing newer than the active release;
 - GitHub unreachable, or no release published yet;
-- the verification services unreachable while checking a new release (the next poll retries it);
+- the verification services unreachable, or GitHub's main-branch check giving no usable answer,
+  while checking a new release (the next poll retries it);
 - the newest release is one the installer already tried and rejected (see "Outcomes").
 
 None of these send mail. A poll also installs nothing that is not strictly newer than what is
@@ -103,7 +104,11 @@ skips one.
    `.github/workflows/release.yml`, to the source ref `refs/tags/<tag>`, and with
    `--deny-self-hosted-runners` so only a GitHub-hosted build is accepted.
 3. **Attested commit.** The commit the attestation names must be identical to, or behind, `main`,
-   asked of GitHub's public compare endpoint.
+   asked of GitHub's public compare endpoint. Only a definite answer is a verdict: a commit that is
+   ahead of or diverged from `main`, or one GitHub does not know, is refused. No answer at all, or
+   an answer that says nothing about the commit (the unauthenticated rate limit, HTTP 403 or 429,
+   or a 5xx), is treated like an unreachable verification service: nothing changes, nothing is
+   mailed or remembered, and the next poll retries.
 4. **Content.** The unpacked release must have a manifest whose version equals the tag, must
    contain the app, the migrator and the installer files, must contain no symlinks and no path
    that escapes the directory, and the disk must have room for it.
@@ -137,7 +142,7 @@ answer mean a quiet retry, services that answer mean the release is refused.
 | Migrations committed, and the new release is not healthy | The new release is left active, systemd keeps retrying it, nothing is restored automatically | `halted - migrations applied`, naming the backup | yes |
 | Nothing newer than the active release | Nothing | none, journal only | no |
 | GitHub unreachable, or no release published | Nothing; the next poll retries | none, journal only | no |
-| The verification services (Sigstore, GitHub) cannot be reached | Nothing is staged or stopped; the next poll retries | none, journal only | no |
+| The verification services (Sigstore, GitHub) cannot be reached, or the main-branch check gets no usable answer (no response, HTTP 403, 429 or 5xx) | Nothing is staged or stopped; the next poll retries | none, journal only | no |
 | A remembered tag turns up again | Skipped, with one journal line | none, journal only | already remembered |
 | `questboard-deploy rollback` by hand | Switches to the chosen release | none, terminal and journal only | the release rolled back from is (as `abandoned`) |
 
@@ -536,6 +541,13 @@ remembered: nothing changed, and the next poll retries by itself. Nothing needs 
 unless you are installing manually; then run `questboard-deploy install vX.Y.Z` again once the
 CT has network access. If it persists, check DNS and outbound HTTPS from the CT to
 `tuf-repo-cdn.sigstore.dev`, `tuf-repo.github.com` and `api.github.com`.
+
+**The journal says `the main-branch check got no usable answer from GitHub`.** GitHub's compare
+endpoint did not answer, or answered with the rate limit (HTTP 403 or 429) or a server error. This
+is also not a refusal and is not remembered; the next poll retries. The unauthenticated allowance
+is shared with anything else on the CT's public address that polls GitHub, so if it keeps
+happening look for another poller on that address. A release that really is not on `main` is
+refused with a mail instead.
 
 **A bus-connection error in the journal** (`Failed to connect to bus`) means the installer could
 not start the migrator through systemd from inside the sandboxed unit. The install stops before

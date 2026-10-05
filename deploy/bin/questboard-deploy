@@ -201,6 +201,22 @@ stop_attempt() {
   finish "$OUTCOME" "$reason"
 }
 
+# Ends the attempt for a check that could not reach a verdict on the release (a
+# verification service or GitHub gave no usable answer). That is neither a
+# refusal nor remembered: nothing was staged or stopped, no mail is sent, and
+# the next poll retries the same tag. A poll exits quietly; a manual run says so
+# and exits non-zero.
+#   end_without_verdict REASON_TEXT
+end_without_verdict() {
+  local what="$1"
+  rm -rf "${DOWNLOAD_DIR:?}/${VERSION}"
+  if [ "$INVOKED_BY_POLL" -eq 1 ]; then
+    questboard_log "${what} while verifying ${TAG}; nothing changed, the next poll retries"
+    exit 0
+  fi
+  questboard_die "${what}; nothing changed, try again later"
+}
+
 # A manual redeploy of the active release: restart and health check, no download.
 redeploy_active() {
   STARTED="$(questboard_utc_now)"
@@ -268,18 +284,15 @@ cmd_install() {
   commit="$(questboard_verify_attestation "${dl}/${zip_name}" "${dl}/${zip_name}.sigstore.json" \
       "$QUESTBOARD_GITHUB_REPO" "$QUESTBOARD_SIGNER_WORKFLOW" "refs/tags/${TAG}")" || rc=$?
   if [ "$rc" -eq "$QUESTBOARD_VERIFY_UNREACHABLE" ]; then
-    # No verdict on the artifact exists, so this is neither a refusal nor
-    # remembered: nothing was staged or stopped, and the next poll retries.
-    rm -rf "$dl"
-    if [ "$INVOKED_BY_POLL" -eq 1 ]; then
-      questboard_log "verification services unreachable while verifying ${TAG}; nothing changed, the next poll retries"
-      exit 0
-    fi
-    questboard_die "verification services unreachable; nothing changed, try again later"
+    end_without_verdict "verification services unreachable"
   elif [ "$rc" -ne 0 ]; then
     stop_attempt verify fail attestation_failed "$has_previous"
   fi
-  if ! questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main; then
+  rc=0
+  questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main || rc=$?
+  if [ "$rc" -eq "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT" ]; then
+    end_without_verdict "the main-branch check got no usable answer from GitHub"
+  elif [ "$rc" -ne 0 ]; then
     stop_attempt verify fail not_on_main "$has_previous"
   fi
 
@@ -503,8 +516,13 @@ cmd_verify() {
   elif [ "$rc" -ne 0 ]; then
     questboard_die "attestation check failed for ${tag}"
   fi
-  questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main \
-    || questboard_die "the attested commit is not on main"
+  rc=0
+  questboard_commit_on_branch "$QUESTBOARD_GITHUB_REPO" "$commit" main || rc=$?
+  if [ "$rc" -eq "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT" ]; then
+    questboard_die "the main-branch check got no usable answer from GitHub; try again later"
+  elif [ "$rc" -ne 0 ]; then
+    questboard_die "the attested commit is not on main"
+  fi
   printf '%s\n' "$commit"
 }
 
