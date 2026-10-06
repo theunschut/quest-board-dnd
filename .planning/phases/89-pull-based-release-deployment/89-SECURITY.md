@@ -117,7 +117,7 @@ created: 2026-10-05
 - `MigrationRunner` database-creation path prints the raw `SqlException` message if `Create()` fails; journal only, never mail.
 - The release build job holds `id-token`/`attestations: write` while running the test suite (dependency code next to signing ability); splitting attestation into its own job is a possible later hardening.
 - `prevent_self_review=false` on the `deploy` environment: with a single maintainer the tagger also approves.
-- Org-level runners could not be listed with the available token (`admin:org` missing); the retired runner was repository-scoped and the CT side shows no runner.
+- Org-level runners could not be listed with the available token (`admin:org` missing); the operator confirmed on 2026-10-06 that the retired runner was a repository runner, so the repository count of 0 covers it.
 - The plan-05/06 bypass grep is a one-time acceptance check, not a committed test.
 
 ---

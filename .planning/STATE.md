@@ -157,7 +157,6 @@ New as of 2026-10-06 (Phase 89):
 
 - **Phase 89 code-review info items IN-01..IN-08 are open, all optional** (see `89-REVIEW.md`): setup adoption stops the app outside the rescue trap; the release job depends on a live third-party download; the original `build` job in `dotnet.yml` keeps tag-pinned actions and persisted credentials; `Degraded` health is accepted without being reported; migrator exit codes collapse into `database_unreachable`; a poll colliding with a manual install marks the poll unit failed; `mktemp -u` for the link swap and post-extraction symlink checks could be tighter.
 - **`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.** The release pipeline and all Phase 89 jobs are pinned to `ubuntu-24.04`; the original `dotnet.yml` `build` job and `docker-publish.yml` still float. A follow-up task was offered to pin them.
-- **Org-level self-hosted runners were not listable** (operator token lacks `admin:org`). The retired runner was repository-scoped and the CT shows no runner; the org runners page should be confirmed empty by hand.
 - **Only the installed, idle and manual-rollback paths have run in production.** Unhealthy auto switch-back, halted and refused rows are proven by offline flow tests and the real-SQL CI tests only.
 
 ### Quick Tasks Completed
@@ -199,7 +198,6 @@ Resume file: None
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
 - Decide whether to stop the `mssql-dev` container left running from the previous session (named volume `mssql-data`, so data persists either way)
-- Check github.com/organizations/theunschut/settings/actions/runners is empty (org-level runners could not be listed with the session's token)
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)
 - Releases are now cut by tagging `main` and approving the `deploy` environment; the CT installs within ~5 minutes. When an outcome mail says an installer update is available, run `setup` from that release as root (see `docs/deploy.md`)
 - Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79 and 81 are roadmapped but unplanned
