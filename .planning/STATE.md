@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 89
-current_phase_name: pull-based-release-deployment
-status: executing
+status: completed
 stopped_at: Phase 89 context gathered
-last_updated: "2026-10-04T19:32:06.816Z"
-last_activity: 2026-10-04
-last_activity_desc: Phase 89 execution started
+last_updated: "2026-10-06T07:30:28.654Z"
+last_activity: 2026-10-06
+last_activity_desc: Phase 89 complete
 progress:
   total_phases: 18
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 129
-  completed_plans: 108
-  percent: 83
+  completed_plans: 120
+  percent: 89
+current_phase_name: pull-based-release-deployment
 state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 ---
 
@@ -22,22 +22,23 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-01 — after Phase 88)
+See: .planning/PROJECT.md (updated 2026-10-06 — after Phase 89)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 89 — pull-based-release-deployment
+**Current focus:** No phase in progress — Phase 78 (Link Preview Foundation and Quest Cards) is planned and ready to execute
 
 ## Current Position
 
-Phase: 89 (pull-based-release-deployment) — EXECUTING
-Plan: 1 of 12
-Status: Executing Phase 89
-Last activity: 2026-10-04 — Phase 89 execution started
+Phase: 89 (pull-based-release-deployment) — COMPLETE
+Plan: 12 of 12
+Status: Phase 89 complete; not all phases complete — Phases 78, 79 and 81 are still open
+Last activity: 2026-10-06 — Phase 89 complete (UAT 7/7, verification passed, threats_open 0)
 
-`phase.complete` reported Phase 88 as the milestone's last phase only because it is the highest
+`phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
-none executed) and Phase 79 — Character and Contact Link Cards (not yet planned) are still open.
-Every other phase in the 72–88 range is complete with a verification report.
+none executed), Phase 79 — Character and Contact Link Cards and Phase 81 — Contact Tags and
+Filtering (not yet planned) are still open. Every other phase in the 72–89 range is complete with a
+verification report.
 
 Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
 shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
@@ -100,6 +101,10 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 88]: The migration bumped every existing row once (operator choice), so entries calendars already held stale repaired themselves on the first fetch after v5.3.3. Production showed all 41 untouched entries at SEQUENCE:2, stamped at the deploy migration
 - [Phase 88]: Board rename dropped from the revision rules (operator choice). Re-signalling every entry on a renamed board needs a new IgnoreQueryFilters site; documented as a known limitation instead
 - [Phase 88]: Concurrent saves use an EF concurrency token on FeedRevision plus adopt-stored-and-retry (max 5) inside SaveChanges. A lower SEQUENCE would be a permanent lock-out, and surfacing DbUpdateConcurrencyException would turn a benign race into a 500 at any call site that missed handling it
+- [Phase 89]: Production now deploys by pull: a sandboxed systemd timer on the App CT polls the public releases API, verifies checksum, Sigstore attestation (repo, release.yml, tag ref, hosted runners only) and main ancestry, runs the release's own migrator (status, copy-only backup, apply in one caller transaction), switches `current` atomically and confirms `/health` by version header. GitHub has no runner, credential or workflow that reaches the box; publishing needs the operator's `deploy` environment approval and only admins can create `v*` tags
+- [Phase 89]: An unreachable verification service (Sigstore/GitHub) and a main-ancestry check with no usable answer are quiet retries — no mail, not remembered — amending D-01's "counts as failed"; a definite answer is still a refusal, and nothing unverified can install on any path
+- [Phase 89]: `rollback` marks the release it left `abandoned` so the poll does not reinstall it; an explicit `install vX` clears it. Proven live 2026-10-06 (5.4.2 → 5.4.1 → poll skipped → install 5.4.2)
+- [Phase 89]: The operator delegated pushes, merges, tags and GitHub settings to the orchestrator in chat (accepted risk AR-89-07), and granted a same-day, IP-bound temporary root SSH login on CT 102 for the cutover, removed afterwards. The deploy-environment approval always stayed with the operator
 - [Phase 88]: Production checks run on a dedicated temporary subscription, revoked afterwards with a 410 confirmed. The "never paste the address" instruction failed twice this phase; the second time the permanent iPhone token was printed into the transcript via a token-named download file (T-88-22)
 
 ### Roadmap Evolution
@@ -148,6 +153,13 @@ New as of 2026-10-01 (Phase 88):
   - an unset `LastRevisedAt` would publish year 1
   - the SEQUENCE-only "(maybe)" marker limitation is missing from `.claude/architecture.md`
 
+New as of 2026-10-06 (Phase 89):
+
+- **Phase 89 code-review info items IN-01..IN-08 are open, all optional** (see `89-REVIEW.md`): setup adoption stops the app outside the rescue trap; the release job depends on a live third-party download; the original `build` job in `dotnet.yml` keeps tag-pinned actions and persisted credentials; `Degraded` health is accepted without being reported; migrator exit codes collapse into `database_unreachable`; a poll colliding with a manual install marks the poll unit failed; `mktemp -u` for the link swap and post-extraction symlink checks could be tighter.
+- **`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.** The release pipeline and all Phase 89 jobs are pinned to `ubuntu-24.04`; the original `dotnet.yml` `build` job and `docker-publish.yml` still float. A follow-up task was offered to pin them.
+- **Org-level self-hosted runners were not listable** (operator token lacks `admin:org`). The retired runner was repository-scoped and the CT shows no runner; the org runners page should be confirmed empty by hand.
+- **Only the installed, idle and manual-rollback paths have run in production.** Unhealthy auto switch-back, halted and refused rows are proven by offline flow tests and the real-SQL CI tests only.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -176,9 +188,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-04T18:05:43.490Z
-Stopped at: Phase 89 context gathered
-Resume file: .planning/phases/89-pull-based-release-deployment/89-CONTEXT.md
+Last session: 2026-10-06T07:35:00.000Z
+Stopped at: Phase 89 complete — production on v5.4.2 via the pull-based installer
+Resume file: None
 
 ## Operator Next Steps
 
@@ -187,5 +199,8 @@ Resume file: .planning/phases/89-pull-based-release-deployment/89-CONTEXT.md
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
 - Decide whether to stop the `mssql-dev` container left running from the previous session (named volume `mssql-data`, so data persists either way)
+- Check github.com/organizations/theunschut/settings/actions/runners is empty (org-level runners could not be listed with the session's token)
+- Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)
+- Releases are now cut by tagging `main` and approving the `deploy` environment; the CT installs within ~5 minutes. When an outcome mail says an installer update is available, run `setup` from that release as root (see `docs/deploy.md`)
 - Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79 and 81 are roadmapped but unplanned
 - v9.0 has no fixed end state — run `/gsd-new-milestone` only when you decide to cut it

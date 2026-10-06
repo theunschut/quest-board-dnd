@@ -1,7 +1,7 @@
 ---
 phase: 89-pull-based-release-deployment
 verified: 2026-10-05T18:10:00Z
-status: human_needed
+status: passed
 score: 16/16 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -9,24 +9,31 @@ re_verification: false
 gaps: []
 deferred: []
 human_verification:
+
   - test: "Confirm the WR-03 decision: a transient failure of the main-ancestry compare call (transport error, HTTP 403/429/5xx) is now a quiet retry (no mail, nothing remembered), while 404 and other 4xx stay definitive refusals"
     expected: "You accept that a rate-limited or flaky compare call never parks a good release, and that an unreadable 200 body is still a refusal"
     why_human: "Decision logic that changes which outcome a failure maps to (89-REVIEW-FIX.md marks it 'requires human verification'). Offline tests prove the code does what it says, not that the policy is the one you want."
+
   - test: "Confirm the WR-05 decision: the pre-migration backup is skipped only when migrator status says databaseExists is exactly false; a missing or non-boolean value ends the attempt as 'failed (database could not be reached)' before the app is stopped"
     expected: "You prefer refusing over backing up blind, and are content that the mail reason reuses database_unreachable"
     why_human: "Fail-closed policy choice made by the fixer, flagged for human sign-off in 89-REVIEW-FIX.md."
+
   - test: "Confirm the WR-06 deviation: after a non-zero 'apply', the installer re-reads status; unchanged pending count means restart the previous release, fewer pending means carry on as an applied install (installed or halted), and a database that cannot be read after 3 tries keeps the old behaviour (previous release restarted, 'failed, rolled back')"
     expected: "You accept leaving the double-fault case (commit acknowledgement lost AND database unreadable for about 6 s) as it was, rather than the review's suggested 'treat as halted'"
     why_human: "Deliberate deviation from the review's suggestion, with a residual risk that only the operator can weigh."
+
   - test: "Confirm the T-89-31 vocabulary choice: a manual rollback that switches and restarts but fails its health check records the old release as 'abandoned' and the target as 'failed', with no new mail reason; manual runs now also write journal lines (logger, skipped under JOURNAL_STREAM)"
     expected: "You accept reusing existing outcome words and journal-duplicate suppression"
     why_human: "Outcome-vocabulary choice flagged 'requires human verification' in 89-REVIEW-FIX.md."
+
   - test: "Ship the review/audit hardening: cut the next release from PR #158, then run 'setup' from that release on CT 102, and re-check sha256 of /usr/local/sbin/questboard-deploy and /usr/local/lib/questboard-deploy/*.sh against the new zip"
     expected: "The installed installer matches the new release's deploy/ files; the next poll still reports 'nothing newer' and mails nothing"
     why_human: "The installer never rewrites itself. CT 102 currently runs the v5.4.1 installer (byte-identical to the v5.4.1 zip, verified here), which does NOT contain WR-01..WR-07 or T-89-31. Needs an operator-run release and a root setup; verifier has no write access."
+
   - test: "Delete /root/setup-adopt.log and /root/setup-final.log on CT 102"
     expected: "Files gone (they hold apt/installer output, no secrets)"
     why_human: "Follow-up recorded in 89-11-SUMMARY.md; needs root, and the unprivileged verifier account cannot see /root."
+
   - test: "Optional: exercise an unhealthy-release rollback or halted path on the real CT (for example a deliberately broken test tag), if you want production evidence beyond the offline stubs"
     expected: "Switch-back restarts the previous release and sends one 'rolled back' mail; the tag is remembered and later polls only journal"
     why_human: "In production only the 'installed' path has run. Rollback, halted, refused and failed rows are proven by the offline install-flow tests with stubbed host commands and by real-SQL atomicity tests in CI, not on the live host. Risky to induce, so left to the operator's judgement."
