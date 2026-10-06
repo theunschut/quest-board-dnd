@@ -3,7 +3,7 @@ status: complete
 phase: 89-pull-based-release-deployment
 source: [89-VERIFICATION.md]
 started: 2026-10-05T19:30:00Z
-updated: 2026-10-06T07:15:00Z
+updated: 2026-10-06T07:31:00Z
 ---
 
 ## Current Test
@@ -38,16 +38,15 @@ result: pass — operator ran `setup && rm -f /root/setup-adopt.log /root/setup-
 
 ### 7. Optional: exercise a rollback or halted path on the real CT
 expected: A deliberately unhealthy release switches back, restarts the previous release, sends one "rolled back" mail, and later polls only journal
-result: skipped
-reason: Optional and risky to induce on production; rollback, halted, refused and failed paths are covered by the offline install-flow tests and the real-SQL CI tests
+result: pass — run on CT 102 on 2026-10-06 with no migrations between 5.4.1 and 5.4.2: `questboard-deploy rollback 5.4.1` exit 0 (attempts: `v5.4.2 abandoned`, `v5.4.1 rolled_back_manual`; current -> releases/5.4.1, /health X-QuestBoard-Version 5.4.1; manual rollback sends no mail by design); a poll then logged `skipping v5.4.2: abandoned earlier` and left current on 5.4.1; `questboard-deploy install v5.4.2` ran the full verified install, exit 0, attempts `v5.4.2 installed`, current -> releases/5.4.2, /health 5.4.2. The unhealthy-release auto switch-back and halted rows remain covered by offline flow tests and real-SQL CI tests
 
 ## Summary
 
 total: 7
-passed: 6
+passed: 7
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps
