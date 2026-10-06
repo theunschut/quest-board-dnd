@@ -48,7 +48,8 @@ operator saw as GitHub still waiting for a runner; nothing is queued or waiting 
 | Repo | `git cat-file -e origin/main:.github/workflows/binary-release.yml` | fails (absent) |
 
 CT checks ran as the unprivileged `claude` account. Org-level runners could not be listed (the
-operator's token lacks `admin:org`); the retired runner was repository-scoped.
+operator's token lacks `admin:org`); the operator confirmed on 2026-10-06 that the retired runner
+was a repository runner, not an organization runner, so the repository count of 0 is complete.
 
 ## Task 3 — mail budget over idle polls
 

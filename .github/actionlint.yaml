@@ -1,0 +1,9 @@
+# actionlint's built-in list of GitHub-hosted runner labels predates ubuntu-26.04
+# (upstream: https://github.com/rhysd/actionlint/issues/682), so it rejects a valid
+# hosted label as unknown. The only way actionlint accepts an extra label is this
+# list, which it names "self-hosted-runner"; ubuntu-26.04 here is GitHub's hosted
+# Ubuntu 26.04 image, not a self-hosted runner. Remove the entry once a pinned
+# actionlint release knows the label.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

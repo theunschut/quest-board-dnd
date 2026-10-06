@@ -61,7 +61,7 @@ created: 2026-10-05
 | T-89-28 | Denial of service | Pruning | low | mitigate | Active and previous never pruned; only plain version names considered | closed |
 | T-89-29 | Repudiation / Tampering | Overwriting a published release | medium | mitigate | Refuses when published; `--clobber` only on drafts | closed |
 | T-89-30 | Denial of service | Rollback into an incompatible schema | high | mitigate | Target migrator status must show nothing unknown/pending; adopted refused; auto switch-back only without committed migrations | closed |
-| T-89-31 | Repudiation | Operator actions log | low | mitigate | Attempts file + journal for poll runs; journal logging for manual runs and recording of a manual rollback that fails health are being added in the review-fix round | open — below high threshold (non-blocking), fix in progress |
+| T-89-31 | Repudiation | Operator actions log | low | mitigate | Attempts file + journal for poll runs; manual runs also log via `logger -t questboard-deploy` (skipped under `JOURNAL_STREAM`); a manual rollback that fails health records `abandoned`/`failed` (commit 6a5c613b, released in v5.4.2, installed on CT 102 and byte-verified) | closed |
 | T-89-32 | Tampering | Adopting the wrong version | medium | mitigate | Operator must repeat the detected version; production: detected 5.3.3 matched the site footer before adoption | closed |
 | T-89-33 | Denial of service | Half-finished cutover | medium | mitigate | App stopped first; resumable moves; `current` created last; health before success | closed |
 | T-89-34 | Repudiation / DoS | Timer with placeholder mail config | low | mitigate | Timer enabled only once a real recipient is set | closed |
@@ -100,7 +100,7 @@ created: 2026-10-05
 | Temporary root SSH for the orchestrator on CT 102 | Granted by the operator for the cutover and runner retirement: existing `claude` key, `from="192.168.1.140"`, same-day `expiry-time`, marker `claude-temp-root-89`. `/etc/questboard/env` was only grepped for three non-secret relay keys. A first grant on the wrong CT was reverted by the operator. Grant removed afterwards; root login shown refused; unprivileged `claude` login unchanged | closed |
 | Decision change: verification outage | An unreachable verification service is now a quiet retry (no mail, not remembered) instead of "counts as failed"; adds no install path (outage branch deletes the download and stages nothing) | recorded |
 | Decision change: abandoned marker | `rollback` records the release it left as `abandoned` so the poll does not reinstall it | recorded |
-| Leftover logs | `/root/setup-adopt.log`, `/root/setup-final.log` on CT 102 (apt and installer output, no secrets) for the operator to delete | open (housekeeping) |
+| Leftover logs | `/root/setup-adopt.log`, `/root/setup-final.log` on CT 102 (apt and installer output, no secrets) | closed — removed by the operator on 2026-10-06 |
 
 ---
 
@@ -110,13 +110,14 @@ created: 2026-10-05
 |------------|---------------|--------|------|--------|
 | 2026-10-05 | 41 | 38 | 3 (T-89-35 blocking; T-89-31, T-89-38 non-blocking) | gsd-security-auditor |
 | 2026-10-05 | 41 | 40 | 1 (T-89-31 non-blocking, fix in progress) | orchestrator — T-89-35 closed with CT hash-check record and byte-identity check; T-89-38 accepted by operator |
+| 2026-10-06 | 41 | 41 | 0 | orchestrator — T-89-31 closed: review-fix round released as v5.4.2, installed by the poll, installer updated via setup, CT files byte-identical to the verified zip |
 
 ### Residual notes (not gaps in declared mitigations)
 
 - `MigrationRunner` database-creation path prints the raw `SqlException` message if `Create()` fails; journal only, never mail.
 - The release build job holds `id-token`/`attestations: write` while running the test suite (dependency code next to signing ability); splitting attestation into its own job is a possible later hardening.
 - `prevent_self_review=false` on the `deploy` environment: with a single maintainer the tagger also approves.
-- Org-level runners could not be listed with the available token (`admin:org` missing); the retired runner was repository-scoped and the CT side shows no runner.
+- Org-level runners could not be listed with the available token (`admin:org` missing); the operator confirmed on 2026-10-06 that the retired runner was a repository runner, so the repository count of 0 covers it.
 - The plan-05/06 bypass grep is a one-time acceptance check, not a committed test.
 
 ---
