@@ -46,8 +46,9 @@ exit "${STUB_CURL_EXIT:-0}"
 EOF
 
 # A stand-in for gh: records its arguments and the environment that matters,
-# proves its cache and state directories are writable, prints STUB_GH_JSON and
-# exits with STUB_GH_EXIT.
+# proves its cache and state directories are writable, prints STUB_GH_JSON on
+# stdout and STUB_GH_STDERR (when set) on stderr, then exits with STUB_GH_EXIT.
+# STUB_GH_HANG_SECONDS makes it sleep first, standing in for a stalled network call.
 cat > "${STUB_DIR}/gh" <<'EOF'
 #!/bin/sh
 : > "$STUB_GH_LOG"
@@ -71,6 +72,12 @@ if mkdir -p "$XDG_CACHE_HOME/gh" "$XDG_STATE_HOME/gh" "$GH_CONFIG_DIR" \
   printf 'WRITABLE=yes\n' >> "$STUB_GH_ENV_LOG"
 else
   printf 'WRITABLE=no\n' >> "$STUB_GH_ENV_LOG"
+fi
+if [ -n "${STUB_GH_HANG_SECONDS:-}" ]; then
+  exec sleep "$STUB_GH_HANG_SECONDS"
+fi
+if [ -n "${STUB_GH_STDERR:-}" ]; then
+  printf '%s\n' "$STUB_GH_STDERR" >&2
 fi
 printf '%s' "${STUB_GH_JSON:-}"
 exit "${STUB_GH_EXIT:-0}"
@@ -114,7 +121,8 @@ curl_calls() {
 
 reset_stubs() {
   rm -f "$STUB_CURL_LOG" "$STUB_GH_LOG" "$STUB_GH_ENV_LOG"
-  unset STUB_HTTP_CODE STUB_CURL_EXIT STUB_CURL_FAIL_MATCH STUB_BODY_FILE STUB_GH_EXIT STUB_GH_JSON
+  unset STUB_HTTP_CODE STUB_CURL_EXIT STUB_CURL_FAIL_MATCH STUB_BODY_FILE STUB_GH_EXIT STUB_GH_JSON \
+    STUB_GH_STDERR STUB_GH_HANG_SECONDS
 }
 
 WORK="${QUESTBOARD_DEPLOY_ROOT}/work"
@@ -223,7 +231,20 @@ export STUB_GH_EXIT=0 STUB_GH_JSON='[{"verificationResult":{"signature":{"certif
 check "attestation fails when the digest is missing" "1" \
   "$(status_of questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)"
 
-export STUB_GH_JSON='not json at all'
+# gh may print notices on stderr while it succeeds. Only stdout is the result.
+reset_stubs
+export STUB_GH_JSON="$GOOD_JSON" STUB_GH_EXIT=0 STUB_GH_STDERR="A new release of gh is available: 2.0.0 -> 2.1.0"
+stderr_rc=0
+stderr_out="$(questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3 2>/dev/null)" || stderr_rc=$?
+check "a notice on gh's stderr does not spoil a valid result" "0" "$stderr_rc"
+check "a notice on gh's stderr still yields the attested commit" "$SHA" "$stderr_out"
+
+export STUB_GH_JSON='not json at all' STUB_GH_STDERR="a notice"
+check "a notice on stderr does not rescue a result that is not JSON" "1" \
+  "$(status_of questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)"
+
+reset_stubs
+export STUB_GH_EXIT=0 STUB_GH_JSON='not json at all'
 check "attestation fails when the output is not JSON" "1" \
   "$(status_of questboard_verify_attestation "$ARTIFACT" "$BUNDLE" owner/repo .github/workflows/release.yml refs/tags/v1.2.3)"
 
@@ -288,6 +309,37 @@ export STUB_GH_JSON='not json at all' STUB_GH_EXIT=0 STUB_CURL_EXIT=6
 check "a bad result from a successful gh run is a refusal, not an outage" "1" \
   "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
 
+# A gh run that stalls is cut off after a fixed bound. Without that bound a
+# stalled network call would hold the installer's lock for good. The cut-off is
+# judged like any other gh failure: unreachable services mean no verdict, an
+# answering network means the artifact is refused.
+check "the gh time bound is a positive number of seconds" "yes" \
+  "$([[ "${QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS:-}" =~ ^[1-9][0-9]*$ ]] && echo yes || echo no)"
+QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS=1
+QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS=1
+
+reset_stubs
+export STUB_GH_HANG_SECONDS=30 STUB_CURL_EXIT=6
+hang_started=$SECONDS
+check "a stalled gh with the services unreachable returns 3" "3" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+check "a stalled gh is cut off long before it would have finished" "yes" \
+  "$([ $((SECONDS - hang_started)) -lt 15 ] && echo yes || echo no)"
+
+reset_stubs
+export STUB_GH_HANG_SECONDS=30 STUB_HTTP_CODE=200
+check "a stalled gh with every service reachable returns 1" "1" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+check "a stalled gh prints no commit" "" \
+  "$(questboard_verify_attestation "${ATT_ARGS[@]}" 2>/dev/null || true)"
+
+reset_stubs
+export STUB_GH_JSON="$GOOD_JSON" STUB_GH_EXIT=0
+check "a gh run inside the time bound still verifies" "0" \
+  "$(status_of questboard_verify_attestation "${ATT_ARGS[@]}")"
+QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS=120
+QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS=10
+
 reset_stubs
 check "the probe finds reachable services reachable" "1" "$(status_of questboard_verification_services_unreachable)"
 export STUB_CURL_EXIT=28
@@ -314,13 +366,28 @@ check "commit on branch: behind is accepted" "0" "$(compare_status behind)"
 check "commit on branch: ahead is refused" "1" "$(compare_status ahead)"
 check "commit on branch: diverged is refused" "1" "$(compare_status diverged)"
 
-reset_stubs
-export STUB_HTTP_CODE=404 STUB_BODY_FILE="$BODY"
-check "commit on branch: HTTP 404 is refused" "1" "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+# A definite answer that the commit is not part of main's history is a refusal.
+# A 404 means GitHub does not know the commit in this repository, and any other
+# client error is an answer too.
+for code in 404 422; do
+  reset_stubs
+  export STUB_HTTP_CODE="$code" STUB_BODY_FILE="$BODY"
+  check "commit on branch: HTTP ${code} is refused (1)" "1" \
+    "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+done
+
+# No answer at all, or an answer that says nothing about the commit (rate limit,
+# server error), is no verdict: it must not be mistaken for a refusal.
+for code in 403 429 500 502 503 504; do
+  reset_stubs
+  export STUB_HTTP_CODE="$code" STUB_BODY_FILE="$BODY"
+  check "commit on branch: HTTP ${code} is no verdict (3)" "3" \
+    "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+done
 
 reset_stubs
 export STUB_HTTP_CODE=000 STUB_CURL_EXIT=28 STUB_BODY_FILE="$BODY"
-check "commit on branch: transport failure is refused" "1" "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
+check "commit on branch: transport failure is no verdict (3)" "3" "$(status_of questboard_commit_on_branch owner/repo "$SHA" main)"
 
 printf 'not json' > "$BODY"
 reset_stubs

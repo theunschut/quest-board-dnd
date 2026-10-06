@@ -50,6 +50,7 @@ decide() {
 check "verify fail -> refused keep" "refused keep" "$(decide verify fail 0 1)"
 check "content invalid -> refused keep" "refused keep" "$(decide content invalid 0 1)"
 check "content disk -> failed keep" "failed keep" "$(decide content disk 0 1)"
+check "content error -> failed keep" "failed keep" "$(decide content error 0 1)"
 check "status unknown_applied -> refused keep" "refused keep" "$(decide status unknown_applied 0 1)"
 check "status non_transactional -> refused keep" "refused keep" "$(decide status non_transactional 0 1)"
 check "status error -> failed keep" "failed keep" "$(decide status error 0 1)"

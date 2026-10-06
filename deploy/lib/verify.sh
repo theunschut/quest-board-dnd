@@ -28,6 +28,21 @@ QUESTBOARD_GITHUB_TUF_URL='https://tuf-repo.github.com/'
 # caller that does not know about it treats it as a refusal.
 QUESTBOARD_VERIFY_UNREACHABLE=3
 
+# Returned by questboard_commit_on_branch, instead of 1, when GitHub gave no
+# usable answer (no response, the rate limit, a server error). Like the
+# unreachable status it is non-zero, so a caller that does not know about it
+# treats it as a refusal.
+QUESTBOARD_COMMIT_CHECK_NO_VERDICT=3
+
+# How long one `gh attestation verify` run may take, and how much longer a run
+# that ignores the polite stop gets before it is killed. gh fetches its trust
+# root and the attestation over the network; without a bound a stalled call
+# would hold the installer's lock for good, so no later poll or manual run could
+# ever start. Fixed here and never read from the environment or the
+# configuration file.
+QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS=120
+QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS=10
+
 QUESTBOARD_SHA256_LINE_RE='^[0-9a-f]{64} [ *][A-Za-z0-9._-]+$'
 QUESTBOARD_COMMIT_SHA_RE='^[0-9a-f]{40}$'
 QUESTBOARD_REPO_RE='^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'
@@ -46,14 +61,17 @@ questboard_verify_checksum() {
   [ -f "$sum_file" ] && [ -f "${dir}/${zip_name}" ] || return 1
 
   local line_count
-  line_count="$(wc -l < "$sum_file")"
+  line_count="$(wc -l < "$sum_file")" || return 1
   # Counts newline characters: the file must be exactly one terminated line.
-  if [ "$line_count" -ne 1 ]; then
+  # Callers read this status through `if`, which switches errexit off, so a
+  # count that could not be read must end the check itself.
+  line_count="${line_count//[[:space:]]/}"
+  if [ "$line_count" != "1" ]; then
     return 1
   fi
 
   local line
-  line="$(head -n 1 "$sum_file")"
+  line="$(head -n 1 "$sum_file")" || return 1
   [[ "$line" =~ $QUESTBOARD_SHA256_LINE_RE ]] || return 1
   [ "${line:66}" = "$zip_name" ] || return 1
 
@@ -79,8 +97,10 @@ questboard_verification_services_unreachable() {
 # Verifies the signed provenance of ARTIFACT from BUNDLE, pinned to the
 # repository, the signing workflow and the release tag ref, and prints the
 # 40-character commit the artifact was built from. Returns 1 on any failure and
-# 3 (QUESTBOARD_VERIFY_UNREACHABLE) when gh failed and the services it needs
-# were then found unreachable, so that no verdict on the artifact exists.
+# 3 (QUESTBOARD_VERIFY_UNREACHABLE) when gh failed (including by running past
+# its time bound) and the services it needs were then found unreachable, so that
+# no verdict on the artifact exists. A gh run that stalls while the services
+# answer is a refusal.
 #
 # Verification needs the Sigstore trust root, which gh fetches over the network
 # into a cache directory, and it needs somewhere writable for its own state.
@@ -98,29 +118,40 @@ questboard_verify_attestation() {
   local work
   work="$(mktemp -d)" || return 1
 
-  local output="" rc=0
-  output="$(env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN -u GH_HOST \
+  # The result is whatever gh prints on stdout. Anything it says on stderr (a
+  # notice, a deprecation warning, a trust-root refresh message) is kept apart
+  # so it can neither spoil a valid result nor pass for one.
+  local output="" errtext="" rc=0
+  env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN -u GH_HOST \
       GH_CONFIG_DIR="${work}/config" \
       XDG_CONFIG_HOME="${work}/config" \
       XDG_CACHE_HOME="${work}/cache" \
       XDG_STATE_HOME="${work}/state" \
       GH_TELEMETRY=false GH_NO_UPDATE_NOTIFIER=1 GH_PROMPT_DISABLED=1 \
+      timeout --kill-after="${QUESTBOARD_GH_VERIFY_KILL_AFTER_SECONDS}" "${QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS}" \
       gh attestation verify "$artifact" \
         --bundle "$bundle" \
         --repo "$repo" \
         --signer-workflow "${repo}/${signer_workflow}" \
         --source-ref "$source_ref" \
         --deny-self-hosted-runners \
-        --format json 2>&1)" || rc=$?
+        --format json >"${work}/stdout" 2>"${work}/stderr" || rc=$?
 
+  output="$(cat "${work}/stdout" 2>/dev/null)" || output=""
+  errtext="$(head -c 4000 "${work}/stderr" 2>/dev/null)" || errtext=""
   rm -rf "$work"
 
   if [ "$rc" -ne 0 ]; then
+    # timeout exits 124 when it stopped gh and 137 when it had to kill it. Either
+    # way gh gave no answer, which is judged below like any other failed run.
+    if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
+      errtext="gh did not finish within ${QUESTBOARD_GH_VERIFY_TIMEOUT_SECONDS} seconds. ${errtext}"
+    fi
     if questboard_verification_services_unreachable; then
-      questboard_log "attestation verification could not run, the verification services are unreachable: ${output}"
+      questboard_log "attestation verification could not run, the verification services are unreachable: ${errtext}"
       return "$QUESTBOARD_VERIFY_UNREACHABLE"
     fi
-    questboard_log "attestation verification failed: ${output}"
+    questboard_log "attestation verification failed: ${errtext}"
     return 1
   fi
 
@@ -138,10 +169,18 @@ except Exception:
   printf '%s\n' "$digest"
 }
 
-# Succeeds when commit SHA is identical to or behind BRANCH of REPO, asked of
-# the public compare endpoint with no credential. A tag on some other branch can
-# be built by the same signing workflow, so the attested commit must be part of
-# main's history. Anything else, including an unreachable service, is a refusal.
+# Asks the public compare endpoint, with no credential, whether commit SHA is
+# identical to or behind BRANCH of REPO. A tag on some other branch can be built
+# by the same signing workflow, so the attested commit must be part of main's
+# history. Returns:
+#   0  the commit is identical to or behind the branch
+#   1  a definite refusal: the answer says the commit is ahead of or diverged
+#      from the branch, GitHub does not know the commit (404), the answer was a
+#      client error, or the answer could not be read
+#   3  no verdict (QUESTBOARD_COMMIT_CHECK_NO_VERDICT): the request got no answer
+#      at all, or an answer that says nothing about the commit (a 403 or 429 from
+#      the unauthenticated rate limit, a 5xx). The caller retries later.
+# Anything not named above, including invalid input, is a refusal.
 questboard_commit_on_branch() {
   local repo="$1" sha="$2" branch="$3"
 
@@ -153,10 +192,23 @@ questboard_commit_on_branch() {
   body="$(mktemp)" || return 1
   code="$(questboard_http_fetch 30 "${QUESTBOARD_GITHUB_API_URL}/repos/${repo}/compare/${branch}...${sha}" "$body")" || rc=$?
 
-  if [ "$rc" -ne 0 ] || [ "$code" != "200" ]; then
+  if [ "$rc" -ne 0 ]; then
     rm -f "$body"
-    return 1
+    questboard_log "the main-branch check got no answer from GitHub"
+    return "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT"
   fi
+  case "$code" in
+    200) ;;
+    403|429|5[0-9][0-9])
+      rm -f "$body"
+      questboard_log "the main-branch check got HTTP ${code} from GitHub, which says nothing about the commit"
+      return "$QUESTBOARD_COMMIT_CHECK_NO_VERDICT"
+      ;;
+    *)
+      rm -f "$body"
+      return 1
+      ;;
+  esac
 
   status="$(python3 -c '
 import json, sys

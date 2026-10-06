@@ -33,15 +33,29 @@ questboard_utc_now() {
   date -u '+%Y-%m-%dT%H:%M:%SZ'
 }
 
-# Writes a timestamped line to stderr. journald captures stderr for services
-# run by systemd; interactive runs simply see it on the terminal.
+# Writes one timestamped line to stderr and, for a run that is not already
+# under a systemd unit, a copy to the journal under the tag questboard-deploy.
+# journald captures the stderr of a service by itself (systemd then sets
+# JOURNAL_STREAM), so a poll run needs no copy and gets no duplicate. A run from
+# a root shell would otherwise leave no trace at all of what it changed. A
+# missing or failing logger never changes what the installer does.
+#   questboard__emit PRIORITY MESSAGE
+questboard__emit() {
+  local priority="$1" message="$2"
+  printf '%s questboard-deploy: %s\n' "$(questboard_utc_now)" "$message" >&2
+  if [ -z "${JOURNAL_STREAM:-}" ] && command -v logger >/dev/null 2>&1; then
+    logger -t questboard-deploy -p "daemon.${priority}" -- "$message" >/dev/null 2>&1 || true
+  fi
+  return 0
+}
+
 questboard_log() {
-  printf '%s questboard-deploy: %s\n' "$(questboard_utc_now)" "$*" >&2
+  questboard__emit info "$*"
 }
 
 # Logs an error-prefixed message and exits non-zero.
 questboard_die() {
-  questboard_log "ERROR: $*"
+  questboard__emit err "ERROR: $*"
   exit 1
 }
 
@@ -112,9 +126,12 @@ questboard__conf_value_ok() {
 # pattern; any other line is an error. Values may be wrapped in one pair of
 # single or double quotes, which are stripped before validation.
 #
-# Under a relocated test root (QUESTBOARD_DEPLOY_ROOT set) the expected owner
-# is the current user rather than root, since the test root stands in for the
-# privileged installation root and is never itself created by root.
+# Under a relocated test root (the DEPLOY_ROOT variable of the dispatcher is
+# set) the expected owner is the current user rather than root, since the test
+# root stands in for the privileged installation root and is never itself
+# created by root. The dispatcher sets DEPLOY_ROOT only after it has checked
+# that the root is a genuine test tree; nothing in this file reads the
+# environment for it.
 questboard_load_conf() {
   local conf_file="${1:-}"
 
@@ -122,7 +139,7 @@ questboard_load_conf() {
     || questboard_die "configuration file not found: ${conf_file}"
 
   local expected_uid=0
-  if [ -n "${QUESTBOARD_DEPLOY_ROOT:-}" ]; then
+  if [ -n "${DEPLOY_ROOT:-}" ]; then
     expected_uid="$(id -u)"
   fi
 
@@ -243,6 +260,7 @@ questboard_reason_label() {
     database_ahead) printf 'the database is newer than this release' ;;
     non_transactional_migration) printf 'a migration cannot run safely in a transaction' ;;
     insufficient_disk) printf 'there was not enough disk space' ;;
+    staging_failed) printf 'the release could not be put in place' ;;
     database_unreachable) printf 'the database could not be reached' ;;
     backup_failed) printf 'the pre-migration backup failed' ;;
     apply_failed) printf 'applying the migrations failed' ;;

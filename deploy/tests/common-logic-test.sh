@@ -56,6 +56,37 @@ status_of() {
   printf '%s' "$rc"
 }
 
+# --- questboard_log / questboard_die: journal copy ------------------------
+
+# A run that is not under a systemd unit has its lines copied to the journal.
+: > "$HOST_GUARD_JOURNAL"
+unset JOURNAL_STREAM
+questboard_log "manual run line" 2>/dev/null
+check "a log line from a run outside a unit is copied to the journal" \
+  "logger -t questboard-deploy -p daemon.info -- manual run line" "$(host_guard_journal)"
+check "a log line still reaches stderr" "yes" \
+  "$(questboard_log "to stderr" 2>&1 >/dev/null | grep -q 'questboard-deploy: to stderr' && echo yes || echo no)"
+
+: > "$HOST_GUARD_JOURNAL"
+( questboard_die "it broke" ) >/dev/null 2>&1 || true
+check "an error line is copied to the journal at error priority" \
+  "logger -t questboard-deploy -p daemon.err -- ERROR: it broke" "$(host_guard_journal)"
+check "questboard_die still exits non-zero" "1" "$( ( questboard_die x ) >/dev/null 2>&1; echo $? )"
+
+# Under a unit stderr is already the journal, so a copy would be a duplicate.
+: > "$HOST_GUARD_JOURNAL"
+JOURNAL_STREAM="8:12345" questboard_log "under a unit" 2>/dev/null
+check "a log line from a run under a unit is not copied to the journal again" "" "$(host_guard_journal)"
+unset JOURNAL_STREAM
+
+# A logger that fails must not change what the installer does.
+FAILING_LOGGER_DIR="${QUESTBOARD_DEPLOY_ROOT}/failing-logger"
+mkdir -p "$FAILING_LOGGER_DIR"
+printf '#!/bin/sh\nexit 1\n' > "${FAILING_LOGGER_DIR}/logger"
+chmod +x "${FAILING_LOGGER_DIR}/logger"
+check "a failing logger does not fail a log call" "0" \
+  "$(PATH="${FAILING_LOGGER_DIR}:${PATH}" status_of questboard_log "still fine")"
+
 # --- questboard_semver_gt -------------------------------------------------
 
 check "1.2.10 > 1.2.9" "0" "$(status_of questboard_semver_gt 1.2.10 1.2.9)"
@@ -79,6 +110,11 @@ check "plain version rejects 1.02.3" "1" "$(status_of questboard_is_plain_versio
 
 CONF_DIR="${QUESTBOARD_DEPLOY_ROOT}/conf"
 mkdir -p "$CONF_DIR"
+
+# The loader expects a root-owned file unless the dispatcher's DEPLOY_ROOT names a
+# test tree, in which case it expects the current user. The test files below are
+# the current user's.
+DEPLOY_ROOT="$QUESTBOARD_DEPLOY_ROOT"
 
 write_conf() {
   local name="$1"
@@ -172,8 +208,15 @@ check "a backtick value never runs" "absent" \
 if [ "$(id -u)" -ne 0 ]; then
   OWNER_CONF="$(write_conf owner.conf 600 'QUESTBOARD_SMTP_PORT=25')"
   owner_rc=0
-  ( unset QUESTBOARD_DEPLOY_ROOT; questboard_load_conf "$OWNER_CONF" ) >/dev/null 2>&1 || owner_rc=$?
+  ( DEPLOY_ROOT=""; questboard_load_conf "$OWNER_CONF" ) >/dev/null 2>&1 || owner_rc=$?
   check "load_conf rejects a file not owned by root outside a test root" "1" "$owner_rc"
+
+  # The environment cannot relax the owner check: only the dispatcher's own
+  # DEPLOY_ROOT variable, set after it has checked the test tree, does.
+  env_rc=0
+  ( DEPLOY_ROOT=""; export QUESTBOARD_DEPLOY_ROOT="$QUESTBOARD_DEPLOY_ROOT" QUESTBOARD_DEPLOY_CONF="$OWNER_CONF"
+    questboard_load_conf "$OWNER_CONF" ) >/dev/null 2>&1 || env_rc=$?
+  check "load_conf ignores QUESTBOARD_DEPLOY_ROOT in the environment for the owner check" "1" "$env_rc"
 fi
 
 # --- questboard_http_fetch ------------------------------------------------
@@ -286,7 +329,7 @@ check "result labels cover the closed set" \
   "$(for o in installed refused failed failed_rolled_back rolled_back halted; do questboard_result_label "$o"; printf '|'; done | sed 's/|$//')"
 
 for code in checksum_mismatch attestation_failed not_on_main asset_missing invalid_content database_ahead \
-    non_transactional_migration insufficient_disk database_unreachable backup_failed apply_failed unhealthy restart_failed; do
+    non_transactional_migration insufficient_disk staging_failed database_unreachable backup_failed apply_failed unhealthy restart_failed; do
   label="$(questboard_reason_label "$code")"
   unsafe="$(printf '%s' "$label" | grep -cE '[/=]|Server|Password|Data Source' || true)"
   check "reason label for ${code} is non-empty and safe" "ok" \

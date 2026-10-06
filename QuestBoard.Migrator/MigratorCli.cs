@@ -142,9 +142,30 @@ public static class MigratorCli
         }
         catch (MigratorApplyException ex)
         {
-            stderr.WriteLine(DescribeStatementFailure("apply failed and was rolled back", ex.SqlErrorNumber, ex.SqlErrorMessage));
+            stderr.WriteLine(DescribeApplyFailure(ex));
             return (int)MigratorExitCode.ApplyFailedRolledBack;
         }
+    }
+
+    /// <summary>
+    /// The one line printed for a failed apply. A SQL error shows its number and message, which
+    /// come from executing the migration. Any other failure shows only the exception type name,
+    /// because its message can carry connection details. A failure while committing says the
+    /// outcome is unknown, so nobody reads "rolled back" as a promise the server did not make.
+    /// </summary>
+    public static string DescribeApplyFailure(MigratorApplyException ex)
+    {
+        var text = ex.CommitOutcomeUnknown
+            ? "apply failed while committing; whether it was kept is unknown, check the database state"
+            : "apply failed and was rolled back";
+
+        if (ex.SqlErrorNumber is null && string.IsNullOrWhiteSpace(ex.SqlErrorMessage)
+            && !string.IsNullOrWhiteSpace(ex.FailureTypeName))
+        {
+            return $"{text} ({ex.FailureTypeName})";
+        }
+
+        return DescribeStatementFailure(text, ex.SqlErrorNumber, ex.SqlErrorMessage);
     }
 
     private static string DescribeStatementFailure(string text, int? sqlErrorNumber, string? sqlErrorMessage)
