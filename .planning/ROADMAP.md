@@ -1196,6 +1196,42 @@ Plans:
 
 - [x] 89-12-PLAN.md — Operator handover 3: retire the self-hosted runner, two-sided verification, idle-poll mail check
 
+### Phase 90: Server OS and Database Platform Upgrade
+
+**Goal:** Production runs on operating system and database versions that stay supported. The App CT and the SQL CT each move to a target version chosen in the discuss pass, without losing data and with the pull-based deploy still working end to end afterwards. The SQL CT must be off Ubuntu 22.04 before its standard support ends (about May/June 2027).
+**Requirements**: TBD
+**Depends on:** Phase 89. The App CT's verification uses the pull-based installer (setup, poll, `/health`), and the SQL CT move relies on the installer's backup and status commands.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-06, after moving CI to `ubuntu-26.04` (PR theunschut/quest-board-dnd#159): keep the servers in step, and check whether SQL Server can follow.
+
+**Starting point:**
+
+- **Proxmox host** `pve` (192.168.6.6): PVE 9.2.5, `pve-container` 6.1.11, kernel 7.0.12. A single node that also runs Traefik, Postfix, foundryvtt, Ledger and cabinet, so a host reboot stops all of them.
+- **App CT** (CT 102 `QuestBoard`, 192.168.6.12): Ubuntu 24.04.4. ASP.NET Core 10 app from the Ubuntu archive packages `dotnet-runtime-10.0` / `aspnetcore-runtime-10.0` (10.0.9 installed, 10.0.12 available). Versioned layout under `/opt/questboard`, poll timer, `gh` from GitHub's apt repo, Data Protection keys in `/home/questboard/.aspnet`.
+- **SQL CT** (CT 103 `MS-Sql`, 192.168.6.10): Ubuntu 22.04, SQL Server 2022 from `packages.microsoft.com/ubuntu/22.04/mssql-server-2022`, Microsoft key in the legacy `/etc/apt/trusted.gpg`. Database about 70 MB. Pre-migration backups and the prune script live in `/var/opt/mssql/data`.
+
+**Research:** `.planning/research/ubuntu-26.04-ct-upgrade.md` (2026-10-06, 37 cited sources). Headline facts:
+
+- The host already supports Ubuntu 26.04 guests: `pve-container` 6.0.12+ lists 26.04, and the official 26.04 template exists. No host upgrade is required, only routine 9.x updates.
+- App CT: an in-place 24.04 → 26.04 upgrade is supported (LTS path open since 26.04.1). .NET 10 is in the 26.04 archive and supported by Microsoft. Unconfirmed: the migrator's sandboxed `systemd-run` inside a 26.04 LXC (needs `nesting=1`), and 26.04's Rust coreutils and sudo-rs against the installer's commands.
+- SQL CT: SQL Server 2022 supports only Ubuntu 20.04/22.04. SQL Server 2025 supports 22.04 and 24.04 (CU1+) but **not 26.04**, and Microsoft publishes no `ubuntu/26.04` mssql-server repository (checked 2026-10-06). No SQL Server 2026 exists. Microsoft also supports SQL Server as a Docker container on any recent Linux, at the cost of Docker inside LXC.
+- Moving SQL Server 2022 → 2025 is one-way (no restore to an older version). The database keeps compatibility level 160 until raised, the app's SQL login has to be recreated on a new instance, the edition must be one licensed for production, and APT 3.x on newer Ubuntu no longer trusts `/etc/apt/trusted.gpg`.
+
+**To decide in discuss-phase:**
+
+- Target per CT: App CT to 26.04 or stay on 24.04 for now; SQL CT to a new 24.04 CT with SQL Server 2025, an in-place 2022 → 2025 package upgrade first, or SQL Server in Docker on 26.04.
+- In place vs a fresh CT for each, and whether the IPs stay the same.
+- Order and timing (the research suggests host updates first, App CT around November 2026, SQL CT by Q1 2027), maintenance windows, and how much rehearsal on a clone is required.
+- Rollback for each step, given that the SQL move is one-way once production writes land on the new instance.
+- Whether CT access for the work runs through the operator or another temporary, scoped root grant like phase 89's.
+
+**Constraints:** no data loss; Proxmox snapshot and an off-box, test-restored database backup before anything touches production; the pull-based installer must pass `setup`, a poll and a version-checked `/health` after the App CT move; `/home/questboard/.aspnet` must survive (losing it signs everyone out); never print `/etc/questboard/env`.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 90 to break down)
+
 ## Backlog
 
 Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
