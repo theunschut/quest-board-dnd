@@ -3,12 +3,12 @@ status: complete
 phase: 89-pull-based-release-deployment
 source: [89-VERIFICATION.md]
 started: 2026-10-05T19:30:00Z
-updated: 2026-10-06T07:00:00Z
+updated: 2026-10-06T07:15:00Z
 ---
 
 ## Current Test
 
-none — all tests resolved
+[testing complete]
 
 ## Tests
 
@@ -38,7 +38,8 @@ result: pass — operator ran `setup && rm -f /root/setup-adopt.log /root/setup-
 
 ### 7. Optional: exercise a rollback or halted path on the real CT
 expected: A deliberately unhealthy release switches back, restarts the previous release, sends one "rolled back" mail, and later polls only journal
-result: skipped — optional; rollback/halted paths remain covered by offline flow tests and real-SQL CI tests
+result: skipped
+reason: Optional and risky to induce on production; rollback, halted, refused and failed paths are covered by the offline install-flow tests and the real-SQL CI tests
 
 ## Summary
 
