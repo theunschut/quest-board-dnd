@@ -49,8 +49,8 @@ check("workflow-level permissions are empty", d.get("permissions") == {})
 check("concurrency does not cancel in progress",
       d.get("concurrency", {}).get("cancel-in-progress") is False)
 check("jobs are exactly build and publish", sorted(jobs.keys()) == ["build", "publish"])
-check("both jobs run on ubuntu-24.04",
-      build.get("runs-on") == "ubuntu-24.04" and publish.get("runs-on") == "ubuntu-24.04")
+check("both jobs run on ubuntu-26.04",
+      build.get("runs-on") == "ubuntu-26.04" and publish.get("runs-on") == "ubuntu-26.04")
 check("build permissions are exactly contents/id-token/attestations write",
       build.get("permissions") == {"contents": "write", "id-token": "write", "attestations": "write"})
 check("publish permissions are exactly contents write",
@@ -113,6 +113,7 @@ def runs_on_values(value):
 
 
 offenders = []
+floating = []
 for wf in sorted(glob.glob(".github/workflows/*.yml") + glob.glob(".github/workflows/*.yaml")):
     with open(wf, encoding="utf-8") as fh:
         doc = yaml.safe_load(fh) or {}
@@ -120,8 +121,14 @@ for wf in sorted(glob.glob(".github/workflows/*.yml") + glob.glob(".github/workf
         values = runs_on_values((job or {}).get("runs-on"))
         if any("self-hosted" in v for v in values):
             offenders.append(wf + ":" + name)
+        # A "-latest" label moves to a new OS on GitHub's schedule, so a job's environment could
+        # change with no commit in this repository. Every job names its OS version instead.
+        if any(v.endswith("-latest") for v in values):
+            floating.append(wf + ":" + name)
 check("no workflow job targets a self-hosted runner" + (" (" + ", ".join(offenders) + ")" if offenders else ""),
       not offenders)
+check("no workflow job floats on a -latest runner label" + (" (" + ", ".join(floating) + ")" if floating else ""),
+      not floating)
 
 # --- dotnet.yml: required jobs, pinning and the scripts both workflows call ---
 
@@ -152,8 +159,8 @@ check("every uses: in migrator-sql and the new jobs is pinned to a 40-hex SHA"
       + (" (" + ", ".join(unpinned) + ")" if unpinned else ""), not unpinned)
 
 new_jobs = ["deploy-scripts", "workflow-lint", "network-verify"]
-check("new jobs run on ubuntu-24.04 with contents: read only",
-      all((dotnet_jobs.get(n) or {}).get("runs-on") == "ubuntu-24.04"
+check("new jobs run on ubuntu-26.04 with contents: read only",
+      all((dotnet_jobs.get(n) or {}).get("runs-on") == "ubuntu-26.04"
           and (dotnet_jobs.get(n) or {}).get("permissions") == {"contents": "read"}
           for n in new_jobs))
 new_checkouts = [s for n in new_jobs for s in (dotnet_jobs.get(n) or {}).get("steps", []) or []
