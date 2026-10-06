@@ -16,14 +16,14 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: '10.0.x'
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -36,7 +36,7 @@ jobs:
   # that holds no data; it guards nothing. The test helper waits for the server to start, so the
   # service has no health command, and required mode makes a missing server a failure, not a skip.
   migrator-sql:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -66,7 +66,7 @@ jobs:
   # test and the install flow, so the installer and the packaging are proven together on a
   # machine that actually builds. The lint image is pinned by digest.
   deploy-scripts:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -109,7 +109,7 @@ jobs:
   # build job in this file pins its actions by tag, which predates the rule. Lint images are
   # pinned by digest.
   workflow-lint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -135,7 +135,7 @@ jobs:
   # Real-network proof that the installer's verification refuses tampered and mismatched
   # artifacts. It uses the gh that hosted runners provide and sends it no credential.
   network-verify:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
