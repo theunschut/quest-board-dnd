@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 89
 current_phase_name: pull-based-release-deployment
 status: completed
-stopped_at: Phase 91 context gathered
-last_updated: "2026-10-15T19:47:28.092Z"
+stopped_at: Phase 91 UI-SPEC approved
+last_updated: "2026-10-15T20:26:15.803Z"
 last_activity: 2026-10-06
 last_activity_desc: Phase 89 complete
 progress:
-  total_phases: 20
+  total_phases: 21
   completed_phases: 16
   total_plans: 129
   completed_plans: 120
-  percent: 80
+  percent: 76
 state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 ---
 
@@ -190,9 +190,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-15T19:47:28.001Z
-Stopped at: Phase 91 context gathered
-Resume file: .planning/phases/91-linked-boards-with-a-shared-calendar/91-CONTEXT.md
+Last session: 2026-10-15T20:26:15.774Z
+Stopped at: Phase 91 UI-SPEC approved
+Resume file: .planning/phases/91-linked-boards-with-a-shared-calendar/91-UI-SPEC.md
 
 ## Operator Next Steps
 
