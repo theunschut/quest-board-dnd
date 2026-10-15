@@ -4,6 +4,11 @@
 **Domain:** ASP.NET Core 10 MVC multi-tenant calendar (EF Core 10.0.9 / SQL Server), cross-tenant read-only projection, Razor desktop + `.Mobile` twins
 **Confidence:** HIGH on codebase facts (all opened this session), MEDIUM on SQL translation of the new window predicates (InMemory cannot prove it, SQL Server not reachable from this sandbox)
 
+> **Decisions changed after this research (2026-10-15) — CONTEXT.md wins where they differ:**
+> - **D-10 revised:** cancelled linked events are *included* and render struck through like own ones. Drop the `CancelledAt == null` predicate from the linked event read; the linked event projection must carry the cancellation state.
+> - **D-14 revised:** no board-name line on desktop grid chips; muted + dashed only, board/DM/time on hover and in the tooltip. Mobile rows keep the board name as text.
+> - **D-19 / D-20 added:** linked entries follow the own calendar's inclusion rules exactly, and a `DungeonMasterSession` quest is shown only to a viewer who is DungeonMaster/Admin on the *owning* board (SuperAdmin counts as Admin). The linked quest projection must carry `DungeonMasterSession`, and the service needs the viewer's role per linked board, read fresh. The same rule now also applies to the board's **own** calendar read (`GetQuestsForCalendarAsync` currently has no DM-only filter), on `/calendar` and the Quest Details calendar. This resolves Open Question 2 / assumption A5.
+
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 

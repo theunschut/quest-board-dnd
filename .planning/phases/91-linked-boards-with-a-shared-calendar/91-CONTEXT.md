@@ -103,8 +103,10 @@ Events availability overview.
   an open quest on every proposed date, with the same proposed / finalized distinction. Clashes
   mostly start while dates are still being voted on, so proposed dates count.
 
-- **D-10: Cancelled events from a linked board are hidden.** A cancelled event does not occupy the
-  date. On its own board's calendar it stays visible, struck through, exactly as today.
+- **D-10: Cancelled events from a linked board show struck through, exactly like the board's own
+  cancelled events.** *(Revised 2026-10-15 — originally "hidden"; superseded by D-19's one-board
+  rule.)* The strike-through already says the date is free, so showing it costs nothing and keeps
+  linked and own entries under one rule.
 
 - **D-11: `/calendar` shows linked entries on both layouts.** Desktop renders through the shared
   `_Calendar` partial; `Calendar/Index.Mobile.cshtml` builds its own agenda list from
@@ -130,23 +132,59 @@ Events availability overview.
 
 ### Presentation
 
-- **D-14: Linked entries are muted, dashed, and carry a board-name line.** Lighter background and a
-  dashed left border, keeping the proposed (yellow) / finalized (green) border colour for quests and
-  the event styling for events. The board name sits as a small line under the title, where the DM
-  name sits on an own quest (the linked quest's DM name follows it). The board's own entries are
-  unchanged, so own vs linked reads at a glance.
+- **D-14: On the desktop month grid, linked entries are muted and dashed, with no board-name line.**
+  *(Revised 2026-10-15 — the board-name line was dropped because the title already has too little
+  room in a day cell.)* Lighter background and a dashed left border that keeps the proposed (yellow)
+  / finalized (green) border colour for quests and the event colour for events, so the edge still
+  says what the entry is and the dash says it is from a linked board. No extra text line and no
+  title prefix or icon, so a linked chip costs no more room than an own chip. Hovering a linked chip
+  reveals board name, DM name (quests) and time, the same way an own chip reveals DM and time on
+  hover; the board name is also in the chip's tooltip. The board's own entries are unchanged.
 
-  Rejected: a "[Board]" title prefix (does not stand out, eats a narrow cell); a colour per board
-  (needs an assignment rule, crowds past a handful, clashes with proposed/finalized colours).
+  Where there is room, the board name stays visible as text: the mobile `/calendar` agenda rows and
+  the mobile Quest Details "Also that day" line.
+
+  Rejected: an always-visible board-name line (eats the title's room in a narrow cell); a "[Board]"
+  title prefix (same problem, does not stand out); a colour per board on the left edge (collides with
+  the proposed/finalized/event colours already on that edge); a per-board colour stripe on the right
+  edge (only pays off with three or more linked boards, which is not the real case).
 
 - **D-15: The page states which boards it is showing.** Desktop: the existing Legend card on
-  `Calendar/Index.cshtml` gains a "Linked boards" section listing each linked board beside a muted
-  swatch. Mobile: an "Also showing: Board B, Board C" line under the month navigation bar. Nothing
-  renders on an unlinked board or a group of one.
+  `Calendar/Index.cshtml` gains a "Linked boards" section with a dashed swatch explaining that dashed
+  entries come from a linked board, and listing each linked board by name. Mobile: an "Also showing:
+  Board B, Board C" line under the month navigation bar. Desktop Quest Details, which has no legend,
+  gets an "Also showing: Board B (read-only)" note above its calendar. Nothing renders on an unlinked
+  board or a group of one.
 
 - **D-16: Within a day, own entries come first, then linked.** Own entries keep today's order
   (events, then quests); linked entries follow. A linked board's sessions can never push the board's
   own entries out of view in a cramped cell.
+
+### One board, by role (added 2026-10-15)
+
+- **D-19: Linked boards fill the calendar as if they were one board.** A linked entry is included
+  under exactly the same rules as an own entry (D-09, D-10, D-20); what differs is only how it is
+  displayed (D-14 to D-16) and that it is read-only (D-07, D-12). Any future inclusion rule applies
+  to own and linked entries alike.
+
+- **D-20: A DM-only session (`DungeonMasterSession`) is shown only to a viewer who is DungeonMaster
+  or Admin on the board that owns it; a SuperAdmin counts as Admin, as on the board today.** The role
+  is the viewer's role on the *owning* board, read fresh, not their role on the board they are
+  viewing from. On A's calendar a DM of B sees B's DM-only sessions even if they are only a player
+  on A; a player of B, or a non-member of B, does not. This mirrors the quest board's existing rule
+  (`QuestRepository.GetQuestsWithSignupsForRoleAsync`) and costs nothing for clash prevention: a
+  DM-only session does not use the players' evenings, and the DMs it does involve still see it.
+
+  The same rule now applies to the board's **own** calendar too. Today `/calendar` (via
+  `GetQuestsForCalendarAsync`) shows every DM-only session to every player, unlike the quest board;
+  this phase closes that on `/calendar` (both layouts) and on the Quest Details calendar, because one
+  board has one rule. Unlinked boards change only in that players stop seeing DM-only sessions on
+  the calendar — a deliberate fix, not a regression. Opening a DM-only quest's Details page by URL
+  is out of scope (see Deferred). The calendar feed is unaffected: it already includes only quests
+  the subscriber is selected for or DMs.
+
+  This is an exception to D-06 (non-members see B's entries in full): a DM-only session is not an
+  entry a non-member of B would ever see.
 
 ### The cross-board read and its proof
 
@@ -171,8 +209,12 @@ Events availability overview.
      the same entry with no link.
   5. **No roster or vote data leaks.** Another board's player names, votes and signup state are
      absent from the page.
-  6. **Cancelled linked events are absent; open linked quests appear on their proposed dates.**
+  6. **Cancelled linked events show struck through; open linked quests appear on their proposed
+     dates.**
   7. **Linked entries on Quest Details carry no vote input.**
+  8. **DM-only sessions follow the owning board's role (D-20).** A player of A sees neither A's nor
+     B's DM-only sessions; a DM of B who is a player on A sees B's but not A's; a non-member of B
+     never sees B's.
   8. **Server-side enforcement on the Platform page.** A non-SuperAdmin is refused; adding a board of
      the other type, or a board already in another group, is refused even when posted directly.
 
@@ -279,18 +321,28 @@ Events availability overview.
 - The real use case: the same group of players runs several campaigns as separate One-Shot boards;
   the operator is starting a new one-shot board for another campaign and wants its dates on the
   existing board's calendar and vice versa.
-- Approved desktop day-cell sketch for D-14 (own entry solid, linked entry muted and dashed with a
-  board-name line, then DM and time):
+- Approved desktop day-cell sketch for D-14 (revised 2026-10-15: own entries solid, linked entry
+  muted and dashed with no extra line; board, DM and time appear on hover):
 
   ```
   ┌─ 14 ───────────────┐
   │┃ The Sunken Vault  │  ← own (solid)
-  │┃ Thomas     19:00  │
-  │┊ Goblin Market     │  ← linked (muted, dashed)
-  │┊ ↗ Board B         │
-  │┊ Sara       19:30  │
+  │┃ Session 12        │  ← own (solid)
+  │┆ Goblin Market     │  ← linked (muted, dashed)
   └────────────────────┘
+
+  hover on the linked chip:
+  │┆ Goblin Market          │
+  │┆ Board B · Sara · 19:30 │
+
+  Legend:  ┃ Proposed  ┃ Finalized  ┃ Event
+           ┆ dashed = Linked boards: Board B
   ```
+
+- A desktop day cell with linked entries also carries a small link icon with a count in its corner,
+  so linked entries pushed below the fold (Quest Details especially) are still noticed.
+- In the Platform area a link group is called a **"Set"** ("Create Set", "Delete Set"), because
+  Platform already calls a board a "Group". Players never see the set's name.
 
 - Mobile Quest Details: an "Also that day: Board B — Title, 19:30" line under each clashing proposed
   date, never a vote control.
@@ -311,6 +363,10 @@ Events availability overview.
 - **Own-board events on the Quest Details date-vote calendar.** Today Details shows none of the
   board's own events. Adding them would change unlinked boards, which this phase's goal forbids; a
   natural small follow-up if wanted.
+
+- **DM-only quest Details by URL.** A player who has the id of a DM-only quest can still open its
+  Details page directly. D-20 hides DM-only sessions on every calendar; closing the Details route is
+  a separate fix.
 
 </deferred>
 
