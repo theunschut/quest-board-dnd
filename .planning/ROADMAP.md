@@ -1268,6 +1268,29 @@ Plans:
 
 - [ ] TBD (run /gsd-plan-phase 91 to break down)
 
+### Phase 92: Move a Quest or Event to a Linked Board
+
+**Goal:** A super admin can move an existing quest or event from its board to another board in the same link group, from that entry's Details page. After the move the entry lives on the target board as if it had been created there, and the boards in the group stop disagreeing about where it belongs. Boards that are not linked offer no move.
+**Requirements**: TBD
+**Depends on:** Phase 91. A move is only offered between boards in the same link group, so the link model has to exist first.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-15 at the end of Phase 91's discussion. It was kept out of Phase 91 on purpose: that phase is read-only and makes no write to `Events` or `Quests`, and a move is the opposite, a cross-board write. See `91-CONTEXT.md` § Deferred Ideas.
+
+**To decide in discuss-phase:**
+
+- **Signups and characters:** characters belong to one board. A player signed up on the source board with that board's character has no valid character on the target board, and may not be a member of it at all. Votes, the waitlist and gold rewards hang off those signups. Whether a move keeps, drops, or blocks on existing signups.
+- **Event series:** an event that belongs to a recurring series on the source board either leaves the series or is refused. Whether a whole series can move.
+- **Calendar feed:** the board is a feed-visible field, so a move raises the entry's `FeedRevision` through `FeedRevisionStamper`, and the entry leaves the feed of subscribers who are only on the source board. Whether that is acceptable as is.
+- **Notification:** whether affected players and DMs are told, and how.
+- **Which entries can move:** finalized, open, past, closed, cancelled.
+
+**Constraints:** super-admin only, enforced server-side. Only between boards in the same link group (which implies the same board type). The write goes through the change tracker so the feed revision rises, per `.claude/architecture.md`. Both `.Mobile.cshtml` twins are updated.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 92 to break down)
+
 ## Backlog
 
 Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
