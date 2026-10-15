@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 89
+current_phase_name: pull-based-release-deployment
 status: completed
-stopped_at: Phase 89 context gathered
-last_updated: "2026-10-06T07:30:28.654Z"
+stopped_at: Phase 91 context gathered
+last_updated: "2026-10-15T19:47:28.092Z"
 last_activity: 2026-10-06
 last_activity_desc: Phase 89 complete
 progress:
-  total_phases: 18
+  total_phases: 20
   completed_phases: 16
   total_plans: 129
   completed_plans: 120
-  percent: 89
-current_phase_name: pull-based-release-deployment
+  percent: 80
 state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 ---
 
@@ -189,9 +189,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-06T07:35:00.000Z
-Stopped at: Phase 89 complete — production on v5.4.2 via the pull-based installer
-Resume file: None
+Last session: 2026-10-15T19:47:28.001Z
+Stopped at: Phase 91 context gathered
+Resume file: .planning/phases/91-linked-boards-with-a-shared-calendar/91-CONTEXT.md
 
 ## Operator Next Steps
 
