@@ -1,7 +1,7 @@
 # Milestone v9.0: Rolling Improvements
 
 **Status:** 🚧 IN PROGRESS
-**Phases:** 72–81 so far (open-ended)
+**Phases:** 72–91 so far (open-ended)
 **Working branch:** `milestone/v9-rolling-improvements`
 
 ## Overview
@@ -1231,6 +1231,42 @@ Plans:
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 90 to break down)
+
+### Phase 91: Linked Boards with a Shared Calendar
+
+**Goal:** A super admin can link two or more boards of the same board type in the Platform area. On every linked board, `/calendar` then shows the events and quests of all boards in the link as well as its own, each marked with the board it belongs to, so a campaign split across boards for the same group of players never gets a date booked twice. Unlinking restores each board to its own calendar. Boards that are not linked behave exactly as they do today.
+**Requirements**: TBD
+**Depends on:** Phase 87. Calendar links to an entry on another board go through its cross-board deep-link switch. Independent of Phase 90.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-15. The same group of players runs several campaigns as separate boards. The operator wants to start a new one-shot board for another campaign and still see its quests and events on the existing board's calendar, so the two never plan the same date.
+
+**Starting point** (scoped 2026-10-15):
+
+- **Boards:** a board is `Group` (`QuestBoard.Domain/Models/Group.cs`, entity `GroupEntity`). The active board comes from the session through `IActiveGroupContext`. Every tenant entity has a fail-closed global query filter on `GroupId == ActiveGroupId` (`QuestBoardContext.cs`). Any read that crosses boards must use `IgnoreQueryFilters` from a file on the `CrossBoardIgnoreQueryFiltersSeamTests` allowlist (currently five repository files).
+- **Board type:** `BoardType` has two values, `OneShot` and `Campaign`. It is set when a board is created and cannot be changed afterwards (Edit shows it disabled), so a same-type link cannot later become mixed.
+- **Platform area:** `Areas/Platform/Controllers/GroupController.cs` under the `SuperAdminOnly` policy has Index, Create, Edit, Delete (empty boards only) and member management. There is no link concept yet.
+- **`/calendar`:** `CalendarController.Index` reads quests via `QuestRepository` and events via `EventRepository`. Both rely only on the query filter and fetch every row; `CalendarViewModel` filters to the month. Quests are skipped entirely on Campaign boards. DM tier also gets the series-runway warning.
+- **Views:** desktop `Calendar/Index.cshtml` renders the shared `_Calendar` partial. `Calendar/Index.Mobile.cshtml` does **not** use the partial; it builds its own agenda list from `GetCalendarDays()`, so both layouts need the change.
+- **Other `_Calendar` users:** `Quest/Details.cshtml` (three call sites) and `Quest/Details.Mobile.cshtml` (two). There the partial is quests-only and doubles as the date-vote form (`IsDetailsPage`, `VoteIndexLookup`). This is the place where seeing a linked board's dates would most directly prevent a clash while proposing or voting.
+- **Existing cross-board reads to reuse:** Phase 82's `EventRepository.GetUpcomingAcrossGroupsWithSignupsAsync` (filter-bypassing and narrowed to the viewer's board ids) and Phase 87's `CrossBoardLinkRegistry` / `CrossBoardDeepLinkMiddleware`, which switch the session board when a member opens Quest or Event Details on another board. A non-member gets the normal 404.
+- **Calendar feed:** `CalendarSubscriptionService` already spans all of the subscriber's boards by membership, and quests come only from OneShot boards. A board link does not touch that rule, so the feed is unaffected unless the discussion decides otherwise.
+- **My Agenda and the Events availability overview** already work across boards or within one board on their own rules. They are not `_Calendar` users.
+
+**To decide in discuss-phase:**
+
+- **Link model:** a named link group that a board belongs to (at most one), or pairwise links. Whether links are transitive. What happens to a link when a board is deleted.
+- **Visibility for non-members:** a player on board A who is not a member of linked board B. Do they see B's entries in full, as an anonymous "busy" block, or not at all? A link into B would 404 for them under the Phase 87 rules.
+- **Which surfaces show linked entries:** `/calendar` on both layouts for sure. Whether the Quest Details date-vote calendar also shows linked boards' dates (read-only, never votable), and whether the DM series-runway warning stays per-board.
+- **Which quests count:** finalized only, or open quests with proposed dates too. The current calendar shows every quest it fetches.
+- **Presentation:** how a linked entry is marked (board-name badge or prefix, muted colour), and whether a board's own entries can be told apart at a glance.
+- **Whether linking ever changes the calendar feed.** The default is no.
+
+**Constraints:** linking is super-admin only and only between boards of the same type (enforced server-side, not just in the form). Every cross-board read stays narrowed to the linked board ids and goes through the `IgnoreQueryFilters` allowlist. The tenant-isolation tests keep passing for unlinked boards. The link is read-only: nothing on a linked board can be edited, signed up for or voted on from another board's calendar. The change is a pure read with no write to `Events` or `Quests`, so feed revisions do not move. The schema change ships as an EF Core migration. Both `.Mobile.cshtml` twins are updated.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 91 to break down)
 
 ## Backlog
 
