@@ -321,4 +321,155 @@ public class LinkedBoardQuestDetailsTests(WebApplicationFactoryBase factory)
         var dmHtml = await GetDetailsAsync(dmOnBClient, scenario.QuestXId);
         dmHtml.Should().Contain("Bravo Secret Session Details");
     }
+    // The markup of the date entry whose label names the given day, found by splitting on the
+    // entry class. The label reads like "Monday, March 10".
+    private static string MobileEntry(string html, int day)
+    {
+        var label = $"March {day}";
+        return html.Split("calendar-date-entry-mobile").Skip(1).Single(segment => segment.Contains(label));
+    }
+
+    [Fact]
+    public async Task DetailsMobile_ClashingDate_GetsOneAlsoThatDayLineAndTheOtherDateGetsNone()
+    {
+        var scenario = await SeedScenarioAsync();
+
+        var html = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+
+        var tenth = MobileEntry(html, 10);
+        tenth.Should().Contain("Also that day: ");
+        tenth.Should().Contain($"<strong class=\"also-that-day-board\">{BoardBName}</strong>");
+        tenth.Should().Contain("Bravo Linked Crypt Run");
+        tenth.Should().Contain("calendar-vote-row");
+        MobileEntry(html, 11).Should().NotContain("also-that-day");
+        html.Should().NotContain("Charlie Outside Quest");
+    }
+
+    [Fact]
+    public async Task DetailsMobile_LineSitsBetweenTheDateLabelAndTheVoteRow()
+    {
+        var scenario = await SeedScenarioAsync();
+
+        var html = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+
+        var tenth = MobileEntry(html, 10);
+        var label = tenth.IndexOf("calendar-date-label-mobile", StringComparison.Ordinal);
+        var line = tenth.IndexOf("also-that-day", StringComparison.Ordinal);
+        var vote = tenth.IndexOf("calendar-vote-row", StringComparison.Ordinal);
+        label.Should().BeGreaterThan(-1);
+        line.Should().BeGreaterThan(label);
+        vote.Should().BeGreaterThan(line);
+    }
+
+    [Fact]
+    public async Task DetailsMobile_TwoLinkedEntriesOnOneDate_RenderTwoLinesEventFirst()
+    {
+        var scenario = await SeedScenarioAsync();
+        await SeedEventAsync(BoardB, "Bravo Same Day Event", 10, new TimeOnly(9, 0));
+
+        var html = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+
+        var tenth = MobileEntry(html, 10);
+        CountOf(tenth, "Also that day: ").Should().Be(2);
+        var eventAt = tenth.IndexOf("Bravo Same Day Event", StringComparison.Ordinal);
+        var questAt = tenth.IndexOf("Bravo Linked Crypt Run", StringComparison.Ordinal);
+        eventAt.Should().BeGreaterThan(-1);
+        questAt.Should().BeGreaterThan(eventAt);
+    }
+
+    [Fact]
+    public async Task DetailsMobile_CancelledLinkedEvent_IsStruckThroughAndAnnounced()
+    {
+        var scenario = await SeedScenarioAsync();
+        await SeedEventAsync(BoardB, "Bravo Called Off Event", 11, new TimeOnly(17, 0), cancelled: true);
+
+        var html = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+
+        var eleventh = MobileEntry(html, 11);
+        eleventh.Should().Contain("Bravo Called Off Event");
+        eleventh.Should().Contain("also-that-day--cancelled");
+        eleventh.Should().Contain("Cancelled.");
+        MobileEntry(html, 10).Should().NotContain("also-that-day--cancelled");
+    }
+
+    [Fact]
+    public async Task DetailsMobile_MemberOfTheOwningBoardGetsAnAnchorAndANonMemberGetsPlainText()
+    {
+        var scenario = await SeedScenarioAsync();
+        var (memberClient, member) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailslink_member", "detailslink_member@example.com", roles: ["Player"]);
+        await SeedMembershipAsync(member.Id, BoardB, GroupRole.Player);
+
+        var memberHtml = await GetDetailsAsync(memberClient, scenario.QuestXId, MobileUserAgent);
+        var memberLine = MobileEntry(memberHtml, 10);
+        memberLine.Should().Contain($"href=\"/Quest/Details/{scenario.BravoQuestId}\"");
+
+        var nonMemberHtml = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+        var nonMemberLine = MobileEntry(nonMemberHtml, 10);
+        nonMemberLine.Should().Contain("Bravo Linked Crypt Run");
+        nonMemberLine.Should().NotContain($"/Quest/Details/{scenario.BravoQuestId}");
+    }
+
+    [Fact]
+    public async Task DetailsMobile_LinkedDmOnlySessionIsHiddenFromAPlayerAndShownToADungeonMasterOfTheOwningBoard()
+    {
+        var scenario = await SeedScenarioAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Mobile", [10], dmOnly: true);
+        var (dmOnBClient, dmOnB) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailslink_dmonbm", "detailslink_dmonbm@example.com", roles: ["Player"]);
+        await SeedMembershipAsync(dmOnB.Id, BoardB, GroupRole.DungeonMaster);
+
+        var playerHtml = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+        playerHtml.Should().NotContain("Bravo Secret Session Mobile");
+
+        var dmHtml = await GetDetailsAsync(dmOnBClient, scenario.QuestXId, MobileUserAgent);
+        MobileEntry(dmHtml, 10).Should().Contain("Bravo Secret Session Mobile");
+    }
+
+    [Fact]
+    public async Task DetailsMobile_LinesCarryNoFormControlIdOrForAttributeAndAddNoVoteInput()
+    {
+        var scenario = await SeedScenarioAsync();
+        var setId = await GetSetIdAsync();
+
+        var linkedHtml = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+        var lines = Regex.Matches(linkedHtml, "<div class=\"also-that-day[^\"]*\"[^>]*>.*?</div>", RegexOptions.Singleline)
+            .Select(m => m.Value).ToList();
+        lines.Should().NotBeEmpty();
+        foreach (var line in lines)
+        {
+            line.Should().NotContain("<input");
+            line.Should().NotContain("<label");
+            line.Should().NotContain("<button");
+            line.Should().NotContain("<form");
+            line.Should().NotContain(" id=\"");
+            line.Should().NotContain(" for=\"");
+        }
+
+        var linkedCount = CountOf(linkedHtml, "name=\"DateVotes[");
+        linkedCount.Should().BeGreaterThan(0);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var setService = scope.ServiceProvider.GetRequiredService<ILinkedBoardSetService>();
+            await setService.RemoveBoardAsync(setId, BoardB, TestContext.Current.CancellationToken);
+        }
+
+        var unlinkedHtml = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+        unlinkedHtml.Should().NotContain("also-that-day");
+        CountOf(unlinkedHtml, "name=\"DateVotes[").Should().Be(linkedCount);
+        unlinkedHtml.Should().Contain("calendar-vote-row");
+    }
+
+    [Fact]
+    public async Task DetailsMobile_BoardInNoSet_RendersNoAlsoThatDayAndTheVoteRowsStay()
+    {
+        var scenario = await SeedScenarioAsync(link: false);
+
+        var html = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+
+        html.Should().Contain("Alpha Proposed Quest X");
+        html.Should().NotContain("also-that-day");
+        html.Should().Contain("calendar-vote-row");
+    }
 }
