@@ -71,6 +71,18 @@ internal class LinkedBoardSetService(ILinkedBoardSetRepository repository) : ILi
         return new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, set.Name, board.Name);
     }
 
+    /// <inheritdoc/>
+    public Task<LinkedBoardSetOutcome> RenameAsync(int setId, string name, CancellationToken token = default)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<LinkedBoardSetOutcome> RemoveBoardAsync(int setId, int groupId, CancellationToken token = default)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<LinkedBoardSetOutcome> DeleteAsync(int setId, CancellationToken token = default)
+        => throw new NotImplementedException();
+
     private static string? NormalizeName(string? name)
     {
         var trimmed = name?.Trim();

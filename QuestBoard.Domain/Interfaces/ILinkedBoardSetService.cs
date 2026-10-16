@@ -26,4 +26,19 @@ public interface ILinkedBoardSetService
     /// board is already in a set, whichever form the request came from.
     /// </summary>
     Task<LinkedBoardSetOutcome> AddBoardAsync(int setId, int groupId, CancellationToken token = default);
+
+    /// <summary>
+    /// Renames a set. The name is trimmed and must be unique ignoring case, other sets only.
+    /// </summary>
+    Task<LinkedBoardSetOutcome> RenameAsync(int setId, string name, CancellationToken token = default);
+
+    /// <summary>
+    /// Takes a board out of a set. Refused when the board is not in that set.
+    /// </summary>
+    Task<LinkedBoardSetOutcome> RemoveBoardAsync(int setId, int groupId, CancellationToken token = default);
+
+    /// <summary>
+    /// Deletes a set and un-links every board in it. No board, quest or event is deleted.
+    /// </summary>
+    Task<LinkedBoardSetOutcome> DeleteAsync(int setId, CancellationToken token = default);
 }
