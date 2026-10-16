@@ -643,6 +643,38 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("LinkedBoardSetId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LinkedBoardSetId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Groups");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.LinkedBoardSetEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoardType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -653,7 +685,7 @@ namespace QuestBoard.Repository.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Groups");
+                    b.ToTable("LinkedBoardSets");
                 });
 
             modelBuilder.Entity("QuestBoard.Repository.Entities.PlayerDateVoteEntity", b =>
@@ -1379,6 +1411,16 @@ namespace QuestBoard.Repository.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("QuestBoard.Repository.Entities.GroupEntity", b =>
+                {
+                    b.HasOne("QuestBoard.Repository.Entities.LinkedBoardSetEntity", "LinkedBoardSet")
+                        .WithMany("Boards")
+                        .HasForeignKey("LinkedBoardSetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("LinkedBoardSet");
+                });
+
             modelBuilder.Entity("QuestBoard.Repository.Entities.PlayerDateVoteEntity", b =>
                 {
                     b.HasOne("QuestBoard.Repository.Entities.PlayerSignupEntity", "PlayerSignup")
@@ -1586,6 +1628,11 @@ namespace QuestBoard.Repository.Migrations
             modelBuilder.Entity("QuestBoard.Repository.Entities.GroupEntity", b =>
                 {
                     b.Navigation("UserGroups");
+                });
+
+            modelBuilder.Entity("QuestBoard.Repository.Entities.LinkedBoardSetEntity", b =>
+                {
+                    b.Navigation("Boards");
                 });
 
             modelBuilder.Entity("QuestBoard.Repository.Entities.PlayerSignupEntity", b =>

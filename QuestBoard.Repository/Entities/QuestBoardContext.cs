@@ -59,6 +59,8 @@ public class QuestBoardContext(
 
     public DbSet<CalendarSubscriptionEntity> CalendarSubscriptions { get; set; }
 
+    public DbSet<LinkedBoardSetEntity> LinkedBoardSets { get; set; }
+
     // The calendar feed revision of events and quests is raised here, inside the context's own
     // save methods, rather than in a registered interceptor: every way of constructing this
     // context gets the rule with no registration to forget, including a test factory that
@@ -296,6 +298,21 @@ public class QuestBoardContext(
         modelBuilder.Entity<GroupEntity>()
             .HasIndex(g => g.Name)
             .IsUnique();
+
+        // Linked board set names are unique across the tenant
+        modelBuilder.Entity<LinkedBoardSetEntity>()
+            .HasIndex(s => s.Name)
+            .IsUnique();
+
+        // A board points at its set from its own Groups row. Deleting a set must leave every
+        // board in it standing and simply un-linked, hence SetNull rather than a cascade.
+        // Deleting a board needs no handling at all: the link lives on the board's own row, so the
+        // set and the other boards' links are untouched when that row goes.
+        modelBuilder.Entity<GroupEntity>()
+            .HasOne(g => g.LinkedBoardSet)
+            .WithMany(s => s.Boards)
+            .HasForeignKey(g => g.LinkedBoardSetId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // UserGroups: one membership row per user per group
         modelBuilder.Entity<UserGroupEntity>()
