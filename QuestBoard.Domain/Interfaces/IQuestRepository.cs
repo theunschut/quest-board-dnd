@@ -12,8 +12,9 @@ public interface IQuestRepository : IBaseRepository<Quest>
 
     /// <summary>
     /// Returns all quests projected for the monthly calendar view, including signups, votes, and DM details.
+    /// DM-only sessions are included only when <paramref name="isAdminOrDm"/> is true.
     /// </summary>
-    Task<IList<Quest>> GetQuestsForCalendarAsync(CancellationToken token = default);
+    Task<IList<Quest>> GetQuestsForCalendarAsync(bool isAdminOrDm, CancellationToken token = default);
 
     /// <summary>
     /// Returns open quests and quests finalized within the last day, ordered newest first.

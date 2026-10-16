@@ -46,9 +46,11 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     }
 
     /// <inheritdoc/>
-    public async Task<IList<Quest>> GetQuestsForCalendarAsync(CancellationToken token = default)
+    public async Task<IList<Quest>> GetQuestsForCalendarAsync(bool isAdminOrDm, CancellationToken token = default)
     {
+        // The same DM-only rule the quest board applies, so a board shows one rule on every surface.
         var entities = await ProjectForCalendar(DbContext.Quests)
+            .Where(q => !q.DungeonMasterSession || isAdminOrDm)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<Quest>>(entities);
     }
