@@ -20,7 +20,8 @@ public class QuestController(
     IReminderJobDispatcher reminderJobDispatcher,
     IActiveGroupContext activeGroupContext,
     IGroupService groupService,
-    IBoardClock boardClock
+    IBoardClock boardClock,
+    ILinkedCalendarService linkedCalendarService
     ) : Controller
 {
     [HttpGet]
@@ -372,6 +373,32 @@ public class QuestController(
                 Quests = allQuests.ToList()
             })
             .ToList();
+
+        // One read covers every month shown, from the first day of the earliest proposed-date
+        // month to the first day after the latest. The service returns nothing for a request
+        // with no active board or no signed-in viewer. The board's own events are left unset on
+        // purpose so they stay off this page while the linked boards' entries show.
+        if (monthsWithProposedDates.Count > 0)
+        {
+            var first = monthsWithProposedDates[0];
+            var last = monthsWithProposedDates[^1];
+            var windowStart = new DateTime(first.Year, first.Month, 1);
+            var windowEnd = new DateTime(last.Year, last.Month, 1).AddMonths(1);
+            var linked = await linkedCalendarService.GetForViewerAsync(
+                activeGroupContext.ActiveGroupId,
+                currentUser?.Id,
+                User.IsInRole("SuperAdmin"),
+                windowStart,
+                windowEnd,
+                token);
+
+            foreach (var month in monthsWithProposedDates)
+            {
+                month.LinkedQuests = [.. linked.Quests];
+                month.LinkedEvents = [.. linked.Events];
+                month.LinkedBoards = [.. linked.Boards];
+            }
+        }
 
         ViewBag.CalendarMonths = monthsWithProposedDates;
         ViewBag.IsDetailsPage = true;
