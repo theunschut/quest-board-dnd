@@ -68,6 +68,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         foreach (var board in ctx.Groups.Where(g => boardIds.Contains(g.Id)).ToList())
         {
             board.LinkedBoardSetId = set.Id;
+            board.BoardType = (int)boardType;
         }
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         return set.Id;
@@ -111,9 +112,9 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         return (client, viewer);
     }
 
-    private async Task<string> GetCalendarAsync(HttpClient client)
+    private async Task<string> GetCalendarAsync(HttpClient client, string url = CalendarUrl)
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, CalendarUrl);
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.TryAddWithoutValidation("User-Agent", DesktopUserAgent);
         var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -356,6 +357,224 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
 
         html.Should().Contain("Bravo Lantern Night Window");
         html.Should().NotContain("Bravo Other Month Night Window");
+    }
+
+    // Seeds one quest on the named board with the given proposed days (19:00 each). A finalized
+    // quest is finalized on the first proposed day.
+    private async Task<int> SeedQuestAsync(
+        int groupId, string title, string dmName, int[] proposedDays, bool finalized = false, bool dmOnly = false)
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "linkedcal_dm", "linkedcal_dm@example.com", name: dmName);
+
+        await using var ctx = factory.Database.CreateContext();
+        var quest = new QuestEntity
+        {
+            Title = title,
+            Description = "Linked calendar test quest",
+            ChallengeRating = 5,
+            DungeonMasterId = dm.Id,
+            DungeonMasterSession = dmOnly,
+            TotalPlayerCount = 4,
+            GroupId = groupId,
+            IsFinalized = finalized,
+            FinalizedDate = finalized ? new DateTime(Year, Month, proposedDays[0], 19, 0, 0) : null,
+            CreatedAt = DateTime.UtcNow,
+            ProposedDates = [.. proposedDays.Select(d => new ProposedDateEntity { Date = new DateTime(Year, Month, d, 19, 0, 0) })]
+        };
+        ctx.Quests.Add(quest);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return quest.Id;
+    }
+
+    private async Task SeedLinkedPairAsync()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = BoardA;
+        await SeedBoardAsync(BoardB, BoardBName);
+        await SeedBoardAsync(BoardC, BoardCName);
+        await LinkAsync(BoardType.OneShot, BoardA, BoardB);
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedOpenQuest_ShowsOnEveryProposedDayInTheShownMonthOnly()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Open Crypt Run", "Dungeon Master Dana", [10, 17]);
+        var (client, _) = await CreateViewerAsync("linkedcal_openquest", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        foreach (var day in new[] { 10, 17 })
+        {
+            var cell = DayCell(html, day);
+            cell.Should().Contain("Bravo Open Crypt Run");
+            cell.Should().Contain("linked-entry--proposed");
+        }
+        DayCell(html, 11).Should().NotContain("Bravo Open Crypt Run");
+
+        var previousMonth = await GetCalendarAsync(client, "/Calendar?year=2031&month=2");
+        previousMonth.Should().NotContain("Bravo Open Crypt Run");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedFinalizedQuest_ShowsOnlyOnItsFinalizedDay()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Final Crypt Run", "Dungeon Master Dana", [12, 14], finalized: true);
+        var (client, _) = await CreateViewerAsync("linkedcal_finalquest", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        var cell = DayCell(html, 12);
+        cell.Should().Contain("Bravo Final Crypt Run");
+        cell.Should().Contain("linked-entry--finalized");
+        cell.Should().NotContain("linked-entry--proposed");
+        DayCell(html, 14).Should().NotContain("Bravo Final Crypt Run");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedQuestChip_CarriesTheDmNameAndNoQuestDataAttributes()
+    {
+        await SeedLinkedPairAsync();
+        var questId = await SeedQuestAsync(BoardB, "Bravo Detail Crypt Run", "Dungeon Master Dana", [10]);
+        var (client, _) = await CreateViewerAsync("linkedcal_questdetail", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        var cell = DayCell(html, 10);
+        cell.Should().Contain("Bravo Detail Crypt Run - Linked Board Bravo - Dungeon Master Dana - 19:00");
+        cell.Should().Contain("Linked Board Bravo &#xB7; Dungeon Master Dana &#xB7; 19:00");
+        cell.Should().Contain("Proposed.");
+        html.Should().NotContain($"data-quest-id=\"{questId}\"");
+        var block = LinkedBlock(cell);
+        block.Should().NotContain("data-");
+        block.Should().NotContain("href=");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedQuestForAMember_LinksToTheOrdinaryQuestDetailsPage()
+    {
+        await SeedLinkedPairAsync();
+        var questId = await SeedQuestAsync(BoardB, "Bravo Member Crypt Run", "Dungeon Master Dana", [10]);
+        var (client, _) = await CreateViewerAsync(
+            "linkedcal_questmember", (BoardA, GroupRole.Player), (BoardB, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain($"href=\"/Quest/Details/{questId}\"");
+        DayCell(html, 10).Should().Contain("linked-entry--open");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedDmOnlySession_PlayerNotOnTheOwningBoard_IsHiddenAlongsideTheViewedBoardsOwn()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Playernomember", "Dungeon Master Dana", [10], dmOnly: true);
+        await SeedQuestAsync(BoardA, "Alpha Secret Session Playernomember", "Dungeon Master Dana", [10], dmOnly: true);
+        await SeedQuestAsync(BoardB, "Bravo Open Table Playernomember", "Dungeon Master Dana", [10]);
+        var (client, _) = await CreateViewerAsync("linkedcal_dm_none", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Bravo Open Table Playernomember");
+        html.Should().NotContain("Bravo Secret Session Playernomember");
+        html.Should().NotContain("Alpha Secret Session Playernomember");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedDmOnlySession_DungeonMasterOnTheOwningBoard_IsShownButTheViewedBoardsOwnStaysHidden()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Dmonb", "Dungeon Master Dana", [10], dmOnly: true);
+        await SeedQuestAsync(BoardA, "Alpha Secret Session Dmonb", "Dungeon Master Dana", [10], dmOnly: true);
+        var (client, _) = await CreateViewerAsync(
+            "linkedcal_dm_on_b", (BoardA, GroupRole.Player), (BoardB, GroupRole.DungeonMaster));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Bravo Secret Session Dmonb");
+        html.Should().NotContain("Alpha Secret Session Dmonb");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedDmOnlySession_DungeonMasterOnTheViewedBoardOnly_IsHidden()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Dmona", "Dungeon Master Dana", [10], dmOnly: true);
+        await SeedQuestAsync(BoardB, "Bravo Open Table Dmona", "Dungeon Master Dana", [10]);
+        var (client, _) = await CreateViewerAsync(
+            "linkedcal_dm_on_a", (BoardA, GroupRole.DungeonMaster), (BoardB, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Bravo Open Table Dmona");
+        html.Should().NotContain("Bravo Secret Session Dmona");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedDmOnlySession_PlayerOnTheOwningBoard_IsHidden()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Playeronb", "Dungeon Master Dana", [10], dmOnly: true);
+        await SeedQuestAsync(BoardB, "Bravo Open Table Playeronb", "Dungeon Master Dana", [10]);
+        var (client, _) = await CreateViewerAsync(
+            "linkedcal_player_on_b", (BoardA, GroupRole.Player), (BoardB, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Bravo Open Table Playeronb");
+        html.Should().NotContain("Bravo Secret Session Playeronb");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedDmOnlySession_SuperAdminWithoutMembership_IsShownAsAPlainBlock()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Superadmin", "Dungeon Master Dana", [10], dmOnly: true);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "linkedcal_superadmin", "linkedcal_superadmin@example.com");
+
+        var html = await GetCalendarAsync(client);
+
+        var cell = DayCell(html, 10);
+        cell.Should().Contain("Bravo Secret Session Superadmin");
+        cell.Should().Contain("linked-entry--static");
+        cell.Should().NotContain("linked-entry--open");
+    }
+
+    [Fact]
+    public async Task Calendar_DayWithOnlyAHiddenDmOnlySession_RendersNoChipAndNoBadge()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Hiddenday", "Dungeon Master Dana", [22], dmOnly: true);
+        await SeedQuestAsync(BoardB, "Bravo Open Table Hiddenday", "Dungeon Master Dana", [10]);
+        var (client, _) = await CreateViewerAsync("linkedcal_hiddenday", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Bravo Open Table Hiddenday");
+        var cell = DayCell(html, 22);
+        cell.Should().NotContain("linked-entry");
+        cell.Should().NotContain("linked-day-count");
+    }
+
+    [Fact]
+    public async Task Calendar_CampaignSet_ShowsLinkedEventsButNeverLinkedQuests()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = BoardA;
+        factory.TestGroupContext.BoardType = BoardType.Campaign;
+        await SeedBoardAsync(BoardB, BoardBName, BoardType.Campaign);
+        await LinkAsync(BoardType.Campaign, BoardA, BoardB);
+        await SeedEventAsync(BoardB, "Bravo Campaign Night Campaignset", 12, new TimeOnly(19, 0));
+        await SeedQuestAsync(BoardB, "Bravo Campaign Quest Campaignset", "Dungeon Master Dana", [12]);
+        var (client, _) = await CreateViewerAsync("linkedcal_campaign", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Bravo Campaign Night Campaignset");
+        html.Should().NotContain("Bravo Campaign Quest Campaignset");
     }
 
     // The linked entries block of one day cell, from its wrapper to the end of the cell.
