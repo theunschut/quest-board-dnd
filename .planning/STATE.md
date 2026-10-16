@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 89
-current_phase_name: pull-based-release-deployment
+current_phase: 91
+current_phase_name: linked-boards-with-a-shared-calendar
 status: executing
 stopped_at: Phase 91 UI-SPEC approved
-last_updated: "2026-10-16T06:14:56.352Z"
-last_activity: 2026-10-06
-last_activity_desc: Phase 89 complete
+last_updated: "2026-10-16T06:16:46.643Z"
+last_activity: 2026-10-16
+last_activity_desc: Phase 91 execution started
 progress:
   total_phases: 21
   completed_phases: 16
@@ -25,14 +25,14 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 See: .planning/PROJECT.md (updated 2026-10-06 — after Phase 89)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** No phase in progress — Phase 78 (Link Preview Foundation and Quest Cards) is planned and ready to execute
+**Current focus:** Phase 91 — linked-boards-with-a-shared-calendar
 
 ## Current Position
 
-Phase: 89 (pull-based-release-deployment) — COMPLETE
-Plan: 12 of 12
-Status: Ready to execute
-Last activity: 2026-10-06 — Phase 89 complete (UAT 7/7, verification passed, threats_open 0)
+Phase: 91 (linked-boards-with-a-shared-calendar) — EXECUTING
+Plan: 1 of 10
+Status: Executing Phase 91
+Last activity: 2026-10-16 — Phase 91 execution started
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
