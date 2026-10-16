@@ -151,3 +151,27 @@
     overflow-wrap: anywhere;
     margin-top: 2px;
 }
+
+/* A member's linked row navigates like the board's own rows; everyone else's stays inert. */
+.agenda-linked-entry--open {
+    cursor: pointer;
+}
+
+.agenda-linked-entry--open:active {
+    background-color: #5a6169;
+}
+
+.agenda-linked-entry--static {
+    cursor: default;
+}
+
+/* A cancelled linked event stays listed but reads as called off, like the board's own. */
+.agenda-linked-entry--cancelled {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
+.agenda-linked-entry--cancelled .agenda-linked-board,
+.agenda-linked-entry--cancelled .agenda-linked-title {
+    text-decoration: line-through;
+}
