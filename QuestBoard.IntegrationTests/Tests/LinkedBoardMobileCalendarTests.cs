@@ -290,4 +290,148 @@ public class LinkedBoardMobileCalendarTests(WebApplicationFactoryBase factory)
         html.Should().Contain("Nothing This Month");
         html.Should().NotContain("agenda-linked-entry");
     }
+
+    [Fact]
+    public async Task Agenda_MemberOfTheLinkedBoard_GetsRowsThatNavigateToTheOrdinaryDetailsPages()
+    {
+        await SeedLinkedPairAsync();
+        var eventId = await SeedEventAsync(BoardB, "Bravo Member Night Member", 12, new TimeOnly(19, 0));
+        var questId = await SeedQuestAsync(BoardB, "Bravo Member Crypt Member", "Dungeon Master Dana", [10]);
+        var client = await CreateViewerAsync(
+            "mobilecal_member", (BoardA, GroupRole.Player), (BoardB, GroupRole.Player));
+
+        var html = await GetAgendaAsync(client);
+
+        var questRow = DaySection(html, 10)!;
+        questRow.Should().Contain("agenda-linked-entry--open");
+        questRow.Should().NotContain("agenda-linked-entry--static");
+        questRow.Should().Contain($"window.location.href='/Quest/Details/{questId}'");
+        questRow.Should().Contain($"<a class=\"row-nav-link\" href=\"/Quest/Details/{questId}\">Bravo Member Crypt Member</a>");
+
+        var eventRow = DaySection(html, 12)!;
+        eventRow.Should().Contain("agenda-linked-entry--open");
+        eventRow.Should().Contain($"window.location.href='/Events/Details/{eventId}'");
+        eventRow.Should().Contain($"<a class=\"row-nav-link\" href=\"/Events/Details/{eventId}\">Bravo Member Night Member</a>");
+    }
+
+    [Fact]
+    public async Task Agenda_NonMemberOfTheLinkedBoard_SeesPlainRowsWithNoNavigation()
+    {
+        await SeedLinkedPairAsync();
+        var eventId = await SeedEventAsync(BoardB, "Bravo Plain Night Plain", 12, new TimeOnly(19, 0));
+        var questId = await SeedQuestAsync(BoardB, "Bravo Plain Crypt Plain", "Dungeon Master Dana", [10]);
+        var client = await CreateViewerAsync("mobilecal_plain", (BoardA, GroupRole.Player));
+
+        var html = await GetAgendaAsync(client);
+
+        html.Should().Contain("Bravo Plain Night Plain");
+        html.Should().Contain("Bravo Plain Crypt Plain");
+        html.Should().Contain(BoardBName);
+        html.Should().Contain("Dungeon Master Dana");
+        html.Should().NotContain($"/Quest/Details/{questId}\"");
+        html.Should().NotContain($"/Quest/Details/{questId}'");
+        html.Should().NotContain($"/Events/Details/{eventId}\"");
+        html.Should().NotContain($"/Events/Details/{eventId}'");
+
+        var questRow = LinkedRow(DaySection(html, 10)!);
+        questRow.Should().Contain("agenda-linked-entry--static");
+        questRow.Should().NotContain("agenda-linked-entry--open");
+        questRow.Should().NotContain("onclick");
+        questRow.Should().NotContain("<a ");
+        questRow.Should().NotContain("tabindex");
+    }
+
+    [Fact]
+    public async Task Agenda_SuperAdminWithoutMembershipOnTheLinkedBoard_SeesPlainRows()
+    {
+        await SeedLinkedPairAsync();
+        var eventId = await SeedEventAsync(BoardB, "Bravo Admin Night Superadmin", 12, new TimeOnly(19, 0));
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "mobilecal_superadmin", "mobilecal_superadmin@example.com");
+
+        var html = await GetAgendaAsync(client);
+
+        var section = DaySection(html, 12)!;
+        section.Should().Contain("Bravo Admin Night Superadmin");
+        section.Should().Contain("agenda-linked-entry--static");
+        html.Should().NotContain($"/Events/Details/{eventId}\"");
+        html.Should().NotContain($"/Events/Details/{eventId}'");
+    }
+
+    [Fact]
+    public async Task Agenda_CancelledLinkedEvent_IsMarkedCancelledInClassAndInText()
+    {
+        await SeedLinkedPairAsync();
+        await SeedEventAsync(BoardB, "Bravo Called Off Night Cancelled", 20, new TimeOnly(17, 0), cancelled: true);
+        await SeedEventAsync(BoardB, "Bravo Going Ahead Night Cancelled", 21, new TimeOnly(17, 0));
+        var client = await CreateViewerAsync("mobilecal_cancelled", (BoardA, GroupRole.Player));
+
+        var html = await GetAgendaAsync(client);
+
+        var cancelled = DaySection(html, 20)!;
+        cancelled.Should().Contain("Bravo Called Off Night Cancelled");
+        cancelled.Should().Contain("agenda-linked-entry--cancelled");
+        cancelled.Should().Contain("<span class=\"visually-hidden\"> Cancelled.</span>");
+
+        var ordinary = DaySection(html, 21)!;
+        ordinary.Should().NotContain("agenda-linked-entry--cancelled");
+        ordinary.Should().NotContain("Cancelled.");
+    }
+
+    [Fact]
+    public async Task Agenda_LinkedQuests_CarryTheirStatusInText()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Open Table Status", "Dungeon Master Dana", [10]);
+        await SeedQuestAsync(BoardB, "Bravo Final Table Status", "Dungeon Master Dana", [14], finalized: true);
+        var client = await CreateViewerAsync("mobilecal_status", (BoardA, GroupRole.Player));
+
+        var html = await GetAgendaAsync(client);
+
+        var open = DaySection(html, 10)!;
+        open.Should().Contain("agenda-linked-entry--proposed");
+        open.Should().Contain("<span class=\"visually-hidden\">Proposed.</span>");
+
+        var final = DaySection(html, 14)!;
+        final.Should().Contain("agenda-linked-entry--finalized");
+        final.Should().Contain("<span class=\"visually-hidden\">Finalized.</span>");
+    }
+
+    [Fact]
+    public async Task Agenda_LinkedDmOnlySession_IsHiddenFromAPlayerAndItsOnlyDayHasNoSection()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Hidden", "Dungeon Master Dana", [22], dmOnly: true);
+        await SeedQuestAsync(BoardB, "Bravo Open Table Hidden", "Dungeon Master Dana", [10]);
+        var client = await CreateViewerAsync("mobilecal_hidden", (BoardA, GroupRole.Player), (BoardB, GroupRole.Player));
+
+        var html = await GetAgendaAsync(client);
+
+        html.Should().Contain("Bravo Open Table Hidden");
+        html.Should().NotContain("Bravo Secret Session Hidden");
+        DaySection(html, 22).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Agenda_LinkedDmOnlySession_IsShownToADungeonMasterOfTheOwningBoard()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Secret Session Shown", "Dungeon Master Dana", [22], dmOnly: true);
+        var client = await CreateViewerAsync(
+            "mobilecal_dmshown", (BoardA, GroupRole.Player), (BoardB, GroupRole.DungeonMaster));
+
+        var html = await GetAgendaAsync(client);
+
+        var section = DaySection(html, 22);
+        section.Should().NotBeNull();
+        section.Should().Contain("Bravo Secret Session Shown");
+    }
+
+    // The first linked row of one agenda day section, up to its closing line.
+    private static string LinkedRow(string section)
+    {
+        var start = section.IndexOf("agenda-linked-entry", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1);
+        return section[start..];
+    }
 }
