@@ -1237,7 +1237,7 @@ Plans:
 **Goal:** A super admin can link two or more boards of the same board type in the Platform area. On every linked board, `/calendar` then shows the events and quests of all boards in the link as well as its own, each marked with the board it belongs to, so a campaign split across boards for the same group of players never gets a date booked twice. Unlinking restores each board to its own calendar. Boards that are not linked behave exactly as they do today.
 **Requirements**: TBD
 **Depends on:** Phase 87. Calendar links to an entry on another board go through its cross-board deep-link switch. Independent of Phase 90.
-**Plans:** 0 plans
+**Plans:** 10 plans
 
 **Origin:** raised by the operator on 2026-10-15. The same group of players runs several campaigns as separate boards. The operator wants to start a new one-shot board for another campaign and still see its quests and events on the existing board's calendar, so the two never plan the same date.
 
@@ -1265,8 +1265,30 @@ Plans:
 **Constraints:** linking is super-admin only and only between boards of the same type (enforced server-side, not just in the form). Every cross-board read stays narrowed to the linked board ids and goes through the `IgnoreQueryFilters` allowlist. The tenant-isolation tests keep passing for unlinked boards. The link is read-only: nothing on a linked board can be edited, signed up for or voted on from another board's calendar. The change is a pure read with no write to `Events` or `Quests`, so feed revisions do not move. The schema change ships as an EF Core migration. Both `.Mobile.cshtml` twins are updated.
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 91 to break down)
+- [ ] 91-01-PLAN.md — Linked board set schema and repository: set table + Groups.LinkedBoardSetId migration, set CRUD and board assignment, rename keeps the link (W1)
+- [ ] 91-02-PLAN.md — DM-only sessions follow the viewer's board role on /calendar and the Quest Details calendar (W1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 91-03-PLAN.md — Linked Boards Platform page (desktop): same-type / at-most-one rules server-side, SuperAdminOnly controller and view (W2)
+- [ ] 91-04-PLAN.md — Pinned linked reads: per-viewer linked-board lookup and narrow, windowed filter-bypassing quest and event reads (W2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 91-05-PLAN.md — Linked boards' quests and events on desktop /calendar: re-checked read-only overlay service, view model and partial (W3)
+- [ ] 91-06-PLAN.md — Linked Boards mobile twin and Group index entry buttons (W3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 91-07-PLAN.md — Desktop look and legend for linked entries, parity/no-leak proofs, member deep-link switch (W4)
+- [ ] 91-08-PLAN.md — Linked entries on the mobile /calendar agenda (W4)
+- [ ] 91-09-PLAN.md — Linked entries on the Quest Details calendar (desktop grid, mobile "Also that day") and the read-only static guard (W4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 91-10-PLAN.md — End-to-end Platform-to-calendar proof, feed untouched, local SQL Server and phone verification (W5, checkpoint)
 
 ### Phase 92: Move a Quest or Event to a Linked Board
 

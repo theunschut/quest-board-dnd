@@ -88,8 +88,8 @@ Events availability overview.
   existing `ProjectForCalendar` (which eagerly loads all of them) must not be reused for linked
   boards. A linked event carries title, date, start time label and board name.
 
-- **D-08: For a member of board B, B's entry is clickable and goes through the Phase 87 board
-  switch.** The link is the ordinary `/Quest/Details/{id}` or `/Events/Details/{id}` URL;
+- **D-08: A member of board B gets a clickable entry through the Phase 87 board switch.** For a
+  member of board B, B's entry is clickable and goes through the Phase 87 board switch. The link is the ordinary `/Quest/Details/{id}` or `/Events/Details/{id}` URL;
   `CrossBoardDeepLinkMiddleware` switches the session to B and shows the "switched to B, switch
   back" banner. Nothing new is built for this.
 
@@ -103,8 +103,8 @@ Events availability overview.
   an open quest on every proposed date, with the same proposed / finalized distinction. Clashes
   mostly start while dates are still being voted on, so proposed dates count.
 
-- **D-10: Cancelled events from a linked board show struck through, exactly like the board's own
-  cancelled events.** *(Revised 2026-10-15 — originally "hidden"; superseded by D-19's one-board
+- **D-10: Cancelled linked events show struck through.** Cancelled events from a linked board show
+  struck through, exactly like the board's own cancelled events. *(Revised 2026-10-15 — originally "hidden"; superseded by D-19's one-board
   rule.)* The strike-through already says the date is free, so showing it costs nothing and keeps
   linked and own entries under one rule.
 
@@ -125,7 +125,7 @@ Events availability overview.
   - The board's **own** events stay off the Details page as today. Adding them would change unlinked
     boards, which the phase goal forbids.
 
-- **D-13: Unchanged by linking:** the DM series-runway warning stays per-board; the phone calendar
+- **D-13: Unchanged by linking.** The DM series-runway warning stays per-board; the phone calendar
   feed stays membership-based and `CalendarFeedWriter.cs`, `CalendarSubscriptionService.cs` and
   `FeedRevisionStamper.cs` are not touched; My Agenda and the Events availability overview are
   untouched.
@@ -167,8 +167,9 @@ Events availability overview.
   displayed (D-14 to D-16) and that it is read-only (D-07, D-12). Any future inclusion rule applies
   to own and linked entries alike.
 
-- **D-20: A DM-only session (`DungeonMasterSession`) is shown only to a viewer who is DungeonMaster
-  or Admin on the board that owns it; a SuperAdmin counts as Admin, as on the board today.** The role
+- **D-20: DM-only sessions follow the viewer's role on the owning board.** A DM-only session
+  (`DungeonMasterSession`) is shown only to a viewer who is DungeonMaster or Admin on the board that
+  owns it; a SuperAdmin counts as Admin, as on the board today. The role
   is the viewer's role on the *owning* board, read fresh, not their role on the board they are
   viewing from. On A's calendar a DM of B sees B's DM-only sessions even if they are only a player
   on A; a player of B, or a non-member of B, does not. This mirrors the quest board's existing rule
@@ -198,7 +199,7 @@ Events availability overview.
 
   The read is pure: no write to `Events` or `Quests`, so no feed revision moves.
 
-- **D-18: The integration tests must prove at least:**
+- **D-18: Required integration-test proofs.** The integration tests must prove at least:
   1. **An unlinked board is unchanged.** No entry, title or board name from any other board reaches
      its `/calendar` or Quest Details page (tenant isolation still holds).
   2. **Linked boards see each other, and an outside board does not.** A and B in one group, C not:
@@ -212,11 +213,11 @@ Events availability overview.
   6. **Cancelled linked events show struck through; open linked quests appear on their proposed
      dates.**
   7. **Linked entries on Quest Details carry no vote input.**
-  8. **DM-only sessions follow the owning board's role (D-20).** A player of A sees neither A's nor
-     B's DM-only sessions; a DM of B who is a player on A sees B's but not A's; a non-member of B
-     never sees B's.
   8. **Server-side enforcement on the Platform page.** A non-SuperAdmin is refused; adding a board of
      the other type, or a board already in another group, is refused even when posted directly.
+  9. **DM-only sessions follow the owning board's role (D-20).** A player of A sees neither A's nor
+     B's DM-only sessions; a DM of B who is a player on A sees B's but not A's; a non-member of B
+     never sees B's.
 
   Reset `ActiveGroupId` to `1` in `DisposeAsync`, as Phase 82 D-17 requires, because
   `WebApplicationFactoryBase.TestGroupContext` is a shared singleton.

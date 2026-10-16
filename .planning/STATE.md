@@ -4,15 +4,15 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 89
 current_phase_name: pull-based-release-deployment
-status: completed
+status: executing
 stopped_at: Phase 91 UI-SPEC approved
-last_updated: "2026-10-15T20:26:15.803Z"
+last_updated: "2026-10-16T06:14:56.352Z"
 last_activity: 2026-10-06
 last_activity_desc: Phase 89 complete
 progress:
   total_phases: 21
   completed_phases: 16
-  total_plans: 129
+  total_plans: 139
   completed_plans: 120
   percent: 76
 state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-06 — after Phase 89)
 
 Phase: 89 (pull-based-release-deployment) — COMPLETE
 Plan: 12 of 12
-Status: Phase 89 complete; not all phases complete — Phases 78, 79 and 81 are still open
+Status: Ready to execute
 Last activity: 2026-10-06 — Phase 89 complete (UAT 7/7, verification passed, threats_open 0)
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
