@@ -89,4 +89,12 @@ public interface IEventRepository : IBaseRepository<Event>
     /// dropped.
     /// </summary>
     Task<IList<EventWithSignups>> GetUpcomingAcrossGroupsWithSignupsAsync(IReadOnlyCollection<int> memberGroupIds, DateOnly today, int take, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns the events on the given linked boards dated within [<paramref name="fromInclusive"/>,
+    /// <paramref name="toExclusive"/>), as flat rows with no signups. Cancelled events are kept and
+    /// flagged. The ids must come from a server-side linked set lookup taken in the same request,
+    /// never from request input. An empty collection returns an empty list rather than widening.
+    /// </summary>
+    Task<IList<LinkedEventEntry>> GetLinkedEventsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateOnly fromInclusive, DateOnly toExclusive, CancellationToken token = default);
 }
