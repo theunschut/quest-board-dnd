@@ -21,7 +21,13 @@
     overflow-wrap: anywhere;
 }
 
+/* The form is the flex child, so it is the form that must refuse to shrink, or the label wraps */
+.linked-set-board-row > form {
+    flex-shrink: 0;
+}
+
 .linked-set-board-row .btn {
     min-height: 44px;
     flex-shrink: 0;
+    white-space: nowrap;
 }
