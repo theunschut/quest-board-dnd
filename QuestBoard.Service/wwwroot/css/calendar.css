@@ -497,6 +497,137 @@
     }
 
 /* ========================================
+   LINKED BOARD ENTRIES
+   ========================================
+   Entries that belong to another board in the linked set. They are meant to read as someone
+   else's booking pinned to this board: the same footprint as an own chip at rest, but a
+   quieter surface and a dashed edge in the status colour. At rest only the title shows;
+   hovering or focusing a chip you can open reveals the board, DM and time line. These chips
+   have their own selectors on purpose, so none of the vote-control spacing or cursor rules
+   of the board's own chips can leak into them. */
+.linked-day-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+    margin-top: 1px;
+}
+
+.linked-entry {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 100%;
+    flex-shrink: 0;
+    min-height: 24px;
+    padding: 2px 4px 2px 3px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.6);
+    border-left: 4px dashed;
+    font-size: 10px;
+    line-height: 1.2;
+    color: #1a1a1a;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    position: relative;
+    cursor: default;
+}
+
+    .linked-entry--proposed {
+        border-left-color: #ffc107;
+    }
+
+    .linked-entry--finalized {
+        border-left-color: #28a745;
+    }
+
+    .linked-entry--event {
+        border-left-color: #6f42c1;
+    }
+
+.linked-entry-title {
+    display: block;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.linked-entry-detail {
+    display: none;
+    font-weight: 400;
+    color: #262626;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-style: normal;
+}
+
+.linked-entry:hover,
+.linked-entry--open:focus-visible {
+    min-height: 48px;
+    background-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+    .linked-entry:hover .linked-entry-detail,
+    .linked-entry--open:focus-visible .linked-entry-detail {
+        display: block;
+    }
+
+.linked-entry--open {
+    cursor: pointer;
+    color: #1a1a1a;
+}
+
+    .linked-entry--open:hover {
+        color: #1a1a1a;
+        text-decoration: none;
+    }
+
+    .linked-entry--open:focus-visible {
+        outline: 2px solid #0d6efd;
+        outline-offset: -2px;
+    }
+
+.linked-entry--static {
+    cursor: default;
+}
+
+.linked-entry--cancelled {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
+    .linked-entry--cancelled .linked-entry-title,
+    .linked-entry--cancelled .linked-entry-detail {
+        text-decoration: line-through;
+    }
+
+/* Sits in the top-right corner of the day cell, outside the scrolling item region, so linked
+   entries pushed below the fold are still noticed. */
+.linked-day-count {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #F4E4BC;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    line-height: 1;
+}
+
+/* The line above the Quest Details calendar naming the boards whose entries it also shows. */
+.calendar-linked-note {
+    padding: 4px 16px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #F4E4BC;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* ========================================
    DETAILS PAGE CALENDAR STYLING
    ========================================
    Architecture:

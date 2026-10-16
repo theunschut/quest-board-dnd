@@ -577,6 +577,55 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         html.Should().NotContain("Bravo Campaign Quest Campaignset");
     }
 
+    [Fact]
+    public async Task Calendar_LinkedQuestWithSignupsAndVotes_NeverShowsAnotherBoardsRosterOrPollAnswers()
+    {
+        await SeedLinkedPairAsync();
+        var questId = await SeedQuestAsync(BoardB, "Bravo Rostered Crypt Run", "Dungeon Master Dana", [10]);
+        var rosterUser = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "linkedcal_roster", "linkedcal_roster@example.com", name: "Zed Rostername");
+        await using (var ctx = factory.Database.CreateContext())
+        {
+            var proposedDateId = ctx.Quests.IgnoreQueryFilters().Include(q => q.ProposedDates).Single(q => q.Id == questId).ProposedDates.Single().Id;
+            ctx.PlayerSignups.Add(new PlayerSignupEntity
+            {
+                QuestId = questId,
+                PlayerId = rosterUser.Id,
+                SignupTime = DateTime.UtcNow,
+                DateVotes = [new PlayerDateVoteEntity { ProposedDateId = proposedDateId, Vote = 2 }]
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        var (client, _) = await CreateViewerAsync(
+            "linkedcal_noleak", (BoardA, GroupRole.Player), (BoardB, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Bravo Rostered Crypt Run");
+        html.Should().NotContain("Zed Rostername");
+        var linkedBlock = LinkedBlock(DayCell(html, 10));
+        linkedBlock.Should().Contain("Dungeon Master Dana");
+        linkedBlock.Should().NotContain("vote-display");
+        linkedBlock.Should().NotContain("user-");
+    }
+
+    [Fact]
+    public async Task Calendar_LinkedQuestChip_RevealsItsDetailLineAndExposesItsStatusAndTooltipWithoutHover()
+    {
+        await SeedLinkedPairAsync();
+        await SeedQuestAsync(BoardB, "Bravo Structured Crypt Run", "Dungeon Master Dana", [10]);
+        var (client, _) = await CreateViewerAsync("linkedcal_chipshape", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        var chip = LinkedBlock(DayCell(html, 10));
+        chip.Should().Contain("linked-entry-detail");
+        chip.Should().Contain("aria-hidden=\"true\"");
+        chip.Should().Contain("visually-hidden");
+        chip.Should().MatchRegex("visually-hidden\">[^<]*Proposed\\.\\s*</span>");
+        chip.Should().MatchRegex($"title=\"[^\"]*{BoardBName}[^\"]*Dungeon Master Dana[^\"]*\"");
+    }
+
     // The Legend card's markup, from its wrapper to the end of the page.
     private static string LegendCard(string html)
     {
