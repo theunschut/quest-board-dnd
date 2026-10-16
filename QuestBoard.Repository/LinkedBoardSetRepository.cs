@@ -89,22 +89,87 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
     }
 
     /// <inheritdoc/>
-    public Task<IList<LinkedBoardCandidate>> GetUnlinkedBoardsAsync(CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<IList<LinkedBoardCandidate>> GetUnlinkedBoardsAsync(CancellationToken token = default)
+    {
+        return await dbContext.Groups
+            .AsNoTracking()
+            .Where(g => g.LinkedBoardSetId == null)
+            .OrderBy(g => g.Name)
+            .Select(g => new LinkedBoardCandidate
+            {
+                Id = g.Id,
+                Name = g.Name,
+                BoardType = (BoardType)g.BoardType,
+                LinkedBoardSetId = g.LinkedBoardSetId
+            })
+            .ToListAsync(token);
+    }
 
     /// <inheritdoc/>
-    public Task<LinkedBoardCandidate?> GetBoardAsync(int groupId, CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<LinkedBoardCandidate?> GetBoardAsync(int groupId, CancellationToken token = default)
+    {
+        return await dbContext.Groups
+            .AsNoTracking()
+            .Where(g => g.Id == groupId)
+            .Select(g => new LinkedBoardCandidate
+            {
+                Id = g.Id,
+                Name = g.Name,
+                BoardType = (BoardType)g.BoardType,
+                LinkedBoardSetId = g.LinkedBoardSetId
+            })
+            .FirstOrDefaultAsync(token);
+    }
 
     /// <inheritdoc/>
-    public Task<bool> NameExistsAsync(string name, int? excludingSetId, CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<bool> NameExistsAsync(string name, int? excludingSetId, CancellationToken token = default)
+    {
+        var upperName = name.ToUpper();
+        return await dbContext.LinkedBoardSets
+            .AnyAsync(s => s.Name.ToUpper() == upperName && (excludingSetId == null || s.Id != excludingSetId), token);
+    }
 
     /// <inheritdoc/>
-    public Task<bool> RenameAsync(int setId, string name, CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<bool> RenameAsync(int setId, string name, CancellationToken token = default)
+    {
+        var set = await dbContext.LinkedBoardSets.FirstOrDefaultAsync(s => s.Id == setId, token);
+        if (set == null) return false;
+
+        set.Name = name;
+        try
+        {
+            await dbContext.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException)
+        {
+            // The unique index on the name rejected a duplicate that slipped past the pre-check.
+            // Putting the stored name back keeps the tracker from retrying the rejected one.
+            set.Name = await dbContext.LinkedBoardSets
+                .AsNoTracking()
+                .Where(s => s.Id == setId)
+                .Select(s => s.Name)
+                .FirstAsync(token);
+            return false;
+        }
+
+        return true;
+    }
 
     /// <inheritdoc/>
-    public Task<bool> DeleteAsync(int setId, CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<bool> DeleteAsync(int setId, CancellationToken token = default)
+    {
+        var set = await dbContext.LinkedBoardSets
+            .Include(s => s.Boards)
+            .FirstOrDefaultAsync(s => s.Id == setId, token);
+        if (set == null) return false;
+
+        // The foreign key un-links boards on SQL Server, but the in-memory provider only does so
+        // for dependents it already tracks, so the boards are un-linked explicitly as well.
+        foreach (var board in set.Boards)
+            board.LinkedBoardSetId = null;
+
+        dbContext.LinkedBoardSets.Remove(set);
+        await dbContext.SaveChangesAsync(token);
+        return true;
+    }
 }
