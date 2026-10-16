@@ -55,6 +55,7 @@ public static class ServiceExtensions
         services.AddScoped<IContactCategoryService, ContactCategoryService>();
         services.AddScoped<IDungeonMasterProfileService, DungeonMasterProfileService>();
         services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<ILinkedBoardSetService, LinkedBoardSetService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IEventSignupService, EventSignupService>();
         services.AddScoped<IEventSeriesService, EventSeriesService>();
