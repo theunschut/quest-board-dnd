@@ -47,9 +47,12 @@ public class CalendarController(
         var activeBoardType = await boardTypeResolver.GetBoardTypeAsync(token);
         var includeQuests = activeBoardType != BoardType.Campaign;
 
+        // The viewer's tier decides whether DM-only sessions are loaded at all.
+        var isDmTier = await IsDmTierAsync();
+
         // Get all quests with their proposed dates
         IList<Quest> allQuests = includeQuests
-            ? await questService.GetQuestsForCalendarAsync(token)
+            ? await questService.GetQuestsForCalendarAsync(isDmTier, token)
             : [];
         var allEvents = await eventService.GetEventsForCalendarAsync(token);
 
@@ -60,7 +63,7 @@ public class CalendarController(
             Month = selectedMonth,
             Quests = [.. allQuests],
             Events = [.. allEvents],
-            CanManage = await IsDmTierAsync()
+            CanManage = isDmTier
         };
 
         // A player never triggers the runway query and never receives series titles they

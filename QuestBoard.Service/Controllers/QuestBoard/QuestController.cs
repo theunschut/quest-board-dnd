@@ -344,11 +344,13 @@ public class QuestController(
 
         // Check if current user can manage this quest (DM or admin)
         var isQuestDm = currentUser != null && IsQuestOwner(currentUser, quest.DungeonMaster);
-        var isAdmin = currentUser != null && await GetEffectiveRoleAsync() == GroupRole.Admin;
+        GroupRole? viewerRole = currentUser != null ? await GetEffectiveRoleAsync() : null;
+        var isAdmin = viewerRole == GroupRole.Admin;
         ViewBag.CanManage = isQuestDm || isAdmin;
 
         // Get all quests for calendar context
-        var allQuests = await questService.GetQuestsForCalendarAsync(token);
+        var allQuests = await questService.GetQuestsForCalendarAsync(
+            viewerRole is GroupRole.Admin or GroupRole.DungeonMaster, token);
 
         // Get unique months that have proposed dates for this quest
         var monthsWithProposedDates = quest.ProposedDates

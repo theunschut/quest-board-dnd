@@ -53,9 +53,9 @@ internal class QuestService(
     }
 
     /// <inheritdoc/>
-    public async Task<IList<Quest>> GetQuestsForCalendarAsync(CancellationToken token = default)
+    public async Task<IList<Quest>> GetQuestsForCalendarAsync(bool isAdminOrDm, CancellationToken token = default)
     {
-        return await repository.GetQuestsForCalendarAsync(token);
+        return await repository.GetQuestsForCalendarAsync(isAdminOrDm, token);
     }
 
     /// <inheritdoc/>
