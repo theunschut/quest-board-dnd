@@ -523,4 +523,90 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
             handler.Should().NotContain("O'Brien");
         }
     }
+
+    // ---------------------------------------------------------------------------
+    // Mobile twin and the Group index entry points
+    // ---------------------------------------------------------------------------
+
+    private const string MobileUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
+    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string url, string? userAgent, HttpContent? content = null)
+    {
+        var request = new HttpRequestMessage(method, url) { Content = content };
+        if (userAgent is not null)
+        {
+            request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+        }
+        request.Headers.Authorization = client.DefaultRequestHeaders.Authorization;
+        return await client.SendAsync(request, Token);
+    }
+
+    private static async Task<string> GetMobileIndexHtmlAsync(HttpClient client)
+    {
+        var response = await SendAsync(client, HttpMethod.Get, "/platform/LinkedBoards", MobileUserAgent);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return await response.Content.ReadAsStringAsync(Token);
+    }
+
+    private static async Task<HttpResponseMessage> MobilePostAsync(HttpClient client, string url, params (string Key, string Value)[] fields)
+        => await SendAsync(client, HttpMethod.Post, url, MobileUserAgent, Form(fields));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(MobileUserAgent)]
+    public async Task GroupIndex_ForSuperAdmin_LinksToTheLinkedBoardsPage(string? userAgent)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var response = await SendAsync(client, HttpMethod.Get, "/platform/Group/Index", userAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(Token);
+        html.Should().Contain("/platform/LinkedBoards");
+        html.Should().Contain("Linked Boards");
+        if (userAgent is not null)
+        {
+            html.Should().Contain("platform-group-card-mobile", "the mobile layout must be the one rendered");
+        }
+    }
+
+    [Fact]
+    public async Task MobileIndex_RendersTheMobileLayoutWithItsStylesheetAndCreateForm()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var html = await GetMobileIndexHtmlAsync(client);
+
+        html.Should().Contain("platform-group-card-mobile");
+        html.Should().Contain("platform-linked-boards.mobile.css");
+        html.Should().Contain("Create Set");
+    }
+
+    [Fact]
+    public async Task MobileCreateAndAddBoard_ListsTheBoardInsideABoardRow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        await SeedBoardAsync(60, "Phone Table");
+
+        var create = await MobilePostAsync(client, "/platform/LinkedBoards/Create",
+            ("Name", "Phone Set"), ("BoardType", ((int)BoardType.OneShot).ToString()));
+        create.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        int setId;
+        await using (var context = _factory.Database.CreateContext())
+        {
+            setId = (await context.LinkedBoardSets.SingleAsync(s => s.Name == "Phone Set", Token)).Id;
+        }
+
+        var add = await MobilePostAsync(client, $"/platform/LinkedBoards/AddBoard/{setId}", ("groupId", "60"));
+        add.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+
+        (await GetBoardSetIdAsync(60)).Should().Be(setId);
+        var html = await GetMobileIndexHtmlAsync(client);
+        html.Should().Contain("Phone Set");
+        Regex.IsMatch(html, "linked-set-board-row\".*?Phone Table", RegexOptions.Singleline).Should().BeTrue();
+    }
 }
