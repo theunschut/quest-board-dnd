@@ -15,6 +15,15 @@ public class CalendarViewModel
     // and any future caller inherits the same safe default.
     public List<Event> Events { get; set; } = new();
 
+    // Empty by default for the same reason as Events above: the callers of the shared calendar
+    // partial that build their own model and never populate these render no linked entries and
+    // no linked note, with nothing to remember. They carry the read-only entries and the names
+    // of the other boards in the active board's linked set, and are never merged into the
+    // board's own collections.
+    public List<LinkedQuestEntry> LinkedQuests { get; set; } = [];
+    public List<LinkedEventEntry> LinkedEvents { get; set; } = [];
+    public List<LinkedBoard> LinkedBoards { get; set; } = [];
+
     // Both default empty/false on purpose, for the same reason as Events above: the shared
     // calendar partial is rendered from several places that build their own instance of this
     // model and never set these, so those places carry no runway state and no manager flag
@@ -56,7 +65,8 @@ public class CalendarViewModel
                 Date = date,
                 Day = day,
                 QuestsOnDay = questsOnDay,
-                EventsOnDay = eventsOnDay
+                EventsOnDay = eventsOnDay,
+                Linked = new LinkedDayEntries { Events = GetLinkedEventsForDate(date) }
             });
         }
 
@@ -122,13 +132,29 @@ public class CalendarViewModel
 
     private List<EventOnDay> GetEventsForDate(DateTime date)
     {
-        // This is the single place the stored date type meets the calendar grid's
-        // date-and-time type. No other file may convert between them.
-        var dateOnly = DateOnly.FromDateTime(date);
+        var dateOnly = ToStoredDate(date);
 
         return [.. Events
             .Where(e => e.Date == dateOnly)
             .OrderBy(e => e.StartTime ?? TimeOnly.MinValue)
             .Select(e => new EventOnDay { Event = e })];
     }
+
+    // Linked events sit in their own list so they can never reach the markup that belongs to
+    // the board's own events. All-day events sort first because a missing start time orders as
+    // midnight, then ties fall back to the title.
+    private List<LinkedEventOnDay> GetLinkedEventsForDate(DateTime date)
+    {
+        var dateOnly = ToStoredDate(date);
+
+        return [.. LinkedEvents
+            .Where(e => e.Date == dateOnly)
+            .OrderBy(e => e.StartTime ?? TimeOnly.MinValue)
+            .ThenBy(e => e.Title, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new LinkedEventOnDay { Entry = e })];
+    }
+
+    // This is the single place the stored date type meets the calendar grid's
+    // date-and-time type. No other file may convert between them.
+    private static DateOnly ToStoredDate(DateTime date) => DateOnly.FromDateTime(date);
 }

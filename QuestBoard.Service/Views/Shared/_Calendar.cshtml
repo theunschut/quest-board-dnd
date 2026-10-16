@@ -7,6 +7,13 @@
     var currentQuestId = ViewBag.CurrentQuestId as int?;
 }
 
+@if (isDetailsPage && Model.LinkedBoards.Count > 0)
+{
+    <div class="calendar-linked-note">
+        <i class="fas fa-link me-2" aria-hidden="true"></i>Also showing: @string.Join(", ", Model.LinkedBoards.Select(b => b.Name)) (read-only)
+    </div>
+}
+
 <div class="calendar-grid @(isDetailsPage ? "details-page" : "") details-calendar-container">
     <!-- Calendar Header -->
     <div class="calendar-header">
@@ -27,6 +34,11 @@
                 @if (!day.IsEmpty)
                 {
                     <div class="day-number">@day.Day</div>
+
+                    @if (day.Linked.HasEntries)
+                    {
+                        <span class="linked-day-count" title="@day.Linked.Count entries from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count</span>
+                    }
 
                     @* The day number stays outside this wrapper so it never scrolls out of *@
                     @* view. Both the events block and the quest list share one scrollbar *@
@@ -222,6 +234,13 @@
                                 </div>
                             }
                         </div>
+                    }
+
+                    @* Entries from the other boards in the linked set come last, after the *@
+                    @* board's own entries, through their own partial and model. *@
+                    @if (day.Linked.HasEntries)
+                    {
+                        @await Html.PartialAsync("_LinkedDayEntries", day.Linked)
                     }
                     </div>
                 }

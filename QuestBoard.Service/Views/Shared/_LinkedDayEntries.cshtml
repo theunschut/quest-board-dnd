@@ -1,0 +1,34 @@
+@using Microsoft.AspNetCore.Html
+@model LinkedDayEntries
+@*
+    Form-free, read-only markup for the entries other boards in the linked set place on one day.
+    It takes its own model and never touches the board's own entries. A member of the owning
+    board gets one plain link to that board's ordinary details page; anyone else gets the same
+    content as a non-interactive block with no link, no tab stop and no data attributes. Every
+    value is encoded by Razor, and nothing here carries an element id.
+*@
+<div class="linked-day-entries">
+    @foreach (var eventOnDay in Model.Events)
+    {
+        var entry = eventOnDay.Entry;
+        var cancelled = entry.IsCancelled ? " linked-entry--cancelled" : "";
+        var tooltip = $"{entry.Title} - {entry.BoardName} - {eventOnDay.TimeLabel}" + (entry.IsCancelled ? " - Cancelled" : "");
+        Func<LinkedEventOnDay, IHtmlContent> body = @<text>
+            <span class="linked-entry-title">@item.Entry.Title</span>
+            <span class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.TimeLabel</span>
+            <span class="visually-hidden">@(item.Entry.BoardName). @(item.TimeLabel).@(item.Entry.IsCancelled ? " Cancelled." : "")</span>
+        </text>;
+
+        if (entry.ViewerIsMember)
+        {
+            <a class="linked-entry linked-entry--event@(cancelled) linked-entry--open"
+               href="@Url.Action("Details", "Events", new { id = entry.EventId })"
+               title="@tooltip">@body(eventOnDay)</a>
+        }
+        else
+        {
+            <div class="linked-entry linked-entry--event@(cancelled) linked-entry--static"
+                 title="@tooltip">@body(eventOnDay)</div>
+        }
+    }
+</div>
