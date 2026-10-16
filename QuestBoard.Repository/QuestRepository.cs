@@ -276,6 +276,10 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     }
 
     /// <inheritdoc/>
+    public Task<IList<LinkedQuestEntry>> GetLinkedQuestsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateTime fromInclusive, DateTime toExclusive, CancellationToken token = default)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
     public async Task<IList<Quest>> GetFeedQuestsForUserAsync(
         int userId,
         IReadOnlyCollection<int> oneShotGroupIds,

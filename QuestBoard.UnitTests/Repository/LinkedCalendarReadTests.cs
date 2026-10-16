@@ -253,6 +253,136 @@ public class LinkedCalendarReadTests
         Assert.Empty(result);
     }
 
+    // -------------------------------------------------------------------
+    // Linked quest read
+    // -------------------------------------------------------------------
+
+    private static readonly DateTime FromTime = From.ToDateTime(TimeOnly.MinValue);
+    private static readonly DateTime ToTime = To.ToDateTime(TimeOnly.MinValue);
+
+    private static async Task SeedQuestAsync(
+        string databaseName,
+        int id,
+        int groupId,
+        DateTime[] proposedDates,
+        bool finalized = false,
+        DateTime? finalizedDate = null,
+        bool dmSession = false)
+    {
+        await using var context = CreateContext(databaseName);
+        var quest = new QuestEntity
+        {
+            Id = id,
+            GroupId = groupId,
+            Title = $"Quest {id}",
+            Description = "Description",
+            DungeonMasterId = ViewerId,
+            DungeonMasterSession = dmSession,
+            IsFinalized = finalized,
+            FinalizedDate = finalizedDate
+        };
+        foreach (var date in proposedDates)
+            quest.ProposedDates.Add(new ProposedDateEntity { Date = date });
+
+        context.Quests.Add(quest);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task GetLinkedQuestsForCalendar_PinnedToBoardB_ReturnsOnlyBoardBQuests()
+    {
+        var database = await SeedBoardsAsync();
+        var date = new DateTime(2026, 11, 14, 19, 0, 0);
+        await SeedQuestAsync(database, 1, BoardA, [date]);
+        await SeedQuestAsync(database, 2, BoardB, [date]);
+        await SeedQuestAsync(database, 3, BoardC, [date]);
+
+        await using var context = CreateContext(database);
+        var result = await CreateQuestRepository(context)
+            .GetLinkedQuestsForCalendarAsync([BoardB], FromTime, ToTime, TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(result);
+        Assert.Equal(2, entry.QuestId);
+        Assert.Equal(BoardB, entry.GroupId);
+        Assert.Equal("Quest 2", entry.Title);
+    }
+
+    [Fact]
+    public async Task GetLinkedQuestsForCalendar_BoardBQuest_CarriesProposedDatesDungeonMasterAndSessionFlag()
+    {
+        var database = await SeedBoardsAsync();
+        var first = new DateTime(2026, 11, 14, 19, 0, 0);
+        var second = new DateTime(2026, 11, 21, 19, 0, 0);
+        await SeedQuestAsync(database, 1, BoardB, [first, second], dmSession: true);
+
+        await using var context = CreateContext(database);
+        var result = await CreateQuestRepository(context)
+            .GetLinkedQuestsForCalendarAsync([BoardB], FromTime, ToTime, TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(result);
+        Assert.NotEmpty(entry.ProposedDates);
+        Assert.Equal([first, second], entry.ProposedDates.OrderBy(d => d));
+        Assert.Equal("Viewer", entry.DungeonMasterName);
+        Assert.True(entry.DungeonMasterSession);
+    }
+
+    [Fact]
+    public async Task GetLinkedQuestsForCalendar_ProposedDatesAtWindowEdges_IncludesLowerAndExcludesUpper()
+    {
+        var database = await SeedBoardsAsync();
+        var inside = new DateTime(2026, 11, 20, 18, 0, 0);
+        await SeedQuestAsync(database, 1, BoardB, [FromTime, ToTime, inside, FromTime.AddMinutes(-1)]);
+
+        await using var context = CreateContext(database);
+        var result = await CreateQuestRepository(context)
+            .GetLinkedQuestsForCalendarAsync([BoardB], FromTime, ToTime, TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(result);
+        Assert.Equal([FromTime, inside], entry.ProposedDates.OrderBy(d => d));
+    }
+
+    [Fact]
+    public async Task GetLinkedQuestsForCalendar_QuestWithOnlyDatesOutsideWindow_IsNotReturned()
+    {
+        var database = await SeedBoardsAsync();
+        await SeedQuestAsync(database, 1, BoardB, [ToTime, FromTime.AddDays(-3)]);
+
+        await using var context = CreateContext(database);
+        var result = await CreateQuestRepository(context)
+            .GetLinkedQuestsForCalendarAsync([BoardB], FromTime, ToTime, TestContext.Current.CancellationToken);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetLinkedQuestsForCalendar_FinalizedQuest_CarriesFinalizedStateAndDate()
+    {
+        var database = await SeedBoardsAsync();
+        var finalized = new DateTime(2026, 11, 14, 19, 0, 0);
+        await SeedQuestAsync(database, 1, BoardB, [finalized, new DateTime(2026, 11, 21, 19, 0, 0)], finalized: true, finalizedDate: finalized);
+
+        await using var context = CreateContext(database);
+        var result = await CreateQuestRepository(context)
+            .GetLinkedQuestsForCalendarAsync([BoardB], FromTime, ToTime, TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(result);
+        Assert.True(entry.IsFinalized);
+        Assert.Equal(finalized, entry.FinalizedDate);
+    }
+
+    [Fact]
+    public async Task GetLinkedQuestsForCalendar_EmptyIdCollection_ReturnsEmptyList()
+    {
+        var database = await SeedBoardsAsync();
+        await SeedQuestAsync(database, 1, BoardB, [new DateTime(2026, 11, 14, 19, 0, 0)]);
+
+        await using var context = CreateContext(database);
+        var result = await CreateQuestRepository(context)
+            .GetLinkedQuestsForCalendarAsync([], FromTime, ToTime, TestContext.Current.CancellationToken);
+
+        Assert.Empty(result);
+    }
+
     private sealed class TestActiveGroupContext(int? activeGroupId) : IActiveGroupContext
     {
         public int? ActiveGroupId { get; } = activeGroupId;
