@@ -87,4 +87,24 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
         await dbContext.SaveChangesAsync(token);
         return true;
     }
+
+    /// <inheritdoc/>
+    public Task<IList<LinkedBoardCandidate>> GetUnlinkedBoardsAsync(CancellationToken token = default)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<LinkedBoardCandidate?> GetBoardAsync(int groupId, CancellationToken token = default)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<bool> NameExistsAsync(string name, int? excludingSetId, CancellationToken token = default)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<bool> RenameAsync(int setId, string name, CancellationToken token = default)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteAsync(int setId, CancellationToken token = default)
+        => throw new NotImplementedException();
 }
