@@ -577,6 +577,86 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         html.Should().NotContain("Bravo Campaign Quest Campaignset");
     }
 
+    // The Legend card's markup, from its wrapper to the end of the page.
+    private static string LegendCard(string html)
+    {
+        var start = html.IndexOf("legend-card", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1);
+        return html[start..];
+    }
+
+    [Fact]
+    public async Task Legend_BoardLinkedToAnother_NamesTheLinkedBoardAndExplainsTheDashedEdge()
+    {
+        await SeedThreeBoardsAsync("LegendLinked");
+        await LinkAsync(BoardType.OneShot, BoardA, BoardB);
+        var (client, _) = await CreateViewerAsync("linkedcal_legend", (BoardA, GroupRole.Player));
+
+        var legend = LegendCard(await GetCalendarAsync(client));
+
+        legend.Should().Contain("Linked boards");
+        legend.Should().Contain("Dashed = from a linked board");
+        legend.Should().Contain(BoardBName);
+        legend.Should().Contain("You can open them only if you are a member of that board.");
+        legend.Should().Contain("legend-item linked");
+        legend.Should().NotContain(BoardCName);
+    }
+
+    [Fact]
+    public async Task Legend_BoardInNoSet_HasNoLinkedBoardsBlock()
+    {
+        await SeedThreeBoardsAsync("LegendNoSet");
+        var (client, _) = await CreateViewerAsync("linkedcal_legend_noset", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Legend");
+        html.Should().NotContain("Linked boards");
+        html.Should().NotContain("legend-item linked");
+    }
+
+    [Fact]
+    public async Task Legend_BoardAloneInItsSet_HasNoLinkedBoardsBlock()
+    {
+        await SeedThreeBoardsAsync("LegendAlone");
+        await LinkAsync(BoardType.OneShot, BoardA);
+        var (client, _) = await CreateViewerAsync("linkedcal_legend_alone", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().Contain("Legend");
+        html.Should().NotContain("Linked boards");
+        html.Should().NotContain("legend-item linked");
+    }
+
+    [Fact]
+    public async Task Legend_WithTwoLinkedBoards_ListsBothNamesAlphabetically()
+    {
+        await SeedThreeBoardsAsync("LegendTwo");
+        await SeedBoardAsync(4, "Aardvark Annex Board");
+        await LinkAsync(BoardType.OneShot, BoardA, BoardB, 4);
+        var (client, _) = await CreateViewerAsync("linkedcal_legend_two", (BoardA, GroupRole.Player));
+
+        var legend = LegendCard(await GetCalendarAsync(client));
+
+        var annexAt = legend.IndexOf("Aardvark Annex Board", StringComparison.Ordinal);
+        var bravoAt = legend.IndexOf(BoardBName, StringComparison.Ordinal);
+        annexAt.Should().BeGreaterThan(-1);
+        bravoAt.Should().BeGreaterThan(annexAt);
+    }
+
+    [Fact]
+    public async Task Legend_NeverShowsTheNameOfTheSet()
+    {
+        await SeedThreeBoardsAsync("LegendSetName");
+        await LinkAsync(BoardType.OneShot, BoardA, BoardB);
+        var (client, _) = await CreateViewerAsync("linkedcal_legend_setname", (BoardA, GroupRole.Player));
+
+        var html = await GetCalendarAsync(client);
+
+        html.Should().NotContain("Isolation Set");
+    }
+
     // The linked entries block of one day cell, from its wrapper to the end of the cell.
     private static string LinkedBlock(string cell)
     {

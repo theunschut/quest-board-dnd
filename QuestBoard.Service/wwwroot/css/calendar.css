@@ -472,6 +472,17 @@
         opacity: 0.55;
     }
 
+    .legend-item.linked {
+        background-color: rgba(255, 255, 255, 0.6);
+        border-left: 4px dashed #6c757d;
+    }
+
+/* Long board names wrap inside the narrow legend column instead of being cut off. */
+.legend-board-name {
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
 .legend-card {
     height: fit-content;
 }
