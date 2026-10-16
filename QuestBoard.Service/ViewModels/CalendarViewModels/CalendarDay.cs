@@ -10,4 +10,8 @@ public class CalendarDay
     // Defaults to empty so any caller of the shared calendar partial that never populates
     // events renders nothing here at all.
     public List<EventOnDay> EventsOnDay { get; set; } = [];
+
+    // Defaults to empty so a day with nothing from a linked board, and any caller that never
+    // populates linked entries, renders no linked markup at all.
+    public LinkedDayEntries Linked { get; set; } = new();
 }
