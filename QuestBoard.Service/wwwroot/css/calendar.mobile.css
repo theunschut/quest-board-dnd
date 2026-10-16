@@ -104,3 +104,50 @@
     color: #F4E4BC;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
+
+/* "Also showing" line under the month navigation, naming the boards whose entries share
+   this agenda. Long names wrap instead of truncating. */
+.agenda-linked-note {
+    font-size: 14px;
+    color: #F4E4BC;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+    overflow-wrap: anywhere;
+}
+
+/* Linked entry — a quieter surface than the board's own rows, with a dashed left border so
+   it reads as someone else's entry; the dash colour still carries the status. */
+.agenda-linked-entry {
+    background-color: #454c53;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-left: 4px dashed #6f42c1;
+    cursor: default;
+}
+
+.agenda-linked-entry--proposed {
+    border-left-color: #ffc107;
+}
+
+.agenda-linked-entry--finalized {
+    border-left-color: #28a745;
+}
+
+.agenda-linked-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #F4E4BC;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+.agenda-linked-time,
+.agenda-linked-board {
+    font-size: 14px;
+    color: #D9CDA8;
+}
+
+.agenda-linked-board {
+    overflow-wrap: anywhere;
+    margin-top: 2px;
+}

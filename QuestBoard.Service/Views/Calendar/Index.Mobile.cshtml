@@ -6,7 +6,7 @@
     ViewBag.IsDetailsPage = false;
     var prevMonth = Model.FirstDayOfMonth.AddMonths(-1);
     var nextMonth = Model.FirstDayOfMonth.AddMonths(1);
-    var agendaDays = Model.GetCalendarDays().Where(d => !d.IsEmpty && (d.QuestsOnDay.Any() || d.EventsOnDay.Any())).ToList();
+    var agendaDays = Model.GetCalendarDays().Where(d => !d.IsEmpty && (d.QuestsOnDay.Any() || d.EventsOnDay.Any() || d.Linked.HasEntries)).ToList();
 }
 @section Styles {
     <link href="~/css/calendar.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -29,6 +29,13 @@
             <i class="fas fa-chevron-right"></i>
         </a>
     </div>
+
+    @* Names the other boards whose entries share this agenda. Board names only, never the
+       name of the set, and nothing renders for a board with no linked boards. *@
+    @if (Model.LinkedBoards.Count > 0)
+    {
+        <div class="agenda-linked-note mb-3"><i class="fas fa-link me-2" aria-hidden="true"></i>Also showing: @string.Join(", ", Model.LinkedBoards.Select(b => b.Name))</div>
+    }
 
     <div class="d-grid gap-2 mb-3">
         @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
@@ -112,6 +119,31 @@
                                 @questOnDay.ProposedDate.Date.ToString("HH:mm")
                             </small>
                         </div>
+                    </div>
+                }
+                @* Linked entries come after the board's own: events first, then quests. They are
+                   read-only rows from other boards in the set, and keep the board name visible
+                   as text because there is room for it on a phone. *@
+                @foreach (var eventOnDay in day.Linked.Events)
+                {
+                    var linkedEvent = eventOnDay.Entry;
+                    <div class="agenda-linked-entry agenda-linked-entry--event @(linkedEvent.IsCancelled ? "agenda-linked-entry--cancelled" : "")">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="agenda-linked-title fw-bold"><i class="fas fa-calendar-day me-2" aria-hidden="true"></i>@linkedEvent.Title</span>
+                            <small class="agenda-linked-time flex-shrink-0 ms-2">@eventOnDay.TimeLabel</small>
+                        </div>
+                        <div class="agenda-linked-board"><i class="fas fa-link me-1" aria-hidden="true"></i><span class="fw-semibold">@linkedEvent.BoardName</span></div>
+                    </div>
+                }
+                @foreach (var questOnDay in day.Linked.Quests)
+                {
+                    var linkedQuest = questOnDay.Entry;
+                    <div class="agenda-linked-entry agenda-linked-entry--quest @(questOnDay.IsFinalized ? "agenda-linked-entry--finalized" : "agenda-linked-entry--proposed")">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="agenda-linked-title fw-bold">@linkedQuest.Title</span>
+                            <small class="agenda-linked-time flex-shrink-0 ms-2">@questOnDay.TimeLabel</small>
+                        </div>
+                        <div class="agenda-linked-board"><i class="fas fa-link me-1" aria-hidden="true"></i><span class="fw-semibold">@linkedQuest.BoardName</span> · @linkedQuest.DungeonMasterName</div>
                     </div>
                 }
             </div>
