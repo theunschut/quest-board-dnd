@@ -54,4 +54,13 @@ public interface ILinkedBoardSetRepository
     /// Returns false when the set does not exist.
     /// </summary>
     Task<bool> DeleteAsync(int setId, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns the other boards in the active board's set, each with the viewer's role on it
+    /// (null when the viewer is not a member). Read fresh on every call. Returns no boards when
+    /// the active board is in no set, is alone in its set, or its type differs from the set's,
+    /// and a board whose type differs from the set's is left out. Being a member here is the
+    /// same membership the deep-link resolver checks; there is no site-admin shortcut.
+    /// </summary>
+    Task<ViewerLinkedBoards> GetLinkedBoardsForViewerAsync(int activeGroupId, int viewerUserId, CancellationToken token = default);
 }

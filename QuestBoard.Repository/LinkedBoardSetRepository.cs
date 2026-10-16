@@ -172,4 +172,55 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
         await dbContext.SaveChangesAsync(token);
         return true;
     }
+
+    /// <inheritdoc/>
+    public async Task<ViewerLinkedBoards> GetLinkedBoardsForViewerAsync(int activeGroupId, int viewerUserId, CancellationToken token = default)
+    {
+        var active = await dbContext.Groups
+            .AsNoTracking()
+            .Where(g => g.Id == activeGroupId)
+            .Select(g => new { g.LinkedBoardSetId, g.BoardType })
+            .FirstOrDefaultAsync(token);
+        if (active?.LinkedBoardSetId == null) return ViewerLinkedBoards.Empty;
+
+        var setId = active.LinkedBoardSetId.Value;
+        var setType = await dbContext.LinkedBoardSets
+            .AsNoTracking()
+            .Where(s => s.Id == setId)
+            .Select(s => (int?)s.BoardType)
+            .FirstOrDefaultAsync(token);
+        if (setType == null || setType.Value != active.BoardType) return ViewerLinkedBoards.Empty;
+
+        var type = setType.Value;
+
+        // Membership here is the same UserGroups row the deep-link resolver checks, which is why
+        // a link that is rendered always works when followed.
+        var rows = await dbContext.Groups
+            .AsNoTracking()
+            .Where(g => g.LinkedBoardSetId == setId && g.Id != activeGroupId && g.BoardType == type)
+            .OrderBy(g => g.Name)
+            .Select(g => new
+            {
+                g.Id,
+                g.Name,
+                Role = g.UserGroups
+                    .Where(ug => ug.UserId == viewerUserId)
+                    .Select(ug => (int?)ug.GroupRole)
+                    .FirstOrDefault()
+            })
+            .ToListAsync(token);
+
+        return new ViewerLinkedBoards
+        {
+            SetBoardType = (BoardType)type,
+            Boards = rows
+                .Select(r => new LinkedBoard
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    ViewerRole = r.Role == null ? null : (GroupRole)r.Role.Value
+                })
+                .ToList()
+        };
+    }
 }
