@@ -72,16 +72,67 @@ internal class LinkedBoardSetService(ILinkedBoardSetRepository repository) : ILi
     }
 
     /// <inheritdoc/>
-    public Task<LinkedBoardSetOutcome> RenameAsync(int setId, string name, CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<LinkedBoardSetOutcome> RenameAsync(int setId, string name, CancellationToken token = default)
+    {
+        var trimmed = NormalizeName(name);
+        if (trimmed == null)
+        {
+            return new LinkedBoardSetOutcome(LinkedBoardSetResult.InvalidName);
+        }
+
+        var set = await repository.GetByIdAsync(setId, token);
+        if (set == null)
+        {
+            return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound);
+        }
+
+        if (await repository.NameExistsAsync(trimmed, setId, token))
+        {
+            return new LinkedBoardSetOutcome(LinkedBoardSetResult.DuplicateName, trimmed);
+        }
+
+        // False covers a set deleted meanwhile and the unique index rejecting a concurrent rename.
+        return await repository.RenameAsync(setId, trimmed, token)
+            ? new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, trimmed)
+            : new LinkedBoardSetOutcome(LinkedBoardSetResult.DuplicateName, trimmed);
+    }
 
     /// <inheritdoc/>
-    public Task<LinkedBoardSetOutcome> RemoveBoardAsync(int setId, int groupId, CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<LinkedBoardSetOutcome> RemoveBoardAsync(int setId, int groupId, CancellationToken token = default)
+    {
+        var set = await repository.GetByIdAsync(setId, token);
+        var board = await repository.GetBoardAsync(groupId, token);
+        if (set == null || board == null)
+        {
+            return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound);
+        }
+
+        if (board.LinkedBoardSetId != setId)
+        {
+            return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotInSet, set.Name, board.Name);
+        }
+
+        if (!await repository.AssignBoardAsync(groupId, null, token))
+        {
+            return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound);
+        }
+
+        return new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, set.Name, board.Name);
+    }
 
     /// <inheritdoc/>
-    public Task<LinkedBoardSetOutcome> DeleteAsync(int setId, CancellationToken token = default)
-        => throw new NotImplementedException();
+    public async Task<LinkedBoardSetOutcome> DeleteAsync(int setId, CancellationToken token = default)
+    {
+        var set = await repository.GetByIdAsync(setId, token);
+        if (set == null)
+        {
+            return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound);
+        }
+
+        return await repository.DeleteAsync(setId, token)
+            ? new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, set.Name)
+            : new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound);
+    }
 
     private static string? NormalizeName(string? name)
     {
