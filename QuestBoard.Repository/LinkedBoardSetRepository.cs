@@ -1,0 +1,90 @@
+using Microsoft.EntityFrameworkCore;
+using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
+using QuestBoard.Repository.Entities;
+
+namespace QuestBoard.Repository;
+
+// Groups and LinkedBoardSets carry no tenant query filter, so nothing here needs to bypass one.
+// Reads project straight to domain models and writes load a tracked row, change it and save
+// through the change tracker.
+internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : ILinkedBoardSetRepository
+{
+    /// <inheritdoc/>
+    public async Task<IList<LinkedBoardSet>> GetAllAsync(CancellationToken token = default)
+    {
+        return await dbContext.LinkedBoardSets
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .Select(s => new LinkedBoardSet
+            {
+                Id = s.Id,
+                Name = s.Name,
+                BoardType = (BoardType)s.BoardType,
+                CreatedAt = s.CreatedAt,
+                Boards = s.Boards
+                    .OrderBy(b => b.Name)
+                    .Select(b => new LinkedBoardSetBoard { Id = b.Id, Name = b.Name })
+                    .ToList()
+            })
+            .ToListAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LinkedBoardSet?> GetByIdAsync(int setId, CancellationToken token = default)
+    {
+        return await dbContext.LinkedBoardSets
+            .AsNoTracking()
+            .Where(s => s.Id == setId)
+            .Select(s => new LinkedBoardSet
+            {
+                Id = s.Id,
+                Name = s.Name,
+                BoardType = (BoardType)s.BoardType,
+                CreatedAt = s.CreatedAt,
+                Boards = s.Boards
+                    .OrderBy(b => b.Name)
+                    .Select(b => new LinkedBoardSetBoard { Id = b.Id, Name = b.Name })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<int?> CreateAsync(string name, BoardType boardType, CancellationToken token = default)
+    {
+        var entity = new LinkedBoardSetEntity
+        {
+            Name = name,
+            BoardType = (int)boardType,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        dbContext.LinkedBoardSets.Add(entity);
+        try
+        {
+            await dbContext.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException)
+        {
+            // The unique index on the name rejected a duplicate that slipped past the pre-check.
+            // Removing the still-pending row stops the tracker retrying it on the next save.
+            dbContext.LinkedBoardSets.Remove(entity);
+            return null;
+        }
+
+        return entity.Id;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> AssignBoardAsync(int groupId, int? setId, CancellationToken token = default)
+    {
+        var group = await dbContext.Groups.FirstOrDefaultAsync(g => g.Id == groupId, token);
+        if (group == null) return false;
+
+        group.LinkedBoardSetId = setId;
+        await dbContext.SaveChangesAsync(token);
+        return true;
+    }
+}
