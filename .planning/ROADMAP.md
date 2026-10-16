@@ -1237,7 +1237,7 @@ Plans:
 **Goal:** A super admin can link two or more boards of the same board type in the Platform area. On every linked board, `/calendar` then shows the events and quests of all boards in the link as well as its own, each marked with the board it belongs to, so a campaign split across boards for the same group of players never gets a date booked twice. Unlinking restores each board to its own calendar. Boards that are not linked behave exactly as they do today.
 **Requirements**: TBD
 **Depends on:** Phase 87. Calendar links to an entry on another board go through its cross-board deep-link switch. Independent of Phase 90.
-**Plans:** 4/10 plans executed
+**Plans:** 6/10 plans executed
 
 **Origin:** raised by the operator on 2026-10-15. The same group of players runs several campaigns as separate boards. The operator wants to start a new one-shot board for another campaign and still see its quests and events on the existing board's calendar, so the two never plan the same date.
 
@@ -1277,8 +1277,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 91-05-PLAN.md — Linked boards' quests and events on desktop /calendar: re-checked read-only overlay service, view model and partial (W3)
-- [ ] 91-06-PLAN.md — Linked Boards mobile twin and Group index entry buttons (W3)
+- [x] 91-05-PLAN.md — Linked boards' quests and events on desktop /calendar: re-checked read-only overlay service, view model and partial (W3)
+- [x] 91-06-PLAN.md — Linked Boards mobile twin and Group index entry buttons (W3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
