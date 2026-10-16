@@ -50,6 +50,33 @@ public class LinkedBoardsController(ILinkedBoardSetService linkedBoardSetService
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Rename(int id, string name)
+    {
+        var outcome = await linkedBoardSetService.RenameAsync(id, name);
+        SetToast(outcome, $"Renamed the set to \"{outcome.SetName}\".");
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveBoard(int id, int groupId)
+    {
+        var outcome = await linkedBoardSetService.RemoveBoardAsync(id, groupId);
+        SetToast(outcome, $"Removed \"{outcome.BoardName}\" from \"{outcome.SetName}\".");
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var outcome = await linkedBoardSetService.DeleteAsync(id);
+        SetToast(outcome, $"Deleted the linked set \"{outcome.SetName}\". Its boards keep their own calendars.");
+        return RedirectToAction(nameof(Index));
+    }
+
     private const string InvalidNameMessage = "Enter a set name of up to 100 characters.";
     private const string InvalidBoardTypeMessage = "Choose the board type for the set.";
 
@@ -74,6 +101,7 @@ public class LinkedBoardsController(ILinkedBoardSetService linkedBoardSetService
             $"\"{outcome.BoardName}\" is a {TypeLabel(outcome.BoardType)} board, but this set links {TypeLabel(outcome.SetBoardType)} boards. Only boards of the same type can be linked.",
         LinkedBoardSetResult.AlreadyLinked =>
             $"\"{outcome.BoardName}\" is already in a linked set. A board can be in only one set.",
+        // NotFound and NotInSet: the set or board changed or was removed since the page was loaded.
         _ => "That set or board no longer exists."
     };
 

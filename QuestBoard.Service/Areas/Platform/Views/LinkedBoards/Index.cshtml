@@ -59,6 +59,10 @@ else
     {
         var typeLabel = set.BoardType == BoardType.Campaign ? "Campaign" : "One-Shot";
         var candidates = Model.UnlinkedBoards.Where(b => b.BoardType == set.BoardType).ToList();
+        // Names are stored text, so each confirm message is serialized to a JavaScript string
+        // literal here and the finished handler is HTML-encoded by Razor when it is written.
+        var deleteSetMessage = $"Delete the set \"{set.Name}\"? Every board in it goes back to showing only its own calendar. Boards, quests and events are not deleted.";
+        var deleteSetHandler = $"return confirm({Json.Serialize(deleteSetMessage)});";
 
         <div class="card modern-card mb-3">
             <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
@@ -85,6 +89,16 @@ else
                 </div>
             </div>
             <div class="card-body modern-card-body">
+                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Rename" asp-route-id="@set.Id" method="post" class="mb-3">
+                    <label for="rename-set-@set.Id" class="form-label">Set name</label>
+                    <div class="input-group">
+                        <input id="rename-set-@set.Id" name="name" type="text" class="form-control" value="@set.Name" required maxlength="100" />
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-edit me-2"></i>Rename Set
+                        </button>
+                    </div>
+                </form>
+
                 @if (set.Boards.Count == 0)
                 {
                     <p class="text-muted">No boards in this set yet.</p>
@@ -106,9 +120,18 @@ else
                             <tbody>
                                 @foreach (var board in set.Boards)
                                 {
+                                    var removeBoardMessage = $"Remove \"{board.Name}\" from \"{set.Name}\"? Its calendar stops showing the other boards, and theirs stop showing its entries.";
+                                    var removeBoardHandler = $"return confirm({Json.Serialize(removeBoardMessage)});";
                                     <tr>
                                         <td>@board.Name</td>
-                                        <td class="text-end"></td>
+                                        <td class="text-end">
+                                            <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="RemoveBoard" asp-route-id="@set.Id" method="post" class="d-inline" onsubmit="@removeBoardHandler">
+                                                <input type="hidden" name="groupId" value="@board.Id" />
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-link-slash me-2"></i>Remove Board
+                                                </button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -135,6 +158,15 @@ else
                         <div class="form-text">No unlinked @typeLabel boards are available.</div>
                     }
                 </form>
+
+                <hr>
+                <div class="d-flex justify-content-end">
+                    <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Delete" asp-route-id="@set.Id" method="post" onsubmit="@deleteSetHandler">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-2"></i>Delete Set
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     }
