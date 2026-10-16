@@ -31,4 +31,28 @@
                  title="@tooltip">@body(eventOnDay)</div>
         }
     }
+
+    @foreach (var questOnDay in Model.Quests)
+    {
+        var entry = questOnDay.Entry;
+        var status = questOnDay.IsFinalized ? "finalized" : "proposed";
+        var tooltip = $"{entry.Title} - {entry.BoardName} - {entry.DungeonMasterName} - {questOnDay.TimeLabel}";
+        Func<LinkedQuestOnDay, IHtmlContent> body = @<text>
+            <span class="linked-entry-title">@item.Entry.Title</span>
+            <span class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.Entry.DungeonMasterName · @item.TimeLabel</span>
+            <span class="visually-hidden">@(item.Entry.BoardName). DM @(item.Entry.DungeonMasterName). @(item.TimeLabel). @(item.IsFinalized ? "Finalized." : "Proposed.")</span>
+        </text>;
+
+        if (entry.ViewerIsMember)
+        {
+            <a class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--open"
+               href="@Url.Action("Details", "Quest", new { id = entry.QuestId })"
+               title="@tooltip">@body(questOnDay)</a>
+        }
+        else
+        {
+            <div class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--static"
+                 title="@tooltip">@body(questOnDay)</div>
+        }
+    }
 </div>

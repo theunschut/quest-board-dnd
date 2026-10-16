@@ -444,7 +444,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
 
         var cell = DayCell(html, 10);
         cell.Should().Contain("Bravo Detail Crypt Run - Linked Board Bravo - Dungeon Master Dana - 19:00");
-        cell.Should().Contain("Linked Board Bravo &#xB7; Dungeon Master Dana &#xB7; 19:00");
+        cell.Should().Contain("Linked Board Bravo · Dungeon Master Dana · 19:00");
         cell.Should().Contain("Proposed.");
         html.Should().NotContain($"data-quest-id=\"{questId}\"");
         var block = LinkedBlock(cell);

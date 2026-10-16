@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 
@@ -61,11 +62,58 @@ internal class LinkedCalendarService(
             entry.ViewerIsMember = board.ViewerIsMember;
         }
 
+        List<LinkedQuestEntry> quests = linked.SetBoardType == BoardType.Campaign
+            ? []
+            : await GetVisibleQuestsAsync(boardsById, linkedIds, viewerIsSuperAdmin, fromInclusive, toExclusive, groupId, token);
+
         return new LinkedCalendarData
         {
             Boards = boards,
             Events = events,
-            Quests = []
+            Quests = quests
         };
+    }
+
+    // A campaign set is an events-only surface, exactly like a campaign board's own calendar, so
+    // its quests are never fetched rather than fetched and hidden; the caller skips this method.
+    private async Task<List<LinkedQuestEntry>> GetVisibleQuestsAsync(
+        Dictionary<int, LinkedBoard> boardsById,
+        List<int> linkedIds,
+        bool viewerIsSuperAdmin,
+        DateTime fromInclusive,
+        DateTime toExclusive,
+        int activeGroupId,
+        CancellationToken token)
+    {
+        var fetchedQuests = await questRepository.GetLinkedQuestsForCalendarAsync(
+            linkedIds, fromInclusive, toExclusive, token);
+
+        // Same reasoning as the event check above: both layers read the same linkedIds.
+        var quests = fetchedQuests.Where(q => boardsById.ContainsKey(q.GroupId)).ToList();
+        if (quests.Count != fetchedQuests.Count)
+        {
+            logger.LogError(
+                "Linked calendar dropped {DroppedCount} of {FetchedCount} quest row(s) outside the linked set of board {ActiveGroupId}",
+                fetchedQuests.Count - quests.Count, fetchedQuests.Count, activeGroupId);
+        }
+
+        // A DM-only session is visible only to a DungeonMaster or Admin of the board that owns
+        // it, or to a site admin (who counts as Admin). The role is the viewer's role on the
+        // owning board, not on the board being viewed, so a DungeonMaster of the linked board
+        // who is only a player here still sees the linked board's sessions.
+        var visible = quests
+            .Where(q => !q.DungeonMasterSession
+                || viewerIsSuperAdmin
+                || boardsById[q.GroupId].ViewerRole is GroupRole.DungeonMaster or GroupRole.Admin)
+            .ToList();
+
+        foreach (var entry in visible)
+        {
+            var board = boardsById[entry.GroupId];
+            entry.BoardName = board.Name;
+            entry.ViewerIsMember = board.ViewerIsMember;
+        }
+
+        return visible;
     }
 }

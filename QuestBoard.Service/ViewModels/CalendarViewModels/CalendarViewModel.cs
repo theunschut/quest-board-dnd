@@ -66,7 +66,11 @@ public class CalendarViewModel
                 Day = day,
                 QuestsOnDay = questsOnDay,
                 EventsOnDay = eventsOnDay,
-                Linked = new LinkedDayEntries { Events = GetLinkedEventsForDate(date) }
+                Linked = new LinkedDayEntries
+                {
+                    Events = GetLinkedEventsForDate(date),
+                    Quests = GetLinkedQuestsForDate(date)
+                }
             });
         }
 
@@ -138,6 +142,42 @@ public class CalendarViewModel
             .Where(e => e.Date == dateOnly)
             .OrderBy(e => e.StartTime ?? TimeOnly.MinValue)
             .Select(e => new EventOnDay { Event = e })];
+    }
+
+    // Follows the same placement rules as the board's own quests, so a linked quest never shows
+    // on a day an own quest of the same shape would not: a finalized quest appears only on its
+    // finalized day and only when a proposed date exists that day, and an open quest appears
+    // once per proposed date on the day.
+    private List<LinkedQuestOnDay> GetLinkedQuestsForDate(DateTime date)
+    {
+        var questsOnDay = new List<LinkedQuestOnDay>();
+
+        foreach (var quest in LinkedQuests)
+        {
+            if (quest.IsFinalized)
+            {
+                if (quest.FinalizedDate?.Date == date.Date)
+                {
+                    var chosen = quest.ProposedDates.Where(pd => pd.Date == date.Date).ToList();
+
+                    if (chosen.Count > 0)
+                    {
+                        questsOnDay.Add(new LinkedQuestOnDay { Entry = quest, When = chosen[0], IsFinalized = true });
+                    }
+                }
+            }
+            else
+            {
+                foreach (var proposed in quest.ProposedDates.Where(pd => pd.Date == date.Date))
+                {
+                    questsOnDay.Add(new LinkedQuestOnDay { Entry = quest, When = proposed, IsFinalized = false });
+                }
+            }
+        }
+
+        return [.. questsOnDay
+            .OrderBy(q => q.When.TimeOfDay)
+            .ThenBy(q => q.Entry.Title, StringComparer.OrdinalIgnoreCase)];
     }
 
     // Linked events sit in their own list so they can never reach the markup that belongs to
