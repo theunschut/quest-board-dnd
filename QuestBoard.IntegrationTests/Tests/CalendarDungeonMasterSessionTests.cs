@@ -131,4 +131,104 @@ public class CalendarDungeonMasterSessionTests(WebApplicationFactoryBase factory
         html.Should().Contain(openTitle);
         html.Should().Contain(dmOnlyTitle);
     }
+
+    // Seeds two open quests with a proposed date on the same day, so both land on the same
+    // calendar month: an ordinary one and a DM-only one. Open, not finalized, because a
+    // finalized quest's Details page never renders the calendar.
+    private async Task<(int OpenId, string OpenTitle, int DmOnlyId, string DmOnlyTitle)> SeedOpenQuestsAsync(string suffix)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+
+        var date = DateTime.Today.AddDays(10);
+        var openTitle = $"OpenDetailsQuest{suffix}";
+        var dmOnlyTitle = $"DmOnlyDetailsQuest{suffix}";
+
+        var dm = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, $"detailsdm{suffix}", $"detailsdm{suffix}@test.com");
+
+        var open = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, openTitle, "Ordinary open quest");
+        var dmOnly = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, dmOnlyTitle, "DM-only open quest", dungeonMasterSession: true);
+
+        await TestDataHelper.CreateProposedDateAsync(factory.Services, open.Id, date);
+        await TestDataHelper.CreateProposedDateAsync(factory.Services, dmOnly.Id, date);
+
+        return (open.Id, openTitle, dmOnly.Id, dmOnlyTitle);
+    }
+
+    [Fact]
+    public async Task QuestDetails_PlayerViewer_DoesNotSeeOtherDmOnlySessionOnCalendar()
+    {
+        var (openId, openTitle, _, dmOnlyTitle) = await SeedOpenQuestsAsync("PlayerDesktop");
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailsviewPlayerDesktop", "detailsviewPlayerDesktop@test.com", roles: ["Player"]);
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Quest/Details/{openId}", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(openTitle);
+        html.Should().NotContain(dmOnlyTitle);
+    }
+
+    [Fact]
+    public async Task QuestDetails_PlayerViewer_Mobile_DoesNotSeeOtherDmOnlySession()
+    {
+        var (openId, openTitle, _, dmOnlyTitle) = await SeedOpenQuestsAsync("PlayerMobile");
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailsviewPlayerMobile", "detailsviewPlayerMobile@test.com", roles: ["Player"]);
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Quest/Details/{openId}", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(openTitle);
+        html.Should().NotContain(dmOnlyTitle);
+    }
+
+    [Fact]
+    public async Task QuestDetails_DungeonMasterViewer_SeesOtherDmOnlySessionOnCalendar()
+    {
+        var (openId, openTitle, _, dmOnlyTitle) = await SeedOpenQuestsAsync("DmDesktop");
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailsviewDmDesktop", "detailsviewDmDesktop@test.com", roles: ["DungeonMaster"]);
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Quest/Details/{openId}", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(openTitle);
+        html.Should().Contain(dmOnlyTitle);
+    }
+
+    [Fact]
+    public async Task QuestDetails_PlayerOpensDmOnlyQuestByUrl_DesktopCalendarKeepsItsOwnDates()
+    {
+        var (_, _, dmOnlyId, dmOnlyTitle) = await SeedOpenQuestsAsync("OwnDesktop");
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailsviewOwnDesktop", "detailsviewOwnDesktop@test.com", roles: ["Player"]);
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Quest/Details/{dmOnlyId}", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(dmOnlyTitle);
+        html.Should().Contain("current-quest");
+    }
+
+    [Fact]
+    public async Task QuestDetails_PlayerOpensDmOnlyQuestByUrl_MobileCalendarKeepsItsOwnDates()
+    {
+        var (_, _, dmOnlyId, dmOnlyTitle) = await SeedOpenQuestsAsync("OwnMobile");
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailsviewOwnMobile", "detailsviewOwnMobile@test.com", roles: ["Player"]);
+
+        var (response, html) = await GetWithUserAgentAsync(
+            $"/Quest/Details/{dmOnlyId}", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(dmOnlyTitle);
+        html.Should().Contain("calendar-date-entry-mobile");
+    }
 }

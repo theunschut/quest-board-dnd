@@ -352,6 +352,14 @@ public class QuestController(
         var allQuests = await questService.GetQuestsForCalendarAsync(
             viewerRole is GroupRole.Admin or GroupRole.DungeonMaster, token);
 
+        // The page's own quest is always on its own calendar, even when the viewer's tier hides
+        // it elsewhere: opening a DM-only quest's page by URL is handled separately and must
+        // not change here.
+        if (allQuests.All(q => q.Id != quest.Id))
+        {
+            allQuests = [.. allQuests, quest];
+        }
+
         // Get unique months that have proposed dates for this quest
         var monthsWithProposedDates = quest.ProposedDates
             .Select(pd => new { pd.Date.Year, pd.Date.Month })
