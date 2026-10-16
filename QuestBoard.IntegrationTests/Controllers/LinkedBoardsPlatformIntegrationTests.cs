@@ -609,4 +609,120 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         html.Should().Contain("Phone Set");
         Regex.IsMatch(html, "linked-set-board-row\".*?Phone Table", RegexOptions.Singleline).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task MobileIndex_WhenNoSetsExist_ShowsTheEmptyState()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var html = await GetMobileIndexHtmlAsync(client);
+
+        html.Should().Contain("No linked sets yet.");
+        html.Should().Contain("Create a set above, then add boards of the same type to share their calendars.");
+    }
+
+    [Fact]
+    public async Task MobileIndex_ForAOneBoardSet_ShowsInactiveAndTheNote()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var setId = await SeedSetAsync("Lonely Set");
+        await SeedBoardAsync(61, "Lonely Table", linkedBoardSetId: setId);
+
+        var html = await GetMobileIndexHtmlAsync(client);
+
+        html.Should().Contain("badge bg-secondary\">Inactive");
+        html.Should().Contain("Inactive: add at least one more board to share calendars.");
+    }
+
+    [Fact]
+    public async Task MobileIndex_ForAnEmptySet_ShowsTheEmptySetNoteAndInactive()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        await SeedSetAsync("Hollow Set");
+
+        var html = await GetMobileIndexHtmlAsync(client);
+
+        html.Should().Contain("No boards in this set yet.");
+        html.Should().Contain("badge bg-secondary\">Inactive");
+    }
+
+    [Fact]
+    public async Task MobileAddBoardPicker_WhenOnlyOtherTypeBoardsAreUnlinked_DisablesTheControlsAndSaysSo()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var setId = await SeedSetAsync("Campaign Set", BoardType.Campaign);
+        await SeedBoardAsync(62, "Only One-Shot Board", BoardType.OneShot);
+
+        var html = await GetMobileIndexHtmlAsync(client);
+
+        html.Should().Contain("No unlinked Campaign boards are available.");
+        var select = Regex.Match(html, $"<select id=\"add-board-{setId}\"[^>]*>");
+        select.Value.Should().Contain("disabled");
+        Regex.Match(html, $"<select id=\"add-board-{setId}\".*?</select>", RegexOptions.Singleline)
+            .Value.Should().NotContain("Only One-Shot Board");
+    }
+
+    [Fact]
+    public async Task MobileIndex_ForATwoBoardSet_RendersARowAndRemoveFormPerBoard()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var setId = await SeedSetAsync("Pair Set");
+        await SeedBoardAsync(63, "First Phone Table", linkedBoardSetId: setId);
+        await SeedBoardAsync(64, "Second Phone Table", linkedBoardSetId: setId);
+
+        var html = await GetMobileIndexHtmlAsync(client);
+
+        Regex.Matches(html, "class=\"linked-set-board-row\"").Should().HaveCount(2);
+        Regex.Matches(html, $"action=\"/platform/LinkedBoards/RemoveBoard/{setId}\"").Should().HaveCount(2);
+        html.Should().Contain("badge bg-success\">Active");
+    }
+
+    [Fact]
+    public async Task MobileConfirmPrompts_EscapeQuotesAndApostrophesInNamesForJavaScript()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        const string trickyName = "O'Brien \"Q\"";
+        var setId = await SeedSetAsync(trickyName);
+        await SeedBoardAsync(65, trickyName, linkedBoardSetId: setId);
+
+        var html = await GetMobileIndexHtmlAsync(client);
+
+        html.Should().NotContain("O'Brien", "every name is HTML-encoded wherever it is written");
+        var handlers = Regex.Matches(html, "onsubmit=\"([^\"]*)\"")
+            .Select(m => WebUtility.HtmlDecode(m.Groups[1].Value))
+            .Where(h => h.Contains("confirm("))
+            .ToList();
+        handlers.Should().HaveCount(2);
+        foreach (var handler in handlers)
+        {
+            handler.Should().StartWith("return confirm(\"").And.EndWith("\");");
+            handler.Should().Contain("O\\u0027Brien");
+            handler.Should().Contain("\\u0022Q\\u0022");
+            handler.Should().NotContain("O'Brien");
+        }
+    }
+
+    [Fact]
+    public async Task MobileRemoveBoard_LeavesTheSetShownAsInactive()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var setId = await SeedSetAsync("Shrinking Set");
+        await SeedBoardAsync(66, "Stays Phone Table", linkedBoardSetId: setId);
+        await SeedBoardAsync(67, "Leaves Phone Table", linkedBoardSetId: setId);
+
+        var response = await MobilePostAsync(client, $"/platform/LinkedBoards/RemoveBoard/{setId}", ("groupId", "67"));
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        (await GetBoardSetIdAsync(67)).Should().BeNull();
+        var html = await GetMobileIndexHtmlAsync(client);
+        html.Should().Contain("badge bg-secondary\">Inactive");
+        html.Should().Contain("Inactive: add at least one more board to share calendars.");
+    }
 }

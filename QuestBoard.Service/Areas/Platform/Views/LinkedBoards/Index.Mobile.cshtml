@@ -53,6 +53,10 @@
         {
             var typeLabel = set.BoardType == BoardType.Campaign ? "Campaign" : "One-Shot";
             var candidates = Model.UnlinkedBoards.Where(b => b.BoardType == set.BoardType).ToList();
+            // Names are stored text, so each confirm message is serialized to a JavaScript string
+            // literal here and the finished handler is HTML-encoded by Razor when it is written.
+            var deleteSetMessage = $"Delete the set \"{set.Name}\"? Every board in it goes back to showing only its own calendar. Boards, quests and events are not deleted.";
+            var deleteSetHandler = $"return confirm({Json.Serialize(deleteSetMessage)});";
 
             <div class="group-card-mobile mb-3">
                 <strong class="parchment-text">@set.Name</strong>
@@ -75,6 +79,16 @@
                     }
                 </div>
 
+                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Rename" asp-route-id="@set.Id" method="post" class="mt-2 mb-2">
+                    <label for="rename-set-@set.Id" class="form-label">Set name</label>
+                    <div class="input-group">
+                        <input id="rename-set-@set.Id" name="name" type="text" class="form-control" value="@set.Name" required maxlength="100" />
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-edit me-2"></i>Rename Set
+                        </button>
+                    </div>
+                </form>
+
                 @if (set.Boards.Count == 0)
                 {
                     <p class="text-muted mt-2 mb-2">No boards in this set yet.</p>
@@ -88,8 +102,16 @@
                     <div class="mt-2">
                         @foreach (var board in set.Boards)
                         {
+                            var removeBoardMessage = $"Remove \"{board.Name}\" from \"{set.Name}\"? Its calendar stops showing the other boards, and theirs stop showing its entries.";
+                            var removeBoardHandler = $"return confirm({Json.Serialize(removeBoardMessage)});";
                             <div class="linked-set-board-row">
                                 <span class="linked-set-board-name parchment-text">@board.Name</span>
+                                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="RemoveBoard" asp-route-id="@set.Id" method="post" onsubmit="@removeBoardHandler">
+                                    <input type="hidden" name="groupId" value="@board.Id" />
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-link-slash me-2"></i>Remove Board
+                                    </button>
+                                </form>
                             </div>
                         }
                     </div>
@@ -110,6 +132,12 @@
                     }
                     <button type="submit" class="btn btn-success w-100" disabled="@(candidates.Count == 0)">
                         <i class="fas fa-plus me-2"></i>Add Board
+                    </button>
+                </form>
+
+                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Delete" asp-route-id="@set.Id" method="post" onsubmit="@deleteSetHandler">
+                    <button type="submit" class="btn btn-danger w-100 mt-2">
+                        <i class="fas fa-trash me-2"></i>Delete Set
                     </button>
                 </form>
             </div>
