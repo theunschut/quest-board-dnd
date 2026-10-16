@@ -1,0 +1,36 @@
+@model LinkedDayEntries
+@*
+    Read-only lines that sit inside the date form. They name what the other boards in the linked
+    set have on one of this quest's proposed dates, and take their own model so nothing here
+    can reach the markup that belongs to the quest's own dates. A member of the owning board
+    gets one plain link to that board's ordinary details page; anyone else gets plain text.
+    Every value is encoded by Razor.
+*@
+@foreach (var eventOnDay in Model.Events)
+{
+    var entry = eventOnDay.Entry;
+    <div class="also-that-day@(entry.IsCancelled ? " also-that-day--cancelled" : "")">
+        <i class="fas fa-link me-1" aria-hidden="true"></i>Also that day: <strong class="also-that-day-board">@entry.BoardName</strong> — @if (entry.ViewerIsMember)
+        {
+            <a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = entry.EventId })">@entry.Title</a>
+        }
+        else
+        {
+            <text>@entry.Title</text>
+        }, @eventOnDay.TimeLabel<span class="visually-hidden">@(entry.IsCancelled ? " Cancelled." : "")</span>
+    </div>
+}
+@foreach (var questOnDay in Model.Quests)
+{
+    var entry = questOnDay.Entry;
+    <div class="also-that-day">
+        <i class="fas fa-link me-1" aria-hidden="true"></i>Also that day: <strong class="also-that-day-board">@entry.BoardName</strong> — @if (entry.ViewerIsMember)
+        {
+            <a class="row-nav-link" href="@Url.Action("Details", "Quest", new { id = entry.QuestId })">@entry.Title</a>
+        }
+        else
+        {
+            <text>@entry.Title</text>
+        }, @questOnDay.TimeLabel<span class="visually-hidden">@(questOnDay.IsFinalized ? " Finalized." : " Proposed.")</span>
+    </div>
+}
