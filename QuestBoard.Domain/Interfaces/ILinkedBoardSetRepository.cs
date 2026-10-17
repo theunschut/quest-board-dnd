@@ -18,15 +18,26 @@ public interface ILinkedBoardSetRepository
 
     /// <summary>
     /// Creates an empty set of the given board type and returns its id, or null when the name is
-    /// already taken.
+    /// already taken. Any other failure to save is thrown, not reported as a taken name.
     /// </summary>
     Task<int?> CreateAsync(string name, BoardType boardType, CancellationToken token = default);
 
     /// <summary>
-    /// Puts a board into a set, or takes it out of its set when <paramref name="setId"/> is null.
-    /// Returns false when the board does not exist.
+    /// Puts a board that is in no set into a set. The write only lands if the board is still in no
+    /// set, so a board that another change put into a set meanwhile is never moved out of it.
+    /// Returns <see cref="LinkedBoardSetResult.AlreadyLinked"/> when the board is in a set,
+    /// <see cref="LinkedBoardSetResult.NotFound"/> when the board or the set does not exist, and
+    /// <see cref="LinkedBoardSetResult.Success"/> otherwise. It does not check board types.
     /// </summary>
-    Task<bool> AssignBoardAsync(int groupId, int? setId, CancellationToken token = default);
+    Task<LinkedBoardSetResult> AddBoardAsync(int setId, int groupId, CancellationToken token = default);
+
+    /// <summary>
+    /// Takes a board out of a set. The write only lands if the board is still in that set.
+    /// Returns <see cref="LinkedBoardSetResult.NotInSet"/> when the board is not in the set,
+    /// <see cref="LinkedBoardSetResult.NotFound"/> when the board does not exist, and
+    /// <see cref="LinkedBoardSetResult.Success"/> otherwise.
+    /// </summary>
+    Task<LinkedBoardSetResult> RemoveBoardAsync(int setId, int groupId, CancellationToken token = default);
 
     /// <summary>
     /// Returns the boards that are not in any set, ordered by name.
@@ -45,13 +56,16 @@ public interface ILinkedBoardSetRepository
     Task<bool> NameExistsAsync(string name, int? excludingSetId, CancellationToken token = default);
 
     /// <summary>
-    /// Renames a set. Returns false when the set does not exist or the name is already taken.
+    /// Renames a set. Returns <see cref="LinkedBoardSetResult.NotFound"/> when the set does not
+    /// exist or was deleted meanwhile, <see cref="LinkedBoardSetResult.DuplicateName"/> when another
+    /// set holds the name, and <see cref="LinkedBoardSetResult.Success"/> otherwise. Any other
+    /// failure to save is thrown, not reported as a taken name.
     /// </summary>
-    Task<bool> RenameAsync(int setId, string name, CancellationToken token = default);
+    Task<LinkedBoardSetResult> RenameAsync(int setId, string name, CancellationToken token = default);
 
     /// <summary>
     /// Deletes a set and un-links every board in it. No board, quest or event is deleted.
-    /// Returns false when the set does not exist.
+    /// Returns false when the set does not exist or was deleted meanwhile.
     /// </summary>
     Task<bool> DeleteAsync(int setId, CancellationToken token = default);
 

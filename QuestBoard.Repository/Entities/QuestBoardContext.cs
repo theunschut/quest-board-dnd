@@ -314,6 +314,12 @@ public class QuestBoardContext(
             .HasForeignKey(g => g.LinkedBoardSetId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Putting a board into a set or taking it out writes only if the board is still in the set
+        // it was read in, so two super admins acting on the same board at once cannot silently move
+        // it: the slower save fails instead of overwriting. Like the revision tokens above, this adds
+        // a predicate to the SQL and changes no column.
+        modelBuilder.Entity<GroupEntity>().Property(g => g.LinkedBoardSetId).IsConcurrencyToken();
+
         // UserGroups: one membership row per user per group
         modelBuilder.Entity<UserGroupEntity>()
             .HasIndex(ug => new { ug.UserId, ug.GroupId })

@@ -68,24 +68,73 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
         }
         catch (DbUpdateException)
         {
-            // The unique index on the name rejected a duplicate that slipped past the pre-check.
             // Removing the still-pending row stops the tracker retrying it on the next save.
             dbContext.LinkedBoardSets.Remove(entity);
-            return null;
+
+            // Only a name another set now holds is a duplicate that slipped past the pre-check.
+            // Asking the database, rather than decoding a provider error number, keeps this true on
+            // every provider; any other failure is real and must not be reported as a taken name.
+            if (await NameExistsAsync(name, null, token)) return null;
+            throw;
         }
 
         return entity.Id;
     }
 
     /// <inheritdoc/>
-    public async Task<bool> AssignBoardAsync(int groupId, int? setId, CancellationToken token = default)
+    public async Task<LinkedBoardSetResult> AddBoardAsync(int setId, int groupId, CancellationToken token = default)
     {
         var group = await dbContext.Groups.FirstOrDefaultAsync(g => g.Id == groupId, token);
-        if (group == null) return false;
+        if (group == null) return LinkedBoardSetResult.NotFound;
+        if (group.LinkedBoardSetId != null) return LinkedBoardSetResult.AlreadyLinked;
 
         group.LinkedBoardSetId = setId;
-        await dbContext.SaveChangesAsync(token);
-        return true;
+        try
+        {
+            await dbContext.SaveChangesAsync(token);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The board joined a set, or was deleted, after it was read. The write was refused
+            // rather than moving the board out of the set it joined.
+            group.LinkedBoardSetId = null;
+            return await BoardExistsAsync(groupId, token)
+                ? LinkedBoardSetResult.AlreadyLinked
+                : LinkedBoardSetResult.NotFound;
+        }
+        catch (DbUpdateException)
+        {
+            // The foreign key refuses a set that was deleted after the caller checked it.
+            group.LinkedBoardSetId = null;
+            if (!await SetExistsAsync(setId, token)) return LinkedBoardSetResult.NotFound;
+            throw;
+        }
+
+        return LinkedBoardSetResult.Success;
+    }
+
+    /// <inheritdoc/>
+    public async Task<LinkedBoardSetResult> RemoveBoardAsync(int setId, int groupId, CancellationToken token = default)
+    {
+        var group = await dbContext.Groups.FirstOrDefaultAsync(g => g.Id == groupId, token);
+        if (group == null) return LinkedBoardSetResult.NotFound;
+        if (group.LinkedBoardSetId != setId) return LinkedBoardSetResult.NotInSet;
+
+        group.LinkedBoardSetId = null;
+        try
+        {
+            await dbContext.SaveChangesAsync(token);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The board left the set, or was deleted, after it was read.
+            group.LinkedBoardSetId = setId;
+            return await BoardExistsAsync(groupId, token)
+                ? LinkedBoardSetResult.NotInSet
+                : LinkedBoardSetResult.NotFound;
+        }
+
+        return LinkedBoardSetResult.Success;
     }
 
     /// <inheritdoc/>
@@ -130,46 +179,65 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
     }
 
     /// <inheritdoc/>
-    public async Task<bool> RenameAsync(int setId, string name, CancellationToken token = default)
+    public async Task<LinkedBoardSetResult> RenameAsync(int setId, string name, CancellationToken token = default)
     {
         var set = await dbContext.LinkedBoardSets.FirstOrDefaultAsync(s => s.Id == setId, token);
-        if (set == null) return false;
+        if (set == null) return LinkedBoardSetResult.NotFound;
 
+        // Putting the stored name back after a refused save keeps the tracker from retrying the
+        // rejected one. It is kept from the read, so restoring it cannot fail when the row is gone.
+        var storedName = set.Name;
         set.Name = name;
         try
         {
             await dbContext.SaveChangesAsync(token);
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The set was deleted after it was read, so there was no row left to rename.
+            set.Name = storedName;
+            return LinkedBoardSetResult.NotFound;
+        }
         catch (DbUpdateException)
         {
-            // The unique index on the name rejected a duplicate that slipped past the pre-check.
-            // Putting the stored name back keeps the tracker from retrying the rejected one.
-            set.Name = await dbContext.LinkedBoardSets
-                .AsNoTracking()
-                .Where(s => s.Id == setId)
-                .Select(s => s.Name)
-                .FirstAsync(token);
-            return false;
+            set.Name = storedName;
+
+            // Only a name another set now holds is a duplicate that slipped past the pre-check.
+            if (await NameExistsAsync(name, setId, token)) return LinkedBoardSetResult.DuplicateName;
+            throw;
         }
 
-        return true;
+        return LinkedBoardSetResult.Success;
     }
 
     /// <inheritdoc/>
     public async Task<bool> DeleteAsync(int setId, CancellationToken token = default)
     {
-        var set = await dbContext.LinkedBoardSets
-            .Include(s => s.Boards)
-            .FirstOrDefaultAsync(s => s.Id == setId, token);
+        var set = await dbContext.LinkedBoardSets.FirstOrDefaultAsync(s => s.Id == setId, token);
         if (set == null) return false;
 
-        // The foreign key un-links boards on SQL Server, but the in-memory provider only does so
-        // for dependents it already tracks, so the boards are un-linked explicitly as well.
-        foreach (var board in set.Boards)
-            board.LinkedBoardSetId = null;
+        // On SQL Server the foreign key un-links every board in the same statement that deletes the
+        // set, so no board row is written here and none can be refused because another super admin
+        // moved it a moment earlier. The in-memory provider applies SetNull only to dependents it
+        // already tracks, so there the boards are loaded and un-linked explicitly.
+        if (!dbContext.Database.IsRelational())
+        {
+            var boards = await dbContext.Groups.Where(g => g.LinkedBoardSetId == setId).ToListAsync(token);
+            foreach (var board in boards)
+                board.LinkedBoardSetId = null;
+        }
 
         dbContext.LinkedBoardSets.Remove(set);
-        await dbContext.SaveChangesAsync(token);
+        try
+        {
+            await dbContext.SaveChangesAsync(token);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another super admin deleted the set after it was read.
+            return false;
+        }
+
         return true;
     }
 
@@ -223,4 +291,10 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
                 .ToList()
         };
     }
+
+    private Task<bool> BoardExistsAsync(int groupId, CancellationToken token) =>
+        dbContext.Groups.AnyAsync(g => g.Id == groupId, token);
+
+    private Task<bool> SetExistsAsync(int setId, CancellationToken token) =>
+        dbContext.LinkedBoardSets.AnyAsync(s => s.Id == setId, token);
 }

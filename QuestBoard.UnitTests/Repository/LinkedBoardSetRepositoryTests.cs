@@ -1,5 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
@@ -43,13 +45,13 @@ public class LinkedBoardSetRepositoryTests
 
         // Act
         var setId = await repository.CreateAsync("Friday Group", BoardType.OneShot, TestContext.Current.CancellationToken);
-        var firstAssigned = await repository.AssignBoardAsync(1, setId, TestContext.Current.CancellationToken);
-        var secondAssigned = await repository.AssignBoardAsync(2, setId, TestContext.Current.CancellationToken);
+        var firstAssigned = await repository.AddBoardAsync(setId!.Value, 1, TestContext.Current.CancellationToken);
+        var secondAssigned = await repository.AddBoardAsync(setId!.Value, 2, TestContext.Current.CancellationToken);
 
         // Assert
         setId.Should().NotBeNull();
-        firstAssigned.Should().BeTrue();
-        secondAssigned.Should().BeTrue();
+        firstAssigned.Should().Be(LinkedBoardSetResult.Success);
+        secondAssigned.Should().Be(LinkedBoardSetResult.Success);
 
         var rows = await context.Groups.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().OnlyContain(g => g.LinkedBoardSetId == setId);
@@ -68,7 +70,7 @@ public class LinkedBoardSetRepositoryTests
     }
 
     [Fact]
-    public async Task AssignBoardAsync_UnknownBoard_ReturnsFalse()
+    public async Task AddBoardAsync_UnknownBoard_ReturnsNotFound()
     {
         // Arrange
         await using var context = CreateContext(Guid.NewGuid().ToString());
@@ -76,10 +78,10 @@ public class LinkedBoardSetRepositoryTests
         var setId = await repository.CreateAsync("Friday Group", BoardType.OneShot, TestContext.Current.CancellationToken);
 
         // Act
-        var found = await repository.AssignBoardAsync(999, setId, TestContext.Current.CancellationToken);
+        var found = await repository.AddBoardAsync(setId!.Value, 999, TestContext.Current.CancellationToken);
 
         // Assert
-        found.Should().BeFalse();
+        found.Should().Be(LinkedBoardSetResult.NotFound);
     }
 
     [Fact]
@@ -91,8 +93,8 @@ public class LinkedBoardSetRepositoryTests
         await SeedBoardAsync(context, 2, "Beta Table");
         var repository = CreateRepository(context);
         var setId = await repository.CreateAsync("Friday Group", BoardType.OneShot, TestContext.Current.CancellationToken);
-        await repository.AssignBoardAsync(1, setId, TestContext.Current.CancellationToken);
-        await repository.AssignBoardAsync(2, setId, TestContext.Current.CancellationToken);
+        await repository.AddBoardAsync(setId!.Value, 1, TestContext.Current.CancellationToken);
+        await repository.AddBoardAsync(setId!.Value, 2, TestContext.Current.CancellationToken);
 
         // Act
         var deleted = await repository.DeleteAsync(setId!.Value, TestContext.Current.CancellationToken);
@@ -130,7 +132,7 @@ public class LinkedBoardSetRepositoryTests
         var repository = CreateRepository(context);
         var setId = await repository.CreateAsync("Friday Group", BoardType.OneShot, TestContext.Current.CancellationToken);
         foreach (var boardId in new[] { 1, 2, 3 })
-            await repository.AssignBoardAsync(boardId, setId, TestContext.Current.CancellationToken);
+            await repository.AddBoardAsync(setId!.Value, boardId, TestContext.Current.CancellationToken);
 
         // Act
         context.Groups.Remove(doomed);
@@ -154,7 +156,7 @@ public class LinkedBoardSetRepositoryTests
         await SeedBoardAsync(context, 3, "Linked Table");
         var repository = CreateRepository(context);
         var setId = await repository.CreateAsync("Friday Group", BoardType.OneShot, TestContext.Current.CancellationToken);
-        await repository.AssignBoardAsync(3, setId, TestContext.Current.CancellationToken);
+        await repository.AddBoardAsync(setId!.Value, 3, TestContext.Current.CancellationToken);
 
         // Act
         var unlinked = await repository.GetUnlinkedBoardsAsync(TestContext.Current.CancellationToken);
@@ -173,7 +175,7 @@ public class LinkedBoardSetRepositoryTests
         var repository = CreateRepository(context);
         var lonelyId = await repository.CreateAsync("Beta Set", BoardType.OneShot, TestContext.Current.CancellationToken);
         await repository.CreateAsync("Alpha Set", BoardType.Campaign, TestContext.Current.CancellationToken);
-        await repository.AssignBoardAsync(1, lonelyId, TestContext.Current.CancellationToken);
+        await repository.AddBoardAsync(lonelyId!.Value, 1, TestContext.Current.CancellationToken);
 
         // Act
         var sets = await repository.GetAllAsync(TestContext.Current.CancellationToken);
@@ -193,7 +195,7 @@ public class LinkedBoardSetRepositoryTests
         await SeedBoardAsync(context, 1, "Alpha Table", BoardType.Campaign);
         var repository = CreateRepository(context);
         var setId = await repository.CreateAsync("Friday Group", BoardType.Campaign, TestContext.Current.CancellationToken);
-        await repository.AssignBoardAsync(1, setId, TestContext.Current.CancellationToken);
+        await repository.AddBoardAsync(setId!.Value, 1, TestContext.Current.CancellationToken);
 
         // Act
         var board = await repository.GetBoardAsync(1, TestContext.Current.CancellationToken);
@@ -227,7 +229,7 @@ public class LinkedBoardSetRepositoryTests
     }
 
     [Fact]
-    public async Task RenameAsync_RenamesAnExistingSet_AndReturnsFalseForAnUnknownOne()
+    public async Task RenameAsync_RenamesAnExistingSet_AndReturnsNotFoundForAnUnknownOne()
     {
         // Arrange
         await using var context = CreateContext(Guid.NewGuid().ToString());
@@ -239,8 +241,8 @@ public class LinkedBoardSetRepositoryTests
         var unknown = await repository.RenameAsync(999, "Anything", TestContext.Current.CancellationToken);
 
         // Assert
-        renamed.Should().BeTrue();
-        unknown.Should().BeFalse();
+        renamed.Should().Be(LinkedBoardSetResult.Success);
+        unknown.Should().Be(LinkedBoardSetResult.NotFound);
         var set = await repository.GetByIdAsync(setId.Value, TestContext.Current.CancellationToken);
         set!.Name.Should().Be("Weekend Group");
     }
@@ -253,7 +255,7 @@ public class LinkedBoardSetRepositoryTests
         await SeedBoardAsync(context, 1, "Alpha Table");
         var setRepository = CreateRepository(context);
         var setId = await setRepository.CreateAsync("Friday Group", BoardType.OneShot, TestContext.Current.CancellationToken);
-        await setRepository.AssignBoardAsync(1, setId, TestContext.Current.CancellationToken);
+        await setRepository.AddBoardAsync(setId!.Value, 1, TestContext.Current.CancellationToken);
 
         var mapper = new MapperConfiguration(
             cfg => cfg.AddProfile<QuestBoard.Repository.Automapper.EntityProfile>(),
@@ -269,6 +271,328 @@ public class LinkedBoardSetRepositoryTests
         var row = await context.Groups.AsNoTracking().SingleAsync(g => g.Id == 1, TestContext.Current.CancellationToken);
         row.Name.Should().Be("Renamed");
         row.LinkedBoardSetId.Should().Be(setId);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Writes that race another super admin, or that the database refuses
+    // ---------------------------------------------------------------------------
+
+    // Two contexts over one store stand for two requests. The interceptor runs the other request's
+    // change just before this request's save lands, which is the window a pre-check cannot close.
+    private sealed class RaceStore
+    {
+        private readonly InMemoryDatabaseRoot root = new();
+        private readonly string name = Guid.NewGuid().ToString();
+
+        public InterruptedSave Interceptor { get; } = new();
+
+        public QuestBoardContext ThisRequest() => new(
+            new DbContextOptionsBuilder<QuestBoardContext>()
+                .UseInMemoryDatabase(name, root)
+                .AddInterceptors(Interceptor)
+                .Options,
+            new TestActiveGroupContext());
+
+        public QuestBoardContext OtherRequest() => new(
+            new DbContextOptionsBuilder<QuestBoardContext>()
+                .UseInMemoryDatabase(name, root)
+                .Options,
+            new TestActiveGroupContext());
+
+        public async Task<int> SeedSetAsync(string setName)
+        {
+            await using var context = OtherRequest();
+            var set = new LinkedBoardSetEntity { Name = setName, BoardType = (int)BoardType.OneShot };
+            context.LinkedBoardSets.Add(set);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            return set.Id;
+        }
+
+        public async Task SeedBoardAsync(int groupId, int? setId = null)
+        {
+            await using var context = OtherRequest();
+            context.Groups.Add(new GroupEntity
+            {
+                Id = groupId, Name = $"Board {groupId}", BoardType = (int)BoardType.OneShot, LinkedBoardSetId = setId
+            });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        public async Task InOtherRequestAsync(Func<QuestBoardContext, Task> change)
+        {
+            await using var context = OtherRequest();
+            await change(context);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        public async Task<int?> StoredSetOfAsync(int groupId)
+        {
+            await using var context = OtherRequest();
+            return await context.Groups.Where(g => g.Id == groupId).Select(g => g.LinkedBoardSetId)
+                .SingleAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    // Runs one armed action as the next save begins. It can then refuse the save the way SQL Server
+    // would for a unique index or a foreign key, which the in-memory provider does not enforce.
+    private sealed class InterruptedSave : SaveChangesInterceptor
+    {
+        private Func<Task>? beforeSave;
+        private bool refuse;
+
+        public void Arm(Func<Task> action, bool thenRefuse = false)
+        {
+            beforeSave = action;
+            refuse = thenRefuse;
+        }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var action = beforeSave;
+            beforeSave = null;
+            if (action != null)
+            {
+                await action();
+                if (refuse) throw new DbUpdateException("The database refused the save.");
+            }
+
+            return result;
+        }
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenAnotherSetTakesTheNameBeforeTheSave_ReturnsNullAndKeepsOnlyTheirSet()
+    {
+        // Arrange
+        var store = new RaceStore();
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => store.SeedSetAsync("Friday Group"), thenRefuse: true);
+
+        // Act
+        var setId = await CreateRepository(context).CreateAsync("friday group", BoardType.OneShot, TestContext.Current.CancellationToken);
+
+        // Assert
+        setId.Should().BeNull();
+        await using var check = store.OtherRequest();
+        (await check.LinkedBoardSets.Select(s => s.Name).ToListAsync(TestContext.Current.CancellationToken))
+            .Should().Equal("Friday Group");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenTheSaveFailsAndTheNameIsFree_ThrowsInsteadOfReportingADuplicate()
+    {
+        // Arrange
+        var store = new RaceStore();
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => Task.CompletedTask, thenRefuse: true);
+
+        // Act
+        var act = () => CreateRepository(context).CreateAsync("Friday Group", BoardType.OneShot, TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task RenameAsync_WhenTheSetIsDeletedBeforeTheSave_ReturnsNotFoundWithoutThrowing()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var setId = await store.SeedSetAsync("Friday Group");
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => store.InOtherRequestAsync(async other =>
+            other.LinkedBoardSets.Remove(await other.LinkedBoardSets.SingleAsync(TestContext.Current.CancellationToken))));
+
+        // Act
+        var result = await CreateRepository(context).RenameAsync(setId, "Weekend Group", TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().Be(LinkedBoardSetResult.NotFound);
+    }
+
+    [Fact]
+    public async Task RenameAsync_WhenAnotherSetTakesTheNameBeforeTheSave_ReturnsDuplicateNameAndKeepsTheStoredName()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var setId = await store.SeedSetAsync("Friday Group");
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => store.SeedSetAsync("Weekend Group"), thenRefuse: true);
+        var repository = CreateRepository(context);
+
+        // Act
+        var result = await repository.RenameAsync(setId, "Weekend Group", TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().Be(LinkedBoardSetResult.DuplicateName);
+        (await context.LinkedBoardSets.SingleAsync(s => s.Id == setId, TestContext.Current.CancellationToken))
+            .Name.Should().Be("Friday Group");
+    }
+
+    [Fact]
+    public async Task RenameAsync_WhenTheSaveFailsAndTheNameIsFree_ThrowsInsteadOfReportingADuplicate()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var setId = await store.SeedSetAsync("Friday Group");
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => Task.CompletedTask, thenRefuse: true);
+
+        // Act
+        var act = () => CreateRepository(context).RenameAsync(setId, "Weekend Group", TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task AddBoardAsync_WhenAnotherAdminLinksTheBoardFirst_ReturnsAlreadyLinkedAndLeavesItInTheirSet()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var ourSet = await store.SeedSetAsync("Friday Group");
+        var theirSet = await store.SeedSetAsync("Saturday Group");
+        await store.SeedBoardAsync(9);
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => store.InOtherRequestAsync(async other =>
+            (await other.Groups.SingleAsync(g => g.Id == 9, TestContext.Current.CancellationToken)).LinkedBoardSetId = theirSet));
+
+        // Act
+        var result = await CreateRepository(context).AddBoardAsync(ourSet, 9, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().Be(LinkedBoardSetResult.AlreadyLinked);
+        (await store.StoredSetOfAsync(9)).Should().Be(theirSet);
+    }
+
+    [Fact]
+    public async Task AddBoardAsync_WhenTheBoardIsAlreadyInASet_ReturnsAlreadyLinkedAndWritesNothing()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var ourSet = await store.SeedSetAsync("Friday Group");
+        var theirSet = await store.SeedSetAsync("Saturday Group");
+        await store.SeedBoardAsync(9, theirSet);
+        await using var context = store.ThisRequest();
+
+        // Act
+        var result = await CreateRepository(context).AddBoardAsync(ourSet, 9, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().Be(LinkedBoardSetResult.AlreadyLinked);
+        (await store.StoredSetOfAsync(9)).Should().Be(theirSet);
+    }
+
+    [Fact]
+    public async Task AddBoardAsync_WhenTheSetIsDeletedBeforeTheSave_ReturnsNotFoundInsteadOfFailing()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var setId = await store.SeedSetAsync("Friday Group");
+        await store.SeedBoardAsync(9);
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => store.InOtherRequestAsync(async other =>
+            other.LinkedBoardSets.Remove(await other.LinkedBoardSets.SingleAsync(TestContext.Current.CancellationToken))),
+            thenRefuse: true);
+
+        // Act
+        var result = await CreateRepository(context).AddBoardAsync(setId, 9, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().Be(LinkedBoardSetResult.NotFound);
+    }
+
+    [Fact]
+    public async Task AddBoardAsync_WhenTheSaveFailsAndTheSetStillExists_Throws()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var setId = await store.SeedSetAsync("Friday Group");
+        await store.SeedBoardAsync(9);
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => Task.CompletedTask, thenRefuse: true);
+
+        // Act
+        var act = () => CreateRepository(context).AddBoardAsync(setId, 9, TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task RemoveBoardAsync_TakesTheBoardOutOfTheSet()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var setId = await store.SeedSetAsync("Friday Group");
+        await store.SeedBoardAsync(9, setId);
+        await using var context = store.ThisRequest();
+
+        // Act
+        var result = await CreateRepository(context).RemoveBoardAsync(setId, 9, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().Be(LinkedBoardSetResult.Success);
+        (await store.StoredSetOfAsync(9)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RemoveBoardAsync_WhenAnotherAdminMovesTheBoardFirst_ReturnsNotInSetAndLeavesItWhereTheyPutIt()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var ourSet = await store.SeedSetAsync("Friday Group");
+        var theirSet = await store.SeedSetAsync("Saturday Group");
+        await store.SeedBoardAsync(9, ourSet);
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => store.InOtherRequestAsync(async other =>
+            (await other.Groups.SingleAsync(g => g.Id == 9, TestContext.Current.CancellationToken)).LinkedBoardSetId = theirSet));
+
+        // Act
+        var result = await CreateRepository(context).RemoveBoardAsync(ourSet, 9, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().Be(LinkedBoardSetResult.NotInSet);
+        (await store.StoredSetOfAsync(9)).Should().Be(theirSet);
+    }
+
+    [Fact]
+    public async Task RemoveBoardAsync_WhenTheBoardIsInAnotherSetOrMissing_WritesNothing()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var ourSet = await store.SeedSetAsync("Friday Group");
+        var theirSet = await store.SeedSetAsync("Saturday Group");
+        await store.SeedBoardAsync(9, theirSet);
+        await using var context = store.ThisRequest();
+        var repository = CreateRepository(context);
+
+        // Act
+        var otherSet = await repository.RemoveBoardAsync(ourSet, 9, TestContext.Current.CancellationToken);
+        var missing = await repository.RemoveBoardAsync(ourSet, 404, TestContext.Current.CancellationToken);
+
+        // Assert
+        otherSet.Should().Be(LinkedBoardSetResult.NotInSet);
+        missing.Should().Be(LinkedBoardSetResult.NotFound);
+        (await store.StoredSetOfAsync(9)).Should().Be(theirSet);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenAnotherAdminDeletedTheSetFirst_ReturnsFalseWithoutThrowing()
+    {
+        // Arrange
+        var store = new RaceStore();
+        var setId = await store.SeedSetAsync("Friday Group");
+        await using var context = store.ThisRequest();
+        store.Interceptor.Arm(() => store.InOtherRequestAsync(async other =>
+            other.LinkedBoardSets.Remove(await other.LinkedBoardSets.SingleAsync(TestContext.Current.CancellationToken))));
+
+        // Act
+        var deleted = await CreateRepository(context).DeleteAsync(setId, TestContext.Current.CancellationToken);
+
+        // Assert
+        deleted.Should().BeFalse();
     }
 
     private sealed class TestActiveGroupContext : IActiveGroupContext

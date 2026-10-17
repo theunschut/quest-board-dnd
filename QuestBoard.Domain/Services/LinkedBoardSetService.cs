@@ -63,12 +63,14 @@ internal class LinkedBoardSetService(ILinkedBoardSetRepository repository) : ILi
             return new LinkedBoardSetOutcome(LinkedBoardSetResult.AlreadyLinked, set.Name, board.Name);
         }
 
-        if (!await repository.AssignBoardAsync(groupId, setId, token))
+        // The checks above give the clearest message; the write itself re-checks, because another
+        // super admin can link the board or delete the set between the two.
+        return await repository.AddBoardAsync(setId, groupId, token) switch
         {
-            return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound);
-        }
-
-        return new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, set.Name, board.Name);
+            LinkedBoardSetResult.Success => new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, set.Name, board.Name),
+            LinkedBoardSetResult.AlreadyLinked => new LinkedBoardSetOutcome(LinkedBoardSetResult.AlreadyLinked, set.Name, board.Name),
+            _ => new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound)
+        };
     }
 
     /// <inheritdoc/>
@@ -91,10 +93,13 @@ internal class LinkedBoardSetService(ILinkedBoardSetRepository repository) : ILi
             return new LinkedBoardSetOutcome(LinkedBoardSetResult.DuplicateName, trimmed);
         }
 
-        // False covers a set deleted meanwhile and the unique index rejecting a concurrent rename.
-        return await repository.RenameAsync(setId, trimmed, token)
-            ? new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, trimmed)
-            : new LinkedBoardSetOutcome(LinkedBoardSetResult.DuplicateName, trimmed);
+        // The write re-checks both the set and the name, for a delete or a rename that lands meanwhile.
+        return await repository.RenameAsync(setId, trimmed, token) switch
+        {
+            LinkedBoardSetResult.Success => new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, trimmed),
+            LinkedBoardSetResult.DuplicateName => new LinkedBoardSetOutcome(LinkedBoardSetResult.DuplicateName, trimmed),
+            _ => new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound)
+        };
     }
 
     /// <inheritdoc/>
@@ -112,12 +117,12 @@ internal class LinkedBoardSetService(ILinkedBoardSetRepository repository) : ILi
             return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotInSet, set.Name, board.Name);
         }
 
-        if (!await repository.AssignBoardAsync(groupId, null, token))
+        return await repository.RemoveBoardAsync(setId, groupId, token) switch
         {
-            return new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound);
-        }
-
-        return new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, set.Name, board.Name);
+            LinkedBoardSetResult.Success => new LinkedBoardSetOutcome(LinkedBoardSetResult.Success, set.Name, board.Name),
+            LinkedBoardSetResult.NotInSet => new LinkedBoardSetOutcome(LinkedBoardSetResult.NotInSet, set.Name, board.Name),
+            _ => new LinkedBoardSetOutcome(LinkedBoardSetResult.NotFound)
+        };
     }
 
     /// <inheritdoc/>

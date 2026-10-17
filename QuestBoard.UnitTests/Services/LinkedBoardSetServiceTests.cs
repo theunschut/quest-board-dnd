@@ -57,7 +57,7 @@ public class LinkedBoardSetServiceTests
         outcome.BoardType.Should().Be(BoardType.Campaign);
         outcome.SetName.Should().Be("Friday");
         outcome.SetBoardType.Should().Be(BoardType.OneShot);
-        await _repository.DidNotReceive().AssignBoardAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().AddBoardAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class LinkedBoardSetServiceTests
         var outcome = await _sut.AddBoardAsync(1, 9, Token);
 
         outcome.Result.Should().Be(LinkedBoardSetResult.TypeMismatch);
-        await _repository.DidNotReceive().AssignBoardAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().AddBoardAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -84,7 +84,7 @@ public class LinkedBoardSetServiceTests
 
         outcome.Result.Should().Be(LinkedBoardSetResult.AlreadyLinked);
         outcome.BoardName.Should().Be("Saturday");
-        await _repository.DidNotReceive().AssignBoardAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().AddBoardAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class LinkedBoardSetServiceTests
 
         missingBoard.Result.Should().Be(LinkedBoardSetResult.NotFound);
         missingSet.Result.Should().Be(LinkedBoardSetResult.NotFound);
-        await _repository.DidNotReceive().AssignBoardAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().AddBoardAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -105,14 +105,43 @@ public class LinkedBoardSetServiceTests
     {
         GivenSet(1, "Friday", BoardType.OneShot);
         GivenBoard(9, "Saturday", BoardType.OneShot);
-        _repository.AssignBoardAsync(9, 1, Arg.Any<CancellationToken>()).Returns(true);
+        _repository.AddBoardAsync(1, 9, Arg.Any<CancellationToken>()).Returns(LinkedBoardSetResult.Success);
 
         var outcome = await _sut.AddBoardAsync(1, 9, Token);
 
         outcome.Result.Should().Be(LinkedBoardSetResult.Success);
         outcome.SetName.Should().Be("Friday");
         outcome.BoardName.Should().Be("Saturday");
-        await _repository.Received(1).AssignBoardAsync(9, 1, Arg.Any<CancellationToken>());
+        await _repository.Received(1).AddBoardAsync(1, 9, Arg.Any<CancellationToken>());
+    }
+
+    // The service's own checks pass, but the write finds the board linked or the set gone by the
+    // time it lands. The outcome reports what the write found, not the stale check.
+    [Theory]
+    [InlineData(LinkedBoardSetResult.AlreadyLinked)]
+    [InlineData(LinkedBoardSetResult.NotFound)]
+    public async Task AddBoardAsync_WhenTheWriteLosesARace_ReportsWhatTheWriteFound(LinkedBoardSetResult writeResult)
+    {
+        GivenSet(1, "Friday", BoardType.OneShot);
+        GivenBoard(9, "Saturday", BoardType.OneShot);
+        _repository.AddBoardAsync(1, 9, Arg.Any<CancellationToken>()).Returns(writeResult);
+
+        var outcome = await _sut.AddBoardAsync(1, 9, Token);
+
+        outcome.Result.Should().Be(writeResult);
+    }
+
+    [Fact]
+    public async Task AddBoardAsync_WhenTheBoardWasLinkedMeanwhile_NamesTheBoardAndSet()
+    {
+        GivenSet(1, "Friday", BoardType.OneShot);
+        GivenBoard(9, "Saturday", BoardType.OneShot);
+        _repository.AddBoardAsync(1, 9, Arg.Any<CancellationToken>()).Returns(LinkedBoardSetResult.AlreadyLinked);
+
+        var outcome = await _sut.AddBoardAsync(1, 9, Token);
+
+        outcome.SetName.Should().Be("Friday");
+        outcome.BoardName.Should().Be("Saturday");
     }
 
     // ---------------------------------------------------------------------------
@@ -130,7 +159,7 @@ public class LinkedBoardSetServiceTests
         var outcome = await _sut.RemoveBoardAsync(1, 9, Token);
 
         outcome.Result.Should().Be(LinkedBoardSetResult.NotInSet);
-        await _repository.DidNotReceive().AssignBoardAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveBoardAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -143,7 +172,7 @@ public class LinkedBoardSetServiceTests
 
         missingBoard.Result.Should().Be(LinkedBoardSetResult.NotFound);
         missingSet.Result.Should().Be(LinkedBoardSetResult.NotFound);
-        await _repository.DidNotReceive().AssignBoardAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveBoardAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -151,14 +180,28 @@ public class LinkedBoardSetServiceTests
     {
         GivenSet(1, "Friday", BoardType.OneShot, 9);
         GivenBoard(9, "Saturday", BoardType.OneShot, 1);
-        _repository.AssignBoardAsync(9, null, Arg.Any<CancellationToken>()).Returns(true);
+        _repository.RemoveBoardAsync(1, 9, Arg.Any<CancellationToken>()).Returns(LinkedBoardSetResult.Success);
 
         var outcome = await _sut.RemoveBoardAsync(1, 9, Token);
 
         outcome.Result.Should().Be(LinkedBoardSetResult.Success);
         outcome.SetName.Should().Be("Friday");
         outcome.BoardName.Should().Be("Saturday");
-        await _repository.Received(1).AssignBoardAsync(9, null, Arg.Any<CancellationToken>());
+        await _repository.Received(1).RemoveBoardAsync(1, 9, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(LinkedBoardSetResult.NotInSet)]
+    [InlineData(LinkedBoardSetResult.NotFound)]
+    public async Task RemoveBoardAsync_WhenTheWriteLosesARace_ReportsWhatTheWriteFound(LinkedBoardSetResult writeResult)
+    {
+        GivenSet(1, "Friday", BoardType.OneShot, 9);
+        GivenBoard(9, "Saturday", BoardType.OneShot, 1);
+        _repository.RemoveBoardAsync(1, 9, Arg.Any<CancellationToken>()).Returns(writeResult);
+
+        var outcome = await _sut.RemoveBoardAsync(1, 9, Token);
+
+        outcome.Result.Should().Be(writeResult);
     }
 
     // ---------------------------------------------------------------------------
@@ -274,18 +317,30 @@ public class LinkedBoardSetServiceTests
     public async Task RenameAsync_WhenTheRepositoryReportsAClash_ReturnsDuplicateName()
     {
         GivenSet(1, "Friday", BoardType.OneShot);
-        _repository.RenameAsync(1, "Saturday", Arg.Any<CancellationToken>()).Returns(false);
+        _repository.RenameAsync(1, "Saturday", Arg.Any<CancellationToken>()).Returns(LinkedBoardSetResult.DuplicateName);
 
         var outcome = await _sut.RenameAsync(1, "Saturday", Token);
 
         outcome.Result.Should().Be(LinkedBoardSetResult.DuplicateName);
     }
 
+    // A set deleted between the check and the write is not a name clash.
+    [Fact]
+    public async Task RenameAsync_WhenTheSetIsDeletedBeforeTheWrite_ReturnsNotFound()
+    {
+        GivenSet(1, "Friday", BoardType.OneShot);
+        _repository.RenameAsync(1, "Saturday", Arg.Any<CancellationToken>()).Returns(LinkedBoardSetResult.NotFound);
+
+        var outcome = await _sut.RenameAsync(1, "Saturday", Token);
+
+        outcome.Result.Should().Be(LinkedBoardSetResult.NotFound);
+    }
+
     [Fact]
     public async Task RenameAsync_WhenValid_RenamesWithTheTrimmedName()
     {
         GivenSet(1, "Friday", BoardType.OneShot);
-        _repository.RenameAsync(1, "Saturday", Arg.Any<CancellationToken>()).Returns(true);
+        _repository.RenameAsync(1, "Saturday", Arg.Any<CancellationToken>()).Returns(LinkedBoardSetResult.Success);
 
         var outcome = await _sut.RenameAsync(1, "  Saturday ", Token);
 
