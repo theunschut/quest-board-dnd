@@ -5,10 +5,10 @@ milestone_name: Rolling Improvements
 current_phase: 92
 current_phase_name: Move a Quest or Event to a Linked Board
 status: planning
-stopped_at: Phase 91 UI-SPEC approved
-last_updated: "2026-10-16T16:39:57.600Z"
-last_activity: 2026-10-16
-last_activity_desc: Phase 91 execution started
+stopped_at: Phase 91 complete with all follow-ups closed; Phase 92 ready to discuss
+last_updated: "2026-10-17T12:00:00.000Z"
+last_activity: 2026-10-17
+last_activity_desc: Phase 91 follow-ups closed (security, validation, review and UI fixes); PR to main opened
 progress:
   total_phases: 21
   completed_phases: 17
@@ -22,23 +22,24 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-06 — after Phase 89)
+See: .planning/PROJECT.md (updated 2026-10-17 — after Phase 91)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 91 — linked-boards-with-a-shared-calendar
+**Current focus:** Phase 92 — Move a Quest or Event to a Linked Board (no CONTEXT.md yet; start with discuss-phase)
 
 ## Current Position
 
 Phase: 92 — Move a Quest or Event to a Linked Board
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-16 — Phase 91 complete, transitioned to Phase 92
+Last activity: 2026-10-17 — Phase 91 closed out: code-review warnings and UI-review fixes landed, security 42/42 closed, Nyquist-compliant; PR to `main` opened
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
 none executed), Phase 79 — Character and Contact Link Cards and Phase 81 — Contact Tags and
 Filtering (not yet planned) are still open. Every other phase in the 72–89 range is complete with a
-verification report.
+verification report. Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, Phase 91
+is complete, and Phase 92 is next.
 
 Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
 shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
@@ -107,6 +108,12 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 89]: The operator delegated pushes, merges, tags and GitHub settings to the orchestrator in chat (accepted risk AR-89-07), and granted a same-day, IP-bound temporary root SSH login on CT 102 for the cutover, removed afterwards. The deploy-environment approval always stayed with the operator
 - [Phase 88]: Production checks run on a dedicated temporary subscription, revoked afterwards with a 410 confirmed. The "never paste the address" instruction failed twice this phase; the second time the permanent iPhone token was printed into the transcript via a token-named download file (T-88-22)
 
+- [Phase 91]: DM-only sessions now follow the viewer's role on the owning board on every calendar, linked or not (D-20). This is the one visible change on unlinked boards, made deliberately to match the quest board's existing rule
+- [Phase 91]: The cross-board read is two narrowed `IgnoreQueryFilters` projections in `QuestRepository`/`EventRepository`, which were already allowlisted, pinned to the linked board ids from a fresh per-request lookup and re-checked row by row in `LinkedCalendarService`. No new file joined the cross-board allowlist
+- [Phase 91]: Linked-set board writes use a concurrency token on `Groups.LinkedBoardSetId`, the same pattern as `FeedRevision`, because `FeedRevisionWriteSeamTests` bans `ExecuteUpdate` in all production source. The code reviewer and the verifier had both assumed the ban covered only Events and Quests. Deleting a set relies on the FK's `ON DELETE SET NULL` on relational providers
+- [Phase 91]: The operator's SQL Server checkpoint was driven by the orchestrator in the in-app browser against the local `mssql-dev` container, with the operator's explicit permission to start it. Test sets were created and deleted through the real Platform POSTs
+- [Phase 91]: Desktop text inside a `.modern-card` must not be a visible `<span>`: `modern-card.css` forces cream with `!important` on every span in a card. This made linked chip text unreadable, and markup tests and an emulated-browser check both missed it; only the UI audit caught it. Static guard facts now pin it for the linked partial and the day count
+
 ### Roadmap Evolution
 
 v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100% requirement coverage (21/21), no orphans, no ad-hoc scope additions. Full evolution history archived in `.planning/milestones/v8.0-ROADMAP.md`.
@@ -162,6 +169,12 @@ New as of 2026-10-06 (Phase 89):
 - **`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.** The release pipeline and all Phase 89 jobs are pinned to `ubuntu-24.04`; the original `dotnet.yml` `build` job and `docker-publish.yml` still float. A follow-up task was offered to pin them.
 - **Only the installed, idle and manual-rollback paths have run in production.** Unhealthy auto switch-back, halted and refused rows are proven by offline flow tests and the real-SQL CI tests only.
 
+New as of 2026-10-17 (Phase 91):
+
+- **Three Phase 91 checks are held for a human, none blocking:** event chips and the cancelled styling on real data (the local DB has no events); the legend and "Also showing" lines with 4+ linked boards (only 3 One-Shot boards exist locally); a physical phone (checked with an emulated Android UA at 390x844). All three are covered by automated facts.
+- **Board edits can now fail in a narrow race.** With the concurrency token, a board-settings edit fails on save if a super admin links or unlinks that same board between the edit's read and its write. No data is lost and resubmitting works.
+- **The local test suite can fail en masse with `inotify` errors.** The per-user limit is 256 instances, and other processes (a `Cabinet.BrowserTests` run, desktop sessions) can exhaust it. Re-run with `DOTNET_USE_POLLING_FILE_WATCHER=1`; it is not a code failure.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -190,9 +203,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-15T20:26:15.774Z
-Stopped at: Phase 91 UI-SPEC approved
-Resume file: .planning/phases/91-linked-boards-with-a-shared-calendar/91-UI-SPEC.md
+Last session: 2026-10-17
+Stopped at: Phase 91 complete with all follow-ups closed; PR from `milestone/v9-rolling-improvements` to `main` opened
+Resume file: none — next is `/gsd-discuss-phase 92`
 
 ## Operator Next Steps
 

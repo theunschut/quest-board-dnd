@@ -77,7 +77,7 @@ findings:
   total: 6
 resolved:
   warning: 2
-  info: 0
+  info: 4
 status: issues_found
 ---
 
@@ -196,3 +196,14 @@ public async Task<bool> AssignBoardAsync(int groupId, int? expectedCurrentSetId,
 _Reviewed: 2026-10-16_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+## Info Resolution (2026-10-17)
+
+- **IN-01:** The `CalendarViewModel.ToStoredDate` comment now scopes its claim to placing entries on grid days. It also names the one other conversion, the linked read's midnight-aligned month window in `LinkedCalendarService`. The interface was left unchanged, because accepting `DateOnly` bounds would have pushed the conversion into two controllers.
+- **IN-02:** `LinkedEventOnDay` and `LinkedQuestOnDay` format `HH:mm` with `CultureInfo.InvariantCulture`.
+- **IN-03:**
+  - `GetUnlinkedBoardsAsync` no longer projects the always-null `LinkedBoardSetId`.
+  - The Platform actions still take no `CancellationToken`, matching every other Platform controller (`GroupController` and others).
+  - The lighter set lookup was not added: it is optional, and the set read is one indexed row.
+- **IN-04:** Closed by evidence rather than code. The migration and the two `IgnoreQueryFilters` reads ran against local SQL Server on 2026-10-16 and 2026-10-17 with no translation errors, as recorded in `91-10-SUMMARY.md`. The duplicate-name and race paths are now driven by interceptor-based repository facts.
+

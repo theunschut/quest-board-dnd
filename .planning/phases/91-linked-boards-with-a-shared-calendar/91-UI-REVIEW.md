@@ -42,7 +42,10 @@ All three top fixes are done and verified live on local SQL Server.
    - Each Remove Board button now announces its board, for example "Remove Board D&D Nerdjes/Vriendjes". Measured at 390px, the buttons are still 44px with no horizontal scroll.
    - The day count reads "1 entry from linked boards" or "N entries from linked boards" to screen readers, and its tooltip pluralises the same way. The UI-SPEC literal still says "entries" and can be amended when the contract is next touched.
 
-Still open: the Pillar 4 note on mobile Platform `p.text-muted` rendering at weight 600, and Minor Recommendations 1–4.
+Follow-up (2026-10-17):
+- **Pillar 4 note:** fixed with a scoped `.linked-boards-mobile p.text-muted { font-weight: 400 }`, probed at 400 live. It is scoped to paragraphs so the empty-state icon keeps its icon-font weight.
+- **Minor Recommendation 3 (UI-SPEC reconciliation):** done. The accent list now names `.calendar-linked-note`, the state-table row matches the Copywriting Contract, and the count-badge literal is pluralised and specified as a div.
+- **Still open:** Minor Recommendations 1 and 2 predate this phase. Recommendation 4 lists the held human backstops.
 
 ---
 
