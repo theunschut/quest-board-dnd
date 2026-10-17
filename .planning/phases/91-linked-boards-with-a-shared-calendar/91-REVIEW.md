@@ -75,6 +75,9 @@ findings:
   warning: 2
   info: 4
   total: 6
+resolved:
+  warning: 2
+  info: 0
 status: issues_found
 ---
 
@@ -129,6 +132,8 @@ catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient
 ```
 If the Repository layer should not reference the SqlClient type, re-run `NameExistsAsync` inside the catch and rethrow when no duplicate is found.
 
+**Resolution (2026-10-17, commit a191b32c):** Fixed with the provider-agnostic variant. After a refused save, `CreateAsync` and `RenameAsync` ask `NameExistsAsync` whether another set now holds the name. Only then is it reported as a duplicate; any other failure is rethrown. `RenameAsync` keeps the stored name from its own read and restores it without a query, so the recovery cannot throw. It now returns `LinkedBoardSetResult`, and a set deleted mid-rename reports `NotFound` instead of `DuplicateName`. Repository facts drive each path with an interceptor: a name taken just before the save, a refused save with the name free (throws), and a set deleted just before the rename.
+
 ### WR-02: AddBoard and RemoveBoard are check-then-write with an unconditional overwrite
 
 **File:** `QuestBoard.Repository/LinkedBoardSetRepository.cs:81-89`, used by `QuestBoard.Domain/Services/LinkedBoardSetService.cs:46-72` and `101-121`
@@ -147,6 +152,14 @@ public async Task<bool> AssignBoardAsync(int groupId, int? expectedCurrentSetId,
 }
 ```
 `Groups` is not covered by the Events/Quests change-tracker rule, so `ExecuteUpdate` is permitted here. Wrap the call in a try/catch for the FK violation.
+
+**Resolution (2026-10-17, commit a191b32c):** Fixed, but not with `ExecuteUpdate`. `FeedRevisionWriteSeamTests` bans `ExecuteUpdate` in all production source, not only for Events and Quests, so the premise above was wrong. The conditional write goes through the change tracker instead.
+- `Groups.LinkedBoardSetId` is now a concurrency token, the same pattern as `FeedRevision`. An add writes only if the board is still in no set, and a remove only if it is still in that set.
+- `AssignBoardAsync` is replaced by `AddBoardAsync` and `RemoveBoardAsync`, which return `LinkedBoardSetResult`. A lost race reports `AlreadyLinked` or `NotInSet` and leaves the board where the other admin put it. A set deleted before the write reports `NotFound` instead of a 500.
+- `DeleteAsync` relies on the foreign key's `ON DELETE SET NULL` on relational providers instead of un-linking each board, so a concurrent move cannot fail the delete.
+- No migration was needed: `dotnet ef migrations has-pending-model-changes` reports none.
+- Repository facts reproduce each race through two contexts over one store. Removing the token makes the add and remove race facts fail.
+- Residual: an ordinary board edit now fails on save if a super admin links or unlinks that same board in the milliseconds between the edit's read and its write. No data is lost; the edit can be resubmitted.
 
 ## Info
 
