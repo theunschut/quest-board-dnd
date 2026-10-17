@@ -33,6 +33,17 @@ No finding breaks task completion, so nothing is classed BLOCKER under the rubri
 2. **Mobile linked agenda titles render at 700, not 600** (WARNING) — `Calendar/Index.Mobile.cshtml:135,160` put `fw-bold` on `.agenda-linked-title`; Bootstrap's `fw-bold` is `font-weight: 700 !important`, so `calendar.mobile.css:136-142` (`font-weight: 600`) is dead. Probed live at 375px: computed 700. Contract: two weights, 400/600. Note that the own rows beside them also use `fw-bold` (`Index.Mobile.cshtml:107,118`), so visually the linked rows match their neighbours; the choice is to drop `fw-bold` on linked rows (contract-true) or amend the contract. Remove the dead CSS weight either way.
 3. **Accessible names for repeated and iconic controls** (WARNING) — (a) every `Remove Board` button in a set reads identically to a screen reader (`Index.cshtml:130-132`, `Index.Mobile.cshtml:111-113`); add `<span class="visually-hidden"> @board.Name</span>` after the label. (b) `.linked-day-count` (`_Calendar.cshtml:40`) is an icon plus a bare number; its only description is a `title`, which keyboard and touch users never get. Add `<span class="visually-hidden"> linked entries</span>`. (c) The `title` reads "1 entries from linked boards" when the count is 1; pluralise (the contract's literal string has the same flaw).
 
+### Resolution (2026-10-17, commit 960a6c5a)
+
+All three top fixes are done and verified live on local SQL Server.
+1. **Chip text.** The chip title and detail in `_LinkedDayEntries.cshtml` are now `<div>`s, like the board's own chips, so `.modern-card span` no longer reaches them. The day-count badge in `_Calendar.cshtml` is a `<div>` for the same reason. Computed in the browser on both `/calendar` and Quest Details: the title is `rgb(26, 26, 26)` at 600 with no shadow, the hover detail is `rgb(38, 38, 38)` at 400, and the badge is parchment at 600 with its own single shadow. Two static guard facts in `LinkedBoardStaticGuardTests` fail if a visible span returns to the partial or to the badge; both fail on the previous markup.
+2. **Mobile title weight.** The contract-true option was taken: `fw-bold` is dropped from `.agenda-linked-title`, so `calendar.mobile.css`'s 600 applies (probed 600; own rows stay 700).
+3. **Accessible names and copy.**
+   - Each Remove Board button now announces its board, for example "Remove Board D&D Nerdjes/Vriendjes". Measured at 390px, the buttons are still 44px with no horizontal scroll.
+   - The day count reads "1 entry from linked boards" or "N entries from linked boards" to screen readers, and its tooltip pluralises the same way. The UI-SPEC literal still says "entries" and can be amended when the contract is next touched.
+
+Still open: the Pillar 4 note on mobile Platform `p.text-muted` rendering at weight 600, and Minor Recommendations 1–4.
+
 ---
 
 ## Detailed Findings
