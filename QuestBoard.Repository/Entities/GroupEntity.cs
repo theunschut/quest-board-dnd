@@ -18,5 +18,10 @@ public class GroupEntity : IEntity
 
     public int BoardType { get; set; }
 
+    public int? LinkedBoardSetId { get; set; }
+
+    [ForeignKey(nameof(LinkedBoardSetId))]
+    public virtual LinkedBoardSetEntity? LinkedBoardSet { get; set; }
+
     public virtual ICollection<UserGroupEntity> UserGroups { get; set; } = [];
 }

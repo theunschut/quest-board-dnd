@@ -27,6 +27,7 @@ public static class ServiceExtensions
         services.AddScoped<IDungeonMasterProfileRepository, DungeonMasterProfileRepository>();
         services.AddScoped<IReminderLogRepository, ReminderLogRepository>();
         services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<ILinkedBoardSetRepository, LinkedBoardSetRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventSeriesRepository, EventSeriesRepository>();
         services.AddScoped<IEventSignupRepository, EventSignupRepository>();

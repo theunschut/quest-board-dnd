@@ -188,4 +188,33 @@ internal class EventRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
             })
             .ToList();
     }
+
+    /// <inheritdoc/>
+    public async Task<IList<LinkedEventEntry>> GetLinkedEventsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateOnly fromInclusive, DateOnly toExclusive, CancellationToken token = default)
+    {
+        if (linkedGroupIds.Count == 0) return [];
+
+        // The ambient filter only lets the active board through, so reading another board's
+        // events needs the bypass. It is re-narrowed at once by linkedGroupIds, which the caller
+        // takes from a fresh set lookup this same request, and it covers the whole query. The
+        // projection selects no signups, and nothing is written, so no feed revision moves. There
+        // is deliberately no cancellation predicate: a cancelled event is shown, flagged.
+        return await DbContext.Events
+            .IgnoreQueryFilters()
+            .Where(e => linkedGroupIds.Contains(e.GroupId) && e.Date >= fromInclusive && e.Date < toExclusive)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.StartTime)
+            .ThenBy(e => e.Id)
+            .AsNoTracking()
+            .Select(e => new LinkedEventEntry
+            {
+                EventId = e.Id,
+                GroupId = e.GroupId,
+                Title = e.Title,
+                Date = e.Date,
+                StartTime = e.StartTime,
+                IsCancelled = e.CancelledAt != null
+            })
+            .ToListAsync(token);
+    }
 }

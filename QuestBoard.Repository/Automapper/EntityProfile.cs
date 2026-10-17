@@ -211,8 +211,12 @@ public class EntityProfile : Profile
         CreateMap<GroupEntity, Group>()
             .ForMember(dest => dest.BoardType, opt => opt.MapFrom(src => (BoardType)src.BoardType));
 
+        // A board rename maps the domain Group onto the tracked row, so the link columns are
+        // ignored here: renaming a board must never clear or change the set it is linked to.
         CreateMap<Group, GroupEntity>()
-            .ForMember(dest => dest.BoardType, opt => opt.MapFrom(src => (int)src.BoardType));
+            .ForMember(dest => dest.BoardType, opt => opt.MapFrom(src => (int)src.BoardType))
+            .ForMember(dest => dest.LinkedBoardSetId, opt => opt.Ignore())
+            .ForMember(dest => dest.LinkedBoardSet, opt => opt.Ignore());
 
         // UserGroup mapping with GroupRole int↔enum conversion
         CreateMap<UserGroupEntity, UserGroup>()

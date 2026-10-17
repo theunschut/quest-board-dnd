@@ -93,6 +93,23 @@
                     <div class="legend-item cancelled me-2"></div>
                     <small>Cancelled</small>
                 </div>
+                @if (Model.LinkedBoards.Count > 0)
+                {
+                    <hr class="my-2">
+                    <small class="fw-semibold d-block mb-1">Linked boards</small>
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="legend-item linked me-2"></div>
+                        <small>Dashed = from a linked board</small>
+                    </div>
+                    @foreach (var linkedBoard in Model.LinkedBoards)
+                    {
+                        <div class="d-flex align-items-start mb-2">
+                            <div class="legend-item linked me-2"></div>
+                            <small class="legend-board-name">@linkedBoard.Name</small>
+                        </div>
+                    }
+                    <small class="text-muted d-block mb-2">Dashed entries belong to a linked board. You can open them only if you are a member of that board.</small>
+                }
                 <div class="d-flex align-items-center mb-2">
                     <i class="fas fa-exclamation-triangle text-warning me-2"></i>
                     <small>No building key</small>

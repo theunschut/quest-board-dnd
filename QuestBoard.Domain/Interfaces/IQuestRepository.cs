@@ -12,8 +12,9 @@ public interface IQuestRepository : IBaseRepository<Quest>
 
     /// <summary>
     /// Returns all quests projected for the monthly calendar view, including signups, votes, and DM details.
+    /// DM-only sessions are included only when <paramref name="isAdminOrDm"/> is true.
     /// </summary>
-    Task<IList<Quest>> GetQuestsForCalendarAsync(CancellationToken token = default);
+    Task<IList<Quest>> GetQuestsForCalendarAsync(bool isAdminOrDm, CancellationToken token = default);
 
     /// <summary>
     /// Returns open quests and quests finalized within the last day, ordered newest first.
@@ -112,4 +113,14 @@ public interface IQuestRepository : IBaseRepository<Quest>
         DateTime windowStart,
         DateTime windowEnd,
         CancellationToken token = default);
+
+    /// <summary>
+    /// Returns the quests on the given linked boards that have a proposed date within
+    /// [<paramref name="fromInclusive"/>, <paramref name="toExclusive"/>), as flat rows carrying
+    /// only the title, Dungeon Master, finalized state and the proposed dates inside the window.
+    /// Signups, votes and players are never loaded. The ids must come from a server-side linked
+    /// set lookup taken in the same request, never from request input. An empty collection
+    /// returns an empty list rather than widening.
+    /// </summary>
+    Task<IList<LinkedQuestEntry>> GetLinkedQuestsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateTime fromInclusive, DateTime toExclusive, CancellationToken token = default);
 }

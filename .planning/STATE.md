@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 89
-status: completed
-stopped_at: Phase 89 context gathered
-last_updated: "2026-10-06T07:30:28.654Z"
-last_activity: 2026-10-06
-last_activity_desc: Phase 89 complete
+current_phase: 92
+current_phase_name: Move a Quest or Event to a Linked Board
+status: planning
+stopped_at: Phase 91 complete with all follow-ups closed; Phase 92 ready to discuss
+last_updated: "2026-10-17T12:00:00.000Z"
+last_activity: 2026-10-17
+last_activity_desc: Phase 91 follow-ups closed (security, validation, review and UI fixes); PR to main opened
 progress:
-  total_phases: 18
-  completed_phases: 16
-  total_plans: 129
-  completed_plans: 120
-  percent: 89
-current_phase_name: pull-based-release-deployment
+  total_phases: 21
+  completed_phases: 17
+  total_plans: 139
+  completed_plans: 130
+  percent: 81
 state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 ---
 
@@ -22,23 +22,24 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-06 — after Phase 89)
+See: .planning/PROJECT.md (updated 2026-10-17 — after Phase 91)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** No phase in progress — Phase 78 (Link Preview Foundation and Quest Cards) is planned and ready to execute
+**Current focus:** Phase 92 — Move a Quest or Event to a Linked Board (no CONTEXT.md yet; start with discuss-phase)
 
 ## Current Position
 
-Phase: 89 (pull-based-release-deployment) — COMPLETE
-Plan: 12 of 12
-Status: Phase 89 complete; not all phases complete — Phases 78, 79 and 81 are still open
-Last activity: 2026-10-06 — Phase 89 complete (UAT 7/7, verification passed, threats_open 0)
+Phase: 92 — Move a Quest or Event to a Linked Board
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-17 — Phase 91 closed out: code-review warnings and UI-review fixes landed, security 42/42 closed, Nyquist-compliant; PR to `main` opened
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
 none executed), Phase 79 — Character and Contact Link Cards and Phase 81 — Contact Tags and
 Filtering (not yet planned) are still open. Every other phase in the 72–89 range is complete with a
-verification report.
+verification report. Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, Phase 91
+is complete, and Phase 92 is next.
 
 Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
 shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
@@ -107,6 +108,12 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 89]: The operator delegated pushes, merges, tags and GitHub settings to the orchestrator in chat (accepted risk AR-89-07), and granted a same-day, IP-bound temporary root SSH login on CT 102 for the cutover, removed afterwards. The deploy-environment approval always stayed with the operator
 - [Phase 88]: Production checks run on a dedicated temporary subscription, revoked afterwards with a 410 confirmed. The "never paste the address" instruction failed twice this phase; the second time the permanent iPhone token was printed into the transcript via a token-named download file (T-88-22)
 
+- [Phase 91]: DM-only sessions now follow the viewer's role on the owning board on every calendar, linked or not (D-20). This is the one visible change on unlinked boards, made deliberately to match the quest board's existing rule
+- [Phase 91]: The cross-board read is two narrowed `IgnoreQueryFilters` projections in `QuestRepository`/`EventRepository`, which were already allowlisted, pinned to the linked board ids from a fresh per-request lookup and re-checked row by row in `LinkedCalendarService`. No new file joined the cross-board allowlist
+- [Phase 91]: Linked-set board writes use a concurrency token on `Groups.LinkedBoardSetId`, the same pattern as `FeedRevision`, because `FeedRevisionWriteSeamTests` bans `ExecuteUpdate` in all production source. The code reviewer and the verifier had both assumed the ban covered only Events and Quests. Deleting a set relies on the FK's `ON DELETE SET NULL` on relational providers
+- [Phase 91]: The operator's SQL Server checkpoint was driven by the orchestrator in the in-app browser against the local `mssql-dev` container, with the operator's explicit permission to start it. Test sets were created and deleted through the real Platform POSTs
+- [Phase 91]: Desktop text inside a `.modern-card` must not be a visible `<span>`: `modern-card.css` forces cream with `!important` on every span in a card. This made linked chip text unreadable, and markup tests and an emulated-browser check both missed it; only the UI audit caught it. Static guard facts now pin it for the linked partial and the day count
+
 ### Roadmap Evolution
 
 v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100% requirement coverage (21/21), no orphans, no ad-hoc scope additions. Full evolution history archived in `.planning/milestones/v8.0-ROADMAP.md`.
@@ -124,6 +131,9 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 87 added 2026-09-21: Cross-Board Deep Link Recovery -- a member following a link to another board they belong to should land on the page instead of a 404. Raised by the operator from live two-board use, and explicitly a revision of the strict session-scoped tenancy decision rather than a bug against it. The 18 global query filters keyed on `ActiveGroupId` make a foreign-board read indistinguishable from a nonexistent one, so the controller cannot answer differently today. Phase 82's Agenda confirm-then-switch modal is the pattern to generalise; the non-negotiable constraint is that a non-member must see no new signal, so the recovery flow cannot become a board-membership oracle.
 - Phase 88 added 2026-09-30: Calendar Feed Times Anchored to the Board Timezone -- a quest set to 18:00 on the board shows as 19:00 on the operator's phone and 20:00 on a friend's. The feed writes timed entries as floating local time with no zone (Phase 84 D-01), and at least some clients read floating time as UTC. D-01's reason for avoiding a timezone went away once Phase 86 introduced `IBoardClock`'s board zone. This deliberately reverses the test-pinned floating-time contract, so the guard tests get rewritten, not deleted. Proving the fix needs real phones.
 - Phase 89 added 2026-10-04: Pull-Based Release Deployment -- move production deploys from a push to a pull, following the operator's `ing-dashboard` project. Today the `deploy` job in `binary-release.yml` runs on a self-hosted GitHub Actions runner on the production App CT, which calls a server-only `deploy.sh`. That script wipes `/opt/questboard` and unzips the release, with no integrity check, health check or rollback. Instead, a systemd timer on the server checks the public releases API, verifies the archive, installs it into a versioned directory, confirms `/health`, and rolls back when it safely can. The runner is then removed so GitHub has no handle on the server. It is a port rather than a copy, because this app migrates on startup rather than from a separate migration bundle.
+- Phase 90 added 2026-10-06: Server OS and Database Platform Upgrade -- move the App CT (Ubuntu 24.04) and the SQL CT (Ubuntu 22.04 + SQL Server 2022) to supported OS and database versions, with target versions decided in discuss-phase. Raised by the operator after CI moved to `ubuntu-26.04` (PR #159). Research in `.planning/research/ubuntu-26.04-ct-upgrade.md`: the Proxmox host (PVE 9.2.5, pve-container 6.1.11) already supports 26.04 guests; .NET 10 is in the 26.04 archive; SQL Server 2022 supports only Ubuntu 20.04/22.04 and SQL Server 2025 supports 22.04/24.04 but not 26.04. The hard deadline is the SQL CT leaving 22.04 before its standard support ends (about mid-2027).
+- Phase 91 added 2026-10-15: Linked Boards with a Shared Calendar -- a super admin links two or more boards of the same `BoardType` in the Platform area, and `/calendar` on each linked board then shows every linked board's events and quests, marked by board. Raised by the operator: the same players run several campaigns as separate boards, and a new one-shot board must not book a date the existing board already has. Scoping found `_Calendar` rendered by desktop `Calendar/Index` and by the Quest Details date-vote calendar on both layouts, while `Calendar/Index.Mobile.cshtml` builds its own agenda list, so the change reaches past the partial. Same-type-only holds for good because `BoardType` cannot be edited after creation. Visibility for non-members of a linked board, the link model and whether the date-vote calendar also shows linked dates are left to discuss-phase.
+- Phase 92 added 2026-10-15: Move a Quest or Event to a Linked Board -- a super admin moves an existing quest or event to another board in the same link group, from its Details page. Raised by the operator at the end of Phase 91's discussion and kept out of Phase 91 on purpose, because that phase is read-only and a move is a cross-board write. Open questions for discuss-phase: signups tied to board-scoped characters and to players who may not be on the target board, events in a recurring series, the feed revision a board change raises, and whether people are notified.
 
 ### Pending Todos
 
@@ -159,6 +169,12 @@ New as of 2026-10-06 (Phase 89):
 - **`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.** The release pipeline and all Phase 89 jobs are pinned to `ubuntu-24.04`; the original `dotnet.yml` `build` job and `docker-publish.yml` still float. A follow-up task was offered to pin them.
 - **Only the installed, idle and manual-rollback paths have run in production.** Unhealthy auto switch-back, halted and refused rows are proven by offline flow tests and the real-SQL CI tests only.
 
+New as of 2026-10-17 (Phase 91):
+
+- **Three Phase 91 checks are held for a human, none blocking:** event chips and the cancelled styling on real data (the local DB has no events); the legend and "Also showing" lines with 4+ linked boards (only 3 One-Shot boards exist locally); a physical phone (checked with an emulated Android UA at 390x844). All three are covered by automated facts.
+- **Board edits can now fail in a narrow race.** With the concurrency token, a board-settings edit fails on save if a super admin links or unlinks that same board between the edit's read and its write. No data is lost and resubmitting works.
+- **The local test suite can fail en masse with `inotify` errors.** The per-user limit is 256 instances, and other processes (a `Cabinet.BrowserTests` run, desktop sessions) can exhaust it. Re-run with `DOTNET_USE_POLLING_FILE_WATCHER=1`; it is not a code failure.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -187,9 +203,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-06T07:35:00.000Z
-Stopped at: Phase 89 complete — production on v5.4.2 via the pull-based installer
-Resume file: None
+Last session: 2026-10-17
+Stopped at: Phase 91 complete with all follow-ups closed; PR from `milestone/v9-rolling-improvements` to `main` opened
+Resume file: none — next is `/gsd-discuss-phase 92`
 
 ## Operator Next Steps
 
@@ -200,5 +216,5 @@ Resume file: None
 - Decide whether to stop the `mssql-dev` container left running from the previous session (named volume `mssql-data`, so data persists either way)
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)
 - Releases are now cut by tagging `main` and approving the `deploy` environment; the CT installs within ~5 minutes. When an outcome mail says an installer update is available, run `setup` from that release as root (see `docs/deploy.md`)
-- Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79 and 81 are roadmapped but unplanned
+- Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79, 81 and 90 are roadmapped but unplanned (90: discuss first — `/gsd-discuss-phase 90`)
 - v9.0 has no fixed end state — run `/gsd-new-milestone` only when you decide to cut it

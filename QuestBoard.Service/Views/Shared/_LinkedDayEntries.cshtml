@@ -1,0 +1,62 @@
+@using Microsoft.AspNetCore.Html
+@model LinkedDayEntries
+@*
+    Form-free, read-only markup for the entries other boards in the linked set place on one day.
+    It takes its own model and never touches the board's own entries. A member of the owning
+    board gets one plain link to that board's ordinary details page; anyone else gets the same
+    content as a non-interactive block with no link, no tab stop and no data attributes. Every
+    value is encoded by Razor, and nothing here carries an element id.
+
+    The visible lines are divs, not spans: the calendar sits inside a .modern-card, whose span
+    rule forces cream text with !important, which turns a dark chip title into cream on a pale chip.
+    Only the visually hidden text may be a span.
+*@
+<div class="linked-day-entries">
+    @foreach (var eventOnDay in Model.Events)
+    {
+        var entry = eventOnDay.Entry;
+        var cancelled = entry.IsCancelled ? " linked-entry--cancelled" : "";
+        var tooltip = $"{entry.Title} - {entry.BoardName} - {eventOnDay.TimeLabel}" + (entry.IsCancelled ? " - Cancelled" : "");
+        Func<LinkedEventOnDay, IHtmlContent> body = @<text>
+            <div class="linked-entry-title">@item.Entry.Title</div>
+            <div class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.TimeLabel</div>
+            <span class="visually-hidden">@(item.Entry.BoardName). @(item.TimeLabel).@(item.Entry.IsCancelled ? " Cancelled." : "")</span>
+        </text>;
+
+        if (entry.ViewerIsMember)
+        {
+            <a class="linked-entry linked-entry--event@(cancelled) linked-entry--open"
+               href="@Url.Action("Details", "Events", new { id = entry.EventId })"
+               title="@tooltip">@body(eventOnDay)</a>
+        }
+        else
+        {
+            <div class="linked-entry linked-entry--event@(cancelled) linked-entry--static"
+                 title="@tooltip">@body(eventOnDay)</div>
+        }
+    }
+
+    @foreach (var questOnDay in Model.Quests)
+    {
+        var entry = questOnDay.Entry;
+        var status = questOnDay.IsFinalized ? "finalized" : "proposed";
+        var tooltip = $"{entry.Title} - {entry.BoardName} - {entry.DungeonMasterName} - {questOnDay.TimeLabel}";
+        Func<LinkedQuestOnDay, IHtmlContent> body = @<text>
+            <div class="linked-entry-title">@item.Entry.Title</div>
+            <div class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.Entry.DungeonMasterName · @item.TimeLabel</div>
+            <span class="visually-hidden">@(item.Entry.BoardName). DM @(item.Entry.DungeonMasterName). @(item.TimeLabel). @(item.IsFinalized ? "Finalized." : "Proposed.")</span>
+        </text>;
+
+        if (entry.ViewerIsMember)
+        {
+            <a class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--open"
+               href="@Url.Action("Details", "Quest", new { id = entry.QuestId })"
+               title="@tooltip">@body(questOnDay)</a>
+        }
+        else
+        {
+            <div class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--static"
+                 title="@tooltip">@body(questOnDay)</div>
+        }
+    }
+</div>

@@ -27,6 +27,11 @@
                     <small class="text-muted ms-1">at @questOnDay.ProposedDate.Date.ToString("HH:mm")</small>
                 </div>
 
+                @if (day.Linked.HasEntries)
+                {
+                    @await Html.PartialAsync("_LinkedAlsoThatDay", day.Linked)
+                }
+
                 @* Initial vote flow — player not yet signed up, quest not finalized *@
                 @if (!questOnDay.IsFinalized && !(bool)(isPlayerSignedUp ?? (object)false))
                 {

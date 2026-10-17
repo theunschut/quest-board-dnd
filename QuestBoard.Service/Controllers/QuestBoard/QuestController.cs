@@ -20,7 +20,8 @@ public class QuestController(
     IReminderJobDispatcher reminderJobDispatcher,
     IActiveGroupContext activeGroupContext,
     IGroupService groupService,
-    IBoardClock boardClock
+    IBoardClock boardClock,
+    ILinkedCalendarService linkedCalendarService
     ) : Controller
 {
     [HttpGet]
@@ -344,11 +345,21 @@ public class QuestController(
 
         // Check if current user can manage this quest (DM or admin)
         var isQuestDm = currentUser != null && IsQuestOwner(currentUser, quest.DungeonMaster);
-        var isAdmin = currentUser != null && await GetEffectiveRoleAsync() == GroupRole.Admin;
+        GroupRole? viewerRole = currentUser != null ? await GetEffectiveRoleAsync() : null;
+        var isAdmin = viewerRole == GroupRole.Admin;
         ViewBag.CanManage = isQuestDm || isAdmin;
 
         // Get all quests for calendar context
-        var allQuests = await questService.GetQuestsForCalendarAsync(token);
+        var allQuests = await questService.GetQuestsForCalendarAsync(
+            viewerRole is GroupRole.Admin or GroupRole.DungeonMaster, token);
+
+        // The page's own quest is always on its own calendar, even when the viewer's tier hides
+        // it elsewhere: opening a DM-only quest's page by URL is handled separately and must
+        // not change here.
+        if (allQuests.All(q => q.Id != quest.Id))
+        {
+            allQuests = [.. allQuests, quest];
+        }
 
         // Get unique months that have proposed dates for this quest
         var monthsWithProposedDates = quest.ProposedDates
@@ -362,6 +373,32 @@ public class QuestController(
                 Quests = allQuests.ToList()
             })
             .ToList();
+
+        // One read covers every month shown, from the first day of the earliest proposed-date
+        // month to the first day after the latest. The service returns nothing for a request
+        // with no active board or no signed-in viewer. The board's own events are left unset on
+        // purpose so they stay off this page while the linked boards' entries show.
+        if (monthsWithProposedDates.Count > 0)
+        {
+            var first = monthsWithProposedDates[0];
+            var last = monthsWithProposedDates[^1];
+            var windowStart = new DateTime(first.Year, first.Month, 1);
+            var windowEnd = new DateTime(last.Year, last.Month, 1).AddMonths(1);
+            var linked = await linkedCalendarService.GetForViewerAsync(
+                activeGroupContext.ActiveGroupId,
+                currentUser?.Id,
+                User.IsInRole("SuperAdmin"),
+                windowStart,
+                windowEnd,
+                token);
+
+            foreach (var month in monthsWithProposedDates)
+            {
+                month.LinkedQuests = [.. linked.Quests];
+                month.LinkedEvents = [.. linked.Events];
+                month.LinkedBoards = [.. linked.Boards];
+            }
+        }
 
         ViewBag.CalendarMonths = monthsWithProposedDates;
         ViewBag.IsDetailsPage = true;

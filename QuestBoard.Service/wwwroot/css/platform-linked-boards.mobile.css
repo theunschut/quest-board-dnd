@@ -1,0 +1,39 @@
+/* platform-linked-boards.mobile.css - Platform Linked Boards mobile view (Index) */
+/* No @media queries — exclusively loaded by Areas/Platform/Views/LinkedBoards/Index.Mobile.cshtml via _Layout.Platform.Mobile.cshtml, alongside platform-group.mobile.css */
+
+/* Every button on the page is a full-size touch target */
+.linked-boards-mobile .btn {
+    min-height: 44px;
+}
+
+/* One board inside a set: name on the left, Remove Board on the right */
+.linked-set-board-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+/* Long board names wrap instead of pushing the button off screen */
+.linked-set-board-row .linked-set-board-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The form is the flex child, so it is the form that must refuse to shrink, or the label wraps */
+.linked-set-board-row > form {
+    flex-shrink: 0;
+}
+
+.linked-set-board-row .btn {
+    min-height: 44px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Muted notes read at the regular weight; the site-wide mobile .text-muted rule sets 600.
+   Scoped to paragraphs so the empty-state icon keeps the weight its icon font needs. */
+.linked-boards-mobile p.text-muted {
+    font-weight: 400;
+}

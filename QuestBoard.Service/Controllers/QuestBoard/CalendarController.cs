@@ -16,7 +16,8 @@ public class CalendarController(
     IUserService userService,
     IActiveGroupContext activeGroupContext,
     IBoardTypeResolver boardTypeResolver,
-    IBoardClock boardClock) : Controller
+    IBoardClock boardClock,
+    ILinkedCalendarService linkedCalendarService) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int? year = null, int? month = null, CancellationToken token = default)
@@ -47,9 +48,12 @@ public class CalendarController(
         var activeBoardType = await boardTypeResolver.GetBoardTypeAsync(token);
         var includeQuests = activeBoardType != BoardType.Campaign;
 
+        // The viewer's tier decides whether DM-only sessions are loaded at all.
+        var isDmTier = await IsDmTierAsync();
+
         // Get all quests with their proposed dates
         IList<Quest> allQuests = includeQuests
-            ? await questService.GetQuestsForCalendarAsync(token)
+            ? await questService.GetQuestsForCalendarAsync(isDmTier, token)
             : [];
         var allEvents = await eventService.GetEventsForCalendarAsync(token);
 
@@ -60,8 +64,25 @@ public class CalendarController(
             Month = selectedMonth,
             Quests = [.. allQuests],
             Events = [.. allEvents],
-            CanManage = await IsDmTierAsync()
+            CanManage = isDmTier
         };
+
+        // The other boards in this board's linked set add read-only entries for the month shown.
+        // The window is built from the requested year and month, never from an ambient clock.
+        // A viewer who cannot be resolved gets no overlay rather than a guessed one.
+        var viewer = await userService.GetUserAsync(User);
+        int? viewerId = viewer.Id == 0 ? null : viewer.Id;
+        var monthStart = new DateTime(selectedYear, selectedMonth, 1);
+        var linked = await linkedCalendarService.GetForViewerAsync(
+            activeGroupContext.ActiveGroupId,
+            viewerId,
+            User.IsInRole("SuperAdmin"),
+            monthStart,
+            monthStart.AddMonths(1),
+            token);
+        calendarModel.LinkedEvents = [.. linked.Events];
+        calendarModel.LinkedQuests = [.. linked.Quests];
+        calendarModel.LinkedBoards = [.. linked.Boards];
 
         // A player never triggers the runway query and never receives series titles they
         // have no action to take on.

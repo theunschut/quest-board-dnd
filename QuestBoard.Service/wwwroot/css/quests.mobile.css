@@ -138,6 +138,39 @@
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
+/* Read-only lines naming what other linked boards have on a proposed date. They sit between
+   the date label and the vote row, so the last one keeps the gap the label would have had. */
+.also-that-day {
+    font-size: 14px;
+    font-weight: 400;
+    color: #F4E4BC;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+}
+
+.also-that-day-board {
+    font-weight: 600;
+}
+
+.also-that-day .row-nav-link {
+    text-decoration: underline;
+    color: inherit;
+}
+
+.also-that-day--cancelled {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
+.calendar-date-entry-mobile .also-that-day:last-of-type {
+    margin-bottom: 8px;
+}
+
+.also-that-day + .calendar-vote-row {
+    margin-top: 8px;
+}
+
 /* Vote button row: three equal-width buttons */
 /* gap-2 comes from Bootstrap d-flex gap-2 on the container */
 /* flex-fill on each label stretches buttons equally */

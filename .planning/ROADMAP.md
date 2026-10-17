@@ -1,7 +1,7 @@
 # Milestone v9.0: Rolling Improvements
 
 **Status:** 🚧 IN PROGRESS
-**Phases:** 72–81 so far (open-ended)
+**Phases:** 72–91 so far (open-ended)
 **Working branch:** `milestone/v9-rolling-improvements`
 
 ## Overview
@@ -1195,6 +1195,123 @@ Plans:
 **Wave 8** *(blocked on Wave 7 completion)*
 
 - [x] 89-12-PLAN.md — Operator handover 3: retire the self-hosted runner, two-sided verification, idle-poll mail check
+
+### Phase 90: Server OS and Database Platform Upgrade
+
+**Goal:** Production runs on operating system and database versions that stay supported. The App CT and the SQL CT each move to a target version chosen in the discuss pass, without losing data and with the pull-based deploy still working end to end afterwards. The SQL CT must be off Ubuntu 22.04 before its standard support ends (about May/June 2027).
+**Requirements**: TBD
+**Depends on:** Phase 89. The App CT's verification uses the pull-based installer (setup, poll, `/health`), and the SQL CT move relies on the installer's backup and status commands.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-06, after moving CI to `ubuntu-26.04` (PR theunschut/quest-board-dnd#159): keep the servers in step, and check whether SQL Server can follow.
+
+**Starting point:**
+
+- **Proxmox host** `pve` (192.168.6.6): PVE 9.2.5, `pve-container` 6.1.11, kernel 7.0.12. A single node that also runs Traefik, Postfix, foundryvtt, Ledger and cabinet, so a host reboot stops all of them.
+- **App CT** (CT 102 `QuestBoard`, 192.168.6.12): Ubuntu 24.04.4. ASP.NET Core 10 app from the Ubuntu archive packages `dotnet-runtime-10.0` / `aspnetcore-runtime-10.0` (10.0.9 installed, 10.0.12 available). Versioned layout under `/opt/questboard`, poll timer, `gh` from GitHub's apt repo, Data Protection keys in `/home/questboard/.aspnet`.
+- **SQL CT** (CT 103 `MS-Sql`, 192.168.6.10): Ubuntu 22.04, SQL Server 2022 from `packages.microsoft.com/ubuntu/22.04/mssql-server-2022`, Microsoft key in the legacy `/etc/apt/trusted.gpg`. Database about 70 MB. Pre-migration backups and the prune script live in `/var/opt/mssql/data`.
+
+**Research:** `.planning/research/ubuntu-26.04-ct-upgrade.md` (2026-10-06, 37 cited sources). Headline facts:
+
+- The host already supports Ubuntu 26.04 guests: `pve-container` 6.0.12+ lists 26.04, and the official 26.04 template exists. No host upgrade is required, only routine 9.x updates.
+- App CT: an in-place 24.04 → 26.04 upgrade is supported (LTS path open since 26.04.1). .NET 10 is in the 26.04 archive and supported by Microsoft. Unconfirmed: the migrator's sandboxed `systemd-run` inside a 26.04 LXC (needs `nesting=1`), and 26.04's Rust coreutils and sudo-rs against the installer's commands.
+- SQL CT: SQL Server 2022 supports only Ubuntu 20.04/22.04. SQL Server 2025 supports 22.04 and 24.04 (CU1+) but **not 26.04**, and Microsoft publishes no `ubuntu/26.04` mssql-server repository (checked 2026-10-06). No SQL Server 2026 exists. Microsoft also supports SQL Server as a Docker container on any recent Linux, at the cost of Docker inside LXC.
+- Moving SQL Server 2022 → 2025 is one-way (no restore to an older version). The database keeps compatibility level 160 until raised, the app's SQL login has to be recreated on a new instance, the edition must be one licensed for production, and APT 3.x on newer Ubuntu no longer trusts `/etc/apt/trusted.gpg`.
+
+**To decide in discuss-phase:**
+
+- Target per CT: App CT to 26.04 or stay on 24.04 for now; SQL CT to a new 24.04 CT with SQL Server 2025, an in-place 2022 → 2025 package upgrade first, or SQL Server in Docker on 26.04.
+- In place vs a fresh CT for each, and whether the IPs stay the same.
+- Order and timing (the research suggests host updates first, App CT around November 2026, SQL CT by Q1 2027), maintenance windows, and how much rehearsal on a clone is required.
+- Rollback for each step, given that the SQL move is one-way once production writes land on the new instance.
+- Whether CT access for the work runs through the operator or another temporary, scoped root grant like phase 89's.
+
+**Constraints:** no data loss; Proxmox snapshot and an off-box, test-restored database backup before anything touches production; the pull-based installer must pass `setup`, a poll and a version-checked `/health` after the App CT move; `/home/questboard/.aspnet` must survive (losing it signs everyone out); never print `/etc/questboard/env`.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 90 to break down)
+
+### Phase 91: Linked Boards with a Shared Calendar
+
+**Goal:** A super admin can link two or more boards of the same board type in the Platform area. On every linked board, `/calendar` then shows the events and quests of all boards in the link as well as its own, each marked with the board it belongs to, so a campaign split across boards for the same group of players never gets a date booked twice. Unlinking restores each board to its own calendar. Boards that are not linked behave exactly as they do today.
+**Requirements**: TBD
+**Depends on:** Phase 87. Calendar links to an entry on another board go through its cross-board deep-link switch. Independent of Phase 90.
+**Plans:** 10/10 plans complete
+
+**Origin:** raised by the operator on 2026-10-15. The same group of players runs several campaigns as separate boards. The operator wants to start a new one-shot board for another campaign and still see its quests and events on the existing board's calendar, so the two never plan the same date.
+
+**Starting point** (scoped 2026-10-15):
+
+- **Boards:** a board is `Group` (`QuestBoard.Domain/Models/Group.cs`, entity `GroupEntity`). The active board comes from the session through `IActiveGroupContext`. Every tenant entity has a fail-closed global query filter on `GroupId == ActiveGroupId` (`QuestBoardContext.cs`). Any read that crosses boards must use `IgnoreQueryFilters` from a file on the `CrossBoardIgnoreQueryFiltersSeamTests` allowlist (currently five repository files).
+- **Board type:** `BoardType` has two values, `OneShot` and `Campaign`. It is set when a board is created and cannot be changed afterwards (Edit shows it disabled), so a same-type link cannot later become mixed.
+- **Platform area:** `Areas/Platform/Controllers/GroupController.cs` under the `SuperAdminOnly` policy has Index, Create, Edit, Delete (empty boards only) and member management. There is no link concept yet.
+- **`/calendar`:** `CalendarController.Index` reads quests via `QuestRepository` and events via `EventRepository`. Both rely only on the query filter and fetch every row; `CalendarViewModel` filters to the month. Quests are skipped entirely on Campaign boards. DM tier also gets the series-runway warning.
+- **Views:** desktop `Calendar/Index.cshtml` renders the shared `_Calendar` partial. `Calendar/Index.Mobile.cshtml` does **not** use the partial; it builds its own agenda list from `GetCalendarDays()`, so both layouts need the change.
+- **Other `_Calendar` users:** `Quest/Details.cshtml` (three call sites) and `Quest/Details.Mobile.cshtml` (two). There the partial is quests-only and doubles as the date-vote form (`IsDetailsPage`, `VoteIndexLookup`). This is the place where seeing a linked board's dates would most directly prevent a clash while proposing or voting.
+- **Existing cross-board reads to reuse:** Phase 82's `EventRepository.GetUpcomingAcrossGroupsWithSignupsAsync` (filter-bypassing and narrowed to the viewer's board ids) and Phase 87's `CrossBoardLinkRegistry` / `CrossBoardDeepLinkMiddleware`, which switch the session board when a member opens Quest or Event Details on another board. A non-member gets the normal 404.
+- **Calendar feed:** `CalendarSubscriptionService` already spans all of the subscriber's boards by membership, and quests come only from OneShot boards. A board link does not touch that rule, so the feed is unaffected unless the discussion decides otherwise.
+- **My Agenda and the Events availability overview** already work across boards or within one board on their own rules. They are not `_Calendar` users.
+
+**To decide in discuss-phase:**
+
+- **Link model:** a named link group that a board belongs to (at most one), or pairwise links. Whether links are transitive. What happens to a link when a board is deleted.
+- **Visibility for non-members:** a player on board A who is not a member of linked board B. Do they see B's entries in full, as an anonymous "busy" block, or not at all? A link into B would 404 for them under the Phase 87 rules.
+- **Which surfaces show linked entries:** `/calendar` on both layouts for sure. Whether the Quest Details date-vote calendar also shows linked boards' dates (read-only, never votable), and whether the DM series-runway warning stays per-board.
+- **Which quests count:** finalized only, or open quests with proposed dates too. The current calendar shows every quest it fetches.
+- **Presentation:** how a linked entry is marked (board-name badge or prefix, muted colour), and whether a board's own entries can be told apart at a glance.
+- **Whether linking ever changes the calendar feed.** The default is no.
+
+**Constraints:** linking is super-admin only and only between boards of the same type (enforced server-side, not just in the form). Every cross-board read stays narrowed to the linked board ids and goes through the `IgnoreQueryFilters` allowlist. The tenant-isolation tests keep passing for unlinked boards. The link is read-only: nothing on a linked board can be edited, signed up for or voted on from another board's calendar. The change is a pure read with no write to `Events` or `Quests`, so feed revisions do not move. The schema change ships as an EF Core migration. Both `.Mobile.cshtml` twins are updated.
+
+Plans:
+**Wave 1**
+
+- [x] 91-01-PLAN.md — Linked board set schema and repository: set table + Groups.LinkedBoardSetId migration, set CRUD and board assignment, rename keeps the link (W1)
+- [x] 91-02-PLAN.md — DM-only sessions follow the viewer's board role on /calendar and the Quest Details calendar (W1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 91-03-PLAN.md — Linked Boards Platform page (desktop): same-type / at-most-one rules server-side, SuperAdminOnly controller and view (W2)
+- [x] 91-04-PLAN.md — Pinned linked reads: per-viewer linked-board lookup and narrow, windowed filter-bypassing quest and event reads (W2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 91-05-PLAN.md — Linked boards' quests and events on desktop /calendar: re-checked read-only overlay service, view model and partial (W3)
+- [x] 91-06-PLAN.md — Linked Boards mobile twin and Group index entry buttons (W3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 91-07-PLAN.md — Desktop look and legend for linked entries, parity/no-leak proofs, member deep-link switch (W4)
+- [x] 91-08-PLAN.md — Linked entries on the mobile /calendar agenda (W4)
+- [x] 91-09-PLAN.md — Linked entries on the Quest Details calendar (desktop grid, mobile "Also that day") and the read-only static guard (W4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 91-10-PLAN.md — End-to-end Platform-to-calendar proof, feed untouched, local SQL Server and phone verification (W5, checkpoint)
+
+### Phase 92: Move a Quest or Event to a Linked Board
+
+**Goal:** A super admin can move an existing quest or event from its board to another board in the same link group, from that entry's Details page. After the move the entry lives on the target board as if it had been created there, and the boards in the group stop disagreeing about where it belongs. Boards that are not linked offer no move.
+**Requirements**: TBD
+**Depends on:** Phase 91. A move is only offered between boards in the same link group, so the link model has to exist first.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-15 at the end of Phase 91's discussion. It was kept out of Phase 91 on purpose: that phase is read-only and makes no write to `Events` or `Quests`, and a move is the opposite, a cross-board write. See `91-CONTEXT.md` § Deferred Ideas.
+
+**To decide in discuss-phase:**
+
+- **Signups and characters:** characters belong to one board. A player signed up on the source board with that board's character has no valid character on the target board, and may not be a member of it at all. Votes, the waitlist and gold rewards hang off those signups. Whether a move keeps, drops, or blocks on existing signups.
+- **Event series:** an event that belongs to a recurring series on the source board either leaves the series or is refused. Whether a whole series can move.
+- **Calendar feed:** the board is a feed-visible field, so a move raises the entry's `FeedRevision` through `FeedRevisionStamper`, and the entry leaves the feed of subscribers who are only on the source board. Whether that is acceptable as is.
+- **Notification:** whether affected players and DMs are told, and how.
+- **Which entries can move:** finalized, open, past, closed, cancelled.
+
+**Constraints:** super-admin only, enforced server-side. Only between boards in the same link group (which implies the same board type). The write goes through the change tracker so the feed revision rises, per `.claude/architecture.md`. Both `.Mobile.cshtml` twins are updated.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 92 to break down)
 
 ## Backlog
 

@@ -46,9 +46,11 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     }
 
     /// <inheritdoc/>
-    public async Task<IList<Quest>> GetQuestsForCalendarAsync(CancellationToken token = default)
+    public async Task<IList<Quest>> GetQuestsForCalendarAsync(bool isAdminOrDm, CancellationToken token = default)
     {
+        // The same DM-only rule the quest board applies, so a board shows one rule on every surface.
         var entities = await ProjectForCalendar(DbContext.Quests)
+            .Where(q => !q.DungeonMasterSession || isAdminOrDm)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<Quest>>(entities);
     }
@@ -271,6 +273,42 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
             .Where(q => q.FinalizedDate.HasValue && q.FinalizedDate.Value.Date == date.Date)
             .ToListAsync(token);
         return Mapper.Map<IList<Quest>>(entities);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<LinkedQuestEntry>> GetLinkedQuestsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateTime fromInclusive, DateTime toExclusive, CancellationToken token = default)
+    {
+        if (linkedGroupIds.Count == 0) return [];
+
+        // The ambient filter only lets the active board through, so reading another board's
+        // quests needs the bypass. It is re-narrowed at once by linkedGroupIds, which the caller
+        // takes from a fresh set lookup this same request, and it covers the whole query,
+        // including the proposed-date navigation whose own filter would otherwise hide another
+        // board's dates. One "has a proposed date in the window" predicate is enough for both
+        // placements, because a finalized quest only shows on a day that also carries a proposed
+        // date. This is a flat projection that selects no signups, votes or players, and it
+        // writes nothing, so no feed revision moves.
+        return await DbContext.Quests
+            .IgnoreQueryFilters()
+            .Where(q => linkedGroupIds.Contains(q.GroupId)
+                && q.ProposedDates.Any(pd => pd.Date >= fromInclusive && pd.Date < toExclusive))
+            .OrderBy(q => q.Id)
+            .AsNoTracking()
+            .Select(q => new LinkedQuestEntry
+            {
+                QuestId = q.Id,
+                GroupId = q.GroupId,
+                Title = q.Title,
+                DungeonMasterName = q.DungeonMaster.Name,
+                DungeonMasterSession = q.DungeonMasterSession,
+                IsFinalized = q.IsFinalized,
+                FinalizedDate = q.FinalizedDate,
+                ProposedDates = q.ProposedDates
+                    .Where(pd => pd.Date >= fromInclusive && pd.Date < toExclusive)
+                    .Select(pd => pd.Date)
+                    .ToList()
+            })
+            .ToListAsync(token);
     }
 
     /// <inheritdoc/>
