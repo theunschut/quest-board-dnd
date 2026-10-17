@@ -37,7 +37,9 @@
 
                     @if (day.Linked.HasEntries)
                     {
-                        <span class="linked-day-count" title="@day.Linked.Count entries from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count</span>
+                        var linkedNoun = day.Linked.Count == 1 ? "entry" : "entries";
+                        @* A div, not a span, so the card's cream span rule does not override its own style. *@
+                        <div class="linked-day-count" title="@day.Linked.Count @linkedNoun from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count<span class="visually-hidden"> @linkedNoun from linked boards</span></div>
                     }
 
                     @* The day number stays outside this wrapper so it never scrolls out of *@

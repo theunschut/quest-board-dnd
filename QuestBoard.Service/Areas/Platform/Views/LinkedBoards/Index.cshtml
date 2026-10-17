@@ -128,7 +128,7 @@ else
                                             <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="RemoveBoard" asp-route-id="@set.Id" method="post" class="d-inline" onsubmit="@removeBoardHandler">
                                                 <input type="hidden" name="groupId" value="@board.Id" />
                                                 <button type="submit" class="btn btn-sm btn-danger">
-                                                    <i class="fas fa-link-slash me-2"></i>Remove Board
+                                                    <i class="fas fa-link-slash me-2" aria-hidden="true"></i>Remove Board<span class="visually-hidden"> @board.Name</span>
                                                 </button>
                                             </form>
                                         </td>

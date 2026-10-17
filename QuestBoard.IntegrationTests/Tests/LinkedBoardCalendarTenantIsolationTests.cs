@@ -330,8 +330,8 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         var cell = DayCell(html, 25);
         cell.Should().Contain("Bravo Lonely Night OnlyLinked");
         cell.Should().Contain("linked-day-count");
-        cell.Should().Contain("1 entries from linked boards");
-        DayCell(html, 12).Should().Contain("1 entries from linked boards");
+        cell.Should().Contain("1 entry from linked boards");
+        DayCell(html, 12).Should().Contain("1 entry from linked boards");
         DayCell(html, 3).Should().NotContain("linked-day-count");
     }
 

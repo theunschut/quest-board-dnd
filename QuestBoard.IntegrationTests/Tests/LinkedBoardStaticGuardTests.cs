@@ -82,6 +82,38 @@ public class LinkedBoardStaticGuardTests
             because: $"{fileName} must not use the answer vocabulary of the board's own entries");
     }
 
+    // ---- Desktop linked text is not repainted by the card's span rule ----
+
+    // The desktop calendar sits inside a .modern-card, and modern-card.css paints every span in a
+    // card cream with !important. A visible span in a linked chip or in the day count therefore
+    // renders cream on the chip's pale surface whatever calendar.css asks for, which no markup
+    // assertion would notice. Only text that is hidden from sight may be a span.
+    private static readonly Regex SpanTag = new(@"<span\b[^>]*>", RegexOptions.Compiled);
+
+    [Fact]
+    public void LinkedDayEntries_UsesSpansOnlyForVisuallyHiddenText()
+    {
+        var spans = SpanTag.Matches(ReadView("_LinkedDayEntries.cshtml")).Select(m => m.Value).ToList();
+
+        spans.Should().NotBeEmpty(because: "each chip carries visually hidden status text");
+        spans.Should().OnlyContain(tag => tag.Contains("class=\"visually-hidden\""),
+            because: "a visible span inside the calendar card is repainted cream by the card's !important span rule");
+    }
+
+    [Fact]
+    public void DesktopCalendar_LinkedDayCountIsNotASpan_AndHidesOnlyItsScreenReaderText()
+    {
+        var source = ReadView("_Calendar.cshtml");
+        var start = source.IndexOf("class=\"linked-day-count\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1);
+        var tagStart = source.LastIndexOf('<', start);
+        var element = source[tagStart..(source.IndexOf("</div>", start, StringComparison.Ordinal) + "</div>".Length)];
+
+        element.Should().StartWith("<div", because: "a span would be repainted by the card's !important span rule");
+        SpanTag.Matches(element).Select(m => m.Value)
+            .Should().OnlyContain(tag => tag.Contains("class=\"visually-hidden\""));
+    }
+
     // ---- The partials sit where the contract needs them ----
 
     [Fact]
