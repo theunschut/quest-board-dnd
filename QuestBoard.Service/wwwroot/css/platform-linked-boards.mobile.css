@@ -31,3 +31,9 @@
     flex-shrink: 0;
     white-space: nowrap;
 }
+
+/* Muted notes read at the regular weight; the site-wide mobile .text-muted rule sets 600.
+   Scoped to paragraphs so the empty-state icon keeps the weight its icon font needs. */
+.linked-boards-mobile p.text-muted {
+    font-weight: 400;
+}

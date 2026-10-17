@@ -1,3 +1,4 @@
+using System.Globalization;
 using QuestBoard.Domain.Models;
 
 namespace QuestBoard.Service.ViewModels.CalendarViewModels;
@@ -12,5 +13,5 @@ public class LinkedQuestOnDay
 
     public bool IsFinalized { get; set; }
 
-    public string TimeLabel => When.ToString("HH:mm");
+    public string TimeLabel => When.ToString("HH:mm", CultureInfo.InvariantCulture);
 }

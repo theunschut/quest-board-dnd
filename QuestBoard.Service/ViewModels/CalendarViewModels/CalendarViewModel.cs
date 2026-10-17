@@ -194,7 +194,8 @@ public class CalendarViewModel
             .Select(e => new LinkedEventOnDay { Entry = e })];
     }
 
-    // This is the single place the stored date type meets the calendar grid's
-    // date-and-time type. No other file may convert between them.
+    // This is the single place where the grid's date-and-time cells meet the stored date type.
+    // Placing an entry on a day must go through it; the linked read's month window, which is
+    // built from midnight-aligned month starts, is converted once in the service that reads it.
     private static DateOnly ToStoredDate(DateTime date) => DateOnly.FromDateTime(date);
 }

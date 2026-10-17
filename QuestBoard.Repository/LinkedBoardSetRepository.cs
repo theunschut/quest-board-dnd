@@ -148,8 +148,7 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
             {
                 Id = g.Id,
                 Name = g.Name,
-                BoardType = (BoardType)g.BoardType,
-                LinkedBoardSetId = g.LinkedBoardSetId
+                BoardType = (BoardType)g.BoardType
             })
             .ToListAsync(token);
     }
