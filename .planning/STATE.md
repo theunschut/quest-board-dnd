@@ -8,7 +8,7 @@ status: planning
 stopped_at: Phase 91 complete with all follow-ups closed; Phase 92 ready to discuss
 last_updated: "2026-10-17T12:00:00.000Z"
 last_activity: 2026-10-17
-last_activity_desc: Phase 91 follow-ups closed (security, validation, review and UI fixes); PR to main opened
+last_activity_desc: Phase 91 merged to main (#160) and tagged v5.5.0; release awaiting deploy approval
 progress:
   total_phases: 21
   completed_phases: 17
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-17 — after Phase 91)
 Phase: 92 — Move a Quest or Event to a Linked Board
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-17 — Phase 91 closed out: code-review warnings and UI-review fixes landed, security 42/42 closed, Nyquist-compliant; PR to `main` opened
+Last activity: 2026-10-17 — Phase 91 closed out: code-review warnings and UI-review fixes landed, security 42/42 closed, Nyquist-compliant; merged to `main` as #160 and tagged `v5.5.0`
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -204,7 +204,7 @@ Items acknowledged and carried forward across milestone closes.
 ## Session Continuity
 
 Last session: 2026-10-17
-Stopped at: Phase 91 complete with all follow-ups closed; PR from `milestone/v9-rolling-improvements` to `main` opened
+Stopped at: Phase 91 shipped to `main` (#160, tag `v5.5.0`); the release waits for the operator's `deploy` approval
 Resume file: none — next is `/gsd-discuss-phase 92`
 
 ## Operator Next Steps
