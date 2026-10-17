@@ -359,6 +359,45 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         html.Should().NotContain("Bravo Other Month Night Window");
     }
 
+    [Fact]
+    public async Task Calendar_ViewerRoleOnTheLinkedBoardChanges_NextRequestFollowsTheNewRole()
+    {
+        await SeedLinkedPairAsync();
+        var ordinaryQuestId = await SeedQuestAsync(BoardB, "Bravo Fresh Crypt Run", "Dungeon Master Dana", [10]);
+        await SeedQuestAsync(BoardB, "Bravo Fresh Secret Run", "Dungeon Master Dana", [10], dmOnly: true);
+        var (client, viewer) = await CreateViewerAsync(
+            "linkedcal_fresh", (BoardA, GroupRole.Player), (BoardB, GroupRole.Player));
+
+        var first = await GetCalendarAsync(client);
+        first.Should().Contain("Bravo Fresh Crypt Run");
+        first.Should().Contain($"href=\"/Quest/Details/{ordinaryQuestId}\"");
+        first.Should().NotContain("Bravo Fresh Secret Run");
+
+        await using (var ctx = factory.Database.CreateContext())
+        {
+            var membership = ctx.UserGroups.IgnoreQueryFilters()
+                .Single(ug => ug.UserId == viewer.Id && ug.GroupId == BoardB);
+            membership.GroupRole = (int)GroupRole.DungeonMaster;
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var promoted = await GetCalendarAsync(client);
+        promoted.Should().Contain("Bravo Fresh Secret Run");
+
+        await using (var ctx = factory.Database.CreateContext())
+        {
+            var membership = ctx.UserGroups.IgnoreQueryFilters()
+                .Single(ug => ug.UserId == viewer.Id && ug.GroupId == BoardB);
+            ctx.UserGroups.Remove(membership);
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var removed = await GetCalendarAsync(client);
+        removed.Should().Contain("Bravo Fresh Crypt Run");
+        removed.Should().NotContain($"/Quest/Details/{ordinaryQuestId}");
+        removed.Should().NotContain("Bravo Fresh Secret Run");
+    }
+
     // Seeds one quest on the named board with the given proposed days (19:00 each). A finalized
     // quest is finalized on the first proposed day.
     private async Task<int> SeedQuestAsync(

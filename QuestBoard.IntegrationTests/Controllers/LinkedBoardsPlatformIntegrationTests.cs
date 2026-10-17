@@ -143,6 +143,31 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         (await context.LinkedBoardSets.CountAsync(Token)).Should().Be(1);
     }
 
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("DungeonMaster")]
+    [InlineData("Player")]
+    public async Task Page_WhenNotSuperAdmin_RefusesRenameAndRemoveOnASetThatAlreadyHasABoard(string role)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "deniedrename", "deniedrename@test.com", roles: [role]);
+        var setId = await SeedSetAsync("Guarded Set");
+        await SeedBoardAsync(25, "Guarded Member Table", linkedBoardSetId: setId);
+
+        var rename = await PostAsync(client, $"/platform/LinkedBoards/Rename/{setId}", ("name", "Renamed By Intruder"));
+        var remove = await PostAsync(client, $"/platform/LinkedBoards/RemoveBoard/{setId}", ("groupId", "25"));
+
+        foreach (var response in new[] { rename, remove })
+        {
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Found);
+        }
+
+        await using var context = _factory.Database.CreateContext();
+        (await context.LinkedBoardSets.SingleAsync(s => s.Id == setId, Token)).Name.Should().Be("Guarded Set");
+        (await GetBoardSetIdAsync(25)).Should().Be(setId);
+    }
+
     // ---------------------------------------------------------------------------
     // Refusals hold when the form is posted directly
     // ---------------------------------------------------------------------------

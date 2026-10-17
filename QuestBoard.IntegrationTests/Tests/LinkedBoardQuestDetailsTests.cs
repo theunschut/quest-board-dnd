@@ -472,4 +472,103 @@ public class LinkedBoardQuestDetailsTests(WebApplicationFactoryBase factory)
         html.Should().NotContain("also-that-day");
         html.Should().Contain("calendar-vote-row");
     }
+
+    // Seeds a quest on the named board with full proposed date-times, so a fact can span months
+    // that the fixed-month helper above cannot express.
+    private async Task<int> SeedDatedQuestAsync(int groupId, string title, DateTime[] proposed, int dmUserId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var quest = new QuestEntity
+        {
+            Title = title,
+            Description = "Linked details test quest",
+            ChallengeRating = 5,
+            DungeonMasterId = dmUserId,
+            TotalPlayerCount = 4,
+            GroupId = groupId,
+            IsFinalized = false,
+            CreatedAt = DateTime.UtcNow,
+            ProposedDates = [.. proposed.Select(d => new ProposedDateEntity { Date = d })]
+        };
+        ctx.Quests.Add(quest);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return quest.Id;
+    }
+
+    private async Task SeedDatedEventAsync(int groupId, string title, DateOnly date, TimeOnly startTime)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        ctx.Events.Add(new EventEntity
+        {
+            Title = title,
+            GroupId = groupId,
+            Date = date,
+            StartTime = startTime,
+            CreatedAt = DateTime.UtcNow
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Details_Desktop_QuestSpanningTwoMonths_ShowsLinkedEntriesAtTheEdgesOfBothMonths()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = BoardA;
+        await SeedBoardAsync(BoardB, BoardBName);
+        await LinkAsync(BoardA, BoardB);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "detailslink_span", "detailslink_span@example.com", roles: ["DungeonMaster"]);
+        var questXId = await SeedDatedQuestAsync(
+            BoardA,
+            "Alpha Two Month Quest",
+            [new DateTime(2031, 3, 10, 19, 0, 0), new DateTime(2031, 5, 20, 19, 0, 0)],
+            dmUser.Id);
+        await SeedDatedEventAsync(BoardB, "Bravo Edge Start Night", new DateOnly(2031, 3, 1), new TimeOnly(19, 0));
+        await SeedDatedEventAsync(BoardB, "Bravo Edge End Night", new DateOnly(2031, 5, 31), new TimeOnly(19, 0));
+
+        var html = await GetDetailsAsync(dmClient, questXId);
+
+        var blocks = LinkedBlocks(html);
+        blocks.Any(b => b.Contains("Bravo Edge Start Night")).Should().BeTrue("the first day of the earliest month is inside the linked window");
+        blocks.Any(b => b.Contains("Bravo Edge End Night")).Should().BeTrue("the last day of the latest month is inside the linked window");
+    }
+
+    private sealed record FeedStamps(int QuestRevision, DateTime QuestRevisedAt, int EventRevision, DateTime EventRevisedAt);
+
+    private async Task<FeedStamps> ReadBravoFeedStampsAsync(int bravoQuestId, int bravoEventId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var quest = await ctx.Quests.IgnoreQueryFilters().SingleAsync(q => q.Id == bravoQuestId, TestContext.Current.CancellationToken);
+        var evt = await ctx.Events.IgnoreQueryFilters().SingleAsync(e => e.Id == bravoEventId, TestContext.Current.CancellationToken);
+        return new FeedStamps(quest.FeedRevision, quest.FeedRevisedAt, evt.FeedRevision, evt.FeedRevisedAt);
+    }
+
+    private static async Task<string> GetPageAsync(HttpClient client, string url, string userAgent)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task ViewingLinkedEntries_OnBothCalendarsAndBothLayouts_LeavesTheLinkedBoardsFeedRevisionsUntouched()
+    {
+        var scenario = await SeedScenarioAsync();
+        var before = await ReadBravoFeedStampsAsync(scenario.BravoQuestId, scenario.BravoEventId);
+
+        var desktopCalendar = await GetPageAsync(scenario.PlayerClient, "/Calendar?year=2031&month=3", DesktopUserAgent);
+        var mobileCalendar = await GetPageAsync(scenario.PlayerClient, "/Calendar?year=2031&month=3", MobileUserAgent);
+        var desktopDetails = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId);
+        var mobileDetails = await GetDetailsAsync(scenario.PlayerClient, scenario.QuestXId, MobileUserAgent);
+
+        desktopCalendar.Should().Contain("Bravo Linked Lantern Night");
+        mobileCalendar.Should().Contain("Bravo Linked Lantern Night");
+        desktopDetails.Should().Contain("Bravo Linked Crypt Run");
+        mobileDetails.Should().Contain("Bravo Linked Crypt Run");
+
+        var after = await ReadBravoFeedStampsAsync(scenario.BravoQuestId, scenario.BravoEventId);
+        after.Should().Be(before);
+    }
 }
