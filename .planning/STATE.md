@@ -5,8 +5,8 @@ milestone_name: Rolling Improvements
 current_phase: 92
 current_phase_name: Move a Quest or Event to a Linked Board
 status: planning
-stopped_at: Phase 92 context gathered
-last_updated: "2026-10-17T14:30:20.479Z"
+stopped_at: Phase 92 UI-SPEC approved
+last_updated: "2026-10-18T10:58:12.659Z"
 last_activity: 2026-10-17
 last_activity_desc: Phase 91 live in production as v5.5.0; operator confirmed working
 progress:
@@ -203,9 +203,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-17T14:30:20.392Z
-Stopped at: Phase 92 context gathered
-Resume file: .planning/phases/92-move-a-quest-or-event-to-a-linked-board/92-CONTEXT.md
+Last session: 2026-10-18T10:58:12.577Z
+Stopped at: Phase 92 UI-SPEC approved
+Resume file: .planning/phases/92-move-a-quest-or-event-to-a-linked-board/92-UI-SPEC.md
 
 ## Operator Next Steps
 
