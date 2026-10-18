@@ -86,8 +86,7 @@ that have already been played or closed, any change to the calendar feed's code,
 
 ### People on a moved event
 
-- **D-08: Event availability answers are reconciled as if the event had been created on the target
-  board.** Answers from target-board members are kept exactly as they are, including whether they
+- **D-08: Event availability answers are reconciled as if the event had been created on the target board.** Answers from target-board members are kept exactly as they are, including whether they
   were real answers or automatic passes. Answers from non-members are dropped and named on the Move
   page, the same rule as D-05. On a Campaign board, every target-board member who has no row gets the
   automatic Yes row exactly as `AddWithCampaignFanOutAsync` creates it for a new event.
@@ -106,8 +105,7 @@ that have already been played or closed, any change to the calendar feed's code,
   Rejected: moving the occurrence out and leaving a cancelled placeholder in its slot (a
   struck-through entry on the source calendar for no visible reason); moving the whole series now.
 
-- **D-10: A quest in a follow-up chain can move, and the chain is cut where it would cross
-  boards.** If the moved quest is a follow-up of a source-board quest, its own `OriginalQuestId` is
+- **D-10: A quest in a follow-up chain can move, and the chain is cut where it would cross boards.** If the moved quest is a follow-up of a source-board quest, its own `OriginalQuestId` is
   cleared. If it has a follow-up on the source board, that follow-up's `OriginalQuestId` is cleared.
   A quest in the middle of a chain loses both links. The Move page names each quest it will no
   longer be linked to. The cut is permanent: moving the quest back does not restore it.
@@ -184,8 +182,7 @@ that have already been played or closed, any change to the calendar feed's code,
   Rejected: no email at all (a dropped player just finds their signup gone); mailing only dropped
   players and the DM.
 
-- **D-18: The calendar feed is accepted as it is. No change to `CalendarFeedWriter.cs`,
-  `CalendarSubscriptionService.cs` or `FeedRevisionStamper.cs`.** The move changes `GroupId`
+- **D-18: The calendar feed is accepted as it is. No change to `CalendarFeedWriter.cs`, `CalendarSubscriptionService.cs` or `FeedRevisionStamper.cs`.** The move changes `GroupId`
   through the change tracker, so `FeedRevisionStamper` raises the entry's revision. The UID stays
   the same, `SEQUENCE` goes up and the `SUMMARY` prefix changes from `[Board A]` to `[Board B]`.
   Subscribers who cannot see the entry on the target board lose it on their next poll, with no

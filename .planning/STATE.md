@@ -4,15 +4,15 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 92
 current_phase_name: Move a Quest or Event to a Linked Board
-status: planning
+status: executing
 stopped_at: Phase 92 UI-SPEC approved
-last_updated: "2026-10-18T10:58:12.659Z"
+last_updated: "2026-10-18T14:49:25.604Z"
 last_activity: 2026-10-17
 last_activity_desc: Phase 91 live in production as v5.5.0; operator confirmed working
 progress:
   total_phases: 21
   completed_phases: 17
-  total_plans: 139
+  total_plans: 148
   completed_plans: 130
   percent: 81
 state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-17 — after Phase 91)
 
 Phase: 92 — Move a Quest or Event to a Linked Board
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-10-17 — Phase 91 closed out: code-review warnings and UI-review fixes landed, security 42/42 closed, Nyquist-compliant; merged to `main` as #160 and tagged `v5.5.0`
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
