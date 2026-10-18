@@ -40,6 +40,11 @@ that have already been played or closed, any change to the calendar feed's code,
   shows the target as refused with the reason, and the POST refuses. A quest never arrives on a
   board whose members cannot see its DM as a DM, and the DM never loses sight of their own quest.
 
+  A quest whose DM is a SuperAdmin passes this rule on any target board, member or not, because the
+  effective-role rule counts a SuperAdmin as Admin everywhere (Phase 91 D-20). Confirmed by the
+  operator on 2026-10-18 when research raised the case. The researcher had suggested refusing unless
+  a real `UserGroups` row exists, and that was rejected as inconsistent with the rest of the board.
+
   Rejected: any membership being enough (a DM would sit on the board as a Player); letting the move
   go ahead and having the target board's Admins take the quest over.
 
