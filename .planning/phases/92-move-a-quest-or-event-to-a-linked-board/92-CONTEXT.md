@@ -93,7 +93,7 @@ that have already been played or closed, any change to the calendar feed's code,
 ### Series and follow-up chains
 
 - **D-09: An occurrence of a recurring series cannot move.** Only one-off events can: events that
-  were never in a series, or whose series was detached with the existing "Detach series" action. The
+  were never in a series, or whose series was detached with the existing "Detach sessions" action on the series page. The
   reason this is a hard rule: the nightly top-up decides which slots already exist by reading the
   source board's events, so an occurrence that left the board, or was detached on its own, would
   read as a free slot and be recreated on its original date. Moving a whole series is deferred.
