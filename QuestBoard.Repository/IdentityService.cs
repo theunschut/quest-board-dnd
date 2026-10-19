@@ -169,4 +169,11 @@ internal class IdentityService(UserManager<UserEntity> userManager, SignInManage
         var entity = await userManager.FindByIdAsync(userId.ToString());
         return entity?.LockoutEnd;
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> IsSuperAdminAsync(int userId)
+    {
+        var entity = await userManager.FindByIdAsync(userId.ToString());
+        return entity != null && await userManager.IsInRoleAsync(entity, "SuperAdmin");
+    }
 }
