@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
@@ -12,10 +13,11 @@ namespace QuestBoard.UnitTests.Repository;
 // contact ordering, newest-first note ordering, and the dedicated note add/edit/delete methods.
 public class ContactRepositoryTests
 {
-    private static QuestBoardContext CreateContext(string databaseName, MutableTestGroupContext groupContext)
+    private static QuestBoardContext CreateContext(string databaseName, MutableTestGroupContext groupContext, params IInterceptor[] interceptors)
     {
         var options = new DbContextOptionsBuilder<QuestBoardContext>()
             .UseInMemoryDatabase(databaseName)
+            .AddInterceptors(interceptors)
             .Options;
 
         return new QuestBoardContext(options, groupContext);
@@ -777,6 +779,106 @@ public class ContactRepositoryTests
         {
             var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
             tags.Should().ContainSingle();
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_ConcurrentSameNewName_RetriesAndReusesWinnersRow()
+    {
+        // Arrange: two untagged contacts on one board. The in-memory provider has no unique
+        // index, so the lost race is simulated: the first save that carries a new tag row first
+        // commits the winning request's identically named row from a separate context, then
+        // fails the way the unique (board, name) index would.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_ConcurrentSameNewName_RetriesAndReusesWinnersRow);
+        await SeedTwoUntaggedContactsAsync(dbName, groupContext);
+
+        var failedSaves = 0;
+        var interceptor = new FailingTagInsertInterceptor(async () =>
+        {
+            failedSaves++;
+            if (failedSaves > 1) return;
+
+            await using var winner = CreateContext(dbName, groupContext);
+            var contact = await winner.Contacts.Include(c => c.Tags).SingleAsync(c => c.Id == 2, TestContext.Current.CancellationToken);
+            contact.Tags.Add(new ContactTagEntity { Name = "shopkeeper", GroupId = 1 });
+            await winner.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        await using (var context = CreateContext(dbName, groupContext, interceptor))
+        {
+            var repository = new ContactRepository(context, CreateMapper());
+            groupContext.ActiveGroupId = 1;
+
+            // Act: the loser of the race submits the same new name
+            await repository.ReplaceContactTagsAsync(1, ["Shopkeeper"], TestContext.Current.CancellationToken);
+        }
+
+        // Assert: no exception reached the caller, and both contacts share the single row
+        failedSaves.Should().Be(1);
+        groupContext.ActiveGroupId = 1;
+        await using (var context = CreateContext(dbName, groupContext))
+        {
+            var tags = await context.ContactTags.Include(t => t.Contacts).ToListAsync(TestContext.Current.CancellationToken);
+            tags.Should().ContainSingle();
+            tags[0].Name.Should().Be("shopkeeper");
+            tags[0].Contacts.Select(c => c.Id).Should().BeEquivalentTo([1, 2]);
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceContactTagsAsync_NewTagSaveKeepsFailing_RetriesOnceThenSurfacesTheFailure()
+    {
+        // Arrange: every save that carries a new tag row fails, so the retry cannot succeed.
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = null };
+        var dbName = "ContactRepositoryTests." + nameof(ReplaceContactTagsAsync_NewTagSaveKeepsFailing_RetriesOnceThenSurfacesTheFailure);
+        await SeedTwoUntaggedContactsAsync(dbName, groupContext);
+
+        var failedSaves = 0;
+        var interceptor = new FailingTagInsertInterceptor(() =>
+        {
+            failedSaves++;
+            return Task.CompletedTask;
+        });
+
+        await using var context = CreateContext(dbName, groupContext, interceptor);
+        var repository = new ContactRepository(context, CreateMapper());
+        groupContext.ActiveGroupId = 1;
+
+        // Act
+        var act = () => repository.ReplaceContactTagsAsync(1, ["shopkeeper"], TestContext.Current.CancellationToken);
+
+        // Assert: a bounded single retry, then the original failure type reaches the caller
+        await act.Should().ThrowAsync<DbUpdateException>();
+        failedSaves.Should().Be(2);
+    }
+
+    private static async Task SeedTwoUntaggedContactsAsync(string dbName, MutableTestGroupContext groupContext)
+    {
+        await using var context = CreateContext(dbName, groupContext);
+        context.Groups.Add(new GroupEntity { Id = 1, Name = "Group One" });
+        context.UserEntities.Add(new UserEntity { Id = 1, Name = "Creator One", Email = "creator1@test.com" });
+        context.Contacts.Add(new ContactEntity { Id = 1, Name = "Contact A", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+        context.Contacts.Add(new ContactEntity { Id = 2, Name = "Contact B", GroupId = 1, CreatedByUserId = 1, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Fails any save that is about to insert a tag row, after running the supplied callback --
+    // the stand-in for the unique index rejecting a duplicate name.
+    private sealed class FailingTagInsertInterceptor(Func<Task> onFailingSave) : SaveChangesInterceptor
+    {
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var insertsTag = eventData.Context!.ChangeTracker.Entries<ContactTagEntity>()
+                .Any(e => e.State == EntityState.Added);
+            if (insertsTag)
+            {
+                await onFailingSave();
+                throw new DbUpdateException("Cannot insert duplicate key row in object 'dbo.ContactTags'.");
+            }
+
+            return result;
         }
     }
 
