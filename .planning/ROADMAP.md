@@ -1295,7 +1295,7 @@ Plans:
 **Goal:** A super admin can move an existing quest or event from its board to another board in the same link group, from that entry's Details page. After the move the entry lives on the target board as if it had been created there, and the boards in the group stop disagreeing about where it belongs. Boards that are not linked offer no move.
 **Requirements**: TBD
 **Depends on:** Phase 91. A move is only offered between boards in the same link group, so the link model has to exist first.
-**Plans:** 8/9 plans executed
+**Plans:** 9/9 plans executed
 
 **Origin:** raised by the operator on 2026-10-15 at the end of Phase 91's discussion. It was kept out of Phase 91 on purpose: that phase is read-only and makes no write to `Events` or `Quests`, and a move is the opposite, a cross-board write. See `91-CONTEXT.md` § Deferred Ideas.
 
@@ -1335,7 +1335,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 92-09-PLAN.md — Guards (ambient clock, single save, no planning references) and the end-to-end walk, audit line and feed proof (W6)
+- [x] 92-09-PLAN.md — Guards (ambient clock, single save, no planning references) and the end-to-end walk, audit line and feed proof (W6)
 
 ## Backlog
 
