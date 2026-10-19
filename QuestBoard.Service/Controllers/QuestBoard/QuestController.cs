@@ -21,7 +21,8 @@ public class QuestController(
     IActiveGroupContext activeGroupContext,
     IGroupService groupService,
     IBoardClock boardClock,
-    ILinkedCalendarService linkedCalendarService
+    ILinkedCalendarService linkedCalendarService,
+    IMoveControlService moveControlService
     ) : Controller
 {
     [HttpGet]
@@ -348,6 +349,13 @@ public class QuestController(
         GroupRole? viewerRole = currentUser != null ? await GetEffectiveRoleAsync() : null;
         var isAdmin = viewerRole == GroupRole.Admin;
         ViewBag.CanManage = isQuestDm || isAdmin;
+
+        // The move control belongs to the platform super admin alone, so it keys on the role
+        // itself rather than on CanManage (a board Admin or DM must never see it). The service
+        // returns null when the board has nothing to move to, and the view then renders nothing.
+        ViewBag.MoveControl = currentUser != null && User.IsInRole("SuperAdmin")
+            ? await moveControlService.GetForQuestAsync(quest, currentUser.Id, token)
+            : null;
 
         // Get all quests for calendar context
         var allQuests = await questService.GetQuestsForCalendarAsync(
