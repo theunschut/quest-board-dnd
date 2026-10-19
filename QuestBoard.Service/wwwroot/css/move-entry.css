@@ -1,0 +1,60 @@
+/* move-entry.css — Move page and the Details move control, desktop layouts */
+/* No media queries. Inside .modern-card the app forces p, li, span and small to parchment,
+   so nothing here sets a text colour; emphasis is weight and an icon. */
+
+.move-consequence {
+    display: flex;
+    gap: 8px;
+    padding: 8px 8px 8px 16px;
+    margin-bottom: 8px;
+    border-left: 4px solid #6c757d;
+}
+
+.move-consequence--kept {
+    border-left-color: #28a745;
+}
+
+.move-consequence--notice {
+    border-left-color: #ffc107;
+}
+
+.move-consequence--dropped {
+    border-left-color: #dc3545;
+}
+
+.move-consequence--neutral {
+    border-left-color: #6c757d;
+}
+
+.move-consequence-icon {
+    flex: 0 0 24px;
+    width: 24px;
+    text-align: center;
+}
+
+.move-consequence-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.move-people {
+    margin: 8px 0 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.move-person {
+    padding: 4px 0;
+    overflow-wrap: anywhere;
+}
+
+.move-strong {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.move-hint,
+.move-control-reason {
+    font-size: .875rem;
+}
