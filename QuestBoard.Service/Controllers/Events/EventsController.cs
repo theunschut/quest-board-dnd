@@ -21,7 +21,8 @@ public class EventsController(
     IBoardTypeResolver boardTypeResolver,
     IEventSeriesService eventSeriesService,
     IOptions<EventsOverviewOptions> overviewOptions,
-    IBoardClock boardClock) : Controller
+    IBoardClock boardClock,
+    IMoveControlService moveControlService) : Controller
 {
     // Read-only and available to every board member: the same per-event availability is
     // already visible one event at a time on Details, so gating the aggregate would make
@@ -71,6 +72,12 @@ public class EventsController(
         var currentUser = await userService.GetUserAsync(User);
         var viewModel = mapper.Map<EventViewModel>(eventEntity);
         viewModel.CanManage = currentUser.Id != 0 && await IsDmTierAsync();
+
+        // Only the platform super admin is offered the move, so this keys on the role and not
+        // on CanManage. Null means the board has nothing to move to and the view renders nothing.
+        ViewBag.MoveControl = currentUser.Id != 0 && User.IsInRole("SuperAdmin")
+            ? await moveControlService.GetForEventAsync(eventEntity, currentUser.Id, token)
+            : null;
 
         var roster = await eventSignupService.GetRosterForEventAsync(id, token);
         viewModel.Roster = mapper.Map<IList<EventSignupViewModel>>(roster);

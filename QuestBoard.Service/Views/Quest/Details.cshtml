@@ -1,8 +1,10 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Models.BoardMove
 @using QuestBoard.Domain.Models.QuestBoard
 @using QuestBoard.Service.Extensions
+@using QuestBoard.Service.Helpers
 @using QuestBoard.Service.ViewModels.CalendarViewModels
 @model PlayerSignup
 
@@ -12,6 +14,7 @@
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
     var boardToday = (DateOnly)ViewBag.BoardToday;
+    var moveControl = ViewBag.MoveControl as MoveControlState;
     // Characters the viewer owns on the active board. ViewBag hands this over as a dynamic,
     // so read it once through a widened, null-safe local rather than casting to a concrete
     // list type at each use site -- a cast that would only hold as long as the mapper keeps
@@ -760,6 +763,22 @@
                             <i class="fas fa-cog me-2"></i>
                             Manage Quest
                         </a>
+                        @if (moveControl != null)
+                        {
+                            @if (moveControl.CanMove)
+                            {
+                                <a href="@Url.Action("Quest", "Move", new { id = Model.Quest?.Id })" class="btn btn-info w-100 mt-2">
+                                    <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-info w-100 mt-2 disabled" aria-disabled="true" aria-describedby="move-reason">
+                                    <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                                </button>
+                                <p class="move-control-reason mb-0 mt-2" id="move-reason">@MoveCopy.ControlReason(moveControl.BlockReason)</p>
+                            }
+                        }
                     </div>
                 </div>
             }

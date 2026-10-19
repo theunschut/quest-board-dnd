@@ -51,6 +51,7 @@ public static class ServiceExtensions
         services.AddScoped<IQuestService, QuestService>();
         services.AddScoped<IQuestMoveService, QuestMoveService>();
         services.AddScoped<IEventMoveService, EventMoveService>();
+        services.AddScoped<IMoveControlService, MoveControlService>();
         services.AddScoped<IShopService, ShopService>();
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IContactService, ContactService>();
