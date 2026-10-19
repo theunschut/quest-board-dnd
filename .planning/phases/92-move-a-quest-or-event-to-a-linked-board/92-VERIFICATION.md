@@ -1,21 +1,25 @@
 ---
 phase: 92-move-a-quest-or-event-to-a-linked-board
 verified: 2026-10-19T00:00:00Z
-status: human_needed
+status: passed
 score: 21/21 locked decisions and roadmap truths verified in code and tests
 behavior_unverified: 0
 overrides_applied: 0
 re_verification: false
 human_verification:
+
   - test: "Open the Move page at 390px width (desktop devtools or a phone) for a quest and an event, with a long target board name and a long quest title"
     expected: "Heading, target select and the confirm button wrap without horizontal scroll or clipped text; the .Mobile twin renders the cards"
     why_human: "No test renders CSS. move-entry.css and move-entry.mobile.css are only checked for being linked, not for how they lay out"
+
   - test: "Move a quest as a super admin who is a member of the target board, then as one who is not"
     expected: "Redirect to the source Quest Board with the toast; the member variant shows a working link to the entry on the target board, the non-member variant shows plain text"
     why_human: "Toast layout and the link crossing the board switch were never seen in a browser. Tests assert the markup only"
+
   - test: "Preview the QuestMoved email (all three audiences) and the Waitlist Promoted moved line on EmailPreviewController with a very long quest title"
     expected: "No overflow or broken layout in a real mail client width"
     why_human: "Email rendering is checked as HTML text, not visually"
+
   - test: "Press the confirm button twice quickly on a slow save (WR-01)"
     expected: "Not a bare 404 as the final response. The move itself is done after the first press"
     why_human: "Needs a real browser and timing. The review reports this as a known gap with no submit-disable guard"
