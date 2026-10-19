@@ -175,7 +175,7 @@ public class BoardMoveQuestPreviewTests
         var preview = await _sut.PreviewAsync(QuestId, targetBoardId, ActorId, TestContext.Current.CancellationToken);
 
         preview.Status.Should().Be(MoveStatus.TargetNotLinked);
-        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, default);
+        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class BoardMoveQuestPreviewTests
 
         outcome.Status.Should().Be(MoveStatus.Changed);
         outcome.Stamp.Should().Be(preview.Stamp);
-        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, default);
+        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public class BoardMoveQuestPreviewTests
 
         outcome.Status.Should().Be(MoveStatus.Blocked);
         outcome.BlockReason.Should().Be(MoveBlockReason.Closed);
-        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, default);
+        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class BoardMoveQuestPreviewTests
         var outcome = await _sut.MoveAsync(QuestId, CharlieBoard, "anything", ActorId, TestContext.Current.CancellationToken);
 
         outcome.Status.Should().Be(MoveStatus.TargetNotLinked);
-        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, default);
+        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]

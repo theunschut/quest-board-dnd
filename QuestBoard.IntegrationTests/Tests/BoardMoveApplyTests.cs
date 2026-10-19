@@ -1,4 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
 
@@ -56,15 +58,31 @@ public class BoardMoveApplyTests(WebApplicationFactoryBase factory)
         return new Scenario(questId, client);
     }
 
-    private static FormUrlEncodedContent MoveForm(int questId, int targetBoardId) =>
+    private static FormUrlEncodedContent MoveForm(int questId, int targetBoardId, string stamp) =>
         new(new Dictionary<string, string>
         {
             ["id"] = questId.ToString(),
-            ["targetBoardId"] = targetBoardId.ToString()
+            ["targetBoardId"] = targetBoardId.ToString(),
+            ["stamp"] = stamp
         });
 
-    private async Task<HttpResponseMessage> PostMoveAsync(HttpClient client, int questId, int targetBoardId) =>
-        await client.PostAsync("/Move/Quest", MoveForm(questId, targetBoardId), TestContext.Current.CancellationToken);
+    // The stamp the page would have carried: the service's own preview for the same target,
+    // taken while the source board is the active one.
+    private async Task<string> PreviewStampAsync(int questId, int targetBoardId)
+    {
+        factory.TestGroupContext.ActiveGroupId = BoardAlpha;
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<IQuestMoveService>();
+        var actor = await BoardMoveSeed.CreateUserAsync(factory, $"move_stamp_{Guid.NewGuid():N}", "Stamp Actor");
+        var preview = await service.PreviewAsync(questId, targetBoardId, actor.Id, TestContext.Current.CancellationToken);
+        return preview.Stamp;
+    }
+
+    private async Task<HttpResponseMessage> PostMoveAsync(HttpClient client, int questId, int targetBoardId, string? stamp = null)
+    {
+        stamp ??= await PreviewStampAsync(questId, targetBoardId);
+        return await client.PostAsync("/Move/Quest", MoveForm(questId, targetBoardId, stamp), TestContext.Current.CancellationToken);
+    }
 
     private static string PathOf(HttpResponseMessage redirect)
     {
@@ -144,5 +162,57 @@ public class BoardMoveApplyTests(WebApplicationFactoryBase factory)
         var stored = await BoardMoveSeed.ReadQuestAsync(factory, scenario.QuestId);
         stored.GroupId.Should().Be(BoardAlpha);
         stored.FeedRevision.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ConfirmPost_WithAStaleStamp_DoesNotMoveTheQuest()
+    {
+        var scenario = await SeedScenarioAsync();
+
+        var response = await PostMoveAsync(scenario.SuperAdminClient, scenario.QuestId, BoardBravo, stamp: "stale");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        var stored = await BoardMoveSeed.ReadQuestAsync(factory, scenario.QuestId);
+        stored.GroupId.Should().Be(BoardAlpha);
+        stored.FeedRevision.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ConfirmPost_ForAClosedQuest_IsRefusedAndTheQuestStaysOnItsBoard()
+    {
+        var scenario = await SeedScenarioAsync();
+        var dm = await BoardMoveSeed.CreateUserAsync(factory, "move_closed_dm", "Closed DM");
+        var closedId = await BoardMoveSeed.SeedQuestAsync(
+            factory, BoardAlpha, "Closed Tale", dm.Id, [new DateTime(2031, 5, 10, 19, 0, 0)], isClosed: true);
+
+        var response = await PostMoveAsync(scenario.SuperAdminClient, closedId, BoardBravo, stamp: "anything");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(response).Should().Be($"/Quest/Details/{closedId}");
+        var html = await FollowAsync(scenario.SuperAdminClient, response);
+        html.Should().Contain("This quest cannot be moved. It is closed in the Quest Log.");
+
+        var stored = await BoardMoveSeed.ReadQuestAsync(factory, closedId);
+        stored.GroupId.Should().Be(BoardAlpha);
+    }
+
+    [Fact]
+    public async Task ConfirmPost_ForAPlayedQuest_IsRefusedAndTheQuestStaysOnItsBoard()
+    {
+        var scenario = await SeedScenarioAsync();
+        var dm = await BoardMoveSeed.CreateUserAsync(factory, "move_played_dm", "Played DM");
+        var playedId = await BoardMoveSeed.SeedQuestAsync(
+            factory, BoardAlpha, "Played Tale", dm.Id, [new DateTime(2020, 1, 10, 19, 0, 0)],
+            finalizedDate: new DateTime(2020, 1, 10, 19, 0, 0));
+
+        var response = await PostMoveAsync(scenario.SuperAdminClient, playedId, BoardBravo, stamp: "anything");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(response).Should().Be($"/Quest/Details/{playedId}");
+        var html = await FollowAsync(scenario.SuperAdminClient, response);
+        html.Should().Contain("This quest cannot be moved. It has already been played.");
+
+        var stored = await BoardMoveSeed.ReadQuestAsync(factory, playedId);
+        stored.GroupId.Should().Be(BoardAlpha);
     }
 }
