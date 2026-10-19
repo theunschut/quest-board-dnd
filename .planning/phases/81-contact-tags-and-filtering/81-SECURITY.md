@@ -119,8 +119,8 @@ created: 2026-10-19
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-10-19 | 28 unique (51 rows) | 27 unique (50 rows) | 1 (T-81-12, medium, non-blocking) | gsd-security-auditor (opus) at c5f5e91e; targeted 57 unit + 93 integration tests passed. Re-checked by the orchestrator after the review fixes merged (91aa14b2): 1105 unit + 1324 integration passed, 11 skipped |
-
 | 2026-10-19 | 28 unique (51 rows) | 28 unique (51 rows) | 0 | Orchestrator, after quick task 261019-plu closed T-81-12 (bc4e4460 RED → c9cf438d, 609ebe5e; weak no-op test fixed in 1435c819); merged at 2106be07: 1107 unit + 1328 integration passed, 11 skipped |
+
 ---
 
 ## Sign-Off
