@@ -25,7 +25,7 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 92 merged (#161) and tagged v5.6.0; remaining open phases are 78, 79, 81 and 90
+**Current focus:** Phase 92 merged (#161) and tagged v5.6.0; remaining open phases are 78, 79 and 90
 
 ## Current Position
 
@@ -36,9 +36,9 @@ Last activity: 2026-10-19 - Phase 81 review fixes and security audit; completed 
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
-none executed), Phase 79 — Character and Contact Link Cards and Phase 81 — Contact Tags and
-Filtering (not yet planned) are still open. Every other phase in the 72–89 range is complete with a
-verification report. Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, and
+none executed) and Phase 79 — Character and Contact Link Cards (not yet planned) are still open.
+Every other phase in the 72–89 range is complete with a verification report, including Phase 81 —
+Contact Tags and Filtering (executed 2026-08-31; review fixes and security audit closed 2026-10-19, v5.6.3). Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, and
 Phases 91 and 92 are complete. `phase.complete` again reported Phase 92 as the last phase only because it
 is the highest number.
 
@@ -226,5 +226,5 @@ Resume file: None
 - Phase 92 was not run through `/gsd-validate-phase 92` or `/gsd-ui-review 92`; both are optional
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)
 - Releases are now cut by tagging `main` and approving the `deploy` environment; the CT installs within ~5 minutes. When an outcome mail says an installer update is available, run `setup` from that release as root (see `docs/deploy.md`)
-- Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79, 81 and 90 are roadmapped but unplanned (90: discuss first — `/gsd-discuss-phase 90`)
+- Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79 and 90 are roadmapped but unplanned (90: discuss first — `/gsd-discuss-phase 90`)
 - v9.0 has no fixed end state — run `/gsd-new-milestone` only when you decide to cut it
