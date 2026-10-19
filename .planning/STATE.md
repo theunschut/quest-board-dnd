@@ -4,7 +4,7 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 92
 status: completed
-stopped_at: Phase 92 complete; PR #161 open
+stopped_at: Phase 92 merged as #161 and tagged v5.6.0
 last_updated: "2026-10-19T09:21:57.718Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 92 complete — UAT 4/4, review fixes, security 37/37, PR #161
@@ -25,14 +25,14 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 92 complete (PR #161); remaining open phases are 78, 79, 81 and 90
+**Current focus:** Phase 92 merged (#161) and tagged v5.6.0; remaining open phases are 78, 79, 81 and 90
 
 ## Current Position
 
 Phase: 92
 Plan: Not started
 Status: Phase 92 complete — open phases remain (see below)
-Last activity: 2026-10-19 — Phase 92 complete
+Last activity: 2026-10-19 - Completed quick task 261019-gff: Add Move to Linked Board control to the Quest Manage page
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -191,6 +191,7 @@ New as of 2026-10-17 (Phase 91):
 | 260831-hz9 | Fix cross-tenant note-injection in ContactsController.AddNote | 2026-08-31 | f732fb81 | [260831-hz9-fix-cross-tenant-note-injection-in-conta](./quick/260831-hz9-fix-cross-tenant-note-injection-in-conta/) |
 | 260831-mcb | Contact tags: show tags only for owned contacts by default; non-owned contacts' tags hidden unless the existing ShowHidden toggle is on (universal rule for all DM-tier viewers) | 2026-08-31 | b8b4da56 | [260831-mcb-contact-tags-show-tags-only-for-owned-co](./quick/260831-mcb-contact-tags-show-tags-only-for-owned-co/) |
 | 260831-fast | Hide the contact tag filter bar entirely when no tags are visible to the viewer (follow-up to 260831-mcb) | 2026-08-31 | 355e51d4 | — |
+| 261019-gff | Add Move to Linked Board control to the Quest Manage page (desktop and mobile, super admins only, under the visible action row) | 2026-10-19 | ea699408 | [261019-gff-add-move-to-linked-board-control-to-the-](./quick/261019-gff-add-move-to-linked-board-control-to-the-/) |
 
 ## Deferred Items
 
@@ -209,7 +210,7 @@ Items acknowledged and carried forward across milestone closes.
 ## Session Continuity
 
 Last session: 2026-10-19
-Stopped at: Phase 92 complete; PR #161 (milestone/v9-rolling-improvements → main) open
+Stopped at: Phase 92 merged as #161 (merge commit 5dc7d48c) and tagged v5.6.0; release awaiting deploy approval
 Resume file: None
 
 ## Operator Next Steps
@@ -218,7 +219,7 @@ Resume file: None
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
-- Review and merge PR #161 (Phase 92), then tag the merge commit (feature → minor bump) and approve the `deploy` environment; re-push the milestone branch after the merge, since the repo deletes head branches
+- Approve the `deploy` environment for v5.6.0 (Phase 92, merged as #161 and tagged on merge commit 5dc7d48c); the CT installs it within ~5 minutes of publishing
 - `mssql-dev` is running and the local database holds Phase 92 test data (two "UAT test link" sets, quests 991001/991002, event 1) — kept on purpose
 - Phase 92 was not run through `/gsd-validate-phase 92` or `/gsd-ui-review 92`; both are optional
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)

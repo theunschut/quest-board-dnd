@@ -56,7 +56,7 @@ h1, h2, h3, h4, h5, h6 {
     text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9) !important;
 }
 
-/* The one-line reason under a disabled move control on a Details page. Opaque, never alpha,
+/* The one-line reason under a disabled move control on a Details or Manage page. Opaque, never alpha,
    so it holds its contrast on the dark glass card. */
 .move-control-reason {
     font-size: 0.875rem;

@@ -91,6 +91,8 @@ public class BoardMoveStaticGuardTests
         "QuestBoard.Service/Views/Move/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Details.cshtml",
         "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
+        "QuestBoard.Service/Views/Quest/Manage.cshtml",
+        "QuestBoard.Service/Views/Quest/Manage.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_Layout.cshtml",
         "QuestBoard.Service/Views/Shared/_Toasts.cshtml",
         "QuestBoard.Service/wwwroot/css/mobile.css",
