@@ -95,4 +95,10 @@ public interface IIdentityService
     /// Returns the user's current lockout end value, or null if the user is not found or has none set.
     /// </summary>
     Task<DateTimeOffset?> GetLockoutEndAsync(int userId);
+
+    /// <summary>
+    /// Returns whether the user holds the platform SuperAdmin Identity role. Reads the role by user id,
+    /// for callers that have no principal for that user, such as a rule about a quest's Dungeon Master.
+    /// </summary>
+    Task<bool> IsSuperAdminAsync(int userId);
 }

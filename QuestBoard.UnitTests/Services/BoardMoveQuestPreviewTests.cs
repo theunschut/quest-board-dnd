@@ -24,6 +24,9 @@ public class BoardMoveQuestPreviewTests
     private readonly IActiveGroupContext _activeGroupContext = Substitute.For<IActiveGroupContext>();
     private readonly ILinkedBoardSetRepository _linkedBoards = Substitute.For<ILinkedBoardSetRepository>();
     private readonly IQuestMoveRepository _moveRepository = Substitute.For<IQuestMoveRepository>();
+    private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+    private readonly IIdentityService _identityService = Substitute.For<IIdentityService>();
+    private readonly IQuestEmailDispatcher _dispatcher = Substitute.For<IQuestEmailDispatcher>();
     private readonly FakeBoardClock _clock = new() { Today = new DateOnly(2031, 6, 15) };
     private readonly QuestMoveService _sut;
 
@@ -36,8 +39,15 @@ public class BoardMoveQuestPreviewTests
             .Returns(MakeQuest());
         SetLinkedBoards(Board(BravoBoard, "Board Bravo"));
 
+        // Every seeded player is a member of any target and the DM can run quests there, so the
+        // earlier facts stay about eligibility, targets and stamps.
+        _userRepository.GetAllGroupMembers(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Enumerable.Range(201, 20).Select(id => new User { Id = id, Name = $"Player {id - 200}" }).ToList());
+        _userRepository.GetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(GroupRole.DungeonMaster);
+
         _sut = new QuestMoveService(
             _questRepository, _activeGroupContext, _linkedBoards, _moveRepository, _clock,
+            _userRepository, _identityService, _dispatcher,
             NullLogger<QuestMoveService>.Instance);
     }
 
