@@ -3,12 +3,37 @@ using Microsoft.AspNetCore.Mvc;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Service.Helpers;
+using QuestBoard.Service.ViewModels.MoveViewModels;
 
 namespace QuestBoard.Service.Controllers;
 
 [Authorize(Policy = "SuperAdminOnly")]
 public class MoveController(IQuestMoveService questMoveService, IUserService userService) : Controller
 {
+    [HttpGet]
+    public async Task<IActionResult> Quest(int id, int? targetBoardId, CancellationToken token = default)
+    {
+        var actor = await userService.GetUserAsync(User);
+        var preview = await questMoveService.PreviewAsync(id, targetBoardId, actor.Id, token);
+
+        switch (preview.Status)
+        {
+            case MoveStatus.NotFound:
+                return NotFound();
+
+            case MoveStatus.Blocked:
+                TempData["Error"] = $"This quest cannot be moved. {MoveCopy.ToastReason(preview.BlockReason)}";
+                return RedirectToAction("Details", "Quest", new { id });
+
+            case MoveStatus.NoLinkedBoards:
+                TempData["Error"] = "This board is not linked to any other board, so there is nowhere to move this.";
+                return RedirectToAction("Details", "Quest", new { id });
+
+            default:
+                return View("Index", new MovePageViewModel { Preview = preview });
+        }
+    }
+
     [HttpPost, ActionName("Quest"), ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfirmQuest(int id, int targetBoardId, string? stamp, CancellationToken token = default)
     {
