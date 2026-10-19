@@ -195,10 +195,10 @@ public class ContactsTagsMobileTests(WebApplicationFactoryBase factory) : IClass
         html.Should().NotContain("secret-tag");
     }
 
-    // The shared filter helper falls back to the full visible list whenever a selection matches
-    // zero contacts, so the no-match branch is only reachable when the board has no visible
-    // contacts at all -- an empty board carrying a stale or fabricated tag id in the query
-    // string is exactly that case, and is what this test sets up.
+    // The tag filter narrows strictly by intersection, so a selection matching zero contacts
+    // renders the no-match branch whether or not the board has any visible contacts. This test
+    // covers the empty-board case: a stale or fabricated tag id in the query string against a
+    // board with no contacts at all.
     [Fact]
     public async Task Index_MobileActiveFilterNoMatches_RendersNoMatchHeading()
     {

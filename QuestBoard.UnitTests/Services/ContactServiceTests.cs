@@ -358,6 +358,43 @@ public class ContactServiceTests
     }
 
     [Fact]
+    public void ParseTagNames_InterleavedCaseVariants_KeepsFirstCasingAndInputOrder()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        using var context = CreateContext("ContactServiceTests." + nameof(ParseTagNames_InterleavedCaseVariants_KeepsFirstCasingAndInputOrder), groupContext);
+        var mapper = CreateMapper();
+        var service = new ContactService(new ContactRepository(context, mapper), mapper);
+
+        // Act
+        var result = service.ParseTagNames("Alpha, beta, ALPHA, Gamma, BETA, alpha, gamma ");
+
+        // Assert: each name once, the first occurrence's casing, in first-seen order
+        result.Should().Equal("Alpha", "beta", "Gamma");
+    }
+
+    [Fact]
+    public void ParseTagNames_LargeDistinctInputWithRepeats_ReturnsEachNameOnceInOrder()
+    {
+        // Arrange
+        var groupContext = new MutableTestGroupContext { ActiveGroupId = 1 };
+        using var context = CreateContext("ContactServiceTests." + nameof(ParseTagNames_LargeDistinctInputWithRepeats_ReturnsEachNameOnceInOrder), groupContext);
+        var mapper = CreateMapper();
+        var service = new ContactService(new ContactRepository(context, mapper), mapper);
+        var expected = Enumerable.Range(0, 100_000).Select(i => "Tag" + i).ToList();
+        var input = string.Join(",", expected) + "," + string.Join(",", expected.Select(n => n.ToUpperInvariant()));
+
+        // Act
+        var result = service.ParseTagNames(input);
+
+        // Assert: every name once, repeats collapsed onto the first casing, input order kept
+        result.Count.Should().Be(100_000);
+        result[0].Should().Be("Tag0");
+        result[^1].Should().Be("Tag99999");
+        result.SequenceEqual(expected).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ReplaceContactTagsAsync_DelegatesToRepository_ReconcilesContactTags()
     {
         // Arrange

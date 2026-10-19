@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 Phase: 92
 Plan: Not started
 Status: Phase 92 complete — open phases remain (see below)
-Last activity: 2026-10-19 - Completed quick task 261019-jba: DM Controls card on desktop Quest Manage
+Last activity: 2026-10-19 - Phase 81 review fixes and security audit; completed quick task 261019-plu: bound contact tag parsing before validation
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -193,6 +193,7 @@ New as of 2026-10-17 (Phase 91):
 | 260831-fast | Hide the contact tag filter bar entirely when no tags are visible to the viewer (follow-up to 260831-mcb) | 2026-08-31 | 355e51d4 | — |
 | 261019-gff | Add Move to Linked Board control to the Quest Manage page (desktop and mobile, super admins only, under the visible action row) | 2026-10-19 | ea699408 | [261019-gff-add-move-to-linked-board-control-to-the-](./quick/261019-gff-add-move-to-linked-board-control-to-the-/) |
 | 261019-jba | Desktop Quest Manage: "View Public Page" card renamed to "DM Controls" and now holds View Public Page, Create Follow-Up Quest, Send Reminder and Move to Linked Board (desktop only; mobile Manage intentionally unchanged by operator decision) | 2026-10-19 | 5a8a4043 | [261019-jba-dm-controls-card-on-desktop-quest-manage](./quick/261019-jba-dm-controls-card-on-desktop-quest-manage/) |
+| 261019-plu | Bound contact tag parsing before validation (closes Phase 81 security finding T-81-12: over-long tag field no longer parsed; linear de-duplication; weak cross-board no-op test fixed) | 2026-10-19 | c9cf438d | [261019-plu-bound-contact-tag-parsing-before-validat](./quick/261019-plu-bound-contact-tag-parsing-before-validat/) |
 
 ## Deferred Items
 
@@ -220,7 +221,7 @@ Resume file: None
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
-- Approve the `deploy` environment for v5.6.1 (quick task 261019-gff — Move control on the Quest Manage page, merged as #162 and tagged on merge commit a072f15d); v5.6.0 (Phase 92, #161) is live in production
+- Approve the `deploy` environment for v5.6.2 (quick task 261019-jba — DM Controls card on desktop Quest Manage, merged as #163 and tagged on merge commit 2925e321); v5.6.1 (#162) is live in production
 - `mssql-dev` is running and the local database holds Phase 92 test data (two "UAT test link" sets, quests 991001/991002, event 1) — kept on purpose
 - Phase 92 was not run through `/gsd-validate-phase 92` or `/gsd-ui-review 92`; both are optional
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)

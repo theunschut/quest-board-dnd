@@ -73,13 +73,48 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
     /// <inheritdoc/>
     public async Task ReplaceContactTagsAsync(int contactId, IReadOnlyList<string> tagNames, CancellationToken token = default)
     {
+        IReadOnlyList<int>? previousTagIds;
+        try
+        {
+            previousTagIds = await ApplyContactTagsAsync(contactId, tagNames, token);
+        }
+        catch (DbUpdateException) when (HasPendingNewTags())
+        {
+            // Two requests can submit the same brand-new name on one board at the same moment;
+            // each sees no match, both try to insert it, and the unique (board, name) index
+            // rejects the loser. That is a race between two legitimate saves, not a failure the
+            // user should see: the winner's row now exists, so start over from a clean tracker
+            // and the retry resolves the name to it instead of inserting. The retry is not
+            // wrapped, so a save that fails for any other reason still surfaces from the second
+            // attempt rather than looping. Clearing the tracker is safe here because the only
+            // pending work is the reconciliation that just failed.
+            DbContext.ChangeTracker.Clear();
+            previousTagIds = await ApplyContactTagsAsync(contactId, tagNames, token);
+        }
+
+        if (previousTagIds == null) return;
+
+        await PruneOrphanedTagsAsync(previousTagIds, token);
+    }
+
+    // True while the tracker holds a tag row waiting to be inserted -- the only situation in
+    // which a failed save can be the duplicate-name race rather than something unrelated.
+    private bool HasPendingNewTags() =>
+        DbContext.ChangeTracker.Entries<ContactTagEntity>().Any(e => e.State == EntityState.Added);
+
+    // One reconciliation attempt: resolves the submitted names against the board's current
+    // vocabulary, swaps the contact's tag set and saves. Returns the contact's previous tag ids
+    // (the only ones that can have become orphaned), or null when the contact does not resolve
+    // on this board.
+    private async Task<IReadOnlyList<int>?> ApplyContactTagsAsync(int contactId, IReadOnlyList<string> tagNames, CancellationToken token)
+    {
         // Rooted at the board-filtered Contacts set -- a contact id belonging to another board
         // simply doesn't resolve here, so this is a silent no-op rather than an error. An error
         // response would itself confirm that an id in that range exists on another board.
         var contact = await DbContext.Contacts
             .Include(c => c.Tags)
             .FirstOrDefaultAsync(c => c.Id == contactId, token);
-        if (contact == null) return;
+        if (contact == null) return null;
 
         // Snapshot before mutating -- these are the only ids that can possibly become orphaned
         // by this call.
@@ -120,7 +155,7 @@ internal class ContactRepository(QuestBoardContext dbContext, IMapper mapper) : 
         }
         await DbContext.SaveChangesAsync(token);
 
-        await PruneOrphanedTagsAsync(previousTagIds, token);
+        return previousTagIds;
     }
 
     /// <inheritdoc/>
