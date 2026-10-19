@@ -1295,7 +1295,7 @@ Plans:
 **Goal:** A super admin can move an existing quest or event from its board to another board in the same link group, from that entry's Details page. After the move the entry lives on the target board as if it had been created there, and the boards in the group stop disagreeing about where it belongs. Boards that are not linked offer no move.
 **Requirements**: TBD
 **Depends on:** Phase 91. A move is only offered between boards in the same link group, so the link model has to exist first.
-**Plans:** 9 plans
+**Plans:** 2/9 plans executed
 
 **Origin:** raised by the operator on 2026-10-15 at the end of Phase 91's discussion. It was kept out of Phase 91 on purpose: that phase is read-only and makes no write to `Events` or `Quests`, and a move is the opposite, a cross-board write. See `91-CONTEXT.md` § Deferred Ideas.
 
@@ -1312,8 +1312,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 92-01-PLAN.md — Tracer: a super admin's confirm POST moves a quest to the other linked board in one tracked save (W1)
-- [ ] 92-02-PLAN.md — Move mail plumbing: Quest Moved template (three audiences), Waitlist Promoted moved line, dispatcher methods and jobs, Email Preview entries, capturing test factory (W1)
+- [x] 92-01-PLAN.md — Tracer: a super admin's confirm POST moves a quest to the other linked board in one tracked save (W1)
+- [x] 92-02-PLAN.md — Move mail plumbing: Quest Moved template (three audiences), Waitlist Promoted moved line, dispatcher methods and jobs, Email Preview entries, capturing test factory (W1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
