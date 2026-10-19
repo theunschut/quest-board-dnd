@@ -940,9 +940,9 @@ public class QuestController(
 
     [HttpGet]
     [Authorize(Policy = "DungeonMasterOnly")]
-    public async Task<IActionResult> Manage(int id)
+    public async Task<IActionResult> Manage(int id, CancellationToken token = default)
     {
-        var quest = await questService.GetQuestWithManageViewDetailsAsync(id);
+        var quest = await questService.GetQuestWithManageViewDetailsAsync(id, token);
 
         if (quest == null)
         {
@@ -962,6 +962,13 @@ public class QuestController(
         ViewBag.IsAdmin = isAdmin;
         ViewBag.BoardType = await GetActiveBoardTypeAsync();
         ViewBag.BoardToday = boardClock.Today;
+
+        // The move control belongs to the platform super admin alone, so it keys on that role
+        // rather than on the board-level authorization above (a board Admin or DM must never see
+        // it). A null state means the board has nothing to move to, and the view renders nothing.
+        ViewBag.MoveControl = User.IsInRole("SuperAdmin")
+            ? await moveControlService.GetForQuestAsync(quest, currentUser.Id, token)
+            : null;
 
         return View(quest);
     }

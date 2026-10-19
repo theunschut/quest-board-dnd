@@ -1,14 +1,17 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Models.BoardMove
 @using QuestBoard.Domain.Models.QuestBoard
 @using QuestBoard.Service.Extensions
+@using QuestBoard.Service.Helpers
 @model Quest
 @{
     ViewData["Title"] = $"Manage Quest: {Model.Title}";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
     var boardToday = (DateOnly)ViewBag.BoardToday;
+    var moveControl = ViewBag.MoveControl as MoveControlState;
 }
 
 
@@ -673,6 +676,24 @@ else
                                 </a>
                             </div>
                             <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                        </div>
+                    }
+                    @if (moveControl != null)
+                    {
+                        <div class="mt-2">
+                            @if (moveControl.CanMove)
+                            {
+                                <a href="@Url.Action("Quest", "Move", new { id = Model.Id })" class="btn btn-info">
+                                    <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-info disabled" aria-disabled="true" aria-describedby="move-reason">
+                                    <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                                </button>
+                                <p class="move-control-reason mb-0 mt-2" id="move-reason">@MoveCopy.ControlReason(moveControl.BlockReason)</p>
+                            }
                         </div>
                     }
                 </div>
