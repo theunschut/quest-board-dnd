@@ -62,6 +62,60 @@ public class MovePageViewModel
         }
     }
 
+    public QuestMovePreview? QuestPreview => Preview as QuestMovePreview;
+
+    public EventMovePreview? EventPreview => Preview as EventMovePreview;
+
+    public bool IsCampaignTarget => Preview.TargetBoardType == BoardType.Campaign;
+
+    public bool HasSelectedDropped => Preview.Dropped.Any(p => p.IsSelected);
+
+    /// <summary>The characters-cleared row shows only when a kept signup actually had a character.</summary>
+    public bool ShowCharactersCleared => QuestPreview is { CharactersCleared: > 0 };
+
+    /// <summary>The seats row shows only for a finalized quest that frees at least one seat.</summary>
+    public bool ShowSeats => QuestPreview is { Quest.IsFinalized: true, SeatsOpened: > 0 };
+
+    /// <summary>The calendar feed only carries quests of a One-Shot board; events reach it on either kind.</summary>
+    public bool ShowCalendarApps => !IsQuest || Preview.TargetBoardType == BoardType.OneShot;
+
+    public string SeatsSentence
+    {
+        get
+        {
+            var seats = QuestPreview?.SeatsOpened ?? 0;
+            return seats == 1 ? "1 seat opens up." : $"{seats} seats open up.";
+        }
+    }
+
+    public string SeatsFollowUpSentence
+    {
+        get
+        {
+            if ((QuestPreview?.PromotedCount ?? 0) > 0)
+            {
+                return "The waitlist moves up in its usual order, and promoted players are emailed.";
+            }
+
+            return (QuestPreview?.SeatsOpened ?? 0) == 1
+                ? "Nobody is on the waitlist, so the seat stays open."
+                : "Nobody is on the waitlist, so the seats stay open.";
+        }
+    }
+
+    /// <summary>A Campaign target adds an automatic Yes row for each member who has no answer yet.</summary>
+    public bool ShowCampaignRow => IsCampaignTarget && EventPreview is { CampaignAddCount: > 0 };
+
+    /// <summary>The event's start time as it is shown elsewhere, or "All day" when it has none.</summary>
+    public string EventTimeLabel => EventPreview?.Event?.StartTime is { } start ? start.ToString("HH:mm") : "All day";
+
+    public static string RoleLabel(SignupRole? role) => role switch
+    {
+        SignupRole.AssistantDM => "(Assistant DM)",
+        SignupRole.Spectator => "(Spectator)",
+        _ => string.Empty
+    };
+
     public string EmailSentence => IsQuest
         ? "The Dungeon Master and every player who stays are emailed that the quest has moved. Every removed player is emailed why. Only confirmed email addresses are mailed."
         : "No emails are sent for an event move.";
