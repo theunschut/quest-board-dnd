@@ -47,8 +47,10 @@ namespace QuestBoard.Service.Controllers.Contacts
             // create/edit form suggestion lists use, but asking for the viewer-visible scope
             // rather than the board-wide one: offering a filter option for a tag whose chip the
             // viewer cannot see would disclose by name the exact thing the chip gate just withheld.
+            // Built from the contacts already loaded above, so the visible list and the
+            // vocabulary derived from it can never come from two different reads.
             var availableTags = mapper.Map<List<ContactTagViewModel>>(
-                await GetVisibleTagVocabularyAsync(currentUser.Id, viewerIsDmTier, TagVocabularyScope.ViewerVisible, token));
+                BuildVisibleTagVocabulary(allContacts, currentUser.Id, viewerIsDmTier, includeHidden, TagVocabularyScope.ViewerVisible));
 
             // The filter runs after the visibility gate and never inside the query, so it can
             // only narrow what the viewer could already see -- applying it upstream would be
@@ -721,8 +723,9 @@ namespace QuestBoard.Service.Controllers.Contacts
             ViewerVisible
         }
 
-        // Shared by Index, Create GET, and Edit GET so every one of these surfaces derives its
-        // tag list from one place. The required scope parameter says which of the two allowed
+        // Used by Create GET, Edit GET and the invalid-model re-renders; Index reaches the same
+        // derivation through BuildVisibleTagVocabulary so every surface derives its tag list from
+        // one place. The required scope parameter says which of the two allowed
         // derivations a caller wants -- Authoring for the board-wide suggestion lists, or
         // ViewerVisible for the narrowed filter row -- so a future call site cannot silently
         // inherit either behaviour. Returns an empty list for a non-DM-tier viewer regardless of
@@ -734,8 +737,20 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return [];
             }
 
-            var includeHidden = ReadShowHiddenToggle();
             var allContacts = await contactService.GetAllContactsWithDetailsAsync(token);
+            return BuildVisibleTagVocabulary(allContacts, currentUserId, viewerIsDmTier, ReadShowHiddenToggle(), scope);
+        }
+
+        // The derivation itself, over a contact set the caller has already loaded -- Index uses
+        // this directly so it does not read the whole contact detail set a second time, while
+        // the form actions go through GetVisibleTagVocabularyAsync above, which loads it.
+        private static IList<ContactTag> BuildVisibleTagVocabulary(IEnumerable<Contact> allContacts, int currentUserId, bool viewerIsDmTier, bool includeHidden, TagVocabularyScope scope)
+        {
+            if (!viewerIsDmTier)
+            {
+                return [];
+            }
+
             var visibleContacts = allContacts.Where(c => IsVisibleTo(c, currentUserId, includeHidden)).ToList();
 
             if (scope == TagVocabularyScope.ViewerVisible)
