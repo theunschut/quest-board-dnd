@@ -8,11 +8,15 @@ namespace QuestBoard.Service.Constants;
 /// literals, so every side references this file rather than a repeated string. The older
 /// toast keys in _Toasts.cshtml (Success/Error/Warning/Info/GoldReceived) are deliberately left
 /// as plain string literals rather than refactored here -- this file exists for this banner, not
-/// as a general cleanup of every toast key in the application.
+/// as a general cleanup of every toast key in the application. The file also holds the keys for
+/// the post-move toast, written by the Move controller and read by the shared toast partial.
 /// </summary>
 public static class TempDataKeys
 {
     public const string BoardSwitchTargetName = "BoardSwitchTargetName";
     public const string BoardSwitchPreviousGroupId = "BoardSwitchPreviousGroupId";
     public const string BoardSwitchPreviousGroupName = "BoardSwitchPreviousGroupName";
+    public const string MovedMessage = "MovedMessage";
+    public const string MovedEntryUrl = "MovedEntryUrl";
+    public const string MovedTargetName = "MovedTargetName";
 }
