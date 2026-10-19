@@ -32,6 +32,12 @@
                                 <tr>
                                     <td style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;text-align:center;padding-top:4px;font-style:italic;text-shadow:2px 2px 4px rgba(255,255,255,0.9);">You've been promoted off the waitlist — your adventure awaits, @PlayerName.</td>
                                 </tr>
+                                @if (MovedToBoardName is not null)
+                                {
+                                    <tr>
+                                        <td style="font-size:14px;font-family:Georgia,serif;color:#5a4030;text-align:center;line-height:1.5;padding-top:8px;font-style:italic;word-wrap:break-word;text-shadow:1px 1px 3px rgba(255,255,255,0.8);">This quest has moved to @MovedToBoardName. If you had picked a character, pick one from @MovedToBoardName again on the quest page.</td>
+                                    </tr>
+                                }
                             </table>
                         </td>
                     </tr>
@@ -100,4 +106,7 @@
     [Parameter, EditorRequired] public string QuestUrl { get; set; } = string.Empty;
     [Parameter, EditorRequired] public int ChallengeRating { get; set; }
     [Parameter, EditorRequired] public string AppUrl { get; set; } = string.Empty;
+
+    /// <summary>Set only when the promotion happened because the quest moved boards; adds a note saying so.</summary>
+    [Parameter] public string? MovedToBoardName { get; set; }
 }

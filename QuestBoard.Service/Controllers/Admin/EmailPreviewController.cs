@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.Components.Emails;
@@ -11,6 +12,9 @@ namespace QuestBoard.Service.Controllers.Admin;
 public class EmailPreviewController(IEmailRenderService emailRenderService, IOptions<EmailSettings> emailOptions) : Controller
 {
     private static readonly IList<string> SamplePlayers = ["Arannis", "Tordek", "Mialee"];
+
+    // A fixed wall-clock sample for the quest-moved previews, so they read no ambient clock.
+    private static readonly DateTime SampleMovedSessionDate = new(2031, 6, 14, 19, 0, 0);
 
     // Structured-Markdown sample exercising headings/lists/blockquote styling and exceeding the
     // default truncation budget (3 top-level blocks / 400 plain-text characters, 2/350 for
@@ -50,6 +54,10 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
               <li><a href="{{appUrl}}/EmailPreview/QuestDateChanged">Quest Date Changed</a></li>
               <li><a href="{{appUrl}}/EmailPreview/SessionReminder">Session Reminder</a></li>
               <li><a href="{{appUrl}}/EmailPreview/WaitlistPromoted">Waitlist Promoted</a></li>
+              <li><a href="{{appUrl}}/EmailPreview/WaitlistPromotedAfterMove">Waitlist Promoted (after a move)</a></li>
+              <li><a href="{{appUrl}}/EmailPreview/QuestMovedPlayer">Quest Moved (player)</a></li>
+              <li><a href="{{appUrl}}/EmailPreview/QuestMovedDungeonMaster">Quest Moved (Dungeon Master)</a></li>
+              <li><a href="{{appUrl}}/EmailPreview/QuestMovedRemoved">Quest Moved (signup removed)</a></li>
               <li><a href="{{appUrl}}/EmailPreview/Welcome">Welcome</a></li>
               <li><a href="{{appUrl}}/EmailPreview/AddedToGroup">Added To Group</a></li>
               <li><a href="{{appUrl}}/EmailPreview/ForgotPassword">Forgot Password</a></li>
@@ -178,6 +186,53 @@ public class EmailPreviewController(IEmailRenderService emailRenderService, IOpt
             [nameof(Components.Emails.WaitlistPromoted.QuestUrl)] = $"{appUrl}/Quest",
             [nameof(Components.Emails.WaitlistPromoted.ChallengeRating)] = 9,
             [nameof(Components.Emails.WaitlistPromoted.AppUrl)] = appUrl,
+        });
+        return Content(html, "text/html");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> WaitlistPromotedAfterMove()
+    {
+        var appUrl = emailOptions.Value.AppUrl;
+        var html = await emailRenderService.RenderAsync<Components.Emails.WaitlistPromoted>(new()
+        {
+            [nameof(Components.Emails.WaitlistPromoted.QuestTitle)] = "The Tomb of Annihilation",
+            [nameof(Components.Emails.WaitlistPromoted.DmName)] = "Dungeon Master Theomund",
+            [nameof(Components.Emails.WaitlistPromoted.QuestDate)] = SampleMovedSessionDate,
+            [nameof(Components.Emails.WaitlistPromoted.QuestDescription)] = SampleMarkdownDescription,
+            [nameof(Components.Emails.WaitlistPromoted.PlayerName)] = "Arannis",
+            [nameof(Components.Emails.WaitlistPromoted.QuestUrl)] = $"{appUrl}/Quest",
+            [nameof(Components.Emails.WaitlistPromoted.ChallengeRating)] = 9,
+            [nameof(Components.Emails.WaitlistPromoted.AppUrl)] = appUrl,
+            [nameof(Components.Emails.WaitlistPromoted.MovedToBoardName)] = "The Silver Tankard",
+        });
+        return Content(html, "text/html");
+    }
+
+    [HttpGet]
+    public Task<IActionResult> QuestMovedPlayer() =>
+        RenderQuestMovedPreview(QuestMovedAudience.Player, SampleMovedSessionDate);
+
+    [HttpGet]
+    public Task<IActionResult> QuestMovedDungeonMaster() =>
+        RenderQuestMovedPreview(QuestMovedAudience.DungeonMaster, SampleMovedSessionDate);
+
+    [HttpGet]
+    public Task<IActionResult> QuestMovedRemoved() =>
+        RenderQuestMovedPreview(QuestMovedAudience.Removed, null);
+
+    private async Task<IActionResult> RenderQuestMovedPreview(QuestMovedAudience audience, DateTime? sessionDate)
+    {
+        var appUrl = emailOptions.Value.AppUrl;
+        var html = await emailRenderService.RenderAsync<Components.Emails.QuestMoved>(new()
+        {
+            [nameof(Components.Emails.QuestMoved.QuestTitle)] = "The Tomb of Annihilation",
+            [nameof(Components.Emails.QuestMoved.DmName)] = "Dungeon Master Theomund",
+            [nameof(Components.Emails.QuestMoved.BoardName)] = "The Silver Tankard",
+            [nameof(Components.Emails.QuestMoved.SessionDate)] = sessionDate,
+            [nameof(Components.Emails.QuestMoved.QuestUrl)] = $"{appUrl}/Quest",
+            [nameof(Components.Emails.QuestMoved.AppUrl)] = appUrl,
+            [nameof(Components.Emails.QuestMoved.Audience)] = audience,
         });
         return Content(html, "text/html");
     }

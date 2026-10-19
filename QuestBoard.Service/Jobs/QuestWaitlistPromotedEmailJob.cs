@@ -11,7 +11,8 @@ public class QuestWaitlistPromotedEmailJob(
     IServiceScopeFactory scopeFactory,
     ILogger<QuestWaitlistPromotedEmailJob> logger)
 {
-    public async Task ExecuteAsync(
+    // This entry point keeps its signature so jobs already queued in Hangfire storage still bind.
+    public Task ExecuteAsync(
         int questId,
         int groupId,                  // group context for the Hangfire job's query filter
         DateTime finalizedDate,
@@ -22,6 +23,42 @@ public class QuestWaitlistPromotedEmailJob(
         string questDescription,
         int challengeRating,
         CancellationToken cancellationToken = default)
+        => SendAsync(
+            questId, groupId, finalizedDate, recipientEmail, playerName,
+            questTitle, dmName, questDescription, challengeRating, movedToBoardName: null);
+
+    /// <summary>
+    /// Same mail as <see cref="ExecuteAsync"/> with a note that the quest moved to another board.
+    /// A separate entry point rather than an optional argument, because a Hangfire enqueue lambda
+    /// cannot carry optional arguments.
+    /// </summary>
+    public Task ExecuteAfterMoveAsync(
+        int questId,
+        int groupId,                  // group context for the Hangfire job's query filter
+        DateTime finalizedDate,
+        string recipientEmail,
+        string playerName,
+        string questTitle,
+        string dmName,
+        string questDescription,
+        int challengeRating,
+        string movedToBoardName,
+        CancellationToken cancellationToken = default)
+        => SendAsync(
+            questId, groupId, finalizedDate, recipientEmail, playerName,
+            questTitle, dmName, questDescription, challengeRating, movedToBoardName);
+
+    private async Task SendAsync(
+        int questId,
+        int groupId,
+        DateTime finalizedDate,
+        string recipientEmail,
+        string playerName,
+        string questTitle,
+        string dmName,
+        string questDescription,
+        int challengeRating,
+        string? movedToBoardName)
     {
         await HangfireJobHelper.RunInScopeAsync(scopeFactory, groupId, async sp =>
         {
@@ -31,7 +68,7 @@ public class QuestWaitlistPromotedEmailJob(
 
             var questUrl = $"{emailSettings.AppUrl}/Quest/Details/{questId}";
 
-            var html = await renderService.RenderAsync<WaitlistPromoted>(new Dictionary<string, object?>
+            var parameters = new Dictionary<string, object?>
             {
                 { nameof(WaitlistPromoted.QuestTitle),       questTitle },
                 { nameof(WaitlistPromoted.DmName),           dmName },
@@ -41,7 +78,12 @@ public class QuestWaitlistPromotedEmailJob(
                 { nameof(WaitlistPromoted.QuestUrl),         questUrl },
                 { nameof(WaitlistPromoted.ChallengeRating),  challengeRating },
                 { nameof(WaitlistPromoted.AppUrl),           emailSettings.AppUrl }
-            });
+            };
+
+            if (movedToBoardName is not null)
+                parameters[nameof(WaitlistPromoted.MovedToBoardName)] = movedToBoardName;
+
+            var html = await renderService.RenderAsync<WaitlistPromoted>(parameters);
 
             await emailService.SendAsync(recipientEmail, $"A seat opened up: {questTitle}", html);
 
