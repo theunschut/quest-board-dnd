@@ -14,14 +14,20 @@ public class AmbientClockSeamTests
     // re-checks that these paths never regress.
     private static readonly string[] GuardedRelativePaths =
     [
+        "QuestBoard.Domain/Extensions/MoveEligibility.cs",
         "QuestBoard.Domain/Extensions/QuestExtensions.cs",
         "QuestBoard.Domain/Services/CalendarFeedWriter.cs",
         "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
+        "QuestBoard.Domain/Services/EventMoveService.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
+        "QuestBoard.Domain/Services/MoveControlService.cs",
+        "QuestBoard.Domain/Services/QuestMoveService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
         "QuestBoard.Repository/Entities/QuestBoardContext.cs",
+        "QuestBoard.Repository/EventMoveRepository.cs",
         "QuestBoard.Repository/FeedRevisionStamper.cs",
         "QuestBoard.Repository/GroupRepository.cs",
+        "QuestBoard.Repository/QuestMoveRepository.cs",
         "QuestBoard.Repository/QuestRepository.cs",
         "QuestBoard.Service/Controllers/Admin/AdminController.cs",
         "QuestBoard.Service/Controllers/QuestBoard/CalendarController.cs",
@@ -29,9 +35,12 @@ public class AmbientClockSeamTests
         "QuestBoard.Service/Controllers/QuestBoard/QuestLogController.cs",
         "QuestBoard.Service/Controllers/Events/EventsController.cs",
         "QuestBoard.Service/Controllers/Events/SeriesController.cs",
+        "QuestBoard.Service/Controllers/MoveController.cs",
         "QuestBoard.Service/Jobs/DailyReminderJob.cs",
         "QuestBoard.Service/Views/Admin/Quests.cshtml",
         "QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml",
+        "QuestBoard.Service/Views/Move/Index.cshtml",
+        "QuestBoard.Service/Views/Move/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Details.cshtml",
         "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
@@ -66,7 +75,10 @@ public class AmbientClockSeamTests
     private static readonly string[] BoardClockConsumerPaths =
     [
         "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
+        "QuestBoard.Domain/Services/EventMoveService.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
+        "QuestBoard.Domain/Services/MoveControlService.cs",
+        "QuestBoard.Domain/Services/QuestMoveService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
         "QuestBoard.Repository/GroupRepository.cs",
         "QuestBoard.Repository/QuestRepository.cs",
@@ -290,6 +302,23 @@ public class AmbientClockSeamTests
         content.Should().NotContain("IBoardClock",
             because: "injecting the clock into the rule would hide a second clock resolution behind every " +
                      "call site that delegates to it");
+    }
+
+    // The move eligibility rule is shared by the preview and by the Details control, so it is
+    // handed the board-local date by its caller for the same reason: a clock of its own would be
+    // an unguarded second resolution behind every caller.
+    [Fact]
+    public void MoveEligibility_TakesTheBoardLocalDateRatherThanResolvingOne()
+    {
+        var fullPath = ResolveRepoRelativePath("QuestBoard.Domain/Extensions/MoveEligibility.cs");
+        var content = File.ReadAllText(fullPath);
+
+        content.Should().Contain("DateOnly boardToday",
+            because: "the 'can this entry still be moved' rule is handed the board-local today by its " +
+                     "caller, so it holds no clock of its own to read");
+        content.Should().NotContain("IBoardClock",
+            because: "injecting the clock into the rule would hide a second clock resolution behind every " +
+                     "caller that delegates to it");
     }
 
     // A feed that read the configured zone id directly would declare a zone the board clock may

@@ -344,6 +344,32 @@ function makeDataOptionsClickable() {
     });
 }
 
+// Locks a form's submit buttons the moment it is submitted, so a second click cannot send the same
+// request twice. Opt in with the data-disable-on-submit attribute on the form: a page's CSP forbids
+// an inline onsubmit handler, so the behaviour lives here instead. A page restored from the
+// browser's back-forward cache keeps its old DOM, so the buttons are unlocked again on restore.
+function disableSubmitButtonsOnSubmit() {
+    const forms = document.querySelectorAll('form[data-disable-on-submit]');
+    forms.forEach(form => {
+        form.addEventListener('submit', () => {
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(button => {
+                button.disabled = true;
+            });
+        });
+    });
+}
+
+window.addEventListener('pageshow', event => {
+    if (!event.persisted) {
+        return;
+    }
+
+    document.querySelectorAll('form[data-disable-on-submit] button[type="submit"], form[data-disable-on-submit] input[type="submit"]')
+        .forEach(button => {
+            button.disabled = false;
+        });
+});
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Handle datetime-local inputs
@@ -376,6 +402,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Make date options clickable
     makeDataOptionsClickable();
+
+    // Lock opted-in forms against a second submit.
+    disableSubmitButtonsOnSubmit();
 
     // Rewrite every server-rendered real-instant timestamp to the viewer's own timezone.
     hydrateLocalTimes();

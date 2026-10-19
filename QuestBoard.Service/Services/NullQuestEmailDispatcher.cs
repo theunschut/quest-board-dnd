@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 
 namespace QuestBoard.Service.Services;
@@ -47,6 +48,36 @@ public class NullQuestEmailDispatcher : IQuestEmailDispatcher
         string dmName,
         string questDescription,
         int challengeRating)
+    {
+        // No-op — Hangfire not available in Testing environment
+    }
+
+    /// <inheritdoc/>
+    public void EnqueueQuestMovedEmail(
+        int questId,
+        int groupId,
+        QuestMovedAudience audience,
+        string recipientEmail,
+        string questTitle,
+        string dmName,
+        string boardName,
+        DateTime? sessionDate)
+    {
+        // No-op — Hangfire not available in Testing environment
+    }
+
+    /// <inheritdoc/>
+    public void EnqueueWaitlistPromotedAfterMoveEmail(
+        int questId,
+        int groupId,
+        DateTime finalizedDate,
+        string recipientEmail,
+        string playerName,
+        string questTitle,
+        string dmName,
+        string questDescription,
+        int challengeRating,
+        string movedToBoardName)
     {
         // No-op — Hangfire not available in Testing environment
     }

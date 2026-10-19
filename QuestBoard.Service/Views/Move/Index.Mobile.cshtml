@@ -1,0 +1,251 @@
+@using QuestBoard.Domain.Models.BoardMove
+@using QuestBoard.Service.ViewModels.MoveViewModels
+@model MovePageViewModel
+@section Styles {
+    <link href="~/css/move-entry.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+@{
+    var preview = Model.Preview;
+    var questPreview = preview as QuestMovePreview;
+    var eventPreview = preview as EventMovePreview;
+    var quest = questPreview?.Quest;
+    var targetName = preview.Target?.Name ?? string.Empty;
+    ViewData["Title"] = $"Move {Model.KindTitle} to Linked Board";
+}
+
+<div class="container-fluid px-2 mt-2">
+    <div class="move-card-mobile mb-3">
+        <h5 class="mb-3">
+            <i class="fas fa-right-left text-info me-2" aria-hidden="true"></i>Move @Model.KindTitle to Linked Board
+        </h5>
+
+        @if (Model.ChangedSincePreview)
+        {
+            <div class="alert alert-warning" role="alert">
+                <i class="fas fa-triangle-exclamation me-2" aria-hidden="true"></i>Things changed while you were reviewing this. Check what the move will do now, then confirm again.
+            </div>
+        }
+
+        <p class="mb-1"><i class="fas fa-scroll me-2" aria-hidden="true"></i>@preview.EntryTitle</p>
+        <p class="mb-1"><i class="fas fa-location-dot me-2" aria-hidden="true"></i>On @preview.SourceBoardName</p>
+        @if (eventPreview?.Event != null)
+        {
+            <p class="mb-1"><i class="fas fa-calendar-day me-2" aria-hidden="true"></i>@Html.WallClock(eventPreview.Event.Date.ToDateTime(TimeOnly.MinValue), "date")</p>
+            <p class="mb-1"><i class="fas fa-clock me-2" aria-hidden="true"></i>@Model.EventTimeLabel</p>
+            @if (eventPreview.Event.IsCancelled)
+            {
+                <p class="mb-1"><i class="fas fa-ban me-2" aria-hidden="true"></i>Cancelled</p>
+            }
+        }
+        @if (quest != null)
+        {
+            if (quest.IsFinalized && quest.FinalizedDate.HasValue)
+            {
+                <p class="mb-1"><i class="fas fa-clock me-2" aria-hidden="true"></i>Session @Html.WallClock(quest.FinalizedDate.Value, "date-time")</p>
+            }
+            else
+            {
+                <p class="mb-1">
+                    <i class="fas fa-calendar-day me-2" aria-hidden="true"></i>@(quest.ProposedDates.Count == 1 ? "Voting open, 1 proposed date" : $"Voting open, {quest.ProposedDates.Count} proposed dates")
+                </p>
+            }
+            <p class="mb-1"><i class="fas fa-user me-2" aria-hidden="true"></i>DM: @questPreview!.DmName</p>
+            <p class="mb-3"><i class="fas fa-circle-check me-2" aria-hidden="true"></i>@(quest.IsFinalized ? "Finalized" : "Open for signups")</p>
+        }
+
+        <p>Choose the board this @Model.KindWord should live on. It will look as if it had been created there, and @preview.SourceBoardName will no longer show it.</p>
+
+        @if (Model.ShowPicker)
+        {
+            <form method="get" asp-controller="Move" asp-action="@Model.MoveAction" asp-route-id="@preview.EntryId" asp-fragment="move-preview">
+                <label for="targetBoardId" class="form-label">Move to</label>
+                <select id="targetBoardId" name="targetBoardId" class="form-select">
+                    <option value="">-- Select a board --</option>
+                    @foreach (var board in preview.LinkedBoards)
+                    {
+                        <option value="@board.Id" selected="@(preview.Target?.Id == board.Id)">@board.Name</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-info w-100 mt-2">
+                    <i class="fas fa-eye me-2" aria-hidden="true"></i>Show What Will Happen
+                </button>
+            </form>
+        }
+        else if (preview.Target != null)
+        {
+            <p class="mb-0"><i class="fas fa-arrow-right me-2" aria-hidden="true"></i>Moving to @preview.Target.Name</p>
+        }
+    </div>
+
+    <div class="move-card-mobile mb-3" id="move-preview">
+        @if (preview.Status == MoveStatus.ChooseTarget)
+        {
+            <p class="mb-0">Choose a board to see what the move will do there.</p>
+        }
+        else if (preview.Status == MoveStatus.TargetNotLinked)
+        {
+            <div class="alert alert-danger mb-0" role="alert">That board is not part of this linked set. Choose one from the list.</div>
+        }
+
+        @if (Model.ShowPreview)
+        {
+            <h6 id="move-preview-heading">What will happen on @targetName</h6>
+            @if (preview.Status == MoveStatus.DungeonMasterNotEligible)
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-ban me-2" aria-hidden="true"></i>
+                    <strong class="move-strong">@targetName cannot take this quest.</strong>
+                    <div>@questPreview?.DmName is not a Dungeon Master or Admin on @targetName. Make them one there, or choose another board.</div>
+                </div>
+            }
+            else
+            {
+                <ul class="move-consequences list-unstyled" aria-labelledby="move-preview-heading">
+                    <li class="move-consequence move-consequence--kept">
+                        <div class="move-consequence-icon"><i class="fas fa-fw fa-check" aria-hidden="true"></i></div>
+                        <div class="move-consequence-body"><p class="mb-0">@Model.KeptSentence</p></div>
+                    </li>
+                    @if (Model.ShowCharactersCleared)
+                    {
+                        <li class="move-consequence move-consequence--notice">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-eraser" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body">
+                                <p class="mb-0">Characters are cleared, because a character belongs to one board. Players pick one from <strong class="move-strong">@targetName</strong> again on the quest page.</p>
+                            </div>
+                        </li>
+                    }
+                    @if (preview.Dropped.Count > 0)
+                    {
+                        <li class="move-consequence move-consequence--dropped">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-user-minus" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body">
+                                <p class="mb-0">
+                                    @if (Model.IsQuest && preview.Dropped.Count == 1)
+                                    {
+                                        <text>1 signup will be removed, with its date votes, because that player is not a member of </text><strong class="move-strong">@targetName</strong><text>:</text>
+                                    }
+                                    else if (Model.IsQuest)
+                                    {
+                                        <text>@preview.Dropped.Count signups will be removed, with their date votes, because those players are not members of </text><strong class="move-strong">@targetName</strong><text>:</text>
+                                    }
+                                    else if (preview.Dropped.Count == 1)
+                                    {
+                                        <text>1 availability answer will be removed because that person is not a member of </text><strong class="move-strong">@targetName</strong><text>:</text>
+                                    }
+                                    else
+                                    {
+                                        <text>@preview.Dropped.Count availability answers will be removed because those people are not members of </text><strong class="move-strong">@targetName</strong><text>:</text>
+                                    }
+                                </p>
+                                <ul class="move-people list-unstyled" aria-label="People who will be removed">
+                                    @foreach (var person in preview.Dropped)
+                                    {
+                                        <li class="move-person">
+                                            <strong class="move-strong">@person.Name</strong>
+                                            @if (Model.IsQuest && MovePageViewModel.RoleLabel(person.Role).Length > 0)
+                                            {
+                                                <text> </text><small>@MovePageViewModel.RoleLabel(person.Role)</small>
+                                            }
+                                            @if (Model.IsQuest && person.IsSelected)
+                                            {
+                                                <text> · </text><strong class="move-strong move-person-mark"><i class="fas fa-star me-1" aria-hidden="true"></i>Selected</strong>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                                <p class="move-hint mb-0">Add them to @targetName first if you want to keep them, then come back.</p>
+                                @if (Model.IsQuest && Model.HasSelectedDropped)
+                                {
+                                    <p class="move-hint mb-0">Players marked Selected hold a seat.</p>
+                                }
+                            </div>
+                        </li>
+                    }
+                    @if (Model.ShowSeats)
+                    {
+                        <li class="move-consequence move-consequence--notice">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-hourglass-half" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body"><p class="mb-0">@Model.SeatsSentence @Model.SeatsFollowUpSentence</p></div>
+                        </li>
+                    }
+                    @if (!string.IsNullOrEmpty(questPreview?.OriginalQuestTitle))
+                    {
+                        <li class="move-consequence move-consequence--notice">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-link-slash" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body">
+                                <p class="mb-0">This quest will no longer be linked to its original quest, "<strong class="move-strong">@questPreview!.OriginalQuestTitle</strong>".</p>
+                                @if (string.IsNullOrEmpty(questPreview.FollowUpQuestTitle))
+                                {
+                                    <p class="move-hint mb-0">Unlinking is permanent. Moving the quest back does not restore the link.</p>
+                                }
+                            </div>
+                        </li>
+                    }
+                    @if (!string.IsNullOrEmpty(questPreview?.FollowUpQuestTitle))
+                    {
+                        <li class="move-consequence move-consequence--notice">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-link-slash" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body">
+                                <p class="mb-0">This quest will no longer be linked to its follow-up quest, "<strong class="move-strong">@questPreview!.FollowUpQuestTitle</strong>".</p>
+                                <p class="move-hint mb-0">Unlinking is permanent. Moving the quest back does not restore the link.</p>
+                            </div>
+                        </li>
+                    }
+                    @if (Model.ShowCampaignRow)
+                    {
+                        <li class="move-consequence move-consequence--notice">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-user-plus" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body">
+                                <p class="mb-0">
+                                    @if (eventPreview!.CampaignAddCount == 1)
+                                    {
+                                        <text>1 member of </text><strong class="move-strong">@targetName</strong><text> has no answer yet and gets an automatic Yes, like any new Campaign event.</text>
+                                    }
+                                    else
+                                    {
+                                        <text>@eventPreview.CampaignAddCount members of </text><strong class="move-strong">@targetName</strong><text> have no answer yet and get an automatic Yes, like any new Campaign event.</text>
+                                    }
+                                </p>
+                            </div>
+                        </li>
+                    }
+                    @if (eventPreview?.Event?.IsCancelled == true)
+                    {
+                        <li class="move-consequence move-consequence--notice">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-ban" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body"><p class="mb-0">This session is cancelled and stays cancelled on <strong class="move-strong">@targetName</strong>.</p></div>
+                        </li>
+                    }
+                    @if (Model.ShowCalendarApps)
+                    {
+                        <li class="move-consequence move-consequence--neutral">
+                            <div class="move-consequence-icon"><i class="fas fa-fw fa-calendar-days" aria-hidden="true"></i></div>
+                            <div class="move-consequence-body"><p class="mb-0">In calendar apps, anyone who cannot see <strong class="move-strong">@targetName</strong> stops seeing this @Model.KindWord on the next refresh.</p></div>
+                        </li>
+                    }
+                    <li class="move-consequence move-consequence--neutral">
+                        <div class="move-consequence-icon"><i class="fas fa-fw fa-envelope" aria-hidden="true"></i></div>
+                        <div class="move-consequence-body"><p class="mb-0">@Model.EmailSentence</p></div>
+                    </li>
+                </ul>
+            }
+        }
+
+        <div class="d-flex gap-2 mt-3">
+            <a href="@Url.Action("Details", Model.EntryController, new { id = preview.EntryId })" class="btn btn-secondary flex-fill">
+                <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to This @Model.KindTitle
+            </a>
+            @if (Model.ShowConfirm)
+            {
+                <form method="post" data-disable-on-submit asp-controller="Move" asp-action="@Model.MoveAction" class="flex-fill">
+                    <input type="hidden" name="id" value="@preview.EntryId" />
+                    <input type="hidden" name="targetBoardId" value="@preview.Target!.Id" />
+                    <input type="hidden" name="stamp" value="@preview.Stamp" />
+                    <button type="submit" class="btn btn-warning w-100">
+                        <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to @targetName
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>

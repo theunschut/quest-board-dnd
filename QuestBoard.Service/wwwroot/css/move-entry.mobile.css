@@ -1,0 +1,79 @@
+/* move-entry.mobile.css — Move page, mobile layout only */
+/* No media queries — exclusively loaded by Move/Index.Mobile.cshtml via _Layout.Mobile.cshtml */
+
+/* Glass card, the same rule the follow-up quest form uses */
+.move-card-mobile {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 16px;
+    color: #F4E4BC;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.move-card-mobile h5,
+.move-card-mobile h6,
+.move-card-mobile .form-label {
+    color: #F4E4BC;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.move-consequence {
+    display: flex;
+    gap: 8px;
+    padding: 8px 8px 8px 16px;
+    margin-bottom: 8px;
+    border-left: 4px solid #6c757d;
+}
+
+.move-consequence--kept {
+    border-left-color: #28a745;
+}
+
+.move-consequence--notice {
+    border-left-color: #ffc107;
+}
+
+.move-consequence--dropped {
+    border-left-color: #dc3545;
+}
+
+.move-consequence--neutral {
+    border-left-color: #6c757d;
+}
+
+.move-consequence-icon {
+    flex: 0 0 24px;
+    width: 24px;
+    text-align: center;
+}
+
+.move-consequence-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.move-people {
+    margin: 8px 0 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.move-person {
+    padding: 4px 0;
+    overflow-wrap: anywhere;
+}
+
+.move-strong {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* Secondary text uses an opaque colour, never an alpha one */
+.move-hint {
+    font-size: .875rem;
+    color: #D9CDA8;
+}

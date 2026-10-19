@@ -1295,7 +1295,7 @@ Plans:
 **Goal:** A super admin can move an existing quest or event from its board to another board in the same link group, from that entry's Details page. After the move the entry lives on the target board as if it had been created there, and the boards in the group stop disagreeing about where it belongs. Boards that are not linked offer no move.
 **Requirements**: TBD
 **Depends on:** Phase 91. A move is only offered between boards in the same link group, so the link model has to exist first.
-**Plans:** 0 plans
+**Plans:** 9/9 plans complete
 
 **Origin:** raised by the operator on 2026-10-15 at the end of Phase 91's discussion. It was kept out of Phase 91 on purpose: that phase is read-only and makes no write to `Events` or `Quests`, and a move is the opposite, a cross-board write. See `91-CONTEXT.md` § Deferred Ideas.
 
@@ -1310,8 +1310,32 @@ Plans:
 **Constraints:** super-admin only, enforced server-side. Only between boards in the same link group (which implies the same board type). The write goes through the change tracker so the feed revision rises, per `.claude/architecture.md`. Both `.Mobile.cshtml` twins are updated.
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 92 to break down)
+- [x] 92-01-PLAN.md — Tracer: a super admin's confirm POST moves a quest to the other linked board in one tracked save (W1)
+- [x] 92-02-PLAN.md — Move mail plumbing: Quest Moved template (three audiences), Waitlist Promoted moved line, dispatcher methods and jobs, Email Preview entries, capturing test factory (W1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 92-03-PLAN.md — Quest preview contract, change-detector stamp and eligibility rule on the tracer's path; closed, played and stale-preview refusals (W2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 92-04-PLAN.md — Move page frame, desktop and mobile: GET preview states, changed-preview re-render, member toast keys, authorization and target proofs (W3)
+- [x] 92-05-PLAN.md — Quest people, DM rule, chain cut, waitlist promotion and mail, all in the single save (W3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 92-06-PLAN.md — Event move: answers reconciled, Campaign automatic rows, series and past refused, no mail (W4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 92-07-PLAN.md — Move page consequence rows and styling for quests and events (W5)
+- [x] 92-08-PLAN.md — "Move to Linked Board" on Quest Details (both layouts) and Event Details, and the Moved toast (W5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 92-09-PLAN.md — Guards (ambient clock, single save, no planning references) and the end-to-end walk, audit line and feed proof (W6)
 
 ## Backlog
 

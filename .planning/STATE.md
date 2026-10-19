@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 92
-current_phase_name: Move a Quest or Event to a Linked Board
-status: planning
-stopped_at: Phase 91 complete with all follow-ups closed; Phase 92 ready to discuss
-last_updated: "2026-10-17T12:00:00.000Z"
-last_activity: 2026-10-17
-last_activity_desc: Phase 91 follow-ups closed (security, validation, review and UI fixes); PR to main opened
+status: completed
+stopped_at: Phase 92 complete; PR #161 open
+last_updated: "2026-10-19T09:21:57.718Z"
+last_activity: 2026-10-19
+last_activity_desc: Phase 92 complete — UAT 4/4, review fixes, security 37/37, PR #161
 progress:
   total_phases: 21
-  completed_phases: 17
-  total_plans: 139
-  completed_plans: 130
-  percent: 81
+  completed_phases: 18
+  total_plans: 148
+  completed_plans: 139
+  percent: 86
+current_phase_name: move-a-quest-or-event-to-a-linked-board
 state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 ---
 
@@ -22,24 +22,25 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-17 — after Phase 91)
+See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 92 — Move a Quest or Event to a Linked Board (no CONTEXT.md yet; start with discuss-phase)
+**Current focus:** Phase 92 complete (PR #161); remaining open phases are 78, 79, 81 and 90
 
 ## Current Position
 
-Phase: 92 — Move a Quest or Event to a Linked Board
+Phase: 92
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-17 — Phase 91 closed out: code-review warnings and UI-review fixes landed, security 42/42 closed, Nyquist-compliant; PR to `main` opened
+Status: Phase 92 complete — open phases remain (see below)
+Last activity: 2026-10-19 — Phase 92 complete
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
 none executed), Phase 79 — Character and Contact Link Cards and Phase 81 — Contact Tags and
 Filtering (not yet planned) are still open. Every other phase in the 72–89 range is complete with a
-verification report. Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, Phase 91
-is complete, and Phase 92 is next.
+verification report. Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, and
+Phases 91 and 92 are complete. `phase.complete` again reported Phase 92 as the last phase only because it
+is the highest number.
 
 Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
 shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
@@ -112,6 +113,10 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 91]: The cross-board read is two narrowed `IgnoreQueryFilters` projections in `QuestRepository`/`EventRepository`, which were already allowlisted, pinned to the linked board ids from a fresh per-request lookup and re-checked row by row in `LinkedCalendarService`. No new file joined the cross-board allowlist
 - [Phase 91]: Linked-set board writes use a concurrency token on `Groups.LinkedBoardSetId`, the same pattern as `FeedRevision`, because `FeedRevisionWriteSeamTests` bans `ExecuteUpdate` in all production source. The code reviewer and the verifier had both assumed the ban covered only Events and Quests. Deleting a set relies on the FK's `ON DELETE SET NULL` on relational providers
 - [Phase 91]: The operator's SQL Server checkpoint was driven by the orchestrator in the in-app browser against the local `mssql-dev` container, with the operator's explicit permission to start it. Test sets were created and deleted through the real Platform POSTs
+- [Phase 92]: A move is one tracked save per repository behind a SuperAdmin-only Move page that previews the consequences; the POST rebuilds the preview and applies only when a SHA-256 stamp of the plan still matches, and the repository re-checks every signup's seat, role, vote and target membership before writing (the last part added by the WR-02 review fix)
+- [Phase 92]: A stale Move URL after a move redirects to the board's list with a generic Info toast instead of a bare 404, so Back and resubmit no longer look like failures while a missing id, an other-board id and a just-moved entry still answer identically. Found by the orchestrator's browser UAT through the Back button, which the review had predicted only for resubmits
+- [Phase 92]: The operator, working remotely, asked the orchestrator to start the local `mssql-dev` container and to run UAT in the in-app browser. Test data was created through the real UI (two "UAT test link" sets, quests 991001 and 991002, event 1) and left in place at the operator's request
+- [Phase 92]: Separate side sessions could not be started from this orchestrator (the app refused the start), so the review fixes ran in-session through `gsd-code-fixer` on the milestone branch
 - [Phase 91]: Desktop text inside a `.modern-card` must not be a visible `<span>`: `modern-card.css` forces cream with `!important` on every span in a card. This made linked chip text unreadable, and markup tests and an emulated-browser check both missed it; only the UI audit caught it. Static guard facts now pin it for the linked partial and the day count
 
 ### Roadmap Evolution
@@ -203,9 +208,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-17
-Stopped at: Phase 91 complete with all follow-ups closed; PR from `milestone/v9-rolling-improvements` to `main` opened
-Resume file: none — next is `/gsd-discuss-phase 92`
+Last session: 2026-10-19
+Stopped at: Phase 92 complete; PR #161 (milestone/v9-rolling-improvements → main) open
+Resume file: None
 
 ## Operator Next Steps
 
@@ -213,7 +218,9 @@ Resume file: none — next is `/gsd-discuss-phase 92`
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
-- Decide whether to stop the `mssql-dev` container left running from the previous session (named volume `mssql-data`, so data persists either way)
+- Review and merge PR #161 (Phase 92), then tag the merge commit (feature → minor bump) and approve the `deploy` environment; re-push the milestone branch after the merge, since the repo deletes head branches
+- `mssql-dev` is running and the local database holds Phase 92 test data (two "UAT test link" sets, quests 991001/991002, event 1) — kept on purpose
+- Phase 92 was not run through `/gsd-validate-phase 92` or `/gsd-ui-review 92`; both are optional
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)
 - Releases are now cut by tagging `main` and approving the `deploy` environment; the CT installs within ~5 minutes. When an outcome mail says an installer update is available, run `setup` from that release as root (see `docs/deploy.md`)
 - Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79, 81 and 90 are roadmapped but unplanned (90: discuss first — `/gsd-discuss-phase 90`)
