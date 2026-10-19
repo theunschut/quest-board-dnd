@@ -113,6 +113,26 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
         Regex.Matches(html, "id=\"move-reason\"").Count.Should().Be(1);
     }
 
+    private static string DmControlsCardSegment(string html)
+    {
+        const string heading = "<h5>DM Controls</h5>";
+        const string nextHeading = "<h5>Quest Summary</h5>";
+        Regex.Matches(html, Regex.Escape(heading)).Count.Should().Be(1);
+        var start = html.IndexOf(heading, StringComparison.Ordinal);
+        var end = html.IndexOf(nextHeading, start, StringComparison.Ordinal);
+        end.Should().BeGreaterThan(start, "the Quest Summary card should follow the DM Controls card");
+        return html[start..end];
+    }
+
+    private static void ShouldSitInsideTheDesktopDmControlsCard(string html, string controlMarkup)
+    {
+        Regex.Matches(html, Regex.Escape(controlMarkup)).Count.Should().Be(1);
+        var card = DmControlsCardSegment(html);
+        var viewPublicPage = card.IndexOf("View Public Page", StringComparison.Ordinal);
+        viewPublicPage.Should().BeGreaterThanOrEqualTo(0);
+        card.IndexOf(controlMarkup, StringComparison.Ordinal).Should().BeGreaterThan(viewPublicPage);
+    }
+
     [Theory]
     [InlineData(DesktopUserAgent)]
     [InlineData(MobileUserAgent)]
@@ -285,6 +305,11 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
         html.Should().Contain("fa-right-left");
         Regex.Matches(html, Regex.Escape($"href=\"/Move/Quest/{questId}\"")).Count.Should().Be(1);
         html.Should().NotContain("move-control-reason");
+        if (userAgent == DesktopUserAgent)
+        {
+            ShouldSitInsideTheDesktopDmControlsCard(
+                html, $"<a href=\"/Move/Quest/{questId}\" class=\"btn btn-info w-100 mt-2\">");
+        }
     }
 
     [Theory]
@@ -309,6 +334,13 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
         html.Should().Contain(marker);
         html.Should().NotContain($"href=\"/Move/Quest/{questId}\"");
         ShouldShowDisabledManageControlWithReason(html, reason);
+        if (userAgent == DesktopUserAgent)
+        {
+            ShouldSitInsideTheDesktopDmControlsCard(
+                html,
+                "<button type=\"button\" class=\"btn btn-info w-100 mt-2 disabled\" aria-disabled=\"true\" aria-describedby=\"move-reason\">");
+            DmControlsCardSegment(html).Should().Contain("id=\"move-reason\"");
+        }
     }
 
     [Theory]
@@ -331,6 +363,10 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
             html.Should().NotContain(ControlLabel);
             html.Should().NotContain("move-control-reason");
             html.Should().NotContain("/Move/Quest");
+            if (userAgent == DesktopUserAgent)
+            {
+                html.Should().Contain("<h5>DM Controls</h5>");
+            }
         }
     }
 
@@ -358,6 +394,10 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
         html.Should().NotContain(ControlLabel);
         html.Should().NotContain("move-control-reason");
         html.Should().NotContain("/Move/Quest");
+        if (userAgent == DesktopUserAgent)
+        {
+            html.Should().Contain("<h5>DM Controls</h5>");
+        }
     }
 
     [Fact]
