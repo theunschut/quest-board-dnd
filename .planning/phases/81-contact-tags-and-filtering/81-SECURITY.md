@@ -66,7 +66,7 @@ created: 2026-10-19
 | T-81-02 (05) | Information disclosure | suggestion list | high | mitigate | Shared visibility-scoped vocabulary on every form surface; `ContactsTagsFormMarkupTests` | closed |
 | T-81-11 (05) | Spoofing | unauthorized tag write | high | mitigate | `DungeonMasterOnly` + `[ValidateAntiForgeryToken]` on POSTs, `DungeonMasterOnly` on GETs | closed |
 | T-81-05 (05) | Tampering | silent tag truncation | medium | mitigate | `ValidateTagNameLengths` raises a ModelState error | closed |
-| T-81-12 (05) | Denial of service | oversized tag payload | medium | mitigate | `[StringLength(1000)]` exists and the parser drops empties, but `ParseTagNames` runs on the raw value before ModelState is checked (C:174 vs :177, C:297 vs :300) and its de-duplication is quadratic — 40k distinct names took 2.4 s; the default 4 MB form-value limit admits far more. DM-tier only, behind antiforgery. | open — below high threshold (non-blocking) |
+| T-81-12 (05) | Denial of service | oversized tag payload | medium | mitigate | `ContactViewModel.TagsInputMaxLength` (1000) drives `[StringLength]`; Create/Edit POSTs call `ParseTagsWithinBound`, which skips parsing over the bound and guarantees a `TagsInput` ModelState error so Edit can never strip tags; `ParseTagNames` de-duplicates through a case-insensitive `HashSet` (linear; 100k names in ~56 ms). Tests: `Create_TagsInputOverLengthBound_RerendersWithoutParsingOrPersisting`, `Edit_TagsInputOverLengthBound_RerendersWithoutParsingOrChangingContact`, `Edit_TagsInputOneCharacterOverBound_IsNotParsed`, `Edit_TagsInputExactlyAtBound_SavesEveryTag`, `ParseTagNames_LargeDistinctInputWithRepeats_ReturnsEachNameOnceInOrder` (fixed in c9cf438d, 609ebe5e) | closed |
 | T-81-13 (05) | Tampering | lost suggestion list on re-render | low | mitigate | All six invalid re-render paths repopulate suggestions | closed |
 | T-81-04 (06) | Tampering | CDN-delivered library | high | mitigate | Tagify 4.38.0 with `integrity` + `crossorigin` on all four form views; served bytes re-hashed by the auditor and match | closed |
 | T-81-04b (06) | Tampering | silent version drift | medium | mitigate | Single pinned version across all views; no other Tagify reference | closed |
@@ -106,8 +106,7 @@ created: 2026-10-19
 
 ### Residual notes (informational, not counted in threats_open)
 
-- **T-81-12 fix direction:** check ModelState (or the raw length) before calling `ParseTagNames`, and make its de-duplication linear (a case-insensitive `HashSet`). Reach is DM-tier only.
-- **Weak test:** `ReplaceContactTagsAsync_ContactOnAnotherBoard_IsSilentNoOp` asserts `ContactTags` is empty with `ActiveGroupId = null`, which the fail-closed filter makes always true; only its NotThrow half proves anything. Use `IgnoreQueryFilters()` in that assertion, as other tests already do.
+- **Over-bound re-render echo:** an over-bound Create/Edit re-render still reflects the posted value into the input's `value` attribute (HTML-encoded by the tag helper). Pre-existing, DM-tier only, bounded by the form limits, no parsing cost.
 - **No Content-Security-Policy** is configured; no register row relies on one. If one is added, the inline `initContactTags(...)` blocks need a nonce or hash.
 - **Mitigation wording drift** (properties still hold): T-81-01b (02) "zero across the whole repository project" — the allowlist test is the guard; T-81-01 (04) "ordinary visible list" — strict narrowing replaced it; T-81-04 — the executor did not re-hash, the auditor did; T-81-02b (06) — `Html.Raw` wraps `Json.Serialize` only.
 - **Edit GET pre-fills `TagsInput`** with all of a contact's tags without the ownership narrowing; consistent with any DM being able to edit any contact on the board.
@@ -121,6 +120,7 @@ created: 2026-10-19
 |------------|---------------|--------|------|--------|
 | 2026-10-19 | 28 unique (51 rows) | 27 unique (50 rows) | 1 (T-81-12, medium, non-blocking) | gsd-security-auditor (opus) at c5f5e91e; targeted 57 unit + 93 integration tests passed. Re-checked by the orchestrator after the review fixes merged (91aa14b2): 1105 unit + 1324 integration passed, 11 skipped |
 
+| 2026-10-19 | 28 unique (51 rows) | 28 unique (51 rows) | 0 | Orchestrator, after quick task 261019-plu closed T-81-12 (bc4e4460 RED → c9cf438d, 609ebe5e; weak no-op test fixed in 1435c819); merged at 2106be07: 1107 unit + 1328 integration passed, 11 skipped |
 ---
 
 ## Sign-Off
@@ -130,4 +130,4 @@ created: 2026-10-19
 - [x] `threats_open: 0` confirmed
 - [x] `status: verified` set in frontmatter
 
-**Approval:** verified 2026-10-19 (one medium threat, T-81-12, open below the blocking threshold)
+**Approval:** verified 2026-10-19 — all 28 threats closed after quick task 261019-plu
