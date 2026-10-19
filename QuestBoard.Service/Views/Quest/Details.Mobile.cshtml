@@ -1,8 +1,10 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Models.BoardMove
 @using QuestBoard.Domain.Models.QuestBoard
 @using QuestBoard.Service.Extensions
+@using QuestBoard.Service.Helpers
 @using QuestBoard.Service.ViewModels.CalendarViewModels
 @model PlayerSignup
 @{
@@ -14,6 +16,7 @@
     var canManage = (bool)ViewBag.CanManage;
     var boardType = (BoardType)ViewBag.BoardType;
     var boardToday = (DateOnly)ViewBag.BoardToday;
+    var moveControl = ViewBag.MoveControl as MoveControlState;
 
     var selectedPlayers = Model.Quest?.PlayerSignups
         .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
@@ -442,6 +445,23 @@
            class="btn btn-warning w-100 mb-2">
             <i class="fas fa-cogs me-2"></i>Manage Quest
         </a>
+        @if (moveControl != null)
+        {
+            @if (moveControl.CanMove)
+            {
+                <a asp-controller="Move" asp-action="Quest" asp-route-id="@Model.Quest?.Id"
+                   class="btn btn-info w-100 mb-2">
+                    <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                </a>
+            }
+            else
+            {
+                <button type="button" class="btn btn-info w-100 disabled" aria-disabled="true" aria-describedby="move-reason">
+                    <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                </button>
+                <p class="move-control-reason mt-2 mb-2" id="move-reason">@MoveCopy.ControlReason(moveControl.BlockReason)</p>
+            }
+        }
     }
 
     @* Revoke signup + vote change (Revoke left, votes right) *@

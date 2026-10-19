@@ -5,12 +5,15 @@
     and availability state.
 *@
 @using QuestBoard.Domain.Enums
+@using QuestBoard.Domain.Models.BoardMove
 @using QuestBoard.Service.Extensions
+@using QuestBoard.Service.Helpers
 @using QuestBoard.Service.ViewModels.EventViewModels
 @model EventViewModel
 @{
     ViewData["Title"] = Model.Title;
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var moveControl = ViewBag.MoveControl as MoveControlState;
     var deleteConfirmMessage = Model.SignupCount == 0
         ? "Delete this event? This action cannot be undone."
         : $"Delete this event? {Model.SignupCount} {(Model.SignupCount == 1 ? "person has" : "people have")} signed up and their availability will be lost. This action cannot be undone.";
@@ -91,6 +94,22 @@
                                 <i class="fas fa-trash me-2"></i>Delete Event
                             </button>
                         </form>
+                    }
+                    @if (moveControl != null)
+                    {
+                        @if (moveControl.CanMove)
+                        {
+                            <a href="@Url.Action("Event", "Move", new { id = Model.Id })" class="btn btn-info w-100 mt-2">
+                                <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                            </a>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-info w-100 mt-2 disabled" aria-disabled="true" aria-describedby="move-reason">
+                                <i class="fas fa-right-left me-2" aria-hidden="true"></i>Move to Linked Board
+                            </button>
+                            <p class="move-control-reason mb-0 mt-2" id="move-reason">@MoveCopy.ControlReason(moveControl.BlockReason)</p>
+                        }
                     }
                 </div>
             </div>

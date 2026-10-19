@@ -103,4 +103,28 @@
             </div>
         </div>
     }
+    @if (TempData[TempDataKeys.MovedMessage] != null)
+    {
+        var movedEntryUrl = TempData[TempDataKeys.MovedEntryUrl] as string;
+        @* Shares the switch toast's opaque background and mobile offset: this one also stays up until dismissed. *@
+        <div class="toast show board-switch-toast" role="alert" data-bs-autohide="false">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">Moved</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body text-break">
+                @TempData[TempDataKeys.MovedMessage]
+                @if (!string.IsNullOrEmpty(movedEntryUrl) && Url.IsLocalUrl(movedEntryUrl))
+                {
+                    <div class="mt-2">
+                        @* A filled button, not outline -- same reasoning as the switch toast above. *@
+                        <a href="@movedEntryUrl" class="btn btn-sm btn-dark text-break">
+                            <i class="fas fa-arrow-right me-2" aria-hidden="true"></i>Open it on @TempData[TempDataKeys.MovedTargetName]
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>
