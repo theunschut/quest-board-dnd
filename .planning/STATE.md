@@ -219,7 +219,7 @@ Resume file: None
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
-- Approve the `deploy` environment for v5.6.0 (Phase 92, merged as #161 and tagged on merge commit 5dc7d48c); the CT installs it within ~5 minutes of publishing
+- Approve the `deploy` environment for v5.6.1 (quick task 261019-gff — Move control on the Quest Manage page, merged as #162 and tagged on merge commit a072f15d); v5.6.0 (Phase 92, #161) is live in production
 - `mssql-dev` is running and the local database holds Phase 92 test data (two "UAT test link" sets, quests 991001/991002, event 1) — kept on purpose
 - Phase 92 was not run through `/gsd-validate-phase 92` or `/gsd-ui-review 92`; both are optional
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)
