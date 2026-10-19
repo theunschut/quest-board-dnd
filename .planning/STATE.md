@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 Phase: 92
 Plan: Not started
 Status: Phase 92 complete — open phases remain (see below)
-Last activity: 2026-10-19 - Completed quick task 261019-gff: Add Move to Linked Board control to the Quest Manage page
+Last activity: 2026-10-19 - Completed quick task 261019-jba: DM Controls card on desktop Quest Manage
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -192,6 +192,7 @@ New as of 2026-10-17 (Phase 91):
 | 260831-mcb | Contact tags: show tags only for owned contacts by default; non-owned contacts' tags hidden unless the existing ShowHidden toggle is on (universal rule for all DM-tier viewers) | 2026-08-31 | b8b4da56 | [260831-mcb-contact-tags-show-tags-only-for-owned-co](./quick/260831-mcb-contact-tags-show-tags-only-for-owned-co/) |
 | 260831-fast | Hide the contact tag filter bar entirely when no tags are visible to the viewer (follow-up to 260831-mcb) | 2026-08-31 | 355e51d4 | — |
 | 261019-gff | Add Move to Linked Board control to the Quest Manage page (desktop and mobile, super admins only, under the visible action row) | 2026-10-19 | ea699408 | [261019-gff-add-move-to-linked-board-control-to-the-](./quick/261019-gff-add-move-to-linked-board-control-to-the-/) |
+| 261019-jba | Desktop Quest Manage: "View Public Page" card renamed to "DM Controls" and now holds View Public Page, Create Follow-Up Quest, Send Reminder and Move to Linked Board (desktop only; mobile Manage intentionally unchanged by operator decision) | 2026-10-19 | 5a8a4043 | [261019-jba-dm-controls-card-on-desktop-quest-manage](./quick/261019-jba-dm-controls-card-on-desktop-quest-manage/) |
 
 ## Deferred Items
 
