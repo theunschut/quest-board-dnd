@@ -171,10 +171,10 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return RedirectToAction("Index", "GroupPicker");
             }
 
-            // Parsed before any ModelState check, and before any write, so an over-long name is
-            // reported through the existing invalid-model re-render path rather than a second one.
-            var parsedTagNames = contactService.ParseTagNames(viewModel.TagsInput);
-            ValidateTagNameLengths(parsedTagNames, viewModel);
+            // The field is bounded and parsed before any ModelState check and before any write:
+            // an over-long field is refused without being split, and an over-long name is reported
+            // through the existing invalid-model re-render path rather than a second one.
+            var parsedTagNames = ParseTagsWithinBound(viewModel);
 
             if (!ModelState.IsValid)
             {
@@ -294,10 +294,10 @@ namespace QuestBoard.Service.Controllers.Contacts
                 return NotFound();
             }
 
-            // Parsed before any ModelState check, and before any write, so an over-long name is
-            // reported through the existing invalid-model re-render path rather than a second one.
-            var parsedTagNames = contactService.ParseTagNames(viewModel.TagsInput);
-            ValidateTagNameLengths(parsedTagNames, viewModel);
+            // The field is bounded and parsed before any ModelState check and before any write:
+            // an over-long field is refused without being split, and an over-long name is reported
+            // through the existing invalid-model re-render path rather than a second one.
+            var parsedTagNames = ParseTagsWithinBound(viewModel);
 
             if (!ModelState.IsValid)
             {
@@ -605,6 +605,31 @@ namespace QuestBoard.Service.Controllers.Contacts
 
             var category = await contactCategoryService.GetByIdAsync(categoryId.Value, token);
             return category != null;
+        }
+
+        // An over-long tag field is never split into names, because splitting is the expensive part
+        // of handling an oversized post. The view model's length attribute has normally already
+        // recorded the error, so the caller's invalid-model re-render reports it. The fallback
+        // error below exists so a skipped parse can never reach a write with an empty tag list,
+        // which on Edit would strip every tag from the contact.
+        private IReadOnlyList<string> ParseTagsWithinBound(ContactViewModel viewModel)
+        {
+            if (viewModel.TagsInput is { Length: > ContactViewModel.TagsInputMaxLength })
+            {
+                var hasTagsError = ModelState.TryGetValue(nameof(viewModel.TagsInput), out var entry)
+                    && entry.Errors.Count > 0;
+                if (!hasTagsError)
+                {
+                    ModelState.AddModelError(nameof(viewModel.TagsInput),
+                        $"Tags cannot exceed {ContactViewModel.TagsInputMaxLength} characters in total");
+                }
+
+                return [];
+            }
+
+            var parsed = contactService.ParseTagNames(viewModel.TagsInput);
+            ValidateTagNameLengths(parsed, viewModel);
+            return parsed;
         }
 
         // Adds a targeted ModelState error naming the offending tag rather than truncating --
