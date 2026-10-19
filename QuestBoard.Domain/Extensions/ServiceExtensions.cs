@@ -49,6 +49,7 @@ public static class ServiceExtensions
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IPlayerSignupService, PlayerSignupService>();
         services.AddScoped<IQuestService, QuestService>();
+        services.AddScoped<IQuestMoveService, QuestMoveService>();
         services.AddScoped<IShopService, ShopService>();
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IContactService, ContactService>();
