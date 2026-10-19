@@ -28,13 +28,14 @@ internal class ContactService(IContactRepository repository, IMapper mapper) : B
         if (string.IsNullOrWhiteSpace(rawInput)) return [];
 
         var names = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var part in rawInput.Split(','))
         {
             var trimmed = part.Trim();
             if (trimmed.Length == 0) continue;
-            // De-duplicate case-insensitively while preserving the first occurrence's casing
-            // and the input order.
-            if (names.Any(n => string.Equals(n, trimmed, StringComparison.OrdinalIgnoreCase))) continue;
+            // De-duplicate case-insensitively through a set, so each part costs constant time,
+            // while the first occurrence's casing and the input order are preserved.
+            if (!seen.Add(trimmed)) continue;
             names.Add(trimmed);
         }
         return names;
