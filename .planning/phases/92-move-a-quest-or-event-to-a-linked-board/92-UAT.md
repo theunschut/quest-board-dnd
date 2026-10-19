@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: complete
 phase: 92-move-a-quest-or-event-to-a-linked-board
 source: [92-VERIFICATION.md]
 started: 2026-10-19T00:00:00Z
@@ -29,15 +29,14 @@ notes: All three Quest Moved variants and WaitlistPromotedAfterMove render. The 
 
 ### 4. Double press on Confirm (review WR-01)
 expected: Pressing Confirm twice quickly on a slow save does not end on a bare 404; the move itself is done after the first press.
-result: issue
-reported: "A real double-click on Confirm produced one move and landed on the Moved toast (the browser dropped the second click once navigation began), so the slow-save race did not reproduce. But pressing Back to the Move page after a successful move shows a blank page: GET /Move/Quest/991001 returns a bare 404 because the quest has left the active board."
-severity: minor
+result: pass
+notes: First run (before fixes) found Back to the Move page after a move returned a bare 404. Fixed in b44d2379 (redirect with an Info toast on GET and POST, confirm button locked on submit via site.js). Re-tested after restarting the app: the form opts in with data-disable-on-submit and no inline onsubmit; a submit event disables the button; a real double-click made exactly one move (one "Moved quest 991001" log line) and landed on the Moved toast; Back then redirected to /quests with "Info: That quest is no longer on this board." No CSP console errors.
 
 ## Summary
 
 total: 4
-passed: 3
-issues: 1
+passed: 4
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -45,7 +44,8 @@ blocked: 0
 ## Gaps
 
 - truth: "After a successful move, revisiting or resubmitting the Move page does not end on a bare 404"
-  status: failed
+  status: resolved
+  resolved_by: b44d2379
   reason: "Browser Back to /Move/Quest/{id} after a move returns a bare 404 (blank page) because the entry is no longer on the active board; same root cause as review WR-01 on the POST side"
   severity: minor
   test: 4
