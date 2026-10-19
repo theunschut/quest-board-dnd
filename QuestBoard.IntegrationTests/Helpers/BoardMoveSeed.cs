@@ -143,4 +143,70 @@ public static class BoardMoveSeed
             .AsNoTracking()
             .FirstAsync(q => q.Id == questId, TestContext.Current.CancellationToken);
     }
+
+    public static async Task<int> SeedSeriesAsync(WebApplicationFactoryBase factory, int groupId, string title, DateOnly anchorDate)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var series = new EventSeriesEntity
+        {
+            Title = title,
+            GroupId = groupId,
+            AnchorDate = anchorDate,
+            IntervalWeeks = 1,
+            WeekDay = (int)anchorDate.DayOfWeek,
+            CycleMask = "1",
+            CreatedAt = DateTime.UtcNow
+        };
+        ctx.EventSeries.Add(series);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return series.Id;
+    }
+
+    public static async Task<int> SeedEventAsync(
+        WebApplicationFactoryBase factory, int groupId, string title, DateOnly date, TimeOnly? startTime = null,
+        int? seriesId = null, int? seriesSlotIndex = null, DateTime? cancelledAt = null)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var evt = new EventEntity
+        {
+            Title = title,
+            GroupId = groupId,
+            Date = date,
+            StartTime = startTime,
+            SeriesId = seriesId,
+            SeriesSlotIndex = seriesSlotIndex,
+            CancelledAt = cancelledAt,
+            CreatedAt = DateTime.UtcNow
+        };
+        ctx.Events.Add(evt);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return evt.Id;
+    }
+
+    public static async Task<int> SeedEventSignupAsync(
+        WebApplicationFactoryBase factory, int eventId, int userId, VoteType availability, DateTime? updatedAt = null)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var signup = new EventSignupEntity
+        {
+            EventId = eventId,
+            UserId = userId,
+            Availability = (int)availability,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = updatedAt
+        };
+        ctx.EventSignups.Add(signup);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return signup.Id;
+    }
+
+    public static async Task<EventEntity> ReadEventAsync(WebApplicationFactoryBase factory, int eventId)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        return await ctx.Events
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(e => e.Signups)
+            .FirstAsync(e => e.Id == eventId, TestContext.Current.CancellationToken);
+    }
 }
