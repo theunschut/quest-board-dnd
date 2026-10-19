@@ -50,6 +50,13 @@ public class BoardMoveEventRepositoryTests
             context.UserEntities.Add(new UserEntity { Id = id, Name = $"User {id}", Email = $"u{id}@test.com", UserName = $"u{id}" });
         }
 
+        // Users 2 and 3 answered and are members of the target, as are 5 and 6, who have no row
+        // yet. User 4 is not a member of the target.
+        foreach (var userId in new[] { 2, 3, 5, 6 })
+        {
+            context.UserGroups.Add(new UserGroupEntity { UserId = userId, GroupId = Target, GroupRole = (int)GroupRole.Player });
+        }
+
         await context.SaveChangesAsync(Token);
 
         var evt = new EventEntity
@@ -85,7 +92,22 @@ public class BoardMoveEventRepositoryTests
         s.EventId, Source, Target,
         KeptSignupIds: [s.KeptAnswered, s.KeptAutomatic],
         DroppedSignupIds: [s.Dropped],
-        CampaignAddUserIds: campaignAdds);
+        CampaignAddUserIds: campaignAdds,
+        SignupBasis: Basis(s));
+
+    private static EventSignupBasis[] Basis(Seeded s) =>
+    [
+        new(s.KeptAnswered, 2),
+        new(s.KeptAutomatic, 3),
+        new(s.Dropped, 4)
+    ];
+
+    private static async Task MutateAsync(Store store, Action<QuestBoardContext> change)
+    {
+        await using var context = store.NewContext();
+        change(context);
+        await context.SaveChangesAsync(Token);
+    }
 
     private static async Task<MoveStatus> ApplyAsync(Store store, EventMovePlan plan, Action<QuestBoardContext>? onContext = null)
     {
@@ -225,7 +247,7 @@ public class BoardMoveEventRepositoryTests
     {
         var store = new Store();
         var seeded = await SeedAsync(store);
-        var stale = new EventMovePlan(seeded.EventId, Source, Target, [seeded.KeptAnswered], [seeded.Dropped], []);
+        var stale = new EventMovePlan(seeded.EventId, Source, Target, [seeded.KeptAnswered], [seeded.Dropped], [], Basis(seeded));
 
         var status = await ApplyAsync(store, stale);
 
@@ -240,7 +262,7 @@ public class BoardMoveEventRepositoryTests
         var store = new Store();
         var seeded = await SeedAsync(store);
         var stale = new EventMovePlan(seeded.EventId, Source, Target,
-            [seeded.KeptAnswered, seeded.KeptAutomatic, 9999], [seeded.Dropped], []);
+            [seeded.KeptAnswered, seeded.KeptAutomatic, 9999], [seeded.Dropped], [], Basis(seeded));
 
         (await ApplyAsync(store, stale)).Should().Be(MoveStatus.Changed);
         (await ReadEventAsync(store, seeded.EventId)).GroupId.Should().Be(Source);
@@ -258,6 +280,72 @@ public class BoardMoveEventRepositoryTests
         status.Should().Be(MoveStatus.Changed);
         (await ReadEventAsync(store, seeded.EventId)).GroupId.Should().Be(Source);
         (await ReadSignupsAsync(store, seeded.EventId)).Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Apply_DroppedPersonWhoJoinedTheTargetSincePlanning_IsChangedAndTouchesNothing()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        await MutateAsync(store, c => c.UserGroups.Add(new UserGroupEntity { UserId = 4, GroupId = Target, GroupRole = (int)GroupRole.Player }));
+
+        var status = await ApplyAsync(store, FullPlan(seeded));
+
+        status.Should().Be(MoveStatus.Changed);
+        (await ReadEventAsync(store, seeded.EventId)).GroupId.Should().Be(Source);
+        (await ReadSignupsAsync(store, seeded.EventId)).Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Apply_KeptPersonWhoLeftTheTargetSincePlanning_IsChangedAndTouchesNothing()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        await MutateAsync(store, c => c.UserGroups.RemoveRange(c.UserGroups.Where(ug => ug.UserId == 2 && ug.GroupId == Target)));
+
+        var status = await ApplyAsync(store, FullPlan(seeded));
+
+        status.Should().Be(MoveStatus.Changed);
+        (await ReadEventAsync(store, seeded.EventId)).GroupId.Should().Be(Source);
+        (await ReadSignupsAsync(store, seeded.EventId)).Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Apply_AddForSomeoneWhoIsNotAMemberOfTheTarget_IsChangedAndTouchesNothing()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+
+        var status = await ApplyAsync(store, FullPlan(seeded, 1));
+
+        status.Should().Be(MoveStatus.Changed);
+        (await ReadEventAsync(store, seeded.EventId)).GroupId.Should().Be(Source);
+        (await ReadSignupsAsync(store, seeded.EventId)).Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Apply_RowThatNowBelongsToSomeoneElse_IsChangedAndTouchesNothing()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        var plan = FullPlan(seeded) with { SignupBasis = [new(seeded.KeptAnswered, 5), new(seeded.KeptAutomatic, 3), new(seeded.Dropped, 4)] };
+
+        var status = await ApplyAsync(store, plan);
+
+        status.Should().Be(MoveStatus.Changed);
+        (await ReadEventAsync(store, seeded.EventId)).GroupId.Should().Be(Source);
+        (await ReadSignupsAsync(store, seeded.EventId)).Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Apply_PlanWithoutABasisForARow_IsChangedAndTouchesNothing()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        var plan = FullPlan(seeded) with { SignupBasis = [new(seeded.KeptAnswered, 2), new(seeded.KeptAutomatic, 3)] };
+
+        (await ApplyAsync(store, plan)).Should().Be(MoveStatus.Changed);
+        (await ReadEventAsync(store, seeded.EventId)).GroupId.Should().Be(Source);
     }
 
     [Fact]

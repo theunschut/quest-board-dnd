@@ -37,7 +37,7 @@ public class BoardMoveQuestRepositoryTests
         public QuestBoardContext NewContext() => new(options, Groups);
     }
 
-    private sealed record Seeded(
+    public sealed record Seeded(
         int QuestId,
         int KeptSignup,
         int DroppedSelected,
@@ -56,6 +56,12 @@ public class BoardMoveQuestRepositoryTests
         for (var id = 1; id <= 6; id++)
         {
             context.UserEntities.Add(new UserEntity { Id = id, Name = $"User {id}", Email = $"u{id}@test.com", UserName = $"u{id}" });
+        }
+
+        // The DM and the two players who stay are members of the target; the other two are not.
+        foreach (var userId in new[] { 1, 2, 5 })
+        {
+            context.UserGroups.Add(new UserGroupEntity { UserId = userId, GroupId = Target, GroupRole = (int)GroupRole.Player });
         }
 
         await context.SaveChangesAsync(Token);
@@ -115,7 +121,23 @@ public class BoardMoveQuestRepositoryTests
         DroppedSignupIds: [s.DroppedSelected, s.DroppedSpectator],
         PromotedSignupIds: [s.WaitlistedSignup],
         ClearOriginalLink: withChain,
-        FollowUpQuestIdsToUnlink: withChain ? [s.FollowUpId] : []);
+        FollowUpQuestIdsToUnlink: withChain ? [s.FollowUpId] : [],
+        SignupBasis:
+        [
+            new(s.KeptSignup, 2, true, SignupRole.Player, VoteType.Yes),
+            new(s.DroppedSelected, 3, true, SignupRole.Player, VoteType.Yes),
+            new(s.DroppedSpectator, 4, false, SignupRole.Spectator, VoteType.Maybe),
+            new(s.WaitlistedSignup, 5, false, SignupRole.Player, VoteType.Yes)
+        ],
+        FinalizedProposedDateId: s.ProposedDateId);
+
+    private static async Task MutateAsync(Store store, Action<QuestBoardContext> change)
+    {
+        await using var context = store.NewContext();
+        store.Groups.ActiveGroupId = Source;
+        change(context);
+        await context.SaveChangesAsync(Token);
+    }
 
     private static async Task<MoveStatus> ApplyAsync(Store store, QuestMovePlan plan, Action<QuestBoardContext>? onSaved = null)
     {
@@ -273,6 +295,89 @@ public class BoardMoveQuestRepositoryTests
 
         status.Should().Be(MoveStatus.Moved);
         (await ReadQuestAsync(store, seeded.QuestId)).GroupId.Should().Be(Target);
+    }
+
+    public static IEnumerable<object[]> SignupChangesSincePlanning() =>
+    [
+        // The waitlisted player was selected by the DM after the plan was drawn.
+        ["waitlisted selected", (Func<Seeded, Action<QuestBoardContext>>)(s => c => c.PlayerSignups.Single(p => p.Id == s.WaitlistedSignup).IsSelected = true)],
+        // A kept player lost their seat after the plan was drawn.
+        ["kept seat revoked", (Func<Seeded, Action<QuestBoardContext>>)(s => c => c.PlayerSignups.Single(p => p.Id == s.KeptSignup).IsSelected = false)],
+        // A dropped player was selected after the plan was drawn.
+        ["dropped spectator selected", (Func<Seeded, Action<QuestBoardContext>>)(s => c => c.PlayerSignups.Single(p => p.Id == s.DroppedSpectator).IsSelected = true)],
+        // The waitlisted player became a spectator.
+        ["waitlisted role switched", (Func<Seeded, Action<QuestBoardContext>>)(s => c => c.PlayerSignups.Single(p => p.Id == s.WaitlistedSignup).SignupRole = (int)SignupRole.Spectator)],
+        // The waitlisted player changed their vote for the finalized date.
+        ["waitlisted vote changed", (Func<Seeded, Action<QuestBoardContext>>)(s => c => c.Set<PlayerDateVoteEntity>().Single(v => v.PlayerSignupId == s.WaitlistedSignup).Vote = (int)VoteType.No)],
+        // A dropped player joined the target after the plan was drawn.
+        ["dropped player joined target", (Func<Seeded, Action<QuestBoardContext>>)(s => c => c.UserGroups.Add(new UserGroupEntity { UserId = 3, GroupId = Target, GroupRole = (int)GroupRole.Player }))],
+        // A kept player left the target after the plan was drawn.
+        ["kept player left target", (Func<Seeded, Action<QuestBoardContext>>)(s => c => c.UserGroups.RemoveRange(c.UserGroups.Where(ug => ug.UserId == 2 && ug.GroupId == Target)))],
+    ];
+
+    [Theory]
+    [MemberData(nameof(SignupChangesSincePlanning))]
+    public async Task Apply_SignupOrMembershipChangedSincePlanning_IsChangedAndTouchesNothing(
+        string change, Func<Seeded, Action<QuestBoardContext>> mutation)
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        await MutateAsync(store, mutation(seeded));
+        var signupsBefore = await ReadSignupsAsync(store, seeded.QuestId);
+        var votesBefore = await CountVotesAsync(store);
+
+        var status = await ApplyAsync(store, FullPlan(seeded));
+
+        status.Should().Be(MoveStatus.Changed, change);
+        var after = await ReadQuestAsync(store, seeded.QuestId);
+        after.GroupId.Should().Be(Source);
+        after.FeedRevision.Should().Be(1);
+        after.OriginalQuestId.Should().Be(seeded.OriginalId);
+        var signupsAfter = await ReadSignupsAsync(store, seeded.QuestId);
+        signupsAfter.Select(s => (s.Id, s.IsSelected, s.SignupRole, s.CharacterId))
+            .Should().Equal(signupsBefore.Select(s => (s.Id, s.IsSelected, s.SignupRole, s.CharacterId)));
+        (await CountVotesAsync(store)).Should().Be(votesBefore);
+    }
+
+    [Fact]
+    public async Task Apply_PromotionWithoutAFinalizedDate_IsChangedAndPromotesNobody()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        var plan = FullPlan(seeded) with
+        {
+            FinalizedProposedDateId = null,
+            SignupBasis = FullPlan(seeded).SignupBasis.Select(b => b with { FinalizedDateVote = null }).ToList()
+        };
+
+        var status = await ApplyAsync(store, plan);
+
+        status.Should().Be(MoveStatus.Changed);
+        (await ReadQuestAsync(store, seeded.QuestId)).GroupId.Should().Be(Source);
+        (await ReadSignupsAsync(store, seeded.QuestId)).Single(s => s.Id == seeded.WaitlistedSignup).IsSelected.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Apply_PromotionOfASignupThePlanSaysIsAlreadySelected_IsChanged()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        var plan = FullPlan(seeded) with { PromotedSignupIds = [seeded.KeptSignup] };
+
+        (await ApplyAsync(store, plan)).Should().Be(MoveStatus.Changed);
+        (await ReadQuestAsync(store, seeded.QuestId)).GroupId.Should().Be(Source);
+    }
+
+    [Fact]
+    public async Task Apply_PlanWithoutABasisForASignup_IsChanged()
+    {
+        var store = new Store();
+        var seeded = await SeedAsync(store);
+        var full = FullPlan(seeded);
+        var plan = full with { SignupBasis = full.SignupBasis.Take(3).ToList() };
+
+        (await ApplyAsync(store, plan)).Should().Be(MoveStatus.Changed);
+        (await ReadQuestAsync(store, seeded.QuestId)).GroupId.Should().Be(Source);
     }
 
     public static IEnumerable<object[]> MismatchedPlans() =>

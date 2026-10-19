@@ -315,4 +315,57 @@ public class BoardMoveQuestPreviewTests
 
         a.Should().Be(b);
     }
+
+    [Fact]
+    public void Stamp_SignupStateOrderDoesNotMatterButAChangedStateDoes()
+    {
+        var a = MovePreviewStamp.Compute("quest", 1, 2, [1], [], [], [], [], ["1:5:True:Player:Yes", "2:6:False:Player:Maybe"]);
+        var reordered = MovePreviewStamp.Compute("quest", 1, 2, [1], [], [], [], [], ["2:6:False:Player:Maybe", "1:5:True:Player:Yes"]);
+        var revoked = MovePreviewStamp.Compute("quest", 1, 2, [1], [], [], [], [], ["1:5:False:Player:Yes", "2:6:False:Player:Maybe"]);
+
+        a.Should().Be(reordered);
+        a.Should().NotBe(revoked);
+    }
+
+    [Fact]
+    public async Task PreviewAsync_ASeatSelectedOrRevokedAfterThePageWasDrawn_ChangesTheStamp()
+    {
+        var drawn = await _sut.PreviewAsync(QuestId, BravoBoard, ActorId, TestContext.Current.CancellationToken);
+
+        var quest = MakeQuest();
+        quest.PlayerSignups[0].IsSelected = true;
+        SetQuest(quest);
+        var afterSelect = await _sut.PreviewAsync(QuestId, BravoBoard, ActorId, TestContext.Current.CancellationToken);
+
+        quest.PlayerSignups[0].IsSelected = false;
+        var afterRevoke = await _sut.PreviewAsync(QuestId, BravoBoard, ActorId, TestContext.Current.CancellationToken);
+
+        afterSelect.Stamp.Should().NotBe(drawn.Stamp);
+        afterRevoke.Stamp.Should().Be(drawn.Stamp);
+
+        _moveRepository.ApplyAsync(Arg.Any<QuestMovePlan>(), Arg.Any<CancellationToken>()).Returns(MoveStatus.Moved);
+        quest.PlayerSignups[0].IsSelected = true;
+        var outcome = await _sut.MoveAsync(QuestId, BravoBoard, drawn.Stamp, ActorId, TestContext.Current.CancellationToken);
+
+        outcome.Status.Should().Be(MoveStatus.Changed);
+        await _moveRepository.DidNotReceiveWithAnyArgs().ApplyAsync(default!, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task PreviewAsync_Plan_CarriesWhatEverySignupLookedLikeWhenItWasDrawn()
+    {
+        var quest = MakeQuest();
+        quest.PlayerSignups[0].IsSelected = true;
+        quest.PlayerSignups[1].Role = SignupRole.Spectator;
+        SetQuest(quest);
+
+        var preview = await _sut.PreviewAsync(QuestId, BravoBoard, ActorId, TestContext.Current.CancellationToken);
+
+        preview.Plan!.SignupBasis.Should().BeEquivalentTo(
+        [
+            new QuestSignupBasis(101, 201, true, SignupRole.Player, null),
+            new QuestSignupBasis(102, 202, false, SignupRole.Spectator, null)
+        ]);
+        preview.Plan.FinalizedProposedDateId.Should().BeNull();
+    }
 }

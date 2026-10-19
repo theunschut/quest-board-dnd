@@ -166,7 +166,8 @@ internal class EventMoveService(
             target.Id,
             kept.Select(r => r.Id).ToList(),
             dropped.Select(r => r.Id).ToList(),
-            campaignAdds);
+            campaignAdds,
+            roster.Select(r => new EventSignupBasis(r.Id, r.UserId)).ToList());
         preview.Plan = plan;
         preview.KeptCount = kept.Count;
         preview.CampaignAddCount = campaignAdds.Count;

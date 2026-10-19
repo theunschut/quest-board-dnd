@@ -138,6 +138,21 @@ public class BoardMoveEventServiceTests
     }
 
     [Fact]
+    public async Task PreviewAsync_Plan_CarriesWhoseAnswerEveryRowWasWhenItWasDrawn()
+    {
+        SetRoster(Row(1, 201, "Zed"), Row(2, 202, "alice"));
+        SetMembers(201);
+
+        var preview = await _sut.PreviewAsync(TheEventId, BravoBoard, ActorId, Token);
+
+        preview.Plan!.SignupBasis.Should().BeEquivalentTo(
+        [
+            new EventSignupBasis(1, 201),
+            new EventSignupBasis(2, 202)
+        ]);
+    }
+
+    [Fact]
     public async Task PreviewAsync_RosterRows_AreKeptByTargetMembershipAndTheRestDroppedByName()
     {
         SetRoster(Row(1, 201, "Zed"), Row(2, 202, "alice"), Row(3, 203, "Bob"), Row(4, 204, "Cara"));

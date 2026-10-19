@@ -10,7 +10,9 @@ namespace QuestBoard.Domain.Extensions;
 /// <remarks>
 /// The stamp only notices that the preview has changed since the page was drawn. It is never an
 /// authorization: every confirmation recomputes the whole preview from the store, so a forged
-/// or stale stamp can at worst send the user back to the page.
+/// or stale stamp can at worst send the user back to the page. <c>signupStates</c> lets a caller
+/// fold in anything beyond ids, such as whether a signup holds a seat, so that a change the ids
+/// do not show still invalidates a page drawn before it.
 /// </remarks>
 public static class MovePreviewStamp
 {
@@ -22,7 +24,8 @@ public static class MovePreviewStamp
         IEnumerable<int> dropped,
         IEnumerable<int> promoted,
         IEnumerable<int> unlinked,
-        IEnumerable<int> added)
+        IEnumerable<int> added,
+        IEnumerable<string>? signupStates = null)
     {
         var canonical = string.Join(
             '|',
@@ -33,7 +36,8 @@ public static class MovePreviewStamp
             Canonical(dropped),
             Canonical(promoted),
             Canonical(unlinked),
-            Canonical(added));
+            Canonical(added),
+            string.Join(',', (signupStates ?? []).Order(StringComparer.Ordinal)));
 
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
     }

@@ -31,6 +31,30 @@ internal sealed class EventMoveRepository(QuestBoardContext dbContext) : IEventM
             return MoveStatus.Changed;
         }
 
+        // The ids can match while whose answer they are has not.
+        var basisUserIds = plan.SignupBasis.GroupBy(b => b.SignupId).ToDictionary(g => g.Key, g => g.First().UserId);
+        if (basisUserIds.Count != plan.SignupBasis.Count
+            || evt.Signups.Any(s => !basisUserIds.TryGetValue(s.Id, out var userId) || userId != s.UserId))
+        {
+            return MoveStatus.Changed;
+        }
+
+        // Board membership decides who is dropped and who is added, so it is read here too. Someone
+        // added to or removed from the target since the plan was drawn must not be dropped, kept
+        // or given an automatic row wrongly.
+        var relevantUserIds = evt.Signups.Select(s => s.UserId).Concat(plan.CampaignAddUserIds).Distinct().ToList();
+        var targetMemberIds = (await dbContext.UserGroups
+                .Where(ug => ug.GroupId == plan.TargetGroupId && relevantUserIds.Contains(ug.UserId))
+                .Select(ug => ug.UserId)
+                .ToListAsync(token))
+            .ToHashSet();
+        var plannedDroppedIds = plan.DroppedSignupIds.ToHashSet();
+        if (evt.Signups.Any(s => targetMemberIds.Contains(s.UserId) == plannedDroppedIds.Contains(s.Id))
+            || plan.CampaignAddUserIds.Any(userId => !targetMemberIds.Contains(userId)))
+        {
+            return MoveStatus.Changed;
+        }
+
         var existingUserIds = evt.Signups.Select(s => s.UserId).ToHashSet();
         if (plan.CampaignAddUserIds.Any(existingUserIds.Contains))
         {

@@ -56,6 +56,28 @@ internal sealed class QuestMoveRepository(QuestBoardContext dbContext) : IQuestM
             return MoveStatus.Changed;
         }
 
+        // The ids can match while what they stand for has not: a seat given or taken, a role
+        // switched or a vote changed since the plan was drawn would make the plan keep, drop or
+        // promote the wrong people.
+        if (!SignupsStillMatchThePlan(quest.PlayerSignups, plan))
+        {
+            return MoveStatus.Changed;
+        }
+
+        // Board membership is read here too, because it decides who is dropped. A player added to
+        // or removed from the target since the plan was drawn must not be dropped or kept wrongly.
+        var playerIds = quest.PlayerSignups.Select(s => s.PlayerId).Distinct().ToList();
+        var targetMemberIds = (await dbContext.UserGroups
+                .Where(ug => ug.GroupId == plan.TargetGroupId && playerIds.Contains(ug.UserId))
+                .Select(ug => ug.UserId)
+                .ToListAsync(token))
+            .ToHashSet();
+        var droppedIdSet = plan.DroppedSignupIds.ToHashSet();
+        if (quest.PlayerSignups.Any(s => targetMemberIds.Contains(s.PlayerId) == droppedIdSet.Contains(s.Id)))
+        {
+            return MoveStatus.Changed;
+        }
+
         var droppedIds = plan.DroppedSignupIds.ToHashSet();
         var promotedIds = plan.PromotedSignupIds.ToHashSet();
         foreach (var signup in quest.PlayerSignups.ToList())
@@ -109,5 +131,41 @@ internal sealed class QuestMoveRepository(QuestBoardContext dbContext) : IQuestM
         }
 
         return MoveStatus.Moved;
+    }
+
+    // True only when every loaded signup is the one the plan was drawn from, and every promotion
+    // still fills a seat the way the waitlist rule would: unselected, a player, voted Yes or Maybe
+    // for the finalized date.
+    private static bool SignupsStillMatchThePlan(IEnumerable<PlayerSignupEntity> loaded, QuestMovePlan plan)
+    {
+        var signups = loaded.ToList();
+        var basisById = plan.SignupBasis.GroupBy(b => b.SignupId).ToDictionary(g => g.Key, g => g.First());
+        if (basisById.Count != plan.SignupBasis.Count || basisById.Count != signups.Count)
+        {
+            return false;
+        }
+
+        VoteType? VoteFor(PlayerSignupEntity signup) => plan.FinalizedProposedDateId is not { } dateId
+            ? null
+            : signup.DateVotes.FirstOrDefault(v => v.ProposedDateId == dateId)?.Vote is { } vote ? (VoteType)vote : null;
+
+        foreach (var signup in signups)
+        {
+            if (!basisById.TryGetValue(signup.Id, out var basis)
+                || basis.PlayerId != signup.PlayerId
+                || basis.IsSelected != signup.IsSelected
+                || (int)basis.Role != signup.SignupRole
+                || basis.FinalizedDateVote != VoteFor(signup))
+            {
+                return false;
+            }
+        }
+
+        var promotedIds = plan.PromotedSignupIds.ToHashSet();
+        return signups
+            .Where(s => promotedIds.Contains(s.Id))
+            .All(s => !s.IsSelected
+                && s.SignupRole == (int)SignupRole.Player
+                && VoteFor(s) is VoteType.Yes or VoteType.Maybe);
     }
 }

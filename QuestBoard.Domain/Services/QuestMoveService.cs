@@ -263,6 +263,19 @@ internal class QuestMoveService(
         preview.OriginalQuestTitle = quest.OriginalQuest?.Title;
         preview.FollowUpQuestTitle = quest.FollowUpQuest?.Title;
 
+        // What each signup looked like right now, handed to the store so it can refuse the plan if
+        // a seat, a role or a vote moved between this read and the write.
+        var signupBasis = quest.PlayerSignups
+            .Select(s => new QuestSignupBasis(
+                s.Id,
+                s.Player.Id,
+                s.IsSelected,
+                s.Role,
+                finalizedProposedDate == null
+                    ? null
+                    : s.DateVotes.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDate.Id)?.Vote))
+            .ToList();
+
         var plan = new QuestMovePlan(
             quest.Id,
             sourceGroupId,
@@ -271,7 +284,9 @@ internal class QuestMoveService(
             dropped.Select(s => s.Id).ToList(),
             promoted.Select(s => s.Id).ToList(),
             ClearOriginalLink: quest.OriginalQuestId != null,
-            FollowUpQuestIdsToUnlink: followUpIds);
+            FollowUpQuestIdsToUnlink: followUpIds,
+            SignupBasis: signupBasis,
+            FinalizedProposedDateId: finalizedProposedDate?.Id);
         preview.Plan = plan;
         preview.KeptCount = kept.Count;
 
@@ -280,7 +295,8 @@ internal class QuestMoveService(
             : plan.FollowUpQuestIdsToUnlink;
         preview.Stamp = MovePreviewStamp.Compute(
             "quest", quest.Id, target.Id,
-            plan.KeptSignupIds, plan.DroppedSignupIds, plan.PromotedSignupIds, unlinked, []);
+            plan.KeptSignupIds, plan.DroppedSignupIds, plan.PromotedSignupIds, unlinked, [],
+            signupBasis.Select(b => $"{b.SignupId}:{b.PlayerId}:{b.IsSelected}:{b.Role}:{b.FinalizedDateVote}"));
         preview.Status = MoveStatus.Ready;
         return preview;
     }
