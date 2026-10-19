@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Service.Jobs;
 using Hangfire;
@@ -59,6 +60,42 @@ public class HangfireQuestEmailDispatcher(IBackgroundJobClient jobClient) : IQue
         jobClient.Enqueue<QuestWaitlistPromotedEmailJob>(j => j.ExecuteAsync(
             questId, groupId, finalizedDate, recipientEmail, playerName,
             questTitle, dmName, questDescription, challengeRating,
+            CancellationToken.None));
+    }
+
+    /// <inheritdoc/>
+    public void EnqueueQuestMovedEmail(
+        int questId,
+        int groupId,
+        QuestMovedAudience audience,
+        string recipientEmail,
+        string questTitle,
+        string dmName,
+        string boardName,
+        DateTime? sessionDate)
+    {
+        jobClient.Enqueue<QuestMovedEmailJob>(j => j.ExecuteAsync(
+            questId, groupId, audience, recipientEmail,
+            questTitle, dmName, boardName, sessionDate,
+            CancellationToken.None));
+    }
+
+    /// <inheritdoc/>
+    public void EnqueueWaitlistPromotedAfterMoveEmail(
+        int questId,
+        int groupId,
+        DateTime finalizedDate,
+        string recipientEmail,
+        string playerName,
+        string questTitle,
+        string dmName,
+        string questDescription,
+        int challengeRating,
+        string movedToBoardName)
+    {
+        jobClient.Enqueue<QuestWaitlistPromotedEmailJob>(j => j.ExecuteAfterMoveAsync(
+            questId, groupId, finalizedDate, recipientEmail, playerName,
+            questTitle, dmName, questDescription, challengeRating, movedToBoardName,
             CancellationToken.None));
     }
 }
