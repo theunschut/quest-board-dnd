@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 92
-current_phase_name: Move a Quest or Event to a Linked Board
+current_phase_name: move-a-quest-or-event-to-a-linked-board
 status: executing
 stopped_at: Phase 92 UI-SPEC approved
-last_updated: "2026-10-18T14:49:25.604Z"
-last_activity: 2026-10-17
-last_activity_desc: Phase 91 live in production as v5.5.0; operator confirmed working
+last_updated: "2026-10-19T05:36:20.443Z"
+last_activity: 2026-10-19
+last_activity_desc: Phase 92 execution started
 progress:
   total_phases: 21
   completed_phases: 17
@@ -25,14 +25,14 @@ state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 See: .planning/PROJECT.md (updated 2026-10-17 — after Phase 91)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 92 — Move a Quest or Event to a Linked Board (no CONTEXT.md yet; start with discuss-phase)
+**Current focus:** Phase 92 — move-a-quest-or-event-to-a-linked-board
 
 ## Current Position
 
-Phase: 92 — Move a Quest or Event to a Linked Board
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-17 — Phase 91 closed out: code-review warnings and UI-review fixes landed, security 42/42 closed, Nyquist-compliant; merged to `main` as #160 and tagged `v5.5.0`
+Phase: 92 (move-a-quest-or-event-to-a-linked-board) — EXECUTING
+Plan: 1 of 9
+Status: Executing Phase 92
+Last activity: 2026-10-19 — Phase 92 execution started
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
