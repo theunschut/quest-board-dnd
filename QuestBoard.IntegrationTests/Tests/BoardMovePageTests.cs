@@ -257,13 +257,16 @@ public class BoardMovePageTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
-    public async Task AQuestThatDoesNotExist_IsNotFound()
+    public async Task AQuestThatDoesNotExist_RedirectsToTheQuestBoardWithAnInfoToast()
     {
         var scenario = await SeedScenarioAsync();
 
         var (_, response) = await GetPageAsync(scenario.SuperAdminClient, 99999);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(response).Should().Be("/quests");
+        var html = await FollowAsync(scenario.SuperAdminClient, response);
+        html.Should().Contain("That quest is no longer on this board.");
     }
 
     [Fact]
@@ -282,6 +285,22 @@ public class BoardMovePageTests(WebApplicationFactoryBase factory)
         html.Should().Contain("Back to This Quest");
         html.Should().Contain("Move to Board Bravo");
         html.Should().Contain("d-flex gap-2");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task TheConfirmForm_OptsInToSubmitLockingWithoutAnInlineHandler(string userAgent)
+    {
+        var scenario = await SeedScenarioAsync();
+        var questId = await BoardMoveSeed.SeedQuestAsync(factory, BoardAlpha, "Goblin Market", scenario.DmId, [FirstDate]);
+
+        var (html, _) = await GetPageAsync(scenario.SuperAdminClient, questId, userAgent: userAgent);
+
+        var confirmForm = Regex.Match(html, "<form[^>]*method=\"post\"[^>]*action=\"/Move/[^\"]*\"[^>]*>").Value;
+        confirmForm.Should().NotBeEmpty();
+        confirmForm.Should().Contain("data-disable-on-submit");
+        confirmForm.Should().NotContain("onsubmit");
     }
 
     [Fact]

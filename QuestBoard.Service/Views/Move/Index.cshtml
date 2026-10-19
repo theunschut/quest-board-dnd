@@ -254,7 +254,7 @@
                     </a>
                     @if (Model.ShowConfirm)
                     {
-                        <form method="post" asp-controller="Move" asp-action="@Model.MoveAction">
+                        <form method="post" data-disable-on-submit asp-controller="Move" asp-action="@Model.MoveAction">
                             <input type="hidden" name="id" value="@preview.EntryId" />
                             <input type="hidden" name="targetBoardId" value="@preview.Target!.Id" />
                             <input type="hidden" name="stamp" value="@preview.Stamp" />

@@ -214,4 +214,70 @@ public class BoardMoveApplyTests(WebApplicationFactoryBase factory)
         var stored = await BoardMoveSeed.ReadQuestAsync(factory, playedId);
         stored.GroupId.Should().Be(BoardAlpha);
     }
+
+    private const string GoneToast = "That quest is no longer on this board.";
+
+    [Fact]
+    public async Task ConfirmPost_RepeatedAfterASuccessfulMove_RedirectsToTheQuestBoardWithAnInfoToastAndMovesNothingAgain()
+    {
+        var scenario = await SeedScenarioAsync();
+        var stamp = await PreviewStampAsync(scenario.QuestId, BoardBravo);
+        var first = await PostMoveAsync(scenario.SuperAdminClient, scenario.QuestId, BoardBravo, stamp);
+        first.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        await FollowAsync(scenario.SuperAdminClient, first);
+        factory.TestGroupContext.ActiveGroupId = BoardAlpha;
+
+        var second = await PostMoveAsync(scenario.SuperAdminClient, scenario.QuestId, BoardBravo, stamp);
+
+        second.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(second).Should().Be("/quests");
+        var html = await FollowAsync(scenario.SuperAdminClient, second);
+        html.Should().Contain(GoneToast);
+
+        var stored = await BoardMoveSeed.ReadQuestAsync(factory, scenario.QuestId);
+        stored.GroupId.Should().Be(BoardBravo);
+        stored.FeedRevision.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Get_AfterASuccessfulMove_RedirectsToTheQuestBoardWithAnInfoToastInsteadOfA404()
+    {
+        var scenario = await SeedScenarioAsync();
+        var first = await PostMoveAsync(scenario.SuperAdminClient, scenario.QuestId, BoardBravo);
+        await FollowAsync(scenario.SuperAdminClient, first);
+        factory.TestGroupContext.ActiveGroupId = BoardAlpha;
+
+        var back = await scenario.SuperAdminClient.GetAsync(
+            $"/Move/Quest/{scenario.QuestId}", TestContext.Current.CancellationToken);
+
+        back.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(back).Should().Be("/quests");
+        (await FollowAsync(scenario.SuperAdminClient, back)).Should().Contain(GoneToast);
+    }
+
+    [Fact]
+    public async Task GetAndPost_ForAQuestThatNeverExisted_AnswerLikeAQuestOnAnotherBoard()
+    {
+        var scenario = await SeedScenarioAsync();
+        var dm = await BoardMoveSeed.CreateUserAsync(factory, "move_other_board_dm", "Other Board DM");
+        var elsewhereId = await BoardMoveSeed.SeedQuestAsync(
+            factory, BoardCharlie, "Hidden Tale", dm.Id, [new DateTime(2031, 5, 10, 19, 0, 0)]);
+        factory.TestGroupContext.ActiveGroupId = BoardAlpha;
+
+        foreach (var id in new[] { 99999, elsewhereId })
+        {
+            var get = await scenario.SuperAdminClient.GetAsync($"/Move/Quest/{id}", TestContext.Current.CancellationToken);
+            get.StatusCode.Should().Be(HttpStatusCode.Redirect);
+            PathOf(get).Should().Be("/quests");
+            (await FollowAsync(scenario.SuperAdminClient, get)).Should().Contain(GoneToast);
+
+            var post = await scenario.SuperAdminClient.PostAsync(
+                "/Move/Quest", MoveForm(id, BoardBravo, "anything"), TestContext.Current.CancellationToken);
+            post.StatusCode.Should().Be(HttpStatusCode.Redirect);
+            PathOf(post).Should().Be("/quests");
+            (await FollowAsync(scenario.SuperAdminClient, post)).Should().Contain(GoneToast);
+        }
+
+        (await BoardMoveSeed.ReadQuestAsync(factory, elsewhereId)).GroupId.Should().Be(BoardCharlie);
+    }
 }

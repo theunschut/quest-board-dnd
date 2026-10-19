@@ -353,14 +353,76 @@ public class BoardMoveEventTests(MoveWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task EventOnAnotherBoard_IsNotFoundOnGet()
+    public async Task EventOnAnotherBoard_RedirectsToTheEventsListWithAnInfoToastOnGet()
     {
         var client = await SeedBoardsAsync();
         var eventId = await BoardMoveSeed.SeedEventAsync(factory, BoardBravo, EventTitle, Upcoming);
 
         var get = await client.GetAsync($"/Move/Event/{eventId}", TestContext.Current.CancellationToken);
 
-        get.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        get.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(get).Should().BeEquivalentTo("/Events");
+        (await FollowAsync(client, get)).Should().Contain(GoneToast);
+    }
+
+    private const string GoneToast = "That event is no longer on this board.";
+
+    [Fact]
+    public async Task ConfirmPost_RepeatedAfterASuccessfulMove_RedirectsToTheEventsListWithAnInfoToastAndMovesNothingAgain()
+    {
+        var client = await SeedBoardsAsync();
+        var eventId = await BoardMoveSeed.SeedEventAsync(factory, BoardAlpha, EventTitle, Upcoming);
+        var stamp = await PreviewStampAsync(eventId, BoardBravo);
+        var first = await PostMoveAsync(client, eventId, BoardBravo, stamp);
+        first.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        await FollowAsync(client, first);
+        factory.TestGroupContext.ActiveGroupId = BoardAlpha;
+
+        var second = await PostMoveAsync(client, eventId, BoardBravo, stamp);
+
+        second.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(second).Should().BeEquivalentTo("/Events");
+        (await FollowAsync(client, second)).Should().Contain(GoneToast);
+
+        var stored = await BoardMoveSeed.ReadEventAsync(factory, eventId);
+        stored.GroupId.Should().Be(BoardBravo);
+        stored.FeedRevision.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Get_AfterASuccessfulMove_RedirectsToTheEventsListWithAnInfoToastInsteadOfA404()
+    {
+        var client = await SeedBoardsAsync();
+        var eventId = await BoardMoveSeed.SeedEventAsync(factory, BoardAlpha, EventTitle, Upcoming);
+        var first = await PostMoveAsync(client, eventId, BoardBravo);
+        await FollowAsync(client, first);
+        factory.TestGroupContext.ActiveGroupId = BoardAlpha;
+
+        var back = await client.GetAsync($"/Move/Event/{eventId}", TestContext.Current.CancellationToken);
+
+        back.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        PathOf(back).Should().BeEquivalentTo("/Events");
+        (await FollowAsync(client, back)).Should().Contain(GoneToast);
+    }
+
+    [Fact]
+    public async Task ConfirmPost_ForAnEventOnAnotherBoardOrNoneAtAll_GivesTheSameRedirectAndToast()
+    {
+        var client = await SeedBoardsAsync();
+        var elsewhereId = await BoardMoveSeed.SeedEventAsync(factory, BoardBravo, EventTitle, Upcoming);
+        factory.TestGroupContext.ActiveGroupId = BoardAlpha;
+
+        foreach (var id in new[] { 99999, elsewhereId })
+        {
+            var post = await client.PostAsync(
+                "/Move/Event", MoveForm(id, BoardBravo, "anything"), TestContext.Current.CancellationToken);
+
+            post.StatusCode.Should().Be(HttpStatusCode.Redirect);
+            PathOf(post).Should().BeEquivalentTo("/Events");
+            (await FollowAsync(client, post)).Should().Contain(GoneToast);
+        }
+
+        (await BoardMoveSeed.ReadEventAsync(factory, elsewhereId)).GroupId.Should().Be(BoardBravo);
     }
 
     private async Task<(string Html, HttpResponseMessage Response)> GetPageAsync(
