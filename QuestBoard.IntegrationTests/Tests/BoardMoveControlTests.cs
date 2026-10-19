@@ -257,9 +257,13 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
 
     [Theory]
     [InlineData("open", "Finalize Quest", DesktopUserAgent)]
+    [InlineData("open", "Finalize Quest", MobileUserAgent)]
     [InlineData("no-dates", "No Proposed Dates", DesktopUserAgent)]
+    [InlineData("no-dates", "No Proposed Dates", MobileUserAgent)]
     [InlineData("finalized", "Open Quest", DesktopUserAgent)]
+    [InlineData("finalized", "Open Quest", MobileUserAgent)]
     [InlineData("campaign", "Close Quest", DesktopUserAgent)]
+    [InlineData("campaign", "Close Quest", MobileUserAgent)]
     public async Task SuperAdminOnALinkedBoard_SeesTheEnabledControlOnManage_InEveryQuestState(string state, string marker, string userAgent)
     {
         var scenario = state == "campaign"
@@ -285,8 +289,11 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
 
     [Theory]
     [InlineData("closed", "Closed in the Quest Log.", "Finalize Quest", DesktopUserAgent)]
+    [InlineData("closed", "Closed in the Quest Log.", "Finalize Quest", MobileUserAgent)]
     [InlineData("closed-campaign", "Closed in the Quest Log.", "Reopen Quest", DesktopUserAgent)]
+    [InlineData("closed-campaign", "Closed in the Quest Log.", "Reopen Quest", MobileUserAgent)]
     [InlineData("played", "Already played.", "Open Quest", DesktopUserAgent)]
+    [InlineData("played", "Already played.", "Open Quest", MobileUserAgent)]
     public async Task AQuestThatCannotMove_ShowsADisabledControlWithItsReasonOnManage(string state, string reason, string marker, string userAgent)
     {
         var scenario = state == "closed-campaign"
@@ -306,7 +313,9 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
 
     [Theory]
     [InlineData(Linking.NoSet, DesktopUserAgent)]
+    [InlineData(Linking.NoSet, MobileUserAgent)]
     [InlineData(Linking.SetOfOne, DesktopUserAgent)]
+    [InlineData(Linking.SetOfOne, MobileUserAgent)]
     public async Task SuperAdminOnABoardOutsideAnySetOrInASetOfOne_SeesNoControlOnManage(Linking linking, string userAgent)
     {
         var scenario = await SeedScenarioAsync(linking);
@@ -327,7 +336,9 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
 
     [Theory]
     [InlineData("Admin", DesktopUserAgent)]
+    [InlineData("Admin", MobileUserAgent)]
     [InlineData("DungeonMaster", DesktopUserAgent)]
+    [InlineData("DungeonMaster", MobileUserAgent)]
     public async Task BoardAdminOrDmOfBothBoards_NeverSeesTheControlOnManage(string role, string userAgent)
     {
         var scenario = await SeedScenarioAsync();
