@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 namespace QuestBoard.IntegrationTests.Tests;
 
 /// <summary>
-/// The move control on the Details pages and the toast after a move. Seeded: board 1 "Board
+/// The move control on the Details pages and on Quest Manage, and the toast after a move. Seeded: board 1 "Board
 /// Alpha" (active) and board 2 "Board Bravo" linked to it (or left unlinked, or linked to
 /// nothing, where a fact needs that), an open quest "Goblin Market" and an upcoming event
 /// "Harvest Fair" on board 1. The control shows for a super admin on a linked board only,
@@ -49,20 +49,20 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
 
     private record Scenario(HttpClient SuperAdminClient, int SuperAdminId, int DmId);
 
-    private async Task<Scenario> SeedScenarioAsync(Linking linking = Linking.LinkedPair)
+    private async Task<Scenario> SeedScenarioAsync(Linking linking = Linking.LinkedPair, BoardType boardType = BoardType.OneShot)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         factory.TestGroupContext.ActiveGroupId = BoardAlpha;
-        factory.TestGroupContext.BoardType = BoardType.OneShot;
+        factory.TestGroupContext.BoardType = boardType;
 
-        await BoardMoveSeed.SeedBoardAsync(factory, BoardBravo, "Board Bravo", BoardType.OneShot);
+        await BoardMoveSeed.SeedBoardAsync(factory, BoardBravo, "Board Bravo", boardType);
         switch (linking)
         {
             case Linking.LinkedPair:
-                await BoardMoveSeed.LinkAsync(factory, BoardType.OneShot, BoardAlpha, BoardBravo);
+                await BoardMoveSeed.LinkAsync(factory, boardType, BoardAlpha, BoardBravo);
                 break;
             case Linking.SetOfOne:
-                await BoardMoveSeed.LinkAsync(factory, BoardType.OneShot, BoardAlpha);
+                await BoardMoveSeed.LinkAsync(factory, boardType, BoardAlpha);
                 break;
         }
 
@@ -92,6 +92,9 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
     private static Task<(HttpStatusCode Status, string Html)> EventDetailsAsync(HttpClient client, int eventId) =>
         GetAsync(client, $"/Events/Details/{eventId}", DesktopUserAgent);
 
+    private static Task<(HttpStatusCode Status, string Html)> ManageAsync(HttpClient client, int questId, string userAgent) =>
+        GetAsync(client, $"/Quest/Manage/{questId}", userAgent);
+
     private Task<int> SeedOpenQuestAsync(int dmId, string title = "Goblin Market") =>
         BoardMoveSeed.SeedQuestAsync(factory, BoardAlpha, title, dmId, UpcomingDates);
 
@@ -100,6 +103,14 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
         html.Should().Contain(ControlLabel);
         html.Should().MatchRegex("<button type=\"button\" class=\"btn btn-info w-100[^\"]*disabled\" aria-disabled=\"true\" aria-describedby=\"move-reason\"");
         html.Should().MatchRegex($"<p class=\"move-control-reason[^\"]*\" id=\"move-reason\">\\s*{Regex.Escape(reason)}\\s*</p>");
+    }
+
+    private static void ShouldShowDisabledManageControlWithReason(string html, string reason)
+    {
+        html.Should().Contain(ControlLabel);
+        html.Should().MatchRegex("<button type=\"button\" class=\"btn btn-info[^\"]*disabled\" aria-disabled=\"true\" aria-describedby=\"move-reason\"");
+        html.Should().MatchRegex($"<p class=\"move-control-reason[^\"]*\" id=\"move-reason\">\\s*{Regex.Escape(reason)}\\s*</p>");
+        Regex.Matches(html, "id=\"move-reason\"").Count.Should().Be(1);
     }
 
     [Theory]
@@ -242,6 +253,100 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
         eventStatus.Should().Be(HttpStatusCode.OK);
         eventHtml.Should().NotContain(ControlLabel);
         eventHtml.Should().NotContain("move-control-reason");
+    }
+
+    [Theory]
+    [InlineData("open", "Finalize Quest", DesktopUserAgent)]
+    [InlineData("no-dates", "No Proposed Dates", DesktopUserAgent)]
+    [InlineData("finalized", "Open Quest", DesktopUserAgent)]
+    [InlineData("campaign", "Close Quest", DesktopUserAgent)]
+    public async Task SuperAdminOnALinkedBoard_SeesTheEnabledControlOnManage_InEveryQuestState(string state, string marker, string userAgent)
+    {
+        var scenario = state == "campaign"
+            ? await SeedScenarioAsync(Linking.LinkedPair, BoardType.Campaign)
+            : await SeedScenarioAsync();
+        var questId = state switch
+        {
+            "no-dates" => await BoardMoveSeed.SeedQuestAsync(factory, BoardAlpha, "Goblin Market", scenario.DmId, []),
+            "finalized" => await BoardMoveSeed.SeedQuestAsync(
+                factory, BoardAlpha, "Goblin Market", scenario.DmId, UpcomingDates, finalizedDate: UpcomingDates[0]),
+            _ => await SeedOpenQuestAsync(scenario.DmId)
+        };
+
+        var (status, html) = await ManageAsync(scenario.SuperAdminClient, questId, userAgent);
+
+        status.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(marker);
+        html.Should().Contain(ControlLabel);
+        html.Should().Contain("fa-right-left");
+        Regex.Matches(html, Regex.Escape($"href=\"/Move/Quest/{questId}\"")).Count.Should().Be(1);
+        html.Should().NotContain("move-control-reason");
+    }
+
+    [Theory]
+    [InlineData("closed", "Closed in the Quest Log.", "Finalize Quest", DesktopUserAgent)]
+    [InlineData("closed-campaign", "Closed in the Quest Log.", "Reopen Quest", DesktopUserAgent)]
+    [InlineData("played", "Already played.", "Open Quest", DesktopUserAgent)]
+    public async Task AQuestThatCannotMove_ShowsADisabledControlWithItsReasonOnManage(string state, string reason, string marker, string userAgent)
+    {
+        var scenario = state == "closed-campaign"
+            ? await SeedScenarioAsync(Linking.LinkedPair, BoardType.Campaign)
+            : await SeedScenarioAsync();
+        var questId = state == "played"
+            ? await BoardMoveSeed.SeedQuestAsync(factory, BoardAlpha, "Goblin Market", scenario.DmId, [PlayedDate], finalizedDate: PlayedDate)
+            : await BoardMoveSeed.SeedQuestAsync(factory, BoardAlpha, "Goblin Market", scenario.DmId, UpcomingDates, isClosed: true);
+
+        var (status, html) = await ManageAsync(scenario.SuperAdminClient, questId, userAgent);
+
+        status.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(marker);
+        html.Should().NotContain($"href=\"/Move/Quest/{questId}\"");
+        ShouldShowDisabledManageControlWithReason(html, reason);
+    }
+
+    [Theory]
+    [InlineData(Linking.NoSet, DesktopUserAgent)]
+    [InlineData(Linking.SetOfOne, DesktopUserAgent)]
+    public async Task SuperAdminOnABoardOutsideAnySetOrInASetOfOne_SeesNoControlOnManage(Linking linking, string userAgent)
+    {
+        var scenario = await SeedScenarioAsync(linking);
+        var questId = await SeedOpenQuestAsync(scenario.DmId);
+        var closedQuestId = await BoardMoveSeed.SeedQuestAsync(
+            factory, BoardAlpha, "Old Quest", scenario.DmId, UpcomingDates, isClosed: true);
+
+        foreach (var id in new[] { questId, closedQuestId })
+        {
+            var (status, html) = await ManageAsync(scenario.SuperAdminClient, id, userAgent);
+            status.Should().Be(HttpStatusCode.OK);
+            html.Should().Contain("Finalize Quest");
+            html.Should().NotContain(ControlLabel);
+            html.Should().NotContain("move-control-reason");
+            html.Should().NotContain("/Move/Quest");
+        }
+    }
+
+    [Theory]
+    [InlineData("Admin", DesktopUserAgent)]
+    [InlineData("DungeonMaster", DesktopUserAgent)]
+    public async Task BoardAdminOrDmOfBothBoards_NeverSeesTheControlOnManage(string role, string userAgent)
+    {
+        var scenario = await SeedScenarioAsync();
+        var key = $"move_manage_{role.ToLowerInvariant()}";
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, key, $"{key}@example.com", roles: [role]);
+        var groupRole = role == "Admin" ? GroupRole.Admin : GroupRole.DungeonMaster;
+        await BoardMoveSeed.SeedMembershipAsync(factory, user.Id, BoardAlpha, groupRole);
+        await BoardMoveSeed.SeedMembershipAsync(factory, user.Id, BoardBravo, groupRole);
+        var questId = await SeedOpenQuestAsync(role == "DungeonMaster" ? user.Id : scenario.DmId);
+
+        var (status, html) = await ManageAsync(client, questId, userAgent);
+
+        status.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("Access Denied");
+        html.Should().Contain("Finalize Quest");
+        html.Should().NotContain(ControlLabel);
+        html.Should().NotContain("move-control-reason");
+        html.Should().NotContain("/Move/Quest");
     }
 
     [Fact]
