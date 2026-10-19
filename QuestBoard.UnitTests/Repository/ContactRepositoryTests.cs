@@ -674,10 +674,13 @@ public class ContactRepositoryTests
         }
 
         // Assert: nothing was created on either board
-        groupContext.ActiveGroupId = null; // see-all
+        // The board filter is bypassed here so a row created on either board would be seen. A
+        // null active group sees nothing through the fail-closed filter, which is why a plain
+        // query would prove nothing.
+        groupContext.ActiveGroupId = null;
         await using (var context = CreateContext(dbName, groupContext))
         {
-            var tags = await context.ContactTags.ToListAsync(TestContext.Current.CancellationToken);
+            var tags = await context.ContactTags.IgnoreQueryFilters().ToListAsync(TestContext.Current.CancellationToken);
             tags.Should().BeEmpty();
         }
     }

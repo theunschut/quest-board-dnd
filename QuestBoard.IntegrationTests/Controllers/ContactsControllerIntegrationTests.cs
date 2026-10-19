@@ -1813,4 +1813,165 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
             .AnyAsync(t => t.Id == otherBoardTag.Id, TestContext.Current.CancellationToken);
         otherBoardTagStillExists.Should().BeTrue();
     }
+
+    // The tag field carries a total-length bound that protects the server from an oversized
+    // post. A value over that bound must be refused without ever being split into names, so
+    // these facts post an over-long name inside an over-bound payload and require that the
+    // per-name length error never appears: it can only appear if the value was parsed. The
+    // board tag "wharfmaster" reaches the page only through the suggestion list, so it shows
+    // the refused form still repopulates its vocabulary.
+
+    private const string OverBoundMessage = "Tags cannot exceed 1000 characters in total";
+
+    private static string BuildOverBoundTagsInput() =>
+        new string('z', 31) + "," + string.Join(",", Enumerable.Range(0, 20000).Select(i => "n" + i));
+
+    [Fact]
+    public async Task Create_TagsInputOverLengthBound_RerendersWithoutParsingOrPersisting()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_bound_create_dm", "contact_tag_bound_create_dm@example.com", roles: ["DungeonMaster"]);
+        var seedContact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Bound Create Seed Contact", groupId: 1);
+        await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "wharfmaster", groupId: 1, seedContact.Id);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Name"] = "Over Bound Create Contact",
+            ["TagsInput"] = BuildOverBoundTagsInput()
+        });
+
+        var response = await dmClient.PostAsync("/Contacts/Create", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain(OverBoundMessage);
+        content.Should().NotContain("30-character limit");
+        content.Should().Contain("initContactTags(");
+        content.Should().Contain("wharfmaster");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        (await context.Contacts.IgnoreQueryFilters().AnyAsync(
+            c => c.Name == "Over Bound Create Contact", TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await context.ContactTags.IgnoreQueryFilters().CountAsync(
+            TestContext.Current.CancellationToken)).Should().Be(1);
+        (await context.ContactTags.IgnoreQueryFilters().AnyAsync(
+            t => t.Name == "n0", TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Edit_TagsInputOverLengthBound_RerendersWithoutParsingOrChangingContact()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_bound_edit_dm", "contact_tag_bound_edit_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "Over Bound Edit Contact", groupId: 1);
+        var seededTag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "wharfmaster", groupId: 1, contact.Id);
+
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = contact.Id.ToString(),
+            ["Name"] = "Renamed While Over Bound",
+            ["TagsInput"] = BuildOverBoundTagsInput()
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain(OverBoundMessage);
+        content.Should().NotContain("30-character limit");
+        content.Should().Contain("initContactTags(");
+        content.Should().Contain("wharfmaster");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Contacts
+            .IgnoreQueryFilters()
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+        persisted.Name.Should().Be("Over Bound Edit Contact");
+        persisted.Tags.Select(t => t.Id).Should().Equal(seededTag.Id);
+        (await context.ContactTags.IgnoreQueryFilters().CountAsync(
+            TestContext.Current.CancellationToken)).Should().Be(1);
+        (await context.ContactTags.IgnoreQueryFilters().AnyAsync(
+            t => t.Name == "n0", TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Edit_TagsInputOneCharacterOverBound_IsNotParsed()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_bound_one_over_dm", "contact_tag_bound_one_over_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "One Over Bound Contact", groupId: 1);
+        var existingTag = await TestDataHelper.CreateTestContactTagAsync(
+            factory.Services, "Kept Tag", groupId: 1, contact.Id);
+
+        var oneOver = new string('z', 1001);
+        oneOver.Length.Should().Be(1001);
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = contact.Id.ToString(),
+            ["Name"] = "One Over Bound Contact",
+            ["TagsInput"] = oneOver
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain(OverBoundMessage);
+        content.Should().NotContain("30-character limit");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Contacts
+            .IgnoreQueryFilters()
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+        persisted.Tags.Select(t => t.Id).Should().Equal(existingTag.Id);
+    }
+
+    [Fact]
+    public async Task Edit_TagsInputExactlyAtBound_SavesEveryTag()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contact_tag_bound_at_limit_dm", "contact_tag_bound_at_limit_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, dmUser.Id, "At Bound Contact", groupId: 1);
+
+        var names = Enumerable.Range(0, 100).Select(i => $"t{i:D8}").ToList();
+        var atBound = string.Join(",", names) + ",";
+        atBound.Length.Should().Be(1000);
+        var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = contact.Id.ToString(),
+            ["Name"] = "At Bound Contact",
+            ["TagsInput"] = atBound
+        });
+
+        var response = await dmClient.PostAsync(
+            $"/Contacts/Edit/{contact.Id}", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var persisted = await context.Contacts
+            .IgnoreQueryFilters()
+            .Include(c => c.Tags)
+            .SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+        persisted.Tags.Select(t => t.Name).Should().BeEquivalentTo(names);
+    }
 }

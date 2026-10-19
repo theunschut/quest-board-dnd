@@ -56,10 +56,14 @@ public class ContactViewModel
     // Display list for the chips and the details line.
     public IList<ContactTagViewModel> Tags { get; set; } = [];
 
+    // The length attribute below and the Contacts controller share this bound. The controller
+    // refuses to split a longer value into tag names, so an oversized post costs no parsing work.
+    public const int TagsInputMaxLength = 1000;
+
     // The bound comma-separated field on the create and edit forms. This bounds one request's
-    // payload; it is deliberately not a cap on tags per contact, which stays uncapped, and 1000
-    // characters comfortably holds several dozen names.
-    [StringLength(1000, ErrorMessage = "Tags cannot exceed 1000 characters in total")]
+    // payload; it is deliberately not a cap on tags per contact, which stays uncapped, and the
+    // bound comfortably holds several dozen names.
+    [StringLength(TagsInputMaxLength, ErrorMessage = "Tags cannot exceed {1} characters in total")]
     public string? TagsInput { get; set; }
 
     // The suggestion list handed to the client-side tag widget.
