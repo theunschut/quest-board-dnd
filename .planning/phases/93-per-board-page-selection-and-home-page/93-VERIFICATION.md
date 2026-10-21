@@ -1,8 +1,22 @@
 ---
 phase: 93-per-board-page-selection-and-home-page
-verified: 2026-10-21T14:02:31Z
-status: human_needed
+verified: 2026-10-21T18:30:00Z
+status: passed
 score: 7/7 must-haves verified
+re_verification:
+  date: 2026-10-21
+  previous_status: human_needed
+  previous_score: 7/7
+  trigger:
+    - "1ce594cd fix(93): WR-01 refuse a stale Platform board edit (GroupController, GroupEditViewModel, Edit/Edit.Mobile views, BoardPageSettingsService comment, GroupControllerEditConcurrencyTests)"
+    - "d75a83e5 fix(93): WR-02 live-quest count uses the quest list's cutoff (IQuestRepository, QuestRepository, BoardPageSettingsService, BoardPageCountQueryTests, BoardPageSettingsServiceTests)"
+    - "c36d9e19 fix(93): T-93-28 build the quest signup server-side (QuestController Details POST, QuestSignupOverpostingTests)"
+  result: "All 7 must-haves still hold. The gate, resolver, routes, layouts, HomeController and the policy are byte-identical to the first verification. Targeted tests re-run green. The real-phone checks were dispositioned by the operator as an accepted risk and moved to deferred_human_verification."
+  gaps_closed:
+    - "WR-01 (Platform Edit silently overwriting a concurrent page change) closed by the rendered-state stamp and stale-form refusal"
+    - "WR-02 (live-quest count disagreeing with the quest list's rolling 24h cutoff) closed"
+  gaps_remaining: []
+  regressions: []
 covered_files:
   - .planning/phases/93-per-board-page-selection-and-home-page/93-01-PLAN.md
   - .planning/phases/93-per-board-page-selection-and-home-page/93-01-SUMMARY.md
@@ -111,31 +125,42 @@ covered_files:
   - QuestBoard.Service/Views/_ViewImports.cshtml
   - QuestBoard.Service/wwwroot/css/dm-profile.mobile.css
   - QuestBoard.Service/wwwroot/css/platform-group.mobile.css
-covered_digest: "v1:sha256:4879cd10656fc6cdf883c5f170709b8b8ec3f810f897ff62c0a9cce7f02ae0a6"
+covered_digest: "v1:sha256:5286a5bede50b8fac542a5c2e3fd9846809829eb1b3c62364930ca507db441e8"
 behavior_unverified: 0
 overrides_applied: 0
-human_verification:
+deferred_human_verification:
   - test: "Open a board's Platform Edit page on a real phone (real mobile user agent, not devtools emulation). Flip several Pages switches, change the Home page, Save, and trigger a refusal (for example switch off the board's current home page)."
     expected: "Switch rows are comfortably tappable, locked rows show their reason legibly, the refusal message is readable on the form, nothing overflows at roughly 390px wide."
     why_human: "Mobile views are chosen by user agent and the Platform mobile views render inside the desktop Platform layout; automated tests assert markup, not touch feel or layout."
+    disposition: accepted-risk-deferred
+    tracked_in: .planning/todos/pending/2026-10-21-phase-93-real-phone-checks.md
   - test: "On a phone-width real device, open the Move page for a quest or event on a board that is linked to a board with a very long name whose Quests or Events page is off."
     expected: "The picker option for the board with the page off is disabled, its suffix is readable, and the long name does not break the layout at 390px."
     why_human: "Text wrapping and truncation of long board names plus a suffix inside a native select cannot be judged from markup."
+    disposition: accepted-risk-deferred
+    tracked_in: .planning/todos/pending/2026-10-21-phase-93-real-phone-checks.md
   - test: "Switch off several pages on a board (for example Shop, Contacts, Events) with Calendar as home, then browse it on a real phone and on desktop."
     expected: "Both menus show no dead entries, the Quests menu item appears, and pages that lost links (Calendar, My Agenda, Players, Quest Details) look intentional, with no empty gaps."
     why_human: "Real-device visual appearance of trimmed pages and layout gaps is a judgment call."
+    disposition: accepted-risk-deferred
+    tracked_in: .planning/todos/pending/2026-10-21-phase-93-real-phone-checks.md
+  - test: "On a real phone, trigger a refusal on the Platform Edit page (for example switch off the board's current home page) and read the refusal lines."
+    expected: "The refusal lines read as errors on the glass card. No mobile .text-danger rule exists, so they use Bootstrap's default red; add a scoped rule in platform-group.mobile.css if they are not legible."
+    why_human: "Legibility of Bootstrap's default red on the mobile glass card is a visual judgment on a real device (93-UI-REVIEW.md warning 1)."
+    disposition: accepted-risk-deferred
+    tracked_in: .planning/todos/pending/2026-10-21-phase-93-real-phone-checks.md
 ---
 
 # Phase 93: Per-Board Page Selection and Home Page Verification Report
 
 **Phase Goal:** In the Platform area, a super admin can choose which pages each board offers (Shop, Contacts, Players, Characters, Quest Log, Events, Calendar and more). A switched-off page disappears from both menus, and the server refuses it on that board when its URL is typed. A super admin can also set which page a board opens on. The default stays the quest list, and at least one board can open on `/calendar`. Boards nobody configures behave exactly as they do today.
-**Verified:** 2026-10-21T14:02:31Z
-**Status:** human_needed
-**Re-verification:** No, initial verification
+**Verified:** 2026-10-21T18:30:00Z
+**Status:** passed
+**Re-verification:** Yes, after the post-verification fixes 1ce594cd, d75a83e5 and c36d9e19
 
 ## Goal Achievement
 
-The goal is achieved in the codebase. No truth failed. Status is `human_needed` only because the executors flagged three real-device/visual checks that cannot be proven by InMemory integration tests, and the decision tree routes any non-empty human-verification list to `human_needed`.
+The goal is achieved in the codebase. No truth failed. The real-device/visual checks that InMemory integration tests cannot prove were dispositioned by the operator as an accepted risk and are tracked in `.planning/todos/pending/2026-10-21-phase-93-real-phone-checks.md` (listed under `deferred_human_verification`), so they no longer hold the status at `human_needed`.
 
 ROADMAP lists no numbered Success Criteria for this phase, so the must-haves below are derived from the phase goal sentence by sentence (Option C), plus the plan frontmatter truths and the D-01..D-21 decisions in 93-CONTEXT.md.
 
@@ -248,9 +273,25 @@ Step 7c: SKIPPED. No probe scripts are declared by the plans and no `scripts/*/t
 ### Warnings (non-blocking)
 
 1. **D-11 literal deviation (MoveController).** D-11 lists "the MoveController fallback" among places that should use the home page. The implementation (plan 93-13, research Open Question 3, resolved) keeps its redirects pointing at the same-kind list. This is safe, because the list is switched on whenever the Move action is reachable, and it satisfies the stated aim that nothing sends someone to a switched-off page. If the operator wants literal coverage, only `MoveController.NoLongerOnThisBoard` would need to point at Home.
-2. **WR-01** and **WR-02** above, carried as warnings.
+2. **WR-01** and **WR-02** above were carried as warnings and are closed in the re-verification.
+
+### Re-verification (post-verification fixes)
+
+Scope: the 8 covered files that changed after the first report. Method: `git diff 15f59e95..HEAD` on each, then targeted test runs.
+
+| Commit | Change | Effect on must-haves |
+|--------|--------|----------------------|
+| 1ce594cd (WR-01) | `GroupController.Edit` POST compares the posted `RenderedDisabledPages`/`RenderedHomePage` with the stored values and, on mismatch, re-renders the board as stored with the "Someone else changed this board" message and saves nothing; both Edit views post the two hidden fields; a form without them skips the check | Truth 1 and 7 still hold (save path, refusals and `EvaluateAsync` unchanged for a current form). Closes review WR-01 for the form-overwrite case. The count-then-save gap is now documented in `BoardPageSettingsService` and is hide-not-delete |
+| d75a83e5 (WR-02) | `CountLiveForBoardAsync` takes `boardNow` and counts not-closed quests that are not finalized, undated, or finalized after `now - 1 day`, the quest list cutoff | Truth 7 holds and is stricter (a quest the list still shows is always counted). Closes review WR-02 |
+| c36d9e19 (T-93-28) | `QuestController.Details` POST builds a fresh `PlayerSignup` from the user, the quest, the role, a validated character id and date votes filtered to the quest's own proposed dates | Not part of any page-selection truth. The `[BoardPage]` gate on `QuestController` is untouched. Closes security threat T-93-28 |
+
+Unchanged since the first report (empty `git diff 15f59e95..HEAD`): `BoardPageGateFilter`, `BoardPagePolicy`, `BoardPageRoutes`, `BoardPageResolver`, `HomeController`, `Program.cs`, both layouts. Truths 2 to 6 therefore hold by identity. The calendar feed guarded files remain untouched.
+
+Targeted runs at HEAD: integration `BoardPage|QuestSignupOverposting|CrossBoardDeepLink` 338 passed, 0 failed; unit `BoardPage|GroupControllerEditConcurrency|BoardPageCountQuery|AmbientClockSeam` 229 passed, 0 failed. Orchestrator full run at c36d9e19: integration 1656 passed / 11 skipped / 0 failed; unit 1299 passed / 1 failed (the known pre-existing intermittent `MigratorBackupAndApplyCliTests...WhenServerIsUnreachable...(apply)`, logged in `deferred-items.md`). Security: 93-SECURITY.md reports `status: secured`, `threats_open: 0`.
 
 ### Human Verification Required
+
+None outstanding. The four real-phone checks below were dispositioned by the operator ("If the verify only needs tests from my phone, it's an accepted risk/todo for next phase") and are recorded as `result: skipped` in 93-UAT.md. They live in `deferred_human_verification` with `disposition: accepted-risk-deferred`, tracked in `.planning/todos/pending/2026-10-21-phase-93-real-phone-checks.md`.
 
 ### 1. Platform Edit switch rows on a real phone
 
@@ -270,11 +311,17 @@ Step 7c: SKIPPED. No probe scripts are declared by the plans and no `scripts/*/t
 **Expected:** Menus carry no dead entries, a Quests item appears, and pages that lost links (Calendar, My Agenda, Players, Quest Details) look intentional with no awkward gaps.
 **Why human:** Visual quality judgment.
 
+### 4. Refusal lines legible on the mobile Platform Edit page
+
+**Test:** On a real phone, trigger a refusal on the Platform Edit page and read the refusal lines.
+**Expected:** They read as errors on the glass card; if not, add a scoped `.text-danger` rule to `platform-group.mobile.css`.
+**Why human:** Legibility of the default red on the glass card is visual (93-UI-REVIEW.md warning 1).
+
 ### Gaps Summary
 
-No gaps. Every derived must-have and every decision D-01..D-21 is satisfied in the code and backed by passing tests, including an end-to-end walk (Platform form to `/` opening on `/Calendar`, trimmed menus, refused URLs with toast, and exact restore) on both desktop and mobile user agents. The guarded calendar feed files are untouched. Remaining items are the three real-device checks above, plus the non-blocking warnings (WR-01, WR-02, D-11 Move fallback wording).
+No gaps. WR-01 and WR-02 from the review are now closed by the post-verification fixes. Every derived must-have and every decision D-01..D-21 is satisfied in the code and backed by passing tests, including an end-to-end walk (Platform form to `/` opening on `/Calendar`, trimmed menus, refused URLs with toast, and exact restore) on both desktop and mobile user agents. The guarded calendar feed files are untouched. The real-device checks above are accepted-risk deferred to a todo. The only remaining non-blocking note is the D-11 Move fallback wording.
 
 ---
 
-_Verified: 2026-10-21T14:02:31Z_
+_Verified: 2026-10-21T18:30:00Z (re-verification)_
 _Verifier: Claude (gsd-verifier)_
