@@ -270,6 +270,7 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
             {
                 g.Id,
                 g.Name,
+                g.DisabledPages,
                 Role = g.UserGroups
                     .Where(ug => ug.UserId == viewerUserId)
                     .Select(ug => (int?)ug.GroupRole)
@@ -285,7 +286,8 @@ internal sealed class LinkedBoardSetRepository(QuestBoardContext dbContext) : IL
                 {
                     Id = r.Id,
                     Name = r.Name,
-                    ViewerRole = r.Role == null ? null : (GroupRole)r.Role.Value
+                    ViewerRole = r.Role == null ? null : (GroupRole)r.Role.Value,
+                    DisabledPages = new BoardPageSet(r.DisabledPages)
                 })
                 .ToList()
         };
