@@ -1,8 +1,11 @@
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.PlayersViewModels
 @model PlayersIndexViewModel
 @{
     ViewData["Title"] = "Players";
+    var dungeonMasterProfileOn = (await BoardPages.GetAsync()).Serves(BoardPage.DungeonMasterProfile);
 }
 
 <div class="row">
@@ -29,7 +32,14 @@
                                 {
                                     <tr>
                                         <td>
-                                            <a asp-controller="DungeonMaster" asp-action="Profile" asp-route-id="@dm.Id">@dm.Name</a>
+                                            @if (dungeonMasterProfileOn)
+                                            {
+                                                <a asp-controller="DungeonMaster" asp-action="Profile" asp-route-id="@dm.Id">@dm.Name</a>
+                                            }
+                                            else
+                                            {
+                                                @dm.Name
+                                            }
                                         </td>
                                     </tr>
                                 }

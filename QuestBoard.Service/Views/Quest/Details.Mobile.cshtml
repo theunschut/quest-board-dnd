@@ -56,6 +56,11 @@
     // list type at each use site -- a cast that would only hold as long as the mapper keeps
     // choosing List<T> for its IList<T> destinations.
     var ownedCharacters = ViewBag.UserCharacters as IEnumerable<Character> ?? new List<Character>();
+
+    // A board that does not use characters offers no way to pick one; names already on a signup
+    // still render.
+    var boardPages = await BoardPages.GetAsync();
+    var charactersOn = boardPages.Serves(BoardPage.Characters);
 }
 @section Styles {
     <link href="~/css/quests.mobile.css" asp-append-version="true" rel="stylesheet" />
@@ -233,7 +238,7 @@
                             @if (participant.Character != null)
                             {
                                 @participant.Character.Name
-                                if (isCurrentUser)
+                                if (isCurrentUser && charactersOn)
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-info" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="@participant.Character.Id" data-current-character-label="@participant.Character.ToSelectLabel()" title="Change character"><i class="fas fa-edit fa-xs"></i></button>
                                 }
@@ -241,7 +246,7 @@
                             else
                             {
                                 @:No character
-                                if (isCurrentUser && ownedCharacters.Any())
+                                if (isCurrentUser && ownedCharacters.Any() && charactersOn)
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
                                 }
@@ -278,7 +283,7 @@
                             @if (player.Character != null)
                             {
                                 @player.Character.Name
-                                if (isCurrentUser)
+                                if (isCurrentUser && charactersOn)
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-info" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="@player.Character.Id" data-current-character-label="@player.Character.ToSelectLabel()" title="Change character"><i class="fas fa-edit fa-xs"></i></button>
                                 }
@@ -286,7 +291,7 @@
                             else
                             {
                                 @:No character
-                                if (isCurrentUser && ownedCharacters.Any())
+                                if (isCurrentUser && ownedCharacters.Any() && charactersOn)
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
                                 }
@@ -337,7 +342,7 @@
                             @if (signup.Character != null)
                             {
                                 @signup.Character.Name
-                                if (isCurrentUser)
+                                if (isCurrentUser && charactersOn)
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-info" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="@signup.Character.Id" data-current-character-label="@signup.Character.ToSelectLabel()" title="Change character"><i class="fas fa-edit fa-xs"></i></button>
                                 }
@@ -345,7 +350,7 @@
                             else
                             {
                                 @:No character
-                                if (isCurrentUser && ownedCharacters.Any())
+                                if (isCurrentUser && ownedCharacters.Any() && charactersOn)
                                 {
                                     <button type="button" class="btn btn-link p-0 border-0 align-baseline lh-1 ms-2 text-success" data-bs-toggle="modal" data-bs-target="#characterSelectModal" data-quest-id="@Model.Quest?.Id" data-current-character-id="" data-current-character-label="" title="Add character"><i class="fas fa-plus fa-xs"></i></button>
                                 }
@@ -383,17 +388,20 @@
                 }
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Select Character (Optional)</label>
-                <select id="finalizedQuestCharacterMobile" class="form-select">
-                    <option value="">-- Join without character --</option>
-                    @foreach (var character in ownedCharacters)
-                    {
-                        <option value="@character.Id">@character.ToSelectLabel()</option>
-                    }
-                </select>
-                <small class="form-text">Choose which character you'll be playing, or join without one.</small>
-            </div>
+            @if (charactersOn)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Select Character (Optional)</label>
+                    <select id="finalizedQuestCharacterMobile" class="form-select">
+                        <option value="">-- Join without character --</option>
+                        @foreach (var character in ownedCharacters)
+                        {
+                            <option value="@character.Id">@character.ToSelectLabel()</option>
+                        }
+                    </select>
+                    <small class="form-text">Choose which character you'll be playing, or join without one.</small>
+                </div>
+            }
 
             <div class="d-grid gap-2">
                 <form asp-action="JoinFinalizedQuest" method="post" id="joinPlayerFormMobile">
@@ -428,14 +436,17 @@
             </div>
         </div>
 
-        <script>
-            document.getElementById('finalizedQuestCharacterMobile').addEventListener('change', function () {
-                const characterId = this.value;
-                document.getElementById('playerCharacterIdMobile').value = characterId;
-                document.getElementById('assistantCharacterIdMobile').value = characterId;
-                document.getElementById('spectatorCharacterIdMobile').value = characterId;
-            });
-        </script>
+        @if (charactersOn)
+        {
+            <script>
+                document.getElementById('finalizedQuestCharacterMobile').addEventListener('change', function () {
+                    const characterId = this.value;
+                    document.getElementById('playerCharacterIdMobile').value = characterId;
+                    document.getElementById('assistantCharacterIdMobile').value = characterId;
+                    document.getElementById('spectatorCharacterIdMobile').value = characterId;
+                });
+            </script>
+        }
     }
 
     @* DM controls link *@
@@ -495,7 +506,10 @@
         }
     }
 
-    @{ await Html.RenderPartialAsync("_CharacterSelectModal"); }
+    @if (charactersOn)
+    {
+        await Html.RenderPartialAsync("_CharacterSelectModal");
+    }
 
 </div>
 

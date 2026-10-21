@@ -21,6 +21,10 @@
     // choosing List<T> for its IList<T> destinations.
     var ownedCharacters = ViewBag.UserCharacters as IEnumerable<Character> ?? new List<Character>();
     var currentUserId = ViewBag.CurrentUserId as int?;
+    var boardPages = await BoardPages.GetAsync();
+    // A board that does not use characters offers no way to pick one; names and portraits already
+    // on a signup still render.
+    var charactersOn = boardPages.Serves(BoardPage.Characters);
 }
 
 <div class="quest-details-page">
@@ -143,7 +147,7 @@
                                                                         <i class="fas fa-user"></i>
                                                                     </span>
                                                                     <span>@participant.Character.Name</span>
-                                                                    @if (isCurrentUser)
+                                                                    @if (isCurrentUser && charactersOn)
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-primary ms-2"
                                                                                 data-bs-toggle="modal"
@@ -161,7 +165,7 @@
                                                             {
                                                                 <div class="d-flex align-items-center gap-2">
                                                                     <span class="text-muted fst-italic">No character</span>
-                                                                    @if (isCurrentUser && ownedCharacters.Any())
+                                                                    @if (isCurrentUser && ownedCharacters.Any() && charactersOn)
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-success"
                                                                                 data-bs-toggle="modal"
@@ -274,7 +278,7 @@
                                                                         <i class="fas fa-user"></i>
                                                                     </span>
                                                                     <span>@player.Character.Name</span>
-                                                                    @if (isCurrentUser)
+                                                                    @if (isCurrentUser && charactersOn)
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-primary ms-2"
                                                                                 data-bs-toggle="modal"
@@ -292,7 +296,7 @@
                                                             {
                                                                 <div class="d-flex align-items-center gap-2">
                                                                     <span class="text-muted fst-italic">No character</span>
-                                                                    @if (isCurrentUser && ownedCharacters.Any())
+                                                                    @if (isCurrentUser && ownedCharacters.Any() && charactersOn)
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-success"
                                                                                 data-bs-toggle="modal"
@@ -375,7 +379,7 @@
                                                                         <i class="fas fa-user"></i>
                                                                     </span>
                                                                     <span>@signup.Character.Name</span>
-                                                                    @if (isCurrentUser)
+                                                                    @if (isCurrentUser && charactersOn)
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-primary ms-2"
                                                                                 data-bs-toggle="modal"
@@ -393,7 +397,7 @@
                                                             {
                                                                 <div class="d-flex align-items-center gap-2">
                                                                     <span class="text-muted fst-italic">No character</span>
-                                                                    @if (isCurrentUser && ownedCharacters.Any())
+                                                                    @if (isCurrentUser && ownedCharacters.Any() && charactersOn)
                                                                     {
                                                                         <button type="button" class="btn btn-sm btn-success"
                                                                                 data-bs-toggle="modal"
@@ -457,18 +461,21 @@
 
                                         <h6 class="mb-3">Select Your Role:</h6>
 
-                                        @* Single Character Selection for All Roles *@
-                                        <div class="mb-3">
-                                            <label class="form-label">Select Character (Optional)</label>
-                                            <select id="finalizedQuestCharacter" class="form-select">
-                                                <option value="">-- Join without character --</option>
-                                                @foreach (var character in ownedCharacters)
-                                                {
-                                                    <option value="@character.Id">@character.ToSelectLabel()</option>
-                                                }
-                                            </select>
-                                            <small class="form-text">Choose which character you'll be playing, or join without one.</small>
-                                        </div>
+                                        @if (charactersOn)
+                                        {
+                                            @* Single Character Selection for All Roles *@
+                                            <div class="mb-3">
+                                                <label class="form-label">Select Character (Optional)</label>
+                                                <select id="finalizedQuestCharacter" class="form-select">
+                                                    <option value="">-- Join without character --</option>
+                                                    @foreach (var character in ownedCharacters)
+                                                    {
+                                                        <option value="@character.Id">@character.ToSelectLabel()</option>
+                                                    }
+                                                </select>
+                                                <small class="form-text">Choose which character you'll be playing, or join without one.</small>
+                                            </div>
+                                        }
 
                                         <div class="d-grid gap-2">
                                             <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinPlayerForm">
@@ -504,15 +511,18 @@
                                             </form>
                                         </div>
 
-                                        <script>
-                                                                        // Sync character selection to all forms
-                                                                        document.getElementById('finalizedQuestCharacter').addEventListener('change', function() {
-                                                                            const characterId = this.value;
-                                                                            document.getElementById('playerCharacterId').value = characterId;
-                                                                            document.getElementById('assistantCharacterId').value = characterId;
-                                                                            document.getElementById('spectatorCharacterId').value = characterId;
-                                                                        });
-                                        </script>
+                                        @if (charactersOn)
+                                        {
+                                            <script>
+                                                                            // Sync character selection to all forms
+                                                                            document.getElementById('finalizedQuestCharacter').addEventListener('change', function() {
+                                                                                const characterId = this.value;
+                                                                                document.getElementById('playerCharacterId').value = characterId;
+                                                                                document.getElementById('assistantCharacterId').value = characterId;
+                                                                                document.getElementById('spectatorCharacterId').value = characterId;
+                                                                            });
+                                            </script>
+                                        }
                                     </div>
                                 </div>
                             }
@@ -540,18 +550,21 @@
                                         <input type="hidden" name="Id" value="0" />
                                         <input type="hidden" name="Quest.Id" value="@Model.Quest?.Id" />
 
-                                        @* Character Selection *@
-                                        <div class="mb-3">
-                                            <label class="form-label">Select Character (Optional)</label>
-                                            <select name="CharacterId" class="form-select">
-                                                <option value="">-- Sign up without character --</option>
-                                                @foreach (var character in ownedCharacters)
-                                                {
-                                                    <option value="@character.Id">@character.ToSelectLabel()</option>
-                                                }
-                                            </select>
-                                            <small class="form-text">Choose which character you'll be playing, or sign up without one.</small>
-                                        </div>
+                                        @if (charactersOn)
+                                        {
+                                            @* Character Selection *@
+                                            <div class="mb-3">
+                                                <label class="form-label">Select Character (Optional)</label>
+                                                <select name="CharacterId" class="form-select">
+                                                    <option value="">-- Sign up without character --</option>
+                                                    @foreach (var character in ownedCharacters)
+                                                    {
+                                                        <option value="@character.Id">@character.ToSelectLabel()</option>
+                                                    }
+                                                </select>
+                                                <small class="form-text">Choose which character you'll be playing, or sign up without one.</small>
+                                            </div>
+                                        }
 
                                         @* Role Selection *@
                                         <div class="mb-3">
@@ -958,7 +971,10 @@
     </div>
 </div>
 
-@{ await Html.RenderPartialAsync("_CharacterSelectModal"); }
+@if (charactersOn)
+{
+    await Html.RenderPartialAsync("_CharacterSelectModal");
+}
 
 <script>
     function revokeSignup(questId) {

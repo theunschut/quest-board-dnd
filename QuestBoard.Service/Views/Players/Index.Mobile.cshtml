@@ -1,8 +1,11 @@
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.Extensions
 @using QuestBoard.Service.ViewModels.PlayersViewModels
 @model PlayersIndexViewModel
 @{
     ViewData["Title"] = "Players";
+    var dungeonMasterProfileOn = (await BoardPages.GetAsync()).Serves(BoardPage.DungeonMasterProfile);
 }
 
 @section Styles {
@@ -20,11 +23,20 @@
         {
             @foreach (var dm in Model.DungeonMasters)
             {
-                <div class="players-row"
-                     onclick="window.location.href='@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })'">
-                    <span class="players-name"><a class="row-nav-link" href="@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })">@dm.Name</a></span>
-                    <i class="fas fa-chevron-right ms-auto" style="color: rgba(244,228,188,0.5);"></i>
-                </div>
+                if (dungeonMasterProfileOn)
+                {
+                    <div class="players-row"
+                         onclick="window.location.href='@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })'">
+                        <span class="players-name"><a class="row-nav-link" href="@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })">@dm.Name</a></span>
+                        <i class="fas fa-chevron-right ms-auto" style="color: rgba(244,228,188,0.5);"></i>
+                    </div>
+                }
+                else
+                {
+                    <div class="players-row no-link">
+                        <span class="players-name">@dm.Name</span>
+                    </div>
+                }
             }
         }
         else
