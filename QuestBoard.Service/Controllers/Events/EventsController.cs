@@ -4,6 +4,7 @@ using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Services;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.EventViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Options;
 namespace QuestBoard.Service.Controllers.Events;
 
 [Authorize]
+[BoardPage(BoardPage.Events)]
 public class EventsController(
     IEventService eventService,
     IUserService userService,

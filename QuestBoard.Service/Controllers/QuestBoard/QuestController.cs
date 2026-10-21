@@ -4,6 +4,7 @@ using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.CalendarViewModels;
 using QuestBoard.Service.ViewModels.QuestViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace QuestBoard.Service.Controllers.QuestBoard;
 
+[BoardPage(BoardPage.Quests)]
 public class QuestController(
     IUserService userService,
     IMapper mapper,
@@ -573,6 +575,7 @@ public class QuestController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize]
+    [BoardPage(BoardPage.Characters)]
     public async Task<IActionResult> UpdateSignupCharacter(int questId, int? characterId)
     {
         var quest = await questService.GetQuestWithDetailsAsync(questId);

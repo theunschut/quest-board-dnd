@@ -4,6 +4,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models.BoardMove;
 using QuestBoard.Service.Constants;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.Helpers;
 using QuestBoard.Service.ViewModels.MoveViewModels;
 
@@ -16,6 +17,7 @@ public class MoveController(
     IUserService userService) : Controller
 {
     [HttpGet]
+    [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> Quest(int id, int? targetBoardId, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
@@ -40,6 +42,7 @@ public class MoveController(
     }
 
     [HttpPost, ActionName("Quest"), ValidateAntiForgeryToken]
+    [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> ConfirmQuest(int id, int targetBoardId, string? stamp, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
@@ -71,6 +74,7 @@ public class MoveController(
     }
 
     [HttpGet]
+    [BoardPage(BoardPage.Events)]
     public async Task<IActionResult> Event(int id, int? targetBoardId, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
@@ -95,6 +99,7 @@ public class MoveController(
     }
 
     [HttpPost, ActionName("Event"), ValidateAntiForgeryToken]
+    [BoardPage(BoardPage.Events)]
     public async Task<IActionResult> ConfirmEvent(int id, int targetBoardId, string? stamp, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
