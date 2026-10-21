@@ -4,6 +4,7 @@ using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
+using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.CalendarViewModels;
 using QuestBoard.Service.ViewModels.QuestViewModels;
@@ -24,7 +25,8 @@ public class QuestController(
     IGroupService groupService,
     IBoardClock boardClock,
     ILinkedCalendarService linkedCalendarService,
-    IMoveControlService moveControlService
+    IMoveControlService moveControlService,
+    IBoardPageResolver boardPageResolver
     ) : Controller
 {
     [HttpGet]
@@ -1151,6 +1153,13 @@ public class QuestController(
     // character from another board cannot be produced by any legitimate use of the pickers.
     private async Task<CharacterAssignment> ResolveCharacterAssignmentAsync(int characterId, int userId)
     {
+        // A board that does not use characters cannot attach one to a signup, even from a stale
+        // or crafted form.
+        if (!(await boardPageResolver.GetAsync()).Serves(BoardPage.Characters))
+        {
+            return CharacterAssignment.NotAssignable;
+        }
+
         var character = await characterService.GetCharacterWithDetailsAsync(characterId);
         if (character == null)
         {
