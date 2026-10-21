@@ -14,6 +14,7 @@ public class BoardPageSettingsServiceTests
     private static readonly DateOnly Today = new(2031, 6, 15);
 
     private readonly IEventRepository _events = Substitute.For<IEventRepository>();
+    private readonly IQuestRepository _quests = Substitute.For<IQuestRepository>();
     private readonly FakeBoardClock _clock = new() { Today = Today };
     private readonly BoardPageSettingsService _sut;
 
@@ -21,7 +22,8 @@ public class BoardPageSettingsServiceTests
     {
         _events.CountUpcomingForBoardAsync(default, default, default).ReturnsForAnyArgs(new UpcomingEventCount(0, 0));
         _events.CountActiveSeriesForBoardAsync(default, default, default).ReturnsForAnyArgs(0);
-        _sut = new BoardPageSettingsService(_events, _clock);
+        _quests.CountLiveForBoardAsync(default, default, default).ReturnsForAnyArgs(0);
+        _sut = new BoardPageSettingsService(_events, _quests, _clock);
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -305,6 +307,104 @@ public class BoardPageSettingsServiceTests
 
         await _events.Received(1).CountUpcomingForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>());
         await _events.Received(1).CountActiveSeriesForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>());
+    }
+
+    // -------------------------------------------------------------------
+    // Quests
+    // -------------------------------------------------------------------
+
+    [Fact]
+    public async Task SwitchingQuestsOff_WithNoLiveQuests_AndAnotherHome_IsAccepted()
+    {
+        var outcome = await Evaluate(Board(), Request(BoardPage.Calendar, (BoardPage.Quests, false)));
+
+        Assert.True(outcome.IsValid);
+        Assert.True(outcome.Disabled.Contains(BoardPage.Quests));
+        Assert.Equal(BoardPage.Calendar, outcome.HomePage);
+    }
+
+    [Fact]
+    public async Task SwitchingQuestsOff_WithLiveQuests_IsRefusedWithThePluralCount()
+    {
+        _quests.CountLiveForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>()).Returns(2);
+
+        var outcome = await Evaluate(Board(), Request(BoardPage.Calendar, (BoardPage.Quests, false)));
+
+        Assert.Equal(
+            ["Quests can't be switched off while this board has 2 live quests. Close or delete them first."],
+            outcome.Errors);
+    }
+
+    [Fact]
+    public async Task SwitchingQuestsOff_WithOneLiveQuest_UsesTheSingular()
+    {
+        _quests.CountLiveForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>()).Returns(1);
+
+        var outcome = await Evaluate(Board(), Request(BoardPage.Calendar, (BoardPage.Quests, false)));
+
+        Assert.Equal(
+            ["Quests can't be switched off while this board has 1 live quest. Close or delete them first."],
+            outcome.Errors);
+    }
+
+    [Fact]
+    public async Task SwitchingQuestsOff_WhileTheQuestListIsTheHome_WithoutPickingAnother_IsRefused()
+    {
+        var outcome = await Evaluate(Board(home: BoardPage.Quests), Request(null, (BoardPage.Quests, false)));
+
+        Assert.Equal(["Quest list is this board's home page; pick another home page first."], outcome.Errors);
+    }
+
+    [Fact]
+    public async Task SwitchingQuestsOff_KeepsTheStoredQuestLogBit_WhateverTheQuestLogSwitchSays()
+    {
+        var stored = BoardPageSet.Empty.With(BoardPage.QuestLog);
+        var outcome = await Evaluate(
+            Board(disabled: stored, home: BoardPage.Calendar),
+            Request(null, (BoardPage.Quests, false), (BoardPage.QuestLog, true)));
+
+        Assert.True(outcome.IsValid);
+        Assert.True(outcome.Disabled.Contains(BoardPage.Quests));
+        Assert.True(outcome.Disabled.Contains(BoardPage.QuestLog));
+    }
+
+    [Fact]
+    public async Task SwitchingQuestsBackOn_RestoresTheQuestLogSettingAsItWas()
+    {
+        var stored = BoardPageSet.Empty.With(BoardPage.Quests).With(BoardPage.QuestLog);
+        var outcome = await Evaluate(Board(disabled: stored, home: BoardPage.Calendar), Request(null, (BoardPage.Quests, true)));
+
+        Assert.True(outcome.IsValid);
+        Assert.False(outcome.Disabled.Contains(BoardPage.Quests));
+        Assert.True(outcome.Disabled.Contains(BoardPage.QuestLog));
+        await _quests.DidNotReceiveWithAnyArgs().CountLiveForBoardAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task QuestsAlreadyOff_NoCountIsTaken()
+    {
+        var outcome = await Evaluate(
+            Board(disabled: BoardPageSet.Empty.With(BoardPage.Quests), home: BoardPage.Calendar),
+            Request(null, (BoardPage.Quests, false)));
+
+        Assert.True(outcome.IsValid);
+        await _quests.DidNotReceiveWithAnyArgs().CountLiveForBoardAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task QuestsLeftOn_NoCountIsTaken()
+    {
+        await Evaluate(Board(), Request(null, (BoardPage.Shop, false)));
+
+        await _quests.DidNotReceiveWithAnyArgs().CountLiveForBoardAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task LiveQuestCount_UsesTheEditedBoardsIdAndTheBoardClockToday()
+    {
+        await Evaluate(Board(), Request(BoardPage.Calendar, (BoardPage.Quests, false)));
+
+        await _quests.Received(1).CountLiveForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>());
     }
 
     [Fact]

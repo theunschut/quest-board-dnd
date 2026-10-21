@@ -123,4 +123,12 @@ public interface IQuestRepository : IBaseRepository<Quest>
     /// returns an empty list rather than widening.
     /// </summary>
     Task<IList<LinkedQuestEntry>> GetLinkedQuestsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateTime fromInclusive, DateTime toExclusive, CancellationToken token = default);
+
+    /// <summary>
+    /// Counts the quests on the given board that are still live: not closed and not yet played,
+    /// the same rule the quest board uses to list a quest. The board is named explicitly because
+    /// the caller may be editing a board other than the active one. <paramref name="boardToday"/>
+    /// is the board's own today, so no clock is read here.
+    /// </summary>
+    Task<int> CountLiveForBoardAsync(int groupId, DateOnly boardToday, CancellationToken token = default);
 }

@@ -421,4 +421,10 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
             .Include(q => q.OriginalQuest)
             .Include(q => q.FollowUpQuest);
     }
+
+    /// <inheritdoc/>
+    public Task<int> CountLiveForBoardAsync(int groupId, DateOnly boardToday, CancellationToken token = default)
+    {
+        return Task.FromResult(0);
+    }
 }

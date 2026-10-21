@@ -5,7 +5,7 @@ using QuestBoard.Domain.Models;
 
 namespace QuestBoard.Domain.Services;
 
-internal class BoardPageSettingsService(IEventRepository eventRepository, IBoardClock boardClock) : IBoardPageSettingsService
+internal class BoardPageSettingsService(IEventRepository eventRepository, IQuestRepository questRepository, IBoardClock boardClock) : IBoardPageSettingsService
 {
     /// <inheritdoc/>
     public async Task<BoardPageSettingsOutcome> EvaluateAsync(Group group, BoardPageSettingsRequest request, CancellationToken token = default)

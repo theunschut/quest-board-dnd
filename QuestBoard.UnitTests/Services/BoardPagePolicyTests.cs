@@ -224,6 +224,7 @@ public class BoardPagePolicyTests
     // -------------------------------------------------------------------
 
     [Theory]
+    [InlineData(BoardPage.Quests)]
     [InlineData(BoardPage.Calendar)]
     [InlineData(BoardPage.Events)]
     [InlineData(BoardPage.QuestLog)]
@@ -232,9 +233,16 @@ public class BoardPagePolicyTests
     [InlineData(BoardPage.Players)]
     [InlineData(BoardPage.Shop)]
     [InlineData(BoardPage.DungeonMasterProfile)]
-    public void IsSwitchable_IsTrueForThePagesAFreshBoardCanLose(BoardPage page)
+    public void IsSwitchable_IsTrueForEveryPage(BoardPage page)
     {
         BoardPagePolicy.IsSwitchable(page).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsSwitchable_CoversEveryDefinedPage()
+    {
+        AllPages.Should().HaveCount(9);
+        AllPages.Should().OnlyContain(page => BoardPagePolicy.IsSwitchable(page));
     }
 
     [Fact]

@@ -2,9 +2,12 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Repository;
 using QuestBoard.Repository.Entities;
+using QuestBoard.UnitTests.Helpers;
 
 namespace QuestBoard.UnitTests.Repository;
 
@@ -32,6 +35,13 @@ public class BoardPageCountQueryTests
     {
         var configuration = new MapperConfiguration(cfg => cfg.AddProfile<QuestBoard.Repository.Automapper.EntityProfile>(), NullLoggerFactory.Instance);
         return new EventRepository(context, configuration.CreateMapper());
+    }
+
+    private static (QuestRepository Repository, IMapper Mapper) CreateQuestRepository(QuestBoardContext context)
+    {
+        var configuration = new MapperConfiguration(cfg => cfg.AddProfile<QuestBoard.Repository.Automapper.EntityProfile>(), NullLoggerFactory.Instance);
+        var mapper = configuration.CreateMapper();
+        return (new QuestRepository(context, mapper, new FakeBoardClock { Today = Today }), mapper);
     }
 
     private static async Task<string> SeedAsync(Action<QuestBoardContext> seed)
@@ -111,6 +121,92 @@ public class BoardPageCountQueryTests
         var count = await CreateRepository(context).CountActiveSeriesForBoardAsync(BoardOne, Today, Token);
 
         Assert.Equal(3, count);
+    }
+
+    private static QuestEntity Quest(int id, int groupId, bool closed = false, DateTime? finalizedDate = null) => new()
+    {
+        Id = id,
+        GroupId = groupId,
+        Title = $"Quest {id}",
+        Description = "d",
+        IsClosed = closed,
+        IsFinalized = finalizedDate.HasValue,
+        FinalizedDate = finalizedDate
+    };
+
+    private static List<QuestEntity> LiveBoundaryQuests() =>
+    [
+        // Open with nothing finalized: counts.
+        Quest(1, BoardOne),
+        // Open with only past proposed dates: counts, because nobody has finalized or deleted it.
+        Quest(2, BoardOne),
+        // Finalized the evening before today: played, so not live.
+        Quest(3, BoardOne, finalizedDate: new DateTime(2031, 6, 14, 23, 0, 0)),
+        // Finalized at midnight today: not yet a full day past, so live.
+        Quest(4, BoardOne, finalizedDate: new DateTime(2031, 6, 15, 0, 0, 0)),
+        Quest(5, BoardOne, finalizedDate: new DateTime(2031, 6, 20, 19, 0, 0)),
+        // Closed quests are never live, finalized or not.
+        Quest(6, BoardOne, closed: true),
+        Quest(7, BoardOne, closed: true, finalizedDate: new DateTime(2031, 7, 1, 19, 0, 0)),
+        // Another board's quest is never counted.
+        Quest(8, BoardTwo),
+        Quest(9, BoardTwo, finalizedDate: new DateTime(2031, 6, 20, 19, 0, 0))
+    ];
+
+    private static void SeedLiveBoundaryQuests(QuestBoardContext context)
+    {
+        var quests = LiveBoundaryQuests();
+        quests.Single(q => q.Id == 2).ProposedDates.Add(new ProposedDateEntity { Id = 1, Date = Today.AddDays(-10).ToDateTime(TimeOnly.MinValue) });
+        context.Quests.AddRange(quests);
+    }
+
+    [Fact]
+    public async Task CountLiveForBoard_BoundaryCases_CountsOpenAndNotYetPlayedQuestsOfThatBoardOnly()
+    {
+        var database = await SeedAsync(SeedLiveBoundaryQuests);
+
+        await using var context = CreateContext(database);
+        var (repository, _) = CreateQuestRepository(context);
+        var count = await repository.CountLiveForBoardAsync(BoardOne, Today, Token);
+
+        Assert.Equal(3, count);
+    }
+
+    [Fact]
+    public async Task CountLiveForBoard_OtherBoardIsCountedOnItsOwnId()
+    {
+        var database = await SeedAsync(SeedLiveBoundaryQuests);
+
+        await using var context = CreateContext(database);
+        var (repository, _) = CreateQuestRepository(context);
+        var count = await repository.CountLiveForBoardAsync(BoardTwo, Today, Token);
+
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public async Task CountLiveForBoard_NoQuests_IsZero()
+    {
+        var database = await SeedAsync(_ => { });
+
+        await using var context = CreateContext(database);
+        var (repository, _) = CreateQuestRepository(context);
+
+        Assert.Equal(0, await repository.CountLiveForBoardAsync(BoardOne, Today, Token));
+    }
+
+    [Fact]
+    public async Task CountLiveForBoard_MatchesTheSharedHasBeenPlayedRule_AtTheDayBoundary()
+    {
+        var database = await SeedAsync(SeedLiveBoundaryQuests);
+
+        await using var context = CreateContext(database);
+        var (repository, mapper) = CreateQuestRepository(context);
+
+        var mapped = mapper.Map<List<Quest>>(LiveBoundaryQuests().Where(q => q.GroupId == BoardOne).ToList());
+        var expected = mapped.Count(q => !q.IsClosed && !q.HasBeenPlayed(Today));
+
+        Assert.Equal(expected, await repository.CountLiveForBoardAsync(BoardOne, Today, Token));
     }
 
     private sealed class TestActiveGroupContext(int? activeGroupId) : IActiveGroupContext
