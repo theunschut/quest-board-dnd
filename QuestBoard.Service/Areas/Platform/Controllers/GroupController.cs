@@ -21,6 +21,7 @@ public class GroupController(
     IUserService userService,
     IIdentityService identityService,
     IBackgroundJobClient jobClient,
+    IBoardPageSettingsService boardPageSettingsService,
     ILogger<GroupController> logger) : Controller
 {
     // Groups index
