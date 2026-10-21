@@ -1,21 +1,21 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 92
 status: completed
-stopped_at: Phase 92 merged as #161 and tagged v5.6.0
-last_updated: "2026-10-19T09:21:57.718Z"
+stopped_at: Phase 93 context gathered
+last_updated: "2026-10-20T15:13:49.447Z"
 last_activity: 2026-10-19
-last_activity_desc: Phase 92 complete — UAT 4/4, review fixes, security 37/37, PR #161
+last_activity_desc: "Phase 92 complete — UAT 4/4, review fixes, security 37/37, PR #161"
+state_head: b12ead229b31ae6a51fc6051c60c9905bb3babb4
 progress:
-  total_phases: 21
+  total_phases: 22
   completed_phases: 18
   total_plans: 148
   completed_plans: 139
-  percent: 86
+  percent: 82
 current_phase_name: move-a-quest-or-event-to-a-linked-board
-state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
 ---
 
 # Project State
@@ -212,9 +212,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-19
-Stopped at: Phase 92 merged as #161 (merge commit 5dc7d48c) and tagged v5.6.0; release awaiting deploy approval
-Resume file: None
+Last session: 2026-10-20T15:13:45.296Z
+Stopped at: Phase 93 context gathered
+Resume file: .planning/phases/93-per-board-page-selection-and-home-page/93-CONTEXT.md
 
 ## Operator Next Steps
 
