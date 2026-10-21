@@ -217,4 +217,12 @@ internal class EventRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
             })
             .ToListAsync(token);
     }
+
+    /// <inheritdoc/>
+    public Task<UpcomingEventCount> CountUpcomingForBoardAsync(int groupId, DateOnly today, CancellationToken token = default) =>
+        throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<int> CountActiveSeriesForBoardAsync(int groupId, DateOnly today, CancellationToken token = default) =>
+        throw new NotImplementedException();
 }
