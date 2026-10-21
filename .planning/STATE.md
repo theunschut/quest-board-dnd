@@ -21,17 +21,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
+See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 93 — Per-Board Page Selection and Home Page
+**Current focus:** Phase 93 complete; remaining open phases are 78, 79 and 90
 
 ## Current Position
 
 Phase: 93
 Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-21 — Phase 93 complete
+Status: Phase 93 complete — open phases remain (78, 79, 90)
+Last activity: 2026-10-21 — Phase 93 complete (15/15 plans, verification passed, security 49/49, real-phone checks deferred)
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -39,7 +39,7 @@ none executed) and Phase 79 — Character and Contact Link Cards (not yet planne
 Every other phase in the 72–89 range is complete with a verification report, including Phase 81 —
 Contact Tags and Filtering (executed 2026-08-31; review fixes and security audit closed 2026-10-19, v5.6.3). Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, and
 Phases 91 and 92 are complete. `phase.complete` again reported Phase 92 as the last phase only because it
-is the highest number.
+is the highest number, and it did the same for Phase 93.
 
 Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
 shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
@@ -125,6 +125,10 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 93]: Quest list is switchable; switching it off is refused while any quest is live (not closed, not yet played) or while it is the home page
 - [Phase 93]: Live-quest count only runs on the Quests on-to-off transition and is pinned to HasBeenPlayed by a parity test
 - [Phase 93]: 93-11: end-to-end walk posts the Platform Edit form from its rendered fields rather than hand-written names, so a form field rename breaks the walk
+- [Phase 93]: The UI safety gate blocked after wave 2 because no UI-SPEC existed; the operator chose to generate one retroactively, and plan 06 followed its refusal markup (red lines with an icon in a role=alert wrapper) over the plan's bare validation summary
+- [Phase 93]: A stale Platform Edit form is refused by comparing the posted rendered mask and home with the stored ones (no concurrency token, no migration); the count-then-save window stays an accepted residual
+- [Phase 93]: The open-signup POST now builds the signup server-side from CharacterId and this quest's date votes only, closing T-93-28 and a pre-existing hole that let a player post IsSelected, SignupTime and votes on another quest's dates
+- [Phase 93]: The operator accepted the real-phone checks as a risk deferred to a todo rather than holding the phase for them
 
 ### Roadmap Evolution
 
@@ -149,6 +153,8 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 93 added 2026-10-20: Per-Board Page Selection and Home Page -- in the Platform area a super admin chooses which pages each board offers (Shop, Contacts, Players, Characters, Quest Log, Events, Calendar and the like) and which page the board opens on. The quest list stays the default, and at least one board can open on `/calendar`. Raised by the operator. Scoping found that boards have no per-board settings yet, and today's board-type gating lives only in the two layouts' menus: `ShopController` and `PlayersController` have no board-type check, so `/shop` and `/players` still open on a Campaign board when typed. The home page has to reach `HomeController.Index`, the navbar brand in both layouts, and the `Quest/Index` fallbacks in `GroupPickerController` and `MoveController`. Open questions for discuss-phase: which pages can be switched off, how toggles relate to board type, what a switched-off URL returns, links and dependent flows (signup characters, gold) that point into a switched-off page, whether the calendar feed and My Agenda follow the toggles, and whether the home page is per board or shared by a linked set.
 
 ### Pending Todos
+
+- `2026-10-21-phase-93-real-phone-checks.md` — the four deferred Phase 93 real-phone checks, with the emulated findings.
 
 None captured for v8.0. Two small deferred toolbar features (EDITOR-07/08/09 — strikethrough, horizontal rule, cheatsheet link) logged in `.planning/PROJECT.md` Requirements → Active for a future milestone to pick up if requested.
 
@@ -188,6 +194,12 @@ New as of 2026-10-17 (Phase 91):
 - **Board edits can now fail in a narrow race.** With the concurrency token, a board-settings edit fails on save if a super admin links or unlinks that same board between the edit's read and its write. No data is lost and resubmitting works.
 - **The local test suite can fail en masse with `inotify` errors.** The per-user limit is 256 instances, and other processes (a `Cabinet.BrowserTests` run, desktop sessions) can exhaust it. Re-run with `DOTNET_USE_POLLING_FILE_WATCHER=1`; it is not a code failure.
 
+New as of 2026-10-21 (Phase 93):
+
+- **Four real-phone checks are deferred** (`93-UAT.md`, todo `2026-10-21-phase-93-real-phone-checks.md`). A local SQL Server run in the in-app browser confirmed the migration, the gate, home routing, both refusals and the 375px mobile Edit layout, and found the mobile refusal red dimmer than desktop and the mobile switches in default blue.
+- **Phase 93 code-review info items IN-01..IN-05 are open, all optional** (see `93-REVIEW.md`); the UI review's three warnings are in `93-UI-REVIEW.md`. Nyquist validation (`/gsd-validate-phase 93`) was not run.
+- **The app's startup configuration dump prints some secret-looking environment variables unmasked** (for example `GRAYLOG_TEST_AUTH`); the mask only covers known key names. Pre-existing, seen during the local run.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -216,12 +228,13 @@ Items acknowledged and carried forward across milestone closes.
 | requirement | CALFEED real-device subscription check — a real phone actually subscribing via iOS Calendar, Google Calendar and Outlook, what iOS names the calendar, refresh latency, and a camera QR scan | Partly verified 2026-09-30 during Phase 88's production check (v5.3.2; see `88-UAT.md`). **Google Calendar:** a real subscription fetches and renders the board's times. An entry it already held did not correct itself in the time waited, and only a new subscription address fixed it, because Google caches a subscribed calendar per address. **Apple Calendar:** a direct iPhone subscription fetches and renders the zoned entries (confirmed with Time Zone Override). **Still unobserved:** Outlook, what iOS names the calendar, a camera QR scan, and any refresh latency. No latency figure was measured, and none may be promised in copy | v9.0, Phase 84 (updated Phase 88) |
 | verification | Phase 87 board-switch banner on a physical phone — the mobile pass used a Pixel 8 user-agent override at 375x812, and this codebase selects mobile views by user agent rather than viewport, so emulation never exercises the real twin | Deferred — operator approved conditionally ("approved for now"); three defects the full suite missed were already found by the UA-override pass, so the surface has a demonstrated history of failing only in the browser | v9.0, Phase 87 |
 | verification | Phase 87 group-picker skip path, live, after a lapsed session | Pending operator re-check once the fix deploys. This was recorded as unreachable from the operator's SuperAdmin account because the skip was gated on `!isSuperAdmin`. The operator then reached it anyway on 2026-09-28 — a lapsed session plus a click on a quest from their own board landed on the picker — which exposed the gate as a bug contradicting D-12 rather than a limit of the check. Gate removed; the skip now runs for SuperAdmins on boards they belong to, and a new integration fact confirms a SuperAdmin is still shown the picker for a board they are not a member of. The operator's own account is now a valid test of the path | v9.0, Phase 87 |
+| verification | Phase 93 real-phone checks — Platform Edit switch rows, Move picker long names, a trimmed board's menus and pages, and mobile refusal-line legibility | Deferred — operator accepted as a risk at phase close ("it's an accepted risk/todo for next phase"); emulated-UA run already done, see the todo | v9.0, Phase 93 |
 
 ## Session Continuity
 
-Last session: 2026-10-21T14:04:32.205Z
-Stopped at: Phase 93 complete — all phases complete
-Resume file: .planning/phases/93-per-board-page-selection-and-home-page/93-UAT.md
+Last session: 2026-10-21T19:00:00.000Z
+Stopped at: Phase 93 complete; PR to main next
+Resume file: None
 
 ## Operator Next Steps
 
