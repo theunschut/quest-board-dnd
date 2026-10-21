@@ -197,6 +197,30 @@ role, and a Campaign board with Shop, Players or a DM profile.
   switch on and set the quest list as home. Together with D-01, a Campaign board still hides Shop,
   Players and the DM profile. Nothing a user sees changes until a super admin changes a setting.
 
+### Confirmed after research (2026-10-21)
+
+Research concluded that the quest list can be switched off (the D-03 verdict). The operator then
+settled three of its assumptions.
+
+- **D-19: The Quest Log goes off with Quests.** When Quests is off, the Quest Log is unavailable
+  whatever its own switch says. Its switch shows greyed out with "Needs the quest list", and its
+  stored setting is kept for when Quests comes back on.
+
+  Rejected: keeping the Quest Log independently switchable, which would list quests whose pages all
+  redirect.
+
+- **D-20: Any quest that is not closed and has not been played counts as live, and blocks switching
+  Quests off (D-08).** This is the same rule the quest board uses to list a quest, so an abandoned
+  open quest with only past dates also blocks. The admin closes or deletes it first.
+
+  Rejected: counting only quests with a proposed or finalized date from today onward.
+
+- **D-21: A "Quests" menu item appears only on boards whose home page is not the quest list.** It
+  shows in both layouts, and only while Quests is on. Neither menu has a Quests item today, because
+  the brand link leads to the quest list, so unconfigured boards' menus stay exactly as they are.
+
+  Rejected: always showing a Quests item, which would change the menu on every board.
+
 ### Claude's Discretion
 
 - How the settings are stored (columns on `Groups` or a per-board settings table), how pages are

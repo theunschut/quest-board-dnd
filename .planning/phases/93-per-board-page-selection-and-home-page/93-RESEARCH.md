@@ -686,13 +686,13 @@ migrationBuilder.AddColumn<int>(name: "HomePage", table: "Groups", type: "int", 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | `HttpContext.GetEndpoint().Metadata.GetOrderedMetadata<T>()` includes both controller-level and action-level attributes for MVC actions, and `GetMetadata<T>()` returns the most specific | Pattern 2 | Filter would miss class- or action-level attributes. Wave 0 reflection + HTTP tests prove it before anything depends on it; fallback is `context.ActionDescriptor.FilterDescriptors` with an `IFilterMetadata` attribute |
-| A2 | Quest Log availability should be coupled to Quests (a quest-less board has nothing to list) | D-03 | Operator may want Quest Log independently switchable; then Quest Log would list closed quests whose pages redirect. Confirm in plan review |
+| A2 | Quest Log availability should be coupled to Quests (a quest-less board has nothing to list) | D-03 | **Confirmed by the operator 2026-10-21 (CONTEXT D-19).** |
 | A3 | Cancelled future events count toward the D-08 refusal | D-08 | Operator may prefer cancelled to be ignored; then cancelled events keep a link on linked calendars that leads to the redirect |
-| A4 | "Live quest" = `!IsClosed && !HasBeenPlayed(today)`, and a stale open OneShot quest blocks the switch until deleted | D-08 | Could frustrate an admin with an abandoned open quest; alternative is counting only quests with a future proposed date |
+| A4 | "Live quest" = `!IsClosed && !HasBeenPlayed(today)`, and a stale open OneShot quest blocks the switch until deleted | D-08 | **Confirmed by the operator 2026-10-21 (CONTEXT D-20).** |
 | A5 | An unresolved board renders no board pages in the menus (today Quest Log/Characters/Contacts/Create Quest/Create Event render for any signed-in user even with no resolved type) | Pattern 1 | Visible only for a signed-in user with no active board on a non-exempt layout page (e.g. Account/Profile); matches PROJECT.md's allowlist rule, but is a small delta from today |
 | A6 | The gate passes through when no board resolves | Pattern 2 | A request with no board but a resolvable type cannot occur; fail-closed queries still apply |
 | A7 | Toast severity `Info` (auto-hiding) rather than `Error` | Pattern 2 | Wording/severity is Claude's discretion per CONTEXT; low |
-| A8 | A "Quests" nav item shown only when home is not the quest list | Home | Without it the list is unreachable; with it always-on, unconfigured boards would change |
+| A8 | A "Quests" nav item shown only when home is not the quest list | Home | **Confirmed by the operator 2026-10-21 (CONTEXT D-21).** |
 | A9 | With Calendar on, Events off and a Campaign board, the calendar simply renders empty | D-03/Events | Could add a rule "Calendar needs Events or Quests"; recommended to leave as is |
 | A10 | Linked-calendar entries from an off page render inert rather than reaching the redirect | Link sweep | Discretion item; inert is safer and mirrors Phase 91 |
 | A11 | The local `dotnet-ef 9.0.6` tool can scaffold against EF Core 10.0.9 (it listed migrations; `add` expected to warn) | Storage | Migration scaffold fails; use the global 10.0.5 tool or bump the manifest |
