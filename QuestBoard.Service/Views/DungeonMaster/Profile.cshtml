@@ -3,6 +3,7 @@
 @model DMProfileViewModel
 @{
     ViewData["Title"] = $"{Model.Name} — DM Profile";
+    var questsOn = (await BoardPages.GetAsync()).Serves(BoardPage.Quests);
 }
 
 <div class="dm-profile-page container mt-4">
@@ -83,9 +84,16 @@
                                 {
                                     <tr>
                                         <td>
-                                            <a asp-controller="Quest" asp-action="Details" asp-route-id="@quest.Id">
+                                            @if (questsOn)
+                                            {
+                                                <a asp-controller="Quest" asp-action="Details" asp-route-id="@quest.Id">
+                                                    @quest.Title
+                                                </a>
+                                            }
+                                            else
+                                            {
                                                 @quest.Title
-                                            </a>
+                                            }
                                         </td>
                                         <td class="text-muted small">
                                             @quest.Date?.ToString("MMM dd, yyyy")

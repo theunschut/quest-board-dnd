@@ -4,6 +4,7 @@ using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.Constants;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.ContactViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.WebUtilities;
 namespace QuestBoard.Service.Controllers.Contacts
 {
     [Authorize]
+    [BoardPage(BoardPage.Contacts)]
     public class ContactsController(
         IContactService contactService,
         IContactCategoryService contactCategoryService,

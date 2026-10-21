@@ -1,7 +1,10 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
+using QuestBoard.Service.Extensions;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.CalendarViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.QuestBoard;
 
 [Authorize]
+[BoardPage(BoardPage.Calendar)]
 public class CalendarController(
     IQuestService questService,
     IEventService eventService,
@@ -17,7 +21,8 @@ public class CalendarController(
     IActiveGroupContext activeGroupContext,
     IBoardTypeResolver boardTypeResolver,
     IBoardClock boardClock,
-    ILinkedCalendarService linkedCalendarService) : Controller
+    ILinkedCalendarService linkedCalendarService,
+    IBoardPageResolver boardPageResolver) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int? year = null, int? month = null, CancellationToken token = default)
@@ -41,12 +46,21 @@ public class CalendarController(
 
         // A campaign board's calendar is an events-only surface, so its quests are never
         // loaded rather than loaded and hidden -- a quest that is never fetched cannot leak
-        // through a view, a partial or a future caller. A board type that cannot be resolved
-        // keeps the both-kinds behaviour rather than guessing: an unresolved board type means
-        // no active board is selected, in which case the fail-closed board query filter
-        // already returns no rows, so keeping the behaviour cannot expose anything.
+        // through a view, a partial or a future caller. A board that does not use the quest list
+        // never loads its own quests either, so no link into a quest page can appear on either
+        // layout; the rows stay in the database and come back when the page is switched on. A
+        // board type that cannot be resolved keeps the both-kinds behaviour rather than
+        // guessing: an unresolved board type means no active board is selected, in which case
+        // the fail-closed board query filter already returns no rows, so keeping the behaviour
+        // cannot expose anything.
         var activeBoardType = await boardTypeResolver.GetBoardTypeAsync(token);
-        var includeQuests = activeBoardType != BoardType.Campaign;
+        var pages = await boardPageResolver.GetAsync(token);
+        var includeQuests = activeBoardType != BoardType.Campaign && pages.Serves(BoardPage.Quests);
+
+        // The same holds for events: a board that does not use the Events page never loads its own
+        // events or its low-runway series, so no link into an event or series page can appear on
+        // either layout. The rows stay in the database and come back when the page is switched on.
+        var includeEvents = pages.Serves(BoardPage.Events);
 
         // The viewer's tier decides whether DM-only sessions are loaded at all.
         var isDmTier = await IsDmTierAsync();
@@ -55,7 +69,9 @@ public class CalendarController(
         IList<Quest> allQuests = includeQuests
             ? await questService.GetQuestsForCalendarAsync(isDmTier, token)
             : [];
-        var allEvents = await eventService.GetEventsForCalendarAsync(token);
+        IList<Event> allEvents = includeEvents
+            ? await eventService.GetEventsForCalendarAsync(token)
+            : [];
 
         // Create calendar model
         var calendarModel = new CalendarViewModel
@@ -86,7 +102,7 @@ public class CalendarController(
 
         // A player never triggers the runway query and never receives series titles they
         // have no action to take on.
-        if (calendarModel.CanManage)
+        if (calendarModel.CanManage && includeEvents)
         {
             calendarModel.SeriesBelowRunway = [.. await eventSeriesService.GetSeriesBelowRunwayAsync(token)];
         }

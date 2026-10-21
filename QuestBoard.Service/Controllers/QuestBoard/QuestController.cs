@@ -4,6 +4,8 @@ using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.QuestBoard;
+using QuestBoard.Service.Extensions;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.CalendarViewModels;
 using QuestBoard.Service.ViewModels.QuestViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace QuestBoard.Service.Controllers.QuestBoard;
 
+[BoardPage(BoardPage.Quests)]
 public class QuestController(
     IUserService userService,
     IMapper mapper,
@@ -22,7 +25,8 @@ public class QuestController(
     IGroupService groupService,
     IBoardClock boardClock,
     ILinkedCalendarService linkedCalendarService,
-    IMoveControlService moveControlService
+    IMoveControlService moveControlService,
+    IBoardPageResolver boardPageResolver
     ) : Controller
 {
     [HttpGet]
@@ -452,23 +456,35 @@ public class QuestController(
             return RedirectToAction("Details", new { id = questId });
         }
 
-        // Use the authenticated user instead of form input
-        signup.Player = user;
-        signup.Quest = quest;
-        signup.Role = (SignupRole)selectedRole; // Set role from form
+        // Build the signup from the few values the form is meant to supply. Binding the posted
+        // object wholesale would let a crafted request pre-select itself onto the roster, backdate
+        // its place in the queue, attach an unsaved character graph that skips the character
+        // check below, or cast votes on another quest's dates.
+        var questDateIds = quest.ProposedDates.Select(pd => pd.Id).ToHashSet();
+        var newSignup = new PlayerSignup
+        {
+            Player = user,
+            Quest = quest,
+            Role = (SignupRole)selectedRole,
+            CharacterId = signup.CharacterId,
+            DateVotes = signup.DateVotes
+                .Where(v => questDateIds.Contains(v.ProposedDateId))
+                .DistinctBy(v => v.ProposedDateId)
+                .Select(v => new PlayerDateVote { ProposedDateId = v.ProposedDateId, Vote = v.Vote })
+                .ToList()
+        };
 
-        
         // Validate character if selected. Ownership and board scope are the only gates — a
         // player may bring a Retired or Dead character to a signup, matching the
         // character-change path and the full list the pickers offer.
-        if (signup.CharacterId.HasValue
-            && await ResolveCharacterAssignmentAsync(signup.CharacterId.Value, user.Id) != CharacterAssignment.Assignable)
+        if (newSignup.CharacterId.HasValue
+            && await ResolveCharacterAssignmentAsync(newSignup.CharacterId.Value, user.Id) != CharacterAssignment.Assignable)
         {
             TempData["Error"] = "Invalid character selection.";
             return RedirectToAction("Details", new { id = questId });
         }
 
-        await playerSignupService.AddAsync(signup);
+        await playerSignupService.AddAsync(newSignup);
 
         return RedirectToAction("Details", new { id = questId });
     }
@@ -573,6 +589,7 @@ public class QuestController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize]
+    [BoardPage(BoardPage.Characters)]
     public async Task<IActionResult> UpdateSignupCharacter(int questId, int? characterId)
     {
         var quest = await questService.GetQuestWithDetailsAsync(questId);
@@ -1148,6 +1165,13 @@ public class QuestController(
     // character from another board cannot be produced by any legitimate use of the pickers.
     private async Task<CharacterAssignment> ResolveCharacterAssignmentAsync(int characterId, int userId)
     {
+        // A board that does not use characters cannot attach one to a signup, even from a stale
+        // or crafted form.
+        if (!(await boardPageResolver.GetAsync()).Serves(BoardPage.Characters))
+        {
+            return CharacterAssignment.NotAssignable;
+        }
+
         var character = await characterService.GetCharacterWithDetailsAsync(characterId);
         if (character == null)
         {

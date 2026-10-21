@@ -1,4 +1,6 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.PlayersViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.QuestBoard
 {
     [Authorize]
+    [BoardPage(BoardPage.Players)]
     public class PlayersController(IUserService service) : Controller
     {
         [HttpGet]

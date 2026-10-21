@@ -217,4 +217,30 @@ internal class EventRepository(QuestBoardContext dbContext, IMapper mapper) : Ba
             })
             .ToListAsync(token);
     }
+
+    /// <inheritdoc/>
+    public async Task<UpcomingEventCount> CountUpcomingForBoardAsync(int groupId, DateOnly today, CancellationToken token = default)
+    {
+        // A super admin edits a board other than the active one, so the ambient filter is
+        // bypassed and the explicit group id keeps the count on the board being edited. Only
+        // scalars leave this method, and nothing is written.
+        var upcoming = DbContext.Events
+            .IgnoreQueryFilters()
+            .Where(e => e.GroupId == groupId && e.Date >= today);
+
+        var total = await upcoming.CountAsync(token);
+        var cancelled = await upcoming.CountAsync(e => e.CancelledAt != null, token);
+
+        return new UpcomingEventCount(total, cancelled);
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> CountActiveSeriesForBoardAsync(int groupId, DateOnly today, CancellationToken token = default)
+    {
+        // Bypassed for the same reason as the event count: the board being edited is not the
+        // active one, and the explicit group id keeps the count on it.
+        return await DbContext.EventSeries
+            .IgnoreQueryFilters()
+            .CountAsync(s => s.GroupId == groupId && (s.EndDate == null || s.EndDate >= today), token);
+    }
 }

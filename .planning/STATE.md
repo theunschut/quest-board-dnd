@@ -1,46 +1,45 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 92
+current_phase: 93
 status: completed
-stopped_at: Phase 92 merged as #161 and tagged v5.6.0
-last_updated: "2026-10-19T09:21:57.718Z"
-last_activity: 2026-10-19
-last_activity_desc: Phase 92 complete — UAT 4/4, review fixes, security 37/37, PR #161
+stopped_at: Phase 93 complete — all phases complete
+last_updated: "2026-10-21T14:49:49.221Z"
+last_activity: 2026-10-21
+last_activity_desc: Phase 93 complete
+state_head: 2777f4082e0b974492f8b2ba0a271ba5d73118f8
 progress:
-  total_phases: 21
+  total_phases: 22
   completed_phases: 18
-  total_plans: 148
-  completed_plans: 139
-  percent: 86
-current_phase_name: move-a-quest-or-event-to-a-linked-board
-state_head: 68538b0ce18ea5e428834cca65a9672b8a456086
+  total_plans: 163
+  completed_plans: 154
+  percent: 82
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
+See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 92 merged (#161) and tagged v5.6.0; remaining open phases are 78, 79, 81 and 90
+**Current focus:** Phase 93 complete; remaining open phases are 78, 79 and 90
 
 ## Current Position
 
-Phase: 92
+Phase: 93
 Plan: Not started
-Status: Phase 92 complete — open phases remain (see below)
-Last activity: 2026-10-19 - Phase 81 review fixes and security audit; completed quick task 261019-plu: bound contact tag parsing before validation
+Status: Phase 93 complete — open phases remain (78, 79, 90)
+Last activity: 2026-10-21 — Phase 93 complete (15/15 plans, verification passed, security 49/49, real-phone checks deferred)
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
-none executed), Phase 79 — Character and Contact Link Cards and Phase 81 — Contact Tags and
-Filtering (not yet planned) are still open. Every other phase in the 72–89 range is complete with a
-verification report. Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, and
+none executed) and Phase 79 — Character and Contact Link Cards (not yet planned) are still open.
+Every other phase in the 72–89 range is complete with a verification report, including Phase 81 —
+Contact Tags and Filtering (executed 2026-08-31; review fixes and security audit closed 2026-10-19, v5.6.3). Phase 90 (Server OS and Database Platform Upgrade) is not yet discussed, and
 Phases 91 and 92 are complete. `phase.complete` again reported Phase 92 as the last phase only because it
-is the highest number.
+is the highest number, and it did the same for Phase 93.
 
 Note: `roadmap.analyze` reports `roadmap_complete: false` for all 16 phases, including ones
 shipped milestones ago. This ROADMAP.md records completion as `**Plans:** N/N plans complete`
@@ -73,6 +72,9 @@ introduced by Phase 87.
 | Phase 88 P04 | 4 min | 2 tasks | 2 files |
 | Phase 88 P05 | 12 min | 2 tasks | 19 files |
 | Phase 88 P09 | 8 min | 3 tasks | 2 files |
+| Phase 93 P01 | 14 min | 2 tasks | 16 files |
+| Phase 93 P10 | 12 min | 2 tasks | 13 files |
+| Phase 93 P11 | 18 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -118,6 +120,15 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 92]: The operator, working remotely, asked the orchestrator to start the local `mssql-dev` container and to run UAT in the in-app browser. Test data was created through the real UI (two "UAT test link" sets, quests 991001 and 991002, event 1) and left in place at the operator's request
 - [Phase 92]: Separate side sessions could not be started from this orchestrator (the app refused the start), so the review fixes ran in-session through `gsd-code-fixer` on the milestone branch
 - [Phase 91]: Desktop text inside a `.modern-card` must not be a visible `<span>`: `modern-card.css` forces cream with `!important` on every span in a card. This made linked chip text unreadable, and markup tests and an emulated-browser check both missed it; only the UI audit caught it. Static guard facts now pin it for the linked partial and the day count
+- [Phase 93]: Page availability stored as a disabled-pages bit mask on Groups so the CLR default means nothing off and the quest list as home
+- [Phase 93]: Page gate is a global resource filter reading [BoardPage] metadata; it passes through when no board type resolves
+- [Phase 93]: Quest list is switchable; switching it off is refused while any quest is live (not closed, not yet played) or while it is the home page
+- [Phase 93]: Live-quest count only runs on the Quests on-to-off transition and is pinned to HasBeenPlayed by a parity test
+- [Phase 93]: 93-11: end-to-end walk posts the Platform Edit form from its rendered fields rather than hand-written names, so a form field rename breaks the walk
+- [Phase 93]: The UI safety gate blocked after wave 2 because no UI-SPEC existed; the operator chose to generate one retroactively, and plan 06 followed its refusal markup (red lines with an icon in a role=alert wrapper) over the plan's bare validation summary
+- [Phase 93]: A stale Platform Edit form is refused by comparing the posted rendered mask and home with the stored ones (no concurrency token, no migration); the count-then-save window stays an accepted residual
+- [Phase 93]: The open-signup POST now builds the signup server-side from CharacterId and this quest's date votes only, closing T-93-28 and a pre-existing hole that let a player post IsSelected, SignupTime and votes on another quest's dates
+- [Phase 93]: The operator accepted the real-phone checks as a risk deferred to a todo rather than holding the phase for them
 
 ### Roadmap Evolution
 
@@ -139,8 +150,11 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 90 added 2026-10-06: Server OS and Database Platform Upgrade -- move the App CT (Ubuntu 24.04) and the SQL CT (Ubuntu 22.04 + SQL Server 2022) to supported OS and database versions, with target versions decided in discuss-phase. Raised by the operator after CI moved to `ubuntu-26.04` (PR #159). Research in `.planning/research/ubuntu-26.04-ct-upgrade.md`: the Proxmox host (PVE 9.2.5, pve-container 6.1.11) already supports 26.04 guests; .NET 10 is in the 26.04 archive; SQL Server 2022 supports only Ubuntu 20.04/22.04 and SQL Server 2025 supports 22.04/24.04 but not 26.04. The hard deadline is the SQL CT leaving 22.04 before its standard support ends (about mid-2027).
 - Phase 91 added 2026-10-15: Linked Boards with a Shared Calendar -- a super admin links two or more boards of the same `BoardType` in the Platform area, and `/calendar` on each linked board then shows every linked board's events and quests, marked by board. Raised by the operator: the same players run several campaigns as separate boards, and a new one-shot board must not book a date the existing board already has. Scoping found `_Calendar` rendered by desktop `Calendar/Index` and by the Quest Details date-vote calendar on both layouts, while `Calendar/Index.Mobile.cshtml` builds its own agenda list, so the change reaches past the partial. Same-type-only holds for good because `BoardType` cannot be edited after creation. Visibility for non-members of a linked board, the link model and whether the date-vote calendar also shows linked dates are left to discuss-phase.
 - Phase 92 added 2026-10-15: Move a Quest or Event to a Linked Board -- a super admin moves an existing quest or event to another board in the same link group, from its Details page. Raised by the operator at the end of Phase 91's discussion and kept out of Phase 91 on purpose, because that phase is read-only and a move is a cross-board write. Open questions for discuss-phase: signups tied to board-scoped characters and to players who may not be on the target board, events in a recurring series, the feed revision a board change raises, and whether people are notified.
+- Phase 93 added 2026-10-20: Per-Board Page Selection and Home Page -- in the Platform area a super admin chooses which pages each board offers (Shop, Contacts, Players, Characters, Quest Log, Events, Calendar and the like) and which page the board opens on. The quest list stays the default, and at least one board can open on `/calendar`. Raised by the operator. Scoping found that boards have no per-board settings yet, and today's board-type gating lives only in the two layouts' menus: `ShopController` and `PlayersController` have no board-type check, so `/shop` and `/players` still open on a Campaign board when typed. The home page has to reach `HomeController.Index`, the navbar brand in both layouts, and the `Quest/Index` fallbacks in `GroupPickerController` and `MoveController`. Open questions for discuss-phase: which pages can be switched off, how toggles relate to board type, what a switched-off URL returns, links and dependent flows (signup characters, gold) that point into a switched-off page, whether the calendar feed and My Agenda follow the toggles, and whether the home page is per board or shared by a linked set.
 
 ### Pending Todos
+
+- `2026-10-21-phase-93-real-phone-checks.md` — the four deferred Phase 93 real-phone checks, with the emulated findings.
 
 None captured for v8.0. Two small deferred toolbar features (EDITOR-07/08/09 — strikethrough, horizontal rule, cheatsheet link) logged in `.planning/PROJECT.md` Requirements → Active for a future milestone to pick up if requested.
 
@@ -180,6 +194,11 @@ New as of 2026-10-17 (Phase 91):
 - **Board edits can now fail in a narrow race.** With the concurrency token, a board-settings edit fails on save if a super admin links or unlinks that same board between the edit's read and its write. No data is lost and resubmitting works.
 - **The local test suite can fail en masse with `inotify` errors.** The per-user limit is 256 instances, and other processes (a `Cabinet.BrowserTests` run, desktop sessions) can exhaust it. Re-run with `DOTNET_USE_POLLING_FILE_WATCHER=1`; it is not a code failure.
 
+New as of 2026-10-21 (Phase 93):
+
+- **Four real-phone checks are deferred** (`93-UAT.md`, todo `2026-10-21-phase-93-real-phone-checks.md`). A local SQL Server run in the in-app browser confirmed the migration, the gate, home routing, both refusals and the 375px mobile Edit layout, and found the mobile refusal red dimmer than desktop and the mobile switches in default blue.
+- **Phase 93 code-review info items IN-01..IN-05 are open, all optional** (see `93-REVIEW.md`); the UI review's three warnings are in `93-UI-REVIEW.md`. Nyquist validation (`/gsd-validate-phase 93`) was not run.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -208,11 +227,12 @@ Items acknowledged and carried forward across milestone closes.
 | requirement | CALFEED real-device subscription check — a real phone actually subscribing via iOS Calendar, Google Calendar and Outlook, what iOS names the calendar, refresh latency, and a camera QR scan | Partly verified 2026-09-30 during Phase 88's production check (v5.3.2; see `88-UAT.md`). **Google Calendar:** a real subscription fetches and renders the board's times. An entry it already held did not correct itself in the time waited, and only a new subscription address fixed it, because Google caches a subscribed calendar per address. **Apple Calendar:** a direct iPhone subscription fetches and renders the zoned entries (confirmed with Time Zone Override). **Still unobserved:** Outlook, what iOS names the calendar, a camera QR scan, and any refresh latency. No latency figure was measured, and none may be promised in copy | v9.0, Phase 84 (updated Phase 88) |
 | verification | Phase 87 board-switch banner on a physical phone — the mobile pass used a Pixel 8 user-agent override at 375x812, and this codebase selects mobile views by user agent rather than viewport, so emulation never exercises the real twin | Deferred — operator approved conditionally ("approved for now"); three defects the full suite missed were already found by the UA-override pass, so the surface has a demonstrated history of failing only in the browser | v9.0, Phase 87 |
 | verification | Phase 87 group-picker skip path, live, after a lapsed session | Pending operator re-check once the fix deploys. This was recorded as unreachable from the operator's SuperAdmin account because the skip was gated on `!isSuperAdmin`. The operator then reached it anyway on 2026-09-28 — a lapsed session plus a click on a quest from their own board landed on the picker — which exposed the gate as a bug contradicting D-12 rather than a limit of the check. Gate removed; the skip now runs for SuperAdmins on boards they belong to, and a new integration fact confirms a SuperAdmin is still shown the picker for a board they are not a member of. The operator's own account is now a valid test of the path | v9.0, Phase 87 |
+| verification | Phase 93 real-phone checks — Platform Edit switch rows, Move picker long names, a trimmed board's menus and pages, and mobile refusal-line legibility | Deferred — operator accepted as a risk at phase close ("it's an accepted risk/todo for next phase"); emulated-UA run already done, see the todo | v9.0, Phase 93 |
 
 ## Session Continuity
 
-Last session: 2026-10-19
-Stopped at: Phase 92 merged as #161 (merge commit 5dc7d48c) and tagged v5.6.0; release awaiting deploy approval
+Last session: 2026-10-21T19:00:00.000Z
+Stopped at: Phase 93 complete; PR to main next
 Resume file: None
 
 ## Operator Next Steps
@@ -221,10 +241,10 @@ Resume file: None
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
 - Check the board-switch banner on a real phone; the mobile pass used a user-agent override, and this codebase selects mobile views by user agent rather than viewport
-- Approve the `deploy` environment for v5.6.2 (quick task 261019-jba — DM Controls card on desktop Quest Manage, merged as #163 and tagged on merge commit 2925e321); v5.6.1 (#162) is live in production
+- Approve the `deploy` environment for v5.6.3 (Phase 81 follow-up — review fixes, security audit, tag-field bound; merged as #164 and tagged on merge commit 0e3d706a); v5.6.2 (#163) is live in production
 - `mssql-dev` is running and the local database holds Phase 92 test data (two "UAT test link" sets, quests 991001/991002, event 1) — kept on purpose
 - Phase 92 was not run through `/gsd-validate-phase 92` or `/gsd-ui-review 92`; both are optional
 - Optionally pin the remaining `ubuntu-latest` CI jobs before 2026-10-19 (follow-up task offered in the Phase 89 session)
 - Releases are now cut by tagging `main` and approving the `deploy` environment; the CT installs within ~5 minutes. When an outcome mail says an installer update is available, run `setup` from that release as root (see `docs/deploy.md`)
-- Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79, 81 and 90 are roadmapped but unplanned (90: discuss first — `/gsd-discuss-phase 90`)
+- Phase 78 (Link Preview Foundation and Quest Cards) is planned with 9 plans and ready to execute; Phases 79 and 90 are roadmapped but unplanned (90: discuss first — `/gsd-discuss-phase 90`)
 - v9.0 has no fixed end state — run `/gsd-new-milestone` only when you decide to cut it

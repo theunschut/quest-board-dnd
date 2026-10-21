@@ -1,9 +1,9 @@
 ---
 phase: 81
 slug: contact-tags-and-filtering
-status: draft
+status: validated
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-08-30
 ---
 
@@ -93,3 +93,5 @@ Test framework is already installed and configured — Wave 0 is new test files 
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** signed by planner — mapped to 81-01 … 81-08 task ids
+
+**Post-execution reconciliation (2026-10-19):** every Wave 0 item above is present (all checked), the phase verification passed 17/17, and the full suite is green after the follow-up fixes (1107 unit + 1328 integration, 11 SQL-gated skips). The frontmatter was left at `draft` / `wave_0_complete: false` when the phase closed on 2026-08-31 and is reconciled here. `/gsd-validate-phase 81` was not re-run as a separate audit.

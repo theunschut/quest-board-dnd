@@ -4,6 +4,8 @@ using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Services;
+using QuestBoard.Service.Extensions;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.EventViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +14,7 @@ using Microsoft.Extensions.Options;
 namespace QuestBoard.Service.Controllers.Events;
 
 [Authorize]
+[BoardPage(BoardPage.Events)]
 public class EventsController(
     IEventService eventService,
     IUserService userService,
@@ -22,7 +25,8 @@ public class EventsController(
     IEventSeriesService eventSeriesService,
     IOptions<EventsOverviewOptions> overviewOptions,
     IBoardClock boardClock,
-    IMoveControlService moveControlService) : Controller
+    IMoveControlService moveControlService,
+    IBoardPageResolver boardPageResolver) : Controller
 {
     // Read-only and available to every board member: the same per-event availability is
     // already visible one event at a time on Details, so gating the aggregate would make
@@ -154,7 +158,7 @@ public class EventsController(
 
         TempData["Success"] = "Event created successfully.";
 
-        return RedirectToCalendarMonth(newEvent.Date);
+        return await RedirectAfterSaveAsync(newEvent.Date);
     }
 
     // Split out of the one-off Create branch so that branch stays byte-for-byte the simple
@@ -197,7 +201,7 @@ public class EventsController(
 
             TempData["Success"] = "Series created successfully.";
 
-            return RedirectToCalendarMonth(redirectDate);
+            return await RedirectAfterSaveAsync(redirectDate);
         }
         catch (Exception)
         {
@@ -321,7 +325,7 @@ public class EventsController(
             TempData["Success"] = "Event updated successfully.";
         }
 
-        return RedirectToCalendarMonth(existingEvent.Date);
+        return await RedirectAfterSaveAsync(existingEvent.Date);
     }
 
     [HttpPost]
@@ -387,7 +391,7 @@ public class EventsController(
 
         TempData["Success"] = "Event deleted successfully.";
 
-        return RedirectToCalendarMonth(eventDate);
+        return await RedirectAfterSaveAsync(eventDate);
     }
 
     [HttpPost]
@@ -455,9 +459,17 @@ public class EventsController(
     // After any change the Dungeon Master lands on the calendar showing the month the event is
     // actually in, because dumping them on the current month after creating a January event
     // reads as a silent failure. Year and Month come straight off the date type with no
-    // conversion.
-    private IActionResult RedirectToCalendarMonth(DateOnly date) =>
-        RedirectToAction("Index", "Calendar", new { year = date.Year, month = date.Month });
+    // conversion. A board that does not use the calendar would turn that landing into a refusal
+    // toast after every successful save, so it lands on the Events list instead -- Events is
+    // necessarily on there, because every action that gets here sits behind the Events page gate.
+    private async Task<IActionResult> RedirectAfterSaveAsync(DateOnly date)
+    {
+        var pages = await boardPageResolver.GetAsync();
+
+        return pages.Serves(BoardPage.Calendar)
+            ? RedirectToAction("Index", "Calendar", new { year = date.Year, month = date.Month })
+            : RedirectToAction("Index", "Events");
+    }
 
     // The read filter already hides another board's schedule, and this explicit comparison is
     // a deliberate second layer so a weakened filter still cannot let an event be saved against

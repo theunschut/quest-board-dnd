@@ -1,6 +1,7 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.QuestLogViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.QuestBoard;
 
 [Authorize]
+[BoardPage(BoardPage.QuestLog)]
 public class QuestLogController(
     IUserService userService,
     IQuestService questService,

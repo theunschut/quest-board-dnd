@@ -1,6 +1,7 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.ShopViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.Shop;
 
 [Authorize]
+[BoardPage(BoardPage.Shop)]
 public class ShopController(IShopService shopService, IUserService userService, IMapper mapper) : Controller
 {
     [HttpGet]

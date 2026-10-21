@@ -1,5 +1,6 @@
 using QuestBoard.Repository.Automapper;
 using QuestBoard.Service.Extensions;
+using QuestBoard.Service.Filters;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Repository.Entities;
@@ -34,7 +35,7 @@ builder.Services.Configure<KestrelServerOptions>(options =>
 });
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options => options.Filters.Add<BoardPageGateFilter>());
 builder.Services.Configure<RazorViewEngineOptions>(options =>
 {
     options.ViewLocationExpanders.Add(new MobileViewLocationExpander());
@@ -256,6 +257,9 @@ builder.Services.AddScoped<IActiveBoardSwitcher, ActiveBoardSwitcherService>();
 // on IActiveGroupContext. Resolving BoardType via ActiveGroupContextService would create a
 // circular DI dependency (QuestBoardContext -> IActiveGroupContext -> IGroupService -> QuestBoardContext).
 builder.Services.AddScoped<IBoardTypeResolver, BoardTypeResolver>();
+
+// Sits beside the board-type resolver for the same reason: it needs group data.
+builder.Services.AddScoped<IBoardPageResolver, BoardPageResolver>();
 
 if (!builder.Environment.IsEnvironment("Testing"))
 {

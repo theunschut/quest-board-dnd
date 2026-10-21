@@ -14,5 +14,11 @@ public enum MoveStatus
     DungeonMasterNotEligible,
     Changed,
     Moved,
-    Failed
+    Failed,
+
+    /// <summary>
+    /// The target board does not use this kind of entry: its page for quests or events is switched
+    /// off, so moving the entry there would leave it pointing into a page that board refuses.
+    /// </summary>
+    TargetPageOff
 }

@@ -421,4 +421,22 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
             .Include(q => q.OriginalQuest)
             .Include(q => q.FollowUpQuest);
     }
+
+    /// <inheritdoc/>
+    public async Task<int> CountLiveForBoardAsync(int groupId, DateTime boardNow, CancellationToken token = default)
+    {
+        // The board being edited is not the active one, so the ambient filter is bypassed and the
+        // explicit group id keeps the count on that board. The cutoff is the one the quest list
+        // queries use: a finalized quest stays on the board until a full day after its game night,
+        // measured against the board's own clock, so a quest the list still shows is never left
+        // out of the count. A finalized quest with no date cannot be placed in time and is counted
+        // as live. Only a scalar leaves this method and nothing is written.
+        var oneDayAgo = boardNow.AddDays(-1);
+
+        return await DbContext.Quests
+            .IgnoreQueryFilters()
+            .CountAsync(q => q.GroupId == groupId
+                && !q.IsClosed
+                && (!q.IsFinalized || q.FinalizedDate == null || q.FinalizedDate > oneDayAgo), token);
+    }
 }

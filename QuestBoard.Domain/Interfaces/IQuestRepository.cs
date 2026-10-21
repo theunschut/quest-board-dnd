@@ -123,4 +123,15 @@ public interface IQuestRepository : IBaseRepository<Quest>
     /// returns an empty list rather than widening.
     /// </summary>
     Task<IList<LinkedQuestEntry>> GetLinkedQuestsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateTime fromInclusive, DateTime toExclusive, CancellationToken token = default);
+
+    /// <summary>
+    /// Counts the quests on the given board that the quest board still lists: not closed, and
+    /// either not finalized or finalized less than a day before <paramref name="boardNow"/>. This
+    /// is the cutoff the quest list queries apply, so a quest that is still visible on the board
+    /// is always counted, including the evening-before tail that the date-based has-been-played
+    /// rule would already treat as played. The board is named explicitly because the caller may be
+    /// editing a board other than the active one. <paramref name="boardNow"/> is the board's own
+    /// current time, so no clock is read here.
+    /// </summary>
+    Task<int> CountLiveForBoardAsync(int groupId, DateTime boardNow, CancellationToken token = default);
 }

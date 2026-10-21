@@ -4,6 +4,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models.BoardMove;
 using QuestBoard.Service.Constants;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.Helpers;
 using QuestBoard.Service.ViewModels.MoveViewModels;
 
@@ -16,6 +17,7 @@ public class MoveController(
     IUserService userService) : Controller
 {
     [HttpGet]
+    [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> Quest(int id, int? targetBoardId, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
@@ -34,12 +36,17 @@ public class MoveController(
                 TempData["Error"] = "This board is not linked to any other board, so there is nowhere to move this.";
                 return RedirectToAction("Details", "Quest", new { id });
 
+            case MoveStatus.TargetPageOff:
+                TempData["Error"] = $"Quests aren't used on {preview.Target?.Name}, so nothing can be moved there.";
+                return RedirectToAction("Details", "Quest", new { id });
+
             default:
                 return View("Index", new MovePageViewModel { Preview = preview });
         }
     }
 
     [HttpPost, ActionName("Quest"), ValidateAntiForgeryToken]
+    [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> ConfirmQuest(int id, int targetBoardId, string? stamp, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
@@ -64,6 +71,7 @@ public class MoveController(
                     MoveStatus.NoLinkedBoards => "This board is not linked to any other board, so there is nowhere to move this.",
                     MoveStatus.TargetNotLinked => "That board is not linked to this one, so nothing was moved.",
                     MoveStatus.DungeonMasterNotEligible => $"{outcome.DmName} is not a Dungeon Master or Admin on {outcome.Target?.Name}, so the quest was not moved.",
+                    MoveStatus.TargetPageOff => $"Quests aren't used on {outcome.Target?.Name}, so nothing was moved.",
                     _ => "The move did not complete and nothing was changed. Try again."
                 };
                 return RedirectToAction("Details", "Quest", new { id });
@@ -71,6 +79,7 @@ public class MoveController(
     }
 
     [HttpGet]
+    [BoardPage(BoardPage.Events)]
     public async Task<IActionResult> Event(int id, int? targetBoardId, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
@@ -89,12 +98,17 @@ public class MoveController(
                 TempData["Error"] = "This board is not linked to any other board, so there is nowhere to move this.";
                 return RedirectToAction("Details", "Events", new { id });
 
+            case MoveStatus.TargetPageOff:
+                TempData["Error"] = $"Events aren't used on {preview.Target?.Name}, so nothing can be moved there.";
+                return RedirectToAction("Details", "Events", new { id });
+
             default:
                 return View("Index", new MovePageViewModel { Preview = preview });
         }
     }
 
     [HttpPost, ActionName("Event"), ValidateAntiForgeryToken]
+    [BoardPage(BoardPage.Events)]
     public async Task<IActionResult> ConfirmEvent(int id, int targetBoardId, string? stamp, CancellationToken token = default)
     {
         var actor = await userService.GetUserAsync(User);
@@ -118,6 +132,7 @@ public class MoveController(
                     MoveStatus.Blocked => $"This event cannot be moved. {MoveCopy.ToastReason(outcome.BlockReason)}",
                     MoveStatus.NoLinkedBoards => "This board is not linked to any other board, so there is nowhere to move this.",
                     MoveStatus.TargetNotLinked => "That board is not linked to this one, so nothing was moved.",
+                    MoveStatus.TargetPageOff => $"Events aren't used on {outcome.Target?.Name}, so nothing was moved.",
                     _ => "The move did not complete and nothing was changed. Try again."
                 };
                 return RedirectToAction("Details", "Events", new { id });

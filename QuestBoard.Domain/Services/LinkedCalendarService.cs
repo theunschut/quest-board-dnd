@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 
@@ -60,11 +61,15 @@ internal class LinkedCalendarService(
             var board = boardsById[entry.GroupId];
             entry.BoardName = board.Name;
             entry.ViewerIsMember = board.ViewerIsMember;
+            // An entry from a board that no longer offers the page renders as text, the same way
+            // a non-member's entry does, so no link leads into a page that would refuse it.
+            entry.CanOpen = board.ViewerIsMember
+                && BoardPagePolicy.IsAvailable(linked.SetBoardType, board.DisabledPages, BoardPage.Events);
         }
 
         List<LinkedQuestEntry> quests = linked.SetBoardType == BoardType.Campaign
             ? []
-            : await GetVisibleQuestsAsync(boardsById, linkedIds, viewerIsSuperAdmin, fromInclusive, toExclusive, groupId, token);
+            : await GetVisibleQuestsAsync(boardsById, linked.SetBoardType, linkedIds, viewerIsSuperAdmin, fromInclusive, toExclusive, groupId, token);
 
         return new LinkedCalendarData
         {
@@ -78,6 +83,7 @@ internal class LinkedCalendarService(
     // its quests are never fetched rather than fetched and hidden; the caller skips this method.
     private async Task<List<LinkedQuestEntry>> GetVisibleQuestsAsync(
         Dictionary<int, LinkedBoard> boardsById,
+        BoardType setBoardType,
         List<int> linkedIds,
         bool viewerIsSuperAdmin,
         DateTime fromInclusive,
@@ -112,6 +118,8 @@ internal class LinkedCalendarService(
             var board = boardsById[entry.GroupId];
             entry.BoardName = board.Name;
             entry.ViewerIsMember = board.ViewerIsMember;
+            entry.CanOpen = board.ViewerIsMember
+                && BoardPagePolicy.IsAvailable(setBoardType, board.DisabledPages, BoardPage.Quests);
         }
 
         return visible;
