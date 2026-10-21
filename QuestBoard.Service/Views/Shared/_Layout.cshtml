@@ -2,7 +2,6 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Constants
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@inject IBoardTypeResolver BoardTypeResolver
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,12 +32,16 @@
     <link rel="stylesheet" href="~/css/move-entry.css" asp-append-version="true" />
 </head>
 <body class="d-flex flex-column min-vh-100 @ViewData["BodyClass"]">
+    @{
+        var pages = await BoardPages.GetAsync();
+        var homeRoute = BoardPageRoutes.HomeRoute(pages);
+    }
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-2">
             <div class="container-fluid px-3">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <a class="navbar-brand" asp-controller="Quest" asp-action="Index"><i class="fas fa-dice-d20"></i> D&D Quest Board</a>
+                    <a class="navbar-brand" asp-controller="@homeRoute.Controller" asp-action="@homeRoute.Action"><i class="fas fa-dice-d20"></i> D&D Quest Board</a>
                 }
                 else
                 {
@@ -48,9 +51,6 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbar">
-                    @{
-                        var activeBoardType = await BoardTypeResolver.GetBoardTypeAsync();
-                    }
                     <ul class="navbar-nav me-auto">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
@@ -67,11 +67,14 @@
                                                 <i class="fas fa-users-cog me-2"></i>User Management
                                             </a>
                                         </li>
+                                        @if (pages.Serves(BoardPage.Quests))
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="Admin" asp-action="Quests">
                                                 <i class="fas fa-scroll me-2"></i>Quest Management
                                             </a>
                                         </li>
+                                        }
                                         @if (User.IsInRole("SuperAdmin"))
                                         {
                                         <li>
@@ -95,22 +98,38 @@
                             @* DM-only navigation items *@
                             @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
                             {
+                                var showCreateQuest = pages.Serves(BoardPage.Quests);
+                                var showCreateEvent = pages.Serves(BoardPage.Events);
+                                var showBoardAvailability = pages.Allows(BoardPage.Events);
+                                var showManageShop = pages.Allows(BoardPage.Shop);
+                                var showEditProfile = pages.Allows(BoardPage.DungeonMasterProfile);
+
+                                @* A menu with nothing in it is worse than no menu, so the whole dropdown
+                                   goes when every item has been switched off for this board. *@
+                                if (showCreateQuest || showCreateEvent || showBoardAvailability || showManageShop || showEditProfile)
+                                {
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle text-danger" href="#" id="dungeonMasterDropdown" role="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-crown me-1"></i>Dungeon Master
                                     </a>
                                     <ul class="dropdown-menu">
+                                        @if (showCreateQuest)
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="Quest" asp-action="Create">
                                                 <i class="fas fa-scroll me-2"></i>Create Quest
                                             </a>
                                         </li>
+                                        }
+                                        @if (showCreateEvent)
+                                        {
                                         <li>
                                             <a class="dropdown-item" asp-controller="Events" asp-action="Create">
                                                 <i class="fas fa-calendar-plus me-2"></i>Create Event
                                             </a>
                                         </li>
-                                        @if (activeBoardType is BoardType.OneShot or BoardType.Campaign)
+                                        }
+                                        @if (showBoardAvailability)
                                         {
                                         <li>
                                             <a class="dropdown-item" asp-controller="Events" asp-action="Index">
@@ -118,7 +137,7 @@
                                             </a>
                                         </li>
                                         }
-                                        @if (activeBoardType == BoardType.OneShot)
+                                        @if (showManageShop)
                                         {
                                         <li>
                                             <a class="dropdown-item" asp-controller="ShopManagement" asp-action="Index">
@@ -126,7 +145,7 @@
                                             </a>
                                         </li>
                                         }
-                                        @if (activeBoardType == BoardType.OneShot)
+                                        @if (showEditProfile)
                                         {
                                         <li>
                                             <a class="dropdown-item" asp-controller="DungeonMaster" asp-action="EditProfile">
@@ -137,10 +156,21 @@
 
                                     </ul>
                                 </li>
+                                }
                             }
 
                             @* Available to all authenticated users *@
-                            @if (activeBoardType == BoardType.OneShot)
+                            @* The quest list is the front door unless the board chose another home, in which
+                               case it needs its own entry so it stays one click away. *@
+                            @if (pages is not null && pages.EffectiveHome != BoardPage.Quests && pages.IsAvailable(BoardPage.Quests))
+                            {
+                            <li class="nav-item">
+                                <a class="nav-link" id="nav-quests" asp-controller="Quest" asp-action="Index">
+                                    <i class="fas fa-scroll me-1"></i>Quests
+                                </a>
+                            </li>
+                            }
+                            @if (pages.Allows(BoardPage.Shop))
                             {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Shop" asp-action="Index">
@@ -148,22 +178,31 @@
                                 </a>
                             </li>
                             }
+                            @if (pages.Serves(BoardPage.QuestLog))
+                            {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="QuestLog" asp-action="Index">
                                     <i class="fas fa-book-open me-1"></i>Quest Log
                                 </a>
                             </li>
+                            }
+                            @if (pages.Serves(BoardPage.Characters))
+                            {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Characters" asp-action="Index">
                                     <i class="fas fa-people-group me-1"></i>Characters
                                 </a>
                             </li>
+                            }
+                            @if (pages.Serves(BoardPage.Contacts))
+                            {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Contacts" asp-action="Index">
                                     <i class="fas fa-address-book me-1"></i>Contacts
                                 </a>
                             </li>
-                            @if (activeBoardType == BoardType.OneShot)
+                            }
+                            @if (pages.Allows(BoardPage.Players))
                             {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Players" asp-action="Index">
@@ -177,10 +216,9 @@
                     <ul class="navbar-nav ms-auto">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            @* The calendar carries the recurring-session surfaces both board types depend
-                               on, so it is available whenever a board type has actually resolved; an
-                               unresolved board type is deliberately excluded rather than guessed at. *@
-                            if (activeBoardType is BoardType.OneShot or BoardType.Campaign)
+                            @* The calendar shows only when the board has resolved and offers it; an
+                               unresolved board is deliberately excluded rather than guessed at. *@
+                            if (pages.Allows(BoardPage.Calendar))
                             {
                                 <li class="nav-item">
                                     <a class="nav-link" asp-controller="Calendar" asp-action="Index">
