@@ -20,6 +20,7 @@ public class BoardPageGateMatrixTests : IClassFixture<WebApplicationFactoryBase>
     private const string ShopToast = "Shop isn't used on this board.";
     private const string PlayersToast = "The Players page isn't used on this board.";
     private const string DmProfileToast = "DM profiles aren't used on this board.";
+    private const string ContactsToast = "Contacts aren't used on this board.";
 
     private readonly WebApplicationFactoryBase _factory;
 
@@ -198,6 +199,73 @@ public class BoardPageGateMatrixTests : IClassFixture<WebApplicationFactoryBase>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken)).Should().NotBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("/Characters")]
+    [InlineData("/Characters/Create")]
+    public async Task Characters_Off_RedirectsToQuestListWithToast(string url)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Characters), BoardPage.Quests);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+
+        await AssertRefusedAsync(client, HttpMethod.Get, url, "/quests", CharactersToast);
+    }
+
+    [Theory]
+    [InlineData("/Characters")]
+    [InlineData("/Contacts")]
+    public async Task CharactersAndContacts_WithDefaultSettings_AreServed(string url)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+
+        var response = await client.GetAsync(url, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // Portraits render on quest pages whatever the Characters page's own switch says, so they stay open.
+    [Theory]
+    [InlineData("GetProfilePicture")]
+    [InlineData("GetCroppedPicture")]
+    public async Task CharacterPictures_WhenCharactersOff_AreStillServed(string action)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, owner) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+        var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, owner.Id, "Gate portrait character");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            ctx.Set<CharacterImageEntity>().Add(new CharacterImageEntity
+            {
+                Id = character.Id,
+                OriginalImageData = [1, 2, 3, 4],
+                CroppedImageData = [9, 9, 9, 9, 9]
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Characters), BoardPage.Quests);
+
+        var response = await client.GetAsync($"/Characters/{action}/{character.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken)).Should().NotBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("/Contacts", false)]
+    [InlineData("/ContactCategoryManagement", true)]
+    public async Task Contacts_Off_RedirectsToQuestListWithToast(string url, bool asDungeonMaster)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Contacts), BoardPage.Quests);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory);
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+        var client = asDungeonMaster ? dmClient : playerClient;
+
+        await AssertRefusedAsync(client, HttpMethod.Get, url, "/quests", ContactsToast);
     }
 
     private async Task<int> SeedSeriesAsync()
