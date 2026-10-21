@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 
@@ -11,8 +12,16 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// </summary>
 public class BoardPagePlatformTests : IClassFixture<WebApplicationFactoryBase>, IAsyncLifetime
 {
+    private const string MobileUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
+    private const string DesktopUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
     private const int OneShotBoardId = 1;
     private const int CampaignBoardId = 2;
+
+    public static TheoryData<string> UserAgents => new() { DesktopUserAgent, MobileUserAgent };
 
     private readonly WebApplicationFactoryBase _factory;
 
@@ -325,5 +334,129 @@ public class BoardPagePlatformTests : IClassFixture<WebApplicationFactoryBase>, 
         var created = await ctx.Groups.SingleAsync(g => g.Name == name, Token);
         created.DisabledPages.Should().Be(0);
         created.HomePage.Should().Be(0);
+    }
+
+    private async Task<string> GetEditHtmlAsync(HttpClient client, int boardId, string userAgent)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/platform/Group/Edit/{boardId}");
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+
+        var response = await client.SendAsync(request, Token);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync(Token));
+    }
+
+    private static string HomeSelect(string html)
+    {
+        var match = Regex.Match(html, "<select[^>]*name=\"HomePage\".*?</select>", RegexOptions.Singleline);
+        match.Success.Should().BeTrue("the form should carry a home page select");
+        return match.Value;
+    }
+
+    private static string SwitchInput(string html, BoardPage page)
+    {
+        var match = Regex.Match(html, $"<input[^>]*id=\"page-{page}\"[^>]*>");
+        match.Success.Should().BeTrue($"the form should carry a switch for {page}");
+        return match.Value;
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task EditForm_OneShotBoard_ShowsAPagesSectionWithEverySwitchAndAHomeSelect(string userAgent)
+    {
+        var client = await StartAsync();
+
+        var html = await GetEditHtmlAsync(client, OneShotBoardId, userAgent);
+
+        html.Should().Contain("Pages");
+        Regex.Matches(html, "form-check form-switch").Count.Should().Be(8);
+        foreach (var label in new[] { "Calendar", "Events", "Quest Log", "Characters", "Contacts", "Players", "Shop", "DM profile" })
+        {
+            html.Should().MatchRegex($@"form-check-label[^>]*>\s*{label}\s*</label>");
+        }
+
+        HomeSelect(html).Should().Contain(">Calendar</option>");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task EditForm_CampaignBoard_LocksTheShopPlayersAndDmProfileRows(string userAgent)
+    {
+        var client = await StartAsync(withCampaignBoard: true);
+
+        var html = await GetEditHtmlAsync(client, CampaignBoardId, userAgent);
+
+        Regex.Matches(html, @"Not available on Campaign boards\.").Count.Should().Be(3);
+        foreach (var page in new[] { BoardPage.Shop, BoardPage.Players, BoardPage.DungeonMasterProfile })
+        {
+            var input = SwitchInput(html, page);
+            input.Should().Contain("disabled");
+            input.Should().NotContain("checked");
+            input.Should().NotContain("name=");
+        }
+
+        var home = HomeSelect(html);
+        home.Should().NotContain(">Shop</option>");
+        home.Should().NotContain(">Players</option>");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task EditForm_QuestListOff_LocksTheQuestLogRow(string userAgent)
+    {
+        var client = await StartAsync();
+        await BoardPageSeed.SetAsync(_factory, OneShotBoardId, BoardPageSet.Empty.With(BoardPage.Quests), BoardPage.Calendar);
+
+        var html = await GetEditHtmlAsync(client, OneShotBoardId, userAgent);
+
+        html.Should().Contain("Needs the quest list");
+        SwitchInput(html, BoardPage.QuestLog).Should().Contain("disabled");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task EditForm_NeverOffersTheDmProfileAsAHome(string userAgent)
+    {
+        var client = await StartAsync();
+
+        var html = await GetEditHtmlAsync(client, OneShotBoardId, userAgent);
+
+        HomeSelect(html).Should().NotContain("DM profile");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task EditForm_RenderedFieldNames_RoundTripThroughAPost(string userAgent)
+    {
+        var client = await StartAsync();
+        var html = await GetEditHtmlAsync(client, OneShotBoardId, userAgent);
+
+        // What a browser sends: the hidden page name for each unlocked row, the checkbox value
+        // when it is ticked, and the hidden false that always follows it.
+        var fields = new List<(string Key, string Value)>();
+        var pageFields = Regex.Matches(html, @"<input[^>]*name=""(Pages\[\d+\]\.Page)""[^>]*value=""(\w+)""[^>]*>");
+        pageFields.Count.Should().Be(8);
+        foreach (Match field in pageFields)
+        {
+            var page = field.Groups[2].Value;
+            var enabledName = field.Groups[1].Value.Replace(".Page", ".Enabled");
+            fields.Add((field.Groups[1].Value, page));
+            if (page != nameof(BoardPage.Contacts))
+            {
+                fields.Add((enabledName, "true"));
+            }
+
+            fields.Add((enabledName, "false"));
+        }
+
+        fields.Add(("HomePage", nameof(BoardPage.Calendar)));
+
+        var response = await PostEditAsync(client, OneShotBoardId, "EuphoriaInn", [.. fields]);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var stored = await StoredSettingsAsync(OneShotBoardId);
+        stored.Disabled.Should().Be(BoardPageSet.Empty.With(BoardPage.Contacts).Mask);
+        stored.Home.Should().Be((int)BoardPage.Calendar);
     }
 }
