@@ -15,4 +15,7 @@ public class LinkedBoard
     public GroupRole? ViewerRole { get; set; }
 
     public bool ViewerIsMember => ViewerRole != null;
+
+    /// <summary>The pages this board has switched off; the empty set means it offers everything.</summary>
+    public BoardPageSet DisabledPages { get; set; }
 }

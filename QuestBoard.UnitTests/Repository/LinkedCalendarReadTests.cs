@@ -129,6 +129,36 @@ public class LinkedCalendarReadTests
     }
 
     [Fact]
+    public async Task GetLinkedBoardsForViewer_OtherBoardHasPagesSwitchedOff_CarriesItsDisabledPages()
+    {
+        var disabled = BoardPageSet.Empty.With(BoardPage.Events).With(BoardPage.Quests);
+        var database = await SeedBoardsAsync(adjust: g =>
+        {
+            if (g.Id == BoardB) g.DisabledPages = disabled.Mask;
+        });
+
+        await using var context = CreateContext(database);
+        var result = await CreateSetRepository(context).GetLinkedBoardsForViewerAsync(BoardA, ViewerId, TestContext.Current.CancellationToken);
+
+        var board = Assert.Single(result.Boards);
+        Assert.Equal(disabled, board.DisabledPages);
+        Assert.True(board.DisabledPages.Contains(BoardPage.Events));
+        Assert.False(board.DisabledPages.Contains(BoardPage.Shop));
+    }
+
+    [Fact]
+    public async Task GetLinkedBoardsForViewer_OtherBoardIsUnconfigured_CarriesTheEmptySet()
+    {
+        var database = await SeedBoardsAsync();
+
+        await using var context = CreateContext(database);
+        var result = await CreateSetRepository(context).GetLinkedBoardsForViewerAsync(BoardA, ViewerId, TestContext.Current.CancellationToken);
+
+        var board = Assert.Single(result.Boards);
+        Assert.Equal(BoardPageSet.Empty, board.DisabledPages);
+    }
+
+    [Fact]
     public async Task GetLinkedBoardsForViewer_ActiveBoardIsInNoSet_ReturnsNoBoards()
     {
         var database = await SeedBoardsAsync(adjust: g => g.LinkedBoardSetId = null);

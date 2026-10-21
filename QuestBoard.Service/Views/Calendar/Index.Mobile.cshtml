@@ -132,15 +132,17 @@
                     var eventModifiers = "agenda-linked-entry agenda-linked-entry--event" + (linkedEvent.IsCancelled ? " agenda-linked-entry--cancelled" : "");
                     Func<LinkedEventOnDay, IHtmlContent> eventBody = @<text>
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="agenda-linked-title"><i class="fas fa-calendar-day me-2" aria-hidden="true"></i>@if (item.Entry.ViewerIsMember) {<a class="row-nav-link" href="@eventUrl">@item.Entry.Title</a>} else {@item.Entry.Title}</span>
+                            <span class="agenda-linked-title"><i class="fas fa-calendar-day me-2" aria-hidden="true"></i>@if (item.Entry.CanOpen) {<a class="row-nav-link" href="@eventUrl">@item.Entry.Title</a>} else {@item.Entry.Title}</span>
                             <small class="agenda-linked-time flex-shrink-0 ms-2">@item.TimeLabel@if (item.Entry.IsCancelled) {<span class="visually-hidden"> Cancelled.</span>}</small>
                         </div>
                         <div class="agenda-linked-board"><i class="fas fa-link me-1" aria-hidden="true"></i><span class="fw-semibold">@item.Entry.BoardName</span></div>
                     </text>;
 
-                    @* A member's row navigates like the board's own rows; anyone else gets a plain
-                       row with no click handler and no link, because the details page would 404. *@
-                    if (linkedEvent.ViewerIsMember)
+                    @* A row navigates like the board's own rows only when the viewer can open the
+                       details page. Otherwise it is a plain row with no click handler and no link:
+                       either they are not a member of the owning board, where the page would 404, or
+                       that board no longer offers the page. *@
+                    if (linkedEvent.CanOpen)
                     {
                         <div class="@eventModifiers agenda-linked-entry--open"
                              onclick="window.location.href='@eventUrl'">@eventBody(eventOnDay)</div>
@@ -157,13 +159,13 @@
                     var questModifiers = "agenda-linked-entry agenda-linked-entry--quest " + (questOnDay.IsFinalized ? "agenda-linked-entry--finalized" : "agenda-linked-entry--proposed");
                     Func<LinkedQuestOnDay, IHtmlContent> questBody = @<text>
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="agenda-linked-title">@if (item.Entry.ViewerIsMember) {<a class="row-nav-link" href="@questUrl">@item.Entry.Title</a>} else {@item.Entry.Title}</span>
+                            <span class="agenda-linked-title">@if (item.Entry.CanOpen) {<a class="row-nav-link" href="@questUrl">@item.Entry.Title</a>} else {@item.Entry.Title}</span>
                             <small class="agenda-linked-time flex-shrink-0 ms-2">@item.TimeLabel<span class="visually-hidden">@(item.IsFinalized ? "Finalized." : "Proposed.")</span></small>
                         </div>
                         <div class="agenda-linked-board"><i class="fas fa-link me-1" aria-hidden="true"></i><span class="fw-semibold">@item.Entry.BoardName</span> · @item.Entry.DungeonMasterName</div>
                     </text>;
 
-                    if (linkedQuest.ViewerIsMember)
+                    if (linkedQuest.CanOpen)
                     {
                         <div class="@questModifiers agenda-linked-entry--open"
                              onclick="window.location.href='@questUrl'">@questBody(questOnDay)</div>

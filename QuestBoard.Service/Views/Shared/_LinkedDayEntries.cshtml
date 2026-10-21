@@ -3,8 +3,9 @@
 @*
     Form-free, read-only markup for the entries other boards in the linked set place on one day.
     It takes its own model and never touches the board's own entries. A member of the owning
-    board gets one plain link to that board's ordinary details page; anyone else gets the same
-    content as a non-interactive block with no link, no tab stop and no data attributes. Every
+    board gets one plain link to that board's ordinary details page, as long as that board still
+    offers the page; anyone else gets the same content as a non-interactive block with no link,
+    no tab stop and no data attributes. Every
     value is encoded by Razor, and nothing here carries an element id.
 
     The visible lines are divs, not spans: the calendar sits inside a .modern-card, whose span
@@ -23,7 +24,7 @@
             <span class="visually-hidden">@(item.Entry.BoardName). @(item.TimeLabel).@(item.Entry.IsCancelled ? " Cancelled." : "")</span>
         </text>;
 
-        if (entry.ViewerIsMember)
+        if (entry.CanOpen)
         {
             <a class="linked-entry linked-entry--event@(cancelled) linked-entry--open"
                href="@Url.Action("Details", "Events", new { id = entry.EventId })"
@@ -47,7 +48,7 @@
             <span class="visually-hidden">@(item.Entry.BoardName). DM @(item.Entry.DungeonMasterName). @(item.TimeLabel). @(item.IsFinalized ? "Finalized." : "Proposed.")</span>
         </text>;
 
-        if (entry.ViewerIsMember)
+        if (entry.CanOpen)
         {
             <a class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--open"
                href="@Url.Action("Details", "Quest", new { id = entry.QuestId })"
