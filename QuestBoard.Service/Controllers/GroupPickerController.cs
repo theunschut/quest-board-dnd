@@ -99,7 +99,7 @@ public class GroupPickerController(
         }
         else
         {
-            return RedirectToAction("Index", "Quest");
+            return RedirectToAction("Index", "Home");
         }
     }
 }
