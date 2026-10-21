@@ -1,5 +1,6 @@
 using System.Net;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
@@ -16,6 +17,9 @@ public class BoardPageGateMatrixTests : IClassFixture<WebApplicationFactoryBase>
     private const string QuestListToast = "The quest list isn't used on this board.";
     private const string QuestLogToast = "The Quest Log isn't used on this board.";
     private const string CharactersToast = "Characters aren't used on this board.";
+    private const string ShopToast = "Shop isn't used on this board.";
+    private const string PlayersToast = "The Players page isn't used on this board.";
+    private const string DmProfileToast = "DM profiles aren't used on this board.";
 
     private readonly WebApplicationFactoryBase _factory;
 
@@ -49,6 +53,151 @@ public class BoardPageGateMatrixTests : IClassFixture<WebApplicationFactoryBase>
         landed.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         WebUtility.HtmlDecode(html).Should().Contain(toast);
+    }
+
+    private async Task<int> CountShopItemsAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        return await ctx.ShopItems.IgnoreQueryFilters().CountAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static async Task<HttpResponseMessage> PostNewShopItemAsync(HttpClient client, string token)
+    {
+        var form = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(new Dictionary<string, string>
+        {
+            ["Name"] = "Gate matrix blade",
+            ["Description"] = "A blade used to prove the gate.",
+            ["Type"] = ((int)ItemType.Equipment).ToString(),
+            ["Rarity"] = ((int)ItemRarity.Common).ToString(),
+            ["Price"] = "5",
+            ["Quantity"] = "1"
+        }, token);
+        return await client.PostAsync("/ShopManagement/Create", form, TestContext.Current.CancellationToken);
+    }
+
+    // Pages that exist on one-shot boards only: a Campaign board never offers them, whatever is stored.
+    [Theory]
+    [InlineData("/ShopManagement", true, ShopToast)]
+    [InlineData("/Players", false, PlayersToast)]
+    [InlineData("/DungeonMaster/Profile/{dm}", false, DmProfileToast)]
+    [InlineData("/DungeonMaster/EditProfile", true, DmProfileToast)]
+    public async Task OneShotOnlyPages_OnCampaignBoard_RedirectToQuestListWithToast(string urlTemplate, bool asDungeonMaster, string toast)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory);
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+        var client = asDungeonMaster ? dmClient : playerClient;
+
+        await AssertRefusedAsync(client, HttpMethod.Get, urlTemplate.Replace("{dm}", dm.Id.ToString()), "/quests", toast);
+    }
+
+    [Theory]
+    [InlineData("/ShopManagement", true)]
+    [InlineData("/Players", false)]
+    [InlineData("/DungeonMaster/Profile/{dm}", false)]
+    [InlineData("/DungeonMaster/EditProfile", true)]
+    public async Task OneShotOnlyPages_OnOneShotBoard_AreServed(string urlTemplate, bool asDungeonMaster)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory);
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+        var client = asDungeonMaster ? dmClient : playerClient;
+
+        var response = await client.GetAsync(urlTemplate.Replace("{dm}", dm.Id.ToString()), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("player")]
+    [InlineData("dm")]
+    [InlineData("admin")]
+    [InlineData("superadmin")]
+    public async Task Players_Off_RedirectsEveryRoleToQuestListWithToast(string role)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Players), BoardPage.Quests);
+        var (client, _) = role switch
+        {
+            "dm" => await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory),
+            "admin" => await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory),
+            "superadmin" => await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory),
+            _ => await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory)
+        };
+
+        await AssertRefusedAsync(client, HttpMethod.Get, "/Players", "/quests", PlayersToast);
+    }
+
+    [Theory]
+    [InlineData("/DungeonMaster/Profile/{dm}", false)]
+    [InlineData("/DungeonMaster/EditProfile", true)]
+    public async Task DungeonMasterProfile_Off_RedirectsToQuestListWithToast(string urlTemplate, bool asDungeonMaster)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.DungeonMasterProfile), BoardPage.Quests);
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory);
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+        var client = asDungeonMaster ? dmClient : playerClient;
+
+        await AssertRefusedAsync(client, HttpMethod.Get, urlTemplate.Replace("{dm}", dm.Id.ToString()), "/quests", DmProfileToast);
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_PostWithShopOn_AddsTheItem()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory);
+        var form = await client.GetAsync("/ShopManagement/Create", TestContext.Current.CancellationToken);
+        var (token, _) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(form);
+
+        var response = await PostNewShopItemAsync(client, token);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().StartWith("/ShopManagement");
+        (await CountShopItemsAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_PostWithShopOff_RedirectsHomeAndWritesNothing()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory);
+        // The antiforgery token comes from the form while Shop is still on; the page is switched
+        // off afterwards, so the refusal is the only thing standing between the POST and the write.
+        var form = await client.GetAsync("/ShopManagement/Create", TestContext.Current.CancellationToken);
+        var (token, _) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(form);
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Shop), BoardPage.Quests);
+
+        var response = await PostNewShopItemAsync(client, token);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().StartWith("/quests");
+        (await CountShopItemsAsync()).Should().Be(0);
+    }
+
+    // Portraits render on quest pages whatever the profile page's own switch says, so they stay open.
+    [Theory]
+    [InlineData("GetDMProfilePicture")]
+    [InlineData("GetOriginalDMProfilePicture")]
+    public async Task DungeonMasterPictures_WhenProfilePageOff_AreStillServed(string action)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var dmProfileService = scope.ServiceProvider.GetRequiredService<IDungeonMasterProfileService>();
+            await dmProfileService.UpsertProfileAsync(
+                dm.Id, bio: null, imageBytes: [1, 2, 3, 4], newCroppedImageData: [9, 9, 9, 9, 9],
+                token: TestContext.Current.CancellationToken);
+        }
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.DungeonMasterProfile), BoardPage.Quests);
+
+        var response = await client.GetAsync($"/DungeonMaster/{action}/{dm.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken)).Should().NotBeEmpty();
     }
 
     private async Task<int> SeedSeriesAsync()
