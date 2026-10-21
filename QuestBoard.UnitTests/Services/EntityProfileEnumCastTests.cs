@@ -51,6 +51,10 @@ public class EntityProfileEnumCastTests
     [MemberData(nameof(GroupRoleValues))]
     public void GroupRole_CastRoundTrips(GroupRole value) => AssertRoundTrips(value);
 
+    [Theory]
+    [MemberData(nameof(BoardPageValues))]
+    public void BoardPage_CastRoundTrips(BoardPage value) => AssertRoundTrips(value);
+
     /// <summary>
     /// Mirrors the exact cast pattern EntityProfile.cs uses at every enum mapping site:
     /// (int)value going into the entity column, (T)intValue coming back out.
@@ -76,6 +80,7 @@ public class EntityProfileEnumCastTests
     public static TheoryData<CharacterRole> CharacterRoleValues() => ToTheoryData<CharacterRole>();
     public static TheoryData<DndClass> DndClassValues() => ToTheoryData<DndClass>();
     public static TheoryData<GroupRole> GroupRoleValues() => ToTheoryData<GroupRole>();
+    public static TheoryData<BoardPage> BoardPageValues() => ToTheoryData<BoardPage>();
 
     private static TheoryData<TEnum> ToTheoryData<TEnum>() where TEnum : struct, Enum
     {
