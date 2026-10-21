@@ -36,8 +36,9 @@ role, and a Campaign board with Shop, Players or a DM profile.
   Rejected: board type as only the starting default, which a super admin could then override.
   Campaign boards with Shop, Players or a DM profile were never built or tested together.
 
-- **D-02: Every board page gets its own switch:** Shop, Players, DM profile, Characters, Contacts,
-  Quest Log, Events and Calendar. Management pages and sub-pages follow their page:
+- **D-02: Every board page gets its own switch.** The switchable pages are Shop, Players, DM profile,
+  Characters, Contacts, Quest Log, Events and Calendar. Management pages and sub-pages follow their
+  page:
   - Shop covers `ShopController` and `ShopManagementController`.
   - Contacts covers `ContactsController` and `ContactCategoryManagementController`.
   - Events covers `EventsController`, including the availability overview on Events Index, and
@@ -51,8 +52,8 @@ role, and a Campaign board with Shop, Players or a DM profile.
 
   Rejected: switches only for the four pages first named (Shop, Contacts, Players, Characters).
 
-- **D-03: The quest list can be switched off only if research finds no blocking problem; otherwise
-  it is always on.** The operator wants the switch, but only on that condition. The researcher must
+- **D-03: The quest list is switchable only if research finds no blocking problem.** Otherwise it
+  is always on. The operator wants the switch, but only on that condition. The researcher must
   give a clear verdict in RESEARCH.md. If the verdict is "always on", the Quests switch does not
   exist and D-04 does not apply.
 
@@ -135,14 +136,14 @@ role, and a Campaign board with Shop, Players or a DM profile.
 
 ### Home page
 
-- **D-10: Any switched-on page that every member can open can be the home page:** the quest list
-  (the default), Calendar, Events, Quest Log, Characters, Contacts, Players or Shop, each only where
+- **D-10: Any switched-on page that every member can open can be the home page.** That covers the
+  quest list (the default), Calendar, Events, Quest Log, Characters, Contacts, Players or Shop, each only where
   board type and switch allow it. DM-only pages cannot be chosen; that includes the DM profile edit
   page and Shop Management.
 
   Rejected: offering only the quest list or Calendar.
 
-- **D-11: The home page applies everywhere the app sends someone "home":**
+- **D-11: The home page applies everywhere the app sends someone "home".** That means:
   - the `/` address (`HomeController.Index`, for a signed-in user)
   - the "D&D Quest Board" brand link in `_Layout.cshtml` and `_Layout.Mobile.cshtml`, which today
     links straight to `Quest/Index`
@@ -182,8 +183,9 @@ role, and a Campaign board with Shop, Players or a DM profile.
 
   Rejected: leaving them out of the list.
 
-- **D-16: The Platform board list shows a "Home: Calendar"-style badge only on boards whose home
-  page is not the quest list.** It sits beside the existing board-type badge, on both layouts.
+- **D-16: The Platform board list shows a home-page badge only on non-default boards.** The badge
+  reads like "Home: Calendar" and appears only on boards whose home page is not the quest list. It
+  sits beside the existing board-type badge, on both layouts.
   Standard boards look exactly as they do now.
 
   Rejected: also showing a count of switched-off pages; showing nothing.
@@ -209,8 +211,8 @@ settled three of its assumptions.
   Rejected: keeping the Quest Log independently switchable, which would list quests whose pages all
   redirect.
 
-- **D-20: Any quest that is not closed and has not been played counts as live, and blocks switching
-  Quests off (D-08).** This is the same rule the quest board uses to list a quest, so an abandoned
+- **D-20: A quest that is not closed and has not been played counts as live.** A live quest blocks
+  switching Quests off (D-08). This is the same rule the quest board uses to list a quest, so an abandoned
   open quest with only past dates also blocks. The admin closes or deletes it first.
 
   Rejected: counting only quests with a proposed or finalized date from today onward.

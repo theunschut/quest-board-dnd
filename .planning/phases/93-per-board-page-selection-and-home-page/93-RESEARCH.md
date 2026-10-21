@@ -698,13 +698,13 @@ migrationBuilder.AddColumn<int>(name: "HomePage", table: "Groups", type: "int", 
 | A11 | The local `dotnet-ef 9.0.6` tool can scaffold against EF Core 10.0.9 (it listed migrations; `add` expected to warn) | Storage | Migration scaffold fails; use the global 10.0.5 tool or bump the manifest |
 | A12 | The MoveController has no true home fallback; the CONTEXT reference means the list redirects | Home | Operator may want `NoLongerOnThisBoard` to go Home; one-line change |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Is the Quest Log coupling acceptable?** What we know: D-04 says "every quest page redirects", the log is a view of closed/played quests. What's unclear: whether the operator wants the Quest Log switch to stay independently settable. Recommendation: couple it (greyed with "Needs the quest list"), keep the stored bit.
-2. **Calendar on, but nothing to show.** A Campaign board with Events off has an empty calendar. Recommendation: allow; no extra rule.
-3. **MoveController "fallback" (D-11).** See Home table. Recommendation: leave the same-kind list redirects; optionally send `NoLongerOnThisBoard` Home.
-4. **Cross-board deep link onto an off page switches the session first.** `CrossBoardDeepLinkMiddleware` repoints the session before the gate refuses, so the user lands on the other board's home with both banners. CONTEXT accepts this ("which the D-05 redirect then handles"). Optional improvement: have the resolver tell the middleware the target page is off and skip the switch. Not recommended in this phase (the middleware is guarded by oracle-parity tests).
-5. **Phase 78/79 sequencing.** Those phases (still open) should inherit the forward contract in "Share-link previews". Recommendation: copy that paragraph into the Phase 78 and 79 context files when they are next touched.
+1. **Is the Quest Log coupling acceptable? (RESOLVED)** Settled by CONTEXT D-19; built in `BoardPagePolicy.IsAvailable` (plan 93-01), pinned by plan 93-14 and locked on the Platform form by plan 93-06. What we know: D-04 says "every quest page redirects", the log is a view of closed/played quests. What's unclear: whether the operator wants the Quest Log switch to stay independently settable. Recommendation: couple it (greyed with "Needs the quest list"), keep the stored bit.
+2. **Calendar on, but nothing to show. (RESOLVED)** Allowed with no extra rule (research A9 accepted); plan 93-08 recorded choice 3 and its Campaign-calendar test. A Campaign board with Events off has an empty calendar. Recommendation: allow; no extra rule.
+3. **MoveController "fallback" (D-11). (RESOLVED)** The same-kind list redirects stay unchanged; plan 93-13 recorded choice 3. See Home table. Recommendation: leave the same-kind list redirects; optionally send `NoLongerOnThisBoard` Home.
+4. **Cross-board deep link onto an off page switches the session first. (RESOLVED)** Accepted behaviour per CONTEXT ("which the D-05 redirect then handles"); no task, the middleware is not changed; plan 93-01 recorded choice 10. `CrossBoardDeepLinkMiddleware` repoints the session before the gate refuses, so the user lands on the other board's home with both banners. CONTEXT accepts this ("which the D-05 redirect then handles"). Optional improvement: have the resolver tell the middleware the target page is off and skip the switch. Not recommended in this phase (the middleware is guarded by oracle-parity tests).
+5. **Phase 78/79 sequencing. (RESOLVED)** Nothing to gate in this phase; the forward contract stays in "Share-link previews" for those phases to inherit; plan 93-01 recorded choice 9. Those phases (still open) should inherit the forward contract in "Share-link previews". Recommendation: copy that paragraph into the Phase 78 and 79 context files when they are next touched.
 
 ## Environment Availability
 

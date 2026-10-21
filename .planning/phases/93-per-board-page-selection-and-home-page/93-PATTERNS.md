@@ -8,12 +8,12 @@
 
 | New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
 |---|---|---|---|---|
-| `QuestBoard.Domain/Enums/BoardPage.cs` | model (enum) | transform | `QuestBoard.Domain/Enums/MoveStatus.cs` | role-match |
-| `QuestBoard.Domain/Extensions/BoardPagePolicy.cs` (+ `BoardPageSet`, `BoardPageAvailability`) | utility | transform | `QuestBoard.Domain/Extensions/MoveEligibility.cs` | role-match |
-| `QuestBoard.Domain/Interfaces/IBoardPageResolver.cs` | interface | request-response | `QuestBoard.Domain/Interfaces/IBoardTypeResolver.cs` | exact |
+| `QuestBoard.Domain/Enums/BoardPage.cs` (+ `BoardPageSet`) | model (enum) | transform | `QuestBoard.Domain/Enums/MoveStatus.cs` | role-match |
+| `QuestBoard.Domain/Extensions/BoardPagePolicy.cs` | utility | transform | `QuestBoard.Domain/Extensions/MoveEligibility.cs` | role-match |
+| `QuestBoard.Domain/Interfaces/IBoardPageResolver.cs` (+ `BoardPageAvailability`) | interface | request-response | `QuestBoard.Domain/Interfaces/IBoardTypeResolver.cs` | exact |
 | `QuestBoard.Service/Services/BoardPageResolver.cs` | service (scoped) | request-response | `QuestBoard.Service/Services/BoardTypeResolver.cs` | exact |
 | `QuestBoard.Domain/Services/BoardPageSettingsService.cs` + interface | service | CRUD/validate | `QuestBoard.Domain/Services/MoveControlService.cs` (uses `IBoardClock`) | role-match |
-| `QuestBoard.Service/Filters/BoardPageGateFilter.cs`, `BoardPageAttribute.cs`, `BoardPageExemptAttribute.cs` | middleware (MVC filter) | request-response | `QuestBoard.Service/Middleware/CrossBoardDeepLinkMiddleware.cs` (TempData + redirect from outside a controller) | partial (no existing global filter) |
+| `QuestBoard.Service/Filters/BoardPageGateFilter.cs` (+ `BoardPageAttribute`, `BoardPageExemptAttribute` in the same file) | middleware (MVC filter) | request-response | `QuestBoard.Service/Middleware/CrossBoardDeepLinkMiddleware.cs` (TempData + redirect from outside a controller) | partial (no existing global filter) |
 | `QuestBoard.Service/Helpers/BoardPageRoutes.cs` | utility | transform | `QuestBoard.Service/Helpers/MoveCopy.cs` | role-match |
 | `QuestBoard.Service/Program.cs` (filter registration, DI) | config | - | itself, lines 37 and 255-258 | exact |
 | `QuestBoard.Repository/Entities/GroupEntity.cs` (+2 int columns) | model | CRUD | same file (`BoardType` int) | exact |

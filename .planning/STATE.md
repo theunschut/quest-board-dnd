@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 92
-status: completed
+current_phase: 93
+current_phase_name: Per-Board Page Selection and Home Page
+status: executing
 stopped_at: Phase 93 context gathered
-last_updated: "2026-10-20T15:13:49.447Z"
+last_updated: "2026-10-21T10:13:38.509Z"
 last_activity: 2026-10-19
 last_activity_desc: "Phase 92 complete — UAT 4/4, review fixes, security 37/37, PR #161"
-state_head: b12ead229b31ae6a51fc6051c60c9905bb3babb4
+state_head: c35512f3c0da91f39ecd83202acc84058a4aa69d
 progress:
   total_phases: 22
   completed_phases: 18
-  total_plans: 148
+  total_plans: 163
   completed_plans: 139
-  percent: 82
-current_phase_name: move-a-quest-or-event-to-a-linked-board
+  percent: 68
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 
 ## Current Position
 
-Phase: 92
+Phase: 93 (Per-Board Page Selection and Home Page) — READY TO EXECUTE
 Plan: Not started
-Status: Phase 92 complete — open phases remain (see below)
+Status: Ready to execute
 Last activity: 2026-10-19 - Phase 81 review fixes and security audit; completed quick task 261019-plu: bound contact tag parsing before validation
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest

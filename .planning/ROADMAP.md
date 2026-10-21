@@ -436,6 +436,8 @@ Plans:
 
 **Requires a discuss-phase decision:** whether the signature carries an expiry — and if so, whether an expired link degrades to no card or to a generic one — and whether a minted link can be revoked after the fact.
 
+**Constraint added by Phase 93 (2026-10-21):** boards can now switch pages off, and Quests is one of the switchable pages. The anonymous preview route must ask `IBoardPageResolver` whether Quests is available on the signed board (the route scopes its read with `SetGroupId(verified groupId)`, which the resolver honours) and fall back to the generic response when it is not. The route stays unannotated, outside the page filter, and makes this check itself. The "Copy shareable link" control is hidden while Quests is off, like any other link into a switched-off page. A stale share URL then stops rendering its card while the page is off and works again once it is switched back on. This phase's 9 plans were written before this rule existed, so check them against it before executing. Full text: `.planning/phases/93-per-board-page-selection-and-home-page/93-RESEARCH.md` § Share-link previews.
+
 **Risks this phase must actively avoid:**
 
 - **Reaching for `IgnoreQueryFilters()`.** The preview read path must serve a quest whose group the caller has no session for, which is exactly the shape that invites bypassing the fail-closed filter at `QuestBoardContext.cs:281`. This app has shipped two real cross-tenant leaks (Phases 49/55); the filter is the remedy. The correct move is to set the group context from the *signature's* verified group id, not to switch the filter off.
@@ -468,6 +470,8 @@ Plans:
 - Card fields are deliberately narrow: name, level, and class for a character; name and location for a contact. `Backstory`, `Description`, and notes stay off the card.
 
 **Requires a discuss-phase decision:** whether any board member can mint a share link for a character they do not own, or only the character's owner.
+
+**Constraint added by Phase 93 (2026-10-21):** boards can now switch the Characters and Contacts pages off. The preview route must ask `IBoardPageResolver` whether Characters (for a character card) or Contacts (for a contact card) is available on the signed board, and fall back to the generic response when it is not, checked at serve time like `IsRevealed`. The route and the signed image endpoint stay unannotated, outside the page filter, and make this check themselves. The copy controls are hidden while the page is off. Full text: `.planning/phases/93-per-board-page-selection-and-home-page/93-RESEARCH.md` § Share-link previews.
 
 **Risks this phase must actively avoid:**
 
@@ -1342,7 +1346,7 @@ Plans:
 **Goal:** In the Platform area, a super admin can choose which pages each board offers, such as Shop, Contacts, Players, Characters, Quest Log, Events and Calendar. A page that is switched off disappears from both menus, and the server refuses it on that board when its URL is typed. A super admin can also set which page a board opens on. The default stays the quest list, as it is today, and at least one board can open on `/calendar` instead. Boards nobody configures behave exactly as they do today.
 **Requirements**: TBD
 **Depends on:** Phase 92, for sequencing only. It edits the same layouts and Platform `GroupController` that Phases 91 and 92 changed, but needs nothing they built.
-**Plans:** 0 plans
+**Plans:** 15 plans
 
 **Origin:** raised by the operator on 2026-10-20. Boards differ in which pages they actually use, and the operator wants at least one board in their group of boards to open on its calendar instead of the quest list.
 
@@ -1368,7 +1372,35 @@ Plans:
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 93 to break down)
+**Wave 1**
+
+- [ ] 93-01-PLAN.md — Tracer: page catalogue, policy, resolver, two Groups columns and the global gate; Shop refused with a toast and sent to the board's home (W1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 93-02-PLAN.md — Server gate on Calendar, Events, Series, quest pages, Quest Log, admin quest list and moves (W2)
+- [ ] 93-03-PLAN.md — Allows/Serves view helpers; both layouts and My Agenda's button gated by the active board, brand link to the home page, conditional Quests menu item (W2)
+- [ ] 93-04-PLAN.md — Save-time settings rules: type ceiling, home-page refusal, Events refused while upcoming events or running series exist (W2)
+- [ ] 93-05-PLAN.md — Linked calendars render entries from a switched-off page as plain text (W2)
+- [ ] 93-13-PLAN.md — `/`, the board picker (and so login) and the Account back link land on the board's home page (W2)
+- [ ] 93-14-PLAN.md — Unit pins: type ceiling over every mask, effective-home invariant, route table and toasts, storage mapping (W2)
+- [ ] 93-15-PLAN.md — "Home: X" badge on the Platform board list, both twins (W2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 93-06-PLAN.md — Platform Edit "Pages" section and home dropdown on both twins, refusals as form errors (W3)
+- [ ] 93-07-PLAN.md — Character pickers and DM-profile links hidden when those pages are off; crafted character ids refused (W3)
+- [ ] 93-08-PLAN.md — Events and Calendar off: no own events on the calendar, its Board Availability button hidden, saves and cancels land on Events (W3)
+- [ ] 93-09-PLAN.md — Moves onto a board with that kind of entry switched off refused; picker and control follow (W3)
+- [ ] 93-12-PLAN.md — Server gate on Shop management, Players, DM profile, Characters and Contacts (Campaign gap closed, picture endpoints exempt) and the reflection coverage test (W3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 93-10-PLAN.md — Quest list switchable: live-quest refusal, calendar without quests, DM history as text, full quests-off proof (W4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 93-11-PLAN.md — No-planning-reference guard, production DI proof, and the operator's end-to-end walk with the full suite (W5)
 
 ## Backlog
 
