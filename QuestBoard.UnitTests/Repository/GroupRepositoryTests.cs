@@ -445,6 +445,57 @@ public class GroupRepositoryTests
         signupCount.Should().Be(0);
     }
 
+    // -------------------------------------------------------------------
+    // Board list projections — stored home page
+    // -------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAllWithMemberCountAsync_BoardWithStoredHome_ReturnsThatHomeAndDefaultsToQuests()
+    {
+        // Arrange
+        var dbName = nameof(GetAllWithMemberCountAsync_BoardWithStoredHome_ReturnsThatHomeAndDefaultsToQuests);
+        await using (var seedContext = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = null }))
+        {
+            seedContext.Groups.Add(new GroupEntity { Id = 1, Name = "Calendar Home", BoardType = (int)BoardType.Campaign, HomePage = (int)BoardPage.Calendar });
+            seedContext.Groups.Add(new GroupEntity { Id = 2, Name = "Default Home", BoardType = (int)BoardType.Campaign });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act
+        await using var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = null });
+        var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
+        var groups = await repository.GetAllWithMemberCountAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        groups.Single(g => g.Id == 1).HomePage.Should().Be(BoardPage.Calendar);
+        groups.Single(g => g.Id == 2).HomePage.Should().Be(BoardPage.Quests);
+    }
+
+    [Fact]
+    public async Task GetGroupsForUserAsync_BoardWithStoredHome_ReturnsThatHomeAndDefaultsToQuests()
+    {
+        // Arrange
+        var dbName = nameof(GetGroupsForUserAsync_BoardWithStoredHome_ReturnsThatHomeAndDefaultsToQuests);
+        await using (var seedContext = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = null }))
+        {
+            seedContext.Groups.Add(new GroupEntity { Id = 1, Name = "Calendar Home", BoardType = (int)BoardType.Campaign, HomePage = (int)BoardPage.Calendar });
+            seedContext.Groups.Add(new GroupEntity { Id = 2, Name = "Default Home", BoardType = (int)BoardType.Campaign });
+            await seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+            await SeedUserAsync(seedContext, userId: 301);
+            await SeedMembershipAsync(seedContext, groupId: 1, userId: 301);
+            await SeedMembershipAsync(seedContext, groupId: 2, userId: 301);
+        }
+
+        // Act
+        await using var context = CreateContext(dbName, new MutableTestGroupContext { ActiveGroupId = null });
+        var repository = new GroupRepository(context, CreateMapper(), CreateBoardClock());
+        var groups = await repository.GetGroupsForUserAsync(301, TestContext.Current.CancellationToken);
+
+        // Assert
+        groups.Single(g => g.Id == 1).HomePage.Should().Be(BoardPage.Calendar);
+        groups.Single(g => g.Id == 2).HomePage.Should().Be(BoardPage.Quests);
+    }
+
     private sealed class TestActiveGroupContext : IActiveGroupContext
     {
         public int? ActiveGroupId => 1;
