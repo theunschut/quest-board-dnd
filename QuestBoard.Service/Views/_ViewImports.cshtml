@@ -4,6 +4,7 @@
 @using QuestBoard.Domain.Models
 @using QuestBoard.Service
 @using QuestBoard.Service.Extensions
+@using QuestBoard.Service.Helpers
 @using QuestBoard.Service.ViewModels
 @using QuestBoard.Service.ViewModels.AccountViewModels;
 @using QuestBoard.Service.ViewModels.CalendarViewModels
@@ -14,4 +15,5 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @inject IAuthorizationService AuthorizationService
 @inject IUserService UserService
+@inject IBoardPageResolver BoardPages
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery

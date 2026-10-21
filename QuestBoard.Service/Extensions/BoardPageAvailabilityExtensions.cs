@@ -16,7 +16,7 @@ public static class BoardPageAvailabilityExtensions
     /// </summary>
     public static bool Allows(this BoardPageAvailability? availability, BoardPage page)
     {
-        return false;
+        return availability is not null && availability.IsAvailable(page);
     }
 
     /// <summary>
@@ -26,6 +26,6 @@ public static class BoardPageAvailabilityExtensions
     /// </summary>
     public static bool Serves(this BoardPageAvailability? availability, BoardPage page)
     {
-        return false;
+        return availability is null || availability.IsAvailable(page);
     }
 }
