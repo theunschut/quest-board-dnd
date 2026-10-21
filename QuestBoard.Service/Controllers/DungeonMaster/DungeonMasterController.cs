@@ -2,6 +2,7 @@ using AutoMapper;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.DungeonMasterViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ public class DungeonMasterController(
     IImageValidationService imageValidationService) : Controller
 {
     [HttpGet]
+    [BoardPage(BoardPage.DungeonMasterProfile)]
     public async Task<IActionResult> Profile(int id, CancellationToken token = default)
     {
         var user = await userService.GetByIdAsync(id, token);
@@ -50,6 +52,7 @@ public class DungeonMasterController(
 
     [HttpGet]
     [Authorize(Policy = "DungeonMasterOnly")]
+    [BoardPage(BoardPage.DungeonMasterProfile)]
     public async Task<IActionResult> EditProfile(int? id, CancellationToken token = default)
     {
         var currentUser = await userService.GetUserAsync(User);
@@ -83,6 +86,7 @@ public class DungeonMasterController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = "DungeonMasterOnly")]
+    [BoardPage(BoardPage.DungeonMasterProfile)]
     public async Task<IActionResult> EditProfile(int? id, EditDMProfileViewModel viewModel, CancellationToken token = default)
     {
         var currentUser = await userService.GetUserAsync(User);
@@ -155,6 +159,7 @@ public class DungeonMasterController(
     }
 
     [HttpGet]
+    [BoardPageExempt]
     public async Task<IActionResult> GetDMProfilePicture(int id, CancellationToken token = default)
     {
         if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
@@ -172,6 +177,7 @@ public class DungeonMasterController(
     }
 
     [HttpGet]
+    [BoardPageExempt]
     public async Task<IActionResult> GetOriginalDMProfilePicture(int id, CancellationToken token = default)
     {
         if (!await IsTargetInActiveGroupAsync(id)) return NotFound();
