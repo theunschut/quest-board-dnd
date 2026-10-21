@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 93
 current_phase_name: Per-Board Page Selection and Home Page
 status: executing
-stopped_at: Completed Phase 93 wave 3 (93-06, 07, 08, 09, 12)
-last_updated: "2026-10-21T13:01:05.006Z"
+stopped_at: Completed 93-10-PLAN.md
+last_updated: "2026-10-21T13:16:09.295Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 93 execution started
-state_head: ce20f4871880cc81d52f8f7554150e038351a113
+state_head: ad5ac85acdb634f1ced36203ff17fa2e2ac70129
 progress:
   total_phases: 22
   completed_phases: 18
   total_plans: 163
-  completed_plans: 152
+  completed_plans: 153
   percent: 82
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 ## Current Position
 
 Phase: 93 (Per-Board Page Selection and Home Page) — EXECUTING
-Plan: 14 of 15
+Plan: 15 of 15
 Status: Ready to execute
 Last activity: 2026-10-21 — Phase 93 execution started
 
@@ -74,6 +74,7 @@ introduced by Phase 87.
 | Phase 88 P05 | 12 min | 2 tasks | 19 files |
 | Phase 88 P09 | 8 min | 3 tasks | 2 files |
 | Phase 93 P01 | 14 min | 2 tasks | 16 files |
+| Phase 93 P10 | 12 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,8 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 91]: Desktop text inside a `.modern-card` must not be a visible `<span>`: `modern-card.css` forces cream with `!important` on every span in a card. This made linked chip text unreadable, and markup tests and an emulated-browser check both missed it; only the UI audit caught it. Static guard facts now pin it for the linked partial and the day count
 - [Phase 93]: Page availability stored as a disabled-pages bit mask on Groups so the CLR default means nothing off and the quest list as home
 - [Phase 93]: Page gate is a global resource filter reading [BoardPage] metadata; it passes through when no board type resolves
+- [Phase 93]: Quest list is switchable; switching it off is refused while any quest is live (not closed, not yet played) or while it is the home page
+- [Phase 93]: Live-quest count only runs on the Quests on-to-off transition and is pinned to HasBeenPlayed by a parity test
 
 ### Roadmap Evolution
 
@@ -215,8 +218,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-21T13:00:58.354Z
-Stopped at: Completed Phase 93 wave 3 (93-06, 07, 08, 09, 12)
+Last session: 2026-10-21T13:16:02.531Z
+Stopped at: Completed 93-10-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

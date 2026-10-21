@@ -1346,7 +1346,7 @@ Plans:
 **Goal:** In the Platform area, a super admin can choose which pages each board offers, such as Shop, Contacts, Players, Characters, Quest Log, Events and Calendar. A page that is switched off disappears from both menus, and the server refuses it on that board when its URL is typed. A super admin can also set which page a board opens on. The default stays the quest list, as it is today, and at least one board can open on `/calendar` instead. Boards nobody configures behave exactly as they do today.
 **Requirements**: TBD
 **Depends on:** Phase 92, for sequencing only. It edits the same layouts and Platform `GroupController` that Phases 91 and 92 changed, but needs nothing they built.
-**Plans:** 13/15 plans executed
+**Plans:** 14/15 plans executed
 
 **Origin:** raised by the operator on 2026-10-20. Boards differ in which pages they actually use, and the operator wants at least one board in their group of boards to open on its calendar instead of the quest list.
 
@@ -1396,7 +1396,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 93-10-PLAN.md — Quest list switchable: live-quest refusal, calendar without quests, DM history as text, full quests-off proof (W4)
+- [x] 93-10-PLAN.md — Quest list switchable: live-quest refusal, calendar without quests, DM history as text, full quests-off proof (W4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
