@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 93
 current_phase_name: Per-Board Page Selection and Home Page
 status: executing
-stopped_at: Phase 93 context gathered
-last_updated: "2026-10-21T11:20:12.876Z"
+stopped_at: Completed 93-01-PLAN.md
+last_updated: "2026-10-21T11:38:06.432Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 93 execution started
-state_head: eac5a5cbf4b98de884f86828f49fa8d6a0ce5886
+state_head: a651badfec6b549245c964587e5c5f58c7c7f9fa
 progress:
   total_phases: 22
   completed_phases: 18
   total_plans: 163
-  completed_plans: 139
+  completed_plans: 140
   percent: 82
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 ## Current Position
 
 Phase: 93 (Per-Board Page Selection and Home Page) — EXECUTING
-Plan: 1 of 15
-Status: Executing Phase 93
+Plan: 2 of 15
+Status: Ready to execute
 Last activity: 2026-10-21 — Phase 93 execution started
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
@@ -73,6 +73,7 @@ introduced by Phase 87.
 | Phase 88 P04 | 4 min | 2 tasks | 2 files |
 | Phase 88 P05 | 12 min | 2 tasks | 19 files |
 | Phase 88 P09 | 8 min | 3 tasks | 2 files |
+| Phase 93 P01 | 14 min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 92]: The operator, working remotely, asked the orchestrator to start the local `mssql-dev` container and to run UAT in the in-app browser. Test data was created through the real UI (two "UAT test link" sets, quests 991001 and 991002, event 1) and left in place at the operator's request
 - [Phase 92]: Separate side sessions could not be started from this orchestrator (the app refused the start), so the review fixes ran in-session through `gsd-code-fixer` on the milestone branch
 - [Phase 91]: Desktop text inside a `.modern-card` must not be a visible `<span>`: `modern-card.css` forces cream with `!important` on every span in a card. This made linked chip text unreadable, and markup tests and an emulated-browser check both missed it; only the UI audit caught it. Static guard facts now pin it for the linked partial and the day count
+- [Phase 93]: Page availability stored as a disabled-pages bit mask on Groups so the CLR default means nothing off and the quest list as home
+- [Phase 93]: Page gate is a global resource filter reading [BoardPage] metadata; it passes through when no board type resolves
 
 ### Roadmap Evolution
 
@@ -212,9 +215,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-20T15:13:45.296Z
-Stopped at: Phase 93 context gathered
-Resume file: .planning/phases/93-per-board-page-selection-and-home-page/93-CONTEXT.md
+Last session: 2026-10-21T11:37:57.564Z
+Stopped at: Completed 93-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
