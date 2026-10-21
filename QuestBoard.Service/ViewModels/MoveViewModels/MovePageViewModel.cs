@@ -1,4 +1,6 @@
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
+using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.BoardMove;
 
 namespace QuestBoard.Service.ViewModels.MoveViewModels;
@@ -28,6 +30,13 @@ public class MovePageViewModel
     // A tampered target still gets the picker, so the viewer can choose a board from the list.
     public bool ShowPicker => Preview.LinkedBoards.Count > 1
         || (Preview.LinkedBoards.Count == 1 && Preview.Status == MoveStatus.TargetNotLinked);
+
+    /// <summary>Whether the linked board uses this kind of entry, so the entry can be moved onto it.</summary>
+    public bool CanTake(LinkedBoard board) =>
+        BoardPagePolicy.IsAvailable(Preview.TargetBoardType, board.DisabledPages, IsQuest ? BoardPage.Quests : BoardPage.Events);
+
+    /// <summary>Appended to the name of a picker option for a board that cannot take the entry.</summary>
+    public string NotUsedThereSuffix => IsQuest ? " (quests aren't used there)" : " (events aren't used there)";
 
     public bool IsReadyLike => Preview.Status is MoveStatus.Ready or MoveStatus.Changed;
 
