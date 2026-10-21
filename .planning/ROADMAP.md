@@ -1,7 +1,7 @@
 # Milestone v9.0: Rolling Improvements
 
 **Status:** 🚧 IN PROGRESS
-**Phases:** 72–91 so far (open-ended)
+**Phases:** 72–93 so far (open-ended)
 **Working branch:** `milestone/v9-rolling-improvements`
 
 ## Overview
@@ -1336,6 +1336,39 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 92-09-PLAN.md — Guards (ambient clock, single save, no planning references) and the end-to-end walk, audit line and feed proof (W6)
+
+### Phase 93: Per-Board Page Selection and Home Page
+
+**Goal:** In the Platform area, a super admin can choose which pages each board offers, such as Shop, Contacts, Players, Characters, Quest Log, Events and Calendar. A page that is switched off disappears from both menus, and the server refuses it on that board when its URL is typed. A super admin can also set which page a board opens on. The default stays the quest list, as it is today, and at least one board can open on `/calendar` instead. Boards nobody configures behave exactly as they do today.
+**Requirements**: TBD
+**Depends on:** Phase 92, for sequencing only. It edits the same layouts and Platform `GroupController` that Phases 91 and 92 changed, but needs nothing they built.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-20. Boards differ in which pages they actually use, and the operator wants at least one board in their group of boards to open on its calendar instead of the quest list.
+
+**Starting point** (scoped 2026-10-20):
+
+- **Boards:** a board is `Group` (entity `GroupEntity`: `Name`, `CreatedAt`, `BoardType`, `LinkedBoardSetId`). It has no per-board settings yet. The Platform `GroupController` Edit form (`SuperAdminOnly`) only changes the name, and shows `BoardType` read-only.
+- **Today's page gating is by board type, and in the menus only.** `_Layout.cshtml` and `_Layout.Mobile.cshtml` read `IBoardTypeResolver` and hide Shop, Players, Shop Management and the DM profile on boards that are not OneShot. Events and Calendar show on OneShot and Campaign boards. Quest Log, Characters and Contacts always show. `ShopController` and `PlayersController` have no board-type check, so on a Campaign board `/shop` and `/players` still open when typed. Some controllers also branch on board type internally (`CalendarController` skips quests on Campaign boards; `EventsController` and `QuestLogController` vary by type).
+- **Home today:** `/` is `HomeController.Index`, which sends a signed-in user to `Quest/Index`. The navbar brand in both layouts links straight to `Quest/Index`. After login or a board switch with no return URL, `GroupPickerController.RedirectToLocal` falls back to `Quest/Index`, and `MoveController` has one more such fallback. A per-board home has to reach all of these.
+- **Board switching:** `GroupSessionMiddleware` sends a user with no active board to `/groups/pick?returnUrl=…`. Phase 87's cross-board deep-link switch changes the session board when a member opens a quest or event on another board. A return URL that names a page switched off on the target board has to land somewhere sensible.
+
+**To decide in discuss-phase:**
+
+- **Which pages can be switched off.** Candidates: Shop (with Shop Management), Contacts, Players, Characters, Quest Log, Events, Calendar, and the DM profile. Whether the quest list itself can be switched off on a board that opens elsewhere, or always stays reachable. Personal and cross-board pages (My Agenda, Profile, the board picker) are not per-board and stay as they are.
+- **How it relates to board type.** Either board type sets a new board's default pages, which a super admin then adjusts, or it stays a hard rule that a toggle can only narrow (for example, Shop could never be switched on for a Campaign board). Either way, existing boards keep exactly the pages they show now.
+- **What a switched-off page does when its URL is opened:** a 404, or a redirect to the board's home with a message. Whether DMs and admins are blocked too, or only players.
+- **Pages other flows rely on.** Quest signup can pick a character, and the shop belongs to the gold economy. Whether switching off Characters or Shop is allowed while those flows use them, or affects them.
+- **Links into a switched-off page:** character names on signups, the Phase 78/79 link cards for characters and contacts in quest text, and links in emails. Whether they render as plain text, still resolve, or are left alone.
+- **Cross-board surfaces.** Whether switching off Calendar or Events on a board also removes that board from the calendar feed, My Agenda and linked boards' calendars, or only from its own pages.
+- **Which pages can be the home page.** At least the quest list (the default) and Calendar. Whether any enabled page can be chosen, and what happens when the chosen home page is later switched off.
+- **Scope of the home page.** Set per board, or shared by the boards in a linked set.
+
+**Constraints:** super-admin only, enforced server-side. The server refuses a switched-off page; hiding it in the menu is not enough. Settings are stored per board and ship as an EF Core migration whose defaults leave every existing board unchanged. Both layouts and every affected `.Mobile.cshtml` twin are updated. Nothing writes to `Events` or `Quests`, so feed revisions do not move.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 93 to break down)
 
 ## Backlog
 
