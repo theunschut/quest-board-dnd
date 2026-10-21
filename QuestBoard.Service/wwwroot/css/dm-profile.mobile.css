@@ -108,6 +108,15 @@
     border-radius: 4px;
 }
 
+/* A history row with nothing to open: not tappable, so no pointer and no pressed tint */
+.dm-quest-history-item--static {
+    cursor: default;
+}
+
+.dm-quest-history-item--static:active {
+    background-color: transparent;
+}
+
 /* Quest title in history — parchment */
 .dm-quest-history-title {
     color: #F4E4BC !important;
