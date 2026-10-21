@@ -4,17 +4,17 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 93
 current_phase_name: Per-Board Page Selection and Home Page
-status: executing
-stopped_at: Completed 93-10-PLAN.md
-last_updated: "2026-10-21T13:16:09.295Z"
+status: verifying
+stopped_at: Completed 93-11-PLAN.md
+last_updated: "2026-10-21T13:41:48.731Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 93 execution started
-state_head: ad5ac85acdb634f1ced36203ff17fa2e2ac70129
+state_head: f4436252518c53d92c4f3c24960f7a8dcac1d70c
 progress:
   total_phases: 22
   completed_phases: 18
   total_plans: 163
-  completed_plans: 153
+  completed_plans: 154
   percent: 82
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 
 Phase: 93 (Per-Board Page Selection and Home Page) — EXECUTING
 Plan: 15 of 15
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-21 — Phase 93 execution started
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
@@ -75,6 +75,7 @@ introduced by Phase 87.
 | Phase 88 P09 | 8 min | 3 tasks | 2 files |
 | Phase 93 P01 | 14 min | 2 tasks | 16 files |
 | Phase 93 P10 | 12 min | 2 tasks | 13 files |
+| Phase 93 P11 | 18 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 93]: Page gate is a global resource filter reading [BoardPage] metadata; it passes through when no board type resolves
 - [Phase 93]: Quest list is switchable; switching it off is refused while any quest is live (not closed, not yet played) or while it is the home page
 - [Phase 93]: Live-quest count only runs on the Quests on-to-off transition and is pinned to HasBeenPlayed by a parity test
+- [Phase 93]: 93-11: end-to-end walk posts the Platform Edit form from its rendered fields rather than hand-written names, so a form field rename breaks the walk
 
 ### Roadmap Evolution
 
@@ -218,8 +220,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-21T13:16:02.531Z
-Stopped at: Completed 93-10-PLAN.md
+Last session: 2026-10-21T13:41:42.407Z
+Stopped at: Completed 93-11-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
