@@ -15,6 +15,13 @@ internal class BoardPageSettingsService(IEventRepository eventRepository, IQuest
         var disabled = ApplySwitches(group, request);
         var home = EvaluateHome(group, request, disabled, errors);
 
+        // The counts below are read first and the settings are saved afterwards, with nothing
+        // holding the board's content still in between. A quest or event created in that gap is
+        // not counted and stays behind the page that was just switched off. The gap is a few
+        // milliseconds on a super-admin-only save, and the content is only hidden, never deleted,
+        // so switching the page back on brings it straight back; that is why this does not take a
+        // serializable transaction across the count and the save.
+        //
         // Switching Quests off strands every quest that is still open or upcoming behind a page
         // nobody can open, so the live ones are counted, but only on the transition from on to off.
         if (!group.DisabledPages.Contains(BoardPage.Quests) && disabled.Contains(BoardPage.Quests))

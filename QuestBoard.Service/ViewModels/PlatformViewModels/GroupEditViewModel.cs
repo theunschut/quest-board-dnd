@@ -28,6 +28,13 @@ public class GroupEditViewModel
     [Display(Name = "Home page")]
     public BoardPage? HomePage { get; set; }
 
+    // The page settings the form was rendered from, posted back unchanged. When they no longer
+    // match the board as stored, someone else saved in between, and applying this form would
+    // silently put their change back. Null when the form did not carry them, which skips the check.
+    public int? RenderedDisabledPages { get; set; }
+
+    public BoardPage? RenderedHomePage { get; set; }
+
     // The home pages this board's type allows; rebuilt on every render and never read from the form.
     [BindNever]
     public List<SelectListItem> HomeChoices { get; set; } = [];

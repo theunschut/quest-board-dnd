@@ -26,6 +26,8 @@ public class GroupController(
     IBoardPageSettingsService boardPageSettingsService,
     ILogger<GroupController> logger) : Controller
 {
+    private const string ConcurrencyMessage = "Someone else changed this board while you were editing. Reload the page and try again.";
+
     // Groups index
     [HttpGet]
     public async Task<IActionResult> Index()
@@ -66,6 +68,7 @@ public class GroupController(
         if (group == null) return RedirectToAction(nameof(Index));
         var model = new GroupEditViewModel { Id = group.Id, Name = group.Name };
         PopulatePageSection(model, group, group.DisabledPages);
+        StampRenderedState(model, group.DisabledPages, group.HomePage);
         return View(model);
     }
 
@@ -75,6 +78,23 @@ public class GroupController(
     {
         var group = await groupService.GetByIdAsync(model.Id);
         if (group == null) return RedirectToAction(nameof(Index));
+
+        // The page settings are applied over what is stored, so a form rendered before someone
+        // else saved would silently put their change back. The form carries the settings it was
+        // rendered from; when they no longer match, show the board as it is now instead.
+        var storedDisabled = group.DisabledPages;
+        var storedHome = group.HomePage;
+        var formIsStale = (model.RenderedDisabledPages is { } renderedMask && renderedMask != storedDisabled.Mask)
+            || (model.RenderedHomePage is { } renderedHome && renderedHome != storedHome);
+        if (formIsStale)
+        {
+            ModelState.Remove(nameof(model.HomePage));
+            ModelState.AddModelError(string.Empty, ConcurrencyMessage);
+            model.HomePage = null;
+            PopulatePageSection(model, group, storedDisabled);
+            StampRenderedState(model, storedDisabled, storedHome);
+            return View(model);
+        }
 
         // A page the form did not post keeps its stored value, and a page value that is not a
         // real page is dropped, so only what the form genuinely carried reaches the rules.
@@ -92,6 +112,7 @@ public class GroupController(
         if (!ModelState.IsValid)
         {
             PopulatePageSection(model, group, outcome.Disabled);
+            StampRenderedState(model, storedDisabled, storedHome);
             return View(model);
         }
 
@@ -106,8 +127,9 @@ public class GroupController(
         }
         catch (DbUpdateConcurrencyException)
         {
-            ModelState.AddModelError(string.Empty, "Someone else changed this board while you were editing. Reload the page and try again.");
+            ModelState.AddModelError(string.Empty, ConcurrencyMessage);
             PopulatePageSection(model, group, outcome.Disabled);
+            StampRenderedState(model, storedDisabled, storedHome);
             return View(model);
         }
         catch (DbUpdateException ex) when (
@@ -116,8 +138,17 @@ public class GroupController(
         {
             ModelState.AddModelError(nameof(model.Name), "A group with that name already exists. Please choose a different name.");
             PopulatePageSection(model, group, outcome.Disabled);
+            StampRenderedState(model, storedDisabled, storedHome);
             return View(model);
         }
+    }
+
+    // The settings the form is being rendered against, which is the board as stored and not the
+    // switches shown, so the next save is compared with what the board actually held.
+    private static void StampRenderedState(GroupEditViewModel model, BoardPageSet storedDisabled, BoardPage storedHome)
+    {
+        model.RenderedDisabledPages = storedDisabled.Mask;
+        model.RenderedHomePage = storedHome;
     }
 
     // Everything on the form that is not posted back is worked out here from the board as stored

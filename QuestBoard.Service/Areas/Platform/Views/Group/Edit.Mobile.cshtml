@@ -26,6 +26,8 @@
         }
 
         <input asp-for="Id" type="hidden" />
+        <input type="hidden" name="RenderedDisabledPages" value="@Model.RenderedDisabledPages" />
+        <input type="hidden" name="RenderedHomePage" value="@Model.RenderedHomePage" />
 
         <div class="mb-3">
             <label asp-for="Name" class="form-label">Group Name</label>
