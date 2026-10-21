@@ -15,7 +15,15 @@
     </div>
 
     <form asp-action="Edit" method="post">
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        @if (ViewData.ModelState.TryGetValue(string.Empty, out var boardErrors) && boardErrors.Errors.Count > 0)
+        {
+            <div role="alert" class="mb-3">
+                @foreach (var error in boardErrors.Errors)
+                {
+                    <div class="text-danger mb-1"><i class="fas fa-circle-exclamation me-2" aria-hidden="true"></i>@error.ErrorMessage</div>
+                }
+            </div>
+        }
 
         <input asp-for="Id" type="hidden" />
 
@@ -28,6 +36,41 @@
         <div class="mb-3">
             <label asp-for="BoardType" class="form-label">Board Type</label>
             <select asp-for="BoardType" class="form-select" asp-items="Html.GetEnumSelectList<BoardType>()" disabled></select>
+        </div>
+
+        <div class="platform-group-pages-mobile">
+            <h6 class="mt-4 mb-2">
+                <i class="fas fa-table-columns me-2"></i>Pages
+            </h6>
+            <small class="text-muted d-block mb-2">Switch off the pages this board doesn't use. Nothing is deleted.</small>
+
+            @{ var rowIndex = 0; }
+            @foreach (var row in Model.Pages)
+            {
+                var pageName = row.Page.ToString();
+                <div class="form-check form-switch mb-2">
+                    @if (row.Locked)
+                    {
+                        <input type="checkbox" class="form-check-input" id="page-@pageName" role="switch" disabled aria-describedby="page-reason-@pageName" />
+                        <label class="form-check-label" for="page-@pageName">@row.Label</label>
+                        <small class="text-muted d-block" id="page-reason-@pageName">@row.LockedReason</small>
+                    }
+                    else
+                    {
+                        <input type="hidden" name="Pages[@rowIndex].Page" value="@pageName" />
+                        <input type="checkbox" class="form-check-input" id="page-@pageName" role="switch" name="Pages[@rowIndex].Enabled" value="true" checked="@row.Enabled" />
+                        <input type="hidden" name="Pages[@rowIndex].Enabled" value="false" />
+                        <label class="form-check-label" for="page-@pageName">@row.Label</label>
+                        rowIndex++;
+                    }
+                </div>
+            }
+
+            <div class="mb-3">
+                <label for="HomePage" class="form-label">Home page</label>
+                <select asp-for="HomePage" asp-items="Model.HomeChoices" class="form-select"></select>
+                <div class="form-text">Where the board opens, and where the brand link and refused pages lead.</div>
+            </div>
         </div>
 
         <hr>

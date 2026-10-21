@@ -52,3 +52,30 @@
 .platform-group-card-mobile .fa-3x.text-muted {
     color: rgba(244, 228, 188, 0.7) !important;
 }
+
+/* Edit page: the Pages section (switch rows and home page). Selectors are scoped under the card
+   class so they out-rank the !important rules above. */
+.platform-group-card-mobile .platform-group-pages-mobile h6,
+.platform-group-card-mobile .platform-group-pages-mobile .form-check-label {
+    color: #F4E4BC !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+}
+
+/* Each row is a 44px tap target; the label fills it so tapping the text flips the switch */
+.platform-group-card-mobile .platform-group-pages-mobile .form-check {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    min-height: 44px;
+}
+
+.platform-group-card-mobile .platform-group-pages-mobile .form-check-label {
+    display: block;
+}
+
+/* Hint, lock reason and home page hint: smaller, and opaque rather than alpha so they stay readable on the glass */
+.platform-group-card-mobile .platform-group-pages-mobile small,
+.platform-group-card-mobile .platform-group-pages-mobile .form-text {
+    font-size: 0.875rem;
+    color: #D9CDA8 !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
+}

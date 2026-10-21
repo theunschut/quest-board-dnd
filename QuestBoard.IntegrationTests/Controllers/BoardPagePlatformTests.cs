@@ -427,6 +427,20 @@ public class BoardPagePlatformTests : IClassFixture<WebApplicationFactoryBase>, 
 
     [Theory]
     [MemberData(nameof(UserAgents))]
+    public async Task EditForm_BoardWithAStoredHome_PreselectsItInTheHomeSelect(string userAgent)
+    {
+        var client = await StartAsync();
+        await BoardPageSeed.SetAsync(_factory, OneShotBoardId, BoardPageSet.Empty.With(BoardPage.Shop), BoardPage.Calendar);
+
+        var html = await GetEditHtmlAsync(client, OneShotBoardId, userAgent);
+
+        HomeSelect(html).Should().MatchRegex(@"<option selected=""selected"" value=""Calendar"">Calendar</option>");
+        SwitchInput(html, BoardPage.Shop).Should().NotContain("checked");
+        SwitchInput(html, BoardPage.Calendar).Should().Contain("checked");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
     public async Task EditForm_RenderedFieldNames_RoundTripThroughAPost(string userAgent)
     {
         var client = await StartAsync();
