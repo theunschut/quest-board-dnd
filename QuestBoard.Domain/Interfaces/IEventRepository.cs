@@ -97,4 +97,27 @@ public interface IEventRepository : IBaseRepository<Event>
     /// never from request input. An empty collection returns an empty list rather than widening.
     /// </summary>
     Task<IList<LinkedEventEntry>> GetLinkedEventsForCalendarAsync(IReadOnlyCollection<int> linkedGroupIds, DateOnly fromInclusive, DateOnly toExclusive, CancellationToken token = default);
+
+    /// <summary>
+    /// Counts the events of the given board dated on or after <paramref name="today"/>, and how
+    /// many of those are cancelled. <paramref name="today"/> is the board-local date the caller
+    /// takes from the board clock. The board need not be the active one: the count is pinned to
+    /// <paramref name="groupId"/> explicitly rather than by the entity's query filter.
+    /// </summary>
+    Task<UpcomingEventCount> CountUpcomingForBoardAsync(int groupId, DateOnly today, CancellationToken token = default);
+
+    /// <summary>
+    /// Counts the repeating schedules of the given board that are still running: no end date, or
+    /// an end date on or after <paramref name="today"/>. <paramref name="today"/> is the
+    /// board-local date the caller takes from the board clock. The board need not be the active
+    /// one: the count is pinned to <paramref name="groupId"/> explicitly rather than by the
+    /// entity's query filter.
+    /// </summary>
+    Task<int> CountActiveSeriesForBoardAsync(int groupId, DateOnly today, CancellationToken token = default);
 }
+
+/// <summary>
+/// How many events a board has dated today or later, and how many of them are cancelled
+/// (the cancelled ones are included in <see cref="Total"/>).
+/// </summary>
+public sealed record UpcomingEventCount(int Total, int Cancelled);
