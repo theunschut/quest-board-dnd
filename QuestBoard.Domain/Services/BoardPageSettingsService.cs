@@ -108,7 +108,7 @@ internal class BoardPageSettingsService(IEventRepository eventRepository, IQuest
 
     private async Task EvaluateQuestsOffAsync(int groupId, List<string> errors, CancellationToken token)
     {
-        var live = await questRepository.CountLiveForBoardAsync(groupId, boardClock.Today, token);
+        var live = await questRepository.CountLiveForBoardAsync(groupId, boardClock.Now, token);
         if (live > 0)
         {
             var noun = live == 1 ? "1 live quest" : $"{live} live quests";

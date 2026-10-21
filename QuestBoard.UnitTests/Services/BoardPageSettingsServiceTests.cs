@@ -12,10 +12,11 @@ public class BoardPageSettingsServiceTests
     private const int GroupId = 7;
 
     private static readonly DateOnly Today = new(2031, 6, 15);
+    private static readonly DateTime Now = new(2031, 6, 15, 9, 0, 0);
 
     private readonly IEventRepository _events = Substitute.For<IEventRepository>();
     private readonly IQuestRepository _quests = Substitute.For<IQuestRepository>();
-    private readonly FakeBoardClock _clock = new() { Today = Today };
+    private readonly FakeBoardClock _clock = new() { Today = Today, Now = Now };
     private readonly BoardPageSettingsService _sut;
 
     public BoardPageSettingsServiceTests()
@@ -326,7 +327,7 @@ public class BoardPageSettingsServiceTests
     [Fact]
     public async Task SwitchingQuestsOff_WithLiveQuests_IsRefusedWithThePluralCount()
     {
-        _quests.CountLiveForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>()).Returns(2);
+        _quests.CountLiveForBoardAsync(GroupId, Now, Arg.Any<CancellationToken>()).Returns(2);
 
         var outcome = await Evaluate(Board(), Request(BoardPage.Calendar, (BoardPage.Quests, false)));
 
@@ -338,7 +339,7 @@ public class BoardPageSettingsServiceTests
     [Fact]
     public async Task SwitchingQuestsOff_WithOneLiveQuest_UsesTheSingular()
     {
-        _quests.CountLiveForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>()).Returns(1);
+        _quests.CountLiveForBoardAsync(GroupId, Now, Arg.Any<CancellationToken>()).Returns(1);
 
         var outcome = await Evaluate(Board(), Request(BoardPage.Calendar, (BoardPage.Quests, false)));
 
@@ -400,11 +401,11 @@ public class BoardPageSettingsServiceTests
     }
 
     [Fact]
-    public async Task LiveQuestCount_UsesTheEditedBoardsIdAndTheBoardClockToday()
+    public async Task LiveQuestCount_UsesTheEditedBoardsIdAndTheBoardClockNow()
     {
         await Evaluate(Board(), Request(BoardPage.Calendar, (BoardPage.Quests, false)));
 
-        await _quests.Received(1).CountLiveForBoardAsync(GroupId, Today, Arg.Any<CancellationToken>());
+        await _quests.Received(1).CountLiveForBoardAsync(GroupId, Now, Arg.Any<CancellationToken>());
     }
 
     [Fact]
