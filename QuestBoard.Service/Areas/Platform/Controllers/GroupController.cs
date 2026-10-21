@@ -1,10 +1,12 @@
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.Extensions;
@@ -62,30 +64,91 @@ public class GroupController(
     {
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
-        return View(new GroupEditViewModel { Id = group.Id, Name = group.Name, BoardType = group.BoardType });
+        var model = new GroupEditViewModel { Id = group.Id, Name = group.Name };
+        PopulatePageSection(model, group, group.DisabledPages);
+        return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(GroupEditViewModel model)
     {
-        if (!ModelState.IsValid) return View(model);
         var group = await groupService.GetByIdAsync(model.Id);
         if (group == null) return RedirectToAction(nameof(Index));
+
+        // A page the form did not post keeps its stored value, and a page value that is not a
+        // real page is dropped, so only what the form genuinely carried reaches the rules.
+        var switches = model.Pages
+            .Where(row => Enum.IsDefined(row.Page))
+            .GroupBy(row => row.Page)
+            .ToDictionary(rows => rows.Key, rows => rows.First().Enabled);
+
+        var outcome = await boardPageSettingsService.EvaluateAsync(group, new BoardPageSettingsRequest(switches, model.HomePage));
+        foreach (var error in outcome.Errors)
+        {
+            ModelState.AddModelError(string.Empty, error);
+        }
+
+        if (!ModelState.IsValid)
+        {
+            PopulatePageSection(model, group, outcome.Disabled);
+            return View(model);
+        }
+
         try
         {
             group.Name = model.Name;
+            group.DisabledPages = outcome.Disabled;
+            group.HomePage = outcome.HomePage;
             await groupService.UpdateAsync(group);
-            TempData["Success"] = "Group name updated.";
+            TempData["Success"] = "Board settings saved.";
             return RedirectToAction(nameof(Index));
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            ModelState.AddModelError(string.Empty, "Someone else changed this board while you were editing. Reload the page and try again.");
+            PopulatePageSection(model, group, outcome.Disabled);
+            return View(model);
         }
         catch (DbUpdateException ex) when (
             ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true ||
             ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
         {
             ModelState.AddModelError(nameof(model.Name), "A group with that name already exists. Please choose a different name.");
+            PopulatePageSection(model, group, outcome.Disabled);
             return View(model);
         }
+    }
+
+    // Everything on the form that is not posted back is worked out here from the board as stored
+    // and the switches being shown, so a re-render after a refusal never trusts the posted values
+    // for the board type, the labels or which rows are locked.
+    private static void PopulatePageSection(GroupEditViewModel model, Group group, BoardPageSet displayed)
+    {
+        model.BoardType = group.BoardType;
+
+        model.Pages = BoardPagePolicy.Catalogue
+            .Where(BoardPagePolicy.IsSwitchable)
+            .Select(page =>
+            {
+                var lockedReason = BoardPagePolicy.LockReason(group.BoardType, displayed, page);
+                return new BoardPageRowViewModel
+                {
+                    Page = page,
+                    Label = BoardPagePolicy.Label(page),
+                    LockedReason = lockedReason,
+                    Locked = lockedReason != null,
+                    Enabled = lockedReason == null && !displayed.Contains(page)
+                };
+            })
+            .ToList();
+
+        model.HomeChoices = BoardPagePolicy.HomeCandidates
+            .Where(page => BoardPagePolicy.AllowedOn(group.BoardType, page))
+            .Select(page => new SelectListItem(BoardPagePolicy.Label(page), page.ToString()))
+            .ToList();
+
+        model.HomePage ??= group.HomePage;
     }
 
     // Delete group (only empty groups)
