@@ -3,6 +3,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Services;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.SeriesViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.Events;
 
 [Authorize]
+[BoardPage(BoardPage.Events)]
 public class SeriesController(
     IEventSeriesService eventSeriesService,
     IEventService eventService,
