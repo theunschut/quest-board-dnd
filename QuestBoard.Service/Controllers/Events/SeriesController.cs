@@ -3,6 +3,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Services;
+using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.SeriesViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +19,8 @@ public class SeriesController(
     IUserService userService,
     IActiveGroupContext activeGroupContext,
     IMapper mapper,
-    IBoardClock boardClock) : Controller
+    IBoardClock boardClock,
+    IBoardPageResolver boardPageResolver) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Details(int id, CancellationToken token = default)
@@ -92,7 +94,7 @@ public class SeriesController(
 
         TempData["Success"] = "Series deleted successfully.";
 
-        return RedirectToAction("Index", "Calendar");
+        return await RedirectAfterRemovalAsync();
     }
 
     [HttpPost]
@@ -112,7 +114,18 @@ public class SeriesController(
 
         TempData["Success"] = "Series detached — its sessions are now one-off events.";
 
-        return RedirectToAction("Index", "Calendar");
+        return await RedirectAfterRemovalAsync();
+    }
+
+    // The series page itself is gone or changed, so the Dungeon Master lands on the calendar --
+    // unless this board does not use it, in which case the Events list is the page that is still there.
+    private async Task<IActionResult> RedirectAfterRemovalAsync()
+    {
+        var pages = await boardPageResolver.GetAsync();
+
+        return pages.Serves(BoardPage.Calendar)
+            ? RedirectToAction("Index", "Calendar")
+            : RedirectToAction("Index", "Events");
     }
 
     // The read filter already hides another board's schedule, and this explicit comparison is
