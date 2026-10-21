@@ -370,8 +370,8 @@ public class BoardPagePlatformTests : IClassFixture<WebApplicationFactoryBase>, 
         var html = await GetEditHtmlAsync(client, OneShotBoardId, userAgent);
 
         html.Should().Contain("Pages");
-        Regex.Matches(html, "form-check form-switch").Count.Should().Be(8);
-        foreach (var label in new[] { "Calendar", "Events", "Quest Log", "Characters", "Contacts", "Players", "Shop", "DM profile" })
+        Regex.Matches(html, "form-check form-switch").Count.Should().Be(9);
+        foreach (var label in new[] { "Quest list", "Calendar", "Events", "Quest Log", "Characters", "Contacts", "Players", "Shop", "DM profile" })
         {
             html.Should().MatchRegex($@"form-check-label[^>]*>\s*{label}\s*</label>");
         }
@@ -450,7 +450,7 @@ public class BoardPagePlatformTests : IClassFixture<WebApplicationFactoryBase>, 
         // when it is ticked, and the hidden false that always follows it.
         var fields = new List<(string Key, string Value)>();
         var pageFields = Regex.Matches(html, @"<input[^>]*name=""(Pages\[\d+\]\.Page)""[^>]*value=""(\w+)""[^>]*>");
-        pageFields.Count.Should().Be(8);
+        pageFields.Count.Should().Be(9);
         foreach (Match field in pageFields)
         {
             var page = field.Groups[2].Value;
