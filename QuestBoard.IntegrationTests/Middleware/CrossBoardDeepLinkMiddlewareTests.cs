@@ -275,6 +275,12 @@ public class CrossBoardDeepLinkMiddlewareTests(CrossBoardWebApplicationFactory f
         redirectLocation.Should().NotBe($"/Quest/Details/{boardBQuestId}");
 
         var landedResponse = await client.SendAsync(NavigationGet(redirectLocation), TestContext.Current.CancellationToken);
+        // With no return path the picker sends the viewer to the root, which in turn redirects to
+        // the board's home page, so follow that one hop to the page that is actually shown.
+        if (landedResponse.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.Found)
+        {
+            landedResponse = await client.SendAsync(NavigationGet(landedResponse.Headers.Location!.OriginalString), TestContext.Current.CancellationToken);
+        }
         var landedBody = await landedResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         landedBody.Should().Contain("TracerBoardAQuestpingpong");
     }
