@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Quest Calendar";
     ViewBag.IsDetailsPage = false;
+    var pages = await BoardPages.GetAsync();
     var prevMonth = Model.FirstDayOfMonth.AddMonths(-1);
     var nextMonth = Model.FirstDayOfMonth.AddMonths(1);
     var agendaDays = Model.GetCalendarDays().Where(d => !d.IsEmpty && (d.QuestsOnDay.Any() || d.EventsOnDay.Any() || d.Linked.HasEntries)).ToList();
@@ -39,7 +40,7 @@
     }
 
     <div class="d-grid gap-2 mb-3">
-        @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded)
+        @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded && pages.Serves(BoardPage.Events))
         {
             <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm">
                 <i class="fas fa-calendar-check me-2"></i>Board Availability

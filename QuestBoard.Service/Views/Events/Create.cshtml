@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = "Create Event";
     var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var pages = await BoardPages.GetAsync();
 }
 
 <div class="card modern-card">
@@ -103,7 +104,7 @@
             <hr />
 
             <div class="d-flex justify-content-between">
-                <a href="@Url.Action("Index", "Calendar")" class="btn btn-secondary">
+                <a href="@(pages.Serves(BoardPage.Calendar) ? Url.Action("Index", "Calendar") : Url.Action("Index", "Events"))" class="btn btn-secondary">
                     <i class="fas fa-times me-2"></i>Cancel
                 </a>
                 <button type="submit" class="btn btn-warning">
