@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 
@@ -303,5 +304,99 @@ public class BoardPageEventsCalendarTests(WebApplicationFactoryBase factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
         response.Headers.Location!.OriginalString.Should().Be("/Calendar");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Calendar_EventsOff_HidesTheBoardAvailabilityButton(string userAgent)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await BoardPageSeed.SetAsync(factory, 1, EventsOff, BoardPage.Quests);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, "/Calendar", userAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The adjacent My Agenda button anchors the assertion on the right button row, so the
+        // absence cannot pass because the whole row went missing.
+        html.Should().Contain("My Agenda");
+        html.Should().NotContain("Board Availability");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent)]
+    [InlineData(MobileUserAgent)]
+    public async Task Calendar_EventsOn_ShowsTheBoardAvailabilityButton(string userAgent)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, "/Calendar", userAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Board Availability");
+    }
+
+    // The navigation bar carries its own calendar link, so the form's Cancel link is picked out
+    // by its markup instead of asserting on the whole page.
+    private static string CancelHref(string html)
+    {
+        var match = Regex.Match(
+            html, @"<a href=""([^""]*)""\s+class=""btn btn-secondary"">\s*<i class=""fas fa-times me-2""></i>Cancel");
+        match.Success.Should().BeTrue("the form has a Cancel link");
+        return WebUtility.HtmlDecode(match.Groups[1].Value);
+    }
+
+    [Fact]
+    public async Task EventCreateForm_CalendarOff_CancelLinksToTheEventsList()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await BoardPageSeed.SetAsync(factory, 1, CalendarOff, BoardPage.Quests);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, "/Events/Create", DesktopUserAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        CancelHref(html).Should().Be("/Events");
+    }
+
+    [Fact]
+    public async Task EventCreateForm_CalendarOn_CancelStillLinksToTheCalendar()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, "/Events/Create", DesktopUserAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        CancelHref(html).Should().Be("/Calendar");
+    }
+
+    [Fact]
+    public async Task EventEditForm_CalendarOff_CancelLinksToTheEventsList()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync("Calendar Off Edit Form", new DateOnly(2031, 4, 12));
+        await BoardPageSeed.SetAsync(factory, 1, CalendarOff, BoardPage.Quests);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, $"/Events/Edit/{eventId}", DesktopUserAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        CancelHref(html).Should().Be("/Events");
+    }
+
+    [Fact]
+    public async Task EventEditForm_CalendarOn_CancelStillLinksToTheEventsMonth()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync("Calendar On Edit Form", new DateOnly(2031, 4, 12));
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, $"/Events/Edit/{eventId}", DesktopUserAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        CancelHref(html).Should().Be("/Calendar?year=2031&month=4");
     }
 }
