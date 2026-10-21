@@ -223,6 +223,13 @@ internal class QuestMoveService(
 
         preview.Target = target;
 
+        // Refused before any eligibility or roster work so nothing else masks it and no write is reached.
+        if (!BoardPagePolicy.IsAvailable(linked.SetBoardType, target.DisabledPages, BoardPage.Quests))
+        {
+            preview.Status = MoveStatus.TargetPageOff;
+            return preview;
+        }
+
         // Read from the stored role on the target, not from the viewer's own role there: the DM is
         // a different person from the actor, and a platform super admin runs a quest anywhere.
         var dmRole = await userRepository.GetGroupRoleAsync(quest.DungeonMasterId, target.Id);
