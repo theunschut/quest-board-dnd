@@ -47,4 +47,61 @@ public class BoardPageGateTests : IClassFixture<WebApplicationFactoryBase>, IAsy
         var html = await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         WebUtility.HtmlDecode(html).Should().Contain(ShopToast);
     }
+
+    [Fact]
+    public async Task Shop_WithDefaultSettings_IsServed()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+
+        var response = await client.GetAsync("/Shop", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Shop_OnCampaignBoardWithNothingStored_RedirectsToQuestListWithToast()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        _factory.TestGroupContext.BoardType = BoardType.Campaign;
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+
+        var response = await client.GetAsync("/Shop", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().StartWith("/quests");
+
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        WebUtility.HtmlDecode(html).Should().Contain(ShopToast);
+    }
+
+    [Fact]
+    public async Task Shop_Off_IsRefusedForSuperAdminToo()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Shop), BoardPage.Calendar);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var response = await client.GetAsync("/Shop", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().StartWith("/Calendar");
+    }
+
+    [Fact]
+    public async Task Shop_WithNoResolvedBoardType_AnswersAsItDoesWithShopOn()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        _factory.TestGroupContext.BoardType = null;
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(_factory);
+
+        var withShopOn = await client.GetAsync("/Shop", TestContext.Current.CancellationToken);
+        await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Shop), BoardPage.Calendar);
+        var withShopOff = await client.GetAsync("/Shop", TestContext.Current.CancellationToken);
+
+        withShopOff.StatusCode.Should().Be(withShopOn.StatusCode);
+        withShopOff.Headers.Location?.OriginalString.Should().Be(withShopOn.Headers.Location?.OriginalString);
+    }
 }
