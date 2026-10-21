@@ -1,7 +1,7 @@
 ---
 phase: "93"
 slug: per-board-page-selection-and-home-page
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: "2026-10-21"
@@ -101,7 +101,7 @@ Declared for all new content in this phase. Existing heading styles are reused u
 | Page title | 32px (`h2`) | 600 | 1.2 | Existing card header "Edit Group" (unchanged) |
 | Section heading | 20px (`h5`) | 600 | 1.2 | "Pages" heading |
 | Body | 16px (`1rem`) | 500 | 1.5 | Switch labels (`site.css` forces 500), refusal lines, field labels (`.form-label` forces 600), select text |
-| Label | 14px (`.875rem`) | 500 | 1.5 | Section hint, lock reasons (`small`), the home-page hint (`.form-text`, 400 inherited from `modern-card.css`) |
+| Label | 14px (`.875rem`) | 500 (hint and lock reasons); 400 (home-page hint) | 1.5 | Section hint, lock reasons (`small`), the home-page hint (`.form-text`, 400 inherited from `modern-card.css`) |
 
 **Mobile Platform Edit page: 3 sizes** (20 / 16 / 14), the existing page title `h5` (20px), the new `h6` heading and all body text (16px), hint and reason (14px).
 
@@ -112,15 +112,15 @@ Declared for all new content in this phase. Existing heading styles are reused u
 | Body | 16px | 400 | 1.5 | Switch labels, field labels, refusal lines, select text |
 | Label | 14px | 400 | 1.5 | Section hint, lock reasons, home-page hint |
 
-Weights: **two per layout**. Desktop renders 500 (inherited from `modern-card.css`/`site.css`, never overridden) and 600; mobile renders 400 and 700 (the existing `mobile.css`
-heading rule; this phase authors no weight). The `.form-text` 400 on desktop is the existing `modern-card.css` value and is the one inherited exception. Never `fw-bold` on new
+Weights: **three on desktop, two on mobile, all inherited**. Desktop renders 500 (inherited from `modern-card.css`/`site.css`, never overridden), 600, and 400 on `.form-text`
+(the existing `modern-card.css` value); mobile renders 400 and 700 (the existing `mobile.css` heading rule). This phase authors no weight and adds no CSS for desktop. Never `fw-bold` on new
 markup. Menu items, toasts and badges keep their existing sizes and weights; this phase adds none.
 
 ---
 
 ## Color
 
-60/30/10 as the app already lives it; this phase adds **no new colour value**.
+60/30/10 as the app already lives it; this phase adds **no new colour value**. The opaque `#D9CDA8` used for mobile secondary text (Surface 1) is the existing convention from the Phase 91/92 contracts, reused here.
 
 | Role | Value | Usage |
 |------|-------|-------|
@@ -385,7 +385,9 @@ relies on a hidden control (project rule, reinforced after Phase 52).
 
 ## UI Considerations
 
-Applicable state considerations resolved: 22 covered, 5 backstop, 0 unresolved. Authored by hand during this retroactive generation (the interactive probe was not run); every row maps to a section above.
+Applicable state considerations resolved: 22 covered, 5 backstop, 0 unresolved. Authored by hand during this retroactive generation; every row maps to a section above.
+
+Probe engine cross-check (2026-10-21): the probe proposed 62 candidates over 9 surfaces, nearly every category for every surface. The orchestrator reviewed the 35 not listed below and dismissed them as not applicable rather than walking them one by one: `loading` everywhere (server-rendered, no async loads); `overflow`, `long-text` and `zero-one-many` on fixed-copy single items (toast sentence, nav links, badge text, inert entry text keep their existing wrapping); and `empty`/`partial` on surfaces that have exactly one shape when present (S2, S4, S7, S10 beyond the rows below). Any of these can be reopened at `/gsd-ui-review` or UAT.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
@@ -457,12 +459,14 @@ Conservative defaults taken where the plans or CONTEXT leave a presentation deta
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS (not applicable: `Tool: none`, no Component Inventory section)
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS (FLAG on the weight headline, corrected after review)
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS (not applicable: `Tool: none`, no Component Inventory section)
+
+Approved by gsd-ui-checker on 2026-10-21.
 
 **Approval:** pending
