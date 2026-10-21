@@ -141,6 +141,13 @@ internal class EventMoveService(
 
         preview.Target = target;
 
+        // Refused before any roster work so nothing else masks it and no write is reached.
+        if (!BoardPagePolicy.IsAvailable(linked.SetBoardType, target.DisabledPages, BoardPage.Events))
+        {
+            preview.Status = MoveStatus.TargetPageOff;
+            return preview;
+        }
+
         var roster = await eventSignupRepository.GetRosterForEventAsync(evt.Id, token);
 
         // Membership means any role on the target board, and needs no filter bypass.

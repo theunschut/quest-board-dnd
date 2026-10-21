@@ -63,7 +63,14 @@
                     <option value="">-- Select a board --</option>
                     @foreach (var board in preview.LinkedBoards)
                     {
-                        <option value="@board.Id" selected="@(preview.Target?.Id == board.Id)">@board.Name</option>
+                        if (Model.CanTake(board))
+                        {
+                            <option value="@board.Id" selected="@(preview.Target?.Id == board.Id)">@board.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@board.Id" disabled="disabled">@board.Name@Model.NotUsedThereSuffix</option>
+                        }
                     }
                 </select>
                 <button type="submit" class="btn btn-info w-100 mt-2">

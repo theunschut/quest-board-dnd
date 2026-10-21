@@ -36,6 +36,10 @@ public class MoveController(
                 TempData["Error"] = "This board is not linked to any other board, so there is nowhere to move this.";
                 return RedirectToAction("Details", "Quest", new { id });
 
+            case MoveStatus.TargetPageOff:
+                TempData["Error"] = $"Quests aren't used on {preview.Target?.Name}, so nothing can be moved there.";
+                return RedirectToAction("Details", "Quest", new { id });
+
             default:
                 return View("Index", new MovePageViewModel { Preview = preview });
         }
@@ -67,6 +71,7 @@ public class MoveController(
                     MoveStatus.NoLinkedBoards => "This board is not linked to any other board, so there is nowhere to move this.",
                     MoveStatus.TargetNotLinked => "That board is not linked to this one, so nothing was moved.",
                     MoveStatus.DungeonMasterNotEligible => $"{outcome.DmName} is not a Dungeon Master or Admin on {outcome.Target?.Name}, so the quest was not moved.",
+                    MoveStatus.TargetPageOff => $"Quests aren't used on {outcome.Target?.Name}, so nothing was moved.",
                     _ => "The move did not complete and nothing was changed. Try again."
                 };
                 return RedirectToAction("Details", "Quest", new { id });
@@ -91,6 +96,10 @@ public class MoveController(
 
             case MoveStatus.NoLinkedBoards:
                 TempData["Error"] = "This board is not linked to any other board, so there is nowhere to move this.";
+                return RedirectToAction("Details", "Events", new { id });
+
+            case MoveStatus.TargetPageOff:
+                TempData["Error"] = $"Events aren't used on {preview.Target?.Name}, so nothing can be moved there.";
                 return RedirectToAction("Details", "Events", new { id });
 
             default:
@@ -123,6 +132,7 @@ public class MoveController(
                     MoveStatus.Blocked => $"This event cannot be moved. {MoveCopy.ToastReason(outcome.BlockReason)}",
                     MoveStatus.NoLinkedBoards => "This board is not linked to any other board, so there is nowhere to move this.",
                     MoveStatus.TargetNotLinked => "That board is not linked to this one, so nothing was moved.",
+                    MoveStatus.TargetPageOff => $"Events aren't used on {outcome.Target?.Name}, so nothing was moved.",
                     _ => "The move did not complete and nothing was changed. Try again."
                 };
                 return RedirectToAction("Details", "Events", new { id });
