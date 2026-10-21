@@ -1346,7 +1346,7 @@ Plans:
 **Goal:** In the Platform area, a super admin can choose which pages each board offers, such as Shop, Contacts, Players, Characters, Quest Log, Events and Calendar. A page that is switched off disappears from both menus, and the server refuses it on that board when its URL is typed. A super admin can also set which page a board opens on. The default stays the quest list, as it is today, and at least one board can open on `/calendar` instead. Boards nobody configures behave exactly as they do today.
 **Requirements**: TBD
 **Depends on:** Phase 92, for sequencing only. It edits the same layouts and Platform `GroupController` that Phases 91 and 92 changed, but needs nothing they built.
-**Plans:** 8/15 plans executed
+**Plans:** 13/15 plans executed
 
 **Origin:** raised by the operator on 2026-10-20. Boards differ in which pages they actually use, and the operator wants at least one board in their group of boards to open on its calendar instead of the quest list.
 
@@ -1388,11 +1388,11 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 93-06-PLAN.md — Platform Edit "Pages" section and home dropdown on both twins, refusals as form errors (W3)
-- [ ] 93-07-PLAN.md — Character pickers and DM-profile links hidden when those pages are off; crafted character ids refused (W3)
-- [ ] 93-08-PLAN.md — Events and Calendar off: no own events on the calendar, its Board Availability button hidden, saves and cancels land on Events (W3)
-- [ ] 93-09-PLAN.md — Moves onto a board with that kind of entry switched off refused; picker and control follow (W3)
-- [ ] 93-12-PLAN.md — Server gate on Shop management, Players, DM profile, Characters and Contacts (Campaign gap closed, picture endpoints exempt) and the reflection coverage test (W3)
+- [x] 93-06-PLAN.md — Platform Edit "Pages" section and home dropdown on both twins, refusals as form errors (W3)
+- [x] 93-07-PLAN.md — Character pickers and DM-profile links hidden when those pages are off; crafted character ids refused (W3)
+- [x] 93-08-PLAN.md — Events and Calendar off: no own events on the calendar, its Board Availability button hidden, saves and cancels land on Events (W3)
+- [x] 93-09-PLAN.md — Moves onto a board with that kind of entry switched off refused; picker and control follow (W3)
+- [x] 93-12-PLAN.md — Server gate on Shop management, Players, DM profile, Characters and Contacts (Campaign gap closed, picture endpoints exempt) and the reflection coverage test (W3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
