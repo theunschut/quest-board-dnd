@@ -2,6 +2,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.Extensions;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.Jobs;
 using QuestBoard.Service.Services;
 using QuestBoard.Service.ViewModels.AdminViewModels;
@@ -414,6 +415,7 @@ public class AdminController(IUserService userService, IQuestService questServic
     }
 
     [HttpGet]
+    [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> Quests()
     {
         var allQuests = await questService.GetAllAsync();
@@ -433,6 +435,7 @@ public class AdminController(IUserService userService, IQuestService questServic
 
     [HttpDelete]
     [ValidateAntiForgeryToken]
+    [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> DeleteQuest(int id)
     {
         var quest = await questService.GetByIdAsync(id);
