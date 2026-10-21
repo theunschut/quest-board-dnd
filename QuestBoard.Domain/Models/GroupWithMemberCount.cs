@@ -9,4 +9,7 @@ public class GroupWithMemberCount
     public DateTime CreatedAt { get; set; }
     public int MemberCount { get; set; }
     public BoardType BoardType { get; set; }
+
+    /// <summary>The page the board opens on, as stored on the board's row.</summary>
+    public BoardPage HomePage { get; set; }
 }

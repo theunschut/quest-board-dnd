@@ -1,3 +1,4 @@
+@using QuestBoard.Domain.Extensions
 @model GroupListViewModel
 @{
     ViewData["Title"] = "Group Management";
@@ -39,6 +40,10 @@
                     else
                     {
                         <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1"></i>One-Shot</span>
+                    }
+                    @if (item.HomePage != BoardPage.Quests)
+                    {
+                        <span class="badge bg-secondary ms-1"><i class="fas fa-house me-1"></i>Home: @BoardPagePolicy.Label(item.HomePage)</span>
                     }
                 </div>
                 <div>

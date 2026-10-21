@@ -20,7 +20,8 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
                 Name = g.Name,
                 CreatedAt = g.CreatedAt,
                 MemberCount = g.UserGroups.Count,
-                BoardType = (BoardType)g.BoardType
+                BoardType = (BoardType)g.BoardType,
+                HomePage = (BoardPage)g.HomePage
             })
             .ToListAsync(token);
     }
@@ -36,7 +37,8 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
                 Name = g.Name,
                 CreatedAt = g.CreatedAt,
                 MemberCount = g.UserGroups.Count,
-                BoardType = (BoardType)g.BoardType
+                BoardType = (BoardType)g.BoardType,
+                HomePage = (BoardPage)g.HomePage
             })
             .ToListAsync(token);
     }
