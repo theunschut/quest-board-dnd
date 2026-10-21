@@ -2,6 +2,7 @@ using AutoMapper;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models.Shop;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.ShopViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.Shop;
 
 [Authorize(Policy = "DungeonMasterOnly")]
+[BoardPage(BoardPage.Shop)]
 public class ShopManagementController(
     IAuthorizationService authorizationService,
     IShopService shopService,

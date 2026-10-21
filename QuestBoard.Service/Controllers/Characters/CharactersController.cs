@@ -3,6 +3,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.CharacterViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace QuestBoard.Service.Controllers.Characters
 {
     [Authorize]
+    [BoardPage(BoardPage.Characters)]
     public class CharactersController(
         ICharacterService characterService,
         IUserService userService,
@@ -410,6 +412,7 @@ namespace QuestBoard.Service.Controllers.Characters
         }
 
         [HttpGet]
+        [BoardPageExempt]
         public async Task<IActionResult> GetProfilePicture(int id, CancellationToken token = default)
         {
             var profilePicture = await characterService.GetCharacterOriginalPictureAsync(id, token);
@@ -422,6 +425,7 @@ namespace QuestBoard.Service.Controllers.Characters
         }
 
         [HttpGet]
+        [BoardPageExempt]
         public async Task<IActionResult> GetCroppedPicture(int id, CancellationToken token = default)
         {
             var croppedPicture = await characterService.GetCharacterCroppedPictureAsync(id, token);

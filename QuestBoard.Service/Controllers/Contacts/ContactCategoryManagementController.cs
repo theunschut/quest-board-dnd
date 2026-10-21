@@ -2,13 +2,16 @@ using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.ContactViewModels;
 
 namespace QuestBoard.Service.Controllers.Contacts;
 
 [Authorize(Policy = "DungeonMasterOnly")]
+[BoardPage(BoardPage.Contacts)]
 public class ContactCategoryManagementController(
     IContactCategoryService contactCategoryService,
     IActiveGroupContext activeGroupContext,
