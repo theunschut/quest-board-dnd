@@ -16,6 +16,7 @@ public class AmbientClockSeamTests
     [
         "QuestBoard.Domain/Extensions/MoveEligibility.cs",
         "QuestBoard.Domain/Extensions/QuestExtensions.cs",
+        "QuestBoard.Domain/Services/BoardPageSettingsService.cs",
         "QuestBoard.Domain/Services/CalendarFeedWriter.cs",
         "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
         "QuestBoard.Domain/Services/EventMoveService.cs",
@@ -74,6 +75,7 @@ public class AmbientClockSeamTests
     // is exactly that case, and must still never read a clock of its own.
     private static readonly string[] BoardClockConsumerPaths =
     [
+        "QuestBoard.Domain/Services/BoardPageSettingsService.cs",
         "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
         "QuestBoard.Domain/Services/EventMoveService.cs",
         "QuestBoard.Domain/Services/EventSeriesService.cs",
