@@ -6,16 +6,16 @@ current_phase: 93
 current_phase_name: Per-Board Page Selection and Home Page
 status: executing
 stopped_at: Phase 93 context gathered
-last_updated: "2026-10-21T10:13:38.509Z"
-last_activity: 2026-10-19
-last_activity_desc: "Phase 92 complete — UAT 4/4, review fixes, security 37/37, PR #161"
-state_head: c35512f3c0da91f39ecd83202acc84058a4aa69d
+last_updated: "2026-10-21T11:20:12.876Z"
+last_activity: 2026-10-21
+last_activity_desc: Phase 93 execution started
+state_head: eac5a5cbf4b98de884f86828f49fa8d6a0ce5886
 progress:
   total_phases: 22
   completed_phases: 18
   total_plans: 163
   completed_plans: 139
-  percent: 68
+  percent: 82
 ---
 
 # Project State
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19 — after Phase 92)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 92 merged (#161) and tagged v5.6.0; remaining open phases are 78, 79 and 90
+**Current focus:** Phase 93 — Per-Board Page Selection and Home Page
 
 ## Current Position
 
-Phase: 93 (Per-Board Page Selection and Home Page) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-19 - Phase 81 review fixes and security audit; completed quick task 261019-plu: bound contact tag parsing before validation
+Phase: 93 (Per-Board Page Selection and Home Page) — EXECUTING
+Plan: 1 of 15
+Status: Executing Phase 93
+Last activity: 2026-10-21 — Phase 93 execution started
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
