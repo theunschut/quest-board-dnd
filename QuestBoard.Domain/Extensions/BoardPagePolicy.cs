@@ -49,8 +49,11 @@ public static class BoardPagePolicy
         _ => true
     };
 
-    /// <summary>Whether a super admin may switch the page off.</summary>
-    public static bool IsSwitchable(BoardPage page) => page != BoardPage.Quests;
+    /// <summary>
+    /// Whether a super admin may switch the page off. Every page can be switched off, the quest
+    /// list included; the board type stays a ceiling on what can be switched on.
+    /// </summary>
+    public static bool IsSwitchable(BoardPage page) => true;
 
     /// <summary>
     /// Whether the board offers the page: its type allows it and it is not switched off. The Quest

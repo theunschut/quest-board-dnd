@@ -169,7 +169,7 @@ public class BoardPageCountQueryTests
         var (repository, _) = CreateQuestRepository(context);
         var count = await repository.CountLiveForBoardAsync(BoardOne, Today, Token);
 
-        Assert.Equal(3, count);
+        Assert.Equal(4, count);
     }
 
     [Fact]

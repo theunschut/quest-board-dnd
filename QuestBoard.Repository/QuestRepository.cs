@@ -423,8 +423,20 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     }
 
     /// <inheritdoc/>
-    public Task<int> CountLiveForBoardAsync(int groupId, DateOnly boardToday, CancellationToken token = default)
+    public async Task<int> CountLiveForBoardAsync(int groupId, DateOnly boardToday, CancellationToken token = default)
     {
-        return Task.FromResult(0);
+        // The board being edited is not the active one, so the ambient filter is bypassed and the
+        // explicit group id keeps the count on that board. The predicate is the shared
+        // has-been-played rule written the way the database can run it: a finalized quest is
+        // played once its date falls before the start of the board's today, so a quest is live
+        // while it is open and either not finalized or finalized for today or later. Only a
+        // scalar leaves this method and nothing is written.
+        var todayStart = boardToday.ToDateTime(TimeOnly.MinValue);
+
+        return await DbContext.Quests
+            .IgnoreQueryFilters()
+            .CountAsync(q => q.GroupId == groupId
+                && !q.IsClosed
+                && (!q.IsFinalized || q.FinalizedDate == null || q.FinalizedDate >= todayStart), token);
     }
 }

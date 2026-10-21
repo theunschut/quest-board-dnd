@@ -15,6 +15,13 @@ internal class BoardPageSettingsService(IEventRepository eventRepository, IQuest
         var disabled = ApplySwitches(group, request);
         var home = EvaluateHome(group, request, disabled, errors);
 
+        // Switching Quests off strands every quest that is still open or upcoming behind a page
+        // nobody can open, so the live ones are counted, but only on the transition from on to off.
+        if (!group.DisabledPages.Contains(BoardPage.Quests) && disabled.Contains(BoardPage.Quests))
+        {
+            await EvaluateQuestsOffAsync(group.Id, errors, token);
+        }
+
         // Switching Events off strands anything dated today or later behind a page nobody can
         // open, and a running series would keep creating more, so both are checked, but only on
         // the transition from on to off.
@@ -90,6 +97,16 @@ internal class BoardPageSettingsService(IEventRepository eventRepository, IQuest
         }
 
         return home;
+    }
+
+    private async Task EvaluateQuestsOffAsync(int groupId, List<string> errors, CancellationToken token)
+    {
+        var live = await questRepository.CountLiveForBoardAsync(groupId, boardClock.Today, token);
+        if (live > 0)
+        {
+            var noun = live == 1 ? "1 live quest" : $"{live} live quests";
+            errors.Add($"Quests can't be switched off while this board has {noun}. Close or delete them first.");
+        }
     }
 
     private async Task EvaluateEventsOffAsync(int groupId, List<string> errors, CancellationToken token)
