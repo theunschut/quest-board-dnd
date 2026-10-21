@@ -26,4 +26,10 @@ public class LinkedQuestEntry
     public string BoardName { get; set; } = string.Empty;
 
     public bool ViewerIsMember { get; set; }
+
+    /// <summary>
+    /// True when the viewer may follow the entry's link: they are a member of the owning board,
+    /// and that board still offers the page the link opens.
+    /// </summary>
+    public bool CanOpen { get; set; }
 }

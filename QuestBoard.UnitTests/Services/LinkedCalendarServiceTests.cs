@@ -237,6 +237,99 @@ public class LinkedCalendarServiceTests
         result.Quests.Select(q => q.QuestId).Should().Equal(20);
     }
 
+    private static LinkedBoard BoardWithPagesOff(int id, GroupRole? viewerRole, params BoardPage[] off)
+    {
+        var board = Board(id, $"Board {id}", viewerRole);
+        foreach (var page in off)
+        {
+            board.DisabledPages = board.DisabledPages.With(page);
+        }
+
+        return board;
+    }
+
+    [Theory]
+    [InlineData(GroupRole.Player, BoardPage.Events, false)]
+    [InlineData(GroupRole.Player, BoardPage.Quests, true)]
+    [InlineData(GroupRole.Player, BoardPage.Shop, true)]
+    [InlineData(null, BoardPage.Quests, false)]
+    public async Task GetForViewer_EventEntry_CanOpenOnlyForAMemberWhoseBoardStillOffersEvents(
+        GroupRole? roleOnOwningBoard, BoardPage pageOff, bool expectedCanOpen)
+    {
+        var f = new Fixture();
+        f.LinkedBoardsAre(BoardType.OneShot, BoardWithPagesOff(2, roleOnOwningBoard, pageOff));
+        f.ReadsReturn([EventRow(10, 2)], []);
+
+        var result = await f.GetAsync();
+
+        var entry = result.Events.Single();
+        entry.CanOpen.Should().Be(expectedCanOpen);
+        entry.ViewerIsMember.Should().Be(roleOnOwningBoard != null);
+    }
+
+    [Theory]
+    [InlineData(GroupRole.Player, BoardPage.Quests, false)]
+    [InlineData(GroupRole.Player, BoardPage.Events, true)]
+    [InlineData(GroupRole.Player, BoardPage.Shop, true)]
+    [InlineData(null, BoardPage.Events, false)]
+    public async Task GetForViewer_QuestEntry_CanOpenOnlyForAMemberWhoseBoardStillOffersQuests(
+        GroupRole? roleOnOwningBoard, BoardPage pageOff, bool expectedCanOpen)
+    {
+        var f = new Fixture();
+        f.LinkedBoardsAre(BoardType.OneShot, BoardWithPagesOff(2, roleOnOwningBoard, pageOff));
+        f.ReadsReturn([], [QuestRow(20, 2)]);
+
+        var result = await f.GetAsync();
+
+        var entry = result.Quests.Single();
+        entry.CanOpen.Should().Be(expectedCanOpen);
+        entry.ViewerIsMember.Should().Be(roleOnOwningBoard != null);
+    }
+
+    [Fact]
+    public async Task GetForViewer_EntriesFromABoardWithThePageOff_AreStillReturned()
+    {
+        var f = new Fixture();
+        f.LinkedBoardsAre(BoardType.OneShot, BoardWithPagesOff(2, GroupRole.Player, BoardPage.Events, BoardPage.Quests));
+        f.ReadsReturn([EventRow(10, 2)], [QuestRow(20, 2)]);
+
+        var result = await f.GetAsync();
+
+        result.Events.Select(e => e.EventId).Should().Equal(10);
+        result.Quests.Select(q => q.QuestId).Should().Equal(20);
+    }
+
+    [Fact]
+    public async Task GetForViewer_CampaignSetWithEventsOff_EventEntryCannotOpenAndNoQuestsAreRead()
+    {
+        var f = new Fixture();
+        f.LinkedBoardsAre(BoardType.Campaign, BoardWithPagesOff(2, GroupRole.Player, BoardPage.Events));
+        f.ReadsReturn([EventRow(10, 2)], [QuestRow(20, 2)]);
+
+        var result = await f.GetAsync();
+
+        result.Events.Single().CanOpen.Should().BeFalse();
+        result.Events.Single().ViewerIsMember.Should().BeTrue();
+        result.Quests.Should().BeEmpty();
+        await f.Quests.DidNotReceiveWithAnyArgs().GetLinkedQuestsForCalendarAsync(default!, default, default, default);
+    }
+
+    [Fact]
+    public async Task GetForViewer_MemberOfBoardsWithThePageOnAndOff_DecidesPerOwningBoard()
+    {
+        var f = new Fixture();
+        f.LinkedBoardsAre(
+            BoardType.OneShot,
+            BoardWithPagesOff(2, GroupRole.Player, BoardPage.Events),
+            BoardWithPagesOff(3, GroupRole.Player));
+        f.ReadsReturn([EventRow(10, 2), EventRow(11, 3)], []);
+
+        var result = await f.GetAsync();
+
+        result.Events.Single(e => e.EventId == 10).CanOpen.Should().BeFalse();
+        result.Events.Single(e => e.EventId == 11).CanOpen.Should().BeTrue();
+    }
+
     [Fact]
     public async Task GetForViewer_StampsBoardNameAndMembershipFromTheOwningBoard_AndListsEveryBoard()
     {
