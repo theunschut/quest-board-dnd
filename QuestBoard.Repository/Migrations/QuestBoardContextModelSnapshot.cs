@@ -643,7 +643,14 @@ namespace QuestBoard.Repository.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("DisabledPages")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HomePage")
+                        .HasColumnType("int");
+
                     b.Property<int?>("LinkedBoardSetId")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
