@@ -198,7 +198,6 @@ New as of 2026-10-21 (Phase 93):
 
 - **Four real-phone checks are deferred** (`93-UAT.md`, todo `2026-10-21-phase-93-real-phone-checks.md`). A local SQL Server run in the in-app browser confirmed the migration, the gate, home routing, both refusals and the 375px mobile Edit layout, and found the mobile refusal red dimmer than desktop and the mobile switches in default blue.
 - **Phase 93 code-review info items IN-01..IN-05 are open, all optional** (see `93-REVIEW.md`); the UI review's three warnings are in `93-UI-REVIEW.md`. Nyquist validation (`/gsd-validate-phase 93`) was not run.
-- **The app's startup configuration dump prints some secret-looking environment variables unmasked** (for example `GRAYLOG_TEST_AUTH`); the mask only covers known key names. Pre-existing, seen during the local run.
 
 ### Quick Tasks Completed
 
