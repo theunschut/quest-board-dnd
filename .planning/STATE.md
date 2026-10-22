@@ -154,8 +154,6 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 
 ### Pending Todos
 
-- `2026-10-21-phase-93-real-phone-checks.md` — the four deferred Phase 93 real-phone checks, with the emulated findings.
-
 None captured for v8.0. Two small deferred toolbar features (EDITOR-07/08/09 — strikethrough, horizontal rule, cheatsheet link) logged in `.planning/PROJECT.md` Requirements → Active for a future milestone to pick up if requested.
 
 ### Blockers/Concerns
@@ -196,7 +194,7 @@ New as of 2026-10-17 (Phase 91):
 
 New as of 2026-10-21 (Phase 93):
 
-- **Four real-phone checks are deferred** (`93-UAT.md`, todo `2026-10-21-phase-93-real-phone-checks.md`). A local SQL Server run in the in-app browser confirmed the migration, the gate, home routing, both refusals and the 375px mobile Edit layout, and found the mobile refusal red dimmer than desktop and the mobile switches in default blue.
+- **Resolved 2026-10-22: the four real-phone checks passed** on the operator's phone after v5.7.0 shipped (`93-UAT.md` 4/4). The two mobile colour findings from the local run (dim refusal red, Bootstrap-blue switches) were fixed in `platform-group.mobile.css`.
 - **Phase 93 code-review info items IN-01..IN-05 are open, all optional** (see `93-REVIEW.md`); the UI review's three warnings are in `93-UI-REVIEW.md`. Nyquist validation (`/gsd-validate-phase 93`) was not run.
 
 ### Quick Tasks Completed
@@ -227,7 +225,7 @@ Items acknowledged and carried forward across milestone closes.
 | requirement | CALFEED real-device subscription check — a real phone actually subscribing via iOS Calendar, Google Calendar and Outlook, what iOS names the calendar, refresh latency, and a camera QR scan | Partly verified 2026-09-30 during Phase 88's production check (v5.3.2; see `88-UAT.md`). **Google Calendar:** a real subscription fetches and renders the board's times. An entry it already held did not correct itself in the time waited, and only a new subscription address fixed it, because Google caches a subscribed calendar per address. **Apple Calendar:** a direct iPhone subscription fetches and renders the zoned entries (confirmed with Time Zone Override). **Still unobserved:** Outlook, what iOS names the calendar, a camera QR scan, and any refresh latency. No latency figure was measured, and none may be promised in copy | v9.0, Phase 84 (updated Phase 88) |
 | verification | Phase 87 board-switch banner on a physical phone — the mobile pass used a Pixel 8 user-agent override at 375x812, and this codebase selects mobile views by user agent rather than viewport, so emulation never exercises the real twin | Deferred — operator approved conditionally ("approved for now"); three defects the full suite missed were already found by the UA-override pass, so the surface has a demonstrated history of failing only in the browser | v9.0, Phase 87 |
 | verification | Phase 87 group-picker skip path, live, after a lapsed session | Pending operator re-check once the fix deploys. This was recorded as unreachable from the operator's SuperAdmin account because the skip was gated on `!isSuperAdmin`. The operator then reached it anyway on 2026-09-28 — a lapsed session plus a click on a quest from their own board landed on the picker — which exposed the gate as a bug contradicting D-12 rather than a limit of the check. Gate removed; the skip now runs for SuperAdmins on boards they belong to, and a new integration fact confirms a SuperAdmin is still shown the picker for a board they are not a member of. The operator's own account is now a valid test of the path | v9.0, Phase 87 |
-| verification | Phase 93 real-phone checks — Platform Edit switch rows, Move picker long names, a trimmed board's menus and pages, and mobile refusal-line legibility | Deferred — operator accepted as a risk at phase close ("it's an accepted risk/todo for next phase"); emulated-UA run already done, see the todo | v9.0, Phase 93 |
+| verification | Phase 93 real-phone checks — Platform Edit switch rows, Move picker long names, a trimmed board's menus and pages, and mobile refusal-line legibility | Resolved 2026-10-22 — passed on the operator's real phone after the v5.7.0 release; mobile colour fixes applied | v9.0, Phase 93 |
 
 ## Session Continuity
 
