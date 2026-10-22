@@ -47,3 +47,7 @@ Seen in mobile-UA emulation, to settle on the real phone:
 - The mobile switches render as Bootstrap's default blue toggle, not the app's amber accent; consider
   scoping `.form-check-input:checked` to the amber used on desktop.
 - Desktop at ~800px wide: the top menu wraps "Quest Log" onto two lines once the Quests item is shown.
+
+## Resolution
+
+Closed 2026-10-22. The operator confirmed all four checks on a real phone after v5.7.0 was released, and asked for both colour fixes anyway: the mobile refusal lines now use the desktop red (`#ff6b6b`, with shadow) and the checked switches the app amber (`#ffc107`), both scoped in `platform-group.mobile.css` and checked in the in-app browser with a mobile user agent.
