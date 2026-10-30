@@ -158,6 +158,32 @@ removed.
   operator can review them and nothing private is committed to the public repository.
 - **The order of the appended area phases.**
 
+### Post-research decisions (operator, 2026-10-30)
+- **D-20: View-level CDN libraries are self-hosted in Phase 94 too.** Cropper.js, Tagify and EasyMDE,
+  loaded from jsDelivr by individual views, move to `wwwroot/lib` in this phase at the versions the
+  views load today. Those views change only their `<link>`/`<script>` tags; their restyle still waits
+  for the area phases. The email layout's remote Google Fonts and Font Awesome stay as they are; they
+  belong to the email area phase (D-18 unchanged).
+- **D-21: The pre-sign-off exception is narrowed to provably identical changes.** Before direction
+  sign-off only these land: self-hosting at the **same** versions loaded today (Bootstrap 5.3.0,
+  Font Awesome 6.4.0, and the D-20 libraries), jQuery and Font Awesome v4-shim removal once proven
+  unused (D-10), and the bare `@layer` order statement. Each is gated by zero-visible-difference
+  screenshots. The bump to the latest Bootstrap 5.3.x and Font Awesome 6.x, and importing Bootstrap
+  into `layer(vendor)`, come after sign-off as their own commits, because neither is
+  appearance-neutral.
+- **D-22: `site.css` is renamed to `legacy-pages.css` in Phase 94**, in the commit that moves its
+  shared rules into the new foundation files; the tests that read it by name are updated in that
+  same commit.
+- **D-23: Audit logins are local test accounts.** Once the operator has SQL Server running at
+  `localhost:1433` (never provisioned by the agent), the executor registers one test account per role
+  (player, Dungeon Master, admin, platform super-admin) through the app on localhost; the operator
+  grants the roles. Credentials live in the scratch audit directory outside the repository and are
+  never committed.
+- **D-24: Error and warning toasts persist until dismissed** (`data-bs-autohide="false"`); success,
+  info and gold toasts keep their auto-hide delays. This is an approved behaviour change, recorded in
+  the UI-SPEC as departure A2 / S13. Rendering-neutral pre-sign-off work is approved as UI-SPEC
+  assumption A1, as narrowed by D-21.
+
 </decisions>
 
 <canonical_refs>
