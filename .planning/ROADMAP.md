@@ -1,7 +1,7 @@
 # Milestone v9.0: Rolling Improvements
 
 **Status:** 🚧 IN PROGRESS
-**Phases:** 72–93 so far (open-ended)
+**Phases:** 72–94 so far (open-ended)
 **Working branch:** `milestone/v9-rolling-improvements`
 
 ## Overview
@@ -1401,6 +1401,39 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [x] 93-11-PLAN.md — No-planning-reference guard, production DI proof, and the operator's end-to-end walk with the full suite (W5)
+
+### Phase 94: Whole-App UI Review and Unification
+
+**Goal:** Every page in the quest board, on desktop and mobile, is reviewed with the `senior-frontend` skill and brought onto one consistent, polished visual system. Inconsistent cards, buttons, spacing, colours and type are unified; visual bugs, cascade fights and mobile-twin drift are fixed; and where the review finds a page that would clearly benefit, its look is upgraded. Every existing flow keeps working exactly as it does today, and `.claude/ui-guidelines.md` records the resulting system so new views follow it.
+**Requirements**: TBD
+**Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
+
+**Starting point** (scoped 2026-10-30):
+
+- **Size:** 133 `.cshtml` files across `Views/` and `Areas/Platform/Views/` (pages, partials and layouts), 55 of them `.Mobile.cshtml` twins. The largest folders are Quest (15), Shared (14), Account (12), Admin (11) and Platform Group (10).
+- **Styling:** 48 stylesheets in `wwwroot/css`, about 8,900 lines; `site.css` alone is about 1,700. Bootstrap 5.3.0 and Font Awesome 6.4.0 come from CDNs, plus Font Awesome's v4 shim stylesheet, which suggests old icon names are still in use. The Bootstrap and main Font Awesome links carry no SRI hash; the shim does.
+- **No shared tokens to speak of:** the CSS defines 18 custom properties but contains about 615 hex colour literals and about 814 `!important` declarations. Phases 66–68 each hit a specificity collision (the `.modern-card` gold rule leaking into the editor, a page-wide `!important` hiding recap text on mobile), so the cascade is a known source of bugs, not only of inconsistency.
+- **Markup outside the stylesheets:** 97 inline `style="…"` attributes, 4 views with `<style>` blocks and 43 views with inline `<script>` blocks. There is no Content-Security-Policy header, and `senior-frontend` assumes a strict CSP, so its default patterns will not match this code as it stands.
+- **Existing rules:** `.claude/ui-guidelines.md` sets the modern-card pattern (`modern-card`, `modern-card-header`, `modern-card-body`), the button layout and the `Html.LocalTime` / `Html.WallClock` date helpers, and warns that mobile twins drift and are sometimes deliberately not content-equivalent.
+
+**To decide in discuss-phase:**
+
+- **How far "upgrade" goes.** Either unify and fix within today's look (parchment, gold, modern cards), or settle a refreshed visual direction first, with mockups from `senior-frontend` or `/gsd-sketch`, and then move every page onto it. The second is a much larger phase and needs the direction signed off before any view changes.
+- **Whether this stays one phase.** 133 views will not fit one reviewable phase. One likely shape: Phase 94 does the audit, the shared tokens and component classes, and the layouts, and per-area phases are appended after it (quests and quest log; events, series and calendar; characters, contacts and DM profile; shop; account, admin and Platform). The audit's findings decide the split.
+- **Bootstrap and Font Awesome.** Whether both stay, whether to pin them with SRI or self-host them, and whether to migrate the v4 icon names and drop the shim.
+- **Inline scripts and styles.** Whether moving them into stylesheets and ES modules is in scope. Adopting a CSP header is a security change and is better split into its own phase, but the move would prepare for it.
+- **Mobile twins.** Whether any desktop and mobile pair is merged into one responsive view, or every twin stays and is only brought into line with its partner.
+- **The accessibility bar:** contrast on the parchment and gold theme, visible focus, and 44px touch targets on mobile.
+- **Email templates** (`.razor` components) are not views and are left out unless discuss-phase pulls them in.
+
+**Constraints:** no user-facing functionality is removed or broken, as the project-wide rule requires. Every desktop change is checked against its mobile twin. Dates keep going through `Html.LocalTime` and `Html.WallClock`. Nothing writes to `Events` or `Quests`, so feed revisions do not move. Verification is by before-and-after screenshots of each page and, for mobile, on a real phone, as this project's earlier mobile work required. The Docker self-hosting path keeps working. CSS comments carry no planning references.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 94 to break down)
 
 ## Backlog
 
