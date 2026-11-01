@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 16
+open_count: 19
 waived_count: 1
 fixed_count: 5
-total_count: 22
-last_updated: 2026-11-01T20:55:12.835Z
+total_count: 25
+last_updated: 2026-11-01T21:28:16.980Z
 ---
 
 # Broken Windows Ledger
@@ -37,6 +37,9 @@ last_updated: 2026-11-01T20:55:12.835Z
 | 20 | 94 | deviation | QuestBoard.Service/wwwroot/css/site.css |  | Widens entry 15: besides the bare div rule, site.css's unlayered 'ul, ol, li { background: none }' and 'p, li, span, small { color; text-shadow }' rules also beat the layered shell. 94-21 routed menu fills through --qb-menu-fill painted by one small unlayered '.chrome .navbar-collapse, .chrome .dropdown-menu' rule in site.css, and changed the footer text, GroupPicker brand and Platform user name from span to div. 94-23 must retire the ul/ol/li background reset and the p/li/span/small colour rule with the div rule, and delete that restatement rule in the same change. | open |  | 2026-11-01T20:55:12.633Z |  |
 | 21 | 94 | deviation | QuestBoard.Service/Views/Shared/_Layout.cshtml |  | Main desktop navbar collapses below 1200px (navbar-expand-xl, was lg) with a compact link step from 1200 to 1399px: the fullest menu needs about 1326px in one row, and the legacy bar wrapped to 77px at 1200 and 101px at 992, covering content. Windows 992-1199px wide now get the hamburger menu. Also removed text-danger from the Admin and Dungeon Master toggles (it already computed parchment and its important colour blocked the gold hover). Surface in 94-24's operator review. | open |  | 2026-11-01T20:55:12.732Z |  |
 | 22 | 94 | deviation | QuestBoard.Service/wwwroot/css/tokens.css |  | Board image is now '--qb-board-image: var(--qb-board-photo, none)' with shell.css setting ':root { --qb-board-photo: url(notice-board-1600.webp) }' (tokens.css edited, not on 94-21's list) so a Shop theme on <html> is not overridden by a body-level value. 94-22 must set the 900px phone photo through --qb-board-photo on :root, not 'body { --qb-board-image }'. base.css also makes the body fill transparent (Bootstrap's white body had hidden the backdrop), so phone pages already show the board via mobile.css's own 3 MB JPEG until 94-22 replaces it. | open |  | 2026-11-01T20:55:12.835Z |  |
+| 23 | 94 | deviation | QuestBoard.Service/wwwroot/css/mobile.css |  | Phone side of entries 15/20: the phone layouts never load site.css, so only mobile.css's unlayered h1-h6 colour rule beats the layered shell there. 94-22 worked around it by changing the offcanvas title from h5 to div.h5 on both phone layouts (no restatement rule added). 94-23 retires that mobile.css heading rule; the div.h5 may then stay or return to h5. | open |  | 2026-11-01T21:28:16.779Z |  |
+| 24 | 94 | deviation | QuestBoard.Service/wwwroot/css/quests.mobile.css |  | Page-owned links under the 44px phone target (the shell's 44px rule covers controls only): /quests has 6 a.row-nav-link quest titles at 27px (quests.mobile.css); /Platform/Users has 43 a.email-link links at 22px. Left to the Quests and Platform area phases; include in the G2 cut's per-area findings. | open |  | 2026-11-01T21:28:16.878Z |  |
+| 25 | 94 | deviation | QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml |  | Phone shell structure: the top bar is a div inside <header> (not a nav), so each phone layout has exactly one named nav (the offcanvas body); <main> gained flex-grow-1 because the important mt-auto utility beat the footer clearance; site.js gained 13 lines keeping aria-expanded on offcanvas togglers in step (Bootstrap never updates it on the opening button). The 900px backdrop is upscaled about 1.4x on tall phones and looks slightly soft; surface in 94-24's operator review. | open |  | 2026-11-01T21:28:16.980Z |  |
 
 ````json
 [
@@ -302,6 +305,42 @@ last_updated: 2026-11-01T20:55:12.835Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-01T20:55:12.835Z",
+    "resolved_at": null
+  },
+  {
+    "id": 23,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/mobile.css",
+    "line": null,
+    "description": "Phone side of entries 15/20: the phone layouts never load site.css, so only mobile.css's unlayered h1-h6 colour rule beats the layered shell there. 94-22 worked around it by changing the offcanvas title from h5 to div.h5 on both phone layouts (no restatement rule added). 94-23 retires that mobile.css heading rule; the div.h5 may then stay or return to h5.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T21:28:16.779Z",
+    "resolved_at": null
+  },
+  {
+    "id": 24,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/quests.mobile.css",
+    "line": null,
+    "description": "Page-owned links under the 44px phone target (the shell's 44px rule covers controls only): /quests has 6 a.row-nav-link quest titles at 27px (quests.mobile.css); /Platform/Users has 43 a.email-link links at 22px. Left to the Quests and Platform area phases; include in the G2 cut's per-area findings.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T21:28:16.878Z",
+    "resolved_at": null
+  },
+  {
+    "id": 25,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml",
+    "line": null,
+    "description": "Phone shell structure: the top bar is a div inside <header> (not a nav), so each phone layout has exactly one named nav (the offcanvas body); <main> gained flex-grow-1 because the important mt-auto utility beat the footer clearance; site.js gained 13 lines keeping aria-expanded on offcanvas togglers in step (Bootstrap never updates it on the opening button). The 900px backdrop is upscaled about 1.4x on tall phones and looks slightly soft; surface in 94-24's operator review.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T21:28:16.980Z",
     "resolved_at": null
   }
 ]
