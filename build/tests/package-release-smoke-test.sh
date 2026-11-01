@@ -69,6 +69,27 @@ done
 TEST_ENTRIES="$(printf '%s\n' "$ENTRIES" | grep -c '^deploy/tests/' || true)"
 check "zip holds no deploy/tests entries" "0" "$TEST_ENTRIES"
 
+# Every vendored front-end file committed under wwwroot/lib must travel in the zip, or a page would
+# lose its styles, scripts or fonts in production.
+LIB_PREFIX="QuestBoard.Service/wwwroot/lib/"
+LIB_FILES="$(git -C "$REPO_ROOT" ls-files "$LIB_PREFIX")"
+LIB_COUNT=0
+while IFS= read -r lib_file; do
+  [ -n "$lib_file" ] || continue
+  LIB_COUNT=$((LIB_COUNT + 1))
+  lib_entry="app/wwwroot/lib/${lib_file#"$LIB_PREFIX"}"
+  if grep -qxF "$lib_entry" <<<"$ENTRIES"; then
+    check "zip contains $lib_entry" "present" "present"
+  else
+    check "zip contains $lib_entry" "present" "missing"
+  fi
+done <<<"$LIB_FILES"
+if [ "$LIB_COUNT" -gt 0 ]; then
+  check "zip carries vendor files" "present" "present"
+else
+  check "zip carries vendor files" "present" "none committed under $LIB_PREFIX"
+fi
+
 # Lay the release out the way the server does: releases/<version> with current pointing at it.
 OPT="$WORK/root/opt/questboard"
 mkdir -p "$OPT/releases/$VERSION"
@@ -120,6 +141,32 @@ esac
 
 FAVICON_STATUS="$(curl -sS -m 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/favicon.ico" 2>/dev/null || true)"
 check "GET /favicon.ico returns 200 (content root resolves through current)" "200" "$FAVICON_STATUS"
+
+# Every vendored file a layout points at must be served by the packaged app.
+LAYOUT_SOURCES=(
+  "QuestBoard.Service/Views/Shared/_Layout.cshtml"
+  "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml"
+  "QuestBoard.Service/Views/Shared/_Layout.GroupPicker.cshtml"
+  "QuestBoard.Service/Areas/Platform/Views/Shared/_Layout.Platform.cshtml"
+  "QuestBoard.Service/Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml"
+)
+LAYOUT_PATHS=()
+for layout in "${LAYOUT_SOURCES[@]}"; do
+  LAYOUT_PATHS+=("$REPO_ROOT/$layout")
+done
+LIB_URLS="$(grep -ohE '(href|src)="~/lib/[^"?#]+' "${LAYOUT_PATHS[@]}" | sed -E 's/^(href|src)="~//' | sort -u || true)"
+LIB_URL_COUNT=0
+while IFS= read -r lib_url; do
+  [ -n "$lib_url" ] || continue
+  LIB_URL_COUNT=$((LIB_URL_COUNT + 1))
+  lib_code="$(curl -s -m 10 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT$lib_url" 2>/dev/null || true)"
+  check "GET $lib_url returns 200" "200" "$lib_code"
+done <<<"$LIB_URLS"
+if [ "$LIB_URL_COUNT" -gt 0 ]; then
+  check "layouts reference vendor files" "present" "present"
+else
+  check "layouts reference vendor files" "present" "none found"
+fi
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "$FAILURES check(s) failed"
