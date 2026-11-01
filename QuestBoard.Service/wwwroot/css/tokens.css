@@ -15,7 +15,7 @@
  *   shadows and halo   rgba(0,0,0) at 0.28, 0.32, 0.4, 0.45, 0.5, 0.55
  *   backdrop vignette  rgba(12,6,2) at 0 and 0.5; Shop rgba(5,8,20) at 0 and 0.55
  *   scrims             rgba(26,15,8) at 0.42; Shop rgba(8,10,28) at 0.55
- *   glass tints        rgba(255,255,255) at 0.07, 0.12, 0.14, 0.18, 0.3, 0.5; Shop edge rgba(226,214,180) at 0.3
+ *   glass tints        rgba(255,255,255) at 0.07, 0.12, 0.14, 0.15, 0.3, 0.5; Shop edge rgba(226,214,180) at 0.3
  *   chrome gradient    rgba(124,74,36), rgba(80,45,21), Shop rgba(30,32,62), rgba(14,16,36), each at 0.97
  */
 @layer tokens {
@@ -28,7 +28,7 @@
     /* Surfaces */
     --qb-surface-scrim: rgba(26, 15, 8, 0.42);
     --qb-surface-glass: rgba(255, 255, 255, 0.12);
-    --qb-surface-glass-hover: rgba(255, 255, 255, 0.18);
+    --qb-surface-glass-hover: rgba(255, 255, 255, 0.15);
     --qb-surface-glass-border: rgba(255, 255, 255, 0.3);
     --qb-surface-paper: #f4e4bc;
     --qb-surface-paper-alt: #eadaae;
