@@ -96,6 +96,23 @@ public class UiFoundationVendorGuardTests
     }
 
     [Fact]
+    public void LibDirectories_HoldOneBootstrap5AndOneFontAwesome6()
+    {
+        // Both libraries stay inside their current major version: a new major changes the markup and
+        // the variable names the stylesheets map onto, so it is a migration, not a bump.
+        var names = Directory.EnumerateDirectories(ResolveRepoFile(LibRoot.Split('/')))
+            .Select(directory => Path.GetFileName(directory)!)
+            .ToList();
+
+        names.Where(name => Regex.IsMatch(name, @"^bootstrap-")).Should().ContainSingle()
+            .Which.Should().MatchRegex(@"^bootstrap-5\.3\.\d+$",
+                because: "Bootstrap stays on the 5.3 line, and an older directory must be removed when the version moves");
+        names.Where(name => Regex.IsMatch(name, @"^fontawesome-")).Should().ContainSingle()
+            .Which.Should().MatchRegex(@"^fontawesome-6\.\d+\.\d+$",
+                because: "Font Awesome stays on version 6, and an older directory must be removed when the version moves");
+    }
+
+    [Fact]
     public void Layouts_LoadNoJQuery()
     {
         foreach (var layout in LayoutFiles)
