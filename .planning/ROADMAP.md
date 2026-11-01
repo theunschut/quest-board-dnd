@@ -1404,10 +1404,12 @@ Plans:
 
 ### Phase 94: Whole-App UI Review and Unification
 
-**Goal:** Every page in the quest board, on desktop and mobile, is reviewed with the `senior-frontend` skill and brought onto one consistent, polished visual system. Inconsistent cards, buttons, spacing, colours and type are unified; visual bugs, cascade fights and mobile-twin drift are fixed; and where the review finds a page that would clearly benefit, its look is upgraded. Every existing flow keeps working exactly as it does today, and `.claude/ui-guidelines.md` records the resulting system so new views follow it.
+**Goal:** Every page in the quest board, on desktop and mobile, is reviewed with the `senior-frontend` skill, and the app gets the one consistent, polished visual system every page will move onto. Phase 94 is the first phase of that sweep: it delivers the page-by-page audit (visual bugs, inconsistencies, cascade fights, mobile-twin drift and accessibility failures), a visual direction the operator signs off from mockups, the foundation (tokens, the layered cascade, shared components, all layouts, self-hosted vendor assets, dead dependencies removed), a rewritten `.claude/ui-guidelines.md` that records the system so new views follow it, and the appended area phases that move the remaining pages onto it and upgrade those that would clearly benefit. Every existing flow keeps working exactly as it does today.
+
+*Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
 **Requirements**: TBD
 **Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
-**Plans:** 0 plans
+**Plans:** 27 plans
 
 **Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
 
@@ -1432,8 +1434,91 @@ Plans:
 **Constraints:** no user-facing functionality is removed or broken, as the project-wide rule requires. Every desktop change is checked against its mobile twin. Dates keep going through `Html.LocalTime` and `Html.WallClock`. Nothing writes to `Events` or `Quests`, so feed revisions do not move. Verification is by before-and-after screenshots of each page and, for mobile, on a real phone, as this project's earlier mobile work required. The Docker self-hosting path keeps working. CSS comments carry no planning references.
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 94 to break down)
+- [ ] 94-01-PLAN.md — Audit environment: one operator checkpoint (tooling, database, privileged accounts), player and DM accounts, capture harness (wave 1, checkpoint)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 94-02-PLAN.md — Route manifest, fixtures, frozen baseline app on its own port and full BEFORE sweep with gate tools (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 94-03-PLAN.md — Audit: Quests and Quest Log (wave 3)
+- [ ] 94-04-PLAN.md — Audit: Events, Series, Calendar and Agenda (wave 3)
+- [ ] 94-05-PLAN.md — Audit: Characters, Contacts, DM profile and Players (wave 3)
+- [ ] 94-06-PLAN.md — Audit: Shop and Shop management (wave 3)
+- [ ] 94-07-PLAN.md — Audit: Account, pickers and access denied (wave 3)
+- [ ] 94-08-PLAN.md — Audit: Admin and Platform (wave 3)
+- [ ] 94-09-PLAN.md — Mockups: fixture content, tools, all five baselines, Direction A Quest board and Details (wave 3)
+- [ ] 94-11-PLAN.md — Self-host Bootstrap, Font Awesome and Cinzel at today's versions; release smoke test (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 94-10-PLAN.md — Mockups: Direction A form, Calendar, Shop both ways, crops and write-up (wave 4)
+- [ ] 94-12-PLAN.md — Self-host Cropper.js, Tagify and EasyMDE at today's versions (wave 4, after 94-11)
+- [ ] 94-14-PLAN.md — Shell audit, cascade probe, audit index, operator questions, proposed cut (wave 4)
+- [ ] 94-15-PLAN.md — Mockups: Direction B with the primary-action switcher (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 94-13-PLAN.md — Remove jQuery and the v4 shim after proofs; layer order statement (wave 5)
+- [ ] 94-16-PLAN.md — Mockups: comparison page, all switchers, combined contrast report, sign-off sheet (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 94-17-PLAN.md — Direction sign-off gate G1 and final token values (wave 6, checkpoint)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 94-18-PLAN.md — Token layer, foundation link order, layer and contrast guards (wave 7)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 94-19-PLAN.md — Vendor bump, Bootstrap into layer(vendor) with variable re-theme, base layer (wave 8)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 94-20-PLAN.md — Component layer and toasts with persistent errors and warnings (wave 9)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 94-21-PLAN.md — Desktop shell: three layouts, desktop footer, backdrop (wave 10, after 94-20)
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 94-22-PLAN.md — Mobile shell: two mobile layouts, mobile footer, 44px targets (wave 11, after 94-21)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 94-23-PLAN.md — Retire desktop and mobile global rules; site.css renamed legacy-pages.css (wave 12)
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 94-24-PLAN.md — Retire modern-card.css and the cream rule; full readability sweep reviewed (wave 13, checkpoint)
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [ ] 94-25-PLAN.md — Rewrite .claude/ui-guidelines.md; correct the Platform mobile note (wave 14)
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [ ] 94-26-PLAN.md — Final verification, scope proof, audit refresh (wave 15, after 94-25)
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [ ] 94-27-PLAN.md — Area-phase cut gate G2 and roadmap appends (wave 16, checkpoint)
+
+**Cross-cutting constraints:**
+
+- Merge proposals appear only for identical or layout-only pairs whose mobile differences are CSS-only, each listing the precedent views, the CSS-loading change in both layouts and the MobileViewsTests facts that would change, flagged costly to reverse and awaiting operator approval (D-13)
+- Relayout proposals keep every field, link, button and action and each control's type, and never collapse a section behind a toggle; each is listed for sign-off with its BEFORE screenshot (D-04)
+- Contrast findings are measured against the D-16 bar (4.5:1 text, 3:1 large and non-text, composited over B-max) and propose a token use that keeps the signature colour per D-17
+- The report quotes no member name, email or user-entered text from real data and references screenshots only by scratch path
+- Each twin pair is classified identical, layout-only, content-differs or deliberate from extracted inventories (asp-for and name fields, asp-action/href links and submit buttons, h1-h6 and card blocks, BoardPages conditions); no deliberate differences are pre-recorded for this area; every content difference not recorded as deliberate is an operator question in the standard wording with only 'Deliberate, record it' or 'Add it to the other view' (D-14)
+- Mockups live only under ~/qb-ui-review/phase-94/mockups/ and nothing is committed (D-02)
+
+Wave note: plans that edit tracked source, build or run the working tree, or commit code never share a wave. Waves 6 to 16 hold one plan each; in waves 3, 4 and 5 the only such plan is 94-11, 94-12 and 94-13, and the plans beside it write only scratch output or planning docs and probe the frozen baseline.
 
 ## Backlog
 

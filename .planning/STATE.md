@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 93
-status: completed
+status: executing
 stopped_at: Phase 94 UI-SPEC approved
-last_updated: "2026-10-30T15:59:19.510Z"
+last_updated: "2026-11-01T11:22:14.986Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 93 complete
 progress:
   total_phases: 23
   completed_phases: 19
-  total_plans: 163
+  total_plans: 190
   completed_plans: 154
-  percent: 83
+  percent: 81
 state_head: 2777f4082e0b974492f8b2ba0a271ba5d73118f8
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 Phase: 93
 Plan: Not started
-Status: Phase 93 complete — open phases remain (78, 79, 90)
+Status: Ready to execute
 Last activity: 2026-10-21 — Phase 93 complete (15/15 plans, verification passed, security 49/49, real-phone checks deferred)
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest

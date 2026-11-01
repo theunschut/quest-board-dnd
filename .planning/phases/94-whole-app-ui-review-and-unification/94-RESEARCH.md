@@ -204,8 +204,8 @@ The research also found things the UI-SPEC and CONTEXT do not say, and the plann
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
 | Playwright (npm) | 1.64.1 (Chromium headless shell 156 launches here) `[WARNING: flagged as suspicious ("too-new") by the legitimacy seam — verify before using.]` | Screenshots, console/page-error capture, computed-style probes, mobile emulation | Audit, mockup renders, zero-diff gates, D-08 sweep |
-| pixelmatch | 8.0.0 `[WARNING: flagged as suspicious ("too-new") — verify before using.]` | Before/after pixel diff for the A1 zero-visible-difference gate | Neutral-change gates and the D-08 sweep |
-| pngjs | 7.0.0 (OK) | PNG decode/encode for pixelmatch | Same |
+| pixelmatch | 8.0.0 `[WARNING: flagged as suspicious ("too-new") — verify before using.]` | Before/after pixel diff for the A1 zero-visible-difference gate (superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01) | Neutral-change gates and the D-08 sweep |
+| pngjs | 7.0.0 (OK) | PNG decode/encode for pixelmatch (superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01; pngjs is not needed either) | Same |
 | Python 3 + Pillow (WebP ok), numpy, fontTools, brotli | system | Backdrop WebP derivatives; luminance statistics; font/icon verification | Backdrop re-encode; re-measuring `B-max` |
 | `scratchpad/tools/contrast.mjs` (code in Code Examples) | n/a | WCAG ratios with alpha compositing over the board | Mockup gate, A-1 proof |
 
@@ -220,7 +220,7 @@ The research also found things the UI-SPEC and CONTEXT do not say, and the plann
 **Installation (executor, scratch directory outside the repository):**
 ```bash
 mkdir -p ~/qb-ui-review/tools/pw && cd ~/qb-ui-review/tools/pw
-npm init -y >/dev/null && npm install playwright pixelmatch pngjs
+npm init -y >/dev/null && npm install playwright pixelmatch pngjs   # superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01; install playwright only
 npx playwright install chromium            # or reuse ~/.cache/ms-playwright (a headless shell is already there)
 # vendor files: take them from the official npm tarballs, do not install them as dependencies
 npm pack bootstrap@5.3.8 @fortawesome/fontawesome-free@6.7.2
@@ -254,13 +254,13 @@ Notes, all [VERIFIED: this session]: both Cinzel files are variable fonts, axis 
 | @fortawesome/fontawesome-free | npm | 8+ yrs (6.7.2 line; 7.3.1 latest published 2026-07-15) | 3.50M/wk | github.com/FortAwesome/Font-Awesome | OK | Approved (same method) |
 | @fontsource-variable/cinzel | npm | n/a | 50.4k/wk | github.com/fontsource/font-files | OK | Not used (alternative only); files come from Google Fonts directly |
 | playwright | npm | n/a (1.64.1 published 2026-10-14) | 154M/wk | github.com/microsoft/playwright | SUS ("too-new") | Flagged: scratch-only tooling, never a project dependency. Planner adds a `checkpoint:human-verify` before the executor installs it |
-| pixelmatch | npm | n/a (8.0.0 published 2026-10-06) | 14.4M/wk | github.com/mapbox/pixelmatch | SUS ("too-new") | Flagged: scratch-only; same checkpoint. Fallback: compare PNGs with Pillow/numpy (already present) |
+| pixelmatch | npm | n/a (8.0.0 published 2026-10-06) | 14.4M/wk | github.com/mapbox/pixelmatch | SUS ("too-new") | Flagged: scratch-only; same checkpoint. Fallback: compare PNGs with Pillow/numpy (already present). Superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01 |
 | pngjs | npm | 3+ yrs | 97.6M/wk | github.com/pngjs/pngjs | OK | Approved (scratch-only) |
 | cropperjs (view-level CDN, not touched) | npm | 2.1.1 in use | 2.55M/wk | github.com/fengyuanchen/cropperjs | SUS ("too-new", informational: latest published 2026-10-16) | Not added by this phase; only relevant if F3 is decided "self-host" |
 | easymde, @yaireo/tagify (view-level CDN, not touched) | npm | — | 300k / 184k per wk | Ionaru/easy-markdown-editor, yairEO/tagify | OK | Same |
 
 **Packages removed due to [SLOP] verdict:** none.
-**Packages flagged as suspicious [SUS]:** playwright, pixelmatch (both scratch-only, false positives on "too-new"), cropperjs (not added). `npm view <pkg> scripts.postinstall` returned empty for `bootstrap` and `@fortawesome/fontawesome-free` (no postinstall) [VERIFIED: npm registry]. The legitimacy seam does not cover the Google Fonts / gstatic files; they are `[VERIFIED]` by direct download from Google's own endpoint, checksummed above.
+**Packages flagged as suspicious [SUS]:** playwright, pixelmatch (both scratch-only, false positives on "too-new"; pixelmatch superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01), cropperjs (not added). `npm view <pkg> scripts.postinstall` returned empty for `bootstrap` and `@fortawesome/fontawesome-free` (no postinstall) [VERIFIED: npm registry]. The legitimacy seam does not cover the Google Fonts / gstatic files; they are `[VERIFIED]` by direct download from Google's own endpoint, checksummed above.
 
 ## Architecture Patterns
 
@@ -348,7 +348,7 @@ QuestBoard.Service/wwwroot/
 | Timestamp formatting | Any new formatting in restyled views | `Html.LocalTime` / `Html.WallClock` (untouched) | Project rule; markup must not change |
 | Image derivatives | Installing ImageMagick/cwebp | Pillow (`Image.save(..., 'WEBP', quality=78, method=6)`; WebP support confirmed) | Already on the machine; 3000px JPEG -> 158 KB (1600w) and 62 KB (900w) measured |
 | Contrast maths in prose | Eyeballing | the `contrast.mjs` script (reproduces every UI-SPEC baseline number to 2 dp) and a C# guard test with the same maths | Numbers must be reproducible |
-| Screenshot diffing | Visual judgement only | pixelmatch (or Pillow/numpy) with a stated threshold, then a human look at flagged pages | A1 requires a provable "no visible difference" |
+| Screenshot diffing | Visual judgement only | pixelmatch (or Pillow/numpy; superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01) with a stated threshold, then a human look at flagged pages | A1 requires a provable "no visible difference" |
 
 **Key insight:** the cascade fights are a symptom of three palettes and a global element rule; fixing the *model* (surface sets colour, variables carry theme) deletes the fights instead of winning them.
 
@@ -684,9 +684,19 @@ for w in (1600, 900):
 | A5 | The 2px two-tone ring recipe in Code Examples produces the intended visual geometry (gap, inner band, outer band) | Code Examples | Cosmetic; verify with the contrast script and a screenshot per surface before it is pinned by tests |
 | A6 | Bootstrap's `bootstrap.min.css` and `all.min.css` can stay byte-identical with a trailing `sourceMappingURL` comment and a 404 for the map (DevTools only) | Standard Stack | Cosmetic console noise only when DevTools is open |
 | A7 | `iPad` being treated as mobile (keyword list) means tablets get the phone layout; unchanged by this phase | Pitfall 10 | Informational |
-| A8 | Playwright and pixelmatch `SUS` verdicts are "too-new" false positives (very high download counts, official repos) | Package Audit | Scratch tooling only; a human check before installing is already required |
+| A8 | Playwright and pixelmatch `SUS` verdicts are "too-new" false positives (very high download counts, official repos; pixelmatch superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01) | Package Audit | Scratch tooling only; a human check before installing is already required |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five were resolved after research (operator, 2026-10-30) or are routed to a named gate:
+
+- Q1: **RESOLVED by D-20.** Cropper.js, Tagify and EasyMDE are self-hosted in Phase 94 (plan 94-12); the email layout's remote fonts stay with the email area phase (D-18, appended by 94-27).
+- Q2: **ROUTED to G1** (plan 94-17) as an input to sign-off item S2, with the report-only `B-hi` numbers in the mockup package (94-02, 94-09, 94-10, 94-15, 94-16).
+- Q3: **RESOLVED by D-22.** Rename to `legacy-pages.css` in Phase 94 (plan 94-23), readers updated in the same commit.
+- Q4: **RESOLVED by D-23** (as amended). Local test accounts per role, bootstrapped at the 94-01 checkpoint.
+- Q5: **RESOLVED by D-21 and plan 94-19 Task 1.** Same-version self-hosting first; the bump lands as its own commit after sign-off, and its icon diffs are reviewed there.
+
+Original questions, for the record:
 
 1. **View-level and email CDN loads (F3).**
    - What we know: layouts will be CDN-free; views load Cropper.js (10), Tagify (4+4), EasyMDE (1+1) from jsDelivr, no SRI; `_EmailLayout.razor` loads Font Awesome and Google Fonts.
@@ -738,7 +748,7 @@ for w in (1600, 900):
 | A-9 toast persistence | Error and Warning toasts carry `data-bs-autohide="false"`; Success/Info do not carry `"false"`; Moved toast regex intact | static guard + existing test | `--filter "FullyQualifiedName~BoardMoveControlTests\|FullyQualifiedName~UiFoundationStaticGuardTests"` | exists + gap |
 | Cascade rules (layered files) | no `!important` (except allowed), no colour literal outside `tokens.css` | static guard | filter above | gap |
 | D-08 pages usable | every page both UAs: text readable, no control hidden, suite green | browser sweep + `dotnet test` | Playwright BEFORE/AFTER + pixel diff + human review | scratch |
-| A1 neutral changes | zero visible difference, five mockup pages x five layouts | browser diff | Playwright + pixelmatch with stated threshold | scratch |
+| A1 neutral changes | zero visible difference, five mockup pages x five layouts | browser diff | Playwright + pixelmatch with stated threshold (superseded: pixel diffs use Pillow + numpy; do not install pixelmatch — see plan 94-01) | scratch |
 | D-12 inline code gone from rebuilt layouts | covered by the layout guard | static guard | filter above | gap |
 | Mobile selection intact (D-13/D-15) | `.Mobile` view and layout under a mobile UA | existing integration | `--filter "FullyQualifiedName~MobileViewsTests\|FullyQualifiedName~MobileLayoutTests"` | exists |
 | Planning references absent from new files | regex scan of new foundation files | static guard | filter above | gap |

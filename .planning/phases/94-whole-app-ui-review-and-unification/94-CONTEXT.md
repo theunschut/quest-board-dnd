@@ -178,7 +178,16 @@ removed.
   `localhost:1433` (never provisioned by the agent), the executor registers one test account per role
   (player, Dungeon Master, admin, platform super-admin) through the app on localhost; the operator
   grants the roles. Credentials live in the scratch audit directory outside the repository and are
-  never committed.
+  never committed. **Amendment (planning, 2026-10-30):** the app has no self-registration route —
+  accounts are created under Admin > Create user, and the platform super-admin role can only be
+  granted by the operator. So the operator bootstraps the audit admin and audit platform accounts at
+  the plan 94-01 checkpoint, and the executor creates the player and Dungeon Master accounts through
+  the admin pages. The operator confirms this at that checkpoint.
+- **D-25: Audit fixture writes are data, not code.** The project rule that nothing writes to `Events`
+  or `Quests` is about code paths (the calendar feed revision). Creating fixture quests, events and a
+  series through the app's own forms on the local audit database, and casting a date vote on a
+  fixture quest for the console proof, are allowed: they go through the normal change-tracked app
+  flows, touch only rows the fixture step created, and change no code.
 - **D-24: Error and warning toasts persist until dismissed** (`data-bs-autohide="false"`); success,
   info and gold toasts keep their auto-hide delays. This is an approved behaviour change, recorded in
   the UI-SPEC as departure A2 / S13. Rendering-neutral pre-sign-off work is approved as UI-SPEC
