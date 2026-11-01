@@ -1,6 +1,6 @@
 /*
- * Page-level rules for the document itself: element and root selectors only, no component classes.
- * Colours come from tokens.css; none are written here.
+ * Page-level rules for the document itself: element and root selectors, plus the few Bootstrap classes whose
+ * built-in focus look is replaced here. Colours come from tokens.css; none are written here.
  */
 @layer base {
   /*
@@ -34,5 +34,59 @@
   /* The board image paints over this. If it is slow or fails, light text still sits on a dark colour. */
   html {
     background-color: var(--qb-board-fallback);
+  }
+
+  /* Type: four sizes (14, 16, 20, 28) and two weights (400, 600). */
+  body {
+    font-family: var(--qb-font-body);
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-regular);
+    line-height: var(--qb-leading-body);
+  }
+
+  /*
+   * One focus look everywhere, in two tones so one of them holds 3:1 on every surface: an inner band in the gold
+   * accent (it fills the gap between the element and the outer stroke, so its width is the offset) and an outer
+   * stroke in dark brown. Gold shows on glass, chrome and the board; the dark stroke shows on paper.
+   * Bootstrap hard-codes a blue shadow and no outline on form controls, checks, the close button and pagination
+   * links, so those are listed here too and the ring replaces it.
+   */
+  :where(a, button, input, select, textarea, summary, [tabindex], .btn, .nav-link, .dropdown-item, .page-link, .btn-close, .form-check-input, .row-nav-link):focus-visible,
+  .form-control:focus,
+  .form-select:focus,
+  .form-check-input:focus,
+  .btn-close:focus,
+  .page-link:focus {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  /* Bootstrap buttons read their focus shadow from this variable. */
+  .btn {
+    --bs-btn-focus-box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  /*
+   * Reduced motion: no transitions, no animation, no smooth scrolling and no hover movement. The block is the one
+   * place important flags are allowed, because it has to beat the page sheets' own important transitions.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      animation-delay: 0s !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+
+    /* Hover and press lifts, scales and tilts on interactive elements, cards and list rows, and on what moves inside them. */
+    :is(a, button, summary, label, [role="button"], .btn, .nav-link, .navbar-brand, [class*="card"], [class*="-btn"], [class*="-item"], [class*="option"], .player-badge, .shop-merchant):is(:hover, :active, :focus-visible),
+    :is([class*="card"], [class*="-item"]):is(:hover, :active) :is(img, [class*="image"], [class*="avatar"], [class*="seal"], [class*="info"]) {
+      transform: none !important;
+    }
   }
 }

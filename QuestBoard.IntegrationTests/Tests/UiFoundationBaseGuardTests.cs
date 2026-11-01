@@ -228,4 +228,140 @@ public class UiFoundationBaseGuardTests
         css.Should().Contain("background-color:rgba(var(--bs-dark-rgb),var(--bs-bg-opacity))!important");
         css.Should().Contain("a{color:rgba(var(--bs-link-color-rgb),var(--bs-link-opacity,1))");
     }
+
+    // ---- Rule parsing --------------------------------------------------------------------------
+    // A rule that has no nested block, with the preludes of every block that encloses it. The
+    // brace-depth walk is what lets a rule inside an @media or @layer block be found; a regex for
+    // "selector { body }" cannot cross the outer braces.
+    private sealed record LeafRule(IReadOnlyList<string> Ancestors, string Selector, string Body);
+
+    private sealed class Frame(string prelude)
+    {
+        public string Prelude { get; } = Regex.Replace(prelude.Trim(), @"\s+", " ");
+        public System.Text.StringBuilder Body { get; } = new();
+        public bool HasChildren { get; set; }
+    }
+
+    private static List<LeafRule> ParseLeafRules(string css)
+    {
+        var rules = new List<LeafRule>();
+        var stack = new List<Frame> { new("") };
+        var pending = new System.Text.StringBuilder();
+
+        foreach (var c in StripComments(css))
+        {
+            switch (c)
+            {
+                case '{':
+                    stack[^1].HasChildren = true;
+                    stack.Add(new Frame(pending.ToString()));
+                    pending.Clear();
+                    break;
+                case '}':
+                    stack[^1].Body.Append(pending);
+                    pending.Clear();
+                    var done = stack[^1];
+                    stack.RemoveAt(stack.Count - 1);
+                    if (!done.HasChildren)
+                        rules.Add(new LeafRule(stack.Skip(1).Select(f => f.Prelude).ToList(), done.Prelude, done.Body.ToString()));
+                    break;
+                case ';':
+                    stack[^1].Body.Append(pending).Append(';');
+                    pending.Clear();
+                    break;
+                default:
+                    pending.Append(c);
+                    break;
+            }
+        }
+
+        return rules;
+    }
+
+    private static string Flat(string text) => Regex.Replace(text, @"\s+", " ").Trim();
+
+    private static bool InReducedMotion(LeafRule rule) =>
+        rule.Ancestors.Any(a => Regex.IsMatch(a, @"^@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)$"));
+
+    // Outline removals that are not replaced by a ring drawn from the focus tokens in the same rule.
+    private static List<string> UnreplacedOutlineRemovals(string css) =>
+        ParseLeafRules(css)
+            .Where(r => Regex.IsMatch(r.Body, @"outline\s*:\s*(none|0)\s*(;|$)")
+                        && !r.Body.Contains("var(--qb-focus-", StringComparison.Ordinal))
+            .Select(r => r.Selector)
+            .ToList();
+
+    private static readonly string[] FocusRingSelectors =
+    [
+        "a", "button", "input", "select", "textarea", "summary", "[tabindex]", ".btn", ".nav-link",
+        ".dropdown-item", ".page-link", ".btn-close", ".form-check-input", ".row-nav-link",
+    ];
+
+    [Fact]
+    public void BaseCss_DeclaresTwoToneFocusRingForInteractiveSelectors()
+    {
+        var rules = ParseLeafRules(ReadRepoFile(CssRoot + "/base.css"));
+
+        var ring = rules.Where(r => r.Selector.Contains(":focus-visible", StringComparison.Ordinal)
+                                    && r.Selector.StartsWith(":where(", StringComparison.Ordinal)).ToList();
+        ring.Should().ContainSingle(because: "base.css declares the focus ring once, for the whole selector list");
+
+        var listMatch = Regex.Match(ring[0].Selector, @"^:where\((?<list>.*?)\):focus-visible");
+        listMatch.Success.Should().BeTrue();
+        var listed = listMatch.Groups["list"].Value.Split(',').Select(s => s.Trim()).ToList();
+        foreach (var selector in FocusRingSelectors)
+        {
+            listed.Should().Contain(selector, because: $"{selector} must show the focus ring");
+        }
+
+        var body = Flat(ring[0].Body);
+        body.Should().Contain("var(--qb-focus-outer)", because: "the outer stroke is the dark one");
+        body.Should().Contain("var(--qb-focus-inner)", because: "the inner band is the gold one");
+        body.Should().Contain("var(--qb-focus-width)");
+        body.Should().Contain("var(--qb-focus-offset)");
+
+        // Bootstrap hard-codes a blue shadow and no outline on these; the same ring must replace it.
+        foreach (var hardCoded in new[] { ".form-control:focus", ".form-select:focus", ".form-check-input:focus" })
+        {
+            ring[0].Selector.Should().Contain(hardCoded,
+                because: $"Bootstrap's own {hardCoded} look is a blue shadow with no outline and must be replaced");
+        }
+
+        rules.Should().Contain(
+            r => r.Selector == ".btn"
+                 && Flat(r.Body).Contains("--bs-btn-focus-box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner)"),
+            because: "Bootstrap buttons draw their focus shadow from this variable");
+    }
+
+    [Fact]
+    public void BaseCss_RemovesNoOutlineWithoutReplacement()
+    {
+        UnreplacedOutlineRemovals(ReadRepoFile(CssRoot + "/base.css")).Should().BeEmpty(
+            because: "removing the outline without drawing a focus ring from the focus tokens leaves keyboard users blind");
+
+        // The scan must fire on a known-bad sample, or an empty result would prove nothing.
+        UnreplacedOutlineRemovals(".x:focus { outline: none; } .y:focus { outline: 0; box-shadow: 0 0 0 2px var(--qb-focus-inner); }")
+            .Should().Equal(".x:focus");
+    }
+
+    [Fact]
+    public void BaseCss_HasReducedMotionBlock()
+    {
+        var css = ReadRepoFile(CssRoot + "/base.css");
+        var rules = ParseLeafRules(css);
+
+        var everything = rules.Where(r => InReducedMotion(r) && r.Selector.StartsWith('*')).ToList();
+        everything.Should().NotBeEmpty(because: "a prefers-reduced-motion block must switch off motion for every element");
+        var body = Flat(string.Join(" ", everything.Select(r => r.Body)));
+        body.Should().MatchRegex(@"animation-duration:\s*0\.01ms\s*!important");
+        body.Should().MatchRegex(@"transition-duration:\s*0\.01ms\s*!important");
+        body.Should().MatchRegex(@"animation-iteration-count:\s*1\s*!important");
+        body.Should().MatchRegex(@"scroll-behavior:\s*auto\s*!important");
+
+        rules.Should().Contain(r => InReducedMotion(r) && Regex.IsMatch(r.Body, @"transform:\s*none\s*!important"),
+            because: "hover and press lifts must not move anything for a reduced-motion user");
+
+        css.Should().NotContainEquivalentOf("infinite",
+            because: "the base layer adds no animation, and certainly no endless one");
+    }
 }
