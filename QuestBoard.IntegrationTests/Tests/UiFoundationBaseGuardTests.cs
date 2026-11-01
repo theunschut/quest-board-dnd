@@ -364,4 +364,37 @@ public class UiFoundationBaseGuardTests
         css.Should().NotContainEquivalentOf("infinite",
             because: "the base layer adds no animation, and certainly no endless one");
     }
+
+    [Fact]
+    public void BaseCss_MapsHeadingScale()
+    {
+        var rules = ParseLeafRules(ReadRepoFile(CssRoot + "/base.css"));
+
+        string Body(string selector)
+        {
+            var rule = rules.SingleOrDefault(r => r.Selector == selector && r.Ancestors.Count == 1);
+            rule.Should().NotBeNull(because: $"base.css must map {selector} onto the type scale");
+            return Flat(rule!.Body);
+        }
+
+        Body("body").Should().Contain("font-size: var(--qb-text-base)");
+        Body("body").Should().Contain("line-height: var(--qb-leading-body)");
+        Body("b, strong").Should().Contain("font-weight: var(--qb-weight-strong)");
+        Body("h1, .h1").Should().Contain("font-size: var(--qb-text-xl)");
+        Body("h2, .h2, h3, .h3").Should().Contain("font-size: var(--qb-text-lg)");
+        Body("h4, .h4, h5, .h5, h6, .h6").Should().Contain("font-size: var(--qb-text-base)");
+        Body("h4, .h4, h5, .h5, h6, .h6").Should().Contain("font-weight: var(--qb-weight-strong)");
+        Body(".mobile-layout h1, .mobile-layout .h1").Should().Contain("font-size: var(--qb-text-lg)");
+        Body("h1, .h1, .navbar-brand").Should().Contain("font-family: var(--qb-font-display)");
+
+        // Only the two weights of the scale: every weight declared here is one of the two tokens.
+        foreach (var rule in rules)
+        {
+            foreach (Match m in Regex.Matches(rule.Body, @"font-weight\s*:\s*(?<value>[^;]+)"))
+            {
+                m.Groups["value"].Value.Trim().Should().MatchRegex(@"^var\(--qb-weight-(regular|strong)\)$",
+                    because: $"{rule.Selector} must use only the two weights of the type scale");
+            }
+        }
+    }
 }
