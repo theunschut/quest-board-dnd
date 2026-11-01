@@ -182,6 +182,36 @@ public class UiFoundationVendorGuardTests
     }
 
     [Fact]
+    public void AppCss_DeclaresTheLayerOrderFirst()
+    {
+        var appCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "app.css"));
+
+        var withoutComments = Regex.Replace(appCss, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline).TrimStart();
+        var firstStatement = withoutComments[..(withoutComments.IndexOf(';') + 1)];
+
+        firstStatement.Should().Be("@layer vendor, tokens, base, components, pages, utilities;",
+            because: "the cascade layer order is fixed by the first place a layer name is seen, so the " +
+                     "statement that declares it must come before any rule in the first stylesheet");
+    }
+
+    [Fact]
+    public void Layouts_ReferenceNoThirdPartyHost()
+    {
+        var tag = new Regex(@"<(?:link|script)\b[^>]*>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        foreach (var layout in LayoutFiles)
+        {
+            foreach (Match match in tag.Matches(ReadLayout(layout)))
+            {
+                match.Value.Should().NotMatchRegex(@"https?://",
+                    because: $"{layout} must not request a stylesheet or script from another host: {match.Value}");
+                match.Value.Should().NotContainEquivalentOf("integrity=",
+                    because: $"{layout} serves its files from this origin, so no tag carries a subresource integrity attribute: {match.Value}");
+            }
+        }
+    }
+
+    [Fact]
     public void LibReferences_ResolveToCommittedFiles()
     {
         var libRoot = ResolveRepoFile(LibRoot.Split('/'));

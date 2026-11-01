@@ -1,5 +1,12 @@
 /* Site-wide foundations loaded before every other stylesheet; the self-hosted display face is declared here. */
 
+/*
+ * The cascade layer order is declared once, here, and must stay the first statement of the first stylesheet on
+ * every layout: a layer's rank is fixed by the first place its name is seen, so a later stylesheet cannot reorder
+ * it. No rule or import sits in a layer yet, so this statement changes nothing that is drawn.
+ */
+@layer vendor, tokens, base, components, pages, utilities;
+
 /* latin-ext */
 @font-face {
   font-family: 'Cinzel';
