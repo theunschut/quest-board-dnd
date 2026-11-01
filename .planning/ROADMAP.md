@@ -1409,7 +1409,7 @@ Plans:
 *Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
 **Requirements**: TBD
 **Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
-**Plans:** 2/27 plans executed
+**Plans:** 10/27 plans executed
 
 **Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
 
@@ -1444,14 +1444,14 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 94-03-PLAN.md — Audit: Quests and Quest Log (wave 3)
-- [ ] 94-04-PLAN.md — Audit: Events, Series, Calendar and Agenda (wave 3)
-- [ ] 94-05-PLAN.md — Audit: Characters, Contacts, DM profile and Players (wave 3)
-- [ ] 94-06-PLAN.md — Audit: Shop and Shop management (wave 3)
-- [ ] 94-07-PLAN.md — Audit: Account, pickers and access denied (wave 3)
-- [ ] 94-08-PLAN.md — Audit: Admin and Platform (wave 3)
-- [ ] 94-09-PLAN.md — Mockups: fixture content, tools, all five baselines, Direction A Quest board and Details (wave 3)
-- [ ] 94-11-PLAN.md — Self-host Bootstrap, Font Awesome and Cinzel at today's versions; release smoke test (wave 3)
+- [x] 94-03-PLAN.md — Audit: Quests and Quest Log (wave 3)
+- [x] 94-04-PLAN.md — Audit: Events, Series, Calendar and Agenda (wave 3)
+- [x] 94-05-PLAN.md — Audit: Characters, Contacts, DM profile and Players (wave 3)
+- [x] 94-06-PLAN.md — Audit: Shop and Shop management (wave 3)
+- [x] 94-07-PLAN.md — Audit: Account, pickers and access denied (wave 3)
+- [x] 94-08-PLAN.md — Audit: Admin and Platform (wave 3)
+- [x] 94-09-PLAN.md — Mockups: fixture content, tools, all five baselines, Direction A Quest board and Details (wave 3)
+- [x] 94-11-PLAN.md — Self-host Bootstrap, Font Awesome and Cinzel at today's versions; release smoke test (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
