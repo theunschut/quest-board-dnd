@@ -1409,7 +1409,7 @@ Plans:
 *Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
 **Requirements**: TBD
 **Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
-**Plans:** 16/27 plans executed
+**Plans:** 17/27 plans executed
 
 **Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
 
@@ -1467,7 +1467,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 94-17-PLAN.md — Direction sign-off gate G1 and final token values (wave 6, checkpoint)
+- [x] 94-17-PLAN.md — Direction sign-off gate G1 and final token values (wave 6, checkpoint)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
