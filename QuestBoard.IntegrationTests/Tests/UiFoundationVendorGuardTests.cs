@@ -49,7 +49,15 @@ public class UiFoundationVendorGuardTests
     // Hosts are built from fragments so this file never holds the strings it forbids elsewhere.
     private static readonly string BootstrapCdnHost = "cdn.jsde" + "livr.net/npm/boot" + "strap";
 
-    private static readonly Regex LibUrl = new(@"~/lib/[^""'\s)?#]+", RegexOptions.Compiled);
+    private static readonly string FontAwesomeCdnHost = "cdnjs.cloud" + "flare.com/ajax/libs/font-" + "awesome/6.4.0/css/all";
+    private static readonly string GoogleFontsApiHost = "fonts.goo" + "gleapis.com";
+    private static readonly string GoogleFontsFileHost = "fonts.gst" + "atic.com";
+
+    // Every stylesheet link, in document order, whichever order its attributes are written in.
+    private static readonly Regex StylesheetLink = new(
+        @"<link\b[^>]*\brel=""stylesheet""[^>]*>", RegexOptions.Compiled);
+
+    private static readonly Regex LibUrl =new(@"~/lib/[^""'\s)?#]+", RegexOptions.Compiled);
 
     private static string ReadLayout(string relativePath) =>
         File.ReadAllText(ResolveRepoFile(relativePath.Split('/')));
@@ -69,6 +77,69 @@ public class UiFoundationVendorGuardTests
                 because: $"{layout} must load the Bootstrap bundle from a versioned wwwroot/lib directory");
             text.Should().NotContain(BootstrapCdnHost,
                 because: $"{layout} must not request Bootstrap from a CDN");
+        }
+    }
+
+    [Fact]
+    public void Layouts_LoadFontAwesomeFromAVersionedLibDirectory()
+    {
+        foreach (var layout in LayoutFiles)
+        {
+            var text = ReadLayout(layout);
+
+            text.Should().MatchRegex(
+                @"<link[^>]*href=""~/lib/fontawesome-\d+\.\d+\.\d+/css/all\.min\.css""",
+                because: $"{layout} must load Font Awesome from a versioned wwwroot/lib directory");
+            text.Should().NotContain(FontAwesomeCdnHost,
+                because: $"{layout} must not request the Font Awesome stylesheet from a CDN");
+        }
+    }
+
+    [Fact]
+    public void Layouts_RequestNoWebFontFromGoogle()
+    {
+        foreach (var layout in LayoutFiles)
+        {
+            var text = ReadLayout(layout);
+
+            text.Should().NotContain(GoogleFontsApiHost,
+                because: $"{layout} must not request web fonts from Google, the display face is self-hosted");
+            text.Should().NotContain(GoogleFontsFileHost,
+                because: $"{layout} must not request font files from Google, the display face is self-hosted");
+        }
+    }
+
+    [Fact]
+    public void AppCss_IsTheFirstStylesheetOnEveryLayout()
+    {
+        foreach (var layout in LayoutFiles)
+        {
+            var links = StylesheetLink.Matches(ReadLayout(layout));
+
+            links.Should().NotBeEmpty(because: $"{layout} loads stylesheets");
+            links[0].Value.Should().Contain("~/css/app.css",
+                because: $"{layout} must load wwwroot/css/app.css before every other stylesheet");
+        }
+    }
+
+    [Fact]
+    public void AppCss_DeclaresCinzelLocallyWithSwap()
+    {
+        var appCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "app.css"));
+
+        var faces = Regex.Matches(appCss, @"@font-face\s*\{[^}]*\}");
+        faces.Should().HaveCount(2, because: "app.css declares one Cinzel face per unicode subset, latin and latin-ext");
+
+        foreach (Match face in faces)
+        {
+            face.Value.Should().Contain("font-family: 'Cinzel'",
+                because: "app.css declares only the Cinzel display face");
+            face.Value.Should().Contain("font-display: swap",
+                because: "text must stay readable while the display face loads");
+            face.Value.Should().Contain("unicode-range",
+                because: "each subset file must cover only its own character range");
+            face.Value.Should().MatchRegex(@"src:\s*url\(""\.\./lib/cinzel/[^""]+\.woff2""\)",
+                because: "the display face must be served from wwwroot/lib/cinzel, not from a third party");
         }
     }
 
