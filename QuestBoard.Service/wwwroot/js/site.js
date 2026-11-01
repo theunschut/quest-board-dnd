@@ -413,6 +413,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // own locale wording -- never their timezone, since a wall-clock value has no UTC instant.
     hydrateWallClockTimes();
 
+    // An offcanvas panel does not report its state on the button that opens it (a collapse does), so a
+    // toggler that declares aria-expanded is kept in step here.
+    ['show', 'hidden'].forEach(function(phase) {
+        document.addEventListener(phase + '.bs.offcanvas', function(event) {
+            if (!event.target.id) return;
+            document.querySelectorAll('[data-bs-toggle="offcanvas"][aria-expanded]').forEach(function(toggler) {
+                if (toggler.getAttribute('data-bs-target') === '#' + event.target.id) {
+                    toggler.setAttribute('aria-expanded', phase === 'show' ? 'true' : 'false');
+                }
+            });
+        });
+    });
+
     // Initialize toasts
     const toastElements = document.querySelectorAll('.toast');
     toastElements.forEach(function(toastElement) {
