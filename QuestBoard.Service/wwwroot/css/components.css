@@ -1,3 +1,98 @@
-/* Shared component classes (card, button, form, alert, table, badge, modal) will live in this layer. */
+/*
+ * Shared component classes (card, button, form, alert, table, badge, modal) live in this layer.
+ * Colours come from tokens.css; none are written here.
+ */
 @layer components {
+  /*
+   * Bootstrap variable mapping per surface.
+   *
+   * Bootstrap is in the lowest layer and its colour utilities are important, so a layered utility beats an
+   * unlayered important rule whatever the selector. What a utility paints is read from a variable though
+   * (.text-muted reads --bs-secondary-color, .text-danger reads --bs-danger-rgb, .bg-dark reads --bs-dark-rgb and
+   * --bs-bg-opacity), so each surface says which colour its utilities mean by setting those variables on itself.
+   * base.css sets the page default (light text variants for glass and wood); the surfaces below differ from it.
+   */
+
+  /* The bars and footers draw their own wood gradient, so Bootstrap's dark fill must be transparent. */
+  .navbar.bg-dark {
+    --bs-bg-opacity: 0;
+  }
+
+  /* Every link in the bar is parchment, whichever colour utility the markup carries (the menu toggles are red). */
+  .navbar .nav-link {
+    --bs-danger-rgb: var(--qb-fg-rgb);
+    --bs-warning-rgb: var(--qb-fg-rgb);
+    --bs-success-rgb: var(--qb-fg-rgb);
+    --bs-info-rgb: var(--qb-fg-rgb);
+    --bs-light-rgb: var(--qb-fg-rgb);
+  }
+
+  /* The phone menu header is translucent wood. */
+  .offcanvas-header.bg-dark {
+    --bs-dark-rgb: var(--qb-wood-rgb);
+    --bs-bg-opacity: 0.6;
+  }
+
+  /* A fill keeps its fill colour, although the page maps the same name to its light text variant. */
+  .bg-success {
+    --bs-success-rgb: var(--qb-success-rgb);
+  }
+
+  .bg-danger {
+    --bs-danger-rgb: var(--qb-danger-rgb);
+  }
+
+  .bg-warning {
+    --bs-warning-rgb: var(--qb-warning-rgb);
+  }
+
+  .bg-info {
+    --bs-info-rgb: var(--qb-info-rgb);
+  }
+
+  .bg-primary {
+    --bs-primary-rgb: var(--qb-wood-rgb);
+  }
+
+  .bg-secondary,
+  .border-secondary {
+    --bs-secondary-rgb: var(--qb-neutral-rgb);
+  }
+
+  /* The dark label of an info badge was written for a pale fill; the info fill is dark, so its label is white. */
+  .bg-info.text-dark {
+    --bs-dark-rgb: var(--qb-on-fill-rgb);
+  }
+
+  /*
+   * Paper: table cells inside a card and rows drawn on parchment read dark text, the status colours are their
+   * fills, and links are wood.
+   */
+  .modern-card .table,
+  .agenda-row,
+  .contact-detail-card .note-item {
+    --bs-secondary-color: var(--qb-ink-muted);
+    --bs-success-rgb: var(--qb-success-rgb);
+    --bs-danger-rgb: var(--qb-danger-rgb);
+    --bs-warning-rgb: var(--qb-warning-rgb);
+    --bs-info-rgb: var(--qb-info-rgb);
+    --bs-primary-rgb: var(--qb-wood-rgb);
+    --bs-secondary-rgb: var(--qb-neutral-rgb);
+    --bs-link-color-rgb: var(--qb-wood-rgb);
+    --bs-link-hover-color-rgb: var(--qb-ink-rgb);
+  }
+
+  /* The availability card states white for its own muted lines, directly on the board. */
+  .avail-card {
+    --bs-secondary-color: var(--qb-on-fill);
+  }
+
+  /* Light and white labels in the item name and the quest log body were parchment, not Bootstrap's near-white. */
+  .item-name {
+    --bs-light-rgb: var(--qb-fg-rgb);
+  }
+
+  .quest-log-details {
+    --bs-white-rgb: var(--qb-fg-rgb);
+  }
 }

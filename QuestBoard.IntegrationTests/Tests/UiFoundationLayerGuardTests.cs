@@ -575,6 +575,24 @@ public class UiFoundationLayerGuardTests
     }
 
     [Fact]
+    public void QbColourChannelTriples_MatchTheTokensTheyAreNamedAfter()
+    {
+        var (root, shop) = ReadTokens();
+        var triples = root.Keys.Where(k => Regex.IsMatch(k, @"^--qb-[\w-]+-rgb$")).ToList();
+        triples.Should().NotBeEmpty(because: "surfaces swap Bootstrap's colour utilities through these triples");
+
+        foreach (var (label, tokens) in new[] { ("default", root), ("shop theme", shop) })
+            foreach (var triple in triples)
+            {
+                var named = triple[..^"-rgb".Length];
+                var c = WcagContrast.Parse(ResolveColour(tokens, $"var({named})", named));
+                var expected = string.Create(CultureInfo.InvariantCulture, $"{c.R:0}, {c.G:0}, {c.B:0}");
+                tokens[triple].Should().Be(expected,
+                    $"[{label}] {triple} must hold the channels of {named}");
+            }
+    }
+
+    [Fact]
     public void BootstrapColourChannels_MatchTheFillsTheyStandFor()
     {
         var (root, shop) = ReadTokens();

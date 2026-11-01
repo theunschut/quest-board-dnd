@@ -91,6 +91,27 @@
     --bs-primary-rgb: 139, 69, 19;
     --bs-dark-rgb: 47, 27, 14;
     --bs-link-color-rgb: 255, 224, 138;
+    --bs-link-hover-color-rgb: 255, 243, 201;
+
+    /*
+     * The same colours as bare channel triples, for the places Bootstrap reads a triple (its colour utilities build
+     * rgba(var(--bs-danger-rgb), ...)), so a surface can swap which colour a utility resolves to. Each --qb-NAME-rgb
+     * holds the channels of --qb-NAME; a guard test checks they stay in step.
+     */
+    --qb-fg-rgb: 244, 228, 188;
+    --qb-ink-rgb: 26, 15, 8;
+    --qb-wood-rgb: 139, 69, 19;
+    --qb-success-rgb: 30, 122, 70;
+    --qb-danger-rgb: 192, 57, 43;
+    --qb-warning-rgb: 240, 163, 10;
+    --qb-info-rgb: 31, 111, 139;
+    --qb-neutral-rgb: 92, 99, 106;
+    --qb-success-text-rgb: 127, 220, 164;
+    --qb-danger-text-rgb: 255, 186, 177;
+    --qb-warning-text-rgb: 255, 191, 94;
+    --qb-info-text-rgb: 143, 211, 238;
+    --qb-neutral-text-rgb: 208, 211, 214;
+    --qb-on-fill-rgb: 255, 255, 255;
 
     /* Lines and focus */
     --qb-border: rgba(255, 255, 255, 0.3);
