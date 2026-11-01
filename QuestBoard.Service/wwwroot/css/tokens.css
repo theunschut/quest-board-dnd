@@ -1,0 +1,180 @@
+/*
+ * Design tokens: every colour, size, shadow and duration the shared styles use is named here, and this is the
+ * only stylesheet allowed to hold a colour literal. Shared rules name a role (--qb-fg, --qb-surface-glass,
+ * --qb-action), never a colour, so changing a look means changing a value in one place.
+ *
+ * The board shows at full strength behind the page (no veil), cards are clear glass over a 42% brown scrim,
+ * the one primary-action fill is wood, and the Shop sits on a navy theme that overrides semantic tokens only.
+ *
+ * Contrast-bearing colours are hex or rgba() literals so a guard test can read them and recompute every
+ * declared pair over the lightest board pixels. A text colour that fails there fails the build.
+ *
+ * Colour budget: the count that is capped is the number of distinct opaque hex values (at most 40, and 38 with
+ * the Shop theme: currently 38). Alpha steps do not count toward it; they are listed here so a new one is a
+ * visible edit, not a silent one:
+ *   shadows and halo   rgba(0,0,0) at 0.28, 0.32, 0.4, 0.45, 0.5, 0.55
+ *   backdrop vignette  rgba(12,6,2) at 0 and 0.5; Shop rgba(5,8,20) at 0 and 0.55
+ *   scrims             rgba(26,15,8) at 0.42; Shop rgba(8,10,28) at 0.55
+ *   glass tints        rgba(255,255,255) at 0.07, 0.12, 0.14, 0.18, 0.3, 0.5; Shop edge rgba(226,214,180) at 0.3
+ *   chrome gradient    rgba(124,74,36), rgba(80,45,21), Shop rgba(30,32,62), rgba(14,16,36), each at 0.97
+ */
+@layer tokens {
+  :root {
+    /* Backdrop: the board texture shows at full strength, so there is no veil. A dark veil here quiets it. */
+    --qb-board-fallback: #2c1810;
+    --qb-board-veil: transparent;
+    --qb-vignette: radial-gradient(ellipse at 50% 38%, rgba(12, 6, 2, 0) 52%, rgba(12, 6, 2, 0.5) 100%);
+
+    /* Surfaces */
+    --qb-surface-scrim: rgba(26, 15, 8, 0.42);
+    --qb-surface-glass: rgba(255, 255, 255, 0.12);
+    --qb-surface-glass-hover: rgba(255, 255, 255, 0.18);
+    --qb-surface-glass-border: rgba(255, 255, 255, 0.3);
+    --qb-surface-paper: #f4e4bc;
+    --qb-surface-paper-alt: #eadaae;
+    --qb-chrome-top: rgba(124, 74, 36, 0.97);
+    --qb-chrome-bottom: rgba(80, 45, 21, 0.97);
+    --qb-surface-chrome: linear-gradient(to bottom, var(--qb-chrome-top), var(--qb-chrome-bottom));
+    --qb-surface-overlay: #2f1b0e;
+
+    /* Text */
+    --qb-fg: #f4e4bc;
+    --qb-fg-muted: #e9dab3;
+    --qb-fg-on-board: #f4e4bc;
+    --qb-ink: #1a0f08;
+    --qb-ink-muted: #4f3a22;
+    --qb-link: #ffe08a;
+    --qb-link-hover: #fff3c9;
+
+    /* Brand and accent: gold only for the reserved uses */
+    --qb-accent: #ffc107;
+    --qb-accent-strong: #ffd23f;
+    --qb-accent-text: #ffd96b;
+    --qb-accent-ink: #1a0f08;
+    --qb-wood: #8b4513;
+    --qb-wood-light: #a0522d;
+    --qb-wood-dark: #654321;
+
+    /* The one commit-action fill: wood, label white */
+    --qb-action: #8b4513;
+    --qb-action-hover: #a0522d;
+    --qb-action-fg: #ffffff;
+
+    --qb-on-fill: #ffffff;
+
+    /* Status: fill, label on the fill, and the colour as text on glass */
+    --qb-success: #1e7a46;
+    --qb-success-fg: #ffffff;
+    --qb-success-text: #7fdca4;
+    --qb-danger: #c0392b;
+    --qb-danger-fg: #ffffff;
+    --qb-danger-text: #ffbab1;
+    --qb-warning: #f0a30a;
+    --qb-warning-fg: #1a0f08;
+    --qb-warning-text: #ffbf5e;
+    --qb-info: #1f6f8b;
+    --qb-info-fg: #ffffff;
+    --qb-info-text: #8fd3ee;
+    --qb-event: #6f42c1;
+    --qb-event-fg: #ffffff;
+    --qb-event-text: #d9c8ff;
+    --qb-neutral: #5c636a;
+    --qb-neutral-fg: #ffffff;
+    --qb-neutral-text: #d0d3d6;
+
+    /* Bootstrap colour channels, kept in step with the fills above (checked by the contrast report) */
+    --bs-success-rgb: 30, 122, 70;
+    --bs-danger-rgb: 192, 57, 43;
+    --bs-warning-rgb: 240, 163, 10;
+    --bs-info-rgb: 31, 111, 139;
+    --bs-secondary-rgb: 92, 99, 106;
+    --bs-primary-rgb: 139, 69, 19;
+    --bs-dark-rgb: 47, 27, 14;
+    --bs-link-color-rgb: 255, 224, 138;
+
+    /* Lines and focus */
+    --qb-border: rgba(255, 255, 255, 0.3);
+    --qb-border-strong: rgba(255, 255, 255, 0.5);
+    --qb-control-border: #7a5a30;
+    --qb-control-bg: #fbf3dc;
+    --qb-focus-inner: #ffc107;
+    --qb-focus-outer: #1a0f08;
+    --qb-focus-width: 2px;
+    --qb-focus-offset: 2px;
+
+    /* Type */
+    --qb-font-display: 'Cinzel', 'Trajan Pro', Georgia, 'Times New Roman', serif;
+    --qb-font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', 'Liberation Sans', Arial, sans-serif;
+    --qb-text-sm: 0.875rem;
+    --qb-text-base: 1rem;
+    --qb-text-lg: 1.25rem;
+    --qb-text-xl: 1.75rem;
+    --qb-weight-regular: 400;
+    --qb-weight-strong: 600;
+    --qb-leading-body: 1.5;
+    --qb-leading-heading: 1.2;
+
+    /* Space and radius */
+    --qb-space-xs: 4px;
+    --qb-space-sm: 8px;
+    --qb-space-md: 16px;
+    --qb-space-lg: 24px;
+    --qb-space-xl: 32px;
+    --qb-space-2xl: 48px;
+    --qb-space-3xl: 64px;
+    --qb-radius-sm: 4px;
+    --qb-radius-md: 8px;
+    --qb-radius-lg: 12px;
+    --qb-radius-pill: 999px;
+
+    /* Depth: at most two cheap shadows per repeated item; blur only on the shell */
+    --qb-shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.28);
+    --qb-shadow-raised: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.32);
+    --qb-shadow-chrome: 0 2px 8px rgba(0, 0, 0, 0.45);
+    --qb-shadow-overlay: 0 16px 40px rgba(0, 0, 0, 0.5);
+    --qb-text-halo: 0 1px 2px rgba(0, 0, 0, 0.55);
+    --qb-glass-blur: 12px;
+    --qb-chrome-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+
+    /* Motion */
+    --qb-dur-fast: 150ms;
+    --qb-dur-base: 250ms;
+    --qb-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    /* Layout */
+    --qb-nav-h: 56px;
+    --qb-hit-min: 44px;
+    --card-width: 352px;
+    --card-width-tablet: 312px;
+    --card-width-mobile: 276px;
+    --card-width-small: 248px;
+    --qb-board-image: none;
+  }
+
+  /*
+   * Shop theme: a deliberately different dark-navy look on the same components.
+   * Overrides semantic tokens only (board, surfaces, chrome, secondary text, action); component rules never name the theme.
+   * A page opts in by carrying data-theme="shop" on the element whose custom properties it should change; set on the html
+   * element it also recolours the page fallback background, set on the body it does not.
+   */
+  [data-theme='shop'] {
+    --qb-board-fallback: #0d1126;
+    --qb-board-image: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    --qb-board-veil: transparent;
+    --qb-vignette: radial-gradient(ellipse at 50% 30%, rgba(5, 8, 20, 0) 50%, rgba(5, 8, 20, 0.55) 100%);
+    --qb-surface-scrim: rgba(8, 10, 28, 0.55);
+    --qb-surface-glass: rgba(255, 255, 255, 0.07);
+    --qb-surface-glass-hover: rgba(255, 255, 255, 0.12);
+    --qb-surface-glass-border: rgba(226, 214, 180, 0.3);
+    --qb-surface-overlay: #12162b;
+    --qb-chrome-top: rgba(30, 32, 62, 0.97);
+    --qb-chrome-bottom: rgba(14, 16, 36, 0.97);
+    /* Re-declared so the gradient is rebuilt from this block's stops; an inherited value would keep the wood stops. */
+    --qb-surface-chrome: linear-gradient(to bottom, var(--qb-chrome-top), var(--qb-chrome-bottom));
+    --qb-fg-muted: #d6dbea;
+    --qb-action: #2f5f9e;
+    --qb-action-hover: #3d74bb;
+    --qb-action-fg: #ffffff;
+    --bs-dark-rgb: 18, 22, 43;
+  }
+}

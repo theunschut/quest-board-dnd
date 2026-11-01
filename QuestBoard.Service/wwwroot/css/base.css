@@ -1,0 +1,10 @@
+/*
+ * Page-level rules for the document itself: element and root selectors only, no component classes.
+ * Colours come from tokens.css; none are written here.
+ */
+@layer base {
+  /* The board image paints over this. If it is slow or fails, light text still sits on a dark colour. */
+  html {
+    background-color: var(--qb-board-fallback);
+  }
+}

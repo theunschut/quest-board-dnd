@@ -1,0 +1,3 @@
+/* Page shell rules that only the phone layouts use (compact navbar, bottom spacing, touch targets) will live in this layer. */
+@layer components {
+}
