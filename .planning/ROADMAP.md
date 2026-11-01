@@ -1409,7 +1409,7 @@ Plans:
 *Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
 **Requirements**: TBD
 **Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
-**Plans:** 10/27 plans executed
+**Plans:** 14/27 plans executed
 
 **Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
 
@@ -1455,10 +1455,10 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 94-10-PLAN.md — Mockups: Direction A form, Calendar, Shop both ways, crops and write-up (wave 4)
-- [ ] 94-12-PLAN.md — Self-host Cropper.js, Tagify and EasyMDE at today's versions (wave 4, after 94-11)
-- [ ] 94-14-PLAN.md — Shell audit, cascade probe, audit index, operator questions, proposed cut (wave 4)
-- [ ] 94-15-PLAN.md — Mockups: Direction B with the primary-action switcher (wave 4)
+- [x] 94-10-PLAN.md — Mockups: Direction A form, Calendar, Shop both ways, crops and write-up (wave 4)
+- [x] 94-12-PLAN.md — Self-host Cropper.js, Tagify and EasyMDE at today's versions (wave 4, after 94-11)
+- [x] 94-14-PLAN.md — Shell audit, cascade probe, audit index, operator questions, proposed cut (wave 4)
+- [x] 94-15-PLAN.md — Mockups: Direction B with the primary-action switcher (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
