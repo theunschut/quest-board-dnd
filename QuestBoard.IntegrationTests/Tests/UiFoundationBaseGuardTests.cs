@@ -204,7 +204,7 @@ public class UiFoundationBaseGuardTests
         }
 
         Block(".modern-card .table").Should().Contain("--bs-secondary-color: var(--qb-ink-muted)");
-        Block(".modern-card .table").Should().Contain("--bs-danger-rgb: var(--qb-danger-rgb)");
+        Block(".modern-card .table").Should().Contain("--bs-danger-rgb: var(--qb-ink-rgb)");
         Block(".modern-card .table").Should().Contain("--bs-link-color-rgb: var(--qb-wood-rgb)");
         Block(".navbar.bg-dark").Should().Contain("--bs-bg-opacity: 0");
         Block(".offcanvas-header.bg-dark").Should().Contain("--bs-dark-rgb: var(--qb-wood-rgb)");

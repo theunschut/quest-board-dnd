@@ -138,6 +138,81 @@ public class UiFoundationComponentGuardTests
             "the lift is movement, so it exists only inside the no-preference media query");
     }
 
+    private static CssRule RuleFor(string selector) =>
+        ComponentRules().FirstOrDefault(r => SelectorParts(r).Contains(selector))
+        ?? throw new Xunit.Sdk.XunitException($"components.css must define a rule for {selector}");
+
+    [Fact]
+    public void ComponentsCss_PrimaryButtonUsesActionToken()
+    {
+        var rule = RuleFor(".btn-primary");
+
+        Declares(rule, "--bs-btn-bg", "var(--qb-action)").Should().BeTrue("the one commit action is the action fill");
+        Declares(rule, "--bs-btn-color", "var(--qb-action-fg)").Should().BeTrue();
+        Declares(rule, "--bs-btn-hover-bg", "var(--qb-action-hover)").Should().BeTrue();
+        Declares(rule, "--bs-btn-hover-color", "var(--qb-action-fg)").Should().BeTrue("the label keeps its colour on hover");
+        Declares(rule, "--bs-btn-active-color", "var(--qb-action-fg)").Should().BeTrue("and while pressed");
+    }
+
+    [Fact]
+    public void ComponentsCss_WarningButtonHasDarkLabel()
+    {
+        var rule = RuleFor(".btn-warning");
+
+        foreach (var state in new[] { "", "hover-", "active-" })
+            Declares(rule, $"--bs-btn-{state}color", "var(--qb-warning-fg)").Should().BeTrue(
+                $"amber needs a near-black label in the {(state == "" ? "rest" : state.TrimEnd('-'))} state, never white");
+    }
+
+    [Fact]
+    public void ComponentsCss_DefinesEmptyStateStructure()
+    {
+        var rules = ComponentRules();
+
+        foreach (var selector in new[] { ".empty-state", ".empty-state-icon", ".empty-state-heading", ".empty-state-text", ".refusal-line" })
+            rules.Any(r => SelectorParts(r).Contains(selector)).Should().BeTrue($"components.css must style {selector}");
+    }
+
+    [Fact]
+    public void ComponentsCss_BadgeUsesLabelStep()
+    {
+        var rule = RuleFor(".badge");
+
+        Declares(rule, "--bs-badge-font-size", "var(--qb-text-sm)").Should().BeTrue("a badge is the 14px label step, never smaller");
+        Declares(rule, "--bs-badge-font-weight", "var(--qb-weight-strong)").Should().BeTrue();
+        Declares(RuleFor(".badge.bg-warning"), "--bs-badge-color", "var(--qb-warning-fg)").Should().BeTrue(
+            "an amber badge carries the dark label");
+    }
+
+    [Fact]
+    public void ComponentsCss_ModalAndOffcanvasUseOverlaySurface()
+    {
+        Declares(RuleFor(".modal"), "--bs-modal-bg", "var(--qb-surface-overlay)").Should().BeTrue();
+        Declares(RuleFor(".modal"), "--bs-modal-color", "var(--qb-fg)").Should().BeTrue();
+        Declares(RuleFor(".offcanvas"), "--bs-offcanvas-bg", "var(--qb-surface-overlay)").Should().BeTrue();
+        Declares(RuleFor(".offcanvas"), "--bs-offcanvas-color", "var(--qb-fg)").Should().BeTrue();
+        Declares(RuleFor(".toast"), "--bs-toast-bg", "var(--qb-surface-overlay)").Should().BeTrue();
+    }
+
+    [Fact]
+    public void ComponentsCss_UtilitiesSitInUtilitiesLayer()
+    {
+        var rules = ComponentRules();
+
+        foreach (var selector in new[] { ".text-halo", ".text-purple" })
+        {
+            var hits = rules.Where(r => SelectorParts(r).Contains(selector)).ToList();
+            hits.Should().NotBeEmpty($"components.css must define {selector}");
+            hits.Should().OnlyContain(r => r.Enclosing.Contains("@layer utilities"),
+                $"{selector} is a utility and must not sit in the components layer");
+        }
+
+        var focusable = rules.Where(r => SelectorParts(r).Any(s => s.StartsWith(".visually-hidden-focusable"))).ToList();
+        focusable.Should().NotBeEmpty();
+        focusable.Should().OnlyContain(r => r.Enclosing.Contains("@layer utilities"));
+        focusable.Should().OnlyContain(r => r.Selector.Contains(":not(:focus)"), "it must show when it takes focus");
+    }
+
     [Fact]
     public void RuleParser_SeesRulesInsideNestedBlocks()
     {
