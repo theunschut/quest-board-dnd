@@ -79,6 +79,16 @@ public class UiFoundationViewLibraryGuardTests
     }
 
     [Fact]
+    public void Views_LoadNoLibraryFromJsDelivr()
+    {
+        foreach (var file in NonLayoutViews())
+        {
+            File.ReadAllText(file).Should().NotContain(JsDelivrHost,
+                because: $"{Path.GetFileName(file)} must load its libraries from wwwroot/lib, not from a CDN");
+        }
+    }
+
+    [Fact]
     public void ViewLibraryReferences_ResolveToCommittedFiles()
     {
         var libRoot = ResolveRepoFile(LibRoot.Split('/'));
