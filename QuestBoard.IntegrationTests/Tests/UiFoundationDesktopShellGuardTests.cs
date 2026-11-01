@@ -12,6 +12,7 @@ namespace QuestBoard.IntegrationTests.Tests;
 public class UiFoundationDesktopShellGuardTests
 {
     private const string FooterFile = "QuestBoard.Service/Views/Shared/_Footer.cshtml";
+    private const string CssRoot = "QuestBoard.Service/wwwroot/css/";
 
     // Each desktop-side layout, the name its navigation landmark must carry, and the id of the collapse its toggler
     // controls (null when the bar has no menu to collapse).
@@ -164,5 +165,40 @@ public class UiFoundationDesktopShellGuardTests
     {
         Markup("QuestBoard.Service/Areas/Platform/Views/Shared/_Layout.Platform.cshtml")
             .Should().Contain("RenderSectionAsync(\"Styles\"");
+    }
+
+    [Fact]
+    public void Backdrop_IsOneRuleInBaseAndTheDesktopPhotoIsNamedByTheShell()
+    {
+        Regex.Matches(ReadRepoFile(CssRoot + "base.css"), @"body::before\s*\{").Should().HaveCount(1);
+        ReadRepoFile(CssRoot + "site.css").Should().NotContain("body::before",
+            "the desktop backdrop is defined once, in base.css");
+
+        var base_ = Regex.Replace(ReadRepoFile(CssRoot + "base.css"), @"/\*[\s\S]*?\*/", " ");
+        var rule = Regex.Match(base_, @"body::before\s*\{[^}]*\}").Value;
+        rule.Should().Contain("position: fixed");
+        rule.Should().Contain("100dvh");
+        rule.Should().Contain("var(--qb-board-image)");
+
+        Regex.IsMatch(ReadRepoFile(CssRoot + "shell.css"),
+                @"--qb-board-photo:\s*url\(""\.\./images/notice-board-1600\.webp""\)")
+            .Should().BeTrue("shell.css names the 1600px derivative for the desktop shell");
+
+        ReadRepoFile(CssRoot + "tokens.css").Should().Contain("--qb-board-image: var(--qb-board-photo, none)",
+            "the image token reads the shell's photo, so a theme can still replace the whole token");
+    }
+
+    [Fact]
+    public void BackdropImage_IsASmallDerivativeOfTheSourceArtwork()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !dir.EnumerateFiles("*.slnx").Any() && !dir.EnumerateDirectories(".git").Any())
+            dir = dir.Parent;
+
+        var images = Path.Combine(dir!.FullName, "QuestBoard.Service", "wwwroot", "images");
+        var derivative = new FileInfo(Path.Combine(images, "notice-board-1600.webp"));
+        derivative.Exists.Should().BeTrue();
+        derivative.Length.Should().BeInRange(1, 250 * 1024, "the whole point of the derivative is a light download");
+        File.Exists(Path.Combine(images, "Notice Board-blank2.jpg")).Should().BeTrue("the 3000px source stays");
     }
 }

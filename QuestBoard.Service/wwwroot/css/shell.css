@@ -7,6 +7,15 @@
  */
 @layer components {
   /*
+   * The board photo for the desktop shell: the 1600px derivative of the artwork. The backdrop rule in base.css reads
+   * it through --qb-board-image, which a theme may replace; the photo sits one step behind that name so a theme
+   * set on the html element still wins over it.
+   */
+  :root {
+    --qb-board-photo: url("../images/notice-board-1600.webp");
+  }
+
+  /*
    * A fixed bar covers whatever scrolls under it, so the body leaves room for it and a focused element that the
    * browser scrolls into view stops below it. The bar is exactly --qb-nav-h tall (see .chrome), which is what
    * makes both numbers right.

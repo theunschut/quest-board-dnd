@@ -36,6 +36,33 @@
     background-color: var(--qb-board-fallback);
   }
 
+  /*
+   * The page paints over the backdrop, so the body itself is clear: Bootstrap's white body fill would cover the
+   * board image (the image sits behind the body's content, not behind its background).
+   */
+  body {
+    background-color: transparent;
+  }
+
+  /*
+   * The board image, drawn once for every layout on a fixed pseudo-element instead of a fixed background on the
+   * body: iOS Safari does not composite a fixed body background (it scrolls with the page), and the height is the
+   * dynamic viewport so the browser's collapsing toolbar does not resize the image mid-scroll. The vignette and
+   * the veil lay over the photo; the stylesheet for each shell chooses the image file.
+   */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    height: 100vh;
+    height: 100dvh;
+    background-image: var(--qb-vignette), linear-gradient(var(--qb-board-veil), var(--qb-board-veil)), var(--qb-board-image);
+    background-size: cover, cover, cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
   /* Type: four sizes (14, 16, 20, 28) and two weights (400, 600). */
   body {
     font-family: var(--qb-font-body);
