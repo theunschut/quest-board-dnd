@@ -3,9 +3,21 @@
 /*
  * The cascade layer order is declared once, here, and must stay the first statement of the first stylesheet on
  * every layout: a layer's rank is fixed by the first place its name is seen, so a later stylesheet cannot reorder
- * it. No rule or import sits in a layer yet, so this statement changes nothing that is drawn.
+ * it.
+ *
+ * Bootstrap and Font Awesome are imported into the lowest layer, so every rule the application writes outranks
+ * them without a specificity fight. The one catch is Bootstrap's !important utilities (.text-muted, .text-danger,
+ * .bg-dark and the like): for important declarations the layer order inverts, so a layered utility now beats an
+ * unlayered important rule. The application therefore re-themes Bootstrap by setting its --bs-* variables
+ * (base.css for the page, components.css per surface), never by out-specifying it.
+ *
+ * Each import path is versioned by its directory name and every layout preloads the same URL without a query
+ * string, so the file is fetched once and early, and a new release is a new path rather than a stale cache.
  */
 @layer vendor, tokens, base, components, pages, utilities;
+
+@import url("../lib/bootstrap-5.3.8/css/bootstrap.min.css") layer(vendor);
+@import url("../lib/fontawesome-6.7.2/css/all.min.css") layer(vendor);
 
 /* latin-ext */
 @font-face {

@@ -62,16 +62,22 @@ public class UiFoundationVendorGuardTests
     private static string ReadLayout(string relativePath) =>
         File.ReadAllText(ResolveRepoFile(relativePath.Split('/')));
 
+    private static string ReadAppCss() =>
+        File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "app.css"));
+
     [Fact]
     public void Layouts_LoadBootstrapFromAVersionedLibDirectory()
     {
+        // The stylesheet is imported into the vendor layer by app.css, so the layouts carry only the
+        // behaviour bundle; both come from a versioned directory under wwwroot/lib.
+        ReadAppCss().Should().MatchRegex(
+            @"@import\s+url\(""\.\./lib/bootstrap-\d+\.\d+\.\d+/css/bootstrap\.min\.css""\)\s+layer\(vendor\)",
+            because: "app.css must import the Bootstrap stylesheet from a versioned wwwroot/lib directory");
+
         foreach (var layout in LayoutFiles)
         {
             var text = ReadLayout(layout);
 
-            text.Should().MatchRegex(
-                @"<link[^>]*href=""~/lib/bootstrap-\d+\.\d+\.\d+/css/bootstrap\.min\.css""",
-                because: $"{layout} must load the Bootstrap stylesheet from a versioned wwwroot/lib directory");
             text.Should().MatchRegex(
                 @"<script[^>]*src=""~/lib/bootstrap-\d+\.\d+\.\d+/js/bootstrap\.bundle\.min\.js""",
                 because: $"{layout} must load the Bootstrap bundle from a versioned wwwroot/lib directory");
@@ -83,14 +89,13 @@ public class UiFoundationVendorGuardTests
     [Fact]
     public void Layouts_LoadFontAwesomeFromAVersionedLibDirectory()
     {
+        ReadAppCss().Should().MatchRegex(
+            @"@import\s+url\(""\.\./lib/fontawesome-\d+\.\d+\.\d+/css/all\.min\.css""\)\s+layer\(vendor\)",
+            because: "app.css must import Font Awesome from a versioned wwwroot/lib directory");
+
         foreach (var layout in LayoutFiles)
         {
-            var text = ReadLayout(layout);
-
-            text.Should().MatchRegex(
-                @"<link[^>]*href=""~/lib/fontawesome-\d+\.\d+\.\d+/css/all\.min\.css""",
-                because: $"{layout} must load Font Awesome from a versioned wwwroot/lib directory");
-            text.Should().NotContain(FontAwesomeCdnHost,
+            ReadLayout(layout).Should().NotContain(FontAwesomeCdnHost,
                 because: $"{layout} must not request the Font Awesome stylesheet from a CDN");
         }
     }

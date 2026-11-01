@@ -3,6 +3,34 @@
  * Colours come from tokens.css; none are written here.
  */
 @layer base {
+  /*
+   * Bootstrap re-themed through its own variables. Bootstrap sits in the lowest layer, so these root values win
+   * over its defaults without a specificity fight. A surface that differs from the page sets its own value in
+   * components.css.
+   */
+  :root {
+    --bs-body-font-family: var(--qb-font-body);
+    --bs-border-radius: var(--qb-radius-md);
+    --bs-border-radius-sm: var(--qb-radius-sm);
+    --bs-border-radius-lg: var(--qb-radius-lg);
+    --bs-headings-font-weight: var(--qb-weight-strong);
+    --bs-link-color: var(--qb-link);
+    --bs-link-hover-color: var(--qb-link-hover);
+
+    /*
+     * The page is the board: text sits on glass or directly on the wood, so muted text is the muted parchment tone
+     * and a colour utility used as text (.text-danger and its siblings) means the light variant that holds its
+     * contrast there. The same names mean the fill colours wherever a fill is drawn; components.css restores them.
+     */
+    --bs-secondary-color: var(--qb-fg-muted);
+    --bs-success-rgb: var(--qb-success-text-rgb);
+    --bs-danger-rgb: var(--qb-danger-text-rgb);
+    --bs-warning-rgb: var(--qb-warning-text-rgb);
+    --bs-info-rgb: var(--qb-info-text-rgb);
+    --bs-primary-rgb: var(--qb-fg-rgb);
+    --bs-secondary-rgb: var(--qb-neutral-text-rgb);
+  }
+
   /* The board image paints over this. If it is slow or fails, light text still sits on a dark colour. */
   html {
     background-color: var(--qb-board-fallback);
