@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 6
+open_count: 7
 waived_count: 1
 fixed_count: 2
-total_count: 9
-last_updated: 2026-11-01T17:34:27.469Z
+total_count: 10
+last_updated: 2026-11-01T17:43:22.717Z
 ---
 
 # Broken Windows Ledger
@@ -24,6 +24,7 @@ last_updated: 2026-11-01T17:34:27.469Z
 | 7 | 94 | deviation | QuestBoard.Service/wwwroot/lib/cinzel/cinzel-latin-wght.woff2 |  | 94-11 Task 2 zero-difference gate printed FAIL: all 7 desktop gate pages 0 px, all 7 mobile pages 4.5k-9.5k px confined to the Cinzel brand/heading edges. Google Fonts serves an Android UA a differently hinted build of the same Cinzel than a desktop UA; the self-hosted files are the desktop-UA build. Orchestrator reviewed the overlay at 3x: identical glyph shapes and weight, edge anti-aliasing plus a sub-pixel advance shift only, brand box unchanged 198x46 CSS px - judged not visible and accepted. Strict-zero alternative (both builds, selected by @media (hover:none) and (pointer:coarse), +~40 KB) not taken. Revisit only if the user objects; commit 0a5604ac. | open |  | 2026-11-01T14:12:21.045Z |  |
 | 8 | 94 | deviation | ~/qb-ui-review/phase-94/tools/probes.mjs (scratch) |  | 94-16 found the shared contrast probe flattens a multi-layer glass background and orders the colour above its own image, giving 134 false failures on Direction A through audit-shoot --probes. 94-16 used a corrected package-local copy (mockups/package/probe-lib.mjs). The wave-3 area audits scored legacy glass with the shared probe, so any S1/S2 contrast finding measured on a multi-layer glass background may be a false positive; re-check those before an area phase acts on them. | open |  | 2026-11-01T15:35:45.120Z |  |
 | 9 | 94 | deviation | QuestBoard.Service/Views/Calendar/Index.cshtml |  | Calendar month view (Events area phase): operator-accepted trade-off of the fit-without-scrolling requirement - compact entry rows and the '+N more' button are 20px tall, under the 24px WCAG 2.5.8 target-size minimum; titles truncate at about 13-16 characters (full title in the hover/focus card); footer sits below the fold. Meeting 2.5.8 would cost one visible entry per day cell. Recorded in the UI-SPEC G1 sign-off record (G1-O3). | waived | Operator decision 2026-11-01: fitting the whole month on one screen takes priority over the 24px target size; accepted after trying the calendar-fit mockup | 2026-11-01T17:34:27.324Z | 2026-11-01T17:34:27.469Z |
+| 10 | 94 | unmet-truth | QuestBoard.Service/wwwroot/css/tokens.css |  | Signed-off status text colours (success, danger, warning, info) measure 4.23-4.31:1 on HOVERED glass at B-max (~4.46 at B-99), under 4.5:1; the G1 sign-off never scored status text on the hover surface. 94-18 kept the signed-off values and the token-contrast guard lists these four pairs as an explicit, reasoned exclusion. Resolve in the component layer (94-20): prefer easing the hover glass tint so status text reaches 4.5:1 without changing the signed-off status colours; otherwise lighten the status text tokens minimally (e.g. success ~#8ce4b0 = 4.62) and re-score. Then remove the guard exclusion. | open |  | 2026-11-01T17:43:22.717Z |  |
 
 ````json
 [
@@ -134,6 +135,18 @@ last_updated: 2026-11-01T17:34:27.469Z
     "reason": "Operator decision 2026-11-01: fitting the whole month on one screen takes priority over the 24px target size; accepted after trying the calendar-fit mockup",
     "recorded_at": "2026-11-01T17:34:27.324Z",
     "resolved_at": "2026-11-01T17:34:27.469Z"
+  },
+  {
+    "id": 10,
+    "kind": "unmet-truth",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/tokens.css",
+    "line": null,
+    "description": "Signed-off status text colours (success, danger, warning, info) measure 4.23-4.31:1 on HOVERED glass at B-max (~4.46 at B-99), under 4.5:1; the G1 sign-off never scored status text on the hover surface. 94-18 kept the signed-off values and the token-contrast guard lists these four pairs as an explicit, reasoned exclusion. Resolve in the component layer (94-20): prefer easing the hover glass tint so status text reaches 4.5:1 without changing the signed-off status colours; otherwise lighten the status text tokens minimally (e.g. success ~#8ce4b0 = 4.62) and re-score. Then remove the guard exclusion.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T17:43:22.717Z",
+    "resolved_at": null
   }
 ]
 ````
