@@ -474,6 +474,16 @@ div {
     background: transparent;
 }
 
+/*
+ * The blanket resets above also reach the navigation bar's open menu and its dropdowns, whose fill is chosen in
+ * shell.css (--qb-menu-fill). A layered rule cannot beat an unlayered one, so the fill is painted here, from that
+ * variable. Remove this with the resets.
+ */
+.chrome .navbar-collapse,
+.chrome .dropdown-menu {
+    background-color: var(--qb-menu-fill, transparent);
+}
+
 /* Exception for Quest Log - needs specific backgrounds */
 .quest-log-container div,
 .quest-log-card div,
@@ -495,104 +505,6 @@ div {
     background-color: rgba(0, 0, 0, 0.12) !important;
     color: rgba(26, 15, 8, 0.55) !important;
     cursor: not-allowed;
-}
-
-/* Fantasy themed navbar with brown background - exclude footer */
-.navbar:not(footer) {
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(160, 82, 45, 0.5) 50%, rgba(205, 133, 63, 0.5) 100%) !important;
-    border-bottom: 2px solid rgba(139, 69, 19, 0.9);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(10px);
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    z-index: 1030 !important;
-}
-
-/* Ensure footer navbar remains transparent */
-footer.navbar {
-    background: transparent !important;
-    backdrop-filter: none !important;
-}
-
-/* The footer text sits on the board; the bare span rule below would otherwise paint it dark brown. */
-footer.navbar .navbar-text {
-    color: var(--qb-fg-on-board);
-}
-
-/* Add padding to body to account for fixed navbar */
-body {
-    padding-top: 56px; /* Standard Bootstrap navbar height */
-}
-
-.navbar-brand {
-    color: #F4E4BC !important;
-    font-family: 'Cinzel', serif !important;
-    font-weight: bold !important;
-    font-size: 1.5rem !important;
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9),
-                 -1px -1px 3px rgba(0, 0, 0, 0.9),
-                 2px 2px 8px rgba(0, 0, 0, 0.8),
-                 1px 1px 2px rgba(255, 215, 0, 0.3) !important;
-    transition: all 0.3s ease !important;
-}
-
-.navbar-brand:hover {
-    color: #FFD700 !important;
-    text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.95),
-                 -1px -1px 4px rgba(0, 0, 0, 0.95),
-                 3px 3px 10px rgba(0, 0, 0, 0.8),
-                 1px 1px 3px rgba(255, 215, 0, 0.5) !important;
-    transform: scale(1.05);
-}
-
-.navbar-nav .nav-link {
-    color: #F4E4BC !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
-                 -1px -1px 2px rgba(0, 0, 0, 0.9),
-                 1px 1px 6px rgba(0, 0, 0, 0.8) !important;
-    transition: all 0.3s ease !important;
-    border-radius: 5px;
-    margin: 0 0.25rem;
-    padding: 0.4rem 0.8rem;
-    font-size: 0.95rem;
-}
-
-/* Bootstrap's wide-screen link spacing, stated here because the rule above now outranks Bootstrap's own. */
-@media (min-width: 992px) {
-    .navbar-expand-lg .navbar-nav .nav-link {
-        padding-right: var(--bs-navbar-nav-link-padding-x);
-        padding-left: var(--bs-navbar-nav-link-padding-x);
-    }
-}
-
-.navbar-nav .nav-link:hover {
-    color: #FFD700 !important;
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.95),
-                 -1px -1px 3px rgba(0, 0, 0, 0.95),
-                 2px 2px 8px rgba(0, 0, 0, 0.8) !important;
-    transform: translateY(-1px);
-}
-
-.navbar-nav .nav-link:focus {
-    color: #FFD700 !important;
-    background-color: rgba(0, 0, 0, 0.25) !important;
-}
-
-.navbar-toggler {
-    border: 2px solid #F4E4BC !important;
-    border-radius: 5px;
-}
-
-.navbar-toggler:focus {
-    box-shadow: 0 0 8px rgba(244, 228, 188, 0.5) !important;
-}
-
-.navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28244, 228, 188, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
 }
 
 /* Enhanced text readability with stronger shadows instead of backgrounds */

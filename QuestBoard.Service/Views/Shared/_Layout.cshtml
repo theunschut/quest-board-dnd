@@ -37,13 +37,14 @@
     <link rel="stylesheet" href="~/css/move-entry.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body class="d-flex flex-column min-vh-100 @ViewData["BodyClass"]">
+<body class="d-flex flex-column min-vh-100 shell-fixed-nav @ViewData["BodyClass"]">
+    <a class="visually-hidden-focusable skip-link" href="#main-content">Skip to main content</a>
     @{
         var pages = await BoardPages.GetAsync();
         var homeRoute = BoardPageRoutes.HomeRoute(pages);
     }
     <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-2">
+        <nav class="navbar navbar-expand-xl navbar-dark chrome fixed-top" aria-label="Main">
             <div class="container-fluid px-3">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
@@ -53,7 +54,7 @@
                 {
                     <a class="navbar-brand" asp-controller="Home" asp-action="Index"><i class="fas fa-dice-d20"></i> D&D Quest Board</a>
                 }
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbar">
@@ -64,7 +65,7 @@
                             @if ((await AuthorizationService.AuthorizeAsync(User, "AdminOnly")).Succeeded)
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-danger" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-shield-alt me-1"></i>Admin
                                     </a>
                                     <ul class="dropdown-menu">
@@ -115,7 +116,7 @@
                                 if (showCreateQuest || showCreateEvent || showBoardAvailability || showManageShop || showEditProfile)
                                 {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-danger" href="#" id="dungeonMasterDropdown" role="button" data-bs-toggle="dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="dungeonMasterDropdown" role="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-crown me-1"></i>Dungeon Master
                                     </a>
                                     <ul class="dropdown-menu">
@@ -239,7 +240,7 @@
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-user me-1"></i>@currentUser.Name
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end text-wrap" style="width: max-content; max-width: 90vw;">
+                                <ul class="dropdown-menu dropdown-menu-end text-wrap user-menu">
                                     <li>
                                         <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
                                             <i class="fas fa-user-cog me-2"></i>Profile
@@ -288,7 +289,7 @@
         </nav>
     </header>
     <div class="container mt-3 flex-grow-1">
-        <main role="main">
+        <main id="main-content" tabindex="-1" role="main">
             @RenderBody()
         </main>
     </div>
