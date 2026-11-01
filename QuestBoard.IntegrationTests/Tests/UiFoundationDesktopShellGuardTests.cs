@@ -18,6 +18,8 @@ public class UiFoundationDesktopShellGuardTests
     private static readonly (string Path, string NavLabel, string? CollapseId)[] Layouts =
     [
         ("QuestBoard.Service/Views/Shared/_Layout.cshtml", "Main", "navbar"),
+        ("QuestBoard.Service/Views/Shared/_Layout.GroupPicker.cshtml", "Main", null),
+        ("QuestBoard.Service/Areas/Platform/Views/Shared/_Layout.Platform.cshtml", "Platform", "platformNavbar"),
     ];
 
     private static string ReadRepoFile(string relativePath)
@@ -142,5 +144,25 @@ public class UiFoundationDesktopShellGuardTests
     public void DesktopFooter_WearsTheChromeClass()
     {
         OpeningTags(Markup(FooterFile), "footer").Single().Should().Contain("chrome-footer");
+    }
+
+    [Fact]
+    public void GroupPickerLayout_LinksItsOwnSheetAfterTheLegacyOnes()
+    {
+        var markup = Markup("QuestBoard.Service/Views/Shared/_Layout.GroupPicker.cshtml");
+        OpeningTags(markup, "body").Single().Should().Contain("group-picker");
+
+        var sheet = markup.IndexOf("~/css/group-picker.css", StringComparison.Ordinal);
+        sheet.Should().BeGreaterThan(markup.IndexOf("~/css/modern-card.css", StringComparison.Ordinal),
+            "the picker sheet follows the legacy sheets");
+        sheet.Should().BeLessThan(markup.IndexOf("RenderSectionAsync(\"Styles\"", StringComparison.Ordinal),
+            "the picker sheet precedes the page Styles section");
+    }
+
+    [Fact]
+    public void PlatformLayout_RendersTheStylesSection()
+    {
+        Markup("QuestBoard.Service/Areas/Platform/Views/Shared/_Layout.Platform.cshtml")
+            .Should().Contain("RenderSectionAsync(\"Styles\"");
     }
 }

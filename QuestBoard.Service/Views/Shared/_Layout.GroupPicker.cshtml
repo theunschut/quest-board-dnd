@@ -14,13 +14,16 @@
     <link rel="stylesheet" href="~/css/shell.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/modern-card.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/group-picker.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body class="d-flex flex-column min-vh-100">
+<body class="d-flex flex-column min-vh-100 shell-fixed-nav group-picker">
+<a class="visually-hidden-focusable skip-link" href="#main-content">Skip to main content</a>
 
-<nav class="navbar navbar-dark bg-dark py-2">
+<header>
+<nav class="navbar navbar-dark chrome fixed-top" aria-label="Main">
     <div class="container-fluid px-3">
-        <span class="navbar-brand"><i class="fas fa-dice-d20"></i> D&amp;D Quest Board</span>
+        <div class="navbar-brand"><i class="fas fa-dice-d20"></i> D&amp;D Quest Board</div>
         <form asp-controller="Account" asp-action="Logout" asp-area="" method="post" class="d-inline">
             <button type="submit" class="btn btn-outline-light btn-sm">
                 <i class="fas fa-sign-out-alt me-1"></i>Logout
@@ -28,9 +31,10 @@
         </form>
     </div>
 </nav>
+</header>
 
 <div class="container mt-4 flex-grow-1">
-    <main role="main">
+    <main id="main-content" tabindex="-1" role="main">
         @RenderBody()
     </main>
 </div>

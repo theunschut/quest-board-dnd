@@ -57,10 +57,11 @@ public class UiFoundationLayerGuardTests
         ("components.css", "components"),
         ("shell.css", "components"),
         ("shell.mobile.css", "components"),
+        ("group-picker.css", "pages"),
     ];
 
     // The layered files that may hold no colour literal: every one except the token file.
-    private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css"];
+    private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css", "group-picker.css"];
 
     private static readonly Regex LocalStylesheetHref = new(
         @"<link\b[^>]*\brel=""stylesheet""[^>]*\bhref=""~/css/(?<name>[\w.\-]+)\.css""[^>]*>",

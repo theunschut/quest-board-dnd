@@ -93,6 +93,26 @@
     transition: color var(--qb-dur-fast) var(--qb-ease);
   }
 
+  /* The signed-in name on the Platform bar is cut with an ellipsis like the user menu's, never wrapped. */
+  .chrome .navbar-text {
+    max-width: min(20rem, 100%);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * The item holding that name may be squeezed below the width of its text (the name inside is clipped), so a long
+   * name makes room for the rest of the row instead of pushing it out of the window.
+   */
+  .chrome .navbar-nav > .nav-item:has(> .navbar-text) {
+    min-width: 0;
+  }
+
+  .chrome .btn {
+    white-space: nowrap;
+  }
+
   /* Links never wrap: a bar that wraps grows taller than the offset reserved for it and covers the page. */
   .chrome .nav-link {
     white-space: nowrap;
@@ -108,7 +128,7 @@
     text-overflow: ellipsis;
   }
 
-  @media (min-width: 1200px) {
+  @media (min-width: 992px) {
     .chrome .navbar-collapse,
     .chrome .navbar-nav {
       min-width: 0;
