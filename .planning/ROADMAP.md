@@ -1409,7 +1409,7 @@ Plans:
 *Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
 **Requirements**: TBD
 **Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
-**Plans:** 14/27 plans executed
+**Plans:** 16/27 plans executed
 
 **Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
 
@@ -1462,8 +1462,8 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 94-13-PLAN.md — Remove jQuery and the v4 shim after proofs; layer order statement (wave 5)
-- [ ] 94-16-PLAN.md — Mockups: comparison page, all switchers, combined contrast report, sign-off sheet (wave 5)
+- [x] 94-13-PLAN.md — Remove jQuery and the v4 shim after proofs; layer order statement (wave 5)
+- [x] 94-16-PLAN.md — Mockups: comparison page, all switchers, combined contrast report, sign-off sheet (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
