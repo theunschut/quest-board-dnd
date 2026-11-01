@@ -95,4 +95,91 @@
   .quest-log-details {
     --bs-white-rgb: var(--qb-fg-rgb);
   }
+
+  /*
+   * Card: clear glass over a brown scrim, so what is underneath never decides whether the text reads. The surface
+   * sets the text colour and everything inside inherits it; a descendant only names a colour when it genuinely
+   * differs (a status, a link, a control). The glass is the top background layer and the scrim sits beneath it.
+   * There is no backdrop blur: the card repeats on a page, and blur on every item is what makes scrolling stutter.
+   */
+  .modern-card {
+    --bs-card-bg: transparent;
+    --bs-card-color: var(--qb-fg);
+    --bs-card-border-color: var(--qb-surface-glass-border);
+    --bs-card-border-radius: var(--qb-radius-lg);
+    --bs-card-cap-bg: transparent;
+    --bs-card-cap-color: var(--qb-fg);
+    color: var(--qb-fg);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-lg);
+    background-color: transparent;
+    background-image: linear-gradient(var(--qb-surface-glass), var(--qb-surface-glass)), linear-gradient(var(--qb-surface-scrim), var(--qb-surface-scrim));
+    box-shadow: var(--qb-shadow-rest);
+  }
+
+  /*
+   * The title row. The page title is the one Display-step line on a screen: the display face at 28px, 20px on the
+   * phone layout. Only the title takes the display face; buttons and badges in the header keep the body face.
+   */
+  .modern-card-header {
+    padding: var(--qb-space-md) var(--qb-space-lg);
+    border-bottom: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-lg) var(--qb-radius-lg) 0 0;
+    background-color: transparent;
+    color: var(--qb-fg);
+  }
+
+  .modern-card-header :is(h1, h2) {
+    font-family: var(--qb-font-display);
+    font-size: var(--qb-text-xl);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    letter-spacing: 0.04em;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-layout .modern-card-header :is(h1, h2) {
+    font-size: var(--qb-text-lg);
+  }
+
+  /* The line under a page title, in the card's own colour family at the label step. */
+  .header-subtitle {
+    display: block;
+    margin-top: var(--qb-space-xs);
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  .modern-card-body {
+    padding: var(--qb-space-lg);
+    background-color: transparent;
+  }
+
+  .modern-card-footer {
+    padding: var(--qb-space-md) var(--qb-space-lg);
+    border-top: 1px solid var(--qb-surface-glass-border);
+    border-radius: 0 0 var(--qb-radius-lg) var(--qb-radius-lg);
+    background-color: transparent;
+  }
+
+  /*
+   * A card that is itself a link or a button lifts on hover. A static card never moves, so the pointer passing over
+   * a form or a table does not shift what the reader is aiming at. The lift is movement, so it exists only for
+   * readers who have not asked for less of it; the lighter tint is not movement and always applies.
+   */
+  .modern-card--interactive:hover {
+    background-image: linear-gradient(var(--qb-surface-glass-hover), var(--qb-surface-glass-hover)), linear-gradient(var(--qb-surface-scrim), var(--qb-surface-scrim));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .modern-card--interactive {
+      transition: transform var(--qb-dur-base) var(--qb-ease), box-shadow var(--qb-dur-base) var(--qb-ease);
+    }
+
+    .modern-card--interactive:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--qb-shadow-raised);
+    }
+  }
 }
