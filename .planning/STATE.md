@@ -2,12 +2,13 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 93
+current_phase: 94
+current_phase_name: whole-app-ui-review-and-unification
 status: executing
 stopped_at: Phase 94 UI-SPEC approved
-last_updated: "2026-11-01T11:22:14.986Z"
-last_activity: 2026-10-21
-last_activity_desc: Phase 93 complete
+last_updated: "2026-11-01T12:25:24.262Z"
+last_activity: 2026-11-01
+last_activity_desc: Phase 94 execution started
 progress:
   total_phases: 23
   completed_phases: 19
@@ -24,14 +25,14 @@ state_head: 2777f4082e0b974492f8b2ba0a271ba5d73118f8
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 93 complete; remaining open phases are 78, 79 and 90
+**Current focus:** Phase 94 — whole-app-ui-review-and-unification
 
 ## Current Position
 
-Phase: 93
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-21 — Phase 93 complete (15/15 plans, verification passed, security 49/49, real-phone checks deferred)
+Phase: 94 (whole-app-ui-review-and-unification) — EXECUTING
+Plan: 1 of 27
+Status: Executing Phase 94
+Last activity: 2026-11-01 — Phase 94 execution started
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,

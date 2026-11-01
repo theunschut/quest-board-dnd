@@ -1409,7 +1409,7 @@ Plans:
 *Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
 **Requirements**: TBD
 **Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
-**Plans:** 27 plans
+**Plans:** 1/27 plans executed
 
 **Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
 
@@ -1436,7 +1436,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 94-01-PLAN.md — Audit environment: one operator checkpoint (tooling, database, privileged accounts), player and DM accounts, capture harness (wave 1, checkpoint)
+- [x] 94-01-PLAN.md — Audit environment: one operator checkpoint (tooling, database, privileged accounts), player and DM accounts, capture harness (wave 1, checkpoint)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
