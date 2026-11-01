@@ -14,3 +14,8 @@ Out-of-scope discoveries made while building the audit record. Not fixed in this
   index and the empty-category state are still captured.
 - **Suggested handling:** a separate bug fix outside the UI phase (or a decision to seed one item by other means
   for the item-detail audit). Not changed here because plan 02 modifies no application code.
+- **Interim audit workaround (orchestrator, after plan 02):** four fantasy shop items (three published, one draft;
+  Quest Items left empty) were inserted directly on the audit board's local database so the item-detail and
+  item-edit pages could be captured. `fixtures.json` records them as `shop.item` / `shop.items` with
+  `method: sql`, and the four Shop rows of the BEFORE record were re-captured on the frozen baseline. The app bug
+  itself is unchanged.
