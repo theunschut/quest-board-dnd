@@ -1,67 +1,73 @@
 @using QuestBoard.Service.Constants
 @* Shared toast-notification partial. Renders Success/Error/Warning/Info flash messages
    plus the bespoke Shop GoldReceived toast from TempData. Rendered from every layout
-   so any view can surface a flash message without its own local toast markup. *@
-<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+   so any view can surface a flash message without its own local toast markup.
+
+   Which toasts go away by themselves: success, info and gold are confirmations, so they
+   leave after a few seconds and are announced politely (role="status"). Error and warning
+   toasts, the board-switch banner and the moved banner are things the viewer has to read
+   or act on, so they stay until dismissed; errors and warnings are announced at once
+   (role="alert"). Every toast is dismissed with its own Close button. *@
+<div class="toast-container position-fixed end-0 p-3 qb-toast-stack">
     @if (TempData["Success"] != null)
     {
-        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="toast show" role="status" aria-live="polite" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
             <div class="toast-header bg-success text-white">
                 <i class="fas fa-check-circle me-2"></i>
                 <strong class="me-auto">Success</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body">
+            <div class="toast-body text-break">
                 @TempData["Success"]
             </div>
         </div>
     }
     @if (TempData["Error"] != null)
     {
-        <div class="toast show" role="alert">
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
             <div class="toast-header bg-danger text-white">
                 <i class="fas fa-exclamation-circle me-2"></i>
                 <strong class="me-auto">Error</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body">
+            <div class="toast-body text-break">
                 @TempData["Error"]
             </div>
         </div>
     }
     @if (TempData["Warning"] != null)
     {
-        <div class="toast show" role="alert">
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
             <div class="toast-header bg-warning text-dark">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <strong class="me-auto">Warning</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body">
+            <div class="toast-body text-break">
                 @TempData["Warning"]
             </div>
         </div>
     }
     @if (TempData["Info"] != null)
     {
-        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="toast show" role="status" aria-live="polite" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
             <div class="toast-header bg-info text-white">
                 <i class="fas fa-info-circle me-2"></i>
                 <strong class="me-auto">Info</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body">
+            <div class="toast-body text-break">
                 @TempData["Info"]
             </div>
         </div>
     }
     @if (TempData["GoldReceived"] != null)
     {
-        <div class="toast show gold-toast" role="alert" data-bs-autohide="true" data-bs-delay="6000">
+        <div class="toast show gold-toast" role="status" aria-live="polite" aria-atomic="true" data-bs-autohide="true" data-bs-delay="6000">
             <div class="toast-header bg-warning text-dark">
                 <i class="fas fa-coins me-2"></i>
                 <strong class="me-auto">Gold Received!</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
             <div class="toast-body">
                 <div class="d-flex align-items-center">
@@ -69,7 +75,7 @@
                     <div>
                         <strong class="fs-5">+@TempData["GoldReceived"] gp</strong>
                         <br>
-                        <small class="text-muted">@TempData["Success"]</small>
+                        <small class="text-muted text-break">@TempData["Success"]</small>
                     </div>
                 </div>
             </div>
@@ -77,13 +83,13 @@
     }
     @if (TempData[TempDataKeys.BoardSwitchTargetName] != null)
     {
-        <div class="toast show board-switch-toast" role="alert" data-bs-autohide="false">
+        <div class="toast show board-switch-toast" role="alert" data-bs-autohide="false" aria-live="assertive" aria-atomic="true">
             <div class="toast-header bg-info text-white">
                 <i class="fas fa-right-left me-2"></i>
                 <strong class="me-auto">Switched board</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body">
+            <div class="toast-body text-break">
                 Switched to <strong>@TempData[TempDataKeys.BoardSwitchTargetName]</strong> to open this.
                 @if (TempData[TempDataKeys.BoardSwitchPreviousGroupId] != null)
                 {
@@ -93,8 +99,11 @@
                         @* No returnUrl field -- the page the viewer is on belongs to the board they
                            are being moved away from, so sending them back to it would immediately
                            re-trigger the switch and bounce them forward again. *@
-                        @* A filled button, not outline -- see modern-card.css for why and for the
-                           contrast ratio this relies on against this toast's own background. *@
+                        @* A filled dark button, not an outline one: outline buttons are off house style,
+                           and the filled button states its own edge instead of borrowing the toast's.
+                           Against this toast's opaque dark-brown body the parchment label measures about
+                           14.9:1 on the button fill and the button's pale edge about 4.6:1, clearing the
+                           4.5:1 bar for text and the 3:1 bar for a control boundary. *@
                         <button type="submit" class="btn btn-sm btn-dark">
                             Switch back to @TempData[TempDataKeys.BoardSwitchPreviousGroupName]
                         </button>
@@ -106,19 +115,19 @@
     @if (TempData[TempDataKeys.MovedMessage] != null)
     {
         var movedEntryUrl = TempData[TempDataKeys.MovedEntryUrl] as string;
-        @* Shares the switch toast's opaque background and mobile offset: this one also stays up until dismissed. *@
-        <div class="toast show board-switch-toast" role="alert" data-bs-autohide="false">
+        @* Shares the switch toast's opaque surface: this one also stays up until dismissed. *@
+        <div class="toast show board-switch-toast" role="alert" data-bs-autohide="false" aria-live="assertive" aria-atomic="true">
             <div class="toast-header bg-success text-white">
                 <i class="fas fa-check-circle me-2"></i>
                 <strong class="me-auto">Moved</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
             <div class="toast-body text-break">
                 @TempData[TempDataKeys.MovedMessage]
                 @if (!string.IsNullOrEmpty(movedEntryUrl) && Url.IsLocalUrl(movedEntryUrl))
                 {
                     <div class="mt-2">
-                        @* A filled button, not outline -- same reasoning as the switch toast above. *@
+                        @* A filled dark button, not an outline one -- same reasoning as the switch toast above. *@
                         <a href="@movedEntryUrl" class="btn btn-sm btn-dark text-break">
                             <i class="fas fa-arrow-right me-2" aria-hidden="true"></i>Open it on @TempData[TempDataKeys.MovedTargetName]
                         </a>

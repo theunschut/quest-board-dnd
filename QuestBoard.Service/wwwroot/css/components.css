@@ -65,17 +65,20 @@
   }
 
   /*
-   * Paper: table cells inside a card and rows drawn on parchment read dark text, the status colours are their
-   * fills, and links are wood.
+   * Paper: table cells, alerts and rows drawn on parchment read dark text, and links are wood. A status colour used as text
+   * means ink here: the fills measure 4.24 to 4.32 against parchment (amber 1.68), under the 4.5:1 text bar, and
+   * the light text variants are made for glass. The word and the icon in the markup carry the status.
    */
   .modern-card .table,
+  .table,
+  .alert,
   .agenda-row,
   .contact-detail-card .note-item {
     --bs-secondary-color: var(--qb-ink-muted);
-    --bs-success-rgb: var(--qb-success-rgb);
-    --bs-danger-rgb: var(--qb-danger-rgb);
-    --bs-warning-rgb: var(--qb-warning-rgb);
-    --bs-info-rgb: var(--qb-info-rgb);
+    --bs-success-rgb: var(--qb-ink-rgb);
+    --bs-danger-rgb: var(--qb-ink-rgb);
+    --bs-warning-rgb: var(--qb-ink-rgb);
+    --bs-info-rgb: var(--qb-ink-rgb);
     --bs-primary-rgb: var(--qb-wood-rgb);
     --bs-secondary-rgb: var(--qb-neutral-rgb);
     --bs-link-color-rgb: var(--qb-wood-rgb);
@@ -94,5 +97,523 @@
 
   .quest-log-details {
     --bs-white-rgb: var(--qb-fg-rgb);
+  }
+
+  /*
+   * Card: clear glass over a brown scrim, so what is underneath never decides whether the text reads. The surface
+   * sets the text colour and everything inside inherits it; a descendant only names a colour when it genuinely
+   * differs (a status, a link, a control). The glass is the top background layer and the scrim sits beneath it.
+   * There is no backdrop blur: the card repeats on a page, and blur on every item is what makes scrolling stutter.
+   */
+  .modern-card {
+    --bs-card-bg: transparent;
+    --bs-card-color: var(--qb-fg);
+    --bs-card-border-color: var(--qb-surface-glass-border);
+    --bs-card-border-radius: var(--qb-radius-lg);
+    --bs-card-cap-bg: transparent;
+    --bs-card-cap-color: var(--qb-fg);
+    color: var(--qb-fg);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-lg);
+    background-color: transparent;
+    background-image: linear-gradient(var(--qb-surface-glass), var(--qb-surface-glass)), linear-gradient(var(--qb-surface-scrim), var(--qb-surface-scrim));
+    box-shadow: var(--qb-shadow-rest);
+  }
+
+  /*
+   * The title row. The page title is the one Display-step line on a screen: the display face at 28px. Only the title
+   * takes the display face; buttons and badges in the header keep the body face.
+   */
+  .modern-card-header {
+    padding: var(--qb-space-md) var(--qb-space-lg);
+    border-bottom: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-lg) var(--qb-radius-lg) 0 0;
+    background-color: transparent;
+    color: var(--qb-fg);
+  }
+
+  .modern-card-header :is(h1, h2) {
+    font-family: var(--qb-font-display);
+    font-size: var(--qb-text-xl);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    letter-spacing: 0.04em;
+    overflow-wrap: anywhere;
+  }
+
+  /* The line under a page title, in the card's own colour family at the label step. */
+  .header-subtitle {
+    display: block;
+    margin-top: var(--qb-space-xs);
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  .modern-card-body {
+    padding: var(--qb-space-lg);
+    background-color: transparent;
+  }
+
+  .modern-card-footer {
+    padding: var(--qb-space-md) var(--qb-space-lg);
+    border-top: 1px solid var(--qb-surface-glass-border);
+    border-radius: 0 0 var(--qb-radius-lg) var(--qb-radius-lg);
+    background-color: transparent;
+  }
+
+  /*
+   * A card that is itself a link or a button lifts on hover. A static card never moves, so the pointer passing over
+   * a form or a table does not shift what the reader is aiming at. The lift is movement, so it exists only for
+   * readers who have not asked for less of it; the lighter tint is not movement and always applies.
+   */
+  .modern-card--interactive:hover {
+    background-image: linear-gradient(var(--qb-surface-glass-hover), var(--qb-surface-glass-hover)), linear-gradient(var(--qb-surface-scrim), var(--qb-surface-scrim));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .modern-card--interactive {
+      transition: transform var(--qb-dur-base) var(--qb-ease), box-shadow var(--qb-dur-base) var(--qb-ease);
+    }
+
+    .modern-card--interactive:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--qb-shadow-raised);
+    }
+  }
+
+  /*
+   * Buttons, by role, through Bootstrap's own button variables. Every label holds 4.5:1 against its fill in rest,
+   * hover, pressed and focus; hover and pressed darken the fill (the warning label is near-black, so its fill
+   * lightens on hover instead). The one commit action is the wood --qb-action fill. Filled only: the outline
+   * variants are not part of the set.
+   */
+  .btn {
+    --bs-btn-font-weight: var(--qb-weight-strong);
+    --bs-btn-border-radius: var(--qb-radius-md);
+    --bs-btn-padding-x: var(--qb-space-md);
+    --bs-btn-padding-y: var(--qb-space-sm);
+    --bs-btn-border-color: transparent;
+    --bs-btn-hover-border-color: transparent;
+    --bs-btn-active-border-color: transparent;
+  }
+
+  .btn-sm {
+    --bs-btn-padding-x: var(--qb-space-sm);
+    --bs-btn-padding-y: var(--qb-space-xs);
+    --bs-btn-font-size: var(--qb-text-sm);
+  }
+
+  .btn-primary {
+    --bs-btn-bg: var(--qb-action);
+    --bs-btn-color: var(--qb-action-fg);
+    --bs-btn-hover-bg: var(--qb-action-hover);
+    --bs-btn-hover-color: var(--qb-action-fg);
+    --bs-btn-active-bg: color-mix(in srgb, var(--qb-action) 80%, var(--qb-ink));
+    --bs-btn-active-color: var(--qb-action-fg);
+  }
+
+  .btn-secondary {
+    --bs-btn-bg: var(--qb-neutral);
+    --bs-btn-color: var(--qb-neutral-fg);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--qb-neutral) 82%, var(--qb-ink));
+    --bs-btn-hover-color: var(--qb-neutral-fg);
+    --bs-btn-active-bg: color-mix(in srgb, var(--qb-neutral) 70%, var(--qb-ink));
+    --bs-btn-active-color: var(--qb-neutral-fg);
+  }
+
+  .btn-success {
+    --bs-btn-bg: var(--qb-success);
+    --bs-btn-color: var(--qb-success-fg);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--qb-success) 82%, var(--qb-ink));
+    --bs-btn-hover-color: var(--qb-success-fg);
+    --bs-btn-active-bg: color-mix(in srgb, var(--qb-success) 70%, var(--qb-ink));
+    --bs-btn-active-color: var(--qb-success-fg);
+  }
+
+  .btn-danger {
+    --bs-btn-bg: var(--qb-danger);
+    --bs-btn-color: var(--qb-danger-fg);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--qb-danger) 82%, var(--qb-ink));
+    --bs-btn-hover-color: var(--qb-danger-fg);
+    --bs-btn-active-bg: color-mix(in srgb, var(--qb-danger) 70%, var(--qb-ink));
+    --bs-btn-active-color: var(--qb-danger-fg);
+  }
+
+  .btn-info {
+    --bs-btn-bg: var(--qb-info);
+    --bs-btn-color: var(--qb-info-fg);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--qb-info) 82%, var(--qb-ink));
+    --bs-btn-hover-color: var(--qb-info-fg);
+    --bs-btn-active-bg: color-mix(in srgb, var(--qb-info) 70%, var(--qb-ink));
+    --bs-btn-active-color: var(--qb-info-fg);
+  }
+
+  /* Edit or caution: a near-black label on amber, never white. Hover lightens the fill so the label only gains. */
+  .btn-warning {
+    --bs-btn-bg: var(--qb-warning);
+    --bs-btn-color: var(--qb-warning-fg);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--qb-warning) 80%, var(--qb-surface-paper));
+    --bs-btn-hover-color: var(--qb-warning-fg);
+    --bs-btn-active-bg: color-mix(in srgb, var(--qb-warning) 85%, var(--qb-ink));
+    --bs-btn-active-color: var(--qb-warning-fg);
+  }
+
+  /* Light and dark fills for the few places that ask for them (a button on a toast, a button on paper). */
+  .btn-dark {
+    --bs-btn-bg: var(--qb-ink);
+    --bs-btn-color: var(--qb-fg);
+    --bs-btn-border-color: var(--qb-border-strong);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--qb-ink) 80%, var(--qb-fg));
+    --bs-btn-hover-color: var(--qb-fg);
+    --bs-btn-hover-border-color: var(--qb-border-strong);
+    --bs-btn-active-bg: color-mix(in srgb, var(--qb-ink) 65%, var(--qb-fg));
+    --bs-btn-active-color: var(--qb-fg);
+    --bs-btn-active-border-color: var(--qb-border-strong);
+  }
+
+  .btn-light {
+    --bs-btn-bg: var(--qb-surface-paper);
+    --bs-btn-color: var(--qb-ink);
+    --bs-btn-hover-bg: var(--qb-surface-paper-alt);
+    --bs-btn-hover-color: var(--qb-ink);
+    --bs-btn-active-bg: var(--qb-surface-paper-alt);
+    --bs-btn-active-color: var(--qb-ink);
+  }
+
+  /*
+   * One look for a button that cannot be pressed, whatever its role, including the moment after a form is submitted
+   * and the page locks its buttons: a neutral fill with a white label. Bootstrap's default fades the button to 65%,
+   * which drops any label under 4.5:1, so the fade is switched off and the grey fill carries the state.
+   */
+  .btn:disabled,
+  .btn.disabled,
+  fieldset:disabled .btn {
+    --bs-btn-disabled-opacity: 1;
+    --bs-btn-disabled-bg: var(--qb-neutral);
+    --bs-btn-disabled-color: var(--qb-neutral-fg);
+    --bs-btn-disabled-border-color: var(--qb-border);
+    cursor: not-allowed;
+  }
+
+  /*
+   * Forms. A control is a light parchment field with dark ink, so it reads the same on glass, on paper and on the
+   * bare board. Its 1px border holds 3:1 against its own fill, not against what is behind it. Controls are 16px,
+   * which also stops iOS Safari zooming the page on focus.
+   */
+  :root {
+    --bs-form-invalid-color: var(--qb-danger-text);
+    --bs-form-invalid-border-color: var(--qb-danger);
+    --bs-form-valid-color: var(--qb-success-text);
+    --bs-form-valid-border-color: var(--qb-success);
+  }
+
+  .form-control,
+  .form-select {
+    --bs-secondary-color: var(--qb-ink-muted);
+    border: 1px solid var(--qb-control-border);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-control-bg);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-base);
+    color-scheme: light;
+  }
+
+  .form-control::placeholder {
+    color: var(--qb-ink-muted);
+    opacity: 1;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: var(--qb-control-border);
+    background-color: var(--qb-control-bg);
+    color: var(--qb-ink);
+  }
+
+  /* A field that cannot be edited reads as one: the alternate paper fill, still dark ink. */
+  .form-control:disabled,
+  .form-select:disabled,
+  .form-control[readonly] {
+    background-color: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+    cursor: not-allowed;
+  }
+
+  .form-label {
+    margin-bottom: var(--qb-space-xs);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .form-text {
+    margin-top: var(--qb-space-xs);
+    font-size: var(--qb-text-sm);
+  }
+
+  /*
+   * Validation: a field in error has a 2px border in the danger fill (it holds 3:1 on the field), and its message is
+   * the danger text variant, which holds 4.5:1 on glass. The framework's own invalid class and the server-side
+   * validation classes look the same. The message keeps its sentence; the icon and the words carry the meaning.
+   */
+  .form-control.is-invalid,
+  .form-select.is-invalid,
+  .input-validation-error {
+    border-width: 2px;
+    border-color: var(--qb-danger);
+  }
+
+  .invalid-feedback,
+  .field-validation-error,
+  .validation-summary-errors {
+    color: var(--qb-danger-text);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .form-check-input {
+    width: 1.25em;
+    height: 1.25em;
+    border: 2px solid var(--qb-control-border);
+    background-color: var(--qb-control-bg);
+  }
+
+  /* A checked box is filled wood with its mark in white, edged in parchment so it shows on glass and on the board. */
+  .form-check-input:checked {
+    border-color: var(--qb-fg);
+    background-color: var(--qb-action);
+  }
+
+  .input-group-text {
+    border-color: var(--qb-control-border);
+    background-color: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+  }
+
+  /*
+   * Alerts: an opaque parchment panel with ink text and a stripe in the status colour. The panel does not depend on
+   * what is behind it, and it is paper rather than dark because the page sheets still paint their headings dark
+   * inside it. The status is carried by the stripe, the words and (in the markup) an icon, never by colour alone.
+   */
+  .alert {
+    --qb-alert-accent: var(--qb-neutral);
+    --bs-alert-bg: var(--qb-surface-paper);
+    --bs-alert-color: var(--qb-ink);
+    --bs-alert-border-color: var(--qb-control-border);
+    --bs-alert-border-radius: var(--qb-radius-md);
+    --bs-alert-padding-x: var(--qb-space-md);
+    --bs-alert-padding-y: var(--qb-space-md);
+    --bs-alert-link-color: var(--qb-wood);
+    border-left: 4px solid var(--qb-alert-accent);
+    box-shadow: var(--qb-shadow-rest);
+  }
+
+  .alert-link {
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .alert-success {
+    --qb-alert-accent: var(--qb-success);
+  }
+
+  .alert-danger {
+    --qb-alert-accent: var(--qb-danger);
+  }
+
+  .alert-warning {
+    --qb-alert-accent: var(--qb-warning);
+  }
+
+  .alert-info {
+    --qb-alert-accent: var(--qb-info);
+  }
+
+  .alert-primary {
+    --qb-alert-accent: var(--qb-action);
+  }
+
+  /*
+   * Tables: parchment cells with ink text and a wood header with parchment text, whatever they sit on. Cells read
+   * their colours from the table variables, so striped and hover rows stay dark on paper.
+   */
+  .table {
+    --bs-table-bg: var(--qb-surface-paper);
+    --bs-table-color: var(--qb-ink);
+    --bs-table-striped-bg: var(--qb-surface-paper-alt);
+    --bs-table-striped-color: var(--qb-ink);
+    --bs-table-hover-bg: var(--qb-surface-paper-alt);
+    --bs-table-hover-color: var(--qb-ink);
+    --bs-table-active-bg: var(--qb-surface-paper-alt);
+    --bs-table-active-color: var(--qb-ink);
+    --bs-table-border-color: var(--qb-wood-dark);
+    margin-bottom: 0;
+  }
+
+  .table > thead > tr > th {
+    background-color: var(--qb-wood);
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    box-shadow: none;
+  }
+
+  .table > tbody > tr > td {
+    vertical-align: middle;
+  }
+
+  /*
+   * Badges: the label step (14px) at the strong weight, a small radius, and a label that holds 4.5:1 on its fill.
+   * An amber badge carries the near-black label that amber needs; every other fill takes white.
+   */
+  .badge {
+    --bs-badge-font-size: var(--qb-text-sm);
+    --bs-badge-font-weight: var(--qb-weight-strong);
+    --bs-badge-border-radius: var(--qb-radius-sm);
+    --bs-badge-padding-x: var(--qb-space-sm);
+    --bs-badge-padding-y: var(--qb-space-xs);
+    --bs-badge-color: var(--qb-on-fill);
+    line-height: var(--qb-leading-body);
+  }
+
+  .badge.bg-warning {
+    --bs-badge-color: var(--qb-warning-fg);
+  }
+
+  /*
+   * Modal and offcanvas: an opaque overlay surface, so the text never depends on what is underneath, with parchment
+   * text on it. The close button is drawn light on that dark surface.
+   */
+  .modal {
+    --bs-modal-bg: var(--qb-surface-overlay);
+    --bs-modal-color: var(--qb-fg);
+    --bs-modal-border-color: var(--qb-surface-glass-border);
+    --bs-modal-border-radius: var(--qb-radius-lg);
+    --bs-modal-inner-border-radius: var(--qb-radius-lg);
+    --bs-modal-header-border-color: var(--qb-surface-glass-border);
+    --bs-modal-footer-border-color: var(--qb-surface-glass-border);
+    --bs-modal-box-shadow: var(--qb-shadow-overlay);
+  }
+
+  .offcanvas {
+    --bs-offcanvas-bg: var(--qb-surface-overlay);
+    --bs-offcanvas-color: var(--qb-fg);
+    --bs-offcanvas-border-color: var(--qb-surface-glass-border);
+    --bs-offcanvas-box-shadow: var(--qb-shadow-overlay);
+  }
+
+  .modal .btn-close,
+  .offcanvas .btn-close {
+    --bs-btn-close-filter: invert(1) grayscale(100%) brightness(200%);
+  }
+
+  /* A dialog and a panel must never be wider than the phone, their body scrolls, and their buttons are finger-sized. */
+  .mobile-layout .modal-dialog {
+    max-width: calc(100vw - var(--qb-space-md));
+  }
+
+  .mobile-layout .modal-body {
+    overflow-y: auto;
+  }
+
+  .mobile-layout :where(.modal, .offcanvas) :where(.btn, .btn-close) {
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
+  }
+
+  /*
+   * Toasts: an opaque overlay surface with parchment text and a status-coloured header. The stack sits below the
+   * navigation bar, never over it, and is no wider than a toast so long text wraps instead of widening it.
+   */
+  .toast {
+    --bs-toast-bg: var(--qb-surface-overlay);
+    --bs-toast-color: var(--qb-fg);
+    --bs-toast-border-color: var(--qb-surface-glass-border);
+    --bs-toast-border-radius: var(--qb-radius-md);
+    --bs-toast-header-color: var(--qb-fg);
+    --bs-toast-header-bg: transparent;
+    --bs-toast-header-border-color: var(--qb-surface-glass-border);
+    --bs-toast-box-shadow: var(--qb-shadow-overlay);
+  }
+
+  .qb-toast-stack {
+    top: var(--qb-nav-h);
+    width: 100%;
+    max-width: 24rem;
+  }
+
+  /*
+   * Empty state: the shared shape of "there is nothing here yet". An icon, a heading, one sentence and, when the
+   * reader can fix it, an action. The page supplies the words.
+   */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    padding: var(--qb-space-2xl) var(--qb-space-lg);
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-xl);
+  }
+
+  .empty-state-heading {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+  }
+
+  .empty-state-text {
+    max-width: 40ch;
+    margin: 0;
+    color: var(--qb-fg-muted);
+  }
+
+  /*
+   * The line that says why something was refused: an icon and a sentence in a block marked role="alert", in the
+   * danger text variant that holds 4.5:1 on glass and on the bare board.
+   */
+  .refusal-line {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--qb-space-sm);
+    color: var(--qb-danger-text);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .refusal-line > :is(i, svg) {
+    flex: none;
+    margin-top: var(--qb-space-xs);
+  }
+}
+
+/*
+ * Helpers that win over components. Bootstrap's own visually-hidden helpers are important, so this one states the
+ * same hiding for the case a stylesheet sets display on the element; it shows the moment it takes focus.
+ */
+@layer utilities {
+  .visually-hidden-focusable:not(:focus):not(:focus-within) {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  /* A soft dark halo behind text that sits straight on the board image. A supplement; the contrast never relies on it. */
+  .text-halo {
+    text-shadow: var(--qb-text-halo);
+  }
+
+  /* The event and series identity colour as text, in the light variant that reads on glass and the board. */
+  .text-purple {
+    color: var(--qb-event-text);
   }
 }

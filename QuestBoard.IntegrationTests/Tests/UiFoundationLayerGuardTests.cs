@@ -310,9 +310,6 @@ public class UiFoundationLayerGuardTests
         "--qb-event-text", "--qb-neutral-text",
     ];
 
-    private static readonly string[] StatusTextOnHoverShortfall =
-        ["--qb-success-text", "--qb-danger-text", "--qb-warning-text", "--qb-info-text"];
-
     /// <summary>
     /// One row of the contrast table: these foregrounds, on these surfaces, at least this ratio.
     /// A surface is either a token naming an opaque fill, or one of the stacks the shell builds
@@ -326,11 +323,7 @@ public class UiFoundationLayerGuardTests
     [
         // Rule                                            Foregrounds                    Surfaces                                                  Min
         new("Text on glass, at rest and nested",           GlassText,                     ["glass", "glass-nested"],                                TextBar),
-        // Known shortfall, not an oversight: the signed-off success, danger, warning and info text colours measure 4.23
-        // to 4.31 on hovered glass at the lightest board pixel (about 4.46 at the 99th percentile, and the sign-off never
-        // scored status text on hovered glass). They are left out of this row so the rest of it holds; lightening them a
-        // few percent, or easing the hover tint, closes the gap and this row then takes the full list again.
-        new("Text on hovered glass",                       GlassText.Where(t => !StatusTextOnHoverShortfall.Contains(t)).ToArray(), ["glass-hover"], TextBar),
+        new("Text on hovered glass",                       GlassText,                     ["glass-hover"],                                          TextBar),
         new("Parchment on the wood chrome and in overlays", ["--qb-fg"],                  ["chrome", "--qb-surface-overlay"],                       TextBar),
         new("Light text on the bare board and its fallback", ["--qb-fg-on-board"],        ["board", "fallback"],                                    TextBar),
         new("Ink on paper",                                ["--qb-ink", "--qb-ink-muted"], ["--qb-surface-paper", "--qb-surface-paper-alt"],        TextBar),
