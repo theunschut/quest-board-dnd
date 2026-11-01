@@ -124,6 +124,8 @@
   }
 
   .mobile-layout .offcanvas .nav-link {
+    display: flex;
+    align-items: flex-start;
     border-bottom: 1px solid var(--qb-border);
     font-weight: var(--qb-weight-regular);
     text-shadow: var(--qb-text-halo);
@@ -132,8 +134,9 @@
 
   /* Icons share one width so the labels line up down the list. */
   .mobile-layout .offcanvas .nav-link > i {
-    display: inline-block;
+    flex: none;
     width: 1.25em;
+    line-height: inherit;
     text-align: center;
   }
 
