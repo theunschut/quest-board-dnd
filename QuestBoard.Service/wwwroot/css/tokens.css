@@ -169,7 +169,8 @@
     --card-width-tablet: 312px;
     --card-width-mobile: 276px;
     --card-width-small: 248px;
-    --qb-board-image: none;
+    /* The shell stylesheet supplies the photo as --qb-board-photo; a theme replaces this whole name. */
+    --qb-board-image: var(--qb-board-photo, none);
   }
 
   /*
