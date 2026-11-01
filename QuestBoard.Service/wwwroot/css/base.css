@@ -76,6 +76,55 @@
     line-height: var(--qb-leading-body);
   }
 
+  b,
+  strong {
+    font-weight: var(--qb-weight-strong);
+  }
+
+  /*
+   * Bootstrap's heading sizes (40px down to 16px, and a responsive calc() on h1 to h4) would add sizes and a third
+   * weight to every heading, so they are mapped onto the scale: the page title takes the display step, h2 and h3
+   * the heading step, h4 to h6 the body step.
+   */
+  h1,
+  .h1 {
+    font-size: var(--qb-text-xl);
+    line-height: var(--qb-leading-heading);
+  }
+
+  h2,
+  .h2,
+  h3,
+  .h3 {
+    font-size: var(--qb-text-lg);
+    line-height: var(--qb-leading-heading);
+  }
+
+  h4,
+  .h4,
+  h5,
+  .h5,
+  h6,
+  .h6 {
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+  }
+
+  /* The phone layout has no display step: its page title is the heading step. */
+  .mobile-layout h1,
+  .mobile-layout .h1 {
+    font-size: var(--qb-text-lg);
+  }
+
+  /* The display face is for page titles and the brand only. */
+  h1,
+  .h1,
+  .navbar-brand {
+    font-family: var(--qb-font-display);
+    font-weight: var(--qb-weight-strong);
+  }
+
   /*
    * One focus look everywhere, in two tones so one of them holds 3:1 on every surface: an inner band in the gold
    * accent (it fills the gap between the element and the outer stroke, so its width is the offset) and an outer
