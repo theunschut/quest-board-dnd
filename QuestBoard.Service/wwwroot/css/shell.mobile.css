@@ -1,3 +1,177 @@
-/* Page shell rules that only the phone layouts use (compact navbar, bottom spacing, touch targets) will live in this layer. */
+/*
+ * Page shell rules that only the phone layouts use: the compact static bar, the menu panel that slides in from the
+ * end, the touch-target floor, tap-sized form rows, the footer, and the lighter board photo. Everything is scoped
+ * under .mobile-layout, so a desktop-side layout that never links this file is untouched, and the shared look (wood
+ * bar, brand, toggler, footer) comes from shell.css through the same class names the desktop bar wears. Colours come
+ * from tokens.css; none are written here.
+ */
 @layer components {
+  /*
+   * The board photo for the phone shell: the 900px derivative of the artwork. The backdrop rule in base.css reads it
+   * through --qb-board-image; this sheet is linked after shell.css and only by the phone layouts, so its value is
+   * the one a phone gets, chosen by the layout and not by a media query. A theme set on the html element still
+   * replaces the whole image token.
+   */
+  :root {
+    --qb-board-photo: url("../images/notice-board-900.webp");
+  }
+
+  /*
+   * The bar scrolls away with the page (it is not fixed), is exactly --qb-nav-h tall like the desktop bar, and
+   * draws no blur: a translucent blur on a bar that is on screen all the time costs more than it gives on a phone.
+   * The brand is a full-height link so it is as easy to hit as the menu button beside it.
+   */
+  .mobile-layout .chrome {
+    backdrop-filter: none;
+  }
+
+  .mobile-layout .chrome .navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-xs);
+    min-height: var(--qb-hit-min);
+  }
+
+  /*
+   * Touch targets: every control is at least 44px tall and wide on the phone layout. The selector list is wrapped
+   * in :where() so it adds no specificity and a page sheet can still size a control it knows better. Checkboxes and
+   * radios are left out on purpose: their row and label are the target (see the form-check rows below).
+   */
+  .mobile-layout :where(.btn, .nav-link, .dropdown-item, .page-link, .btn-close, select, input:not([type=checkbox]):not([type=radio]), textarea) {
+    min-height: var(--qb-hit-min);
+    min-width: var(--qb-hit-min);
+  }
+
+  /* Bootstrap sizes the close button as content plus padding; here the 44px is the whole button. */
+  .mobile-layout .btn-close {
+    box-sizing: border-box;
+  }
+
+  /*
+   * A check or switch row is at least 44px tall and the label covers the whole row, so tapping the words flips the
+   * control. The box itself stays its drawn size and sits in the middle of the row.
+   */
+  .mobile-layout .form-check {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .form-check .form-check-label {
+    display: block;
+    min-height: var(--qb-hit-min);
+    padding-block: calc((var(--qb-hit-min) - 1.5em) / 2);
+  }
+
+  .mobile-layout .form-check .form-check-input {
+    margin-top: calc((var(--qb-hit-min) - 1.25em) / 2);
+  }
+
+  /*
+   * The menu panel slides in from the end on the opaque overlay surface, so its text never depends on what is
+   * behind it. The header wears the bar's wood; the body is the part that scrolls, so a long menu (every
+   * administrator and dungeon master entry) can be reached while the close button stays where it is.
+   */
+  .mobile-layout .offcanvas {
+    --bs-offcanvas-bg: var(--qb-surface-overlay);
+    --bs-offcanvas-color: var(--qb-fg);
+    --bs-offcanvas-border-color: var(--qb-border);
+    --bs-offcanvas-box-shadow: var(--qb-shadow-overlay);
+  }
+
+  .mobile-layout .offcanvas-header {
+    min-height: var(--qb-nav-h);
+    padding-block: calc((var(--qb-nav-h) - var(--qb-hit-min) - 1px) / 2);
+    background: var(--qb-surface-chrome);
+    border-bottom: 1px solid var(--qb-wood-dark);
+    box-shadow: var(--qb-chrome-highlight);
+  }
+
+  .mobile-layout .offcanvas-title {
+    font-family: var(--qb-font-display);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    text-shadow: var(--qb-text-halo);
+  }
+
+  .mobile-layout .offcanvas-title .fa-dice-d20 {
+    color: var(--qb-accent);
+  }
+
+  /* The close button is full strength on the wood, not Bootstrap's half-faded mark. */
+  .mobile-layout .offcanvas-header .btn-close {
+    opacity: 1;
+  }
+
+  .mobile-layout .offcanvas-body {
+    overscroll-behavior: contain;
+  }
+
+  /* The panel takes focus when it opens without being a control, so it shows no ring of its own. */
+  .mobile-layout .offcanvas:focus,
+  .mobile-layout .offcanvas:focus-visible {
+    outline: none;
+    box-shadow: var(--bs-offcanvas-box-shadow);
+  }
+
+  /*
+   * Menu rows: parchment on the overlay, a hairline between them, 48px tall (a 24px line plus 12px above and below).
+   * Names of people and boards are free text, so they break anywhere rather than push the panel wider.
+   */
+  .mobile-layout .offcanvas .navbar-nav {
+    --bs-nav-link-color: var(--qb-fg);
+    --bs-nav-link-hover-color: var(--qb-accent-strong);
+    --bs-nav-link-padding-x: 0;
+    --bs-nav-link-padding-y: 0.75rem;
+  }
+
+  .mobile-layout .offcanvas .nav-link {
+    display: flex;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--qb-border);
+    font-weight: var(--qb-weight-regular);
+    text-shadow: var(--qb-text-halo);
+    overflow-wrap: anywhere;
+  }
+
+  /* Icons share one width so the labels line up down the list. */
+  .mobile-layout .offcanvas .nav-link > i {
+    flex: none;
+    width: 1.25em;
+    line-height: inherit;
+    text-align: center;
+  }
+
+  .mobile-layout .offcanvas .nav-link:hover,
+  .mobile-layout .offcanvas .nav-link:focus-visible {
+    background-color: var(--qb-surface-glass);
+    color: var(--qb-accent-strong);
+  }
+
+  /* The Logout row is a button dressed as a link; it takes the same row shape and loses the button's own frame. */
+  .mobile-layout .offcanvas .btn.nav-link {
+    border-width: 0 0 1px;
+    border-radius: 0;
+    text-decoration: none;
+  }
+
+  .mobile-layout .offcanvas .navbar-text {
+    display: block;
+    padding-block: 0.75rem;
+    color: var(--qb-fg);
+    text-shadow: var(--qb-text-halo);
+    overflow-wrap: anywhere;
+  }
+
+  /*
+   * The footer wears the bar's wood, like the desktop footer (shell.css). The text and the link share the row and
+   * the text wraps inside it, so a long version string never pushes the page wider than the screen.
+   */
+  .mobile-layout .chrome-footer .container {
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .chrome-footer .navbar-text {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 }

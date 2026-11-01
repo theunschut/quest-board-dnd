@@ -1,37 +1,7 @@
-/* Touch target sizing */
-.btn,
-a.nav-link,
-input:not([type=checkbox]):not([type=radio]),
-select,
-textarea,
-.form-control,
-.form-select {
-    min-height: 44px;
-}
-
 /* Mobile typography scale */
 body {
     font-size: 16px; /* prevents iOS auto-zoom on input focus */
     line-height: 1.5;
-}
-
-/* Notice board background — same image as desktop site.css.
-   Rendered on a fixed pseudo-element instead of a fixed background on body,
-   because iOS Safari does not composite that case correctly (the background
-   scrolls with the page instead of staying in place). */
-body::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    background-image: url('/images/Notice Board-blank2.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    z-index: -1;
 }
 
 /* Mobile spacing overrides */
@@ -61,59 +31,6 @@ h1, h2, h3, h4, h5, h6 {
 .move-control-reason {
     font-size: 0.875rem;
     color: #D9CDA8;
-}
-
-/* Navbar brand — Cinzel font, parchment, matches desktop .navbar-brand */
-.navbar-brand {
-    font-family: 'Cinzel', serif;
-    font-weight: bold;
-    font-size: 1.5rem;
-    color: #F4E4BC !important;
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9),
-                 -1px -1px 3px rgba(0, 0, 0, 0.9),
-                 2px 2px 8px rgba(0, 0, 0, 0.8),
-                 1px 1px 2px rgba(255, 215, 0, 0.3) !important;
-    transition: all 0.3s ease !important;
-}
-
-/* Brown navbar — exact same gradient/border as desktop site.css .navbar:not(footer) */
-.mobile-layout .navbar {
-    min-height: 56px;
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(160, 82, 45, 0.5) 50%, rgba(205, 133, 63, 0.5) 100%) !important;
-    border-bottom: 2px solid rgba(139, 69, 19, 0.9);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(10px);
-}
-
-/* Offcanvas nav panel — dark translucent brown overlay */
-.offcanvas {
-    background-color: rgba(20, 8, 0, 0.97) !important;
-}
-
-.offcanvas-header.bg-dark {
-    background: rgba(139, 69, 19, 0.6) !important;
-    border-bottom: 1px solid rgba(205, 133, 63, 0.4);
-}
-
-.offcanvas-title {
-    color: #F4E4BC !important;
-    font-family: 'Cinzel', serif;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-}
-
-/* Nav links in offcanvas — parchment, matches desktop .navbar-nav .nav-link */
-.offcanvas .nav-link {
-    color: #F4E4BC !important;
-    font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
-    border-bottom: 1px solid rgba(139, 69, 19, 0.3);
-    padding: 0.75rem 0;
-}
-
-.offcanvas .nav-link:hover,
-.offcanvas .nav-link:focus {
-    color: #FFD700 !important;
-    background-color: rgba(139, 69, 19, 0.2) !important;
 }
 
 /* Primary button — brown gradient matching desktop site.css .btn-primary */

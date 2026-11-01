@@ -7,7 +7,8 @@ namespace QuestBoard.IntegrationTests.Mobile;
 /// Tests for mobile.css content integrity and link presence in mobile responses.
 ///
 /// Two test kinds:
-/// 1. File-content test — reads mobile.css from disk and asserts it contains min-height: 44px
+/// 1. File-content tests — read the phone shell sheet and mobile.css from disk and assert the 44px touch-target
+///    rule and the 16px body size
 /// 2. Link-presence integration tests — mobile UA response links mobile.css; desktop UA response does not
 /// </summary>
 public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
@@ -35,19 +36,19 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// Resolves the path to mobile.css by walking up from AppContext.BaseDirectory
-    /// until a directory named "QuestBoard.Service" is found (the repo root is its parent).
+    /// Resolves the path to a stylesheet under QuestBoard.Service/wwwroot/css by walking up from
+    /// AppContext.BaseDirectory until a directory holding it is found.
     /// Fails with a descriptive message if the path cannot be resolved.
     /// </summary>
-    private static string ResolveMobileCssPath()
+    private static string ResolveCssPath(string fileName)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
 
         // Walk up the directory tree to find the repo root — identified by
-        // the presence of an "QuestBoard.Service" child directory.
+        // the presence of the stylesheet under an "QuestBoard.Service" child directory.
         while (dir != null)
         {
-            var candidate = Path.Combine(dir.FullName, "QuestBoard.Service", "wwwroot", "css", "mobile.css");
+            var candidate = Path.Combine(dir.FullName, "QuestBoard.Service", "wwwroot", "css", fileName);
             if (File.Exists(candidate))
                 return candidate;
 
@@ -56,29 +57,37 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 
         // Compute the attempted path for the failure message.
         var attemptedBase = AppContext.BaseDirectory;
-        var attemptedPath = Path.Combine(attemptedBase, "QuestBoard.Service", "wwwroot", "css", "mobile.css");
+        var attemptedPath = Path.Combine(attemptedBase, "QuestBoard.Service", "wwwroot", "css", fileName);
         throw new FileNotFoundException(
-            $"mobile.css not found. Searched upward from '{attemptedBase}'. " +
+            $"{fileName} not found. Searched upward from '{attemptedBase}'. " +
             $"Last attempted path: '{attemptedPath}'. " +
-            "Ensure QuestBoard.Service/wwwroot/css/mobile.css exists in the repo.",
+            $"Ensure QuestBoard.Service/wwwroot/css/{fileName} exists in the repo.",
             attemptedPath);
     }
 
     /// <summary>
-    /// File-content test: mobile.css must contain the literal 'min-height: 44px'
-    /// to enforce 44px touch targets on interactive elements.
-    /// Fails with a clear path-naming message if the file cannot be located.
+    /// File-content test: the phone shell sheet must declare the 44px touch-target rule over the control list,
+    /// sized from the shared token, and the token must be 44px.
+    /// Fails with a clear path-naming message if a file cannot be located.
     /// </summary>
     [Fact]
     public void MobileCss_File_Contains44pxTouchTargetRule()
     {
         // Arrange
-        var cssPath = ResolveMobileCssPath();
-        var css = File.ReadAllText(cssPath);
+        var shellPath = ResolveCssPath("shell.mobile.css");
+        var shell = File.ReadAllText(shellPath);
+        var tokensPath = ResolveCssPath("tokens.css");
+        var tokens = File.ReadAllText(tokensPath);
 
         // Assert
-        css.Should().Contain("min-height: 44px",
-            because: $"mobile.css at '{cssPath}' must enforce a 44px minimum touch target");
+        shell.Should().Contain(".mobile-layout :where(",
+            because: $"shell.mobile.css at '{shellPath}' must scope the touch-target rule to the mobile layout at zero specificity");
+        shell.Should().Contain("min-height: var(--qb-hit-min)",
+            because: $"shell.mobile.css at '{shellPath}' must enforce a minimum touch target tall enough");
+        shell.Should().Contain("min-width: var(--qb-hit-min)",
+            because: $"shell.mobile.css at '{shellPath}' must enforce a minimum touch target wide enough");
+        tokens.Should().Contain("--qb-hit-min: 44px",
+            because: $"tokens.css at '{tokensPath}' defines the touch target size the shell rule reads");
     }
 
     /// <summary>
@@ -89,7 +98,7 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
     public void MobileCss_File_Contains16pxBodyFontSize()
     {
         // Arrange
-        var cssPath = ResolveMobileCssPath();
+        var cssPath = ResolveCssPath("mobile.css");
         var css = File.ReadAllText(cssPath);
 
         // Assert

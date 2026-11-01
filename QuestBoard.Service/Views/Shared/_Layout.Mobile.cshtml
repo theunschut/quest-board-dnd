@@ -25,12 +25,13 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100 mobile-layout @ViewData["BodyClass"]">
+    <a class="visually-hidden-focusable skip-link" href="#main-content">Skip to main content</a>
     @{
         var pages = await BoardPages.GetAsync();
         var homeRoute = BoardPageRoutes.HomeRoute(pages);
     }
     <header>
-        <nav class="navbar navbar-dark bg-dark py-2">
+        <div class="navbar navbar-dark chrome">
             <div class="container-fluid px-3">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
@@ -45,22 +46,23 @@
                     </a>
                 }
                 <button class="navbar-toggler" type="button"
-                        data-bs-toggle="offcanvas" data-bs-target="#mobileNav">
+                        data-bs-toggle="offcanvas" data-bs-target="#mobileNav"
+                        aria-controls="mobileNav" aria-expanded="false" aria-label="Open navigation menu">
                     <span class="navbar-toggler-icon"></span>
                 </button>
             </div>
-        </nav>
+        </div>
     </header>
 
-    <div class="offcanvas offcanvas-end" id="mobileNav" tabindex="-1">
-        <div class="offcanvas-header bg-dark text-white">
-            <h5 class="offcanvas-title">
+    <div class="offcanvas offcanvas-end" id="mobileNav" tabindex="-1" aria-labelledby="mobileNavTitle">
+        <div class="offcanvas-header">
+            <div class="offcanvas-title h5" id="mobileNavTitle">
                 <i class="fas fa-dice-d20 me-2"></i>Quest Board
-            </h5>
+            </div>
             <button type="button" class="btn-close btn-close-white"
-                    data-bs-dismiss="offcanvas"></button>
+                    data-bs-dismiss="offcanvas" aria-label="Close navigation menu"></button>
         </div>
-        <div class="offcanvas-body">
+        <nav class="offcanvas-body" aria-label="Main menu">
             <ul class="navbar-nav">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
@@ -235,10 +237,10 @@
                     </li>
                 }
             </ul>
-        </div>
+        </nav>
     </div>
 
-    <main class="container-fluid px-2 mt-2">
+    <main id="main-content" tabindex="-1" class="container-fluid px-2 mt-2 flex-grow-1">
         @RenderBody()
     </main>
     <partial name="_Toasts" />
