@@ -96,6 +96,16 @@ public class UiFoundationVendorGuardTests
     }
 
     [Fact]
+    public void Layouts_LoadNoJQuery()
+    {
+        foreach (var layout in LayoutFiles)
+        {
+            ReadLayout(layout).Should().NotContainEquivalentOf("jquery",
+                because: $"{layout} must not load jQuery, nothing in the application uses it");
+        }
+    }
+
+    [Fact]
     public void Layouts_RequestNoWebFontFromGoogle()
     {
         foreach (var layout in LayoutFiles)
