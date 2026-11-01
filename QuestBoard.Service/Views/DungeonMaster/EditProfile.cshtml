@@ -130,9 +130,7 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
-    <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
-            integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
-            crossorigin="anonymous"></script>
+    <script src="~/lib/cropperjs-2.1.1/cropper.min.js"></script>
     <script src="~/js/image-crop.js" asp-append-version="true"></script>
     <script>
         initImageCrop({ fileInputId: 'dmProfilePictureInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1, recropButtonId: 'recropPhotoBtn', originalImageUrl: '@Url.Action("GetOriginalDMProfilePicture", new { id = Model.DungeonMasterId })' });
