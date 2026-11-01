@@ -96,6 +96,44 @@ public class UiFoundationVendorGuardTests
     }
 
     [Fact]
+    public void Layouts_LoadNoJQuery()
+    {
+        foreach (var layout in LayoutFiles)
+        {
+            ReadLayout(layout).Should().NotContainEquivalentOf("jquery",
+                because: $"{layout} must not load jQuery, nothing in the application uses it");
+        }
+    }
+
+    [Fact]
+    public void Layouts_LoadTheShimLocally()
+    {
+        // The editor toolbar's preview icon is drawn as an outline only because the compatibility
+        // stylesheet sets the regular weight on the old class names, so the two layouts that host
+        // an editor keep it, served from the versioned directory rather than a third-party host.
+        string[] layoutsWithEditor =
+        [
+            "QuestBoard.Service/Views/Shared/_Layout.cshtml",
+            "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml",
+        ];
+
+        foreach (var layout in LayoutFiles)
+        {
+            var text = ReadLayout(layout);
+
+            text.Should().NotContain("cdnjs.cloud" + "flare.com/ajax/libs/font-" + "awesome",
+                because: $"{layout} must not request any Font Awesome stylesheet from a CDN");
+
+            if (layoutsWithEditor.Contains(layout))
+            {
+                text.Should().MatchRegex(
+                    @"<link[^>]*href=""~/lib/fontawesome-\d+\.\d+\.\d+/css/v4-shims\.min\.css""",
+                    because: $"{layout} must load the compatibility stylesheet from the versioned wwwroot/lib directory");
+            }
+        }
+    }
+
+    [Fact]
     public void Layouts_RequestNoWebFontFromGoogle()
     {
         foreach (var layout in LayoutFiles)
@@ -140,6 +178,36 @@ public class UiFoundationVendorGuardTests
                 because: "each subset file must cover only its own character range");
             face.Value.Should().MatchRegex(@"src:\s*url\(""\.\./lib/cinzel/[^""]+\.woff2""\)",
                 because: "the display face must be served from wwwroot/lib/cinzel, not from a third party");
+        }
+    }
+
+    [Fact]
+    public void AppCss_DeclaresTheLayerOrderFirst()
+    {
+        var appCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "app.css"));
+
+        var withoutComments = Regex.Replace(appCss, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline).TrimStart();
+        var firstStatement = withoutComments[..(withoutComments.IndexOf(';') + 1)];
+
+        firstStatement.Should().Be("@layer vendor, tokens, base, components, pages, utilities;",
+            because: "the cascade layer order is fixed by the first place a layer name is seen, so the " +
+                     "statement that declares it must come before any rule in the first stylesheet");
+    }
+
+    [Fact]
+    public void Layouts_ReferenceNoThirdPartyHost()
+    {
+        var tag = new Regex(@"<(?:link|script)\b[^>]*>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        foreach (var layout in LayoutFiles)
+        {
+            foreach (Match match in tag.Matches(ReadLayout(layout)))
+            {
+                match.Value.Should().NotMatchRegex(@"https?://",
+                    because: $"{layout} must not request a stylesheet or script from another host: {match.Value}");
+                match.Value.Should().NotContainEquivalentOf("integrity=",
+                    because: $"{layout} serves its files from this origin, so no tag carries a subresource integrity attribute: {match.Value}");
+            }
         }
     }
 
