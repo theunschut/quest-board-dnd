@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 10
+open_count: 13
 waived_count: 1
-fixed_count: 3
-total_count: 14
-last_updated: 2026-11-01T19:00:03.201Z
+fixed_count: 5
+total_count: 19
+last_updated: 2026-11-01T19:59:43.664Z
 ---
 
 # Broken Windows Ledger
@@ -24,11 +24,16 @@ last_updated: 2026-11-01T19:00:03.201Z
 | 7 | 94 | deviation | QuestBoard.Service/wwwroot/lib/cinzel/cinzel-latin-wght.woff2 |  | 94-11 Task 2 zero-difference gate printed FAIL: all 7 desktop gate pages 0 px, all 7 mobile pages 4.5k-9.5k px confined to the Cinzel brand/heading edges. Google Fonts serves an Android UA a differently hinted build of the same Cinzel than a desktop UA; the self-hosted files are the desktop-UA build. Orchestrator reviewed the overlay at 3x: identical glyph shapes and weight, edge anti-aliasing plus a sub-pixel advance shift only, brand box unchanged 198x46 CSS px - judged not visible and accepted. Strict-zero alternative (both builds, selected by @media (hover:none) and (pointer:coarse), +~40 KB) not taken. Revisit only if the user objects; commit 0a5604ac. | open |  | 2026-11-01T14:12:21.045Z |  |
 | 8 | 94 | deviation | ~/qb-ui-review/phase-94/tools/probes.mjs (scratch) |  | 94-16 found the shared contrast probe flattens a multi-layer glass background and orders the colour above its own image, giving 134 false failures on Direction A through audit-shoot --probes. 94-16 used a corrected package-local copy (mockups/package/probe-lib.mjs). The wave-3 area audits scored legacy glass with the shared probe, so any S1/S2 contrast finding measured on a multi-layer glass background may be a false positive; re-check those before an area phase acts on them. | open |  | 2026-11-01T15:35:45.120Z |  |
 | 9 | 94 | deviation | QuestBoard.Service/Views/Calendar/Index.cshtml |  | Calendar month view (Events area phase): operator-accepted trade-off of the fit-without-scrolling requirement - compact entry rows and the '+N more' button are 20px tall, under the 24px WCAG 2.5.8 target-size minimum; titles truncate at about 13-16 characters (full title in the hover/focus card); footer sits below the fold. Meeting 2.5.8 would cost one visible entry per day cell. Recorded in the UI-SPEC G1 sign-off record (G1-O3). | waived | Operator decision 2026-11-01: fitting the whole month on one screen takes priority over the 24px target size; accepted after trying the calendar-fit mockup | 2026-11-01T17:34:27.324Z | 2026-11-01T17:34:27.469Z |
-| 10 | 94 | unmet-truth | QuestBoard.Service/wwwroot/css/tokens.css |  | Signed-off status text colours (success, danger, warning, info) measure 4.23-4.31:1 on HOVERED glass at B-max (~4.46 at B-99), under 4.5:1; the G1 sign-off never scored status text on the hover surface. 94-18 kept the signed-off values and the token-contrast guard lists these four pairs as an explicit, reasoned exclusion. Resolve in the component layer (94-20): prefer easing the hover glass tint so status text reaches 4.5:1 without changing the signed-off status colours; otherwise lighten the status text tokens minimally (e.g. success ~#8ce4b0 = 4.62) and re-score. Then remove the guard exclusion. | open |  | 2026-11-01T17:43:22.717Z |  |
+| 10 | 94 | unmet-truth | QuestBoard.Service/wwwroot/css/tokens.css |  | Signed-off status text colours (success, danger, warning, info) measure 4.23-4.31:1 on HOVERED glass at B-max (~4.46 at B-99), under 4.5:1; the G1 sign-off never scored status text on the hover surface. 94-18 kept the signed-off values and the token-contrast guard lists these four pairs as an explicit, reasoned exclusion. Resolve in the component layer (94-20): prefer easing the hover glass tint so status text reaches 4.5:1 without changing the signed-off status colours; otherwise lighten the status text tokens minimally (e.g. success ~#8ce4b0 = 4.62) and re-score. Then remove the guard exclusion. | fixed |  | 2026-11-01T17:43:22.717Z | 2026-11-01T19:59:39.260Z |
 | 11 | 94 | deviation | QuestBoard.Service/wwwroot/css/base.css |  | Heading and strong type scale (h1 display step, h2-h3 heading step, h4-h6 body step at 600) written in 94-19 as commit 21c68026, then reverted by the orchestrator (14bc9dcb): at the scale's sizes the cream headings on today's unscrimmed legacy glass count as normal text and measure 3.91-4.34:1, so the commit added 132 new readability failures and shrank page titles 32px->20px on every page. Re-land in 94-24 by cherry-picking 21c68026 once modern-card.css is retired and the scrimmed card surface is live, inside that plan's full readability sweep against BEFORE. | open |  | 2026-11-01T18:59:59.308Z |  |
 | 12 | 94 | unmet-truth | QuestBoard.Service/wwwroot/css/components.css |  | After 94-19's re-theme, ten failures already present in BEFORE measure lower (e.g. phone form required asterisks 4.34->3.36, Quest/Manage success text 4.34->3.3): the light status-text tokens now reach Bootstrap but were designed for the scrimmed surface, which legacy glass does not have yet. Not new failures, so the comparison passes; resolve when the scrimmed card surface goes live (94-20 component layer, then 94-24 retiring modern-card.css) and confirm in 94-24's sweep against BEFORE. | open |  | 2026-11-01T18:59:59.408Z |  |
 | 13 | 94 | deviation | QuestBoard.Service/wwwroot/css/modern-card.css |  | modern-card.css:165 keeps an !important blue box-shadow on .modern-card .form-control:focus that beats the base layer's two-tone focus ring's gold inner band on card form inputs (the dark outer stroke still draws, so focus stays visible). Retire with modern-card.css in 94-24 and re-check the ring on a card input. | open |  | 2026-11-01T18:59:59.509Z |  |
 | 14 | 94 | deviation | ~/qb-ui-review/phase-94/tools/readability-compare.py |  | Shared readability-compare keyed a contrast failure with no text sample (icon, glyph) by font size AND colour, so an element that already failed and only changed colour read as new (7 false rows on 94-19's layering). The orchestrator re-keyed it by size only (backup readability-compare.py.pre-94-19); bump, layering and base-layer pairs all PASS with it. Distinct from entry 8 (probe flattening multi-layer glass). | fixed |  | 2026-11-01T18:59:59.611Z | 2026-11-01T19:00:03.201Z |
+| 15 | 94 | deviation | QuestBoard.Service/wwwroot/css/site.css |  | site.css's bare 'div { background: transparent; }' outranks every layered background on a div on the desktop layouts (Bootstrap alert, modal-content, card, toast). 94-20 restated '.toast { background-color: var(--bs-toast-bg) }' in modern-card.css as a stopgap. 94-23 already deletes the div rule (check the Quest Log exception right below it); the toast restatement goes with modern-card.css in 94-24. | open |  | 2026-11-01T19:59:39.366Z |  |
+| 16 | 94 | deviation | QuestBoard.Service/wwwroot/css/components.css |  | The phone 20px page-title step on .modern-card-header ('.mobile-layout .modern-card-header :is(h1, h2) { font-size: var(--qb-text-lg) }') was held back in 94-20: on unscrimmed legacy glass it produced 5 new failures at 3.91 (same cause as entry 11). Re-land in 94-24 together with the heading scale (entry 11). The desktop 28px card title stays (large text, no regression). | open |  | 2026-11-01T19:59:39.478Z |  |
+| 17 | 94 | deviation | QuestBoard.Service/wwwroot/css/components.css |  | Alerts ship as a parchment panel with ink text and a status stripe rather than Direction A's dark overlay panel: the unlayered legacy heading colour rules paint alert headings dark (a dark h6.alert-heading measured 1.15:1 on the dark panel). The dark alert can return once 94-23 retires the global heading colour rules; revisit in 94-24's operator review. | open |  | 2026-11-01T19:59:39.612Z |  |
+| 18 | 94 | deviation | QuestBoard.Service/wwwroot/css/components.css |  | On paper surfaces (tables, alerts, list rows) a status colour used as TEXT now renders as ink: the status fills measure 4.24-4.32:1 on parchment (amber 1.68:1) and the light text variants are made for glass, so the icon and the word carry the status there. Guard ComponentsCss_MapsBootstrapVariablesPerSurface updated to match. | open |  | 2026-11-01T19:59:39.713Z |  |
+| 19 | 94 | deviation | ~/qb-ui-review/phase-94/tools/readability-compare.py |  | After 94-20, the shared comparison still flagged 10 pre-existing failures whose only change was font size (badges 12->14px, form labels 16->14px; identical ratios). The orchestrator re-keyed sample-less failures by selector and bar only (multiset, so a real new failure on the same selector still raises the count). All pairs so far (bump, layering, base, p20-after, p20-final) PASS. | fixed |  | 2026-11-01T19:59:39.818Z | 2026-11-01T19:59:43.664Z |
 
 ````json
 [
@@ -147,10 +152,10 @@ last_updated: 2026-11-01T19:00:03.201Z
     "file": "QuestBoard.Service/wwwroot/css/tokens.css",
     "line": null,
     "description": "Signed-off status text colours (success, danger, warning, info) measure 4.23-4.31:1 on HOVERED glass at B-max (~4.46 at B-99), under 4.5:1; the G1 sign-off never scored status text on the hover surface. 94-18 kept the signed-off values and the token-contrast guard lists these four pairs as an explicit, reasoned exclusion. Resolve in the component layer (94-20): prefer easing the hover glass tint so status text reaches 4.5:1 without changing the signed-off status colours; otherwise lighten the status text tokens minimally (e.g. success ~#8ce4b0 = 4.62) and re-score. Then remove the guard exclusion.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-11-01T17:43:22.717Z",
-    "resolved_at": null
+    "resolved_at": "2026-11-01T19:59:39.260Z"
   },
   {
     "id": 11,
@@ -199,6 +204,66 @@ last_updated: 2026-11-01T19:00:03.201Z
     "reason": "",
     "recorded_at": "2026-11-01T18:59:59.611Z",
     "resolved_at": "2026-11-01T19:00:03.201Z"
+  },
+  {
+    "id": 15,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/site.css",
+    "line": null,
+    "description": "site.css's bare 'div { background: transparent; }' outranks every layered background on a div on the desktop layouts (Bootstrap alert, modal-content, card, toast). 94-20 restated '.toast { background-color: var(--bs-toast-bg) }' in modern-card.css as a stopgap. 94-23 already deletes the div rule (check the Quest Log exception right below it); the toast restatement goes with modern-card.css in 94-24.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T19:59:39.366Z",
+    "resolved_at": null
+  },
+  {
+    "id": 16,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/components.css",
+    "line": null,
+    "description": "The phone 20px page-title step on .modern-card-header ('.mobile-layout .modern-card-header :is(h1, h2) { font-size: var(--qb-text-lg) }') was held back in 94-20: on unscrimmed legacy glass it produced 5 new failures at 3.91 (same cause as entry 11). Re-land in 94-24 together with the heading scale (entry 11). The desktop 28px card title stays (large text, no regression).",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T19:59:39.478Z",
+    "resolved_at": null
+  },
+  {
+    "id": 17,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/components.css",
+    "line": null,
+    "description": "Alerts ship as a parchment panel with ink text and a status stripe rather than Direction A's dark overlay panel: the unlayered legacy heading colour rules paint alert headings dark (a dark h6.alert-heading measured 1.15:1 on the dark panel). The dark alert can return once 94-23 retires the global heading colour rules; revisit in 94-24's operator review.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T19:59:39.612Z",
+    "resolved_at": null
+  },
+  {
+    "id": 18,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/components.css",
+    "line": null,
+    "description": "On paper surfaces (tables, alerts, list rows) a status colour used as TEXT now renders as ink: the status fills measure 4.24-4.32:1 on parchment (amber 1.68:1) and the light text variants are made for glass, so the icon and the word carry the status there. Guard ComponentsCss_MapsBootstrapVariablesPerSurface updated to match.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-01T19:59:39.713Z",
+    "resolved_at": null
+  },
+  {
+    "id": 19,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "~/qb-ui-review/phase-94/tools/readability-compare.py",
+    "line": null,
+    "description": "After 94-20, the shared comparison still flagged 10 pre-existing failures whose only change was font size (badges 12->14px, form labels 16->14px; identical ratios). The orchestrator re-keyed sample-less failures by selector and bar only (multiset, so a real new failure on the same selector still raises the count). All pairs so far (bump, layering, base, p20-after, p20-final) PASS.",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-11-01T19:59:39.818Z",
+    "resolved_at": "2026-11-01T19:59:43.664Z"
   }
 ]
 ````
