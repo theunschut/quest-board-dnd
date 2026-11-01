@@ -19,6 +19,7 @@ public class UiFoundationMobileShellGuardTests
     private static readonly (string Path, string NavLabel, string PanelId)[] Layouts =
     [
         ("QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml", "Main menu", "mobileNav"),
+        ("QuestBoard.Service/Areas/Platform/Views/Shared/_Layout.Platform.Mobile.cshtml", "Platform", "platformMobileNav"),
     ];
 
     private static string ReadRepoFile(string relativePath)
@@ -117,7 +118,7 @@ public class UiFoundationMobileShellGuardTests
             OpeningTags(markup, "body").Single().Should().Contain("mobile-layout",
                 $"{path} body is what the phone shell rules are scoped to");
 
-            var bar = OpeningTags(markup, "div").Single(t => Regex.IsMatch(t, @"\bnavbar\b"));
+            var bar = OpeningTags(markup, "div").Single(t => Regex.IsMatch(t, @"class=""(?:[^""]*\s)?navbar(?:\s[^""]*)?"""));
             bar.Should().Contain("chrome", $"{path} bar takes the shell look from the chrome class");
             bar.Should().NotContain("bg-dark", $"{path} bar is drawn by the shell, not by a Bootstrap fill");
             bar.Should().NotContain("fixed-top", $"{path} bar scrolls away with the page");
