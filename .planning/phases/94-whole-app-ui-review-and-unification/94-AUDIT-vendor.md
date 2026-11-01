@@ -72,3 +72,41 @@ Verdict: pass. 97 PASS lines, 0 FAIL, exit 0.
 `c2-before` (captured before the first edit) against `c2-after-jq`: PASS, 26 captures (7 default gate pages plus the six form pages of the `94-12` extra routes, under both User-Agents), 0 differing pixels on every capture, no new console error, page error or failed request, no status change. A first `c2-after-jq` capture showed 5,453 and 29,127 differing pixels on `/quests`; the overlay showed it was the quest card for 992004 reading "Adventurers signed up: 1" with a seal, caused by the Proof 4 vote taken before that capture and not by the change. After the vote was revoked the capture was repeated and is exactly zero.
 
 Final verdict: jQuery removed from all five layouts; self-hosting not needed.
+
+## Font Awesome v4 shim
+
+The compatibility stylesheet `v4-shims.min.css` (Font Awesome 6.4.0, cdnjs, SRI-pinned) was loaded by the two layouts that host a Markdown editor, `_Layout.cshtml` and `_Layout.Mobile.cshtml`. The other three layouts never loaded it.
+
+### Font Awesome glyph proof
+
+Command: `python3 -I $QBR/plans/94-13/glyphs.py` (fontTools 4.61.1). It collects every `(prefix, fa-name)` in `.cshtml`, `.razor`, `.cs`, `.js` and `.css` under QuestBoard.Service (Views, Areas, Components, wwwroot excluding `wwwroot/lib`, plus Controllers, ViewModels, Helpers, Services, Extensions, Constants, ViewExpanders) and adds the seven class names EasyMDE assigns to its default toolbar (`fa fa-bold`, `fa fa-italic`, `fa fa-header`, `fa fa-list-ul`, `fa fa-link`, `fa fa-quote-left`, `fa fa-eye`). For each it finds the `.fa-<name>:before` rule and codepoint in the self-hosted 6.4.0 `all.min.css` and checks the codepoint against the cmap of the matching self-hosted woff2 (`fa`, `fas` and `fa-solid` to fa-solid-900, `far` and `fa-regular` to fa-regular-400, `fab` and `fa-brands` to fa-brands-400).
+
+Result: 319 files scanned, 143 distinct uses, 137 glyph names resolved, 6 styling helper classes with a rule, 0 misses. The base `.fa` rule sets `font-family: var(--fa-style-family, "Font Awesome 6 Free")` and `font-weight: var(--fa-style, 900)`; the `.fas`/`.far`/`.fa-solid` family rule is present. The EasyMDE classes resolve to U+F032, F033, F1DC (`fa-header` is an alias of `fa-heading`), F0CA, F0C1, F10D and F06E.
+
+Verdict by the plan's test: pass, zero misses.
+
+### Gate result: the proof was not sufficient
+
+The shim was removed from both layouts (and the stale comment in `markdown-editor.js` rewritten) and the app rebuilt. Gate `c2-before` against `c2-after-shim-dropped` (kept as evidence): FAIL on every page that hosts an editor, 117 to 236 differing pixels on desktop and 769 to 1,528 on mobile, no new error and no status change. The overlay and crops show exactly one cause: the editor toolbar's preview icon. With the shim it is the outline eye; without it, the solid eye. The shim contains `.fa.fa-eye,.fa.fa-eye-slash{font-family:"Font Awesome 6 Free";font-weight:400}`, a restyle, not a missing glyph, so a proof that only checks that each name resolves to a glyph cannot see it. EasyMDE renders its preview button as `<i class="fa fa-eye">`.
+
+Judgement: a different icon style on every editor toolbar is visible, so the removal was reverted and the plan's fallback applied. The shim is not dead; it carries one visible effect on exactly one icon class (`fa fa-eye` in the EasyMDE toolbar; `fa-eye-slash` is not used).
+
+### Fallback applied: self-hosted shim
+
+The exact bytes of the shim were fetched from the URL the layouts used and saved as `QuestBoard.Service/wwwroot/lib/fontawesome-6.4.0/css/v4-shims.min.css` (27,593 bytes, no `@font-face` and no `url()` inside, so no further file is needed). Both layouts point at `~/lib/fontawesome-6.4.0/css/v4-shims.min.css` (same position, same attributes minus `integrity` and `crossorigin`, which apply to cross-origin loads only).
+
+| File | Source URL | SHA-256 |
+| --- | --- | --- |
+| fontawesome-6.4.0/css/v4-shims.min.css | https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/v4-shims.min.css | d3037f42050da6c98f31f801c26a5fe3df7327240ce40314b805e5e25b052ea2 |
+
+Its SHA-384 is `TjXU13dTMPo+5ZlOUI1IGXvpmajjoetPqbUJqTx+uZ1bGwylKHNEItuVe/mg/H6l`, equal to the integrity value the layouts carried, so the committed bytes are the ones browsers already verified. The existing licence file in the directory covers it.
+
+Guard: `Layouts_LoadTheShimLocally` (no layout requests a Font Awesome stylesheet from a CDN; the two editor layouts load the shim from the versioned directory).
+
+Follow-up for the editor re-skin: the shim can go once the preview icon's outline weight is set by one rule of the application's own for the toolbar button; that is a visible-change decision, not a foundation change.
+
+### Gate
+
+`c2-before` against `c2-after-shim` (shim self-hosted): PASS, 26 captures, 0 differing pixels on every capture, no new error. The EasyMDE toolbar crop on `/Quest/Create` is identical to the capture before the plan (0 differing pixels on desktop and mobile; the dropped-shim capture differs by 117 and 766 pixels in the same crop). No request leaves localhost on any capture. `flows.mjs --strict-external` (both User-Agents, same script as Proof 4 plus a no-external-request assertion): 111 PASS, 0 FAIL, including the toolbar's 7 buttons each computing a Font Awesome glyph.
+
+Final verdict: the shim is kept and self-hosted; no layout references a third-party host.

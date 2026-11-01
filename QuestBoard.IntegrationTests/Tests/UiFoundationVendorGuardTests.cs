@@ -106,6 +106,34 @@ public class UiFoundationVendorGuardTests
     }
 
     [Fact]
+    public void Layouts_LoadTheShimLocally()
+    {
+        // The editor toolbar's preview icon is drawn as an outline only because the compatibility
+        // stylesheet sets the regular weight on the old class names, so the two layouts that host
+        // an editor keep it, served from the versioned directory rather than a third-party host.
+        string[] layoutsWithEditor =
+        [
+            "QuestBoard.Service/Views/Shared/_Layout.cshtml",
+            "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml",
+        ];
+
+        foreach (var layout in LayoutFiles)
+        {
+            var text = ReadLayout(layout);
+
+            text.Should().NotContain("cdnjs.cloud" + "flare.com/ajax/libs/font-" + "awesome",
+                because: $"{layout} must not request any Font Awesome stylesheet from a CDN");
+
+            if (layoutsWithEditor.Contains(layout))
+            {
+                text.Should().MatchRegex(
+                    @"<link[^>]*href=""~/lib/fontawesome-\d+\.\d+\.\d+/css/v4-shims\.min\.css""",
+                    because: $"{layout} must load the compatibility stylesheet from the versioned wwwroot/lib directory");
+            }
+        }
+    }
+
+    [Fact]
     public void Layouts_RequestNoWebFontFromGoogle()
     {
         foreach (var layout in LayoutFiles)
