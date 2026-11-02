@@ -666,7 +666,7 @@
     text-shadow: none !important;
 }
 
-/* Super-specific selectors to override .modern-card h3 from site.css */
+/* Super-specific selectors to override .modern-card h3 from legacy-pages.css */
 .quest-log-card .quest-log-card-header h3,
 .quest-log-card .quest-log-card-header h3.quest-log-card-title,
 .quest-log-container .quest-log-card .quest-log-card-header h3 {
@@ -906,11 +906,11 @@
 
 
 /* ========================================
-   OVERRIDE site.css .modern-card styling for Quest Log
+   OVERRIDE legacy-pages.css .modern-card styling for Quest Log
    MUST be at the end to have higher specificity
    ======================================== */
 
-/* Super-specific selectors to override .modern-card h3 from site.css */
+/* Super-specific selectors to override .modern-card h3 from legacy-pages.css */
 .quest-log-card .quest-log-card-header h3,
 .quest-log-card .quest-log-card-header h3.quest-log-card-title,
 .quest-log-container .quest-log-card .quest-log-card-header h3 {

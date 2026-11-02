@@ -1,7 +1,7 @@
 /* Typography for server-rendered Markdown output (Description today, more fields in later
    phases). All rules are scoped under .markdown-content so they never leak into the rest of the
    app's typography -- notably, the heading color override below intentionally shadows the
-   global h1-h6 rule (site.css) only inside this scope. */
+   global h1-h6 rule (legacy-pages.css) only inside this scope. */
 
 /* Markdown output is real block-level HTML (<p>, <ul>, <blockquote>, etc). The parchment boxes
    this content renders inside (.quest-description-box, .recap-display-box in quests.css) set
@@ -26,7 +26,7 @@
    but the scale is capped at 1.5rem instead of letting an author-chosen H1 render at full browser
    document size inside a quest card. Color/text-shadow match .quest-description-box exactly
    (quests.css) because this content always renders inside that dark-overlay box; the global
-   site.css h1-h6 rule uses a dark-brown color meant for the light parchment background and would
+   legacy-pages.css h1-h6 rule uses a dark-brown color meant for the light parchment background and would
    be nearly invisible here. */
 .markdown-content h1,
 .markdown-content h2,

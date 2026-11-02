@@ -223,6 +223,19 @@ public class UiFoundationLayerGuardTests
     }
 
     [Fact]
+    public void LegacyDesktopSheet_IsUnlayeredAndRenamed()
+    {
+        // The remainder of the old global desktop sheet keeps beating every layered rule on its own selectors,
+        // which is what keeps the pages that have not been converted yet looking as they did.
+        File.Exists(ResolveRepoFile((CssRoot + "/legacy-pages.css").Split('/'))).Should().BeTrue(
+            "the desktop page rules live in legacy-pages.css");
+        StripComments(ReadRepoFile(CssRoot + "/legacy-pages.css")).Should().NotContain("@layer",
+            "legacy-pages.css stays unlayered so it keeps winning on its own selectors");
+        File.Exists(ResolveRepoFile((CssRoot + "/site.css").Split('/'))).Should().BeFalse(
+            "the global sheet was renamed, so no file by the old name may remain");
+    }
+
+    [Fact]
     public void LayeredFiles_DeclareTheirLayer()
     {
         foreach (var (file, layer) in LayeredFiles)

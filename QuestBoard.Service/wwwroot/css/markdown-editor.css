@@ -15,7 +15,7 @@
 }
 
 /* Desktop write forms wrap the editor in .modern-card, whose `.modern-card h1-h6/p/li/span/small
-   { color: #F4E4BC !important; text-shadow: ... !important; }` rules (site.css) are meant for
+   { color: #F4E4BC !important; text-shadow: ... !important; }` rules (legacy-pages.css) are meant for
    read-only card text but also match CodeMirror's syntax-highlighting spans and the Preview
    pane's injected <h*>/<p>/<li>/etc, tinting both the raw editing surface and Preview gold with
    a drop-shadow instead of plain black-on-white. Only the editing/preview surfaces are scoped

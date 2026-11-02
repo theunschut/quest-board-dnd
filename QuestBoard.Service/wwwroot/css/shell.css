@@ -199,7 +199,6 @@
     --bs-dropdown-link-hover-bg: var(--qb-surface-glass);
     --bs-dropdown-link-active-color: var(--qb-accent-strong);
     --bs-dropdown-link-active-bg: var(--qb-surface-glass);
-    --qb-menu-fill: var(--qb-surface-overlay);
     box-shadow: var(--qb-shadow-overlay);
   }
 
@@ -210,16 +209,13 @@
   }
 
   /*
-   * The fill itself is painted from --qb-menu-fill by one rule in site.css, because that sheet's blanket
-   * background resets on div and ul would otherwise win over any layered background.
-   *
    * Below the bar's breakpoint (1200px on the main bar, 992px on the Platform bar) the menu collapses under the
    * bar. Open, it is an overlay on the opaque surface, not text laid straight on the board.
    */
   @media (max-width: 1199.98px) {
     .chrome.navbar-expand-xl .navbar-collapse.show,
     .chrome.navbar-expand-xl .navbar-collapse.collapsing {
-      --qb-menu-fill: var(--qb-surface-overlay);
+      background-color: var(--qb-surface-overlay);
       margin-top: var(--qb-space-sm);
       padding: var(--qb-space-sm) var(--qb-space-md);
       border-radius: var(--qb-radius-md);
@@ -229,7 +225,7 @@
   @media (max-width: 991.98px) {
     .chrome.navbar-expand-lg .navbar-collapse.show,
     .chrome.navbar-expand-lg .navbar-collapse.collapsing {
-      --qb-menu-fill: var(--qb-surface-overlay);
+      background-color: var(--qb-surface-overlay);
       margin-top: var(--qb-space-sm);
       padding: var(--qb-space-sm) var(--qb-space-md);
       border-radius: var(--qb-radius-md);

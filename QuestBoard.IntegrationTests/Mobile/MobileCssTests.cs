@@ -124,7 +124,7 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 
     /// <summary>
     /// Parity test: a desktop User-Agent GET "/" response must NOT link mobile.css
-    /// and MUST still link site.css — confirming the desktop layout is unchanged.
+    /// and MUST still link its desktop legacy stylesheet, legacy-pages.css — confirming the desktop layout is unchanged.
     /// </summary>
     [Fact]
     public async Task MobileCss_DesktopUserAgent_ResponseDoesNotLinkMobileStylesheet()
@@ -136,7 +136,7 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("mobile.css",
             because: "a desktop-UA response must not include the mobile.css stylesheet link");
-        html.Should().Contain("site.css",
-            because: "a desktop-UA response must still link site.css — desktop layout is unchanged");
+        html.Should().Contain("legacy-pages.css",
+            because: "a desktop-UA response must still link legacy-pages.css — desktop layout is unchanged");
     }
 }

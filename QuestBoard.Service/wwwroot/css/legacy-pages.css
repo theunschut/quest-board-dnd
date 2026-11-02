@@ -374,13 +374,6 @@
     --card-width-small: calc(var(--card-width) * 0.71);  /* 300px from 420px */
 }
 
-/* Remove all white backgrounds - keep fantasy theme fully visible */
-
-/* Override Bootstrap defaults */
-.container, .container-fluid {
-    background: none !important;
-}
-
 /* Only override max-width for the main content container, not navbar */
 .container.mt-4 {
     max-width: none !important;
@@ -435,47 +428,6 @@ body:has(.quest-board-container) .container.mt-3 {
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
 }
 
-/* Remove backgrounds from lists and other elements */
-ul, ol, li {
-    background: none;
-}
-
-/* Remove any remaining Bootstrap backgrounds */
-.list-unstyled {
-    background: none;
-}
-
-/* Ensure body background shows through */
-main {
-    background: none;
-}
-
-/* Remove any remaining white blocks */
-div {
-    background: transparent;
-}
-
-/*
- * The blanket resets above also reach the navigation bar's open menu and its dropdowns, whose fill is chosen in
- * shell.css (--qb-menu-fill). A layered rule cannot beat an unlayered one, so the fill is painted here, from that
- * variable. Remove this with the resets.
- */
-.chrome .navbar-collapse,
-.chrome .dropdown-menu {
-    background-color: var(--qb-menu-fill, transparent);
-}
-
-/* Exception for Quest Log - needs specific backgrounds */
-.quest-log-container div,
-.quest-log-card div,
-.quest-log-card-header,
-.quest-log-card-body,
-.quest-log-card-footer,
-.quest-log-header,
-.empty-quest-log {
-    background: initial; /* Reset to allow specific backgrounds below */
-}
-
 /* Only keep form control backgrounds for usability */
 .form-control, .form-select, input, textarea, select {
     background-color: rgba(255, 255, 255, 0.85) !important;
@@ -486,15 +438,6 @@ div {
     background-color: rgba(0, 0, 0, 0.12) !important;
     color: rgba(26, 15, 8, 0.55) !important;
     cursor: not-allowed;
-}
-
-/* Enhanced text readability with stronger shadows instead of backgrounds */
-h1, h2, h3, h4, h5, h6 {
-    color: #1a0f08;
-    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.9), 
-                 -1px -1px 2px rgba(255, 255, 255, 0.9),
-                 1px 1px 6px rgba(0, 0, 0, 0.7);
-    font-weight: bold;
 }
 
 .form-label {
@@ -527,25 +470,6 @@ h1, h2, h3, h4, h5, h6 {
     text-shadow: 3px 3px 6px rgba(255, 255, 255, 0.95), 
                  -1px -1px 3px rgba(255, 255, 255, 0.95),
                  2px 2px 8px rgba(0, 0, 0, 0.8);
-}
-
-.card-body {
-    background: none;
-    color: #1a0f08;
-}
-
-/* Enhanced text contrast with stronger shadows */
-p, li, span, small {
-    color: #1a0f08;
-    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9),
-                 1px 1px 2px rgba(0, 0, 0, 0.5);
-    font-weight: 500;
-}
-
-.text-muted {
-    color: #2c1810 !important;
-    font-weight: 600;
-    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9) !important;
 }
 
 /* Button enhancements */
