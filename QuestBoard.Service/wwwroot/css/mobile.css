@@ -1,8 +1,7 @@
-/* Mobile typography scale */
-body {
-    font-size: 16px; /* prevents iOS auto-zoom on input focus */
-    line-height: 1.5;
-}
+/*
+ * What is left of the phone layouts' own page rules. The type size, text colours, backdrop and every Bootstrap
+ * component come from the shared foundation (base.css, components.css, shell.mobile.css).
+ */
 
 /* Mobile spacing overrides */
 .container-fluid {
@@ -10,20 +9,13 @@ body {
     padding-right: 0.5rem;
 }
 
-/* Headings on notice board — matches desktop site.css h1-h6 rule */
+/*
+ * Headings on the phone layouts have always been bold, and at the 20px card-title size only bold text counts as
+ * large text for contrast. The colour comes from the surface, not from here. Remove this when the shared heading
+ * scale (which sets its own weight) is applied.
+ */
 h1, h2, h3, h4, h5, h6 {
-    color: #1a0f08;
-    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.9),
-                 -1px -1px 2px rgba(255, 255, 255, 0.9),
-                 1px 1px 6px rgba(0, 0, 0, 0.7);
     font-weight: bold;
-}
-
-/* text-muted on notice board — dark warm brown matching desktop */
-.text-muted {
-    color: #2c1810 !important;
-    font-weight: 600;
-    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9) !important;
 }
 
 /* The one-line reason under a disabled move control on a Details or Manage page. Opaque, never alpha,
@@ -31,27 +23,4 @@ h1, h2, h3, h4, h5, h6 {
 .move-control-reason {
     font-size: 0.875rem;
     color: #D9CDA8;
-}
-
-/* Primary button — brown gradient matching desktop site.css .btn-primary */
-.btn-primary {
-    background: linear-gradient(45deg, #8B4513, #A0522D) !important;
-    border-color: #654321 !important;
-    color: white !important;
-    font-weight: 600 !important;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(45deg, #A0522D, #CD853F) !important;
-    border-color: #654321 !important;
-    color: white !important;
-}
-
-/* Danger alert — matches desktop site.css .alert-danger */
-.alert-danger {
-    background-color: rgba(220, 53, 69, 0.9) !important;
-    border-color: #dc3545 !important;
-    color: #ffffff !important;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
 }
