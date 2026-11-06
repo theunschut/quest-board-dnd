@@ -63,8 +63,13 @@
     background-repeat: no-repeat;
   }
 
-  /* Type: four sizes (14, 16, 20, 28) and two weights (400, 600). */
+  /*
+   * Type: four sizes (14, 16, 20, 28) and two weights (400, 600). Text on the bare board is the light board
+   * colour, set once here: paragraphs, lists, spans and headings inherit it (Bootstrap's heading colour is
+   * "inherit"), and a surface that is not the board sets its own colour for what sits on it.
+   */
   body {
+    color: var(--qb-fg-on-board);
     font-family: var(--qb-font-body);
     font-size: var(--qb-text-base);
     font-weight: var(--qb-weight-regular);

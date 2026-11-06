@@ -4,12 +4,12 @@ using System.Net.Http.Headers;
 namespace QuestBoard.IntegrationTests.Mobile;
 
 /// <summary>
-/// Tests for mobile.css content integrity and link presence in mobile responses.
+/// Tests for the phone stylesheets' content integrity and link presence in mobile responses.
 ///
 /// Two test kinds:
-/// 1. File-content tests — read the phone shell sheet and mobile.css from disk and assert the 44px touch-target
-///    rule and the 16px body size
-/// 2. Link-presence integration tests — mobile UA response links mobile.css; desktop UA response does not
+/// 1. File-content tests — read the phone shell sheet, base.css and tokens.css from disk and assert the 44px
+///    touch-target rule and the 16px body size
+/// 2. Link-presence integration tests — mobile UA response links the phone shell sheet; desktop UA response does not
 /// </summary>
 public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 {
@@ -91,23 +91,27 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// File-content test: mobile.css must contain the 16px body font-size rule
-    /// to prevent iOS input-focus auto-zoom.
+    /// File-content test: the page's body text is 16px (1rem) so iOS does not auto-zoom on input focus. The size
+    /// is set once for every layout in the base stylesheet, from the shared token.
     /// </summary>
     [Fact]
     public void MobileCss_File_Contains16pxBodyFontSize()
     {
         // Arrange
-        var cssPath = ResolveCssPath("mobile.css");
-        var css = File.ReadAllText(cssPath);
+        var basePath = ResolveCssPath("base.css");
+        var baseCss = File.ReadAllText(basePath);
+        var tokensPath = ResolveCssPath("tokens.css");
+        var tokens = File.ReadAllText(tokensPath);
 
         // Assert
-        css.Should().Contain("font-size: 16px",
-            because: $"mobile.css at '{cssPath}' must set 16px body font-size to prevent iOS auto-zoom");
+        baseCss.Should().Contain("font-size: var(--qb-text-base)",
+            because: $"base.css at '{basePath}' must size the body text from the shared token to prevent iOS auto-zoom");
+        tokens.Should().Contain("--qb-text-base: 1rem",
+            because: $"tokens.css at '{tokensPath}' defines the body text size the base rule reads, 16px");
     }
 
     /// <summary>
-    /// Link-presence test: a mobile User-Agent GET "/" response must link mobile.css
+    /// Link-presence test: a mobile User-Agent GET "/" response must link the phone shell stylesheet
     /// (rendered by _Layout.Mobile.cshtml via asp-append-version).
     /// </summary>
     [Fact]
@@ -118,13 +122,13 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("mobile.css",
-            because: "a mobile-UA response must include the mobile.css stylesheet link");
+        html.Should().Contain("shell.mobile.css",
+            because: "a mobile-UA response must include the phone shell stylesheet link");
     }
 
     /// <summary>
     /// Parity test: a desktop User-Agent GET "/" response must NOT link mobile.css
-    /// and MUST still link site.css — confirming the desktop layout is unchanged.
+    /// and MUST still link its desktop legacy stylesheet, legacy-pages.css — confirming the desktop layout is unchanged.
     /// </summary>
     [Fact]
     public async Task MobileCss_DesktopUserAgent_ResponseDoesNotLinkMobileStylesheet()
@@ -136,7 +140,7 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("mobile.css",
             because: "a desktop-UA response must not include the mobile.css stylesheet link");
-        html.Should().Contain("site.css",
-            because: "a desktop-UA response must still link site.css — desktop layout is unchanged");
+        html.Should().Contain("legacy-pages.css",
+            because: "a desktop-UA response must still link legacy-pages.css — desktop layout is unchanged");
     }
 }

@@ -171,7 +171,7 @@ public class UiFoundationDesktopShellGuardTests
     public void Backdrop_IsOneRuleInBaseAndTheDesktopPhotoIsNamedByTheShell()
     {
         Regex.Matches(ReadRepoFile(CssRoot + "base.css"), @"body::before\s*\{").Should().HaveCount(1);
-        ReadRepoFile(CssRoot + "site.css").Should().NotContain("body::before",
+        ReadRepoFile(CssRoot + "legacy-pages.css").Should().NotContain("body::before",
             "the desktop backdrop is defined once, in base.css");
 
         var base_ = Regex.Replace(ReadRepoFile(CssRoot + "base.css"), @"/\*[\s\S]*?\*/", " ");

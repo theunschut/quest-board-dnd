@@ -231,13 +231,13 @@ public class CalendarSubscriptionStaticGuardTests
     [Fact]
     public void QrCodeSizingRule_ExistsInBothStylesheets()
     {
-        var desktopCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "site.css"));
+        var desktopCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "legacy-pages.css"));
         var mobileCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.mobile.css"));
 
         var desktopRule = ExtractCssRule(desktopCss, ".calendar-subscription-qr svg {");
         var mobileRule = ExtractCssRule(mobileCss, ".calendar-subscription-qr svg {");
 
-        desktopRule.Should().NotBeEmpty(because: "site.css must size the QR SVG for the desktop layout");
+        desktopRule.Should().NotBeEmpty(because: "legacy-pages.css must size the QR SVG for the desktop layout");
         desktopRule.Should().Contain("max-width: 240px");
 
         mobileRule.Should().NotBeEmpty(
