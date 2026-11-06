@@ -112,6 +112,7 @@
     --bs-card-border-radius: var(--qb-radius-lg);
     --bs-card-cap-bg: transparent;
     --bs-card-cap-color: var(--qb-fg);
+    --bs-danger-rgb: var(--qb-danger-text-rgb);
     color: var(--qb-fg);
     border: 1px solid var(--qb-surface-glass-border);
     border-radius: var(--qb-radius-lg);
@@ -351,6 +352,12 @@
     font-size: var(--qb-text-sm);
   }
 
+  /* A link inside helper text keeps the link colour and its underline, which is what tells it from the words around it. */
+  .form-text a {
+    color: var(--qb-link);
+    font-weight: var(--qb-weight-strong);
+  }
+
   /*
    * Validation: a field in error has a 2px border in the danger fill (it holds 3:1 on the field), and its message is
    * the danger text variant, which holds 4.5:1 on glass. The framework's own invalid class and the server-side
@@ -539,6 +546,78 @@
     top: var(--qb-nav-h);
     width: 100%;
     max-width: 24rem;
+  }
+
+  /* A name or an address that links out of a table cell is bold; the underline stays as its cue. */
+  .table .email-link {
+    font-weight: var(--qb-weight-strong);
+  }
+
+  /* Long free text inside a card scrolls inside its own box instead of stretching the card. */
+  .modern-card .card-text {
+    max-height: 125px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: var(--qb-fg-muted) var(--qb-surface-glass);
+    scrollbar-width: thin;
+    white-space: pre-wrap;
+  }
+
+  .modern-card .card-text::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .modern-card .card-text::-webkit-scrollbar-track {
+    border-radius: var(--qb-radius-sm);
+    background: var(--qb-surface-glass);
+  }
+
+  .modern-card .card-text::-webkit-scrollbar-thumb {
+    border-radius: var(--qb-radius-sm);
+    background: var(--qb-fg-muted);
+  }
+
+  /*
+   * Clickable rows and cards carry a mouse click handler on a non-interactive element. This class styles the real
+   * link placed inside them so keyboard and assistive-technology users reach the same destination without the row
+   * changing how it looks. The focus ring comes from the base layer.
+   */
+  .row-nav-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .row-nav-link:hover,
+  .row-nav-link:focus {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  /* The row of toggle cells that picks which weeks of a recurring event's cycle are on. */
+  .cycle-mask-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-xs);
+  }
+
+  .cycle-mask-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--qb-border-strong);
+    border-radius: var(--qb-radius-sm);
+    background-color: transparent;
+    cursor: pointer;
+  }
+
+  /* The event and series identity fill, reserved for the "on" cell. */
+  .cycle-mask-cell.on {
+    border-color: var(--qb-event);
+    background-color: var(--qb-event);
+    color: var(--qb-event-fg);
   }
 
   /*

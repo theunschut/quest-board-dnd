@@ -8,9 +8,9 @@
     no tab stop and no data attributes. Every
     value is encoded by Razor, and nothing here carries an element id.
 
-    The visible lines are divs, not spans: the calendar sits inside a .modern-card, whose span
-    rule forces cream text with !important, which turns a dark chip title into cream on a pale chip.
-    Only the visually hidden text may be a span.
+    The visible lines are divs, not spans: the calendar sits inside a card, and a visible span here
+    would take the card's light text colour, which turns a dark chip title into cream on a pale
+    chip. Only the visually hidden text may be a span.
 *@
 <div class="linked-day-entries">
     @foreach (var eventOnDay in Model.Events)

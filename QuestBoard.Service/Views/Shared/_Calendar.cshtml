@@ -38,7 +38,7 @@
                     @if (day.Linked.HasEntries)
                     {
                         var linkedNoun = day.Linked.Count == 1 ? "entry" : "entries";
-                        @* A div, not a span, so the card's cream span rule does not override its own style. *@
+                        @* A div, not a span, so the count keeps the colour calendar.css gives it whatever colour the card gives its text. *@
                         <div class="linked-day-count" title="@day.Linked.Count @linkedNoun from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count<span class="visually-hidden"> @linkedNoun from linked boards</span></div>
                     }
 

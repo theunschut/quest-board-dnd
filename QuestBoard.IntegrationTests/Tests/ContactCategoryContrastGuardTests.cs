@@ -1,5 +1,6 @@
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace QuestBoard.IntegrationTests.Tests;
 
@@ -66,6 +67,27 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
         return end < 0 ? string.Empty : css[start..(end + 1)];
     }
 
+    // The lightest pixel of the board backdrop; translucent card surfaces are measured over it because
+    // that is where light text on glass is weakest.
+    private const string LightestBoard = "#794317";
+
+    // The declared value of a token in tokens.css (the first declaration, which is the board's own
+    // palette rather than the Shop theme override further down). Every token used here is a plain
+    // colour literal, which is what WcagContrast can parse.
+    private static string TokenValue(string tokensCss, string name)
+    {
+        var match = Regex.Match(tokensCss, @"(?<![\w-])" + Regex.Escape(name) + @"\s*:\s*(?<value>[^;]+);");
+        match.Success.Should().BeTrue(because: $"tokens.css must declare {name}");
+        return match.Groups["value"].Value.Trim();
+    }
+
+    // A text token's contrast on the card surface: the glass tint over the scrim over the lightest board pixel.
+    private static double RatioOnCardSurface(string tokensCss, string textToken) =>
+        WcagContrast.TextOn(
+            TokenValue(tokensCss, textToken),
+            [TokenValue(tokensCss, "--qb-surface-scrim"), TokenValue(tokensCss, "--qb-surface-glass")],
+            LightestBoard);
+
     [Fact]
     public async Task ContactCategoryContrastGuard_ManagementPageLabel_RendersInsideScopedFormOnMobileOnly()
     {
@@ -122,20 +144,24 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
     [Fact]
     public void ContactCategoryContrastGuard_ModernCardFormTextLinkRule_SetsParchmentColourWithUnderlineIntact()
     {
-        var cssPath = ResolveCssPath("modern-card.css");
+        var cssPath = ResolveCssPath("components.css");
         var css = File.ReadAllText(cssPath);
-        var rule = ExtractCssRule(css, ".modern-card .form-text a {");
+        var rule = ExtractCssRule(css, ".form-text a {");
 
         rule.Should().NotBeEmpty(
-            because: $"modern-card.css at '{cssPath}' must contain a scoped .modern-card .form-text a rule");
+            because: $"components.css at '{cssPath}' must contain a scoped .form-text a rule");
 
         var lowerRule = rule.ToLowerInvariant();
-        lowerRule.Should().Contain("#f4e4bc",
-            because: "the desktop 'Manage Categories' helper link must resolve to the parchment token, not Bootstrap's default link blue rgb(13,110,253)");
+        lowerRule.Should().Contain("color: var(--qb-link)",
+            because: "the desktop 'Manage Categories' helper link must resolve to the link token, not Bootstrap's default link blue rgb(13,110,253)");
         lowerRule.Should().NotContain("#0d6efd",
             because: "the rule body must not merely restate Bootstrap's default link colour under a more specific selector");
         lowerRule.Should().NotContain("text-decoration: none",
             because: "the underline is the link's non-colour affordance now that it shares a hue with its surrounding text; suppressing it would violate WCAG 1.4.1");
+
+        var tokens = File.ReadAllText(ResolveCssPath("tokens.css"));
+        RatioOnCardSurface(tokens, "--qb-link").Should().BeGreaterThanOrEqualTo(4.5,
+            because: "the helper link is body-size text on the card surface, so it needs the 4.5:1 text bar over the lightest board pixel");
     }
 
     [Fact]
@@ -147,7 +173,7 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
 
         rule.Should().NotBeEmpty(
             because: $"contact-form.mobile.css at '{cssPath}' must contain the mirrored .contact-form-card .form-text a rule -- " +
-                     "fixing only modern-card.css would leave the mobile half of the gap rendering Bootstrap link blue");
+                     "fixing only the desktop rule would leave the mobile half of the gap rendering Bootstrap link blue");
 
         var lowerRule = rule.ToLowerInvariant();
         lowerRule.Should().Contain("#f4e4bc",
@@ -161,20 +187,28 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
     [Fact]
     public void ContactCategoryContrastGuard_PreExistingScopedOverrides_StillPinValidationRedAndHeaderSubtitle()
     {
-        var cssPath = ResolveCssPath("modern-card.css");
+        var cssPath = ResolveCssPath("components.css");
         var css = File.ReadAllText(cssPath);
+        var tokens = File.ReadAllText(ResolveCssPath("tokens.css"));
 
-        var textDangerRule = ExtractCssRule(css, ".modern-card .text-danger {");
-        textDangerRule.Should().NotBeEmpty(
-            because: $"modern-card.css at '{cssPath}' must still carry the .modern-card .text-danger scoped override");
-        textDangerRule.ToLowerInvariant().Should().Contain("#ff6b6b",
-            because: "validation messages inside a .modern-card must still render Bootstrap danger red, not the element-enumeration rule's cream");
+        // Validation text inside a card means the light danger variant, which the card surface maps for Bootstrap's
+        // danger utilities, so a .text-danger message reads as an error and is not repainted by anything else.
+        var cardSurfaceRule = ExtractCssRule(css, ".modern-card {");
+        cardSurfaceRule.Should().NotBeEmpty(
+            because: $"components.css at '{cssPath}' must carry the .modern-card surface rule");
+        cardSurfaceRule.Should().Contain("--bs-danger-rgb: var(--qb-danger-text-rgb)",
+            because: "validation messages inside a .modern-card must still render the danger text colour, not the card's body colour");
+        RatioOnCardSurface(tokens, "--qb-danger-text").Should().BeGreaterThanOrEqualTo(4.5,
+            because: "validation text is body-size text on the card surface, so it needs the 4.5:1 text bar over the lightest board pixel");
 
-        var headerSubtitleRule = ExtractCssRule(css, ".modern-card-header .header-subtitle {");
+        var headerSubtitleRule = ExtractCssRule(css, ".header-subtitle {");
         headerSubtitleRule.Should().NotBeEmpty(
-            because: $"modern-card.css at '{cssPath}' must still carry the .modern-card-header .header-subtitle scoped override");
-        headerSubtitleRule.ToLowerInvariant().Should().Contain("#1a1a1a",
-            because: "the card header's secondary line must still resolve to its own dark colour, not the heading's gold-on-dark treatment");
+            because: $"components.css at '{cssPath}' must still carry the .header-subtitle rule");
+        var token = Regex.Match(headerSubtitleRule, @"color:\s*var\((?<name>--qb-[\w-]+)\)");
+        token.Success.Should().BeTrue(
+            because: "the card header's secondary line must take its colour from a --qb-* token, not a literal");
+        RatioOnCardSurface(tokens, token.Groups["name"].Value).Should().BeGreaterThanOrEqualTo(4.5,
+            because: "the card header's secondary line must stay readable on the header surface");
     }
 
     [Fact]
@@ -197,7 +231,7 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
         AssertHelperLinkPresentInsideFormText(mobileHtml, "mobile");
 
         desktopHtml.Should().Contain("modern-card",
-            because: "the desktop Contacts Create view must wrap its form in .modern-card, the surface the modern-card.css rule targets -- " +
+            because: "the desktop Contacts Create view must wrap its form in .modern-card, the surface the desktop card rules target -- " +
                      "proving the two-stylesheet fix is necessary and not duplicated");
         mobileHtml.Should().Contain("contact-form-card",
             because: "the mobile Contacts Create view must wrap its form in .contact-form-card, the surface the contact-form.mobile.css rule targets -- " +

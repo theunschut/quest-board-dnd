@@ -82,7 +82,7 @@ public class LinkedBoardStaticGuardTests
             because: $"{fileName} must not use the answer vocabulary of the board's own entries");
     }
 
-    // ---- Desktop linked text is not repainted by the card's span rule ----
+    // ---- Desktop linked text does not take the card's text colour ----
 
     // The desktop calendar sits inside a card, and the linked chips and the day count sit on pale
     // surfaces of their own. A visible span there would take whatever colour the surrounding card

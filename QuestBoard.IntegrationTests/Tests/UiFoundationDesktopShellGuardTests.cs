@@ -154,7 +154,7 @@ public class UiFoundationDesktopShellGuardTests
         OpeningTags(markup, "body").Single().Should().Contain("group-picker");
 
         var sheet = markup.IndexOf("~/css/group-picker.css", StringComparison.Ordinal);
-        sheet.Should().BeGreaterThan(markup.IndexOf("~/css/modern-card.css", StringComparison.Ordinal),
+        sheet.Should().BeGreaterThan(markup.IndexOf("~/css/legacy-pages.css", StringComparison.Ordinal),
             "the picker sheet follows the legacy sheets");
         sheet.Should().BeLessThan(markup.IndexOf("RenderSectionAsync(\"Styles\"", StringComparison.Ordinal),
             "the picker sheet precedes the page Styles section");
