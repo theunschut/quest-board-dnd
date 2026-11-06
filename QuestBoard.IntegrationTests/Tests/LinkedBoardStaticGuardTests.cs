@@ -84,10 +84,10 @@ public class LinkedBoardStaticGuardTests
 
     // ---- Desktop linked text is not repainted by the card's span rule ----
 
-    // The desktop calendar sits inside a .modern-card, and modern-card.css paints every span in a
-    // card cream with !important. A visible span in a linked chip or in the day count therefore
-    // renders cream on the chip's pale surface whatever calendar.css asks for, which no markup
-    // assertion would notice. Only text that is hidden from sight may be a span.
+    // The desktop calendar sits inside a card, and the linked chips and the day count sit on pale
+    // surfaces of their own. A visible span there would take whatever colour the surrounding card
+    // gives its text, which can be light on those pale surfaces and which no markup assertion would
+    // notice. Only text that is hidden from sight may be a span; visible text is a div.
     private static readonly Regex SpanTag = new(@"<span\b[^>]*>", RegexOptions.Compiled);
 
     [Fact]
@@ -97,7 +97,7 @@ public class LinkedBoardStaticGuardTests
 
         spans.Should().NotBeEmpty(because: "each chip carries visually hidden status text");
         spans.Should().OnlyContain(tag => tag.Contains("class=\"visually-hidden\""),
-            because: "a visible span inside the calendar card is repainted cream by the card's !important span rule");
+            because: "a visible span inside the calendar card must stay readable on pages that have not been converted yet");
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class LinkedBoardStaticGuardTests
         var tagStart = source.LastIndexOf('<', start);
         var element = source[tagStart..(source.IndexOf("</div>", start, StringComparison.Ordinal) + "</div>".Length)];
 
-        element.Should().StartWith("<div", because: "a span would be repainted by the card's !important span rule");
+        element.Should().StartWith("<div", because: "a visible span inside the calendar card must stay readable on pages that have not been converted yet");
         SpanTag.Matches(element).Select(m => m.Value)
             .Should().OnlyContain(tag => tag.Contains("class=\"visually-hidden\""));
     }
