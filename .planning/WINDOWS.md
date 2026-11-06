@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 19
+open_count: 18
 waived_count: 1
-fixed_count: 5
-total_count: 25
-last_updated: 2026-11-01T21:28:16.980Z
+fixed_count: 7
+total_count: 26
+last_updated: 2026-11-06T16:16:26.365Z
 ---
 
 # Broken Windows Ledger
@@ -34,12 +34,13 @@ last_updated: 2026-11-01T21:28:16.980Z
 | 17 | 94 | deviation | QuestBoard.Service/wwwroot/css/components.css |  | Alerts ship as a parchment panel with ink text and a status stripe rather than Direction A's dark overlay panel: the unlayered legacy heading colour rules paint alert headings dark (a dark h6.alert-heading measured 1.15:1 on the dark panel). The dark alert can return once 94-23 retires the global heading colour rules; revisit in 94-24's operator review. | open |  | 2026-11-01T19:59:39.612Z |  |
 | 18 | 94 | deviation | QuestBoard.Service/wwwroot/css/components.css |  | On paper surfaces (tables, alerts, list rows) a status colour used as TEXT now renders as ink: the status fills measure 4.24-4.32:1 on parchment (amber 1.68:1) and the light text variants are made for glass, so the icon and the word carry the status there. Guard ComponentsCss_MapsBootstrapVariablesPerSurface updated to match. | open |  | 2026-11-01T19:59:39.713Z |  |
 | 19 | 94 | deviation | ~/qb-ui-review/phase-94/tools/readability-compare.py |  | After 94-20, the shared comparison still flagged 10 pre-existing failures whose only change was font size (badges 12->14px, form labels 16->14px; identical ratios). The orchestrator re-keyed sample-less failures by selector and bar only (multiset, so a real new failure on the same selector still raises the count). All pairs so far (bump, layering, base, p20-after, p20-final) PASS. | fixed |  | 2026-11-01T19:59:39.818Z | 2026-11-01T19:59:43.664Z |
-| 20 | 94 | deviation | QuestBoard.Service/wwwroot/css/site.css |  | Widens entry 15: besides the bare div rule, site.css's unlayered 'ul, ol, li { background: none }' and 'p, li, span, small { color; text-shadow }' rules also beat the layered shell. 94-21 routed menu fills through --qb-menu-fill painted by one small unlayered '.chrome .navbar-collapse, .chrome .dropdown-menu' rule in site.css, and changed the footer text, GroupPicker brand and Platform user name from span to div. 94-23 must retire the ul/ol/li background reset and the p/li/span/small colour rule with the div rule, and delete that restatement rule in the same change. | open |  | 2026-11-01T20:55:12.633Z |  |
+| 20 | 94 | deviation | QuestBoard.Service/wwwroot/css/site.css |  | Widens entry 15: besides the bare div rule, site.css's unlayered 'ul, ol, li { background: none }' and 'p, li, span, small { color; text-shadow }' rules also beat the layered shell. 94-21 routed menu fills through --qb-menu-fill painted by one small unlayered '.chrome .navbar-collapse, .chrome .dropdown-menu' rule in site.css, and changed the footer text, GroupPicker brand and Platform user name from span to div. 94-23 must retire the ul/ol/li background reset and the p/li/span/small colour rule with the div rule, and delete that restatement rule in the same change. | fixed |  | 2026-11-01T20:55:12.633Z | 2026-11-06T16:16:26.157Z |
 | 21 | 94 | deviation | QuestBoard.Service/Views/Shared/_Layout.cshtml |  | Main desktop navbar collapses below 1200px (navbar-expand-xl, was lg) with a compact link step from 1200 to 1399px: the fullest menu needs about 1326px in one row, and the legacy bar wrapped to 77px at 1200 and 101px at 992, covering content. Windows 992-1199px wide now get the hamburger menu. Also removed text-danger from the Admin and Dungeon Master toggles (it already computed parchment and its important colour blocked the gold hover). Surface in 94-24's operator review. | open |  | 2026-11-01T20:55:12.732Z |  |
 | 22 | 94 | deviation | QuestBoard.Service/wwwroot/css/tokens.css |  | Board image is now '--qb-board-image: var(--qb-board-photo, none)' with shell.css setting ':root { --qb-board-photo: url(notice-board-1600.webp) }' (tokens.css edited, not on 94-21's list) so a Shop theme on <html> is not overridden by a body-level value. 94-22 must set the 900px phone photo through --qb-board-photo on :root, not 'body { --qb-board-image }'. base.css also makes the body fill transparent (Bootstrap's white body had hidden the backdrop), so phone pages already show the board via mobile.css's own 3 MB JPEG until 94-22 replaces it. | open |  | 2026-11-01T20:55:12.835Z |  |
-| 23 | 94 | deviation | QuestBoard.Service/wwwroot/css/mobile.css |  | Phone side of entries 15/20: the phone layouts never load site.css, so only mobile.css's unlayered h1-h6 colour rule beats the layered shell there. 94-22 worked around it by changing the offcanvas title from h5 to div.h5 on both phone layouts (no restatement rule added). 94-23 retires that mobile.css heading rule; the div.h5 may then stay or return to h5. | open |  | 2026-11-01T21:28:16.779Z |  |
+| 23 | 94 | deviation | QuestBoard.Service/wwwroot/css/mobile.css |  | Phone side of entries 15/20: the phone layouts never load site.css, so only mobile.css's unlayered h1-h6 colour rule beats the layered shell there. 94-22 worked around it by changing the offcanvas title from h5 to div.h5 on both phone layouts (no restatement rule added). 94-23 retires that mobile.css heading rule; the div.h5 may then stay or return to h5. | fixed |  | 2026-11-01T21:28:16.779Z | 2026-11-06T16:16:26.261Z |
 | 24 | 94 | deviation | QuestBoard.Service/wwwroot/css/quests.mobile.css |  | Page-owned links under the 44px phone target (the shell's 44px rule covers controls only): /quests has 6 a.row-nav-link quest titles at 27px (quests.mobile.css); /Platform/Users has 43 a.email-link links at 22px. Left to the Quests and Platform area phases; include in the G2 cut's per-area findings. | open |  | 2026-11-01T21:28:16.878Z |  |
 | 25 | 94 | deviation | QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml |  | Phone shell structure: the top bar is a div inside <header> (not a nav), so each phone layout has exactly one named nav (the offcanvas body); <main> gained flex-grow-1 because the important mt-auto utility beat the footer clearance; site.js gained 13 lines keeping aria-expanded on offcanvas togglers in step (Bootstrap never updates it on the opening button). The 900px backdrop is upscaled about 1.4x on tall phones and looks slightly soft; surface in 94-24's operator review. | open |  | 2026-11-01T21:28:16.980Z |  |
+| 26 | 94 | deviation | QuestBoard.Service/wwwroot/css/legacy-pages.css |  | Entry 15 narrowed by 94-23: the bare div reset, the .container reset and the Quest Log exception are gone (no Quest Log regression in the sweeps). Only modern-card.css's '.toast { background-color: var(--bs-toast-bg) }' restatement remains; delete it with modern-card.css in 94-24, then close entry 15. Also for 94-24: nothing colours .alert-heading any more, so the dark-panel alert (entry 17) may now pass; confirm visually at the operator review. mobile.css keeps 'h1-h6 { font-weight: bold }' as a stopgap until the heading scale (entry 11) lands. | open |  | 2026-11-06T16:16:26.365Z |  |
 
 ````json
 [
@@ -278,10 +279,10 @@ last_updated: 2026-11-01T21:28:16.980Z
     "file": "QuestBoard.Service/wwwroot/css/site.css",
     "line": null,
     "description": "Widens entry 15: besides the bare div rule, site.css's unlayered 'ul, ol, li { background: none }' and 'p, li, span, small { color; text-shadow }' rules also beat the layered shell. 94-21 routed menu fills through --qb-menu-fill painted by one small unlayered '.chrome .navbar-collapse, .chrome .dropdown-menu' rule in site.css, and changed the footer text, GroupPicker brand and Platform user name from span to div. 94-23 must retire the ul/ol/li background reset and the p/li/span/small colour rule with the div rule, and delete that restatement rule in the same change.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-11-01T20:55:12.633Z",
-    "resolved_at": null
+    "resolved_at": "2026-11-06T16:16:26.157Z"
   },
   {
     "id": 21,
@@ -314,10 +315,10 @@ last_updated: 2026-11-01T21:28:16.980Z
     "file": "QuestBoard.Service/wwwroot/css/mobile.css",
     "line": null,
     "description": "Phone side of entries 15/20: the phone layouts never load site.css, so only mobile.css's unlayered h1-h6 colour rule beats the layered shell there. 94-22 worked around it by changing the offcanvas title from h5 to div.h5 on both phone layouts (no restatement rule added). 94-23 retires that mobile.css heading rule; the div.h5 may then stay or return to h5.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-11-01T21:28:16.779Z",
-    "resolved_at": null
+    "resolved_at": "2026-11-06T16:16:26.261Z"
   },
   {
     "id": 24,
@@ -341,6 +342,18 @@ last_updated: 2026-11-01T21:28:16.980Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-01T21:28:16.980Z",
+    "resolved_at": null
+  },
+  {
+    "id": 26,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/css/legacy-pages.css",
+    "line": null,
+    "description": "Entry 15 narrowed by 94-23: the bare div reset, the .container reset and the Quest Log exception are gone (no Quest Log regression in the sweeps). Only modern-card.css's '.toast { background-color: var(--bs-toast-bg) }' restatement remains; delete it with modern-card.css in 94-24, then close entry 15. Also for 94-24: nothing colours .alert-heading any more, so the dark-panel alert (entry 17) may now pass; confirm visually at the operator review. mobile.css keeps 'h1-h6 { font-weight: bold }' as a stopgap until the heading scale (entry 11) lands.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-06T16:16:26.365Z",
     "resolved_at": null
   }
 ]
