@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 94
-current_phase_name: whole-app-ui-review-and-unification
-status: executing
+current_phase: 95
+current_phase_name: Quests and Quest Log UI conversion
+status: planning
 stopped_at: Phase 94 UI-SPEC approved
-last_updated: "2026-11-01T12:25:24.262Z"
-last_activity: 2026-11-01
-last_activity_desc: Phase 94 execution started
+last_updated: "2026-11-09T17:42:49.029Z"
+last_activity: 2026-11-09
+last_activity_desc: Phase 94 complete, transitioned to Phase 95
 progress:
-  total_phases: 23
-  completed_phases: 19
+  total_phases: 30
+  completed_phases: 20
   total_plans: 190
-  completed_plans: 154
-  percent: 81
+  completed_plans: 181
+  percent: 67
 state_head: 2777f4082e0b974492f8b2ba0a271ba5d73118f8
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 ## Current Position
 
-Phase: 94 (whole-app-ui-review-and-unification) — EXECUTING
-Plan: 1 of 27
-Status: Executing Phase 94
-Last activity: 2026-11-01 — Phase 94 execution started
+Phase: 95 — Quests and Quest Log UI conversion
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-09 — Phase 94 complete, transitioned to Phase 95
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,

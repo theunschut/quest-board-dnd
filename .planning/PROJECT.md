@@ -1,6 +1,6 @@
 # D&D Quest Board
 
-## Current State: v9.0 Rolling Improvements in progress — Phase 93 complete (2026-10-21)
+## Current State: v9.0 Rolling Improvements in progress — Phase 94 complete (2026-11-09)
 
 **Latest:** A super admin can now choose, per board, which pages it offers and which page it opens on. The Platform board Edit page gained a Pages section: one switch each for the quest list, Calendar, Events, Quest Log, Characters, Contacts, Players, Shop and the DM profile, plus a home-page dropdown. A switched-off page disappears from both menus, and the server refuses it on every verb when its URL is typed, sending the visitor to the board's home with an Info toast. `/`, login, the board picker and the Account back link all land on the home page, so a board can open on `/Calendar`; the board list shows a "Home: X" badge. Board type stays a hard ceiling, nothing is deleted when a page is switched off, and boards nobody configures behave exactly as before. Saves go through one Domain rule set that refuses switching off the home page, Events while upcoming events or running series exist, and Quests while a quest is live. Linked calendars show entries from a switched-off page as plain text, moves onto a board that does not use that kind of entry are refused, and character pickers and DM-profile links hide with their pages (Phase 93, D-01…D-21).
 
@@ -172,6 +172,14 @@ The quest board must reliably let DMs post quests and players sign up — everyt
   - **Surfaces:** both layouts, My Agenda, Calendar, Events/Series redirects, Quest Details pickers, Players and DM profile links, linked-calendar entries, the Move picker and the Platform board list badge, desktop and `.Mobile`.
   - **Reviews:** code review 0 critical, 2 warnings, both fixed; security 49/49 threats closed (8 accepted), including T-93-28 fixed post-audit; UI review 21/24; verification 7/7 (re-verified after the fixes). Released as v5.7.0; the real-phone checks passed after release, and the mobile Edit page's refusal red and switch colour were brought in line with desktop afterwards.
   - Executed as 15 plans across 5 waves. Full suite: 1300 unit + 1656 integration passing (11 SQL-gated) — v9.0 (Phase 93)
+- ✓ Whole-App UI Review and Unification (no requirement IDs) — a design foundation the whole app now sits on, plus the plan to convert every page onto it.
+  - **Audit and sign-off:** every page captured on desktop and phone, audited per area with contrast measured; the operator chose Direction A (refined glass, strong board texture, wood primary action, static phone navbar, navy Shop) and the calendar's fit-without-scrolling behaviour from mockups.
+  - **Foundation:** `@layer vendor, tokens, base, components, pages, utilities`; `tokens.css` holds the signed-off colours, `base.css` the two-tone focus ring, reduced motion and the heading scale, `components.css` cards, buttons, forms, dark alerts, tables, badges, overlays and empty states; Bootstrap 5.3.8 and Font Awesome 6.7.2 self-hosted in the vendor layer and re-themed through `--bs-*` variables; jQuery removed.
+  - **Shells:** all five layouts have a skip link, landmarks and named togglers; desktop bar collapses below 1200px, phone navbar is static with 44px targets; the board backdrop is a 1600/900px WebP; error and warning toasts persist until dismissed.
+  - **Retired:** `modern-card.css` and the global rules in `site.css` (remainder renamed `legacy-pages.css`) and `mobile.css`; contrast failures across all pages fell from about 2,438 to 623, every remaining one assigned to an area phase.
+  - **Follow-up:** area phases 95–101 (Quests, Account, Events/Calendar, Characters/Contacts, Shop, Admin/Platform, email templates) appended after the operator approved the cut; `.claude/ui-guidelines.md` rewritten for the new system.
+  - **Reviews:** verification 9/9; code review 0 critical, 2 warnings logged for the area phases (dead legacy `!important` overrides, a narrow planning-reference guard).
+  - Executed as 27 plans across 16 waves. Full suite: 1300 unit + 1751 integration passing (11 SQL-gated) — v9.0 (Phase 94)
 
 ### Active
 - [ ] Several Phase 92 integration tests hard-code 2031 dates against the real board clock, so they will start failing once the real date reaches them; rebuild them from `IBoardClock` like the other date-relative fixtures (`92-REVIEW.md` IN-04)
@@ -344,4 +352,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-10-21 after Phase 93 (Per-Board Page Selection and Home Page).*
+*Last updated: 2026-11-09 after Phase 94 (Whole-App UI Review and Unification).*
