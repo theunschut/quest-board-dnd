@@ -142,6 +142,11 @@
     overflow-wrap: anywhere;
   }
 
+  /* The phone has no display step: a card title there is the heading step, 20px. */
+  .mobile-layout .modern-card-header :is(h1, h2) {
+    font-size: var(--qb-text-lg);
+  }
+
   /* The line under a page title, in the card's own colour family at the label step. */
   .header-subtitle {
     display: block;
