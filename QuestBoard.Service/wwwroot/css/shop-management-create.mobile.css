@@ -19,8 +19,13 @@
 
 /* Card heading */
 .shop-mgmt-create-card-mobile h5 {
-    color: #F4E4BC !important;
+    color: var(--qb-fg-heading) !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+}
+
+/* The section title keeps the info hue only as its Bootstrap class; on plain glass the heading colour is the one that reads. */
+.shop-mgmt-create-card-mobile h5.text-info {
+    --bs-info-rgb: var(--qb-fg-heading-rgb);
 }
 
 /* Help text and small meta — faded parchment */

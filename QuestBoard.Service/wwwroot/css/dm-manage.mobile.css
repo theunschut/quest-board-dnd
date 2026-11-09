@@ -13,7 +13,7 @@
 
 /* Quest title — parchment */
 .dm-manage-title {
-    color: #F4E4BC !important;
+    color: var(--qb-fg-heading) !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
 }
 

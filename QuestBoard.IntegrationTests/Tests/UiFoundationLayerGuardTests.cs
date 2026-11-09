@@ -319,7 +319,7 @@ public class UiFoundationLayerGuardTests
     // Text colours that sit on glass, the translucent card surface.
     private static readonly string[] GlassText =
     [
-        "--qb-fg", "--qb-fg-muted", "--qb-link", "--qb-link-hover", "--qb-accent-text",
+        "--qb-fg", "--qb-fg-heading", "--qb-fg-muted", "--qb-link", "--qb-link-hover", "--qb-accent-text",
         "--qb-success-text", "--qb-danger-text", "--qb-warning-text", "--qb-info-text",
         "--qb-event-text", "--qb-neutral-text",
     ];

@@ -16,7 +16,7 @@
 .move-card-mobile h5,
 .move-card-mobile h6,
 .move-card-mobile .form-label {
-    color: #F4E4BC;
+    color: var(--qb-fg-heading);
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
 }
 

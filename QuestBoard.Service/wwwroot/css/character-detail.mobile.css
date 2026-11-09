@@ -39,7 +39,7 @@
 
 /* Character name — parchment, slightly larger */
 .character-name-mobile {
-    color: #F4E4BC !important;
+    color: var(--qb-fg-heading) !important;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
     font-size: 1.25rem;
     line-height: 1.3;

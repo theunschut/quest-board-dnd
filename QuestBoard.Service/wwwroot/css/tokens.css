@@ -41,6 +41,8 @@
     --qb-fg: #f4e4bc;
     --qb-fg-muted: #e9dab3;
     --qb-fg-on-board: #f4e4bc;
+    /* Titles on cards that have not been converted yet: lighter than body text, because those cards sit on plain glass without the scrim. */
+    --qb-fg-heading: #fff3c9;
     --qb-ink: #1a0f08;
     --qb-ink-muted: #4f3a22;
     --qb-link: #ffe08a;
@@ -99,6 +101,7 @@
      * holds the channels of --qb-NAME; a guard test checks they stay in step.
      */
     --qb-fg-rgb: 244, 228, 188;
+    --qb-fg-heading-rgb: 255, 243, 201;
     --qb-ink-rgb: 26, 15, 8;
     --qb-wood-rgb: 139, 69, 19;
     --qb-success-rgb: 30, 122, 70;
