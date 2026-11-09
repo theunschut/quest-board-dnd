@@ -319,7 +319,7 @@ public class UiFoundationLayerGuardTests
     // Text colours that sit on glass, the translucent card surface.
     private static readonly string[] GlassText =
     [
-        "--qb-fg", "--qb-fg-muted", "--qb-link", "--qb-link-hover", "--qb-accent-text",
+        "--qb-fg", "--qb-fg-heading", "--qb-fg-muted", "--qb-link", "--qb-link-hover", "--qb-accent-text",
         "--qb-success-text", "--qb-danger-text", "--qb-warning-text", "--qb-info-text",
         "--qb-event-text", "--qb-neutral-text",
     ];
@@ -339,6 +339,7 @@ public class UiFoundationLayerGuardTests
         new("Text on glass, at rest and nested",           GlassText,                     ["glass", "glass-nested"],                                TextBar),
         new("Text on hovered glass",                       GlassText,                     ["glass-hover"],                                          TextBar),
         new("Parchment on the wood chrome and in overlays", ["--qb-fg"],                  ["chrome", "--qb-surface-overlay"],                       TextBar),
+        new("Status text and alert stripes on the overlay", [.. StatusNames.Select(n => $"--qb-{n}-text"), "--qb-accent-text"], ["--qb-surface-overlay"], TextBar),
         new("Light text on the bare board and its fallback", ["--qb-fg-on-board"],        ["board", "fallback"],                                    TextBar),
         new("Ink on paper",                                ["--qb-ink", "--qb-ink-muted"], ["--qb-surface-paper", "--qb-surface-paper-alt"],        TextBar),
         new("Label on gold",                               ["--qb-accent-ink"],           ["--qb-accent", "--qb-accent-strong"],                    TextBar),

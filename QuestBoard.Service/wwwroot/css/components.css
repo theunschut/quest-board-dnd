@@ -65,13 +65,12 @@
   }
 
   /*
-   * Paper: table cells, alerts and rows drawn on parchment read dark text, and links are wood. A status colour used as text
+   * Paper: table cells and rows drawn on parchment read dark text, and links are wood. A status colour used as text
    * means ink here: the fills measure 4.24 to 4.32 against parchment (amber 1.68), under the 4.5:1 text bar, and
    * the light text variants are made for glass. The word and the icon in the markup carry the status.
    */
   .modern-card .table,
   .table,
-  .alert,
   .agenda-row,
   .contact-detail-card .note-item {
     --bs-secondary-color: var(--qb-ink-muted);
@@ -112,6 +111,7 @@
     --bs-card-border-radius: var(--qb-radius-lg);
     --bs-card-cap-bg: transparent;
     --bs-card-cap-color: var(--qb-fg);
+    --bs-danger-rgb: var(--qb-danger-text-rgb);
     color: var(--qb-fg);
     border: 1px solid var(--qb-surface-glass-border);
     border-radius: var(--qb-radius-lg);
@@ -139,6 +139,11 @@
     line-height: var(--qb-leading-heading);
     letter-spacing: 0.04em;
     overflow-wrap: anywhere;
+  }
+
+  /* The phone has no display step: a card title there is the heading step, 20px. */
+  .mobile-layout .modern-card-header :is(h1, h2) {
+    font-size: var(--qb-text-lg);
   }
 
   /* The line under a page title, in the card's own colour family at the label step. */
@@ -351,6 +356,17 @@
     font-size: var(--qb-text-sm);
   }
 
+  /* A read-only value shown as plain text takes the colour of the surface it sits on, not the framework's dark body ink. */
+  .form-control-plaintext {
+    color: inherit;
+  }
+
+  /* A link inside helper text keeps the link colour and its underline, which is what tells it from the words around it. */
+  .form-text a {
+    color: var(--qb-link);
+    font-weight: var(--qb-weight-strong);
+  }
+
   /*
    * Validation: a field in error has a 2px border in the danger fill (it holds 3:1 on the field), and its message is
    * the danger text variant, which holds 4.5:1 on glass. The framework's own invalid class and the server-side
@@ -391,19 +407,21 @@
   }
 
   /*
-   * Alerts: an opaque parchment panel with ink text and a stripe in the status colour. The panel does not depend on
-   * what is behind it, and it is paper rather than dark because the page sheets still paint their headings dark
-   * inside it. The status is carried by the stripe, the words and (in the markup) an icon, never by colour alone.
+   * Alerts: the same opaque dark panel a toast uses, with parchment text and a stripe in the light variant of the
+   * status colour. The panel does not depend on what is behind it. The stripe and the text use the variants made for
+   * dark surfaces, so both clear their bars on the panel (the solid status fills do not reach 3:1 on it). The status is
+   * carried by the stripe, the words and (in the markup) an icon, never by colour alone.
    */
   .alert {
-    --qb-alert-accent: var(--qb-neutral);
-    --bs-alert-bg: var(--qb-surface-paper);
-    --bs-alert-color: var(--qb-ink);
-    --bs-alert-border-color: var(--qb-control-border);
+    --qb-alert-accent: var(--qb-neutral-text);
+    --qb-alert-text: var(--qb-fg);
+    --bs-alert-bg: var(--qb-surface-overlay);
+    --bs-alert-color: var(--qb-alert-text);
+    --bs-alert-border-color: var(--qb-surface-glass-border);
     --bs-alert-border-radius: var(--qb-radius-md);
     --bs-alert-padding-x: var(--qb-space-md);
     --bs-alert-padding-y: var(--qb-space-md);
-    --bs-alert-link-color: var(--qb-wood);
+    --bs-alert-link-color: var(--qb-alert-text);
     border-left: 4px solid var(--qb-alert-accent);
     box-shadow: var(--qb-shadow-rest);
   }
@@ -413,23 +431,28 @@
   }
 
   .alert-success {
-    --qb-alert-accent: var(--qb-success);
+    --qb-alert-accent: var(--qb-success-text);
+    --qb-alert-text: var(--qb-success-text);
   }
 
   .alert-danger {
-    --qb-alert-accent: var(--qb-danger);
+    --qb-alert-accent: var(--qb-danger-text);
+    --qb-alert-text: var(--qb-danger-text);
   }
 
   .alert-warning {
-    --qb-alert-accent: var(--qb-warning);
+    --qb-alert-accent: var(--qb-warning-text);
+    --qb-alert-text: var(--qb-warning-text);
   }
 
   .alert-info {
-    --qb-alert-accent: var(--qb-info);
+    --qb-alert-accent: var(--qb-info-text);
+    --qb-alert-text: var(--qb-info-text);
   }
 
   .alert-primary {
-    --qb-alert-accent: var(--qb-action);
+    --qb-alert-accent: var(--qb-accent-text);
+    --qb-alert-text: var(--qb-fg);
   }
 
   /*
@@ -539,6 +562,78 @@
     top: var(--qb-nav-h);
     width: 100%;
     max-width: 24rem;
+  }
+
+  /* A name or an address that links out of a table cell is bold; the underline stays as its cue. */
+  .table .email-link {
+    font-weight: var(--qb-weight-strong);
+  }
+
+  /* Long free text inside a card scrolls inside its own box instead of stretching the card. */
+  .modern-card .card-text {
+    max-height: 125px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: var(--qb-fg-muted) var(--qb-surface-glass);
+    scrollbar-width: thin;
+    white-space: pre-wrap;
+  }
+
+  .modern-card .card-text::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .modern-card .card-text::-webkit-scrollbar-track {
+    border-radius: var(--qb-radius-sm);
+    background: var(--qb-surface-glass);
+  }
+
+  .modern-card .card-text::-webkit-scrollbar-thumb {
+    border-radius: var(--qb-radius-sm);
+    background: var(--qb-fg-muted);
+  }
+
+  /*
+   * Clickable rows and cards carry a mouse click handler on a non-interactive element. This class styles the real
+   * link placed inside them so keyboard and assistive-technology users reach the same destination without the row
+   * changing how it looks. The focus ring comes from the base layer.
+   */
+  .row-nav-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .row-nav-link:hover,
+  .row-nav-link:focus {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  /* The row of toggle cells that picks which weeks of a recurring event's cycle are on. */
+  .cycle-mask-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-xs);
+  }
+
+  .cycle-mask-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--qb-border-strong);
+    border-radius: var(--qb-radius-sm);
+    background-color: transparent;
+    cursor: pointer;
+  }
+
+  /* The event and series identity fill, reserved for the "on" cell. */
+  .cycle-mask-cell.on {
+    border-color: var(--qb-event);
+    background-color: var(--qb-event);
+    color: var(--qb-event-fg);
   }
 
   /*

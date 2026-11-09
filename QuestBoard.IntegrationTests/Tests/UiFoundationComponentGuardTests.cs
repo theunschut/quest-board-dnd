@@ -195,6 +195,24 @@ public class UiFoundationComponentGuardTests
     }
 
     [Fact]
+    public void ComponentsCss_AlertsAreDarkPanelsWithLightStatusText()
+    {
+        var alert = RuleFor(".alert");
+        Declares(alert, "--bs-alert-bg", "var(--qb-surface-overlay)").Should().BeTrue("an alert is the same opaque panel a toast is");
+        Declares(alert, "--bs-alert-color", "var(--qb-alert-text)").Should().BeTrue();
+        Declares(alert, "--bs-alert-link-color", "var(--qb-alert-text)").Should().BeTrue("a link keeps the text colour of its alert");
+
+        foreach (var status in new[] { "success", "danger", "warning", "info" })
+        {
+            var rule = RuleFor($".alert-{status}");
+            Declares(rule, "--qb-alert-text", $"var(--qb-{status}-text)").Should().BeTrue(
+                $"the {status} alert reads the light variant made for dark surfaces, whose ratio the contrast table pins on the overlay");
+            Declares(rule, "--qb-alert-accent", $"var(--qb-{status}-text)").Should().BeTrue(
+                "the stripe uses the light variant too, because the solid fill does not reach 3:1 on the overlay");
+        }
+    }
+
+    [Fact]
     public void ComponentsCss_UtilitiesSitInUtilitiesLayer()
     {
         var rules = ComponentRules();
