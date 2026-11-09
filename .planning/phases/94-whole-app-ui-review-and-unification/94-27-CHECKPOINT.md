@@ -52,5 +52,5 @@ The full per-phase detail (scope, before and after for every approved relayout, 
 - Decisions served: D-06 (cut approved before append), D-07 (release caveat), D-18 and D-19 (email phase), D-05, D-04 (before/after for relayouts: 31 relayout rows, 21 "not yet drawn", 10 with Direction A mockups).
 - Edits to 94-AUDIT.md in Task 1: Phase 1 Views bullet (Home/Index removed, 10 pairs and 20 files, vote UI described as a scoped patch), Phase 3 Views bullet (no longer lists the signup modal or editor as its own), Phase 5a Views bullet (Home/Index owned, 17 files), the Phase 5a and Phase 4 Stylesheets bullets (stale `site.css` references now point at `legacy-pages.css`), adjustment 12 added (Q-127 to Phase 1), "eleven items" now "twelve".
 - Coverage script: `~/qb-ui-review/phase-94/plans/94-27/coverage.py`; cut file generator: `make-cut.py` in the same folder.
-- Known smell, not changed: `home.mobile.css` is still listed under Phase 95 although its page moved to Phase 96. Counts and coverage are unaffected.
+- `home.mobile.css` stays under Phase 95: it is linked only by `Quest/Index.Mobile.cshtml`, not by the Home page (checked after approval).
 - Out of this plan: Shop item create fix (`deferred-items.md`), WallClockUnmovedTests flake.
