@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 8
+open_count: 6
 waived_count: 5
-fixed_count: 13
-total_count: 26
-last_updated: 2026-11-09T16:39:10.744Z
+fixed_count: 16
+total_count: 27
+last_updated: 2026-11-09T17:27:24.448Z
 ---
 
 # Broken Windows Ledger
@@ -18,11 +18,11 @@ last_updated: 2026-11-09T16:39:10.744Z
 | 1 | 84 | deviation | .planning/ROADMAP.md |  | 84-01 Task 2 ROADMAP.md edits (Requirements line + 16 Coverage rows) computed and verified but not committed - worktree harness blocks commits touching ROADMAP.md; orchestrator must apply after wave merge (see 84-01-SUMMARY.md) | fixed |  | 2026-09-17T20:23:58.316Z | 2026-09-18T07:10:44.090Z |
 | 2 | 84 | deviation | QuestBoard.Service/Controllers/Admin/AccountController.cs |  | Task 3 acceptance criterion 'grep -cE Request.Scheme\|Request.Host outputs 0' is unsatisfiable without touching two pre-existing, unrelated Url.Action(..., Request.Scheme) call sites in ForgotPassword/Edit (email callback URLs) - out of this plan's scope, left as-is | open |  | 2026-09-18T09:38:07.149Z |  |
 | 3 | 84 | unrun-verify | .planning/phases/84-calendar-feed-foundation-and-event-subscription/84-08-PLAN.md |  | Task 3's real-device checkpoint (real phone subscribing via iOS Calendar/Google Calendar/Outlook, calendar naming, refresh latency, stale-entry check, camera QR scan) was deferred to deployment by operator decision, not run or approved -- server-side coverage and an external RFC 5545 validator pass do not substitute for it. | open |  | 2026-09-18T13:02:54.169Z |  |
-| 4 | 84 | deviation | .planning/ROADMAP.md |  | 84-08 Task 4 acceptance criterion 'grep -c ^**Plans**: 8/8 plans complete$ outputs 1' is unsatisfiable as literally written -- two other completed phases in ROADMAP.md already carry the identical string; Phase 84's own Plans line was correctly set to 8/8 plans complete, verified by content not by the raw whole-file count | open |  | 2026-09-18T13:03:05.007Z |  |
+| 4 | 84 | deviation | .planning/ROADMAP.md |  | 84-08 Task 4 acceptance criterion 'grep -c ^**Plans**: 8/8 plans complete$ outputs 1' is unsatisfiable as literally written -- two other completed phases in ROADMAP.md already carry the identical string; Phase 84's own Plans line was correctly set to 8/8 plans complete, verified by content not by the raw whole-file count | fixed |  | 2026-09-18T13:03:05.007Z | 2026-11-09T17:27:24.150Z |
 | 5 | 85 | unrun-verify | .planning/phases/85-one-shot-quests-in-the-calendar-feed/85-VALIDATION.md |  | Relational SQL translation of the one-shot-quest predicate (seat-or-Dungeon-Master disjunction + board-type narrowing) has no automated relational coverage -- the third consecutive phase to defer this gap. Every integration fact runs on the EF Core InMemory provider. UPDATE 2026-09-18: the compensating manual check WAS performed against real SQL Server 2022 on the real dev dataset -- the predicate translated and executed relationally, no client-side-evaluation exception, and the served quest-id set matched an independently written SQL query exactly; evidence in 85-VALIDATION.md 'Manual verification performed'. This stays OPEN because the deferred item is relational test INFRASTRUCTURE (a SQL Server test fixture CI can run), not a single hand-run observation of one query shape. | open |  | 2026-09-18T17:11:30.295Z |  |
 | 6 | 85 | deviation | QuestBoard.IntegrationTests/Tests/CalendarSubscriptionStaticGuardTests.cs |  | NoPlanningOrTrackingReference_ReachedTheSourceTree fails on Linux dev environments: its ResolveRepoFile helper's existence-based repo-root walk stops early because the Linux apphost binary (bare name QuestBoard.Service, no extension) collides with the project-folder name it is looking for. Predates this phase (Phase 84, commit 78aa5286); this plan's Task 1 was explicitly instructed to leave the planning-reference guard exactly as it is, so it was not fixed here. Causes 'dotnet test' to exit 1 for the whole solution on Linux even though every fact this phase added passes individually. See deferred-items.md item 1. | fixed |  | 2026-09-18T17:11:39.383Z | 2026-09-18T18:46:48.793Z |
-| 7 | 94 | deviation | QuestBoard.Service/wwwroot/lib/cinzel/cinzel-latin-wght.woff2 |  | 94-11 Task 2 zero-difference gate printed FAIL: all 7 desktop gate pages 0 px, all 7 mobile pages 4.5k-9.5k px confined to the Cinzel brand/heading edges. Google Fonts serves an Android UA a differently hinted build of the same Cinzel than a desktop UA; the self-hosted files are the desktop-UA build. Orchestrator reviewed the overlay at 3x: identical glyph shapes and weight, edge anti-aliasing plus a sub-pixel advance shift only, brand box unchanged 198x46 CSS px - judged not visible and accepted. Strict-zero alternative (both builds, selected by @media (hover:none) and (pointer:coarse), +~40 KB) not taken. Revisit only if the user objects; commit 0a5604ac. | open |  | 2026-11-01T14:12:21.045Z |  |
-| 8 | 94 | deviation | ~/qb-ui-review/phase-94/tools/probes.mjs (scratch) |  | 94-16 found the shared contrast probe flattens a multi-layer glass background and orders the colour above its own image, giving 134 false failures on Direction A through audit-shoot --probes. 94-16 used a corrected package-local copy (mockups/package/probe-lib.mjs). The wave-3 area audits scored legacy glass with the shared probe, so any S1/S2 contrast finding measured on a multi-layer glass background may be a false positive; re-check those before an area phase acts on them. | open |  | 2026-11-01T15:35:45.120Z |  |
+| 7 | 94 | deviation | QuestBoard.Service/wwwroot/lib/cinzel/cinzel-latin-wght.woff2 |  | 94-11 Task 2 zero-difference gate printed FAIL: all 7 desktop gate pages 0 px, all 7 mobile pages 4.5k-9.5k px confined to the Cinzel brand/heading edges. Google Fonts serves an Android UA a differently hinted build of the same Cinzel than a desktop UA; the self-hosted files are the desktop-UA build. Orchestrator reviewed the overlay at 3x: identical glyph shapes and weight, edge anti-aliasing plus a sub-pixel advance shift only, brand box unchanged 198x46 CSS px - judged not visible and accepted. Strict-zero alternative (both builds, selected by @media (hover:none) and (pointer:coarse), +~40 KB) not taken. Revisit only if the user objects; commit 0a5604ac. | fixed |  | 2026-11-01T14:12:21.045Z | 2026-11-09T17:27:24.251Z |
+| 8 | 94 | deviation | ~/qb-ui-review/phase-94/tools/probes.mjs (scratch) |  | 94-16 found the shared contrast probe flattens a multi-layer glass background and orders the colour above its own image, giving 134 false failures on Direction A through audit-shoot --probes. 94-16 used a corrected package-local copy (mockups/package/probe-lib.mjs). The wave-3 area audits scored legacy glass with the shared probe, so any S1/S2 contrast finding measured on a multi-layer glass background may be a false positive; re-check those before an area phase acts on them. | fixed |  | 2026-11-01T15:35:45.120Z | 2026-11-09T17:27:24.350Z |
 | 9 | 94 | deviation | QuestBoard.Service/Views/Calendar/Index.cshtml |  | Calendar month view (Events area phase): operator-accepted trade-off of the fit-without-scrolling requirement - compact entry rows and the '+N more' button are 20px tall, under the 24px WCAG 2.5.8 target-size minimum; titles truncate at about 13-16 characters (full title in the hover/focus card); footer sits below the fold. Meeting 2.5.8 would cost one visible entry per day cell. Recorded in the UI-SPEC G1 sign-off record (G1-O3). | waived | Operator decision 2026-11-01: fitting the whole month on one screen takes priority over the 24px target size; accepted after trying the calendar-fit mockup | 2026-11-01T17:34:27.324Z | 2026-11-01T17:34:27.469Z |
 | 10 | 94 | unmet-truth | QuestBoard.Service/wwwroot/css/tokens.css |  | Signed-off status text colours (success, danger, warning, info) measure 4.23-4.31:1 on HOVERED glass at B-max (~4.46 at B-99), under 4.5:1; the G1 sign-off never scored status text on the hover surface. 94-18 kept the signed-off values and the token-contrast guard lists these four pairs as an explicit, reasoned exclusion. Resolve in the component layer (94-20): prefer easing the hover glass tint so status text reaches 4.5:1 without changing the signed-off status colours; otherwise lighten the status text tokens minimally (e.g. success ~#8ce4b0 = 4.62) and re-score. Then remove the guard exclusion. | fixed |  | 2026-11-01T17:43:22.717Z | 2026-11-01T19:59:39.260Z |
 | 11 | 94 | deviation | QuestBoard.Service/wwwroot/css/base.css |  | Heading and strong type scale (h1 display step, h2-h3 heading step, h4-h6 body step at 600) written in 94-19 as commit 21c68026, then reverted by the orchestrator (14bc9dcb): at the scale's sizes the cream headings on today's unscrimmed legacy glass count as normal text and measure 3.91-4.34:1, so the commit added 132 new readability failures and shrank page titles 32px->20px on every page. Re-land in 94-24 by cherry-picking 21c68026 once modern-card.css is retired and the scrimmed card surface is live, inside that plan's full readability sweep against BEFORE. | fixed |  | 2026-11-01T18:59:59.308Z | 2026-11-09T16:39:09.827Z |
@@ -41,6 +41,7 @@ last_updated: 2026-11-09T16:39:10.744Z
 | 24 | 94 | deviation | QuestBoard.Service/wwwroot/css/quests.mobile.css |  | Page-owned links under the 44px phone target (the shell's 44px rule covers controls only): /quests has 6 a.row-nav-link quest titles at 27px (quests.mobile.css); /Platform/Users has 43 a.email-link links at 22px. Left to the Quests and Platform area phases; include in the G2 cut's per-area findings. | waived | Accepted by the operator at the 94-24 review (2026-11-09) | 2026-11-01T21:28:16.878Z | 2026-11-09T16:39:10.642Z |
 | 25 | 94 | deviation | QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml |  | Phone shell structure: the top bar is a div inside <header> (not a nav), so each phone layout has exactly one named nav (the offcanvas body); <main> gained flex-grow-1 because the important mt-auto utility beat the footer clearance; site.js gained 13 lines keeping aria-expanded on offcanvas togglers in step (Bootstrap never updates it on the opening button). The 900px backdrop is upscaled about 1.4x on tall phones and looks slightly soft; surface in 94-24's operator review. | waived | Accepted by the operator at the 94-24 review (2026-11-09) | 2026-11-01T21:28:16.980Z | 2026-11-09T16:39:10.744Z |
 | 26 | 94 | deviation | QuestBoard.Service/wwwroot/css/legacy-pages.css |  | Entry 15 narrowed by 94-23: the bare div reset, the .container reset and the Quest Log exception are gone (no Quest Log regression in the sweeps). Only modern-card.css's '.toast { background-color: var(--bs-toast-bg) }' restatement remains; delete it with modern-card.css in 94-24, then close entry 15. Also for 94-24: nothing colours .alert-heading any more, so the dark-panel alert (entry 17) may now pass; confirm visually at the operator review. mobile.css keeps 'h1-h6 { font-weight: bold }' as a stopgap until the heading scale (entry 11) lands. | fixed |  | 2026-11-06T16:16:26.365Z | 2026-11-09T16:39:10.344Z |
+| 27 | 94 | deviation | QuestBoard.Service/wwwroot/js/site.js |  | Scope proof (94-26) differs from the plan's allowed set: site.js gained a 13-line offcanvas aria-expanded sync (94-22; no date handling touched), and Views/Shared/_Calendar.cshtml and _LinkedDayEntries.cshtml had Razor comment-only edits (94-24) removing references to the retired card rule; nothing renders differently. Emails, Domain, Repository and HtmlHelperExtensions are unchanged against the baseline. | open |  | 2026-11-09T17:27:24.448Z |  |
 
 ````json
 [
@@ -87,10 +88,10 @@ last_updated: 2026-11-09T16:39:10.744Z
     "file": ".planning/ROADMAP.md",
     "line": null,
     "description": "84-08 Task 4 acceptance criterion 'grep -c ^**Plans**: 8/8 plans complete$ outputs 1' is unsatisfiable as literally written -- two other completed phases in ROADMAP.md already carry the identical string; Phase 84's own Plans line was correctly set to 8/8 plans complete, verified by content not by the raw whole-file count",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-09-18T13:03:05.007Z",
-    "resolved_at": null
+    "resolved_at": "2026-11-09T17:27:24.150Z"
   },
   {
     "id": 5,
@@ -123,10 +124,10 @@ last_updated: 2026-11-09T16:39:10.744Z
     "file": "QuestBoard.Service/wwwroot/lib/cinzel/cinzel-latin-wght.woff2",
     "line": null,
     "description": "94-11 Task 2 zero-difference gate printed FAIL: all 7 desktop gate pages 0 px, all 7 mobile pages 4.5k-9.5k px confined to the Cinzel brand/heading edges. Google Fonts serves an Android UA a differently hinted build of the same Cinzel than a desktop UA; the self-hosted files are the desktop-UA build. Orchestrator reviewed the overlay at 3x: identical glyph shapes and weight, edge anti-aliasing plus a sub-pixel advance shift only, brand box unchanged 198x46 CSS px - judged not visible and accepted. Strict-zero alternative (both builds, selected by @media (hover:none) and (pointer:coarse), +~40 KB) not taken. Revisit only if the user objects; commit 0a5604ac.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-11-01T14:12:21.045Z",
-    "resolved_at": null
+    "resolved_at": "2026-11-09T17:27:24.251Z"
   },
   {
     "id": 8,
@@ -135,10 +136,10 @@ last_updated: 2026-11-09T16:39:10.744Z
     "file": "~/qb-ui-review/phase-94/tools/probes.mjs (scratch)",
     "line": null,
     "description": "94-16 found the shared contrast probe flattens a multi-layer glass background and orders the colour above its own image, giving 134 false failures on Direction A through audit-shoot --probes. 94-16 used a corrected package-local copy (mockups/package/probe-lib.mjs). The wave-3 area audits scored legacy glass with the shared probe, so any S1/S2 contrast finding measured on a multi-layer glass background may be a false positive; re-check those before an area phase acts on them.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-11-01T15:35:45.120Z",
-    "resolved_at": null
+    "resolved_at": "2026-11-09T17:27:24.350Z"
   },
   {
     "id": 9,
@@ -355,6 +356,18 @@ last_updated: 2026-11-09T16:39:10.744Z
     "reason": "",
     "recorded_at": "2026-11-06T16:16:26.365Z",
     "resolved_at": "2026-11-09T16:39:10.344Z"
+  },
+  {
+    "id": 27,
+    "kind": "deviation",
+    "phase": "94",
+    "file": "QuestBoard.Service/wwwroot/js/site.js",
+    "line": null,
+    "description": "Scope proof (94-26) differs from the plan's allowed set: site.js gained a 13-line offcanvas aria-expanded sync (94-22; no date handling touched), and Views/Shared/_Calendar.cshtml and _LinkedDayEntries.cshtml had Razor comment-only edits (94-24) removing references to the retired card rule; nothing renders differently. Emails, Domain, Repository and HtmlHelperExtensions are unchanged against the baseline.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-09T17:27:24.448Z",
+    "resolved_at": null
   }
 ]
 ````
