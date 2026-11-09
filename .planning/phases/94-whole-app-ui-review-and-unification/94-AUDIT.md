@@ -163,6 +163,15 @@ By report:
 | [94-AUDIT-admin.md](94-AUDIT-admin.md) (5b) | 44 | 8 | 14 | 16 | 6 | 7 | 18 |
 | **All** | **397** | **37** | **124** | **190** | **46** | **83** | **160** |
 
+## Final verification
+
+Shell checks of the finished foundation on the live app (the phase worktree, port 8026, Audit Board only), written as `$QBR/plans/94-26/shell-final.mjs`. Per layout and User-Agent (desktop 1440 with a mouse profile; Pixel 7 with touch): the first Tab lands on the visible skip link, Enter moves focus to `main#main-content` (a `main` element with `tabindex="-1"`), the toggler where the layout shows one has an accessible name and opens and closes by keyboard (the offcanvas close button is named too), no console error, no page error, no failed or 4xx/5xx request and no request to a host other than localhost, and the document does not scroll sideways at the base width and at the narrow width (320 desktop, 390 mobile).
+
+| Layout (route) | UA | Skip link | Main focus | Toggler name | Console / page errors | Failed requests | Third-party requests | Overflow (base, narrow) |
+|----------------|----|-----------|------------|--------------|-----------------------|-----------------|----------------------|-------------------------|
+| `_Layout` (`/quests`, player) | desktop 1440 | pass | pass | none at 1440; at 800 named "Toggle navigation", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (1440, 320) |
+| `_Layout.Mobile` (`/quests`, player) | Pixel 7 | pass | pass | named "Open navigation menu", close "Close navigation menu", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (412, 390) |
+
 ## Cascade
 
 What moving Bootstrap and Font Awesome into `@layer vendor` costs, measured page by page, and which legacy rules the foundation has to retire first. Evidence is on scratch copies outside the repository; nothing in the repository was edited by the probe.
