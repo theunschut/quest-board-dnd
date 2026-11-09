@@ -372,9 +372,10 @@ public class UiFoundationBaseGuardTests
 
         string Body(string selector)
         {
-            var rule = rules.SingleOrDefault(r => r.Selector == selector && r.Ancestors.Count == 1);
-            rule.Should().NotBeNull(because: $"base.css must map {selector} onto the type scale");
-            return Flat(rule!.Body);
+            // A selector may be declared by more than one rule (the body has a custom-property block and a type block).
+            var matching = rules.Where(r => r.Selector == selector && r.Ancestors.Count == 1).ToList();
+            matching.Should().NotBeEmpty(because: $"base.css must map {selector} onto the type scale");
+            return string.Join(" ", matching.Select(r => Flat(r.Body)));
         }
 
         Body("body").Should().Contain("font-size: var(--qb-text-base)");
