@@ -163,7 +163,224 @@ By report:
 | [94-AUDIT-admin.md](94-AUDIT-admin.md) (5b) | 44 | 8 | 14 | 16 | 6 | 7 | 18 |
 | **All** | **397** | **37** | **124** | **190** | **46** | **83** | **160** |
 
+## Final verification
+
+Shell checks of the finished foundation on the live app (the phase worktree, port 8026, Audit Board only), written as `$QBR/plans/94-26/shell-final.mjs`. Per layout and User-Agent (desktop 1440 with a mouse profile; Pixel 7 with touch): the first Tab lands on the visible skip link, Enter moves focus to `main#main-content` (a `main` element with `tabindex="-1"`), the toggler where the layout shows one has an accessible name and opens and closes by keyboard (the offcanvas close button is named too), no console error, no page error, no failed or 4xx/5xx request and no request to a host other than localhost, and the document does not scroll sideways at the base width and at the narrow width (320 desktop, 390 mobile).
+
+| Layout (route) | UA | Skip link | Main focus | Toggler name | Console / page errors | Failed requests | Third-party requests | Overflow (base, narrow) |
+|----------------|----|-----------|------------|--------------|-----------------------|-----------------|----------------------|-------------------------|
+| `_Layout` (`/quests`, player) | desktop 1440 | pass | pass | none at 1440; at 800 named "Toggle navigation", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (1440, 320) |
+| `_Layout.Mobile` (`/quests`, player) | Pixel 7 | pass | pass | named "Open navigation menu", close "Close navigation menu", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (412, 390) |
+| `_Layout.GroupPicker` (`/groups/pick`, SuperAdmin) | desktop 1440 | pass | pass | none (the layout has no menu) | 0 / 0 | 0 | 0 | clear (1440, 320) |
+| `_Layout.GroupPicker` (`/groups/pick`, SuperAdmin) | Pixel 7 | pass | pass | none (the layout has no menu; served under both User-Agents) | 0 / 0 | 0 | 0 | clear (412, 390) |
+| `_Layout.Platform` (`/platform/Group/Create`, SuperAdmin) | desktop 1440 | pass | pass | none at 1440; at 800 named "Toggle navigation", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (1440, 320) |
+| `_Layout.Platform` (`/platform/Group/Index`, SuperAdmin) | desktop 1440 | pass | pass | none at 1440; at 800 named "Toggle navigation", opens and closes by keyboard | 0 / 0 | 0 | 0 | page flag at 320 (369px): the group table and the button row, both in `main` (see Overflow); the layout itself is clear |
+| `_Layout.Platform.Mobile` (`/platform/Group/Create`, SuperAdmin) | Pixel 7 | pass | pass | named "Open navigation menu", close "Close navigation menu", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (412, 390) |
+| `_Layout.Platform.Mobile` (`/platform/Group/Index`, SuperAdmin) | Pixel 7 | pass | pass | named "Open navigation menu", close "Close navigation menu", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (412, 390) |
+
+All five layouts pass the shell checks under every User-Agent they serve. Evidence of how the rows were taken: the desktop bar collapses into the toggler below 1200px, so the desktop rows prove the toggler at 800px; the Pixel 7 rows use the offcanvas panel (the close button is named and closes by keyboard). On the Platform desktop row for `/platform/Group/Index` the only red cell is the 320px overflow, which `who-overflows.mjs` shows is the page's own table and button row (0 overflowing elements outside `main`, and the same layout on `/platform/Group/Create` is clear). The one console error in the whole final sweep is a 404 for a character picture on Quest Details and Quest Manage (`Characters/GetCroppedPicture`), present identically in the `before` record: a data effect of one audit character with no cropped picture, not a shell defect.
+
+## Overflow
+
+From the `final` sweep (60 manifest rows, both User-Agents, reflow checks at 320px desktop and 390px mobile, `$QBR/final/reflow-desktop-320` and `$QBR/final/reflow-mobile-390`; the layouts and GroupPicker re-proved on the live app in the table above).
+
+- **Foundation pages: no flag.** The five layouts and `GroupPicker/Index` are clear at 1440 and 320 (desktop) and at 412 and 390 (phone).
+- **Flags, each assigned to its area phase** (none is a layout defect; every overflowing element sits inside `main`):
+
+| Page | Width | Scroll width | Cause | Area phase |
+|------|-------|--------------|-------|------------|
+| `Quest/Details` | 320 desktop | 373 | desktop columns and the signup card at 320 | 1 Quests and Quest Log (relayout Q-111) |
+| `QuestLog/Index` | 320 desktop | 378 | the log card row at 320 | 1 Quests and Quest Log |
+| `ContactCategoryManagement/Manage` | 320 desktop | 371 | the category table | 3 Characters, Contacts, DM profile, Players (relayout Q-117 wraps it in a responsive container) |
+| `Platform/Group/Index` | 320 desktop | 369 | the group table and the Create/Linked Boards button row | 5b Admin and Platform |
+| `Events/Details` | 390 mobile (416 at 412) | 394 | twin-less view, the same 4px pattern as AccessDenied | 2 Events, Series, Calendar, Agenda |
+| `Shared/AccessDenied` | 390 mobile (416 at 412) | 394 | twin-less view | 5a Account and pickers (one fix, reused on `Events/Details`) |
+
+Every other page (53 of 59 at 320 desktop, 57 of 59 at 390 mobile) is clear.
+
+## Rendered contrast
+
+Every page of the manifest under both User-Agents (59 pages, 118 records; `Account/SetPassword` is source-only and has no record), measured on the live phase code (port 8026) with the corrected probe (`mockups/package/probe-lib.mjs` through `$QBR/plans/94-24/probe-pages.mjs`, which paints multi-layer glass correctly and skips visually hidden and disabled text). Result: **3,920 text samples, 623 failing rows on 59 of 118 records**; the pages not listed below pass entirely. The shared sweep probe (`final/report.json`) over-reports glass surfaces (838 rows) and is not the measure here; the corrected probe also gave 623 rows on `final`, so the alert change after it moved nothing. Against the 2026-11-01 `before` record the corrected probe was also compared for failures present in both (keyed by page, User-Agent, selector and sample): 518 rows are in both, and the only ones that measure worse are the phone required-field asterisk (`span.text-danger`, 4.34 to 3.36:1, Characters Create and Edit, Contacts Create, Edit and Details; the known effect of the status-text tokens on legacy glass, resolved when those cards move to the scrimmed surface in their area phases). The two rows with no match in `before` (`code` on `Admin/EmailStats`, the `p` rows on the phone `Move/Index`) both exist in the `before` record as measured by the shared probe (`code` 2.37:1, now 3.57:1; `p` 4.34:1, unchanged), so they are probe differences, not new failures; a frozen-baseline re-sweep of those two pages on port 8001 is not possible because the audit accounts have no access to the board active there (Access Denied). The `alerts-dark` sweep found no new failure. Every row below is an area-phase finding: it fails today on a surface that the area phase converts (a legacy glass card without the scrimmed surface, a Bootstrap outline or status utility on glass, or a page rule with its own literal colour). Samples are left out on purpose (no member names or text); the element and the pages identify each row.
+
+Foundation-owned results from the same measurement: no row on a layout, the footer, the toasts or the alerts.
+
+| Area phase | Failing rows | Distinct elements | Pages with a failure |
+|------------|--------------|-------------------|----------------------|
+| 1 Quests and Quest Log | 123 | 37 | 13 |
+| 5a Account and pickers | 12 | 7 | 4 |
+| 2 Events, Series, Calendar, Agenda | 78 | 6 | 5 |
+| 3 Characters, Contacts, DM profile, Players | 97 | 32 | 13 |
+| 4 Shop and Shop management | 59 | 20 | 11 |
+| 5b Admin and Platform | 254 | 16 | 13 |
+
+**1 Quests and Quest Log**: 123 failing rows, 37 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `button.btn.btn-outline-secondary` | 1.17 | 4.5 | 1 | Quest-Manage (m) |
+| `label.btn.btn-outline-success` | 1.21 | 4.5 | 2 | Quest-Details--voting (m) |
+| `label.btn.btn-outline-danger` | 1.21 | 4.5 | 2 | Quest-Details--voting (m) |
+| `button.btn.btn-outline-primary` | 1.88 | 4.5 | 1 | Quest-CreateFollowUp (d) |
+| `div.quest-date` | 2.14 | 4.5 | 1 | Quest-Index (d) |
+| `div.quest-description` | 2.81 | 4.5 | 1 | Quest-Index (d) |
+| `strong` | 2.85 | 4.5 | 9 | Quest-Index (d), QuestLog-Details (m) |
+| `div.form-text` | 2.99 | 4.5 | 3 | Quest-Create (m), Quest-CreateFollowUp (m), Quest-Edit (m) |
+| `small` | 2.99 | 4.5 | 1 | Quest-Manage (m) |
+| `small.form-text` | 2.99 | 4.5 | 1 | QuestLog-EditRecap (m) |
+| `span.recap-badge.d-block` | 3.29 | 4.5 | 1 | QuestLog-Index (m) |
+| `span.text-danger` | 3.36 | 4.5 | 14 | Quest-Create (m), Quest-CreateFollowUp (m), Quest-Edit (m) |
+| `label.btn.btn-outline-warning` | 3.36 | 4.5 | 2 | Quest-Details--voting (m) |
+| `div.quest-dm` | 3.68 | 4.5 | 1 | Quest-Index (d) |
+| `small.text-muted` | 3.94 | 4.5 | 18 | Quest-Details (m), Quest-Details--voting (m), Quest-Index (m), QuestLog-Index (m) |
+| `h6.text-muted.text-uppercase` | 3.94 | 4.5 | 1 | Quest-Details (m) |
+| `span.text-muted.align-self-center` | 3.94 | 4.5 | 2 | Quest-Manage (m) |
+| `time.wall-clock` | 3.94 | 4.5 | 2 | QuestLog-Details (m), QuestLog-Index (m) |
+| `p.mb-0.text-muted` | 3.94 | 4.5 | 1 | QuestLog-Details (m) |
+| `small.text-muted.ms-1` | 3.94 | 4.5 | 2 | Quest-Details--voting (m) |
+| `button.btn.btn-link` | 4.21 | 4.5 | 1 | Quest-Manage (m) |
+| `div.quest-players` | 4.26 | 4.5 | 1 | Quest-Index (d) |
+| `div.quest-signups` | 4.31 | 4.5 | 13 | Quest-Index (d) |
+| `p.mb-1` | 4.34 | 4.5 | 8 | Move-Index (m), QuestLog-Details (m) |
+| `p.mb-3` | 4.34 | 4.5 | 1 | Move-Index (m) |
+| `p` | 4.34 | 4.5 | 3 | Move-Index (m), Quest-Details (m), Quest-Details--voting (m) |
+| `p.mb-0` | 4.34 | 4.5 | 1 | Move-Index (m) |
+| `label.form-label.dm-create-label` | 4.34 | 4.5 | 4 | Quest-Create (m) |
+| `label.form-label` | 4.34 | 4.5 | 14 | Quest-Create (m), Quest-CreateFollowUp (m), Quest-Edit (m), QuestLog-EditRecap (m) |
+| `label.form-check-label` | 4.34 | 4.5 | 2 | Quest-Create (m), Quest-Edit (m) |
+| `li.mb-1` | 4.34 | 4.5 | 1 | Quest-CreateFollowUp (m) |
+| `h6.dm-manage-subheading.mb-2` | 4.34 | 4.5 | 2 | Quest-Manage (m) |
+| `strong.dm-manage-date-label` | 4.34 | 4.5 | 1 | Quest-Manage (m) |
+| `span.fw-bold.dm-manage-player-name` | 4.34 | 4.5 | 1 | Quest-Manage (m) |
+| `time.local-time` | 4.34 | 4.5 | 1 | QuestLog-Details (m) |
+| `h6.quest-section-heading.mb-2` | 4.34 | 4.5 | 1 | Quest-Details--voting (m) |
+| `div.calendar-date-label-mobile.fw-bold` | 4.34 | 4.5 | 2 | Quest-Details--voting (m) |
+
+**5a Account and pickers**: 12 failing rows, 7 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `a.btn.btn-outline-primary` | 1.88 | 4.5 | 1 | Account-Edit (d) |
+| `div.account-field-label` | 2.99 | 4.5 | 4 | Account-Profile (m) |
+| `p.text-muted` | 3.94 | 4.5 | 1 | Account-Profile (m) |
+| `a.text-decoration-none` | 4.24 | 4.5 | 1 | Account-Login (m) |
+| `div.account-section-heading.mb-2` | 4.34 | 4.5 | 1 | Account-Edit (m) |
+| `div.account-field-value` | 4.34 | 4.5 | 2 | Account-Profile (m) |
+| `span.account-field-value` | 4.34 | 4.5 | 2 | Account-Profile (m) |
+
+**2 Events, Series, Calendar, Agenda**: 78 failing rows, 6 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `span.text-muted.avail-cell-empty` | 2.28 | 4.5 | 11 | Agenda-Index, Events-Index (d) |
+| `small.text-muted` | 3.94 | 4.5 | 5 | Agenda-Index (m) |
+| `span.small.text-muted` | 3.94 | 4.5 | 5 | Agenda-Index (m) |
+| `div.fw-semibold.agenda-board-name` | 4.34 | 4.5 | 5 | Agenda-Index (m) |
+| `div.agenda-linked-note.mb-3` | 4.34 | 4.5 | 2 | Calendar-Index (m), Calendar-Index--crowded (m) |
+| `div.agenda-day-label.text-uppercase` | 4.34 | 4.5 | 50 | Calendar-Index (m), Calendar-Index--crowded (m) |
+
+**3 Characters, Contacts, DM profile, Players**: 97 failing rows, 32 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `a.btn.btn-warning` | 1.68 | 4.5 | 1 | Characters-Details (m) |
+| `small.form-text` | 2.99 | 4.5 | 8 | Characters-Create, Characters-Edit, Contacts-Create and 2 more |
+| `small.form-text.d-block` | 2.99 | 4.5 | 2 | Characters-Create (m), Characters-Edit (m) |
+| `p` | 2.99 | 4.5 | 4 | Characters-Details (m), Characters-Index (m), Contacts-Details (m) |
+| `div.character-member-class` | 2.99 | 4.5 | 1 | Characters-Index (m) |
+| `div.contact-member-town-city` | 2.99 | 4.5 | 1 | Contacts-Index (m) |
+| `div.contact-member-sub-location` | 2.99 | 4.5 | 1 | Contacts-Index (m) |
+| `p.dm-profile-role-label` | 2.99 | 4.5 | 1 | DungeonMaster-Profile (m) |
+| `p.dm-profile-bio-empty` | 2.99 | 4.5 | 1 | DungeonMaster-Profile (m) |
+| `small.dm-quest-history-date.d-block` | 2.99 | 4.5 | 15 | DungeonMaster-Profile (m) |
+| `h2.contact-section-heading.mb-2` | 3.19 | 4.5 | 2 | ContactCategoryManagement-Edit (m), Contacts-Index (m) |
+| `span.text-danger` | 3.36 | 4.5 | 7 | Characters-Create, Characters-Edit, Contacts-Create and 2 more |
+| `p.text-muted.mb-0` | 3.94 | 4.5 | 2 | Characters-Details (m), Contacts-Details (m) |
+| `small.text-muted` | 3.94 | 4.5 | 1 | ContactCategoryManagement-Manage (m) |
+| `small.form-text.text-muted` | 3.94 | 4.5 | 3 | Contacts-Create (m), Contacts-Edit (m), DungeonMaster-EditProfile (m) |
+| `p.text-muted.small` | 3.94 | 4.5 | 1 | Contacts-Details (m) |
+| `span.markdown-editor-char-count-current` | 3.94 | 4.5 | 1 | DungeonMaster-EditProfile (m) |
+| `p.character-info-value.mb-2` | 4.34 | 4.5 | 1 | Characters-Details (m) |
+| `div.character-section-heading.mb-2` | 4.34 | 4.5 | 3 | Characters-Details (m), Characters-Index (m) |
+| `span.form-label` | 4.34 | 4.5 | 5 | Characters-Details (m) |
+| `span.character-info-value` | 4.34 | 4.5 | 1 | Characters-Details (m) |
+| `div.character-section-heading.mb-3` | 4.34 | 4.5 | 1 | Characters-Details (m) |
+| `a.row-nav-link` | 4.34 | 4.5 | 19 | Characters-Index (m), Contacts-Index (m), DungeonMaster-Profile (m), Players-Index (m) |
+| `label.form-label` | 4.34 | 4.5 | 3 | ContactCategoryManagement-Edit (m), Contacts-Details (m), DungeonMaster-EditProfile (m) |
+| `div.contact-member-name` | 4.34 | 4.5 | 1 | ContactCategoryManagement-Manage (m) |
+| `p.contact-info-value.mb-0` | 4.34 | 4.5 | 1 | Contacts-Details (m) |
+| `p.contact-info-value.mb-2` | 4.34 | 4.5 | 1 | Contacts-Details (m) |
+| `div.contact-section-heading.mb-2` | 4.34 | 4.5 | 2 | Contacts-Details (m) |
+| `label.form-label.d-block` | 4.34 | 4.5 | 1 | DungeonMaster-EditProfile (m) |
+| `h6.dm-profile-section-heading.mb-2` | 4.34 | 4.5 | 2 | DungeonMaster-Profile (m) |
+| `div.players-section-heading.mb-2` | 4.34 | 4.5 | 2 | Players-Index (m) |
+| `span.players-name` | 4.34 | 4.5 | 2 | Players-Index (m) |
+
+**4 Shop and Shop management**: 59 failing rows, 20 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `span.item-rarity.rarity-legendary` | 1.63 | 4.5 | 5 | Shop-Index, Shop-Index--empty-category (d), ShopManagement-Index (d) |
+| `a.btn.btn-outline-secondary` | 1.7 | 4.5 | 1 | ShopManagement-Index (m) |
+| `a.btn.btn-outline-primary` | 1.88 | 4.5 | 1 | ShopManagement-Index (d) |
+| `button.purchase-btn` | 2.13 | 4.5 | 3 | Shop-Index (d) |
+| `span.item-rarity.rarity-rare` | 2.15 | 4.5 | 1 | Shop-Index (m) |
+| `p` | 2.99 | 4.5 | 1 | Shop-Details (m) |
+| `p.shop-subtitle.mb-0` | 2.99 | 4.5 | 2 | Shop-Index (m), Shop-Index--empty-category (m) |
+| `div.form-text` | 2.99 | 4.5 | 7 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `div#price-suggestion` | 2.99 | 4.5 | 2 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `span.text-danger` | 3.36 | 4.5 | 2 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `span.item-rarity.rarity-common` | 3.55 | 4.5 | 2 | Shop-Details (m), Shop-Index (m) |
+| `small.text-muted` | 3.94 | 4.5 | 1 | ShopManagement-Edit (m) |
+| `p.text-muted.mb-0` | 3.94 | 4.5 | 1 | Shop-Index--empty-category (m) |
+| `button.btn.btn-outline-info` | 4.31 | 4.5 | 1 | ShopManagement-Create (d) |
+| `a.btn.btn-outline-info` | 4.31 | 4.5 | 1 | ShopManagement-Edit (d) |
+| `span.badge.type-magic-item` | 4.32 | 4.5 | 2 | ShopManagement-Index (d) |
+| `div.shop-item-name` | 4.34 | 4.5 | 3 | Shop-Index (m) |
+| `div.shop-item-price` | 4.34 | 4.5 | 3 | Shop-Index (m) |
+| `label.form-label` | 4.34 | 4.5 | 18 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `label.form-check-label` | 4.34 | 4.5 | 2 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+
+**5b Admin and Platform**: 254 failing rows, 16 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `a.btn.btn-outline-danger` | 1.21 | 4.5 | 2 | Admin-EditUser |
+| `small` | 2.35 | 4.5 | 50 | Platform-Group-Index (m), Platform-Group-Members (m) |
+| `time.local-time` | 2.35 | 4.5 | 7 | Platform-Group-Index (m) |
+| `div.form-text.mb-2` | 2.35 | 4.5 | 1 | Platform-LinkedBoards-Index (m) |
+| `small.text-muted` | 2.89 | 4.5 | 15 | Admin-Quests (m) |
+| `div.form-text.mb-3` | 2.99 | 4.5 | 1 | Platform-LinkedBoards-Index (m) |
+| `a.email-link` | 3.11 | 4.5 | 43 | Platform-Users-Index (m) |
+| `div.form-text` | 3.45 | 4.5 | 1 | Platform-Group-Edit (m) |
+| `strong.parchment-text` | 3.61 | 4.5 | 115 | Admin-Quests, Admin-Users, Platform-Group-Index and 3 more |
+| `label.form-label` | 3.61 | 4.5 | 6 | Platform-LinkedBoards-Index (m) |
+| `span.linked-set-board-name.parchment-text` | 3.61 | 4.5 | 6 | Platform-LinkedBoards-Index (m) |
+| `code` | 3.63 | 4.5 | 2 | Admin-EmailStats |
+| `small.form-text.text-muted` | 3.94 | 4.5 | 1 | Platform-Group-Create (m) |
+| `small.text-muted.d-block` | 3.94 | 4.5 | 1 | Platform-Group-Edit (m) |
+| `p` | 4.34 | 4.5 | 2 | Platform-Group-Delete (m), Platform-LinkedBoards-Index (m) |
+| `strong` | 4.34 | 4.5 | 1 | Platform-Group-Delete (m) |
+
+## Scope
+
+The phase stayed in scope for everything except two changes recorded below. Baseline commit `b67703220dde8500867fcc4a7fe20b13743c31f0` (`$QBR/baseline-src/BASELINE_SHA`), compared with `HEAD` of the phase branch.
+
+**Views.** `git diff --no-renames --name-only <baseline>..HEAD -- QuestBoard.Service/Views QuestBoard.Service/Areas`, sorted, compared with `diff` against the plan's 19-path allowed set (`$QBR/plans/94-26/allowed-views.txt`): every one of the 19 allowed views changed (none is missing, so no plan failed to land), and **two paths outside the set also changed**:
+
+```
+13a14
+> QuestBoard.Service/Views/Shared/_Calendar.cshtml
+18a20
+> QuestBoard.Service/Views/Shared/_LinkedDayEntries.cshtml
+```
+
+Both changes are Razor comments only (`@* ... *@`, not rendered): they came with retiring `modern-card.css` and rewrite two comments that named the retired stylesheet's span rule so they stay true (commit `ba750d65`). Nothing renders differently and no markup changed. The allowed set was not edited; the two paths are recorded here for the operator to accept as comment-only.
+
+**Protected paths.** The same diff for `QuestBoard.Service/Components/Emails`, `QuestBoard.Domain`, `QuestBoard.Repository` and `QuestBoard.Service/Extensions/HtmlHelperExtensions.cs` is empty: no email template changed, nothing under the domain or repository layers changed (so nothing writes to `Events` or `Quests`), and the date helpers are untouched. For `QuestBoard.Service/wwwroot/js/site.js` the diff is **not empty**: one addition from the phone-layout work (commit `c1c48e1b`) keeps `aria-expanded` on an offcanvas toggler in step with the panel (a `show.bs.offcanvas` / `hidden.bs.offcanvas` listener, 13 lines, placed after the existing `hydrateWallClockTimes()` call). It does not touch `hydrateLocalTimes`, `hydrateWallClockTimes` or any date handling, so the wall-clock and local-time behaviour is unchanged, and the accessibility bar needs it (a collapse reports its own state; an offcanvas does not). Recorded here as a deliberate change for the operator to accept.
+
 ## Cascade
+
+What moving Bootstrap
 
 What moving Bootstrap and Font Awesome into `@layer vendor` costs, measured page by page, and which legacy rules the foundation has to retire first. Evidence is on scratch copies outside the repository; nothing in the repository was edited by the probe.
 
@@ -391,6 +608,27 @@ Per-capture figures follow, widest content change first. Columns: share of diffe
 | QuestLog-Index | desktop | 8.13% | 8.13% | 0.00% | BFN | none |
 | Shop-Details | mobile | 0.37% | 0.16% | 0.00% | BFO | none |
 | Shop-Index | mobile | 0.37% | 0.16% | 0.00% | BFO | none |
+
+### After the foundation (final state)
+
+Measured on the phase code after the last foundation plan (`QuestBoard.Service/wwwroot/css`, comments stripped; `css-fights.py` for the utility rules; counts per sheet in `$QBR/plans/94-26/counts.json`).
+
+**(a) Families retired.** Every family in table (a) is gone or has one owner.
+
+| Family | Final state |
+|--------|-------------|
+| Element-enumerated cream colour, `.modern-card` labels, help text, muted and danger repairs, the double `.table` definition | `modern-card.css` is deleted and unlinked from the four layouts; a card takes its text colour from its surface and descendants inherit; one `.table` and the token classes (`--qb-fg-muted`, `--qb-danger-text`, `--qb-fg-heading`) live in `components.css` and `base.css` |
+| Global element colour rules, `div` and `.container` background resets, `ul, ol, li` resets, the menu restatement rule | removed from the old desktop sheet, which is now `legacy-pages.css` (it carries only page rules); the body colour comes from `base.css` |
+| Bootstrap component re-themes (54 + 32 + 11 rules) | one set in `components.css` through `--bs-*` variables; what `legacy-pages.css` still says about a Bootstrap class is scoped under a page class |
+| Navbar and brand rules with `!important`, repeated in two files; the offcanvas rules | one `shell.css` (and `shell.mobile.css` for the phone bar) with no literal colour |
+| Duplicated backdrop `body::before` | one, in `base.css`; the photo goes through `--qb-board-photo` on `:root` |
+| Alerts | the dark overlay panel with light status text, stripe and links through `--bs-alert-*` and `--qb-alert-*` variables; no literal, no important flag |
+
+**(b) Utility fights: 45 rules at the start, 38 left, all in page sheets** (none in the five layouts' sheets). By area phase: Quests 8 (`home.mobile.css`, `quest-log.mobile.css`, `quest-log-detail.mobile.css`, `quests.css` 2, `quests.mobile.css` 2, `dm-manage.mobile.css`), Events 2 (`agenda.css`, `calendar.mobile.css`), Characters 8 (`character-detail`, `character-form`, `characters.mobile`, `contact-detail` 2, `contact-form`, `contacts.mobile`, `players.mobile`), Shop 14 (`legacy-pages.css` 7, `shop.css` 6 including the `#denyModal` and `#addCharacterModal` required-mark rules, `shop.mobile.css` 1), Account 1 (`account.mobile.css`), Admin and Platform 5 (`platform-group.mobile.css` 3, `platform-users.mobile.css` 2).
+
+**(c) Rules that win only because they are unlayered.** The two instances the probe found (`.navbar-nav .nav-link` padding and the bare-element `p, li, span, small` colour) are retired. What remains is structural: the foundation (`app`, `tokens`, `base`, `components`, `shell`, `shell.mobile`, `group-picker`) is layered, and the 47 other stylesheets (45 page sheets, `mobile.css` with its few leftover page rules, and the old desktop sheet `legacy-pages.css`) are unlayered, so every one of their rules beats every layered rule. Their totals, which the area phases take to zero: 460 hex literals, 870 `rgb()` literals and 561 `!important` flags in 47 sheets, of which `legacy-pages.css` carries 110 / 120 / 96 (attributed to Quests, Shop and Account by line range in the cut below). The foundation sheets themselves carry no literal colour (`tokens.css` holds the 54 hex and 26 `rgb()` token values by design) and 16 `!important` (nine in `components.css`, seven in `base.css`: reduced motion, visually hidden text and utility resets).
+
+**Vendor bump differences.** Bootstrap 5.3.0 to 5.3.8 and Font Awesome 6.4.0 to 6.7.2 differ in one place across 26 captures of 13 pages under both User-Agents: the `fa-dice-d20` die is redrawn with finer facets (the brand die in the bar on every page, the CR badge die per quest card, the One-Shot badge die on Platform group rows; 16 to 3,138 pixels per capture). No layout shift, no new console, page or request error. Disposition: recorded and accepted. Detail: `$QBR/plans/94-19/bump-differences.md`.
 
 ## Operator questions for sign-off
 
@@ -808,7 +1046,7 @@ No other Q-nn needed an override. Consistency notes (not overrides) are recorded
 | M-account-3 | Q-105 | Account/SetPassword | differs only in wrapper, heading element and widths (see the report); precedent: `Events/Create`, `Events/Details`, `Events/Edit`, `Series/Details` | same as M1 | none (no mobile-view fact pins this view) | approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: Q-account-3; source-only audit, so the merge must be verified with a freshly mailed token; costly to reverse |
 | M-account-4 | Q-106 | Account/ChangePassword | differs only in wrapper, heading element and widths (see the report); precedent: `Events/Create`, `Events/Details`, `Events/Edit`, `Series/Details` | same as M1 | none (no mobile-view fact pins this view) | approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: Q-account-4; costly to reverse |
 | M-account-5 | Q-107 | GroupPicker/Index | differs only in wrapper, heading element and widths (see the report); precedent: `Events/Create`, `Events/Details`, `Events/Edit`, `Series/Details` | `Index.Mobile.cshtml` is the only consumer of `account.mobile.css` on this page; the layout already renders `Styles`, so only the link moves; desktop has no CSS-loading change | `MobileGroupPicker_MobileUserAgent_RendersGroupCardsAndStylesSection` (MobileViewsTests.cs:619-663) asserts `account-card-mobile` and `account.mobile.css` plus the Styles-section regression; it would be rewritten to pin the same regression against the merged view; `GroupPickerControllerIntegrationTests` do not branch on User-Agent | approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: A-account-031 and the R1 relayout land in the same change; costly to reverse |
-| M-admin-1 | Q-108 | Platform Group/Create | identical inventory; the mobile differences are the wrapper (`row`/`col-md-6`/`card` against one glass div) and the heading level, all expressible in CSS | `_Layout.Platform` keeps the shared card styles; `_Layout.Platform.Mobile` gains the same shared card and form styles (today it loads `mobile.css` only), and the mobile-only form rules move into a shared sheet scoped under `.mobile-layout` loaded by both; `platform-group.mobile.css` stops being linked from this view | `MobileViewsTests` (selects the `.Mobile` view under a real mobile User-Agent: the Create view would no longer have a `.Mobile` file); `BoardPageStaticGuardTests` (reads `platform-group.mobile.css`, line 137 of that test); `PlatformAreaLayoutTests` (the Platform layout loads the card styles) | kept at G1 (2026-11-01): the twin stays; costly to reverse |
+| M-admin-1 | Q-108 | Platform Group/Create | identical inventory; the mobile differences are the wrapper (`row`/`col-md-6`/`card` against one glass div) and the heading level, all expressible in CSS | `_Layout.Platform` keeps the shared card styles; `_Layout.Platform.Mobile` gains the same shared card and form styles (today it loads `mobile.css` only), and the mobile-only form rules move into a shared sheet scoped under `.mobile-layout` loaded by both; `platform-group.mobile.css` stops being linked from this view | `MobileViewsTests` (selects the `.Mobile` view under a real mobile User-Agent: the Create view would no longer have a `.Mobile` file); `BoardPageStaticGuardTests` (reads `platform-group.mobile.css`, line 137 of that test); `PlatformAreaLayoutTests` (re-pinned by the foundation to the Platform layout's current sheet list; re-pinned again as the area sheets move) | kept at G1 (2026-11-01): the twin stays; costly to reverse |
 | M-admin-2 | Q-109 | Platform Group/Delete | identical inventory; wrapper and heading level only | same as M-1 | same as M-1 | kept at G1 (2026-11-01): the twin stays; costly to reverse |
 | M-admin-3 | Q-110 | Platform Group/Edit | identical inventory; the mobile-only `platform-group-pages-mobile` wrapper and the 44px switch rows (`platform-group.mobile.css:192-201`) are CSS rules | same as M-1; the 44px row and label-as-tap-target rule becomes a `.mobile-layout` rule in the shared sheet (A-5) | same as M-1, plus the Phase 93 board-pages guards that read `platform-group.mobile.css` | kept at G1 (2026-11-01): the twin stays; costly to reverse |
 
@@ -816,11 +1054,15 @@ Common to every proposal: the desktop layouts (`_Layout.cshtml` and `_Layout.Pla
 
 ## Dead dependencies
 
-The dead-dependency proofs (jQuery, the Font Awesome v4 shim and the other vendor lines) are in [94-AUDIT-vendor.md](94-AUDIT-vendor.md), written by plan 94-13, which may land after this report; this index links to it by name and does not copy it. The shell report's A-shell-039 records where each layout loads jQuery and the v4 shim today.
+The dead-dependency proofs (jQuery and the Font Awesome v4 shim, each with its command, result and verdict) are in [94-AUDIT-vendor.md](94-AUDIT-vendor.md), written by plan 94-13; this index links to it and does not copy it.
+
+**Final outcome (94-26).** jQuery is removed from all five layouts: four proofs passed, so it was dropped, not self-hosted. The Font Awesome v4 shim is not dead (it restyles one icon, the editor toolbar's preview eye), so it is kept and self-hosted, now at `lib/fontawesome-6.7.2/css/v4-shims.min.css` after the vendor bump; it can go when the editor re-skin sets that icon's weight itself (a visible-change decision for the Quests phase, which owns the Markdown editor). Bootstrap 5.3.8, Font Awesome 6.7.2 and Cinzel are self-hosted next to cropperjs, EasyMDE and Tagify, all under `wwwroot/lib`. Live proof on the finished code: the `final` sweep made 2,850 requests over 120 records and every one went to `localhost`, and the shell check recorded 0 third-party requests on all five layouts. The one remaining remote reference is in the email templates (`_EmailLayout.razor`, Font Awesome and Google Fonts links), which belong to the email-template phase.
 
 ## Proposed area-phase cut
 
 The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, Series, Calendar, Agenda; Characters, Contacts, DM profile, Players; Shop and Shop management; Account and pickers; Admin and Platform; Email templates) and keeps its seven phases. The audit adjusts ownership of eleven items (listed after the phases) and proposes an order. The Foundation (this phase) owns the five layouts, both footers, the toasts, the backdrop and the shell rules, so shell findings (39) belong to no area phase; area phases only verify them on their pages. Phase numbers below are the draft cut's labels; the operator assigns real phase numbers when `/gsd-phase` appends them.
+
+**Refreshed after the foundation (plan 94-26, 2026-11-09).** Every number below was recounted on the finished foundation tree: hex and `rgb()` literals and `!important` flags in the area's stylesheets (comments stripped; the layered foundation sheets are excluded and carry none of these), inline `style=` attributes, `<style>` blocks, inline `<script>` blocks and inline event handlers in its views (Razor comments excluded), utility-colour fights, rendered-contrast failures (corrected probe, current code, both User-Agents) and overflow flags. `legacy-pages.css` (1,329 lines, 110 hex, 120 `rgb()`, 96 `!important`, unlayered) is shared between the areas by line range and each phase removes its ranges; the phase that empties it deletes the file and its three layout links, and the one that empties `mobile.css` (three page rules left: `.container-fluid` and the Move rule) does the same. All six area phases together leave 460 hex, 870 `rgb()` and 561 `!important` to take to zero across 47 unlayered sheets, 95 inline `style=` attributes, 4 `<style>` blocks, 55 inline `<script>` blocks and 142 inline event handlers across the 133 view files. Findings owned are the audit's counts per report; the foundation closed the shell, token, heading-scale and alert items they depended on, so the rendered-contrast row count is the current measure of the contrast findings (623 rows, 59 pages, none on a layout).
 
 **Definition of "converted" (every area phase; feeds each phase's must-haves).**
 
@@ -843,6 +1085,11 @@ The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, 
 - **Guard tests to rewrite (to the same intent, none deleted):** `Mobile/MobileViewsTests` facts for the Quest, QuestLog, Home and Move pages (including the `quest-edit.mobile.css` link fact near line 888 and the Quest Log detail fact near lines 953-987); `Tests/BoardMoveViewsTests` (Move desktop sheet only, mobile sheet only, `move-card-mobile`), `BoardMoveEventTests`, `BoardMovePageTests`, `BoardMoveEndToEndTests` and the presence lists in `BoardMoveStaticGuardTests` and `BoardPageStaticGuardTests`; `QuestLogControllerIntegrationTests` (recap edit); `LinkedBoardCalendarStyleTests` and `LinkedBoardStaticGuardTests` for `quests.mobile.css` and the calendar partials; the closed `AmbientClockSeamTests` list if the dead partials go
 - **Findings owned:** S1 8 and S2 22 of 100 findings (S3 65, S4 5); the S1 items are contrast (table cells, role labels, vote buttons, required marks, outline controls, dark ink on bare board)
 - **Open questions inherited:** twin questions Q-07 to Q-39, merges Q-95 to Q-96 (QuestLog/EditRecap and QuestLog/Details), relayouts Q-111 to Q-114, and the other decisions on the Markdown editor host, dead files, posters and ownership
+- **Post-foundation numbers:** 25 view files (the 10 view pairs of the quest, quest log and move pages, 20 files, plus `_QuestFormScripts`, the two unreferenced `_QuestCard` and `_QuestSection`, `_MarkdownEditor` and `_CharacterSelectModal`); 13 stylesheets plus the Quest, board, vote and Quest Log ranges of `legacy-pages.css` (lines 1-38, 299-791, 1185-1264) and the Move rule of `mobile.css`: **126 hex, 276 `rgb()`, 212 `!important`**; in the views **26 inline `style=`, 0 `<style>`, 11 inline `<script>`, 59 inline event handlers**; 8 utility-colour fights (`home.mobile`, `quest-log.mobile`, `quest-log-detail.mobile`, `quests.css` 2, `quests.mobile` 2, `dm-manage.mobile`); rendered contrast **123 failing rows on 37 elements on 13 pages** (outline buttons on glass 1.17 to 1.88:1, the poster date 2.14:1, the phone form labels and help text 2.99 to 4.34:1); overflow at 320 on `Quest/Details` and `QuestLog/Index`; 5 test files read its sheets (`MobileViewsTests` 16 references).
+- **Moves into `@section Styles`:** `quests.css`, `markdown-editor.css`, `markdown-content.css` and `move-entry.css` leave the global list of `_Layout.cshtml`; `markdown-editor.css` and `markdown-content.css` also leave `_Layout.Mobile.cshtml`. `calendar.css` stays global until Phase 2 moves it; Quest Details then links it itself for the vote UI.
+- **Answered questions to implement:** 21 "add it to the other view" answers (Q-07 to Q-39, 33 questions, 12 deliberate), 2 approved merges (Q-95, Q-96), 5 approved relayouts (Q-111 to Q-114 and the poster relayout G1-R1).
+- **Deferred items landing here:** G1-O1 (desktop quest poster relayout: drawn first, the text zone gently lightened so body text reaches 4.5:1, no slip surface); WINDOWS 12 for Quest Create, CreateFollowUp and Edit (phone required asterisk, 14 rows at 3.36:1, until the cards move to the scrimmed surface); WINDOWS 24 (six `a.row-nav-link` quest titles 27px tall on the phone `/quests`); the vote buttons (`btn-outline-success`, `-danger` and `-warning` at 1.21 to 3.36:1) and the Bootstrap outline buttons on glass; the five Quest findings of the 94-AUDIT-quests.md report (S1 8, S2 22 of 100).
+- **Append description:** "Convert the quest board, quest details, quest forms, DM manage, quest log and move pages, with the shared editor, signup modal and vote UI, to the foundation: scrimmed card surfaces, no inline styles or scripts, the approved poster relayout, and every page readable at 4.5:1 on phone and desktop."
 - **Definition of converted:** all ten points above, plus: the Quest board mockup page is built from this phase (it is first because it carries it); the role-select script no longer hides the DM Controls card; the vote buttons on Quest Details pass the bar in both layouts; Quest Details is re-verified with `_Calendar` in both layouts
 
 ### Phase 5a: Account and pickers
@@ -853,6 +1100,11 @@ The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, 
 - **Guard tests to rewrite (to the same intent, none deleted):** `MobileViewsTests` Login (lines 552-575), GroupPicker (619-663), Edit and Profile facts; `ProfileCalendarSubscriptionTests` (both subscription shapes are pinned deliberately); `CalendarSubscriptionStaticGuardTests` (the QR sizing rule on `site.css` and `account.mobile.css`); `GroupPickerControllerIntegrationTests` and `CrossBoardPickerSkipTests` (do not branch on User-Agent; keep green)
 - **Findings owned:** S1 2 and S2 15 of 43 findings (S3 14, S4 12); S1: picker cards not keyboard-reachable (A-account-031), profile meta text (A-account-019)
 - **Open questions inherited:** twin questions Q-76 to Q-84, merges Q-103 to Q-107 (Login, ForgotPassword, SetPassword, ChangePassword, GroupPicker), relayouts Q-122 to Q-123
+- **Post-foundation numbers:** 17 view files (6 Account pairs, the picker pair, `AccessDenied` and the `Home/Index` pair); `account.mobile.css`, `group-picker.css` (layered, already clean) and the Profile block of `legacy-pages.css` (lines 1265-1329): **4 hex, 14 `rgb()`, 11 `!important`**; in the views **2 inline `style=`, 0 `<style>`, 2 inline `<script>`, 2 inline event handlers**; 1 utility-colour fight (`account.mobile.css`); rendered contrast **12 failing rows on 7 elements on 4 pages** (the outline-primary "Change Password" link on the desktop Account Edit at 1.88:1, the phone account field labels at 2.99:1); overflow of `Shared/AccessDenied` on the phone (394 at 390); 5 test files read its sheets.
+- **Moves into `@section Styles`:** no sheet leaves a desktop layout's global list (Account pages have no desktop page sheet); the Profile block moves out of `legacy-pages.css` into the account sheet, which the five merged views (Login, ForgotPassword, SetPassword, ChangePassword, GroupPicker) link once through `@section Styles` for both layouts.
+- **Answered questions to implement:** 7 "add it to the other view" answers (Q-76 to Q-84, 9 questions, 2 deliberate), 5 approved merges (Q-103 to Q-107), 2 approved relayouts (Q-122, Q-123).
+- **Deferred items landing here:** the `AccessDenied` overflow (reused on `Events/Details` by Phase 2: one fix, here); the `Home/Index` landing page (Q-136); the 43 account findings of 94-AUDIT-account.md (S1 2, S2 15), the picker keyboard finding first.
+- **Append description:** "Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1."
 - **Definition of converted:** all ten points above, plus: the foundation delivers `.modern-card--interactive`, the opaque modal surface, `--qb-fg-muted` and `--qb-danger-text` first; the AFTER sweep adds Profile with one subscription, AccessDenied signed out and the Login validation state; SetPassword is verified with a freshly mailed token; the AccessDenied overflow fix is reused on `Events/Details`
 
 ### Phase 2: Events, Series, Calendar, Agenda
@@ -863,6 +1115,11 @@ The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, 
 - **Guard tests to rewrite (to the same intent, none deleted):** `EventsOverviewMobileStyleTests` (its literal colours and `!important` conflict with the foundation: re-pin readable counts, a glass-or-paper surface, 44px targets), `LinkedBoardStaticGuardTests`, `LinkedBoardCalendarStyleTests`, and the Events parts of `MobileViewsTests` and `BoardPageStaticGuardTests`; the `AmbientClockSeamTests` list gains the corrected today read if Q-133 is approved
 - **Findings owned:** S1 3 and S2 23 of 51 findings (S3 22, S4 3); S1: attendance counts cream on cream, availability badge labels, dark subtitle on bare board
 - **Open questions inherited:** twin questions Q-40 to Q-49, no merges (none qualifies), relayouts Q-115 to Q-116
+- **Post-foundation numbers:** 17 view files; 6 stylesheets: **65 hex, 71 `rgb()`, 70 `!important`**; in the views **2 inline `style=`, 0 `<style>`, 7 inline `<script>`, 18 inline event handlers**; 2 utility-colour fights (`agenda.css`, `calendar.mobile.css`); rendered contrast **78 failing rows on 6 elements on 5 pages** (the empty availability dash at 2.28:1, phone agenda dates and day labels at 3.94 to 4.34:1); overflow of `Events/Details` on the phone (394 at 390); 4 test files read its sheets (`EventsOverviewMobileStyleTests` 7 references).
+- **Moves into `@section Styles`:** `calendar.css`, `events-overview.css` and `agenda.css` leave the global list of `_Layout.cshtml` (Quest Details links `calendar.css` itself once Phase 1 and this phase agree on the vote block).
+- **Answered questions to implement:** 6 "add it to the other view" answers (Q-40 to Q-49, 10 questions, 4 deliberate), no merges, 2 approved relayouts (Q-115, Q-116) plus the calendar month fit (G1-R2).
+- **Deferred items landing here:** G1-O3 (the calendar month view spec: the desktop month fits without scrolling at 1280 by 720 and up; the operator confirms "+N more" against `$QBR/mockups/calendar-fit/` before this phase starts); the `Events/Details` 4px overflow (reusing the `AccessDenied` fix); the 51 events findings of 94-AUDIT-events.md (S1 3, S2 23).
+- **Append description:** "Convert the calendar, agenda, events overview, event details and series pages and their shared partials to the foundation, with a desktop month that fits without scrolling and every date still rendered through the wall-clock and local-time helpers."
 - **Definition of converted:** all ten points above, plus: linked-entry dashed border, the inert `--static` rule and the visually hidden status text stay; no date conversion; every date line keeps its format; calendar-feed files are untouched; the twin-less views get their narrow-width rules in the `pages` layer
 
 ### Phase 3: Characters, Contacts, DM profile, Players
@@ -870,9 +1127,14 @@ The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, 
 - **Goal:** Convert characters, contacts, categories, the DM profile and the players list, and the image crop dialog.
 - **Views:** 13 rows, 26 files: `Characters/*` (8), `Contacts/*` (8), `ContactCategoryManagement/*` (4), `DungeonMaster/{Profile,EditProfile}` (4), `Players/Index` (2); `wwwroot/js/image-crop.js` and its dialog markup. `_CharacterSelectModal` per Q-135 (proposed for Phase 1); `_MarkdownEditor` is fixed in Phase 1 and verified here on six pages
 - **Stylesheets:** `characters.css`, `characters.mobile.css`, `character-detail.mobile.css`, `character-form.mobile.css`, `contacts.css`, `contacts.mobile.css`, `contact-detail.mobile.css`, `contact-form.mobile.css`, `dm-profile.css`, `dm-profile.mobile.css`, `dm-editprofile.mobile.css`, `players.mobile.css`, `image-crop.css` (13; `dm-create.mobile.css` and `dm-manage.mobile.css` go to Phase 1)
-- **Guard tests to rewrite (to the same intent, none deleted):** `MobileViewsTests` facts for Characters (near line 767), DM EditProfile (`GetMobilePage_DmEditProfile_...`), Contacts; `ContactCategoryContrastGuardTests` (the `contacts.mobile.css` and `contact-form.mobile.css` facts and the two rendered-HTML facts, plus the three `modern-card.css` facts the foundation re-pins), `ContactsTagsFormMarkupTests`, `ContactsTagsDesktopMarkupTests`, `ContactDetailsCategoryTests`, `ContactCategoryManagementControllerIntegrationTests`
+- **Guard tests to rewrite (to the same intent, none deleted):** `MobileViewsTests` facts for Characters (near line 767), DM EditProfile (`GetMobilePage_DmEditProfile_...`), Contacts; `ContactCategoryContrastGuardTests` (the `contacts.mobile.css` and `contact-form.mobile.css` facts and the two rendered-HTML facts, the three facts that pinned `modern-card.css`, re-pinned when the foundation deleted it and rewritten again as the contact sheets move), `ContactsTagsFormMarkupTests`, `ContactsTagsDesktopMarkupTests`, `ContactDetailsCategoryTests`, `ContactCategoryManagementControllerIntegrationTests`
 - **Findings owned:** S1 6 and S2 13 of 55 findings (S3 25, S4 11); S1: crop dialog and character dialog text, two amber mobile buttons, a dark category label, the editor keyboard trap
 - **Open questions inherited:** twin questions Q-50 to Q-55, merges Q-97 to Q-102 (six pairs), relayouts Q-117 to Q-119, and the crop dialog decision
+- **Post-foundation numbers:** 26 view files; 13 stylesheets: **70 hex, 243 `rgb()`, 88 `!important`**; in the views **49 inline `style=`, 0 `<style>`, 22 inline `<script>`, 11 inline event handlers**; 8 utility-colour fights; rendered contrast **97 failing rows on 32 elements on 13 pages** (an amber Edit Character button on the phone at 1.68:1, form help text at 2.99:1, the phone required asterisk at 3.36:1, `row-nav-link` names at 4.34:1); overflow of `ContactCategoryManagement/Manage` at 320 desktop; 3 test files read its sheets (`MobileViewsTests` 14 references, `ContactCategoryContrastGuardTests` 5).
+- **Moves into `@section Styles`:** `characters.css`, `contacts.css`, `dm-profile.css` and `image-crop.css` leave the global list of `_Layout.cshtml`.
+- **Answered questions to implement:** 5 "add it to the other view" answers (Q-50 to Q-55, 6 questions, 1 deliberate), 6 approved merges (Q-97 to Q-102), 3 approved relayouts (Q-117 to Q-119).
+- **Deferred items landing here:** WINDOWS 12 for Characters Create and Edit and Contacts Create, Edit and Details (phone required asterisk, 7 rows at 3.36:1); the crop dialog and character dialog findings; the 55 findings of 94-AUDIT-characters.md (S1 6, S2 13).
+- **Append description:** "Convert characters, contacts, contact categories, the DM profile and the players list, with the image crop dialog and the six approved twin merges, to the foundation, keeping every field and action and fixing the editor keyboard trap and the dialog findings."
 - **Definition of converted:** all ten points above, plus: the crop dialog meets 2.5.7 per the answer to Q-132; the one remaining infinite animation (`characters.css:203`) is capped; the editor keyboard trap fix is verified on all six pages
 
 ### Phase 4: Shop and Shop management
@@ -883,6 +1145,11 @@ The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, 
 - **Guard tests to rewrite (to the same intent, none deleted):** `MobileViewsTests` Shop and ShopManagement entries (the purchase-panel omission at lines 716-733 and the management mobile layout at 1123), `BoardPageStaticGuardTests` (controller file list), `BoardPageGateMatrixTests`, the Shop controller integration tests
 - **Findings owned:** S1 10 and S2 19 of 65 findings (S3 29, S4 7); S1 includes the creation failure A-shop-010, which is handed off, not fixed here
 - **Open questions inherited:** twin questions Q-56 to Q-75, no merges (none qualifies), relayouts Q-120 to Q-121, the theme decision and the functional-breaks owner
+- **Post-foundation numbers:** 11 view files; 6 stylesheets plus the Shop ranges of `legacy-pages.css` (lines 39-298 and 792-1184): **189 hex, 209 `rgb()`, 152 `!important`**; in the views **15 inline `style=`, 4 `<style>` blocks, 9 inline `<script>`, 40 inline event handlers**; 14 utility-colour fights (7 in `legacy-pages.css`, 6 in `shop.css`, 1 in `shop.mobile.css`); rendered contrast **59 failing rows on 20 elements on 11 pages** (legendary and rare rarity labels at 1.63 and 2.15:1, the Purchase button at 2.13:1, outline buttons at 1.70 and 1.88:1); no overflow flag; 1 test file reads its sheets (`MobileViewsTests`, 10 references).
+- **Moves into `@section Styles`:** `shop.css` leaves the global list of `_Layout.cshtml`; the Shop theme goes on `<html data-theme="shop">`, never through a body-level custom property.
+- **Answered questions to implement:** 11 "add it to the other view" answers (Q-56 to Q-75, 20 questions, 9 deliberate), no merges, 2 approved relayouts (Q-120, Q-121).
+- **Deferred items landing here:** G1-O2 (the floating merchant button needs a new place, a required fix); the three shop alerts still on literal colours with important flags (`#denyModal .alert-warning` and `#addCharacterModal .alert-info` in `shop.css`, and the help and small text of the management edit card in `shop-management-edit.mobile.css`), to move to the foundation's alert variables; the `#denyModal` and `#addCharacterModal` required-mark rules; WINDOWS 22 (the board photo token: the Shop theme must replace `--qb-board-image` through `data-theme`, keeping the photo behind `--qb-board-photo`, which the foundation already does); WINDOWS 12 for Shop management Create and Edit (2 rows); the four functional breaks (Q-137); the 65 shop findings of 94-AUDIT-shop.md (S1 10, S2 19). The Shop item creation bug is a separate fix, not part of this phase (see below).
+- **Append description:** "Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script."
 - **Definition of converted:** all ten points above, plus: ten infinite animation declarations (not six; four are dead copies in the Create and Edit `<style>` blocks) are removed or capped; the four views with `<style>` lose it; Return and Sell are verified with a purchase made through the Purchase form on the audit board; Create works first (separate fix off `main`)
 
 ### Phase 5b: Admin and Platform
@@ -893,7 +1160,12 @@ The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, 
 - **Guard tests to rewrite (to the same intent, none deleted):** `PlatformAreaLayoutTests` (the Platform layout loads the card styles), `LinkedBoardsPlatformIntegrationTests` (`platform-linked-boards.mobile.css`, `platform-group-card-mobile`), `BoardPageStaticGuardTests` (reads `platform-group.mobile.css`), the Admin and Platform entries of `MobileViewsTests`
 - **Findings owned:** S1 8 and S2 14 of 44 findings (S3 16, S4 6); S1: badge and table-cell readability, mailto links on Platform phones, the dark modal, the outline Reset Password button, the Platform bar at 320px
 - **Open questions inherited:** twin questions Q-85 to Q-94, merges Q-108 to Q-110 (Platform Group Create, Delete, Edit), relayouts Q-124 to Q-126
-- **Definition of converted:** all ten points above, plus: a configured provider key (or a seeded stub) so `Admin/EmailStats` tile contrast is measured, not read; the Campaign status mapping (A-admin-016) is answered with the Quests owner's knowledge before it is fixed; the stale note about `_Layout.Platform.Mobile` being dead code is corrected in the milestone documentation
+- **Post-foundation numbers:** 25 view files; 6 stylesheets: **6 hex, 57 `rgb()`, 28 `!important`**; in the views **1 inline `style=`, 0 `<style>`, 4 inline `<script>`, 12 inline event handlers**; 5 utility-colour fights (`platform-group.mobile` 3, `platform-users.mobile` 2); rendered contrast **254 failing rows on 16 elements on 13 pages** (the outline Reset Password button at 1.21:1, Platform phone meta text and dates at 2.35:1, 43 mailto links at 3.11:1); overflow of `Platform/Group/Index` at 320 desktop; 4 test files read its sheets.
+- **Moves into `@section Styles`:** nothing leaves a desktop layout's global list (the Platform layouts link no page sheet); the phone sheets are linked from their views through the section the Platform layouts already render.
+- **Answered questions to implement:** 5 "add it to the other view" answers (Q-85 to Q-94, 10 questions, 5 deliberate), no merges to do (Q-108 to Q-110 kept the twins), 3 approved relayouts (Q-124 to Q-126).
+- **Deferred items landing here:** WINDOWS 24 (43 `a.email-link` links 22px tall on the phone `/Platform/Users`); the `Platform/Group/Index` 320 overflow; the 44 findings of 94-AUDIT-admin.md (S1 8, S2 14).
+- **Append description:** "Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins."
+- **Definition of converted:** all ten points above, plus: a configured provider key (or a seeded stub) so `Admin/EmailStats` tile contrast is measured, not read; the Campaign status mapping (A-admin-016) is answered with the Quests owner's knowledge before it is fixed; the stale note about `_Layout.Platform.Mobile` being dead code is already corrected (PROJECT.md says the Platform mobile layout is live)
 
 ### Phase 6: Email templates (D-18, D-19)
 
@@ -905,7 +1177,35 @@ The cut starts from the roadmap's draft grouping (Quests and Quest Log; Events, 
 - **Guard tests to rewrite (to the same intent, none deleted):** `Emails/QuestFinalizedMarkdownRenderTests`, `Emails/WaitlistPromotedMarkdownRenderTests`, `Emails/SessionReminderMarkdownRenderTests` (the markdown `<div>` wrapper), `UnitTests/Services/SessionReminderJobTests`, and the email file references in `Tests/BoardMoveStaticGuardTests`.
 - **Findings owned:** none from this audit (the email templates are not web views and were not part of the manifest); the phase starts with its own inventory of the ten components.
 - **Open questions inherited:** none; the operator confirms the font decision and the test-send inbox inside the phase.
+- **Post-foundation numbers:** 10 components; **192 inline `style=` attributes and 134 hex literals** (mail clients need both), 1 `<style>` block and 2 remote stylesheet links (Font Awesome 6.4.0 from cdnjs, Cinzel from Google Fonts) in `_EmailLayout.razor`; no CSS custom properties, no scripts; unchanged by the foundation (the email diff against the baseline is empty).
+- **Append description:** "Restyle the ten email templates to the web pages' brand look with inline styles only and a real test send of each, leaving every message's content and trigger unchanged."
 - **Definition of converted:** the ten points above read for email: points 1 to 3 become "inline styles only, no custom properties, no scripts" and point 5 is checked on the rendered preview and the received message; points 6 and 7 become the preview plus the real test send of each template.
+
+### Deferred items and where each lands
+
+Every item deferred during the foundation, with its owner. Nothing is unmapped.
+
+| Item | Source | Lands in |
+|------|--------|----------|
+| Phone required-field asterisk at 3.36:1 (`span.text-danger`), 23 rows | WINDOWS 12 (the desktop part was a probe artefact; closed) | Quests (Create, CreateFollowUp, Edit: 14 rows), Characters (Create, Edit, Contacts Create, Edit, Details: 7), Shop (Management Create and Edit: 2); resolved as each card moves to the scrimmed surface |
+| Page links under 44px: 6 `a.row-nav-link` quest titles on `/quests`, 43 `a.email-link` on `/Platform/Users` (accepted by the operator at the 94-24 review) | WINDOWS 24 | Quests; Admin and Platform; each phase runs the 44px sweep on its own lists |
+| Board photo through `--qb-board-photo`, never a body-level custom property (the foundation sets both photos this way) | WINDOWS 22 | Shop (the theme replaces `--qb-board-image` through `data-theme` on `<html>`) |
+| Probe reliability: the shared sweep probe over-reports multi-layer glass | WINDOWS 8 | closeable: this plan re-measured every page with the corrected probe (623 rows against 838 from the shared probe); area phases use the corrected probe |
+| Desktop quest poster relayout, text zone lightened to 4.5:1, no slip surface | G1-O1 / G1-R1 | Quests |
+| Shop floating merchant button relocation | G1-O2 | Shop |
+| Calendar month view spec: month fits without scrolling at 1280 by 720, "+N more" confirmed against the calendar-fit mockup | G1-O3 / G1-R2 | Events (operator confirmation before the phase) |
+| Shop alerts on literal colours with important flags: `#denyModal .alert-warning`, `#addCharacterModal .alert-info` (`shop.css`), the management edit card's help and small text (`shop-management-edit.mobile.css`) | foundation sweep | Shop |
+| `AccessDenied` and `Events/Details` 4px phone overflow; Quest Details, Quest Log Index, Contact Category Manage and Platform Group Index overflow at 320 | Overflow section above | Account (one fix), Events, Quests, Characters, Admin and Platform |
+| Every finding of the six area reports (397 findings, 358 outside the shell report) | `94-AUDIT-<area>.md`, the Index above | the phase named in the report's own Index row; the Index has no row without a phase |
+| Shell findings (39) | `94-AUDIT-shell.md` | Foundation (closed by the foundation plans; the final verification above is the proof); area phases only re-verify them on their pages, plus the four items handed to Admin and Platform (A-admin-008, A-admin-014, A-shell-037, A-shell-038) |
+| Phone `Home/Index` landing page | Q-136 | Account and pickers |
+| `legacy-pages.css` and `mobile.css` leftovers | foundation | each phase removes its ranges; the last phase deletes the files and their layout links |
+
+**Separate fixes, outside the area cut (bugs, not UI conversion):**
+
+- **Shop item creation fails** with a foreign-key error because `ShopManagementController.Create` never sets `GroupId` (`deferred-items.md`). A bug fix off `main` before the Shop phase; the Shop phase's after-capture of Create needs it.
+- **`WallClockUnmovedTests` flake** (`FinalizedQuestGameNight_NeverShowsTheUtcPlusTwoShiftedHour`) fails in the first minute of 20:00 UTC because the page renders `CreatedAt` as `datetime="...T20:00:..."` (`deferred-items.md`). A test-only fix: scope the assertion to the wall-clock element or pin `CreatedAt`.
+- **Older register entries with no UI scope** (WINDOWS 2, 3, 4, 5): the `Request.Scheme` call sites in `AccountController` and the SQL Server relational coverage of the one-shot predicate stay their own backlog; the real-device calendar subscription check waits for deployment; the ROADMAP grep criterion is stale and can be closed. WINDOWS 7 (the Cinzel hinting difference on phones) was accepted by the operator and can be closed.
 
 ### Adjustments the audit makes to the draft cut
 
