@@ -160,6 +160,7 @@ public class UiFoundationLayerGuardTests
             .Concat(LayeredFiles.Select(l => l.File))
             .Select(n => CssRoot + "/" + n)
             .Concat(Layouts.Select(l => l.Path))
+            .Append(".claude/ui-guidelines.md")
             .Where(p => File.Exists(ResolveRepoFile(p.Split('/'))));
 
     [Fact]
