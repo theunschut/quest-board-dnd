@@ -1409,7 +1409,7 @@ Plans:
 *Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
 **Requirements**: TBD
 **Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
-**Plans:** 23/27 plans executed
+**Plans:** 24/27 plans executed
 
 **Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
 
@@ -1495,7 +1495,7 @@ Plans:
 
 **Wave 13** *(blocked on Wave 12 completion)*
 
-- [ ] 94-24-PLAN.md — Retire modern-card.css and the cream rule; full readability sweep reviewed (wave 13, checkpoint)
+- [x] 94-24-PLAN.md — Retire modern-card.css and the cream rule; full readability sweep reviewed (wave 13, checkpoint)
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
