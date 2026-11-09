@@ -357,6 +357,11 @@
     font-size: var(--qb-text-sm);
   }
 
+  /* A read-only value shown as plain text takes the colour of the surface it sits on, not the framework's dark body ink. */
+  .form-control-plaintext {
+    color: inherit;
+  }
+
   /* A link inside helper text keeps the link colour and its underline, which is what tells it from the words around it. */
   .form-text a {
     color: var(--qb-link);
