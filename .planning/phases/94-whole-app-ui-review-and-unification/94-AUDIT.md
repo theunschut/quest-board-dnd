@@ -171,8 +171,216 @@ Shell checks of the finished foundation on the live app (the phase worktree, por
 |----------------|----|-----------|------------|--------------|-----------------------|-----------------|----------------------|-------------------------|
 | `_Layout` (`/quests`, player) | desktop 1440 | pass | pass | none at 1440; at 800 named "Toggle navigation", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (1440, 320) |
 | `_Layout.Mobile` (`/quests`, player) | Pixel 7 | pass | pass | named "Open navigation menu", close "Close navigation menu", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (412, 390) |
+| `_Layout.GroupPicker` (`/groups/pick`, SuperAdmin) | desktop 1440 | pass | pass | none (the layout has no menu) | 0 / 0 | 0 | 0 | clear (1440, 320) |
+| `_Layout.GroupPicker` (`/groups/pick`, SuperAdmin) | Pixel 7 | pass | pass | none (the layout has no menu; served under both User-Agents) | 0 / 0 | 0 | 0 | clear (412, 390) |
+| `_Layout.Platform` (`/platform/Group/Create`, SuperAdmin) | desktop 1440 | pass | pass | none at 1440; at 800 named "Toggle navigation", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (1440, 320) |
+| `_Layout.Platform` (`/platform/Group/Index`, SuperAdmin) | desktop 1440 | pass | pass | none at 1440; at 800 named "Toggle navigation", opens and closes by keyboard | 0 / 0 | 0 | 0 | page flag at 320 (369px): the group table and the button row, both in `main` (see Overflow); the layout itself is clear |
+| `_Layout.Platform.Mobile` (`/platform/Group/Create`, SuperAdmin) | Pixel 7 | pass | pass | named "Open navigation menu", close "Close navigation menu", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (412, 390) |
+| `_Layout.Platform.Mobile` (`/platform/Group/Index`, SuperAdmin) | Pixel 7 | pass | pass | named "Open navigation menu", close "Close navigation menu", opens and closes by keyboard | 0 / 0 | 0 | 0 | clear (412, 390) |
+
+All five layouts pass the shell checks under every User-Agent they serve. Evidence of how the rows were taken: the desktop bar collapses into the toggler below 1200px, so the desktop rows prove the toggler at 800px; the Pixel 7 rows use the offcanvas panel (the close button is named and closes by keyboard). On the Platform desktop row for `/platform/Group/Index` the only red cell is the 320px overflow, which `who-overflows.mjs` shows is the page's own table and button row (0 overflowing elements outside `main`, and the same layout on `/platform/Group/Create` is clear). The one console error in the whole final sweep is a 404 for a character picture on Quest Details and Quest Manage (`Characters/GetCroppedPicture`), present identically in the `before` record: a data effect of one audit character with no cropped picture, not a shell defect.
+
+## Overflow
+
+From the `final` sweep (60 manifest rows, both User-Agents, reflow checks at 320px desktop and 390px mobile, `$QBR/final/reflow-desktop-320` and `$QBR/final/reflow-mobile-390`; the layouts and GroupPicker re-proved on the live app in the table above).
+
+- **Foundation pages: no flag.** The five layouts and `GroupPicker/Index` are clear at 1440 and 320 (desktop) and at 412 and 390 (phone).
+- **Flags, each assigned to its area phase** (none is a layout defect; every overflowing element sits inside `main`):
+
+| Page | Width | Scroll width | Cause | Area phase |
+|------|-------|--------------|-------|------------|
+| `Quest/Details` | 320 desktop | 373 | desktop columns and the signup card at 320 | 1 Quests and Quest Log (relayout Q-111) |
+| `QuestLog/Index` | 320 desktop | 378 | the log card row at 320 | 1 Quests and Quest Log |
+| `ContactCategoryManagement/Manage` | 320 desktop | 371 | the category table | 3 Characters, Contacts, DM profile, Players (relayout Q-117 wraps it in a responsive container) |
+| `Platform/Group/Index` | 320 desktop | 369 | the group table and the Create/Linked Boards button row | 5b Admin and Platform |
+| `Events/Details` | 390 mobile (416 at 412) | 394 | twin-less view, the same 4px pattern as AccessDenied | 2 Events, Series, Calendar, Agenda |
+| `Shared/AccessDenied` | 390 mobile (416 at 412) | 394 | twin-less view | 5a Account and pickers (one fix, reused on `Events/Details`) |
+
+Every other page (53 of 59 at 320 desktop, 57 of 59 at 390 mobile) is clear.
+
+## Rendered contrast
+
+Every page of the manifest under both User-Agents (59 pages, 118 records; `Account/SetPassword` is source-only and has no record), measured on the live phase code (port 8026) with the corrected probe (`mockups/package/probe-lib.mjs` through `$QBR/plans/94-24/probe-pages.mjs`, which paints multi-layer glass correctly and skips visually hidden and disabled text). Result: **3,920 text samples, 623 failing rows on 59 of 118 records**; the pages not listed below pass entirely. The shared sweep probe (`final/report.json`) over-reports glass surfaces (838 rows) and is not the measure here; the corrected probe also gave 623 rows on `final`, so the alert change after it moved nothing. Against the 2026-11-01 `before` record the corrected probe was also compared for failures present in both (keyed by page, User-Agent, selector and sample): 518 rows are in both, and the only ones that measure worse are the phone required-field asterisk (`span.text-danger`, 4.34 to 3.36:1, Characters Create and Edit, Contacts Create, Edit and Details; the known effect of the status-text tokens on legacy glass, resolved when those cards move to the scrimmed surface in their area phases). The two rows with no match in `before` (`code` on `Admin/EmailStats`, the `p` rows on the phone `Move/Index`) both exist in the `before` record as measured by the shared probe (`code` 2.37:1, now 3.57:1; `p` 4.34:1, unchanged), so they are probe differences, not new failures; a frozen-baseline re-sweep of those two pages on port 8001 is not possible because the audit accounts have no access to the board active there (Access Denied). The `alerts-dark` sweep found no new failure. Every row below is an area-phase finding: it fails today on a surface that the area phase converts (a legacy glass card without the scrimmed surface, a Bootstrap outline or status utility on glass, or a page rule with its own literal colour). Samples are left out on purpose (no member names or text); the element and the pages identify each row.
+
+Foundation-owned results from the same measurement: no row on a layout, the footer, the toasts or the alerts.
+
+| Area phase | Failing rows | Distinct elements | Pages with a failure |
+|------------|--------------|-------------------|----------------------|
+| 1 Quests and Quest Log | 123 | 37 | 13 |
+| 5a Account and pickers | 12 | 7 | 4 |
+| 2 Events, Series, Calendar, Agenda | 78 | 6 | 5 |
+| 3 Characters, Contacts, DM profile, Players | 97 | 32 | 13 |
+| 4 Shop and Shop management | 59 | 20 | 11 |
+| 5b Admin and Platform | 254 | 16 | 13 |
+
+**1 Quests and Quest Log**: 123 failing rows, 37 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `button.btn.btn-outline-secondary` | 1.17 | 4.5 | 1 | Quest-Manage (m) |
+| `label.btn.btn-outline-success` | 1.21 | 4.5 | 2 | Quest-Details--voting (m) |
+| `label.btn.btn-outline-danger` | 1.21 | 4.5 | 2 | Quest-Details--voting (m) |
+| `button.btn.btn-outline-primary` | 1.88 | 4.5 | 1 | Quest-CreateFollowUp (d) |
+| `div.quest-date` | 2.14 | 4.5 | 1 | Quest-Index (d) |
+| `div.quest-description` | 2.81 | 4.5 | 1 | Quest-Index (d) |
+| `strong` | 2.85 | 4.5 | 9 | Quest-Index (d), QuestLog-Details (m) |
+| `div.form-text` | 2.99 | 4.5 | 3 | Quest-Create (m), Quest-CreateFollowUp (m), Quest-Edit (m) |
+| `small` | 2.99 | 4.5 | 1 | Quest-Manage (m) |
+| `small.form-text` | 2.99 | 4.5 | 1 | QuestLog-EditRecap (m) |
+| `span.recap-badge.d-block` | 3.29 | 4.5 | 1 | QuestLog-Index (m) |
+| `span.text-danger` | 3.36 | 4.5 | 14 | Quest-Create (m), Quest-CreateFollowUp (m), Quest-Edit (m) |
+| `label.btn.btn-outline-warning` | 3.36 | 4.5 | 2 | Quest-Details--voting (m) |
+| `div.quest-dm` | 3.68 | 4.5 | 1 | Quest-Index (d) |
+| `small.text-muted` | 3.94 | 4.5 | 18 | Quest-Details (m), Quest-Details--voting (m), Quest-Index (m), QuestLog-Index (m) |
+| `h6.text-muted.text-uppercase` | 3.94 | 4.5 | 1 | Quest-Details (m) |
+| `span.text-muted.align-self-center` | 3.94 | 4.5 | 2 | Quest-Manage (m) |
+| `time.wall-clock` | 3.94 | 4.5 | 2 | QuestLog-Details (m), QuestLog-Index (m) |
+| `p.mb-0.text-muted` | 3.94 | 4.5 | 1 | QuestLog-Details (m) |
+| `small.text-muted.ms-1` | 3.94 | 4.5 | 2 | Quest-Details--voting (m) |
+| `button.btn.btn-link` | 4.21 | 4.5 | 1 | Quest-Manage (m) |
+| `div.quest-players` | 4.26 | 4.5 | 1 | Quest-Index (d) |
+| `div.quest-signups` | 4.31 | 4.5 | 13 | Quest-Index (d) |
+| `p.mb-1` | 4.34 | 4.5 | 8 | Move-Index (m), QuestLog-Details (m) |
+| `p.mb-3` | 4.34 | 4.5 | 1 | Move-Index (m) |
+| `p` | 4.34 | 4.5 | 3 | Move-Index (m), Quest-Details (m), Quest-Details--voting (m) |
+| `p.mb-0` | 4.34 | 4.5 | 1 | Move-Index (m) |
+| `label.form-label.dm-create-label` | 4.34 | 4.5 | 4 | Quest-Create (m) |
+| `label.form-label` | 4.34 | 4.5 | 14 | Quest-Create (m), Quest-CreateFollowUp (m), Quest-Edit (m), QuestLog-EditRecap (m) |
+| `label.form-check-label` | 4.34 | 4.5 | 2 | Quest-Create (m), Quest-Edit (m) |
+| `li.mb-1` | 4.34 | 4.5 | 1 | Quest-CreateFollowUp (m) |
+| `h6.dm-manage-subheading.mb-2` | 4.34 | 4.5 | 2 | Quest-Manage (m) |
+| `strong.dm-manage-date-label` | 4.34 | 4.5 | 1 | Quest-Manage (m) |
+| `span.fw-bold.dm-manage-player-name` | 4.34 | 4.5 | 1 | Quest-Manage (m) |
+| `time.local-time` | 4.34 | 4.5 | 1 | QuestLog-Details (m) |
+| `h6.quest-section-heading.mb-2` | 4.34 | 4.5 | 1 | Quest-Details--voting (m) |
+| `div.calendar-date-label-mobile.fw-bold` | 4.34 | 4.5 | 2 | Quest-Details--voting (m) |
+
+**5a Account and pickers**: 12 failing rows, 7 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `a.btn.btn-outline-primary` | 1.88 | 4.5 | 1 | Account-Edit (d) |
+| `div.account-field-label` | 2.99 | 4.5 | 4 | Account-Profile (m) |
+| `p.text-muted` | 3.94 | 4.5 | 1 | Account-Profile (m) |
+| `a.text-decoration-none` | 4.24 | 4.5 | 1 | Account-Login (m) |
+| `div.account-section-heading.mb-2` | 4.34 | 4.5 | 1 | Account-Edit (m) |
+| `div.account-field-value` | 4.34 | 4.5 | 2 | Account-Profile (m) |
+| `span.account-field-value` | 4.34 | 4.5 | 2 | Account-Profile (m) |
+
+**2 Events, Series, Calendar, Agenda**: 78 failing rows, 6 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `span.text-muted.avail-cell-empty` | 2.28 | 4.5 | 11 | Agenda-Index, Events-Index (d) |
+| `small.text-muted` | 3.94 | 4.5 | 5 | Agenda-Index (m) |
+| `span.small.text-muted` | 3.94 | 4.5 | 5 | Agenda-Index (m) |
+| `div.fw-semibold.agenda-board-name` | 4.34 | 4.5 | 5 | Agenda-Index (m) |
+| `div.agenda-linked-note.mb-3` | 4.34 | 4.5 | 2 | Calendar-Index (m), Calendar-Index--crowded (m) |
+| `div.agenda-day-label.text-uppercase` | 4.34 | 4.5 | 50 | Calendar-Index (m), Calendar-Index--crowded (m) |
+
+**3 Characters, Contacts, DM profile, Players**: 97 failing rows, 32 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `a.btn.btn-warning` | 1.68 | 4.5 | 1 | Characters-Details (m) |
+| `small.form-text` | 2.99 | 4.5 | 8 | Characters-Create, Characters-Edit, Contacts-Create and 2 more |
+| `small.form-text.d-block` | 2.99 | 4.5 | 2 | Characters-Create (m), Characters-Edit (m) |
+| `p` | 2.99 | 4.5 | 4 | Characters-Details (m), Characters-Index (m), Contacts-Details (m) |
+| `div.character-member-class` | 2.99 | 4.5 | 1 | Characters-Index (m) |
+| `div.contact-member-town-city` | 2.99 | 4.5 | 1 | Contacts-Index (m) |
+| `div.contact-member-sub-location` | 2.99 | 4.5 | 1 | Contacts-Index (m) |
+| `p.dm-profile-role-label` | 2.99 | 4.5 | 1 | DungeonMaster-Profile (m) |
+| `p.dm-profile-bio-empty` | 2.99 | 4.5 | 1 | DungeonMaster-Profile (m) |
+| `small.dm-quest-history-date.d-block` | 2.99 | 4.5 | 15 | DungeonMaster-Profile (m) |
+| `h2.contact-section-heading.mb-2` | 3.19 | 4.5 | 2 | ContactCategoryManagement-Edit (m), Contacts-Index (m) |
+| `span.text-danger` | 3.36 | 4.5 | 7 | Characters-Create, Characters-Edit, Contacts-Create and 2 more |
+| `p.text-muted.mb-0` | 3.94 | 4.5 | 2 | Characters-Details (m), Contacts-Details (m) |
+| `small.text-muted` | 3.94 | 4.5 | 1 | ContactCategoryManagement-Manage (m) |
+| `small.form-text.text-muted` | 3.94 | 4.5 | 3 | Contacts-Create (m), Contacts-Edit (m), DungeonMaster-EditProfile (m) |
+| `p.text-muted.small` | 3.94 | 4.5 | 1 | Contacts-Details (m) |
+| `span.markdown-editor-char-count-current` | 3.94 | 4.5 | 1 | DungeonMaster-EditProfile (m) |
+| `p.character-info-value.mb-2` | 4.34 | 4.5 | 1 | Characters-Details (m) |
+| `div.character-section-heading.mb-2` | 4.34 | 4.5 | 3 | Characters-Details (m), Characters-Index (m) |
+| `span.form-label` | 4.34 | 4.5 | 5 | Characters-Details (m) |
+| `span.character-info-value` | 4.34 | 4.5 | 1 | Characters-Details (m) |
+| `div.character-section-heading.mb-3` | 4.34 | 4.5 | 1 | Characters-Details (m) |
+| `a.row-nav-link` | 4.34 | 4.5 | 19 | Characters-Index (m), Contacts-Index (m), DungeonMaster-Profile (m), Players-Index (m) |
+| `label.form-label` | 4.34 | 4.5 | 3 | ContactCategoryManagement-Edit (m), Contacts-Details (m), DungeonMaster-EditProfile (m) |
+| `div.contact-member-name` | 4.34 | 4.5 | 1 | ContactCategoryManagement-Manage (m) |
+| `p.contact-info-value.mb-0` | 4.34 | 4.5 | 1 | Contacts-Details (m) |
+| `p.contact-info-value.mb-2` | 4.34 | 4.5 | 1 | Contacts-Details (m) |
+| `div.contact-section-heading.mb-2` | 4.34 | 4.5 | 2 | Contacts-Details (m) |
+| `label.form-label.d-block` | 4.34 | 4.5 | 1 | DungeonMaster-EditProfile (m) |
+| `h6.dm-profile-section-heading.mb-2` | 4.34 | 4.5 | 2 | DungeonMaster-Profile (m) |
+| `div.players-section-heading.mb-2` | 4.34 | 4.5 | 2 | Players-Index (m) |
+| `span.players-name` | 4.34 | 4.5 | 2 | Players-Index (m) |
+
+**4 Shop and Shop management**: 59 failing rows, 20 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `span.item-rarity.rarity-legendary` | 1.63 | 4.5 | 5 | Shop-Index, Shop-Index--empty-category (d), ShopManagement-Index (d) |
+| `a.btn.btn-outline-secondary` | 1.7 | 4.5 | 1 | ShopManagement-Index (m) |
+| `a.btn.btn-outline-primary` | 1.88 | 4.5 | 1 | ShopManagement-Index (d) |
+| `button.purchase-btn` | 2.13 | 4.5 | 3 | Shop-Index (d) |
+| `span.item-rarity.rarity-rare` | 2.15 | 4.5 | 1 | Shop-Index (m) |
+| `p` | 2.99 | 4.5 | 1 | Shop-Details (m) |
+| `p.shop-subtitle.mb-0` | 2.99 | 4.5 | 2 | Shop-Index (m), Shop-Index--empty-category (m) |
+| `div.form-text` | 2.99 | 4.5 | 7 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `div#price-suggestion` | 2.99 | 4.5 | 2 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `span.text-danger` | 3.36 | 4.5 | 2 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `span.item-rarity.rarity-common` | 3.55 | 4.5 | 2 | Shop-Details (m), Shop-Index (m) |
+| `small.text-muted` | 3.94 | 4.5 | 1 | ShopManagement-Edit (m) |
+| `p.text-muted.mb-0` | 3.94 | 4.5 | 1 | Shop-Index--empty-category (m) |
+| `button.btn.btn-outline-info` | 4.31 | 4.5 | 1 | ShopManagement-Create (d) |
+| `a.btn.btn-outline-info` | 4.31 | 4.5 | 1 | ShopManagement-Edit (d) |
+| `span.badge.type-magic-item` | 4.32 | 4.5 | 2 | ShopManagement-Index (d) |
+| `div.shop-item-name` | 4.34 | 4.5 | 3 | Shop-Index (m) |
+| `div.shop-item-price` | 4.34 | 4.5 | 3 | Shop-Index (m) |
+| `label.form-label` | 4.34 | 4.5 | 18 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+| `label.form-check-label` | 4.34 | 4.5 | 2 | ShopManagement-Create (m), ShopManagement-Edit (m) |
+
+**5b Admin and Platform**: 254 failing rows, 16 distinct elements.
+
+| Element | Worst ratio | Bar | Rows | Pages (d desktop, m mobile) |
+|---------|-------------|-----|------|-----------------------------|
+| `a.btn.btn-outline-danger` | 1.21 | 4.5 | 2 | Admin-EditUser |
+| `small` | 2.35 | 4.5 | 50 | Platform-Group-Index (m), Platform-Group-Members (m) |
+| `time.local-time` | 2.35 | 4.5 | 7 | Platform-Group-Index (m) |
+| `div.form-text.mb-2` | 2.35 | 4.5 | 1 | Platform-LinkedBoards-Index (m) |
+| `small.text-muted` | 2.89 | 4.5 | 15 | Admin-Quests (m) |
+| `div.form-text.mb-3` | 2.99 | 4.5 | 1 | Platform-LinkedBoards-Index (m) |
+| `a.email-link` | 3.11 | 4.5 | 43 | Platform-Users-Index (m) |
+| `div.form-text` | 3.45 | 4.5 | 1 | Platform-Group-Edit (m) |
+| `strong.parchment-text` | 3.61 | 4.5 | 115 | Admin-Quests, Admin-Users, Platform-Group-Index and 3 more |
+| `label.form-label` | 3.61 | 4.5 | 6 | Platform-LinkedBoards-Index (m) |
+| `span.linked-set-board-name.parchment-text` | 3.61 | 4.5 | 6 | Platform-LinkedBoards-Index (m) |
+| `code` | 3.63 | 4.5 | 2 | Admin-EmailStats |
+| `small.form-text.text-muted` | 3.94 | 4.5 | 1 | Platform-Group-Create (m) |
+| `small.text-muted.d-block` | 3.94 | 4.5 | 1 | Platform-Group-Edit (m) |
+| `p` | 4.34 | 4.5 | 2 | Platform-Group-Delete (m), Platform-LinkedBoards-Index (m) |
+| `strong` | 4.34 | 4.5 | 1 | Platform-Group-Delete (m) |
+
+## Scope
+
+The phase stayed in scope for everything except two changes recorded below. Baseline commit `b67703220dde8500867fcc4a7fe20b13743c31f0` (`$QBR/baseline-src/BASELINE_SHA`), compared with `HEAD` of the phase branch.
+
+**Views.** `git diff --no-renames --name-only <baseline>..HEAD -- QuestBoard.Service/Views QuestBoard.Service/Areas`, sorted, compared with `diff` against the plan's 19-path allowed set (`$QBR/plans/94-26/allowed-views.txt`): every one of the 19 allowed views changed (none is missing, so no plan failed to land), and **two paths outside the set also changed**:
+
+```
+13a14
+> QuestBoard.Service/Views/Shared/_Calendar.cshtml
+18a20
+> QuestBoard.Service/Views/Shared/_LinkedDayEntries.cshtml
+```
+
+Both changes are Razor comments only (`@* ... *@`, not rendered): they came with retiring `modern-card.css` and rewrite two comments that named the retired stylesheet's span rule so they stay true (commit `ba750d65`). Nothing renders differently and no markup changed. The allowed set was not edited; the two paths are recorded here for the operator to accept as comment-only.
+
+**Protected paths.** The same diff for `QuestBoard.Service/Components/Emails`, `QuestBoard.Domain`, `QuestBoard.Repository` and `QuestBoard.Service/Extensions/HtmlHelperExtensions.cs` is empty: no email template changed, nothing under the domain or repository layers changed (so nothing writes to `Events` or `Quests`), and the date helpers are untouched. For `QuestBoard.Service/wwwroot/js/site.js` the diff is **not empty**: one addition from the phone-layout work (commit `c1c48e1b`) keeps `aria-expanded` on an offcanvas toggler in step with the panel (a `show.bs.offcanvas` / `hidden.bs.offcanvas` listener, 13 lines, placed after the existing `hydrateWallClockTimes()` call). It does not touch `hydrateLocalTimes`, `hydrateWallClockTimes` or any date handling, so the wall-clock and local-time behaviour is unchanged, and the accessibility bar needs it (a collapse reports its own state; an offcanvas does not). Recorded here as a deliberate change for the operator to accept.
 
 ## Cascade
+
+What moving Bootstrap
 
 What moving Bootstrap and Font Awesome into `@layer vendor` costs, measured page by page, and which legacy rules the foundation has to retire first. Evidence is on scratch copies outside the repository; nothing in the repository was edited by the probe.
 
@@ -400,6 +608,27 @@ Per-capture figures follow, widest content change first. Columns: share of diffe
 | QuestLog-Index | desktop | 8.13% | 8.13% | 0.00% | BFN | none |
 | Shop-Details | mobile | 0.37% | 0.16% | 0.00% | BFO | none |
 | Shop-Index | mobile | 0.37% | 0.16% | 0.00% | BFO | none |
+
+### After the foundation (final state)
+
+Measured on the phase code after the last foundation plan (`QuestBoard.Service/wwwroot/css`, comments stripped; `css-fights.py` for the utility rules; counts per sheet in `$QBR/plans/94-26/counts.json`).
+
+**(a) Families retired.** Every family in table (a) is gone or has one owner.
+
+| Family | Final state |
+|--------|-------------|
+| Element-enumerated cream colour, `.modern-card` labels, help text, muted and danger repairs, the double `.table` definition | `modern-card.css` is deleted and unlinked from the four layouts; a card takes its text colour from its surface and descendants inherit; one `.table` and the token classes (`--qb-fg-muted`, `--qb-danger-text`, `--qb-fg-heading`) live in `components.css` and `base.css` |
+| Global element colour rules, `div` and `.container` background resets, `ul, ol, li` resets, the menu restatement rule | removed from the old desktop sheet, which is now `legacy-pages.css` (it carries only page rules); the body colour comes from `base.css` |
+| Bootstrap component re-themes (54 + 32 + 11 rules) | one set in `components.css` through `--bs-*` variables; what `legacy-pages.css` still says about a Bootstrap class is scoped under a page class |
+| Navbar and brand rules with `!important`, repeated in two files; the offcanvas rules | one `shell.css` (and `shell.mobile.css` for the phone bar) with no literal colour |
+| Duplicated backdrop `body::before` | one, in `base.css`; the photo goes through `--qb-board-photo` on `:root` |
+| Alerts | the dark overlay panel with light status text, stripe and links through `--bs-alert-*` and `--qb-alert-*` variables; no literal, no important flag |
+
+**(b) Utility fights: 45 rules at the start, 38 left, all in page sheets** (none in the five layouts' sheets). By area phase: Quests 8 (`home.mobile.css`, `quest-log.mobile.css`, `quest-log-detail.mobile.css`, `quests.css` 2, `quests.mobile.css` 2, `dm-manage.mobile.css`), Events 2 (`agenda.css`, `calendar.mobile.css`), Characters 8 (`character-detail`, `character-form`, `characters.mobile`, `contact-detail` 2, `contact-form`, `contacts.mobile`, `players.mobile`), Shop 14 (`legacy-pages.css` 7, `shop.css` 6 including the `#denyModal` and `#addCharacterModal` required-mark rules, `shop.mobile.css` 1), Account 1 (`account.mobile.css`), Admin and Platform 5 (`platform-group.mobile.css` 3, `platform-users.mobile.css` 2).
+
+**(c) Rules that win only because they are unlayered.** The two instances the probe found (`.navbar-nav .nav-link` padding and the bare-element `p, li, span, small` colour) are retired. What remains is structural: the foundation (`app`, `tokens`, `base`, `components`, `shell`, `shell.mobile`, `group-picker`) is layered, and the 47 other stylesheets (45 page sheets, `mobile.css` with its few leftover page rules, and the old desktop sheet `legacy-pages.css`) are unlayered, so every one of their rules beats every layered rule. Their totals, which the area phases take to zero: 460 hex literals, 870 `rgb()` literals and 561 `!important` flags in 47 sheets, of which `legacy-pages.css` carries 110 / 120 / 96 (attributed to Quests, Shop and Account by line range in the cut below). The foundation sheets themselves carry no literal colour (`tokens.css` holds the 54 hex and 26 `rgb()` token values by design) and 16 `!important` (nine in `components.css`, seven in `base.css`: reduced motion, visually hidden text and utility resets).
+
+**Vendor bump differences.** Bootstrap 5.3.0 to 5.3.8 and Font Awesome 6.4.0 to 6.7.2 differ in one place across 26 captures of 13 pages under both User-Agents: the `fa-dice-d20` die is redrawn with finer facets (the brand die in the bar on every page, the CR badge die per quest card, the One-Shot badge die on Platform group rows; 16 to 3,138 pixels per capture). No layout shift, no new console, page or request error. Disposition: recorded and accepted. Detail: `$QBR/plans/94-19/bump-differences.md`.
 
 ## Operator questions for sign-off
 
@@ -825,7 +1054,9 @@ Common to every proposal: the desktop layouts (`_Layout.cshtml` and `_Layout.Pla
 
 ## Dead dependencies
 
-The dead-dependency proofs (jQuery, the Font Awesome v4 shim and the other vendor lines) are in [94-AUDIT-vendor.md](94-AUDIT-vendor.md), written by plan 94-13, which may land after this report; this index links to it by name and does not copy it. The shell report's A-shell-039 records where each layout loads jQuery and the v4 shim today.
+The dead-dependency proofs (jQuery and the Font Awesome v4 shim, each with its command, result and verdict) are in [94-AUDIT-vendor.md](94-AUDIT-vendor.md), written by plan 94-13; this index links to it and does not copy it.
+
+**Final outcome (94-26).** jQuery is removed from all five layouts: four proofs passed, so it was dropped, not self-hosted. The Font Awesome v4 shim is not dead (it restyles one icon, the editor toolbar's preview eye), so it is kept and self-hosted, now at `lib/fontawesome-6.7.2/css/v4-shims.min.css` after the vendor bump; it can go when the editor re-skin sets that icon's weight itself (a visible-change decision for the Quests phase, which owns the Markdown editor). Bootstrap 5.3.8, Font Awesome 6.7.2 and Cinzel are self-hosted next to cropperjs, EasyMDE and Tagify, all under `wwwroot/lib`. Live proof on the finished code: the `final` sweep made 2,850 requests over 120 records and every one went to `localhost`, and the shell check recorded 0 third-party requests on all five layouts. The one remaining remote reference is in the email templates (`_EmailLayout.razor`, Font Awesome and Google Fonts links), which belong to the email-template phase.
 
 ## Proposed area-phase cut
 
