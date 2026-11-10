@@ -1,21 +1,21 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: Quests and Quest Log UI conversion
 status: planning
-stopped_at: Phase 94 UI-SPEC approved
-last_updated: "2026-11-09T17:42:49.029Z"
+stopped_at: Phase 95 context gathered
+last_updated: "2026-11-10T08:30:54.568Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 94 complete, transitioned to Phase 95
+state_head: 31d92b0ecb8720e1032c5ed457ebb2c845943122
 progress:
   total_phases: 30
   completed_phases: 20
   total_plans: 190
   completed_plans: 181
   percent: 67
-state_head: 2777f4082e0b974492f8b2ba0a271ba5d73118f8
 ---
 
 # Project State
@@ -231,9 +231,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-30T15:59:19.477Z
-Stopped at: Phase 94 UI-SPEC approved
-Resume file: .planning/phases/94-whole-app-ui-review-and-unification/94-UI-SPEC.md
+Last session: 2026-11-10T08:30:48.209Z
+Stopped at: Phase 95 context gathered
+Resume file: .planning/phases/95-quests-and-quest-log-ui-conversion/95-CONTEXT.md
 
 ## Operator Next Steps
 
