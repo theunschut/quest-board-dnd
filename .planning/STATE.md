@@ -5,11 +5,11 @@ milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: Quests and Quest Log UI conversion
 status: planning
-stopped_at: Phase 95 context gathered
-last_updated: "2026-11-10T08:30:54.568Z"
+stopped_at: Phase 96 context gathered
+last_updated: "2026-11-10T10:45:01.715Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 94 complete, transitioned to Phase 95
-state_head: 31d92b0ecb8720e1032c5ed457ebb2c845943122
+state_head: 83b4b1c8ec54cd73220c0a3574d94bfe0ce375ea
 progress:
   total_phases: 30
   completed_phases: 20
@@ -231,9 +231,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-10T08:30:48.209Z
-Stopped at: Phase 95 context gathered
-Resume file: .planning/phases/95-quests-and-quest-log-ui-conversion/95-CONTEXT.md
+Last session: 2026-11-10T10:44:53.467Z
+Stopped at: Phase 96 context gathered
+Resume file: .planning/phases/96-account-and-pickers-ui-conversion/96-CONTEXT.md
 
 ## Operator Next Steps
 
