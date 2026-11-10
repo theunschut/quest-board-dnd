@@ -1525,7 +1525,7 @@ Wave note: plans that edit tracked source, build or run the working tree, or com
 **Goal:** Convert the core loop (quest board, quest details, create and edit forms, DM manage, quest log, move) to the foundation, carrying the shared pieces the loop depends on, so a DM can post a quest and a player can sign up on converted pages. Convert the quest board, quest details, quest forms, DM manage, quest log and move pages, with the shared editor, signup modal and vote UI, to the foundation: scrimmed card surfaces, no inline styles or scripts, the approved poster relayout, and every page readable at 4.5:1 on phone and desktop.
 **Requirements**: TBD
 **Depends on:** Phase 94
-**Plans:** 0 plans
+**Plans:** 18 plans
 
 **Scope:**
 
@@ -1581,8 +1581,57 @@ Plus, specific to this phase: the Quest board mockup page is built from this pha
 - Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
 
 Plans:
+**Wave 1**
+- [ ] 95-01-PLAN.md — Review environment: operator checkpoint (database, privileged accounts, scratch tooling), player and DM accounts, Edge capture harness
 
-- [ ] TBD (run /gsd-plan-phase to break down)
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 95-02-PLAN.md — Fixtures through the app forms, frozen baseline app, probes and BEFORE capture under both User-Agents
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 95-03-PLAN.md — Gate 1 package and gate: poster mockup with switchers and measured pool, phone Manage mockup, merge evidence (operator, redraw loop)
+- [ ] 95-04-PLAN.md — Phase tracer: Markdown editor keyboard trap fix, visible hint, form scripts out of inline code, conversion guard test
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 95-05-PLAN.md — Quest Details A: Spectator marker, phone signup selects, details module, character modal
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 95-06-PLAN.md — Quest Details B: scoped vote-button patch, calendar months inside the signup card
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 95-07-PLAN.md — Quest Details C: column split, twin wording, dates, layered sheets
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 95-08-PLAN.md — Desktop quest board from the approved mockup: poster picker, WebP art, layered poster CSS, masonry module, bare empty board
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 95-09-PLAN.md — Phone quest board: stretched card links, empty state
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 95-10-PLAN.md — Quest Create and Edit (Edit merges if approved at Gate 1)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [ ] 95-11-PLAN.md — Quest CreateFollowUp (merges if approved at Gate 1)
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [ ] 95-12-PLAN.md — Quest Manage scripts and handlers into one module
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [ ] 95-13-PLAN.md — Quest Manage conversion and the approved phone relayout
+
+**Wave 13** *(blocked on Wave 12 completion)*
+- [ ] 95-14-PLAN.md — Quest Log index plus the two approved merges (Details, EditRecap)
+
+**Wave 14** *(blocked on Wave 13 completion)*
+- [ ] 95-15-PLAN.md — Move page and the shared move reason line in components
+
+**Wave 15** *(blocked on Wave 14 completion)*
+- [ ] 95-16-PLAN.md — Shared Markdown stylesheets and where they load
+
+**Wave 16** *(blocked on Wave 15 completion)*
+- [ ] 95-17-PLAN.md — Closure: dead partials and legacy rules, global sheet list trimmed, counts
+
+**Wave 17** *(blocked on Wave 16 completion)*
+- [ ] 95-18-PLAN.md — AFTER sweep, Gate 2 review sheet and gate (operator, gap-closure loop)
 
 ### Phase 96: Account and pickers UI conversion
 

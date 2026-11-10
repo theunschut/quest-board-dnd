@@ -4,16 +4,16 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: Quests and Quest Log UI conversion
-status: planning
-stopped_at: Phase 96 context gathered
-last_updated: "2026-11-10T10:45:01.715Z"
+status: executing
+stopped_at: Phase 95 UI-SPEC approved
+last_updated: "2026-11-10T14:44:15.918Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 94 complete, transitioned to Phase 95
-state_head: 83b4b1c8ec54cd73220c0a3574d94bfe0ce375ea
+state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 progress:
   total_phases: 30
   completed_phases: 20
-  total_plans: 190
+  total_plans: 208
   completed_plans: 181
   percent: 67
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 ## Current Position
 
-Phase: 95 — Quests and Quest Log UI conversion
+Phase: 95 (Quests and Quest Log UI conversion) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-11-09 — Phase 94 complete, transitioned to Phase 95
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
@@ -231,9 +231,9 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-10T10:44:53.467Z
-Stopped at: Phase 96 context gathered
-Resume file: .planning/phases/96-account-and-pickers-ui-conversion/96-CONTEXT.md
+Last session: 2026-11-10T13:20:27.946Z
+Stopped at: Phase 95 UI-SPEC approved
+Resume file: .planning/phases/95-quests-and-quest-log-ui-conversion/95-UI-SPEC.md
 
 ## Operator Next Steps
 
