@@ -893,12 +893,12 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // CreateFollowUp renders glass card form on mobile UA
+    // CreateFollowUp is one view serving the phone layout
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Quest/CreateFollowUp/{id} renders quest-followup-card-mobile
-    /// glass card form and links quest-followup.mobile.css.
+    /// Mobile UA on /Quest/CreateFollowUp/{id} answers 200 with the mobile-layout body class, the
+    /// follow-up form, the pre-approved players card and its sentence, and links quest-form.css.
     /// Requires DM authentication — CreateFollowUp action enforces DM role.
     /// </summary>
     [Fact]
@@ -923,8 +923,12 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("quest-followup-card-mobile");
-        html.Should().Contain("quest-followup.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain($"/Quest/CreateFollowUp/{quest.Id}");
+        html.Should().Contain("Save Follow-Up Quest");
+        html.Should().Contain("Pre-Approved Players");
+        html.Should().Contain("Selected players from the original quest will be automatically added");
+        html.Should().Contain("quest-form.css");
     }
 
     // -----------------------------------------------------------------------
