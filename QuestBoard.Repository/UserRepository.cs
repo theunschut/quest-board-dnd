@@ -75,6 +75,24 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyDictionary<int, IReadOnlyList<string>>> GetBoardNamesByUserAsync(CancellationToken token = default)
+    {
+        var memberships = await DbContext.UserGroups
+            .Select(ug => new { ug.UserId, GroupName = ug.Group.Name })
+            .ToListAsync(cancellationToken: token);
+
+        // Sorted in memory so the order does not depend on the database collation.
+        return memberships
+            .GroupBy(m => m.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<string>)g
+                    .Select(m => m.GroupName)
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToList());
+    }
+
+    /// <inheritdoc/>
     public async Task<GroupRole?> GetGroupRoleAsync(int userId, int groupId)
     {
         var ug = await DbContext.UserGroups

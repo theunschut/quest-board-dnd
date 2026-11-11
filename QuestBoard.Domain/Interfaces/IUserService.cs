@@ -51,6 +51,12 @@ public interface IUserService : IBaseService<User>
     Task<IList<User>> GetAvailableUsersAsync(int groupId, string? search, CancellationToken token = default);
 
     /// <summary>
+    /// Returns, per user id, the names of the boards the user is a member of, sorted A to Z ignoring case.
+    /// Users who are members of no board are absent from the result.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, IReadOnlyList<string>>> GetBoardNamesByUserAsync(CancellationToken token = default);
+
+    /// <summary>
     /// Returns the effective GroupRole for the given ClaimsPrincipal in the specified group,
     /// treating SuperAdmin as an automatic Admin-equivalent bypass that requires no group membership.
     /// </summary>

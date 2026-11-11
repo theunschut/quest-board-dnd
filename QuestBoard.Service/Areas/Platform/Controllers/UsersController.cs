@@ -13,6 +13,7 @@ public class UsersController(IUserService userService, IIdentityService identity
     public async Task<IActionResult> Index()
     {
         var users = await userService.GetAllAsync();
+        var boardNames = await userService.GetBoardNamesByUserAsync();
         var viewModels = new List<PlatformUserViewModel>();
         foreach (var user in users)
         {
@@ -20,7 +21,8 @@ public class UsersController(IUserService userService, IIdentityService identity
             viewModels.Add(new PlatformUserViewModel
             {
                 User = user,
-                IsDisabled = lockoutEnd == DateTimeOffset.MaxValue
+                IsDisabled = lockoutEnd == DateTimeOffset.MaxValue,
+                BoardNames = boardNames.TryGetValue(user.Id, out var names) ? names : []
             });
         }
         return View(viewModels);
