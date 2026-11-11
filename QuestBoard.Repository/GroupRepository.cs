@@ -1,3 +1,4 @@
+using System.Data;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using QuestBoard.Domain.Enums;
@@ -232,7 +233,9 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
             return BoardDeletionResult.Refused(BoardDeleteStatus.NotFound);
 
         // Members are rechecked here, before anything is staged, because the check made when the
-        // confirmation page was shown may be stale by the time it is confirmed.
+        // confirmation page was shown may be stale by the time it is confirmed. This early check
+        // only saves loading the board for nothing; the check that guards the delete is repeated
+        // inside the transaction below.
         if (await DbContext.UserGroups.AnyAsync(ug => ug.GroupId == groupId, token))
             return BoardDeletionResult.Refused(BoardDeleteStatus.HasMembers, group.Name);
 
@@ -257,8 +260,8 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
         // Image rows (character, contact) and the contact-to-tag join rows are deliberately never
         // loaded: an image can be several megabytes, and the database removes those rows itself
         // when their character or contact goes. Membership rows cascade from the board too, and
-        // the member check above guarantees there are none. A linked board set stays: only this
-        // board's pointer to it goes, with the board row.
+        // the member check made just before the save guarantees there are none. A linked board set
+        // stays: only this board's pointer to it goes, with the board row.
         var removed = new Dictionary<BoardContentKind, int>();
 
         Stage(BoardContentKind.DateVotes, await BoardDateVotes(groupId).ToListAsync(token));
@@ -286,9 +289,30 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
 
         DbContext.Groups.Remove(group);
 
+        // Membership rows cascade from the board, so a member added after the check above would be
+        // erased by the delete without a trace. The final check and the save therefore share one
+        // serializable transaction: the check's range lock on this board's membership rows holds
+        // until the commit, so a concurrent add waits and then fails on the missing board instead
+        // of slipping in between. Only the check and the save run inside it, so the locks it takes
+        // are this board's membership range and the rows the save touches by key, never the wide
+        // reads above. The in-memory provider used by the unit tests has no transactions, so there
+        // the check simply runs before the save.
+        await using var transaction = DbContext.Database.IsRelational()
+            ? await DbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, token)
+            : null;
+
         try
         {
+            if (await DbContext.UserGroups.AnyAsync(ug => ug.GroupId == groupId, token))
+            {
+                DbContext.ChangeTracker.Clear();
+                return BoardDeletionResult.Refused(BoardDeleteStatus.HasMembers, group.Name);
+            }
+
             await DbContext.SaveChangesAsync(token);
+
+            if (transaction != null)
+                await transaction.CommitAsync(token);
         }
         catch
         {

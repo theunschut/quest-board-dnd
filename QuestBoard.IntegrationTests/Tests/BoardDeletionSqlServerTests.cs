@@ -1,3 +1,6 @@
+using System.Data.Common;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using QuestBoard.Domain.Enums;
@@ -40,7 +43,7 @@ public class BoardDeletionSqlServerTests
         int SignupOnBUsingACharacter,
         int EventOnBInASeries);
 
-    private static ServiceProvider BuildProvider(string connectionString)
+    private static ServiceProvider BuildProvider(string connectionString, IInterceptor? interceptor = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -55,6 +58,8 @@ public class BoardDeletionSqlServerTests
         services.AddSingleton<IBoardClock>(new FixedBoardClock());
         services.AddAutoMapper(cfg => cfg.AddProfile<EntityProfile>());
         services.AddRepositoryServices(configuration);
+        if (interceptor != null)
+            services.ConfigureDbContext<QuestBoardContext>(options => options.AddInterceptors(interceptor));
         return services.BuildServiceProvider();
     }
 
@@ -346,5 +351,95 @@ public class BoardDeletionSqlServerTests
         (await CountsAsync(provider, seeded.BoardB)).Should().Equal(boardBbefore);
         (await TagJoinRowsForContactAsync(provider, seeded.ContactA)).Should().Be(1);
         (await TagJoinRowsForContactAsync(provider, seeded.ContactB)).Should().Be(1);
+    }
+    // Stands in for a second super admin adding a member while the delete is saving. Just before the
+    // first write of the delete's save runs, it tries to add a member to the board on its own
+    // connection with a short lock timeout, and records what the server said.
+    private sealed class ConcurrentMemberAdd(string connectionString) : DbCommandInterceptor
+    {
+        private const int LockRequestTimedOut = 1222;
+
+        private int? _boardId;
+        private bool _fired;
+
+        public int? ServerError { get; private set; }
+        public bool Added { get; private set; }
+
+        public void Arm(int boardId) => _boardId = boardId;
+
+        public bool WasHeldOffByALock => !Added && ServerError == LockRequestTimedOut;
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            await TryAddAsync(command, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            await TryAddAsync(command, cancellationToken);
+            return result;
+        }
+
+        private async Task TryAddAsync(DbCommand command, CancellationToken token)
+        {
+            if (_boardId == null || _fired || command.Transaction == null
+                || command.CommandText.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            _fired = true;
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync(token);
+            await using var insert = connection.CreateCommand();
+            insert.CommandText =
+                "SET LOCK_TIMEOUT 3000; " +
+                "INSERT INTO [UserGroups] ([UserId], [GroupId], [GroupRole]) " +
+                "SELECT TOP 1 [Id], @boardId, 0 FROM [AspNetUsers] ORDER BY [Id];";
+            insert.Parameters.AddWithValue("@boardId", _boardId.Value);
+            try
+            {
+                Added = await insert.ExecuteNonQueryAsync(token) == 1;
+            }
+            catch (SqlException ex)
+            {
+                ServerError = ex.Number;
+            }
+        }
+    }
+
+    [Fact]
+    public async Task AMemberAddedWhileTheDeleteSaves_IsHeldOffInsteadOfSilentlyErased()
+    {
+        // Arrange
+        var server = MigratorSqlServer.RequireServerConnectionString();
+        using var scratch = new ScratchDatabase(server);
+        var concurrentAdd = new ConcurrentMemberAdd(scratch.ConnectionString);
+        await using var provider = BuildProvider(scratch.ConnectionString, concurrentAdd);
+        await MigrateAsync(provider);
+        var seeded = await SeedAsync(provider);
+        concurrentAdd.Arm(seeded.BoardA);
+
+        // Act
+        BoardDeletionResult result;
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var repository = scope.ServiceProvider.GetRequiredService<IGroupRepository>();
+            result = await repository.DeleteBoardAsync(seeded.BoardA, Token);
+        }
+
+        // Assert: the member check's lock was still held when the save began, so the add had to wait
+        // for the delete to finish rather than land in between and be cascaded away unseen.
+        concurrentAdd.WasHeldOffByALock.Should().BeTrue(
+            $"the add must block on the delete's membership lock (added: {concurrentAdd.Added}, server error: {concurrentAdd.ServerError})");
+        result.Status.Should().Be(BoardDeleteStatus.Deleted);
+
+        await using var verify = provider.CreateAsyncScope();
+        var context = verify.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        (await context.Groups.AnyAsync(g => g.Id == seeded.BoardA, Token)).Should().BeFalse();
+        (await context.UserGroups.AnyAsync(ug => ug.GroupId == seeded.BoardA, Token)).Should().BeFalse();
     }
 }
