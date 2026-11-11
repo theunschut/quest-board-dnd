@@ -62,7 +62,6 @@ Phase-specific placements (all from existing tokens):
 | Where | Value |
 |-------|-------|
 | Gap between poster meta lines | `--qb-space-sm` (8px); this is the gap the research content budget assumes |
-| Poster zone feather (blur, 0 spread) | `--qb-space-sm` (8px); see "Lightened text zone" for why it may not be larger |
 | Poster seal sizes | 80px, 64px at viewport 480px and below, 56px at 320px and below. All multiples of 4; today's 65px and 55px round to 64 and 56 (a 1px change, inside the foundation's rule that off-grid legacy sizes round to the nearest step) |
 | Gap between calendar months inside the signup card | `--qb-space-md` |
 | Phone form control height | `--qb-hit-min` (44px) from the shell rule; the new phone selects add nothing |
@@ -81,7 +80,7 @@ This phase only assigns existing steps to the new poster and form elements:
 |---------|------------------------|--------|-------|
 | Poster title, tier 1 | Heading 20px Cinzel | 600 | the signed-off departure (foundation spec S11: Cinzel on the 20px notice titles). Line height 1.2 = 24px |
 | Poster title, tier 2 | Body 16px Cinzel | 600 | **GATE 1 (item 4):** a 16px Cinzel title is the one new use of the display face. Same face as tier 1 so a long title does not change character mid-board. Line height 1.2 = 19px. Never 28px on a poster: it does not fit any measured box |
-| Poster meta lines (DM, date, count) | Label 14px | 400, label words 600 | label words are `DM:`, `Quest Date:`, `Selected Adventurers:`, `Adventurers signed up:` as today |
+| Poster meta lines (DM, date, count) | Label 14px | 600 on every meta line, labels and values (heavier ink carries the contrast; no zone or halo) | label words are `DM:`, `Quest Date:`, `Selected Adventurers:`, `Adventurers signed up:` as today |
 | Poster CR badge | Label 14px | 600 | `.badge`; label at least 4.5:1 on its fill |
 | Markdown hint under the editor | Label 14px | 400 | `.form-text` |
 | Form labels, phone selects | Label 14px 600 label / Body 16px control | | 16px control also prevents iOS focus zoom (foundation spec) |
@@ -97,7 +96,7 @@ Inherited from the foundation spec § Color (60/30/10, reserved gold list, D-17 
 |------|-------|---------------------|
 | Dominant (60%) | the oak board photo (`--qb-board-image`) | page backdrop; the desktop board is posters directly on it |
 | Secondary (30%) | glass `--qb-surface-glass` over the 42% scrim (S2) | every card on every converted page except the desktop posters; the poster art is paper and sits outside this surface choice (S1) |
-| Poster paper | the poster artwork plus the lightened zone `color-mix(in srgb, var(--qb-surface-paper) N%, transparent)` | body text on it is `--qb-ink` (14.94:1 on pure paper, foundation spec C16); **no new token, no hex, and no `--qb-surface-slip`** |
+| Poster paper | the poster artwork, bare: no lightened zone, tint or halo | text is `--qb-ink` (meta lines weight 600); per-glyph contrast on the art is below 4.5:1 (worst glyph 2.46 to 3.65), a recorded exception held to per-poster floors (Gate 1 item 2, see "Poster text treatment"); **no new token, no hex, and no `--qb-surface-slip`** |
 | Accent (10%) | gold family per the reserved list | the focus ring's inner stroke on the poster and log cards. **Nothing new is gold.** Wax seals are artwork, not an accent use |
 | Destructive | `--qb-danger` fill, `--qb-danger-text` as text | Delete Quest, Remove (player), Revoke My Signup, Remove Character, and the "No" vote when checked |
 
@@ -132,25 +131,25 @@ Text box = an absolutely positioned `.quest-poster-text` with `inset: T% R% B% L
 Title characters that fit (research table): at tier 1, open / finalized: `p1` about 190 / 160; `p6` 90 / 60; `p2` 85 / 50; `p5` 80 / 48; `p4` 70 / 40. A 200-character title (the field maximum) does not fit `p1` at tier 1; at tier 2 it needs about 315px of 408 and fits. The same pick chooses the wax seal design from the four `Wax Seals` images and is stable per quest. Today's character-count thresholds are removed.
 **Seal-aware budget (planner rule, verified at Gate 1):** where a seal slot lies under the box (`p1` bottom-left), the budget is cut by the seal's overlap (about 40px on `p1`) so text never runs under a seal.
 
-### Lightened text zone (D-08) — measured, GATE 1 picks the strength
+### Poster text treatment (D-08) — decided at Gate 1: heavier ink only
 
-The zone is `background-color: color-mix(in srgb, var(--qb-surface-paper) N%, transparent)` on `.quest-poster-text`, with a feather of the same mix as `box-shadow: 0 0 var(--qb-space-sm) 0 <same mix>`. The feather is capped at 8px blur and 0 spread: the measured box sits only 4px (dilation) to 10px (torn-edge erosion) inside clear paper, so a larger feather would paint paper colour over a hole or tear and read as a ghost patch (a rectangular slip is the rejected treatment). The mockup shows a crop of each hole-adjacent box to prove no ghost.
+No lightened zone, no feather, no tint and no halo. The v1 zone (15 / 25 / 35% `color-mix` on `--qb-surface-paper`) was rejected by the operator as a visible block; the v2 halos (A tight, B soft) passed the probe only because the halo paints paper under each letter, and were not chosen. Text is `--qb-ink`; the meta lines (labels and values) are weight 600; titles keep the display face at the strong weight. The CR badge is unchanged.
 
-**Which pixel binds.** Text is dark ink (`--qb-ink`, L = 0.0058) on opaque artwork, so the **darkest** art pixels bind, not the brightest board pixel that D-08's wording mentions (B-max applies to translucent glass over the board; the poster art is opaque, so it never enters). The contract bar is **4.5:1 for everything on the poster, titles included**: D-08 lets titles rely on the 3:1 large-text bar, but the foundation's definition of large text (A-1) counts only the 28px Display step, and no poster title is 28px, so no title qualifies. Every strength below clears 4.5:1 at the 5th percentile on the pool posters (`r1` excepted at whisper), so nothing is gained by leaning on 3:1.
+Option C leaves poster text **below 4.5:1 per glyph** (worst-glyph 10th percentile, darkest pixel in brackets): `p1` 2.46 (1.50), `p2` 3.65 (2.81), `p4` 2.92 (2.52), `p5` 3.45 (2.09), `p6` 3.00 (2.55), `r1` 2.82 (1.69) — Ruined 1 over the burn mark is the weakest. This is a **recorded contrast exception** (Gate 1 item 2; `~/qb-ui-review/phase-95/contrast-exceptions.json`, kind `poster-glyph-floor`). It is held to a per-poster **floor** in the sweep probe's own measure: a later capture below its floor fails `readability-compare.py` and goes to the operator. The exception covers poster text on the desktop board only; every other surface keeps the 4.5:1 bar.
 
-Measured contrast of `--qb-ink` against the artwork blended with `--qb-surface-paper` at alpha a (5th-percentile pixel / share of box pixels still under 4.5:1):
+```css
+@layer pages {
+  .quest-poster-text { position: absolute; inset: calc(var(--box-t) * 1%) calc(var(--box-r) * 1%) calc(var(--box-b) * 1%) calc(var(--box-l) * 1%); display: flex; flex-direction: column; align-items: center; gap: var(--qb-space-sm); text-align: center; color: var(--qb-ink); }
+  .quest-poster-title { margin: 0; color: var(--qb-ink); font-family: var(--qb-font-display); font-size: var(--qb-text-lg); font-weight: var(--qb-weight-strong); line-height: var(--qb-leading-heading); overflow-wrap: break-word; max-width: 100%; }
+  .quest-poster-title--tier2 { font-size: var(--qb-text-base); }
+  .quest-poster-title .row-nav-link { color: var(--qb-ink); }
+  .quest-poster-meta { display: flex; flex-direction: column; align-items: center; gap: var(--qb-space-sm); width: 100%; font-size: var(--qb-text-sm); line-height: var(--qb-leading-body); }
+  .quest-poster-meta p { margin: 0; max-width: 100%; overflow-wrap: break-word; }
+  .quest-poster-meta p, .quest-poster-meta strong { font-weight: var(--qb-weight-strong); }
+}
+```
 
-| Poster | a = 15% "whisper" | a = 25% "light" | a = 35% "strong" |
-|--------|-------------------|-----------------|------------------|
-| `p1` | 5.04 / 2.1% | 5.82 / 0.6% | 6.69 / 0.1% |
-| `p2` | 5.32 / 0.9% | 6.08 / 0.1% | 6.94 / 0.0% |
-| `p4` | 5.15 / 1.4% | 5.91 / 0.1% | 6.77 / 0.0% |
-| `p5` | 5.28 / 2.2% | 6.05 / 0.7% | 6.92 / 0.1% |
-| `p6` | 4.98 / 2.1% | 5.76 / 0.2% | 6.64 / 0.0% |
-| `r1` | **3.80 / 8.1% (fails)** | 4.55 / 4.8% | 5.44 / 0.7% |
-
-Raw ink on the unlightened art is 3.98 to 4.33 at the 5th percentile on the blanks (matches the sign-off figure 3.8 to 4.2) and 2.90 on `r1`.
-Rules for the switcher: all three strengths are drawn; **whisper is not offered for `r1`** (it fails at the 5th percentile); the shipped value is chosen once and replaces a single custom property, not a per-poster tweak. A speck of stain under no glyph does not fail a strength, so the shipped value is proven with the **per-glyph-box probe** on the rendered WebP (ink composited over the sampled pixels under each text line), not over the whole rectangle. Numbers are re-run on the shipped WebP, not the PNG.
+The superseded zone measurements (15 / 25 / 35%) remain in 95-RESEARCH.md and the 95-03 SUMMARY as history.
 
 ### Information order (D-07) — GATE 1 picks
 
@@ -373,10 +372,10 @@ Both gates use a scratch folder outside the repository (`~/qb-ui-review/phase-95
 ### Gate 1 (early, blocking): what the package must show
 
 **A. Poster mockup (D-07, D-08, D-11)** — static HTML on the real WebP art, written the way it would ship (real `--qb-*` token names, `@layer` order, no `!important`, no literals outside the token block, reduced-motion block).
-- Switchers (plain buttons toggling a class on the root): **information order** A / B (D-07); **zone strength** 15 / 25 / 35% (D-08, with the `r1` exception); **title tier** shown on every long title; seal size on `p5` (56px / shorter box).
+- Switchers (plain buttons toggling a class on the root): **information order** A / B (D-07); **poster text treatment** (v1 zone 35%, tight halo, soft halo, heavier ink; Gate 1 closed with heavier ink only, D-08); **title tier** shown on every long title; seal size on `p5` (56px / shorter box).
 - Frames: a **crowded board** (at least 12 quests, mixed posters, so the operator can judge whether `p1`, `p2` and `p6` look empty without a description); **long titles** (a 40-, 90-, 160- and 200-character title; no truncation anywhere); **states** open, finalized, signed up, finalized and signed up; a **Campaign board** (title and DM only, status seals on every poster); the **empty board** (nothing visible; the screen-reader text shown in a caption); a **narrow desktop window** (320px wide on the desktop layout) and the 1440px desktop; a hover frame and a keyboard-focus frame showing the card ring.
 - The **measured pool**: a plate showing each candidate poster with its text box outlined, flagging which of the eight ruined posters qualified and why the others did not (D-04), plus `p4` and `r1` as conditional.
-- Evidence: the contrast table for the three strengths on the shipped WebP, the per-glyph probe result for the chosen defaults, a hole-adjacent crop proving the feather leaves no ghost, the seal slots confirmed visually, and file sizes before and after WebP.
+- Evidence: the per-glyph probe result for the chosen text treatment (recorded as the exception figures), the seal slots confirmed visually, and file sizes before and after WebP.
 - Each of D-07, D-08, D-04 pool, the title tiers and the seal sizes ends in a one-line operator question with a recommended answer.
 
 **B. Phone Manage mockup (Q-114, D-18)** — one frame each for the open state and the finalized state at 390px under a mobile User-Agent look (no card in card; Description and Rewards as headed collapsed disclosures; Quick Stats placement; 44px targets; the action rows), plus one expanded-section frame and a 320px frame. Beside each, today's BEFORE capture.
@@ -448,8 +447,8 @@ Applicable state considerations resolved: 17 covered, 9 backstop, 3 unresolved. 
 | partial | Quest without a DM | ✅ covered | `Unknown DM` on poster, phone card and log card |
 | populated | Campaign board | ✅ covered | Poster: title, DM, status seal on every poster, no CR, no date, no count; phone: no CR; Quest Details keeps Status hidden on desktop and shown on phone (recorded answer) |
 | populated | Status and signed-up together | ✅ covered | Two seals at the fixed slots; alt texts and link name per Wax seals table |
-| error | Poster artwork fails to load | ✅ covered | `.quest-poster` carries `background-color: var(--qb-surface-paper)` under the image so ink text stays at 14.9:1 and the card keeps its size (aspect-ratio) |
-| error | Zone contrast on a stained pixel | 🧪 backstop | Per-glyph-box probe on the rendered WebP at the chosen strength |
+| error | Poster artwork fails to load | ✅ covered | a paper-slab layer under the text-box region inside the artwork's `background-image` stack (as built in `mockups/v2/quest-poster.css`), visible only when the image fails, so ink text stays legible and the card keeps its size (aspect-ratio); no `background-color` on the whole `.quest-poster`, which would show as a rectangle around the torn edges |
+| error | Poster text contrast on art | 🧪 backstop | `posterGlyphs` per pool poster held to the poster-glyph floors in `contrast-exceptions.json` (below 4.5:1 per glyph, operator-approved at Gate 1 item 2); a capture below its floor fails `readability-compare.py` |
 | loading | WebP versus PNG | ✅ covered | PNG declared first, `image-set()` after; old browsers keep the PNG |
 | loading | Masonry before the script runs | ✅ covered | Aspect-ratio gives each card its height from CSS; the column fallback shows the board unpositioned rather than collapsed |
 | populated | Keyboard focus on a stretched link | ✅ covered | `:has()` card ring; Gate 2 focus frame |
@@ -485,7 +484,7 @@ Recorded, not decided. Each Gate 1 item names a recommendation so the operator c
 | # | Item | Source | Default if unanswered |
 |---|------|--------|-----------------------|
 | 1 | Information order A (date first) or B (count first) | D-07 | A |
-| 2 | Zone strength 15 / 25 / 35% (whisper not offered for `r1`) | D-08 | 25% |
+| 2 | Poster text treatment — **decided at Gate 1: C-exception** (heavier ink only; no zone, feather or halo; recorded contrast exception) | D-08 | — |
 | 3 | Pool: the five blanks (`p4` conditional) plus `r1`; **relax D-04 to a per-quest fit** so more ruined posters return for open quests with short titles? Research measured Ruined 2 to 8 at 41 to 144px usable against 176 needed | D-04, research OQ-2 | strict rule: `p1 p2 p4 p5 p6` plus `r1` only if it reads cleanly |
 | 4 | Title tiers 20 / 16px Cinzel on posters (28px never fits) | research OQ-3 | 20 then 16 |
 | 5 | `p5` seal: 56px in the best free slot, or a shorter text box | research OQ-7 | 56px seal |

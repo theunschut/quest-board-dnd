@@ -92,7 +92,7 @@ Filled in by the plans; each task carries its own `<automated>` command and `<fa
 |----------|------------|-------------------|
 | Gate 1: poster mockup, phone Manage mockup, merge proposals | Operator judgement (D-18, D-19) | Operator reviews scratch mockups; approves or asks for a redraw (D-20) |
 | Gate 2: before/after review sheet, desktop and phone | Operator sign-off (D-19) | Operator reviews every pair; rejected AFTERs are redrawn until approved |
-| Rendered contrast, focus, 44px targets, 320px overflow, editor Tab, poster fit | Rendered behaviour, scratch tooling | Scratch Playwright probes under desktop and mobile User-Agents with touch |
+| Rendered contrast (poster text held to the Gate 1 item 2 poster-glyph floors in contrast-exceptions.json; every other surface 4.5:1), focus, 44px targets, 320px overflow, editor Tab, poster fit | Rendered behaviour, scratch tooling | Scratch Playwright probes under desktop and mobile User-Agents with touch |
 
 ---
 

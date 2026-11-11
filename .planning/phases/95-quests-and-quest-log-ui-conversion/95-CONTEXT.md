@@ -69,6 +69,11 @@ identity and the reason the app exists. Keep them, keep them varied, and make th
   one measuring at least 4.5:1 for body text at the brightest board pixels (titles may rely on the
   3:1 large-text bar). The operator picks the strength at the first gate. No slip surface
   (`--qb-surface-slip` does not exist and must not be introduced).
+  **Outcome at Gate 1 (2026-11-11):** the operator rejected any visible lightened block ("i don't
+  want that light visible block/patch") and chose option C, heavier ink only, with no zone and no halo.
+  Poster text is below 4.5:1 per glyph (worst glyph 2.46 to 3.65; Ruined 1 over the burn mark is the
+  weakest), recorded as a contrast exception held to per-poster floors. See 95-UI-SPEC "Poster text
+  treatment" and 95-03-SUMMARY.
 - **D-09: An empty desktop board is the bare board**: no poster or card is drawn, and a
   screen-reader-only heading ("No quests available") keeps the page from being silent. This
   **revises the visible part of the G1 answer to Q-21**; the phone keeps its visible empty state.
