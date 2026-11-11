@@ -38,7 +38,7 @@ Sources: `96-CONTEXT.md`; `96-RESEARCH.md` (inventory, twin mechanics, guard-tes
 | Font | Display Cinzel (page title only), body Bootstrap system stack (foundation spec § Typography) |
 | Surface language | Direction A, refined glass on the oak board (foundation spec S1, S2). Every surface in this phase is the one glass panel; no nested glass |
 | Cascade | New and converted rules live in `@layer pages`; no `!important`, no colour literal outside `tokens.css`, no inline `style=`, `<style>`, `<script>` or `on*=` (foundation spec § Cascade; `.claude/ui-guidelines.md` § "No inline code") |
-| Area sheet | **`account.css`** (new, first non-comment statement `@layer pages {`). It must not be named `*.mobile.css`: the desktop `/` response may never contain the text `mobile.css`. `group-picker.css` stays as the picker's sheet (linked by its layout). `account.mobile.css` and the Profile block of `legacy-pages.css` are removed in the commit that moves their rules (move, never duplicate: an unlayered copy beats the layered rule) |
+| Area sheet | **`account.css`** (new, first non-comment statement `@layer pages {`). It must not be named `*.mobile.css`: the desktop `/` response may never contain the text `mobile.css`. `group-picker.css` stays as the picker's sheet (linked by its layout; superseded: the picker view links it through `@section Styles` and the layout's global list drops it, see 96-05-PLAN.md). `account.mobile.css` and the Profile block of `legacy-pages.css` are removed in the commit that moves their rules (move, never duplicate: an unlayered copy beats the layered rule) |
 
 **Component Inventory: omitted.** `Tool: none` (template rule). What follows is **provenance of what this phase consumes, not a component list and not an allowlist**: any foundation or vendor class may be used once it is checked in the files, and nothing is forbidden for being absent below.
 
@@ -134,7 +134,7 @@ ForgotPassword, SetPassword, ChangePassword and Edit follow the Login rule: the 
 
 ## 1. Board picker (`GroupPicker/Index`, one view)
 
-The picker is served under both User-Agents through `_Layout.GroupPicker.cshtml`, which loads `group-picker.css` itself (no `@section Styles` needed). The body class is `group-picker`; `.mobile-layout` never applies here, so any phone rule is an `@media (max-width: 767.98px)` block inside `group-picker.css` (twin-less view, foundation spec rule A7). The layout stays footerless (Q-03).
+The picker is served under both User-Agents through `_Layout.GroupPicker.cshtml`, which loads `group-picker.css` itself (no `@section Styles` needed). **Superseded (see 96-05-PLAN.md):** the view links `group-picker.css` through `@section Styles` and the layout no longer links it; the layout's Styles render point then sits directly after `legacy-pages.css`, so the cascade order is unchanged. The body class is `group-picker`; `.mobile-layout` never applies here, so any phone rule is an `@media (max-width: 767.98px)` block inside `group-picker.css` (twin-less view, foundation spec rule A7). The layout stays footerless (Q-03).
 
 ### Page structure (FIXED)
 
@@ -255,7 +255,7 @@ When the fallback reveals the address field it takes its own full-width line ins
 | Without script | the Delete button no longer posts on its own. Today's no-script path posted with no confirmation at all, so nothing a user relied on is lost; the plan states it |
 | Other dialogs | Rename and QR dialogs take the same overlay surface and 44px close on the phone; Rename's `Save` becomes `Save Name` and `btn-primary` (the dialog's one commit), and its `Cancel` becomes `Keep Current Name` (`btn-secondary`) (labels and fill are defaults, confirm at Gate 2; neither string is pinned by a test); the QR dialog's `Copy` and `Open in Calendar App` take the same `btn-secondary btn-sm` mapping |
 
-> **Superseded by the plans:** the Delete row of "The five row actions" table above (`type="button"`) and this table's "Without script" row no longer hold: per Gate 1 item 14 (default `kept`) and plan 96-07, Delete stays a `type="submit"` button in its per-row revoke form, so without JavaScript it still posts the same revoke as today, and the script opens this dialog by cancelling that submit only when the dialog can open.
+> **Superseded by the plans:** the Delete row of "The five row actions" table above (`type="button"` with the modal data attributes), this table's "Opening" and "Without script" rows, and the state-coverage row below that says the dialog opens through the data attribute no longer hold: per Gate 1 item 14 (default `kept`) and plan 96-07, Delete stays a `type="submit"` button in its per-row revoke form with no Bootstrap modal attribute, so without JavaScript it still posts the same revoke as today; the shared script opens this dialog itself (Bootstrap's Modal API, the row's Delete as the related target) in the submit listener that cancels that post, and returns focus to that Delete on close, so the dialog is never on screen while a revoke is sent.
 
 ### Profile read-only fields (A-account-026, A-account-029; default, confirm at Gate 2)
 
