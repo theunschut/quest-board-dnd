@@ -1,44 +1,33 @@
-/* dm-create.mobile.css — Quest Create mobile view only */
-/* No @media queries — this file is exclusively loaded by Create.Mobile.cshtml via _Layout.Mobile.cshtml */
+/*
+ * Quest Create, phone layout. The card, labels, controls and buttons come from the foundation and quest-form.css;
+ * this sheet keeps only what is specific to the phone form.
+ */
+@layer pages {
+  /* The session checkbox row is the whole tap target: at least the minimum hit size, with the label filling it. */
+  .dm-create-card-mobile .form-check {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-height: var(--qb-hit-min);
+    padding-left: 0;
+  }
 
-/* Glass card container for quest create form */
-.dm-create-card-mobile {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
+  .dm-create-card-mobile .form-check .form-check-input {
+    flex: none;
+    float: none;
+    margin: 0;
+  }
 
-/* Form labels — parchment text */
-.dm-create-card-mobile .dm-create-label,
-.dm-create-card-mobile .form-label {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
-}
+  .dm-create-card-mobile .form-check .form-check-label {
+    flex: 1 1 auto;
+    min-height: var(--qb-hit-min);
+    display: flex;
+    align-items: center;
+    padding-block: 0;
+  }
 
-/* Help text and validation spans — faded parchment */
-.dm-create-card-mobile .form-text,
-.dm-create-card-mobile small {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
-
-/* Page heading — parchment */
-.dm-create-card-mobile h5 {
-    color: var(--qb-fg-heading) !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
-}
-
-/* Proposed date sub-labels — small, faded */
-.dm-create-card-mobile .proposed-date-item .form-label {
-    font-size: 0.875rem;
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
-
-/* Badges inside card — no text-shadow */
-.dm-create-card-mobile .badge {
-    text-shadow: none !important;
+  /* The action row keeps its two buttons the same width. */
+  .dm-create-card-mobile .d-flex > .btn {
+    flex: 1 1 0;
+  }
 }

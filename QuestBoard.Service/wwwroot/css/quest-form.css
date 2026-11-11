@@ -1,0 +1,73 @@
+/*
+ * The quest forms (Create and Edit, both layouts). Everything the foundation already styles (cards, labels, controls,
+ * help text, validation, buttons, alerts) is left to it; what is here is only what a quest form adds on top.
+ */
+@layer pages {
+  /* Help lines sit on the card's own glass; the muted tone is for text on paper, so here they take the card colour. */
+  .quest-form-page .form-text {
+    color: var(--qb-fg);
+  }
+
+  /*
+   * Danger text is a light red that falls to about 3.6:1 on the card's glass at its lightest. The required marker and
+   * the validation messages therefore sit on the opaque overlay surface, where the same colour clears 4.5:1. The
+   * message keeps its words, and the field keeps its 2px danger border, so colour is never the only signal.
+   */
+  .quest-form-page :is(label, .form-label) .text-danger {
+    display: inline-block;
+    padding-inline: var(--qb-space-xs);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-surface-overlay);
+    line-height: 1.25;
+  }
+
+  .quest-form-page .field-validation-error {
+    display: inline-block;
+    margin-top: var(--qb-space-xs);
+    padding: var(--qb-space-xs) var(--qb-space-sm);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  .quest-form-page .validation-summary-errors {
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border-left: 4px solid var(--qb-danger-text);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  .quest-form-page .validation-summary-errors ul {
+    margin: 0;
+    padding-left: var(--qb-space-md);
+  }
+
+  /* A date row keeps its Remove button at full size: the date control gives way, never the button label. */
+  .quest-form-page .proposed-date-item .input-group > .btn {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* Decorative marks beside text (the tip ticks and the session crown) take the accent; the words stay card colour. */
+  .quest-form-page :is(.quest-form-tips .fa-check, .fa-crown) {
+    color: var(--qb-accent);
+  }
+
+  /* A date that is already saved is shown as text with the same height as an editable date control. */
+  .quest-form-page .proposed-date-item .form-control-plaintext {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md) 0 0 var(--qb-radius-md);
+  }
+
+  /* The warning that players have signed up sits right above the dates it is about. */
+  .quest-form-page .quest-form-dates-warning {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  /* On the phone the tips card sits below the form with the same gap the cards use between each other. */
+  .mobile-layout.quest-form-page .quest-form-tips-column {
+    margin-top: var(--qb-space-md);
+  }
+}
