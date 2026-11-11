@@ -212,4 +212,43 @@ public class QuestDetailsSignupFormTests : IClassFixture<WebApplicationFactoryBa
         desktop.Role.Should().Be((int)SignupRole.Spectator);
         phone.Should().Be(desktop);
     }
+
+    private static readonly Regex VoteRadio = new(
+        @"<input\b[^>]*\btype=""radio""[^>]*\bname=""DateVotes\[(?<i>\d+)\]\.Vote""[^>]*\bvalue=""(?<v>\d)""[^>]*>",
+        RegexOptions.Compiled);
+
+    private static readonly Regex VoteGroup = new(
+        @"<[^>]*\brole=""group""[^>]*\baria-labelledby=""(?<id>[^""]+)""[^>]*>",
+        RegexOptions.Compiled);
+
+    [Theory]
+    [InlineData(DesktopUserAgent, "signupform_dm10", "signupform_player10")]
+    [InlineData(MobileUserAgent, "signupform_dm11", "signupform_player11")]
+    public async Task OpenQuest_BothLayouts_EachDateOffersThreeFilledChoicesInANamedGroup(string userAgent, string dmName, string playerName)
+    {
+        var questId = await SeedOpenQuestAsync(dmName, $"Signup Form Votes {dmName}");
+        var client = await SignedInPlayerAsync(_factory, playerName);
+
+        var form = SignupForm(await GetHtmlAsync(client, $"/Quest/Details/{questId}", userAgent));
+
+        foreach (var choice in new[] { "yes", "maybe", "no" })
+            Regex.Matches(form, $@"class=""[^""]*\bvote-choice vote-choice--{choice}\b").Count
+                .Should().Be(2, $"each of the two dates has one {choice} choice");
+        form.Should().NotContain("btn-outline-", "the choices are filled buttons, never outline");
+
+        var radios = VoteRadio.Matches(form);
+        radios.Count.Should().Be(6, "three radios per date still post as DateVotes[i].Vote");
+        foreach (var group in radios.GroupBy(m => m.Groups["i"].Value))
+            group.Select(m => m.Groups["v"].Value).Should().BeEquivalentTo(new[] { "2", "1", "0" });
+
+        var groups = VoteGroup.Matches(form);
+        groups.Count.Should().Be(2, "each date's radios form one labelled group");
+        foreach (Match group in groups)
+        {
+            var id = group.Groups["id"].Value;
+            var named = Regex.Match(form, $@"id=""{Regex.Escape(id)}""[^>]*>(?<text>[^<]*)");
+            named.Success.Should().BeTrue($"aria-labelledby=\"{id}\" resolves to an element in the form");
+            named.Groups["text"].Value.Should().StartWith("Your vote for");
+        }
+    }
 }

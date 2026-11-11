@@ -41,23 +41,24 @@
 
                     @if (voteIndex >= 0)
                     {
-                        <div class="d-flex gap-2 calendar-vote-row">
+                        <div class="d-flex gap-2 calendar-vote-row" role="group" aria-labelledby="vote-for-@voteIndex">
+                            <span class="visually-hidden" id="vote-for-@voteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
                             <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote"
                                    id="vote_@(voteIndex)_yes" value="2" autocomplete="off">
-                            <label class="btn btn-outline-success flex-fill" for="vote_@(voteIndex)_yes">
-                                <i class="fas fa-check me-1"></i>Yes
+                            <label class="btn vote-choice vote-choice--yes flex-fill" for="vote_@(voteIndex)_yes">
+                                <i class="fas fa-check me-1" aria-hidden="true"></i>Yes
                             </label>
 
                             <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote"
                                    id="vote_@(voteIndex)_no" value="0" autocomplete="off">
-                            <label class="btn btn-outline-danger flex-fill" for="vote_@(voteIndex)_no">
-                                <i class="fas fa-times me-1"></i>No
+                            <label class="btn vote-choice vote-choice--no flex-fill" for="vote_@(voteIndex)_no">
+                                <i class="fas fa-times me-1" aria-hidden="true"></i>No
                             </label>
 
                             <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote"
                                    id="vote_@(voteIndex)_maybe" value="1" autocomplete="off">
-                            <label class="btn btn-outline-warning flex-fill" for="vote_@(voteIndex)_maybe">
-                                <i class="fas fa-question me-1"></i>Maybe
+                            <label class="btn vote-choice vote-choice--maybe flex-fill" for="vote_@(voteIndex)_maybe">
+                                <i class="fas fa-question me-1" aria-hidden="true"></i>Maybe
                             </label>
                         </div>
                     }
@@ -75,26 +76,27 @@
                         var isCheckedNo = userVote.HasValue && userVote == VoteType.No;
                         var isCheckedMaybe = userVote.HasValue && userVote == VoteType.Maybe;
 
-                        <div class="d-flex gap-2 calendar-vote-row">
+                        <div class="d-flex gap-2 calendar-vote-row" role="group" aria-labelledby="update-vote-for-@updateVoteIndex">
+                            <span class="visually-hidden" id="update-vote-for-@updateVoteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
                             <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote"
                                    id="update_vote_@(updateVoteIndex)_yes" value="2" autocomplete="off"
                                    @(isCheckedYes ? "checked" : "")>
-                            <label class="btn btn-outline-success flex-fill" for="update_vote_@(updateVoteIndex)_yes">
-                                <i class="fas fa-check me-1"></i>Yes
+                            <label class="btn vote-choice vote-choice--yes flex-fill" for="update_vote_@(updateVoteIndex)_yes">
+                                <i class="fas fa-check me-1" aria-hidden="true"></i>Yes
                             </label>
 
                             <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote"
                                    id="update_vote_@(updateVoteIndex)_no" value="0" autocomplete="off"
                                    @(isCheckedNo ? "checked" : "")>
-                            <label class="btn btn-outline-danger flex-fill" for="update_vote_@(updateVoteIndex)_no">
-                                <i class="fas fa-times me-1"></i>No
+                            <label class="btn vote-choice vote-choice--no flex-fill" for="update_vote_@(updateVoteIndex)_no">
+                                <i class="fas fa-times me-1" aria-hidden="true"></i>No
                             </label>
 
                             <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote"
                                    id="update_vote_@(updateVoteIndex)_maybe" value="1" autocomplete="off"
                                    @(isCheckedMaybe ? "checked" : "")>
-                            <label class="btn btn-outline-warning flex-fill" for="update_vote_@(updateVoteIndex)_maybe">
-                                <i class="fas fa-question me-1"></i>Maybe
+                            <label class="btn vote-choice vote-choice--maybe flex-fill" for="update_vote_@(updateVoteIndex)_maybe">
+                                <i class="fas fa-question me-1" aria-hidden="true"></i>Maybe
                             </label>
                         </div>
                     }
