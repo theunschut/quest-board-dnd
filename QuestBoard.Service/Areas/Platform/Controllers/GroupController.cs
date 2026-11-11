@@ -13,6 +13,7 @@ using QuestBoard.Domain.Models.BoardDeletion;
 using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Jobs;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
+using System.Security.Claims;
 using System.Text;
 
 namespace QuestBoard.Service.Areas.Platform.Controllers;
@@ -233,13 +234,47 @@ public class GroupController(
                 TempData["Error"] = HasMembersMessage(result.BoardName);
                 return RedirectToAction(nameof(Index));
             case BoardDeleteStatus.NameMismatch:
-                TempData["Error"] = $"The name you typed does not match \"{result.BoardName}\". Check it and try again.";
-                return RedirectToAction(nameof(Delete), new { id });
+                return await RenderNameMismatchAsync(id);
             default:
                 TempData["Success"] = $"Board \"{result.BoardName}\" was deleted.";
+                await ForgetDeletedBoardInOwnSessionAsync(id);
+                logger.LogInformation(
+                    "Board {BoardId} \"{BoardName}\" deleted by user {UserId}; removed {RemovedCounts}",
+                    id, result.BoardName, User.FindFirstValue(ClaimTypes.NameIdentifier), DescribeRemovedCounts(result));
                 return RedirectToAction(nameof(Index));
         }
     }
+
+    // The typed name did not match: show the page again, with fresh counts, rather than bouncing through a redirect.
+    private async Task<IActionResult> RenderNameMismatchAsync(int id)
+    {
+        var group = await groupService.GetByIdAsync(id);
+        if (group == null)
+        {
+            TempData["Info"] = BoardGoneMessage;
+            return RedirectToAction(nameof(Index));
+        }
+        var preview = await groupService.GetDeletionPreviewAsync(id);
+        return View(nameof(Delete), BoardDeletePageViewModel.Create(group, preview, nameMismatch: true));
+    }
+
+    // The delete has already committed, so a session problem here must never surface as an error.
+    private async Task ForgetDeletedBoardInOwnSessionAsync(int id)
+    {
+        try
+        {
+            await HttpContext.Session.ClearActiveBoardIfAsync(id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Board {BoardId} was deleted but the session that named it could not be cleared", id);
+        }
+    }
+
+    private static string DescribeRemovedCounts(BoardDeletionResult result)
+        => string.Join(", ", result.RemovedCounts
+            .Where(pair => pair.Value > 0)
+            .Select(pair => $"{pair.Key}={pair.Value}"));
 
     // Members page
     [HttpGet]
