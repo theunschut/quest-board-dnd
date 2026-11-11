@@ -100,7 +100,7 @@
                                                 <div class="form-label">Proposed Date @(i + 1)</div>
                                                 <div class="input-group">
                                                     <div class="form-control-plaintext">@Html.WallClock(sortedProposedDates[i], "date-time")</div>
-                                                    <input type="hidden" name="Quest.ProposedDates[@i]" value="@sortedProposedDates[i].ToString("yyyy-MM-ddTHH:mm")" />
+                                                    <input type="hidden" name="Quest.ProposedDates[@i]" value="@sortedProposedDates[i].ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture)" />
                                                     <button type="button" class="btn btn-danger" data-action="remove-proposed-date" aria-label="Remove proposed date @(i + 1)">
                                                         <i class="fas fa-trash me-2" aria-hidden="true"></i>Remove
                                                     </button>

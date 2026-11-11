@@ -82,7 +82,7 @@
                                         <label for="ProposedDates_@(i)_" class="form-label">Proposed Date @(i + 1)</label>
                                         <div class="input-group">
                                             <input type="datetime-local" id="ProposedDates_@(i)_" name="ProposedDates[@i]"
-                                                   value="@(i < Model.ProposedDates.Count ? Model.ProposedDates[i].ToString("yyyy-MM-ddTHH:mm") : "")"
+                                                   value="@(i < Model.ProposedDates.Count ? Model.ProposedDates[i].ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture) : "")"
                                                    class="form-control" required step="60" />
                                             <button type="button" class="btn btn-danger" data-action="remove-proposed-date" aria-label="Remove proposed date @(i + 1)">
                                                 <i class="fas fa-trash me-2" aria-hidden="true"></i>Remove
