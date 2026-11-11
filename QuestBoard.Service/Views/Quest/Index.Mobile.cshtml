@@ -114,11 +114,9 @@
                         }
                         @if (boardType != BoardType.Campaign)
                         {
-                            <p class="quest-card-line">
-                                <span class="badge bg-dark border">
-                                    <i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>CR @quest.ChallengeRating
-                                </span>
-                            </p>
+                            <span class="badge bg-dark border quest-card-cr">
+                                <i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>CR @quest.ChallengeRating
+                            </span>
                         }
                     </div>
                 </div>

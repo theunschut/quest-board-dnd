@@ -34,9 +34,24 @@
     font-size: var(--qb-text-sm);
   }
 
+  /* The challenge rating sits on its own line at its natural width rather than stretching across the card. */
+  .quest-card-cr {
+    align-self: flex-start;
+  }
+
   .quest-card-line {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  /*
+   * The anchor is itself a full-size tap target, not a line of text: a stretched pseudo-element is not part of the
+   * anchor's own box, so a tool that measures the link would otherwise see a one-line target.
+   */
+  .quest-card-title .row-nav-link {
+    display: flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
   }
 
   /* One link per card, stretched over the whole card so the whole card is the target. */
