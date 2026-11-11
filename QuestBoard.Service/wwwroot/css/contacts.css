@@ -2,7 +2,8 @@
    CONTACTS - CONTACT CARDS
    ======================================== */
 
-.contacts-page h1 {
+/* The Markdown editor's live preview is left out (the :where() keeps the specificity unchanged): it draws ink text on its own paper surface. */
+.contacts-page h1:not(:where(.EasyMDEContainer *)) {
     color: #F4E4BC;
     font-family: 'Cinzel', serif;
     text-shadow: 0 0 20px rgba(255, 193, 7, 0.3);

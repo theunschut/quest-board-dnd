@@ -11,16 +11,16 @@
 }
 
 /* Parchment headings and form labels inside card */
-.character-form-card h5,
-.character-form-card h6,
+.character-form-card h5:not(:where(.EasyMDEContainer *)),
+.character-form-card h6:not(:where(.EasyMDEContainer *)),
 .character-form-card .form-label {
     color: var(--qb-fg-heading) !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
 }
 
-/* Parchment for all card text (catch-all) */
-.character-form-card p,
-.character-form-card span:not(.badge),
+/* Parchment for all card text (catch-all). The Markdown editor is left out (the :where() keeps the specificity unchanged): it draws its own paper surface and ink text. */
+.character-form-card p:not(:where(.EasyMDEContainer *)),
+.character-form-card span:not(.badge):not(:where(.EasyMDEContainer *)),
 .character-form-card legend {
     color: #F4E4BC !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);

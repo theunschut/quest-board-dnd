@@ -70,12 +70,23 @@ public class UiFoundationViewLibraryGuardTests
         var partial = File.ReadAllText(
             ResolveRepoFile("QuestBoard.Service", "Views", "Quest", "_QuestFormScripts.cshtml"));
 
-        partial.Should().Contain("~/lib/easymde-2.21.0/easymde.min.css",
-            because: "the quest form must load the editor stylesheet from the versioned wwwroot/lib directory");
+        partial.Should().Contain("~/css/easymde-vendor.css",
+            because: "the editor stylesheet reaches the page through the wrapper that imports it into the vendor layer");
+        partial.Should().NotContain("~/lib/easymde-2.21.0/easymde.min.css",
+            because: "linking the library stylesheet directly would leave it unlayered, where it outranks every layered rule");
         partial.Should().Contain("~/lib/easymde-2.21.0/easymde.min.js",
             because: "the quest form must load the editor script from the versioned wwwroot/lib directory");
         partial.Should().NotContain(JsDelivrHost,
             because: "the quest form must not request the editor from a CDN");
+
+        var wrapper = File.ReadAllText(
+            ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "easymde-vendor.css"));
+        wrapper.Should().Contain("../lib/easymde-2.21.0/easymde.min.css\") layer(vendor)",
+            because: "the wrapper must import the versioned wwwroot/lib stylesheet into the vendor layer");
+        wrapper.Should().NotContain(JsDelivrHost,
+            because: "the editor stylesheet must not be requested from a CDN");
+        File.Exists(ResolveRepoFile("QuestBoard.Service", "wwwroot", "lib", "easymde-2.21.0", "easymde.min.css"))
+            .Should().BeTrue(because: "the wrapper imports a committed file");
     }
 
     [Fact]

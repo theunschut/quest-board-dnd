@@ -64,7 +64,7 @@ public class QuestsConversionGuardTests
 
     // Page sheets under the css folder that open the pages layer, by file name.
     private static readonly string[] ConvertedSheets =
-        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css"];
+        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-editor.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
@@ -114,6 +114,8 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Move/Index.cshtml",
         "QuestBoard.Service/wwwroot/css/move-entry.css",
+        "QuestBoard.Service/wwwroot/css/easymde-vendor.css",
+        "QuestBoard.Service/wwwroot/css/markdown-editor.css",
         "QuestBoard.Service/wwwroot/js/quest-board.js",
         "QuestBoard.Service/Helpers/QuestPosterCatalog.cs",
         "QuestBoard.Service/Helpers/QuestPosterPicker.cs",
@@ -344,6 +346,21 @@ public class QuestsConversionGuardTests
                 LinksSheet(view, sheet).Should().BeTrue(
                     $"{path} must link ~/css/{sheet} from its Styles section so the sheet loads only where it is used");
         }
+    }
+
+    [Fact]
+    public void EditorPartial_LinksTheEditorSheets_AndNoLayoutDoes()
+    {
+        // The editor theme travels with the editor: every page that renders an editor renders this partial, so
+        // the sheets load there and nowhere else.
+        var partial = ReadRepoFile("QuestBoard.Service/Views/Quest/_QuestFormScripts.cshtml");
+        foreach (var sheet in new[] { "easymde-vendor.css", "markdown-editor.css" })
+            Regex.IsMatch(partial, @"<link\b[^>]*\bhref=""~/css/" + Regex.Escape(sheet) + @"""[^>]*>").Should().BeTrue(
+                $"the editor partial must link ~/css/{sheet} so the editor sheet loads only where an editor is");
+
+        foreach (var layout in new[] { "_Layout.cshtml", "_Layout.Mobile.cshtml" })
+            ReadRepoFile("QuestBoard.Service/Views/Shared/" + layout).Should().NotContain("markdown-editor.css",
+                $"{layout} must not load the editor sheet on pages that have no editor");
     }
 
     [Fact]

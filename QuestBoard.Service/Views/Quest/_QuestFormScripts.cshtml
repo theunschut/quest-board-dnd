@@ -2,9 +2,10 @@
 @*
     Shared scripts for every form that authors Markdown or manages quest dates.
     Loads the quest form module (proposed-date rows and the submit guard) and the Markdown editor with its
-    stylesheet. No inline
-    script is rendered here: the antiforgery token the editor's preview request needs travels in a
-    meta element that markdown-editor.js reads, so the content security policy stays strict.
+    stylesheets: the wrapper that imports EasyMDE's own sheet into the vendor layer, then the editor theme, so
+    every page that renders an editor gets the theme and no other page loads it. No inline script is rendered
+    here: the antiforgery token the editor's preview request needs travels in a meta element that
+    markdown-editor.js reads, so the content security policy stays strict.
     The date rows are driven by data-action="add-proposed-date" and "remove-proposed-date" in quest-form.js.
 *@
 @{
@@ -12,7 +13,8 @@
 }
 
 <meta name="request-verification-token" content="@markdownTokens.RequestToken" />
-<link rel="stylesheet" href="~/lib/easymde-2.21.0/easymde.min.css">
+<link rel="stylesheet" href="~/css/easymde-vendor.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/markdown-editor.css" asp-append-version="true" />
 <script src="~/lib/easymde-2.21.0/easymde.min.js"></script>
 <script src="~/js/markdown-editor.js" asp-append-version="true"></script>
 <script type="module" src="~/js/quest-form.js" asp-append-version="true"></script>

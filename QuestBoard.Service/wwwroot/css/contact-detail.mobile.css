@@ -74,10 +74,10 @@
 }
 
 /* All text inside card — catch-all parchment override */
-.contact-detail-card p,
-.contact-detail-card a,
-.contact-detail-card li,
-.contact-detail-card span:not(.badge):not(.contact-tag-chip) {
+.contact-detail-card p:not(:where(.EasyMDEContainer *)),
+.contact-detail-card a:not(:where(.EasyMDEContainer *)),
+.contact-detail-card li:not(:where(.EasyMDEContainer *)),
+.contact-detail-card span:not(.badge):not(.contact-tag-chip):not(:where(.EasyMDEContainer *)) {
     color: #F4E4BC !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
 }
@@ -90,10 +90,10 @@
    same dark-text treatment paragraphs/lists already get here, or a Markdown heading
    in a note renders almost invisible. */
 .contact-detail-card .note-item,
-.contact-detail-card .note-item p,
-.contact-detail-card .note-item a,
-.contact-detail-card .note-item li,
-.contact-detail-card .note-item span:not(.badge),
+.contact-detail-card .note-item p:not(:where(.EasyMDEContainer *)),
+.contact-detail-card .note-item a:not(:where(.EasyMDEContainer *)),
+.contact-detail-card .note-item li:not(:where(.EasyMDEContainer *)),
+.contact-detail-card .note-item span:not(.badge):not(:where(.EasyMDEContainer *)),
 .contact-detail-card .note-item h1,
 .contact-detail-card .note-item h2,
 .contact-detail-card .note-item h3,
