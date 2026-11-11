@@ -1,0 +1,117 @@
+/*
+ * Quest Log, desktop and the pages the phone layout shares. The index is a grid of glass cards that are each one
+ * link: the title anchor is stretched over the whole card, so the card is the target and keyboard focus rings the
+ * card rather than the title text. Glass, text colour and badge fills come from the shared foundation; the rules
+ * here only place the lines of a card.
+ */
+@layer pages {
+  .quest-log-intro {
+    margin-bottom: var(--qb-space-lg);
+  }
+
+  /* The tagline and the empty-state sentence sit on one glass card, where the muted tone measures under 4.5:1. */
+  .quest-log-wrap :is(.header-subtitle, .empty-state-text) {
+    color: var(--qb-fg);
+  }
+
+  /* The title card has no body under its header, so the header's divider would sit on the card edge. */
+  .quest-log-intro .modern-card-header {
+    border-bottom: 0;
+    border-radius: var(--qb-radius-lg);
+  }
+
+  /* The minimum is capped by the container so one column never overflows a narrow window. */
+  .quest-log-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: var(--qb-space-lg);
+    margin-bottom: var(--qb-space-lg);
+  }
+
+  /* The card is the positioning context for the stretched link; the footer sits at the bottom of a tall row. */
+  .quest-log-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .quest-log-card .modern-card-body {
+    flex-grow: 1;
+  }
+
+  .quest-log-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-card-title {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .quest-log-card-top .badge {
+    flex-shrink: 0;
+  }
+
+  .quest-log-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-meta-line {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* The icons keep one width so the labels line up down the card. */
+  .quest-log-meta-line .fas {
+    width: 1.25em;
+    text-align: center;
+  }
+
+  .quest-log-card-description {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .quest-log-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  /* The cue is text, not a second link: the stretched title link is the one destination. */
+  .quest-log-card-cue {
+    margin-left: auto;
+    font-size: var(--qb-text-sm);
+  }
+
+  /* One link per card, stretched over the whole card so the whole card is the target. */
+  .quest-log-card .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  /* The ring is drawn on the card, not on the link text alone; the link itself shows none. */
+  .quest-log-card:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .quest-log-card .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+}

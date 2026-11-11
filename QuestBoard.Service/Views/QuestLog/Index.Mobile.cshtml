@@ -11,24 +11,23 @@
 }
 
 <div class="container-fluid px-2 mt-2">
-
-    @* Page heading *@
-    <div class="mb-3">
-        <h4 class="cinzel-heading mb-1">
-            <i class="fas fa-book-open me-2"></i>Quest Log
-        </h4>
-        <p class="text-muted fst-italic small mb-0">
-            "A chronicle of legendary adventures and heroic deeds..."
-        </p>
+    <div class="card modern-card quest-log-intro">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">
+                <i class="fas fa-book-open me-2" aria-hidden="true"></i>Quest Log
+            </h1>
+            <span class="header-subtitle">"A chronicle of legendary adventures and heroic deeds..."</span>
+        </div>
     </div>
 
-    @* Quest list *@
     @if (Model.CompletedQuests?.Any() != true)
     {
-        <div class="text-center text-muted py-5">
-            <i class="fas fa-book-open fa-3x mb-3"></i>
-            <h5>No Completed Quests Yet</h5>
-            <p>Completed quests will appear here once they have been undertaken and finished.</p>
+        <div class="card modern-card">
+            <div class="empty-state">
+                <i class="fas fa-book-open empty-state-icon" aria-hidden="true"></i>
+                <h2 class="empty-state-heading">No Completed Quests Yet</h2>
+                <p class="empty-state-text">Completed quests will appear here once they have been undertaken and finished.</p>
+            </div>
         </div>
     }
     else
@@ -36,43 +35,44 @@
         <div class="quest-log-list-mobile">
             @foreach (var quest in Model.CompletedQuests)
             {
-                <div class="quest-log-item"
-                     onclick="window.location.href='@Url.Action("Details", "QuestLog", new { id = quest.Id })'">
-                    <div class="d-flex justify-content-between align-items-start mb-1">
-                        <h6 class="quest-log-item-title mb-0 me-2"><a class="row-nav-link" href="@Url.Action("Details", "QuestLog", new { id = quest.Id })">@quest.Title</a></h6>
+                <article class="card modern-card modern-card--interactive quest-log-item">
+                    <div class="quest-log-item-top">
+                        <h2 class="quest-log-item-title"><a class="row-nav-link" href="@Url.Action("Details", "QuestLog", new { id = quest.Id })">@quest.Title</a></h2>
                         @if (boardType != BoardType.Campaign)
                         {
-                            <span class="badge bg-secondary flex-shrink-0">CR @quest.ChallengeRating</span>
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>CR @quest.ChallengeRating
+                            </span>
                         }
                     </div>
-                    <small class="text-muted d-block">
-                        <i class="fas fa-calendar-check me-1"></i>
-                        @if (quest.FinalizedDate.HasValue)
-                        {
-                            @Html.WallClock(quest.FinalizedDate.Value, "date")
-                        }
-                        else if (quest.ClosedDate.HasValue)
-                        {
-                            @Html.LocalTime(quest.ClosedDate.Value, "date")
-                        }
-                        else
-                        {
-                            @:Unknown Date
-                        }
-                    </small>
-                    <small class="text-muted">
-                        <i class="fas fa-crown me-1"></i>
-                        @(quest.DungeonMaster?.Name ?? "Unknown DM")
-                    </small>
+                    <div class="quest-log-item-meta">
+                        <p class="quest-log-item-line">
+                            <i class="fas fa-crown me-2" aria-hidden="true"></i><strong>DM:</strong> @(quest.DungeonMaster?.Name ?? "Unknown DM")
+                        </p>
+                        <p class="quest-log-item-line">
+                            <i class="fas fa-calendar-check me-2" aria-hidden="true"></i><strong>Completed:</strong>
+                            @if (quest.FinalizedDate.HasValue)
+                            {
+                                @Html.WallClock(quest.FinalizedDate.Value, "date")
+                            }
+                            else if (quest.ClosedDate.HasValue)
+                            {
+                                @Html.LocalTime(quest.ClosedDate.Value, "date")
+                            }
+                            else
+                            {
+                                @:Unknown Date
+                            }
+                        </p>
+                    </div>
                     @if (!string.IsNullOrWhiteSpace(quest.Recap))
                     {
-                        <span class="recap-badge d-block">
-                            <i class="fas fa-scroll me-1"></i>Session Recap Available
+                        <span class="badge bg-info quest-log-item-recap">
+                            <i class="fas fa-scroll me-1" aria-hidden="true"></i>Session Recap Available
                         </span>
                     }
-                </div>
+                </article>
             }
         </div>
     }
-
 </div>
