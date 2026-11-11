@@ -1,9 +1,8 @@
 ---
 phase: 95
 slug: quests-and-quest-log-ui-conversion
-# open, not verified: T-95-01 (medium) is open but below the block_on=high threshold, so it does not block ship.
-# Flip to `verified` once T-95-01 is closed (rotate the review passwords) or the operator signs an accepted-risk entry.
-status: open
+# verified: T-95-01 closed by the operator's accepted-risk decision on 2026-11-11 (AR-10).
+status: verified
 # threats_open = count of OPEN threats at or above workflow.security_block_on (high). Blocking gate.
 threats_open: 0
 threats_total: 45
@@ -35,7 +34,7 @@ created: 2026-11-11
 
 | Threat ID | Category | Component | Severity | Disposition | Mitigation (evidence) | Status |
 |-----------|----------|-----------|----------|-------------|-----------------------|--------|
-| T-95-01 | Information disclosure | credentials.json, state/*.json | medium | mitigate | HELD: `~/qb-ui-review/phase-95/credentials.json` mode 600 in a mode-700 parent; all 14 `state/**/*.json` mode 600; 7 emails are `@example.invalid`; no password in any tracked or untracked repo file, in the history of any ref (`git log --all -S`, 0 hits), or elsewhere in the scratch tree; `git grep qb-audit-` finds nothing outside `.planning/` and nothing in the three source trees. NOT HELD: "never echoed to stdout": the 95-02 executor printed credentials.json once (95-02-SUMMARY.md:99); all 7 passwords are in that executor's session transcript (`~/.claude/projects/-mnt-Data-repos-quest-board-dnd/45709884-0628-492a-b7c3-516d7a288ef7/subagents/agent-a652aef1e20bb7492.jsonl`, mode 600); the 4 reused Phase 94 passwords were already in a Phase 94 plan-13 executor transcript (`.../5c828c2b-ba76-42ba-8d88-7f6f8be1ed42/subagents/agent-aa2981bd9a08cdc2b.jsonl`, mode 600). Bounded: same user and mode as credentials.json, app bound to loopback only (`ss`: 127.0.0.1 and [::1] on 8000 and 8001), throwaway accounts. To close: rotate the 7 passwords (or retire the accounts) and rewrite credentials.json at mode 600, or operator signs an accepted-risk entry. | open - below high threshold (non-blocking) |
+| T-95-01 | Information disclosure | credentials.json, state/*.json | medium | mitigate | HELD: `~/qb-ui-review/phase-95/credentials.json` mode 600 in a mode-700 parent; all 14 `state/**/*.json` mode 600; 7 emails are `@example.invalid`; no password in any tracked or untracked repo file, in the history of any ref (`git log --all -S`, 0 hits), or elsewhere in the scratch tree; `git grep qb-audit-` finds nothing outside `.planning/` and nothing in the three source trees. NOT HELD: "never echoed to stdout": the 95-02 executor printed credentials.json once (95-02-SUMMARY.md:99); all 7 passwords are in that executor's session transcript (`~/.claude/projects/-mnt-Data-repos-quest-board-dnd/45709884-0628-492a-b7c3-516d7a288ef7/subagents/agent-a652aef1e20bb7492.jsonl`, mode 600); the 4 reused Phase 94 passwords were already in a Phase 94 plan-13 executor transcript (`.../5c828c2b-ba76-42ba-8d88-7f6f8be1ed42/subagents/agent-aa2981bd9a08cdc2b.jsonl`, mode 600). Bounded: same user and mode as credentials.json, app bound to loopback only (`ss`: 127.0.0.1 and [::1] on 8000 and 8001), throwaway accounts. To close: rotate the 7 passwords (or retire the accounts) and rewrite credentials.json at mode 600, or operator signs an accepted-risk entry. | closed (accepted, AR-10) |
 | T-95-02 | Elevation of privilege | Review Admin and SuperAdmin accounts | medium | mitigate | 95-01-SUMMARY.md:41 operator sign-off to reuse the Phase 94 accounts; :49-62 only player2, player3 and dm2 were created (Player, Player, Dungeon Master); credentials.json roles = superadmin, admin, player, dm, player2, player3, dm2; `roles-check.json` 4/4 gates pass; `appsettings.json` unchanged vs baseline. Review DB target (user-secrets) not independently inspected (read denied); rests on the CLAUDE.md local-DB contract and 95-01-SUMMARY.md:41 ("1433 reachable") | closed |
 | T-95-03 | Information disclosure | screenshots of real member data | medium | mitigate | `manifest.json` (51 rows) addresses only the Audit Board, the Campaign review board and the empty review board; no platform or Admin > Users page is captured; 1548 PNGs stay under `~/qb-ui-review/phase-95/{before,after}`; spot check of the group-picker, Admin-quests and calendar captures shows fantasy fixtures only | closed |
 | T-95-04 | Tampering | fixture creation | low | mitigate | `~/qb-ui-review/phase-95/tools` has no SQL (grep for sqlcmd/INSERT/UPDATE/DELETE: none); `fixtures.mjs` drives form pages with `page.fill`/`click` (antiforgery posted by the forms); `fixtures.json` lists 39 keys, 20 with `created: true`; 95-02-SUMMARY.md: second fixtures run created 0 (title lookup) | closed |
@@ -100,8 +99,7 @@ created: 2026-11-11
 | AR-07 | T-95-35 | `Html.Markdown` and its sanitising untouched (backend diff empty) | Phase 95 plan register, carried forward at audit | 2026-11-11 |
 | AR-08 | T-95-40 | Same as AR-07; only the stylesheet changed | Phase 95 plan register, carried forward at audit | 2026-11-11 |
 | AR-09 | T-95-43 | Fantasy fixtures on review boards only; the Gate 2 package is also on public branch `feature/phase-95-gate2-review` (review emails only, no secrets); operator to delete the branch after review | Phase 95 plan register, carried forward at audit | 2026-11-11 |
-
-*Not an accepted risk (pending, not in effect): T-95-01. If the operator chooses acceptance rather than rotation, add an AR-10 row naming the operator and the date.*
+| AR-10 | T-95-01 | The review-account passwords were printed once to an executor's terminal and are in two local Claude session transcripts (mode 600, same user as credentials.json). They are throwaway `@example.invalid` accounts on the local database only, and were never written to any repository file, commit or report. The operator was offered rotation or acceptance and chose acceptance | Operator (relayed by the milestone orchestrator session) | 2026-11-11 |
 
 ---
 
@@ -126,6 +124,7 @@ created: 2026-11-11
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-11-11 | 45 | 44 | 1 (0 blocking; T-95-01, medium, non-blocking) | gsd-security-auditor (Claude Sonnet 5.5) |
+| 2026-11-11 | 45 | 45 | 0 (T-95-01 closed by operator acceptance, AR-10) | orchestrator |
 
 Method (ASVS L1, presence checked in the cited file or tree): `git diff 7194364c..HEAD` read against each mitigation; Controllers, Authorization, Domain, Repository, Program.cs and HtmlHelperExtensions.cs confirmed unchanged; JS modules grepped for `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`document.write`/`eval`; views grepped for inline scripts, inline handlers and `Html.Raw`; scratch tree stat-checked and byte-searched (passwords never printed); Claude session transcripts searched for plaintext copies (counts and paths only). Test suite not re-run (it would rebuild the running review app); recorded results at 95-18-SUMMARY.md:123.
 
@@ -136,6 +135,6 @@ Method (ASVS L1, presence checked in the cited file or tree): `git diff 7194364c
 - [x] All threats have a disposition (mitigate / accept / transfer)
 - [x] Accepted risks documented in Accepted Risks Log (AR-01 to AR-09)
 - [x] `threats_open: 0` confirmed (blocking gate, block_on high)
-- [ ] `status: verified` set in frontmatter (pending: close T-95-01 by rotating the review passwords, or operator signs an accepted-risk entry)
+- [x] `status: verified` set in frontmatter (T-95-01 accepted by the operator, AR-10)
 
-**Approval:** pending
+**Approval:** verified 2026-11-11
