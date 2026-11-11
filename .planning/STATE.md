@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: quests-and-quest-log-ui-conversion
 status: executing
-stopped_at: Completed 95-08-PLAN.md (poster-glyph floor breach on p5 at 304px flagged)
-last_updated: "2026-11-11T10:42:31.436Z"
+stopped_at: Completed 95-09-PLAN.md
+last_updated: "2026-11-11T10:56:03.868Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 95 execution started
 progress:
-  total_phases: 30
+  total_phases: 31
   completed_phases: 20
   total_plans: 220
-  completed_plans: 191
-  percent: 67
+  completed_plans: 192
+  percent: 65
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 95 (quests-and-quest-log-ui-conversion) — EXECUTING
-Plan: 10 of 18
+Plan: 11 of 18
 Status: Ready to execute
 Last activity: 2026-11-11 — Phase 95 execution started
 
@@ -85,6 +85,7 @@ introduced by Phase 87.
 | Phase 95 P10 | 2h | 2 tasks | 11 files |
 | Phase 95 P11 | 1 h | 2 tasks | 6 files |
 | Phase 95 P08 | 2h | 3 tasks | 28 files |
+| Phase 95 P09 | 1h | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -245,8 +246,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-11T10:42:31.401Z
-Stopped at: Completed 95-08-PLAN.md (poster-glyph floor breach on p5 at 304px flagged)
+Last session: 2026-11-11T10:56:03.834Z
+Stopped at: Completed 95-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
