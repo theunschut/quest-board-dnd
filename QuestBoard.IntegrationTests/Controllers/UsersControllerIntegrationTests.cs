@@ -301,4 +301,45 @@ public class UsersControllerIntegrationTests : IClassFixture<WebApplicationFacto
         row.Should().NotContain("<b>Bold</b>");
         row.Should().Contain("&lt;b&gt;Bold&lt;/b&gt;");
     }
+
+    [Fact]
+    public async Task IndexPhone_ShowsBoardsDetailsWithNames()
+    {
+        var (html, userName) = await RenderUsersPageAsync(MobileUserAgent, "gamma", "Alpha", "beta");
+
+        html.Should().Contain("platform-users-boards.mobile.css");
+        html.Should().Contain("platform-users.mobile.css");
+
+        var card = RowFor(html, userName);
+        card.Should().Contain("<details class=\"user-boards");
+        card.Should().Contain("3 boards");
+
+        var alpha = card.IndexOf("<li>Alpha</li>", StringComparison.Ordinal);
+        var beta = card.IndexOf("<li>beta</li>", StringComparison.Ordinal);
+        var gamma = card.IndexOf("<li>gamma</li>", StringComparison.Ordinal);
+        alpha.Should().BeGreaterThan(-1);
+        beta.Should().BeGreaterThan(alpha);
+        gamma.Should().BeGreaterThan(beta);
+    }
+
+    [Fact]
+    public async Task IndexPhone_UserOnOneBoard_SaysOneBoard()
+    {
+        var (html, userName) = await RenderUsersPageAsync(MobileUserAgent, "Solo Board");
+
+        var card = RowFor(html, userName);
+        card.Should().Contain("1 board");
+        card.Should().NotContain("1 boards");
+        card.Should().Contain("<li>Solo Board</li>");
+    }
+
+    [Fact]
+    public async Task IndexPhone_UserOnNoBoards_ShowsZeroWithoutDetails()
+    {
+        var (html, userName) = await RenderUsersPageAsync(MobileUserAgent);
+
+        var card = RowFor(html, userName);
+        card.Should().Contain("0 boards");
+        card.Should().NotContain("<details");
+    }
 }
