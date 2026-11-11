@@ -145,6 +145,58 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
         });
     }
 
+    // The textarea is hidden by EasyMDE, so the browser cannot anchor its own "fill this in" bubble
+    // to it and would otherwise cancel the submit without a word. The browser still fires "invalid"
+    // on the hidden textarea, which is the cue to say what is wrong in the field's own message
+    // element, mark the editable surface invalid and hand it focus. The textarea keeps its
+    // required attribute, so the native check and the server-side rule are untouched.
+    if (textarea.required) {
+        const container = textarea.closest('.mb-3');
+        const message = container ? container.querySelector('[data-valmsg-for]') : null;
+        if (message) {
+            const describedBy = inputField.getAttribute('aria-describedby');
+            const clearRequiredMessage = function () {
+                if (!message.hasChildNodes()) {
+                    return;
+                }
+                message.replaceChildren();
+                inputField.removeAttribute('aria-invalid');
+                if (describedBy) {
+                    inputField.setAttribute('aria-describedby', describedBy);
+                } else {
+                    inputField.removeAttribute('aria-describedby');
+                }
+            };
+
+            textarea.addEventListener('invalid', function (event) {
+                if (!textarea.validity.valueMissing) {
+                    return;
+                }
+                event.preventDefault();
+
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-circle-exclamation me-1';
+                icon.setAttribute('aria-hidden', 'true');
+                const name = editorAccessibleName(textarea) || 'This field';
+                message.replaceChildren(icon, document.createTextNode(name + ' is required.'));
+
+                inputField.setAttribute('aria-invalid', 'true');
+                if (message.id) {
+                    inputField.setAttribute('aria-describedby', (describedBy ? describedBy + ' ' : '') + message.id);
+                }
+
+                // Only the first invalid control takes focus, as the browser would do itself, so
+                // an earlier field with its own native bubble is not stolen from.
+                const firstInvalid = form ? form.querySelector(':invalid') : textarea;
+                if (firstInvalid === textarea) {
+                    codemirror.focus();
+                }
+            });
+
+            codemirror.on('change', clearRequiredMessage);
+        }
+    }
+
     return easyMDE;
 }
 

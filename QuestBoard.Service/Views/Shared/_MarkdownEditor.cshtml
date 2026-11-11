@@ -18,7 +18,7 @@
     </label>
     <textarea name="@Model.FieldName" id="@elementId" class="form-control markdown-editor-textarea" rows="4" placeholder="@Model.Placeholder" required="@Model.Required" maxlength="@Model.MaxLength" data-editor-label="@Model.Label" aria-describedby="@(elementId)-help">@Model.Value</textarea>
     <div id="@(elementId)-help" class="markdown-editor-hint">Supports Markdown formatting. Leave a blank line between paragraphs.</div>
-    <span class="text-danger" data-valmsg-for="@Model.FieldName" data-valmsg-replace="true"></span>
+    <span id="@(elementId)-error" class="text-danger" role="alert" data-valmsg-for="@Model.FieldName" data-valmsg-replace="true"></span>
     @if (Model.MaxLength.HasValue)
     {
         <small class="form-text text-muted markdown-editor-char-count">
