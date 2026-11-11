@@ -54,7 +54,6 @@
     overflow-wrap: anywhere;
 }
 
-.move-hint,
-.move-control-reason {
+.move-hint {
     font-size: .875rem;
 }

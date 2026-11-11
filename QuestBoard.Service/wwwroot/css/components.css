@@ -609,6 +609,15 @@
     text-decoration: underline;
   }
 
+  /*
+   * The one-line reason under a disabled move control. It appears on the quest pages, the manage page and the event
+   * details page, so it is a component rather than a page rule.
+   */
+  .move-control-reason {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
   /* The row of toggle cells that picks which weeks of a recurring event's cycle are on. */
   .cycle-mask-strip {
     display: flex;
