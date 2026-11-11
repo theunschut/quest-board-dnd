@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 
@@ -82,6 +83,20 @@ public class PlatformBoardDeleteTests : IClassFixture<WebApplicationFactoryBase>
         presence.Should().Be((false, false, false, false, false, false));
     }
 
+    private static void AssertRefusalPageWithAnEmptyNameInput(HttpResponseMessage response, string html)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain($"The name you typed does not match \"{WebUtility.HtmlEncode(BoardName)}\". Check it and try again.");
+        html.Should().Contain("role=\"alert\" class=\"refusal-line\"");
+        html.Should().Contain("aria-invalid=\"true\"");
+
+        var input = Regex.Match(html, "<input id=\"confirmName\"[^>]*>").Value;
+        input.Should().NotBeEmpty();
+        input.Should().Contain("is-invalid");
+        input.Should().Contain("autofocus");
+        input.Should().NotContain("value=");
+    }
+
     [Fact]
     public async Task Post_WithANameInTheWrongCase_KeepsTheBoardAndItsContent()
     {
@@ -90,9 +105,10 @@ public class PlatformBoardDeleteTests : IClassFixture<WebApplicationFactoryBase>
         var seeded = await SeedBoardWithQuestContentAsync();
 
         var response = await PostDeleteAsync(client, ("confirmName", BoardName.ToLowerInvariant()));
+        var html = await response.Content.ReadAsStringAsync(Token);
 
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
-        response.Headers.Location!.ToString().Should().EndWith($"/platform/Group/Delete/{BoardId}");
+        AssertRefusalPageWithAnEmptyNameInput(response, html);
+        html.Should().NotContain(BoardName.ToLowerInvariant());
         var presence = await ReadPresenceAsync(seeded);
         presence.Should().Be((true, true, true, true, true, true));
     }
@@ -105,9 +121,9 @@ public class PlatformBoardDeleteTests : IClassFixture<WebApplicationFactoryBase>
         var seeded = await SeedBoardWithQuestContentAsync();
 
         var response = await PostDeleteAsync(client);
+        var html = await response.Content.ReadAsStringAsync(Token);
 
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
-        response.Headers.Location!.ToString().Should().EndWith($"/platform/Group/Delete/{BoardId}");
+        AssertRefusalPageWithAnEmptyNameInput(response, html);
         var presence = await ReadPresenceAsync(seeded);
         presence.Should().Be((true, true, true, true, true, true));
     }
@@ -174,6 +190,43 @@ public class PlatformBoardDeleteTests : IClassFixture<WebApplicationFactoryBase>
         });
         await context.SaveChangesAsync(Token);
         return item.Id;
+    }
+
+    [Fact]
+    public async Task Post_WhenMembersWereAddedSinceThePreview_RefusesAndKeepsEverything()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var seeded = await SeedBoardWithQuestContentAsync();
+        await GetDeletePageAsync(client);
+        await BoardMoveSeed.SeedMembershipAsync(_factory, seeded.PlayerId, BoardId, GroupRole.Player);
+
+        var response = await PostDeleteAsync(client, ("confirmName", BoardName));
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location!.ToString().Should().EndWith("/platform");
+        var presence = await ReadPresenceAsync(seeded);
+        presence.Should().Be((true, true, true, true, true, true));
+    }
+
+    [Fact]
+    public async Task Post_PhoneUserAgent_WithTheExactName_DeletesTheBoard()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var seeded = await SeedBoardWithQuestContentAsync();
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/platform/Group/Delete/{BoardId}")
+        {
+            Content = Form(("confirmName", BoardName))
+        };
+        request.Headers.TryAddWithoutValidation("User-Agent", PhoneUserAgent);
+        var response = await client.SendAsync(request, Token);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location!.ToString().Should().EndWith("/platform");
+        var presence = await ReadPresenceAsync(seeded);
+        presence.Should().Be((false, false, false, false, false, false));
     }
 
     [Fact]
