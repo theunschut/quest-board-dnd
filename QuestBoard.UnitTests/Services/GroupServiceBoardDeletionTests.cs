@@ -1,6 +1,7 @@
 using AutoMapper;
 using NSubstitute;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.BoardDeletion;
@@ -9,7 +10,7 @@ using QuestBoard.Domain.Services;
 namespace QuestBoard.UnitTests.Services;
 
 // The typed-name rules of a board delete, proven at the service: the repository is only reached
-// when the typed name matches the stored one exactly (surrounding whitespace aside).
+// when the typed name matches the stored one exactly, once both have lost their edge whitespace.
 public class GroupServiceBoardDeletionTests
 {
     private const int BoardId = 7;
@@ -60,6 +61,50 @@ public class GroupServiceBoardDeletionTests
 
         result.Status.Should().Be(BoardDeleteStatus.Deleted);
         await _repository.Received(1).DeleteBoardAsync(BoardId, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("Goblin Night ", "Goblin Night")]
+    [InlineData("Goblin Night ", "Goblin Night ")]
+    [InlineData(" Goblin Night", "Goblin Night")]
+    [InlineData("Goblin Night", "\uFEFFGoblin Night")]
+    [InlineData("Goblin Night\u0085", "Goblin Night")]
+    [InlineData("Goblin Night", "Goblin Night\u00A0")]
+    public async Task Delete_IgnoresEdgeWhitespaceOnBothTheStoredAndTheTypedName(string stored, string typed)
+    {
+        _repository.GetByIdAsync(BoardId, Arg.Any<CancellationToken>())
+            .Returns(new Group { Id = BoardId, Name = stored });
+        var deleted = new BoardDeletionResult { Status = BoardDeleteStatus.Deleted, BoardName = stored };
+        _repository.DeleteBoardAsync(BoardId, Arg.Any<CancellationToken>()).Returns(deleted);
+
+        var result = await _sut.DeleteBoardAsync(BoardId, typed, Token);
+
+        result.Status.Should().Be(BoardDeleteStatus.Deleted);
+        await _repository.Received(1).DeleteBoardAsync(BoardId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Delete_StillComparesCaseAndInnerSpacingExactlyWhenTheStoredNameHasEdgeWhitespace()
+    {
+        _repository.GetByIdAsync(BoardId, Arg.Any<CancellationToken>())
+            .Returns(new Group { Id = BoardId, Name = "Goblin Night " });
+
+        (await _sut.DeleteBoardAsync(BoardId, "goblin night", Token)).Status.Should().Be(BoardDeleteStatus.NameMismatch);
+        (await _sut.DeleteBoardAsync(BoardId, "Goblin  Night", Token)).Status.Should().Be(BoardDeleteStatus.NameMismatch);
+        await _repository.DidNotReceive().DeleteBoardAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void EdgeWhitespace_IsEveryDotNetWhitespaceCharacterPlusTheZeroWidthNoBreakSpace()
+    {
+        // The browser's gate carries this same set, so it has to be the union of what either side calls
+        // whitespace: .NET's char.IsWhiteSpace and JavaScript's trim(), which adds U+FEFF.
+        var expected = Enumerable.Range(0, char.MaxValue + 1)
+            .Select(code => (char)code)
+            .Where(c => char.IsWhiteSpace(c) || c == '\uFEFF');
+
+        BoardNameText.EdgeWhitespace.Should().BeEquivalentTo(expected);
+        BoardNameText.EdgeWhitespace.Should().OnlyHaveUniqueItems();
     }
 
     [Theory]

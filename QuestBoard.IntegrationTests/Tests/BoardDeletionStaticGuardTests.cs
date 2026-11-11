@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using FluentAssertions;
+using QuestBoard.Domain.Extensions;
 
 namespace QuestBoard.IntegrationTests.Tests;
 
@@ -65,6 +66,7 @@ public class BoardDeletionStaticGuardTests
         "QuestBoard.Service/Extensions/ActiveBoardSessionExtensions.cs",
         "QuestBoard.Domain/Enums/BoardDeleteStatus.cs",
         "QuestBoard.Domain/Enums/BoardContentKind.cs",
+        "QuestBoard.Domain/Extensions/BoardNameText.cs",
     ];
 
     private static string ReadRepoFile(string relativePath)
@@ -262,7 +264,21 @@ public class BoardDeletionStaticGuardTests
         var script = StripJsComments(ReadRepoFile(GateModule));
         Regex.IsMatch(script, @"addEventListener\(\s*'pageshow'").Should().BeTrue(
             "the gate module must re-sync the button when the page is restored from the back-forward cache");
-        script.Should().Contain("trim()", "the typed text is trimmed before it is compared");
+    }
+
+    [Fact]
+    public void GateModule_TrimsExactlyTheEdgeWhitespaceTheServerTrims()
+    {
+        // The button and the server must agree on what counts as edge whitespace, or a name could unlock the
+        // button and then be refused. String.prototype.trim() strips a different set from .NET's Trim(), so
+        // the module carries the server's set as escapes, character for character, and never calls trim().
+        var script = StripJsComments(ReadRepoFile(GateModule));
+        var serverSet = string.Concat(BoardNameText.EdgeWhitespace.Select(c => $"\\u{(int)c:X4}"));
+
+        script.Should().Contain($"'{serverSet}'", "the gate module must carry the server's edge whitespace set");
+        script.Should().NotContain(".trim(", "trim() strips a different set of characters from the server's");
+        script.Should().Contain("trimEdges(input.value) === trimEdges(input.dataset.boardDeleteName)",
+            "both the typed text and the board name lose their edge whitespace before they are compared");
     }
 
     [Fact]

@@ -30,6 +30,15 @@ public class GroupController(
 {
     private const string ConcurrencyMessage = "Someone else changed this board while you were editing. Reload the page and try again.";
 
+    // A board name is saved without edge whitespace, so the name a delete asks the admin to type is
+    // exactly the name the board list shows. A name that was nothing but whitespace is refused.
+    private const string NameRequiredMessage = "Group name is required.";
+
+    // Required already refuses a name that .NET counts as blank; this catches one made only of the
+    // other edge whitespace (a zero-width no-break space), which would otherwise be saved empty.
+    private static bool IsOnlyEdgeWhitespace(string trimmed, string? posted)
+        => trimmed.Length == 0 && !string.IsNullOrWhiteSpace(posted);
+
     // Groups index
     [HttpGet]
     public async Task<IActionResult> Index()
@@ -46,10 +55,12 @@ public class GroupController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(GroupCreateViewModel model)
     {
+        var name = BoardNameText.TrimEdges(model.Name);
+        if (IsOnlyEdgeWhitespace(name, model.Name)) ModelState.AddModelError(nameof(model.Name), NameRequiredMessage);
         if (!ModelState.IsValid) return View(model);
         try
         {
-            await groupService.AddAsync(new Group { Name = model.Name, BoardType = model.BoardType!.Value });
+            await groupService.AddAsync(new Group { Name = name, BoardType = model.BoardType!.Value });
             TempData["Success"] = "Group created successfully.";
             return RedirectToAction(nameof(Index));
         }
@@ -111,6 +122,9 @@ public class GroupController(
             ModelState.AddModelError(string.Empty, error);
         }
 
+        var name = BoardNameText.TrimEdges(model.Name);
+        if (IsOnlyEdgeWhitespace(name, model.Name)) ModelState.AddModelError(nameof(model.Name), NameRequiredMessage);
+
         if (!ModelState.IsValid)
         {
             PopulatePageSection(model, group, outcome.Disabled);
@@ -120,7 +134,7 @@ public class GroupController(
 
         try
         {
-            group.Name = model.Name;
+            group.Name = name;
             group.DisabledPages = outcome.Disabled;
             group.HomePage = outcome.HomePage;
             await groupService.UpdateAsync(group);

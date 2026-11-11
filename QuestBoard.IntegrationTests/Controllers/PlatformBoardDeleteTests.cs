@@ -338,6 +338,26 @@ public class PlatformBoardDeleteTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     [Fact]
+    public async Task ABoardStoredWithEdgeWhitespace_AsksForTheTrimmedNameAndDeletesWithIt()
+    {
+        // A name saved before names were trimmed can still carry a stray space from a paste. The page asks
+        // for the name without it, and typing exactly that deletes the board.
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        await BoardMoveSeed.SeedBoardAsync(_factory, BoardId, BoardName + " ", BoardType.OneShot);
+
+        var decoded = WebUtility.HtmlDecode(await GetDeletePageAsync(client));
+        decoded.Should().Contain($"data-board-delete-name=\"{BoardName}\"");
+        decoded.Should().Contain($"Type \"{BoardName}\" exactly, including capitals and spaces.");
+
+        var response = await PostDeleteAsync(client, ("confirmName", BoardName));
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        await using var context = _factory.Database.CreateContext();
+        (await context.Groups.AnyAsync(g => g.Id == BoardId, Token)).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Get_EncodesUserAuthoredNames()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);

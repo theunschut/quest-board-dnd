@@ -1,5 +1,6 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.BoardDeletion;
@@ -50,9 +51,10 @@ internal class GroupService(IGroupRepository repository, IMapper mapper)
         if (group == null)
             return BoardDeletionResult.Refused(BoardDeleteStatus.NotFound);
 
-        // Only the typed side is trimmed: the stored name is compared exactly, so a board whose
-        // name differs in case or spelling is never deleted by a near miss.
-        if (!string.Equals(confirmName?.Trim(), group.Name, StringComparison.Ordinal))
+        // Both sides lose the same edge whitespace, so a stored name that kept a stray space from a
+        // paste can still be confirmed. Everything between the edges is compared exactly, so a board
+        // whose name differs in case or spelling is never deleted by a near miss.
+        if (!string.Equals(BoardNameText.TrimEdges(confirmName), BoardNameText.TrimEdges(group.Name), StringComparison.Ordinal))
             return BoardDeletionResult.Refused(BoardDeleteStatus.NameMismatch, group.Name);
 
         return await repository.DeleteBoardAsync(groupId, token);

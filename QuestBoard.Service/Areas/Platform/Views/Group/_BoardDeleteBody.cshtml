@@ -90,15 +90,15 @@ else
         {
             <div id="board-delete-refusal" role="alert" class="refusal-line">
                 <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
-                <span>The name you typed does not match "@Model.Name". Check it and try again.</span>
+                <span>The name you typed does not match "@Model.ConfirmationName". Check it and try again.</span>
             </div>
         }
         <input id="confirmName" name="confirmName" class="form-control @(Model.NameMismatch ? "is-invalid" : null)" type="text"
                autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
                aria-invalid="@(Model.NameMismatch ? "true" : null)"
                autofocus="@(Model.NameMismatch ? "autofocus" : null)"
-               aria-describedby="@(Model.NameMismatch ? "board-delete-refusal " : "")board-delete-help board-delete-status" data-board-delete-name="@Model.Name" />
-        <div id="board-delete-help" class="form-text">Type "@Model.Name" exactly, including capitals and spaces. The delete button unlocks when it matches.</div>
+               aria-describedby="@(Model.NameMismatch ? "board-delete-refusal " : "")board-delete-help board-delete-status" data-board-delete-name="@Model.ConfirmationName" />
+        <div id="board-delete-help" class="form-text">Type "@Model.ConfirmationName" exactly, including capitals and spaces. The delete button unlocks when it matches.</div>
         <div id="board-delete-status" role="status" class="board-delete-status"></div>
     </div>
 

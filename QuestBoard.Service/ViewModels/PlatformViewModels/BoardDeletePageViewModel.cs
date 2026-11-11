@@ -1,4 +1,5 @@
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.BoardDeletion;
 
@@ -40,6 +41,12 @@ public class BoardDeletePageViewModel
     public int Id { get; init; }
 
     public string Name { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The name the admin is asked to type: the stored name without its edge whitespace, which the
+    /// confirmation ignores on both sides.
+    /// </summary>
+    public string ConfirmationName => BoardNameText.TrimEdges(Name);
 
     /// <summary>When the board was created; a real UTC instant.</summary>
     public DateTime CreatedAt { get; init; }
