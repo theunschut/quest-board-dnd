@@ -186,11 +186,28 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
 
         // EF orders the DELETE commands by the model's foreign keys inside the single save below,
         // which is one database transaction, so this staging order is for readability only.
-        DbContext.Set<PlayerDateVoteEntity>().RemoveRange(await BoardDateVotes(groupId).ToListAsync(token));
-        DbContext.PlayerSignups.RemoveRange(await BoardPlayerSignups(groupId).ToListAsync(token));
-        DbContext.Set<ProposedDateEntity>().RemoveRange(await BoardProposedDates(groupId).ToListAsync(token));
-        DbContext.ReminderLogs.RemoveRange(await BoardReminderLogs(groupId).ToListAsync(token));
-        DbContext.Quests.RemoveRange(await BoardQuests(groupId).ToListAsync(token));
+        var removed = new Dictionary<BoardContentKind, int>();
+
+        var dateVotes = await BoardDateVotes(groupId).ToListAsync(token);
+        DbContext.Set<PlayerDateVoteEntity>().RemoveRange(dateVotes);
+        removed[BoardContentKind.DateVotes] = dateVotes.Count;
+
+        var playerSignups = await BoardPlayerSignups(groupId).ToListAsync(token);
+        DbContext.PlayerSignups.RemoveRange(playerSignups);
+        removed[BoardContentKind.PlayerSignups] = playerSignups.Count;
+
+        var proposedDates = await BoardProposedDates(groupId).ToListAsync(token);
+        DbContext.Set<ProposedDateEntity>().RemoveRange(proposedDates);
+        removed[BoardContentKind.ProposedDates] = proposedDates.Count;
+
+        var reminderLogs = await BoardReminderLogs(groupId).ToListAsync(token);
+        DbContext.ReminderLogs.RemoveRange(reminderLogs);
+        removed[BoardContentKind.ReminderLogs] = reminderLogs.Count;
+
+        var quests = await BoardQuests(groupId).ToListAsync(token);
+        DbContext.Quests.RemoveRange(quests);
+        removed[BoardContentKind.Quests] = quests.Count;
+
         DbContext.Groups.Remove(group);
 
         try
@@ -204,7 +221,7 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
             throw;
         }
 
-        return new BoardDeletionResult { Status = BoardDeleteStatus.Deleted, BoardName = group.Name };
+        return new BoardDeletionResult { Status = BoardDeleteStatus.Deleted, BoardName = group.Name, RemovedCounts = removed };
     }
 
     /// <inheritdoc/>
