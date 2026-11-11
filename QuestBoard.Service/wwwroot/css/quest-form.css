@@ -105,4 +105,10 @@
   .mobile-layout .quest-form-actions > .btn {
     flex: 1 1 auto;
   }
+
+  /* The exit button keeps its icon beside its word; a longer commit label wraps instead of squeezing it. */
+  .mobile-layout .quest-form-actions > .btn-secondary {
+    flex: none;
+    white-space: nowrap;
+  }
 }
