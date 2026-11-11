@@ -2075,7 +2075,7 @@ Plans:
 **Goal:** A super admin can delete a board that no longer has any members, without a server error. Everything that belongs only to that board goes with it, and anything that must outlive the board (users, and whatever they own across boards) is unlinked instead of deleted.
 **Requirements**: TBD
 **Depends on:** Nothing in this milestone (independent bug fix; it can run at any point)
-**Plans:** 3/10 plans executed
+**Plans:** 5/10 plans executed
 
 **Scope:**
 
@@ -2096,8 +2096,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 102-04-PLAN.md — Delete every board-owned table and unlink cross-board references, with per-kind counts and a foreign-key integrity sweep
-- [ ] 102-05-PLAN.md — Guard tests: foreign-key model pin, service typed-name rules, SQL Server delete and rollback test (skips without a server)
+- [x] 102-04-PLAN.md — Delete every board-owned table and unlink cross-board references, with per-kind counts and a foreign-key integrity sweep
+- [x] 102-05-PLAN.md — Guard tests: foreign-key model pin, service typed-name rules, SQL Server delete and rollback test (skips without a server)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
