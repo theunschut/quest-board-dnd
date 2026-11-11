@@ -204,7 +204,8 @@ public class GroupController(
             TempData["Error"] = HasMembersMessage(group.Name);
             return RedirectToAction(nameof(Index));
         }
-        return View(group);
+        var preview = await groupService.GetDeletionPreviewAsync(id);
+        return View(BoardDeletePageViewModel.Create(group, preview));
     }
 
     [HttpPost, ActionName("Delete")]
