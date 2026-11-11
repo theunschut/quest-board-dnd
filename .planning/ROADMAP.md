@@ -1525,7 +1525,7 @@ Wave note: plans that edit tracked source, build or run the working tree, or com
 **Goal:** Convert the core loop (quest board, quest details, create and edit forms, DM manage, quest log, move) to the foundation, carrying the shared pieces the loop depends on, so a DM can post a quest and a player can sign up on converted pages. Convert the quest board, quest details, quest forms, DM manage, quest log and move pages, with the shared editor, signup modal and vote UI, to the foundation: scrimmed card surfaces, no inline styles or scripts, the approved poster relayout, and every page readable at 4.5:1 on phone and desktop.
 **Requirements**: TBD
 **Depends on:** Phase 94
-**Plans:** 7/18 plans executed
+**Plans:** 9/18 plans executed
 
 **Scope:**
 
@@ -1591,7 +1591,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 95-03-PLAN.md — Gate 1 package and gate: poster mockup with switchers and measured pool, phone Manage mockup, merge evidence (operator, redraw loop)
+- [x] 95-03-PLAN.md — Gate 1 package and gate: poster mockup with switchers and measured pool, phone Manage mockup, merge evidence (operator, redraw loop)
 - [x] 95-04-PLAN.md — Phase tracer: Markdown editor keyboard trap fix, visible hint, form scripts out of inline code, conversion guard test
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -1620,7 +1620,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 95-11-PLAN.md — Quest CreateFollowUp (merges if approved at Gate 1)
+- [x] 95-11-PLAN.md — Quest CreateFollowUp (merges if approved at Gate 1)
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
