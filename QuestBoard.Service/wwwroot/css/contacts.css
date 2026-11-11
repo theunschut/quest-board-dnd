@@ -281,8 +281,8 @@
     color: #ffc107;
 }
 
-/* Ungrouped heading: same element and size, muted via opacity so it does not fight the
-   shared card stylesheet's forced heading color with an !important of its own. */
+/* Ungrouped heading: same element and size, muted via opacity so it keeps the colour the
+   grouped headings take from the card instead of declaring a second one. */
 .contacts-page .category-heading-ungrouped {
     font-style: italic;
     opacity: 0.75;

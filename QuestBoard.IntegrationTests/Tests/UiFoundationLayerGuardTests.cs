@@ -86,8 +86,17 @@ public class UiFoundationLayerGuardTests
     private static string ReadRepoFile(string relativePath) =>
         File.ReadAllText(ResolveRepoFile(relativePath.Split('/')));
 
-    private static IEnumerable<string> ExistingCssFiles(IEnumerable<string> names) =>
-        names.Where(n => File.Exists(ResolveRepoFile((CssRoot + "/" + n).Split('/'))));
+    // A listed stylesheet that is missing fails the guard: a renamed or deleted file must drop out of the list on
+    // purpose, never out of the scan by accident.
+    private static IEnumerable<string> RequiredCssFiles(IEnumerable<string> names)
+    {
+        var list = names.ToList();
+        foreach (var name in list)
+            File.Exists(ResolveRepoFile((CssRoot + "/" + name).Split('/'))).Should().BeTrue(
+                $"{CssRoot}/{name} is listed for scanning, so it must exist");
+
+        return list;
+    }
 
     private static string StripComments(string css) => Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
 
@@ -158,26 +167,48 @@ public class UiFoundationLayerGuardTests
     ];
 
     // Written as regex data, with each forbidden literal built from fragments, so this file never
-    // holds the shapes it forbids elsewhere.
+    // holds the shapes it forbids elsewhere. The patterns are general: any decision id, sign-off item, phase or plan
+    // number, requirement or review-finding id, or planning document name, whichever piece of work it came from.
     private static readonly (string Label, Regex Pattern)[] PlanningReferencePatterns =
     [
-        ("a decision id", new Regex(@"\bD-(0[1-9]|1[0-9]|2[0-4])\b")),
-        ("a sign-off item id", new Regex(@"\bG" + @"1-[OR]\d\b")),
-        ("a phase reference", new Regex("Pha" + "se\\s+9" + "4\\b", RegexOptions.IgnoreCase)),
-        ("a plan id", new Regex(@"\b9" + @"4-(?:\d\d|[A-Z]{2,})")),
+        ("a decision id", new Regex(@"\bD" + @"-\d{2}\b")),
+        ("a sign-off item id", new Regex(@"\bG" + @"\d-[OR]\d\b")),
+        ("a phase reference", new Regex("Pha" + "se\\s+\\d{1,3}\\b", RegexOptions.IgnoreCase)),
+        ("a plan id", new Regex(@"(?<![\d.,:/-])\d{2,3}" + @"-\d{2}\b")),
+        ("a requirement id", new Regex(@"\b[A-Z]{3,8}" + @"-\d{2}\b")),
+        ("a review-finding id", new Regex(@"\b(?:W" + "R|C" + "R|I" + @"N)-\d{2}\b")),
         ("a planning document name", new Regex(
-            "CONT" + "EXT\\.md|RESE" + "ARCH\\.md|UI-" + "SPEC|PATT" + "ERNS\\.md|VALID" + "ATION\\.md|AUD" + "IT\\.md")),
+            "CONT" + "EXT\\.md|RESE" + "ARCH\\.md|UI-" + "SPEC|PATT" + "ERNS\\.md|VALID" + "ATION\\.md|AUD" + "IT\\.md|" +
+            "PL" + "AN\\.md|SUMM" + "ARY\\.md|ROAD" + "MAP\\.md|REQUIRE" + "MENTS\\.md|WIN" + "DOWS\\.md")),
     ];
 
-    // The files the planning-reference scan reads, repository-relative. A file that does not exist
-    // is skipped, so the list can name a file before the change that introduces it has merged.
-    private static IEnumerable<string> PlanningScanFiles() =>
-        new[] { "app.css" }
+    // The files the planning-reference scan reads, repository-relative: the foundation and the layouts by name, which
+    // must all exist, and every page stylesheet, script and view found on disk, so a file added later is covered
+    // without anyone remembering to list it.
+    private static IEnumerable<string> PlanningScanFiles()
+    {
+        var named = new[] { "app.css" }
             .Concat(LayeredFiles.Select(l => l.File))
             .Select(n => CssRoot + "/" + n)
             .Concat(Layouts.Select(l => l.Path))
             .Append(".claude/ui-guidelines.md")
-            .Where(p => File.Exists(ResolveRepoFile(p.Split('/'))));
+            .ToList();
+
+        foreach (var path in named)
+            File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeTrue($"{path} is listed for scanning, so it must exist");
+
+        var root = FindRepositoryRoot().FullName;
+        string Relative(string full) => Path.GetRelativePath(root, full).Replace('\\', '/');
+        IEnumerable<string> Under(string folder, string pattern) =>
+            Directory.EnumerateFiles(ResolveRepoFile(folder.Split('/')), pattern, SearchOption.AllDirectories).Select(Relative);
+
+        return named
+            .Concat(Under(CssRoot, "*.css").Where(p => !p.Contains("/lib/")))
+            .Concat(Under("QuestBoard.Service/wwwroot/js", "*.js"))
+            .Concat(Under("QuestBoard.Service/Views", "*.cshtml"))
+            .Concat(Under("QuestBoard.Service/Areas", "*.cshtml"))
+            .Distinct();
+    }
 
     [Fact]
     public void Layouts_LinkFoundationInCascadeOrder()
@@ -242,12 +273,15 @@ public class UiFoundationLayerGuardTests
     [Fact]
     public void LegacyDesktopSheet_IsUnlayeredAndRenamed()
     {
-        // The remainder of the old global desktop sheet keeps beating every layered rule on its own selectors,
-        // which is what keeps the pages that have not been converted yet looking as they did.
+        // The remainder of the old global desktop sheet beats every layered rule that is not important-flagged on
+        // its own selectors, which is what keeps the pages that have not been converted yet looking as they did.
+        // The order inverts for important-flagged declarations: a layered one beats an unlayered one, so an
+        // unlayered important rule aimed at a Bootstrap colour utility (the vendor layer's important utilities)
+        // is dead and the element takes the token colour instead.
         File.Exists(ResolveRepoFile((CssRoot + "/legacy-pages.css").Split('/'))).Should().BeTrue(
             "the desktop page rules live in legacy-pages.css");
         StripComments(ReadRepoFile(CssRoot + "/legacy-pages.css")).Should().NotContain("@layer",
-            "legacy-pages.css stays unlayered so it keeps winning on its own selectors");
+            "legacy-pages.css stays unlayered so its plain declarations keep winning on its own selectors");
         File.Exists(ResolveRepoFile((CssRoot + "/site.css").Split('/'))).Should().BeFalse(
             "the global sheet was renamed, so no file by the old name may remain");
     }
@@ -278,7 +312,7 @@ public class UiFoundationLayerGuardTests
     [Fact]
     public void LayeredFiles_HaveNoColourLiteralOutsideTokens()
     {
-        foreach (var file in ExistingCssFiles(NoLiteralFiles))
+        foreach (var file in RequiredCssFiles(NoLiteralFiles))
         {
             var css = StripUrls(StripComments(ReadRepoFile(CssRoot + "/" + file)));
             foreach (var (label, pattern) in ColourLiteralPatterns)
@@ -318,8 +352,11 @@ public class UiFoundationLayerGuardTests
             "background-image: url(\"x#fff.png\"); } /* #123456 */ #main-content { top: 0 }"));
         ColourLiteralPatterns.Select(p => p.Pattern.Matches(sample).Count).Should().Equal(1, 1, 1);
 
-        var planning = "// " + "D-" + "06 and " + "Pha" + "se 9" + "4 and 9" + "4-18";
-        PlanningReferencePatterns.Count(p => p.Pattern.IsMatch(planning)).Should().BeGreaterThanOrEqualTo(3);
+        var planning = "// " + "D-" + "06 and " + "Pha" + "se 9" + "5 and 9" + "5-18 and " + "WR" + "-03 and " + "TENA" + "NT-03";
+        PlanningReferencePatterns.Count(p => p.Pattern.IsMatch(planning)).Should().Be(5,
+            "a decision id, a phase, a plan id, a review-finding id and a requirement id each fire their own pattern");
+        PlanningReferencePatterns.Any(p => p.Pattern.IsMatch("a gap of 5,001-50,000 gp and 2026-11-09 and 0.95-0.5")).Should()
+            .BeFalse("numbers, ranges and dates in ordinary prose are not plan ids");
     }
 
     // ---- Token contrast -------------------------------------------------------------------------

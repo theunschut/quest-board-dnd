@@ -250,8 +250,8 @@ public class UiFoundationVendorGuardTests
         }
 
         var appCss = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "app.css");
-        if (!File.Exists(appCss))
-            return;
+        File.Exists(appCss).Should().BeTrue(
+            because: "app.css is the stylesheet that names the vendored files, so a missing one must fail rather than skip the check");
 
         var cssFolder = Path.GetDirectoryName(appCss)!;
         foreach (Match match in Regex.Matches(File.ReadAllText(appCss), @"url\(\s*[""']?(\.\./lib/[^""')?#]+)"))
@@ -260,6 +260,31 @@ public class UiFoundationVendorGuardTests
                 cssFolder, match.Groups[1].Value.Replace('/', Path.DirectorySeparatorChar)));
             File.Exists(target).Should().BeTrue(
                 because: $"wwwroot/css/app.css references {match.Groups[1].Value}, which must exist under {LibRoot}");
+        }
+    }
+
+    [Fact]
+    public void FontAwesomeCss_WoffFontFilesAreCommitted()
+    {
+        // The vendored stylesheet names each font twice, as woff2 and as ttf; browsers that support woff2 never ask
+        // for the ttf, and only the woff2 files are committed. The one omission is the legacy v4 compatibility
+        // family, which no markup uses; adding a use of it means committing its files first.
+        const string omittedFamily = "fa-v4compatibility";
+        var css = ResolveRepoFile((LibRoot + "/fontawesome-6.7.2/css/all.min.css").Split('/'));
+        File.Exists(css).Should().BeTrue(because: "the Font Awesome stylesheet is the file whose font references are checked");
+
+        var fonts = Regex.Matches(File.ReadAllText(css), @"url\(\s*[""']?(\.\./webfonts/[^""')?#]+\.woff2)")
+            .Select(m => m.Groups[1].Value)
+            .Distinct()
+            .ToList();
+        fonts.Should().NotBeEmpty(because: "the stylesheet must name the woff2 fonts it draws icons from");
+
+        foreach (var font in fonts.Where(f => !f.Contains(omittedFamily, StringComparison.Ordinal)))
+        {
+            var target = Path.GetFullPath(Path.Combine(
+                Path.GetDirectoryName(css)!, font.Replace('/', Path.DirectorySeparatorChar)));
+            File.Exists(target).Should().BeTrue(
+                because: $"all.min.css references {font}, which must be committed next to the stylesheet");
         }
     }
 

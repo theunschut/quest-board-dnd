@@ -24,10 +24,13 @@ public class PlatformAreaLayoutTests(WebApplicationFactoryBase factory)
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        // The stylesheet links must be present in the rendered HTML.
+        // Each sheet must be a stylesheet link in the page, not merely a name that appears somewhere in the HTML
+        // (a comment, a script or an attribute would satisfy a bare substring match).
         foreach (var sheet in new[] { "components.css", "tokens.css", "base.css", "app.css" })
         {
-            html.Should().Contain(sheet, because: $"the Platform layout must load {sheet} so the cards render with their styles");
+            var linked = System.Text.RegularExpressions.Regex.IsMatch(html,
+                @"<link\b[^>]*\brel=""stylesheet""[^>]*\bhref=""[^""]*/" + System.Text.RegularExpressions.Regex.Escape(sheet) + @"(?:\?[^""]*)?""");
+            linked.Should().BeTrue($"the Platform layout must link {sheet} as a stylesheet so the cards render with their styles");
         }
     }
 }

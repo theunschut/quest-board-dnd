@@ -104,8 +104,14 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
         var tokens = File.ReadAllText(tokensPath);
 
         // Assert
-        baseCss.Should().Contain("font-size: var(--qb-text-base)",
-            because: $"base.css at '{basePath}' must size the body text from the shared token to prevent iOS auto-zoom");
+        // The declaration must sit in the body rule itself: the same text in any other rule would size something else.
+        var withoutComments = System.Text.RegularExpressions.Regex.Replace(baseCss, @"/\*[\s\S]*?\*/", " ");
+        var bodyRules = System.Text.RegularExpressions.Regex.Matches(withoutComments, @"(?<![\w.#:\-])body\s*\{(?<block>[^{}]*)\}")
+            .Select(m => m.Groups["block"].Value)
+            .ToList();
+        bodyRules.Should().Contain(
+            block => System.Text.RegularExpressions.Regex.IsMatch(block, @"(?<![\w-])font-size:\s*var\(--qb-text-base\)\s*;"),
+            because: $"base.css at '{basePath}' must size the body text, in the body rule, from the shared token to prevent iOS auto-zoom");
         tokens.Should().Contain("--qb-text-base: 1rem",
             because: $"tokens.css at '{tokensPath}' defines the body text size the base rule reads, 16px");
     }

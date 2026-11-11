@@ -97,6 +97,26 @@ public class UiFoundationMobileShellGuardTests
     }
 
     [Fact]
+    public void SiteScript_KeepsOffcanvasTogglersInStepWithTheirPanel()
+    {
+        // Bootstrap reports a collapse's state on its button but not an offcanvas panel's, so the shared script
+        // keeps aria-expanded true while the panel is open. The layouts only declare "false"; without the script
+        // the button would announce a closed menu for as long as it is open.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/site.js");
+        script.Should().MatchRegex(@"\[\s*'show'\s*,\s*'hidden'\s*\]\s*\.forEach",
+            "the script listens for both the show and hidden offcanvas events");
+        script.Should().Contain("'.bs.offcanvas'", "the events are Bootstrap's offcanvas events");
+        script.Should().Contain("[data-bs-toggle=\"offcanvas\"][aria-expanded]", "only togglers that declare the state are kept in step");
+        script.Should().Contain("setAttribute('aria-expanded', phase === 'show' ? 'true' : 'false')",
+            "the state follows the event: true on show, false on hidden");
+
+        foreach (var (path, _, panelId) in Layouts)
+            OpeningTags(Markup(path), "button").Should().Contain(
+                t => t.Contains("data-bs-toggle=\"offcanvas\"") && t.Contains($"data-bs-target=\"#{panelId}\"") && t.Contains("aria-expanded=\"false\""),
+                $"{path} must declare the toggler's state for the script to keep");
+    }
+
+    [Fact]
     public void MobileLayouts_CarryNoInlineStyleOrScript()
     {
         foreach (var path in Layouts.Select(l => l.Path).Append(FooterFile))
