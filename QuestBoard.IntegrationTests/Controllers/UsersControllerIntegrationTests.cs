@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
 using System.Reflection;
@@ -198,5 +199,147 @@ public class UsersControllerIntegrationTests : IClassFixture<WebApplicationFacto
 
         // Assert — no server error, and the request still reaches the controller's own logic.
         ((int)response.StatusCode).Should().BeLessThan(500);
+    }
+
+    private const string DesktopUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+    private const string MobileUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
+    // Seeds a user with a distinctive name who is a member of the given boards, then renders the
+    // Users page for a super admin with the given User-Agent.
+    private async Task<(string Html, string UserName)> RenderUsersPageAsync(string userAgent, params string[] boardNames)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var userName = $"Board Member {Guid.NewGuid():N}";
+        var user = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "boardmember", "boardmember@example.com", name: userName);
+
+        var boardId = 200;
+        foreach (var boardName in boardNames)
+        {
+            boardId++;
+            await BoardMoveSeed.SeedBoardAsync(_factory, boardId, boardName, BoardType.OneShot);
+            await BoardMoveSeed.SeedMembershipAsync(_factory, user.Id, boardId, GroupRole.Player);
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/Platform/Users/Index");
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), userName);
+    }
+
+    // The slice of the page from the user's name to the end of their row (desktop) or card (phone).
+    private static string RowFor(string html, string userName)
+    {
+        var start = html.IndexOf(userName, StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, "the seeded user must be listed");
+        var end = html.IndexOf("</tr>", start, StringComparison.Ordinal);
+        if (end < 0) end = html.IndexOf("user-card-mobile", start + 1, StringComparison.Ordinal);
+        if (end < 0) end = html.Length;
+        return html[start..end];
+    }
+
+    [Fact]
+    public async Task Index_ShowsABoardsColumnWithCountAndNames()
+    {
+        var (html, userName) = await RenderUsersPageAsync(DesktopUserAgent, "beta board", "Alpha Board");
+
+        var email = html.IndexOf("<th scope=\"col\">Email</th>", StringComparison.Ordinal);
+        var boards = html.IndexOf("<th scope=\"col\">Boards</th>", StringComparison.Ordinal);
+        var confirmed = html.IndexOf("<th scope=\"col\">Confirmed</th>", StringComparison.Ordinal);
+        email.Should().BeGreaterThan(-1);
+        boards.Should().BeGreaterThan(email);
+        confirmed.Should().BeGreaterThan(boards);
+
+        var row = RowFor(html, userName);
+        row.Should().Contain("title=\"Alpha Board, beta board\"");
+        row.Should().Contain("2<span class=\"visually-hidden\"> boards: Alpha Board, beta board</span>");
+    }
+
+    [Fact]
+    public async Task Index_UserOnOneBoard_UsesTheSingular()
+    {
+        var (html, userName) = await RenderUsersPageAsync(DesktopUserAgent, "Solo Board");
+
+        var row = RowFor(html, userName);
+        row.Should().Contain("title=\"Solo Board\"");
+        row.Should().Contain("1<span class=\"visually-hidden\"> board: Solo Board</span>");
+    }
+
+    [Fact]
+    public async Task Index_UserOnNoBoards_ShowsZeroWithoutNames()
+    {
+        var (html, userName) = await RenderUsersPageAsync(DesktopUserAgent);
+
+        var row = RowFor(html, userName);
+        row.Should().Contain("<td>0</td>");
+        row.Should().NotContain("visually-hidden");
+        row.Should().NotContain("title=\"");
+    }
+
+    [Fact]
+    public async Task Index_BoardsHeaderHasNoSortOrFilterControl()
+    {
+        var (html, _) = await RenderUsersPageAsync(DesktopUserAgent, "Alpha Board");
+
+        var header = html.IndexOf("<th scope=\"col\">Boards</th>", StringComparison.Ordinal);
+        header.Should().BeGreaterThan(-1, "the header is exactly the plain text cell, with no link, button or sort control");
+    }
+
+    [Fact]
+    public async Task Index_BoardNamesAreHtmlEncoded()
+    {
+        var (html, userName) = await RenderUsersPageAsync(DesktopUserAgent, "<b>Bold</b> \"quoted\"");
+
+        var row = RowFor(html, userName);
+        row.Should().NotContain("<b>Bold</b>");
+        row.Should().Contain("&lt;b&gt;Bold&lt;/b&gt;");
+    }
+
+    [Fact]
+    public async Task IndexPhone_ShowsBoardsDetailsWithNames()
+    {
+        var (html, userName) = await RenderUsersPageAsync(MobileUserAgent, "gamma", "Alpha", "beta");
+
+        html.Should().Contain("platform-users-boards.mobile.css");
+        html.Should().Contain("platform-users.mobile.css");
+
+        var card = RowFor(html, userName);
+        card.Should().Contain("<details class=\"user-boards");
+        card.Should().Contain("3 boards");
+
+        var alpha = card.IndexOf("<li>Alpha</li>", StringComparison.Ordinal);
+        var beta = card.IndexOf("<li>beta</li>", StringComparison.Ordinal);
+        var gamma = card.IndexOf("<li>gamma</li>", StringComparison.Ordinal);
+        alpha.Should().BeGreaterThan(-1);
+        beta.Should().BeGreaterThan(alpha);
+        gamma.Should().BeGreaterThan(beta);
+    }
+
+    [Fact]
+    public async Task IndexPhone_UserOnOneBoard_SaysOneBoard()
+    {
+        var (html, userName) = await RenderUsersPageAsync(MobileUserAgent, "Solo Board");
+
+        var card = RowFor(html, userName);
+        card.Should().Contain("1 board");
+        card.Should().NotContain("1 boards");
+        card.Should().Contain("<li>Solo Board</li>");
+    }
+
+    [Fact]
+    public async Task IndexPhone_UserOnNoBoards_ShowsZeroWithoutDetails()
+    {
+        var (html, userName) = await RenderUsersPageAsync(MobileUserAgent);
+
+        var card = RowFor(html, userName);
+        card.Should().Contain("0 boards");
+        card.Should().NotContain("<details");
     }
 }

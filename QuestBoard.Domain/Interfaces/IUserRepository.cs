@@ -34,6 +34,12 @@ public interface IUserRepository : IBaseRepository<User>
     Task<IList<User>> GetAvailableUsers(int groupId, string? search, CancellationToken token = default);
 
     /// <summary>
+    /// Returns, per user id, the names of the boards the user is a member of, sorted A to Z ignoring case.
+    /// Users who are members of no board are absent from the result.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, IReadOnlyList<string>>> GetBoardNamesByUserAsync(CancellationToken token = default);
+
+    /// <summary>
     /// Returns the given user's group role in the specified group, or null if they are not a member.
     /// </summary>
     Task<GroupRole?> GetGroupRoleAsync(int userId, int groupId);
