@@ -313,23 +313,6 @@
     border-left: 4px solid #212529;
 }
 
-/* Date and Vote Styles */
-.date-option {
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    padding: 0.75rem;
-    margin-bottom: 0.5rem;
-}
-
-.date-option:hover {
-    background-color: #f8f9fa;
-}
-
-.vote-summary {
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-
 .player-list {
     /* Removed max-height and overflow-y to eliminate scrollbar */
     /* List is never too large to fit naturally */
