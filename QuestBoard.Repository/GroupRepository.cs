@@ -172,6 +172,58 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     private IQueryable<ReminderLogEntity> BoardReminderLogs(int groupId)
         => DbContext.ReminderLogs.IgnoreQueryFilters().Where(r => r.Quest.GroupId == groupId);
 
+    private IQueryable<EventEntity> BoardEvents(int groupId)
+        => DbContext.Events.IgnoreQueryFilters().Where(e => e.GroupId == groupId);
+
+    private IQueryable<EventSignupEntity> BoardEventSignups(int groupId)
+        => DbContext.EventSignups.IgnoreQueryFilters().Where(es => es.Event.GroupId == groupId);
+
+    private IQueryable<EventSeriesEntity> BoardEventSeries(int groupId)
+        => DbContext.EventSeries.IgnoreQueryFilters().Where(s => s.GroupId == groupId);
+
+    private IQueryable<CharacterEntity> BoardCharacters(int groupId)
+        => DbContext.Characters.IgnoreQueryFilters().Where(c => c.GroupId == groupId);
+
+    private IQueryable<CharacterClassEntity> BoardCharacterClasses(int groupId)
+        => DbContext.CharacterClasses.IgnoreQueryFilters().Where(cc => cc.Character.GroupId == groupId);
+
+    private IQueryable<ContactEntity> BoardContacts(int groupId)
+        => DbContext.Contacts.IgnoreQueryFilters().Where(c => c.GroupId == groupId);
+
+    private IQueryable<ContactNoteEntity> BoardContactNotes(int groupId)
+        => DbContext.ContactNotes.IgnoreQueryFilters().Where(n => n.Contact.GroupId == groupId);
+
+    private IQueryable<ContactCategoryEntity> BoardContactCategories(int groupId)
+        => DbContext.ContactCategories.IgnoreQueryFilters().Where(c => c.GroupId == groupId);
+
+    private IQueryable<ContactTagEntity> BoardContactTags(int groupId)
+        => DbContext.ContactTags.IgnoreQueryFilters().Where(t => t.GroupId == groupId);
+
+    private IQueryable<ShopItemEntity> BoardShopItems(int groupId)
+        => DbContext.ShopItems.IgnoreQueryFilters().Where(s => s.GroupId == groupId);
+
+    // A purchase, a sale or a return on one of this board's shop items goes with the board, and so
+    // does any row chained to such a transaction through OriginalTransactionId, whoever made it.
+    private IQueryable<UserTransactionEntity> BoardTransactions(int groupId)
+        => DbContext.UserTransactions.IgnoreQueryFilters().Where(t =>
+            t.ShopItem.GroupId == groupId
+            || (t.OriginalTransaction != null && t.OriginalTransaction.ShopItem.GroupId == groupId));
+
+    // The three helpers below find rows on OTHER boards that point into this one. They are only
+    // ever used to clear that one pointer, never to remove the row, because the row belongs to
+    // the other board.
+    private IQueryable<QuestEntity> FollowUpsOnOtherBoards(int groupId)
+        => DbContext.Quests.IgnoreQueryFilters().Where(q =>
+            q.GroupId != groupId && q.OriginalQuest != null && q.OriginalQuest.GroupId == groupId);
+
+    private IQueryable<PlayerSignupEntity> OtherBoardSignupsUsingBoardCharacters(int groupId)
+        => DbContext.PlayerSignups.IgnoreQueryFilters().Where(ps =>
+            ps.Quest.GroupId != groupId && ps.Character != null && ps.Character.GroupId == groupId);
+
+    private IQueryable<EventEntity> OtherBoardEventsInBoardSeries(int groupId)
+        => DbContext.Events.IgnoreQueryFilters().Where(e =>
+            e.GroupId != groupId && e.Series != null && e.Series.GroupId == groupId);
+
     /// <inheritdoc/>
     public async Task<BoardDeletionResult> DeleteBoardAsync(int groupId, CancellationToken token = default)
     {
@@ -184,29 +236,53 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
         if (await DbContext.UserGroups.AnyAsync(ug => ug.GroupId == groupId, token))
             return BoardDeletionResult.Refused(BoardDeleteStatus.HasMembers, group.Name);
 
+        // Rows on other boards that point into this board keep their place; only the pointer is
+        // cleared, as a tracked write, so the delete never trips over them. A follow-up quest loses
+        // its link to the original, a signup loses its character, and an event leaves the series
+        // (the slot index goes with it because a series and its slot are only meaningful together).
+        foreach (var followUp in await FollowUpsOnOtherBoards(groupId).ToListAsync(token))
+            followUp.OriginalQuestId = null;
+
+        foreach (var signup in await OtherBoardSignupsUsingBoardCharacters(groupId).ToListAsync(token))
+            signup.CharacterId = null;
+
+        foreach (var otherEvent in await OtherBoardEventsInBoardSeries(groupId).ToListAsync(token))
+        {
+            otherEvent.SeriesId = null;
+            otherEvent.SeriesSlotIndex = null;
+        }
+
         // EF orders the DELETE commands by the model's foreign keys inside the single save below,
         // which is one database transaction, so this staging order is for readability only.
+        // Image rows (character, contact) and the contact-to-tag join rows are deliberately never
+        // loaded: an image can be several megabytes, and the database removes those rows itself
+        // when their character or contact goes. Membership rows cascade from the board too, and
+        // the member check above guarantees there are none. A linked board set stays: only this
+        // board's pointer to it goes, with the board row.
         var removed = new Dictionary<BoardContentKind, int>();
 
-        var dateVotes = await BoardDateVotes(groupId).ToListAsync(token);
-        DbContext.Set<PlayerDateVoteEntity>().RemoveRange(dateVotes);
-        removed[BoardContentKind.DateVotes] = dateVotes.Count;
+        Stage(BoardContentKind.DateVotes, await BoardDateVotes(groupId).ToListAsync(token));
+        Stage(BoardContentKind.PlayerSignups, await BoardPlayerSignups(groupId).ToListAsync(token));
+        Stage(BoardContentKind.ProposedDates, await BoardProposedDates(groupId).ToListAsync(token));
+        Stage(BoardContentKind.ReminderLogs, await BoardReminderLogs(groupId).ToListAsync(token));
+        Stage(BoardContentKind.Quests, await BoardQuests(groupId).ToListAsync(token));
+        Stage(BoardContentKind.EventSignups, await BoardEventSignups(groupId).ToListAsync(token));
+        Stage(BoardContentKind.Events, await BoardEvents(groupId).ToListAsync(token));
+        Stage(BoardContentKind.EventSeries, await BoardEventSeries(groupId).ToListAsync(token));
+        Stage(BoardContentKind.ContactNotes, await BoardContactNotes(groupId).ToListAsync(token));
+        Stage(BoardContentKind.Contacts, await BoardContacts(groupId).ToListAsync(token));
+        Stage(BoardContentKind.ContactCategories, await BoardContactCategories(groupId).ToListAsync(token));
+        Stage(BoardContentKind.ContactTags, await BoardContactTags(groupId).ToListAsync(token));
+        DbContext.CharacterClasses.RemoveRange(await BoardCharacterClasses(groupId).ToListAsync(token));
+        Stage(BoardContentKind.Characters, await BoardCharacters(groupId).ToListAsync(token));
+        Stage(BoardContentKind.Transactions, await BoardTransactions(groupId).ToListAsync(token));
+        Stage(BoardContentKind.ShopItems, await BoardShopItems(groupId).ToListAsync(token));
 
-        var playerSignups = await BoardPlayerSignups(groupId).ToListAsync(token);
-        DbContext.PlayerSignups.RemoveRange(playerSignups);
-        removed[BoardContentKind.PlayerSignups] = playerSignups.Count;
-
-        var proposedDates = await BoardProposedDates(groupId).ToListAsync(token);
-        DbContext.Set<ProposedDateEntity>().RemoveRange(proposedDates);
-        removed[BoardContentKind.ProposedDates] = proposedDates.Count;
-
-        var reminderLogs = await BoardReminderLogs(groupId).ToListAsync(token);
-        DbContext.ReminderLogs.RemoveRange(reminderLogs);
-        removed[BoardContentKind.ReminderLogs] = reminderLogs.Count;
-
-        var quests = await BoardQuests(groupId).ToListAsync(token);
-        DbContext.Quests.RemoveRange(quests);
-        removed[BoardContentKind.Quests] = quests.Count;
+        void Stage<TEntity>(BoardContentKind kind, List<TEntity> rows) where TEntity : class
+        {
+            DbContext.RemoveRange(rows);
+            removed[kind] = rows.Count;
+        }
 
         DbContext.Groups.Remove(group);
 
