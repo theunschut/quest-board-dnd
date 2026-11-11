@@ -5,10 +5,10 @@ milestone_name: Rolling Improvements
 current_phase: 102
 current_phase_name: board-deletion
 status: executing
-stopped_at: Completed 95-18-PLAN.md
+stopped_at: "Phase 102: 102-10 at its human-verify checkpoint (manual browser UAT)"
 last_updated: "2026-11-11T15:30:16.564Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 102 execution started
+last_activity_desc: Phase 102 executed; awaiting manual UAT
 progress:
   total_phases: 31
   completed_phases: 21
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 ## Current Position
 
-Phase: 102 (board-deletion) — EXECUTING
-Plan: 1 of 10
-Status: Executing Phase 102
-Last activity: 2026-11-11 — Phase 102 execution started
+Phase: 102 (board-deletion) — AWAITING HUMAN VERIFICATION
+Plan: 10 of 10 (102-01..102-09 complete; 102-10 partial — suite and gated SQL Server run passed, manual browser check pending)
+Status: Executed; code review fixed (1 critical + 4 warnings), verification human_needed, validation compliant, security 32/32 closed
+Last activity: 2026-11-11 — Phase 102 executed; awaiting the manual UAT in `102-UAT.md` (`/gsd-verify-work 102`)
 
 **Phase 95 (quests-and-quest-log-ui-conversion) is parked, not complete.** All 18 of 18 plans are
 executed (stopped at: Completed 95-18-PLAN.md), but the phase stays open until the operator's
@@ -261,11 +261,12 @@ Items acknowledged and carried forward across milestone closes.
 ## Session Continuity
 
 Last session: 2026-11-11T14:16:06.687Z
-Stopped at: Completed 95-18-PLAN.md
+Stopped at: Phase 102 — 102-10 human-verify checkpoint (manual browser UAT); Phase 95 parked on its real-phone UAT
 Resume file: None
 
 ## Operator Next Steps
 
+- Run the Phase 102 manual UAT (`/gsd-verify-work 102`, items in `102-UAT.md`): a real delete of two throwaway "UAT …" boards on the local SQL Server, the Users Boards column, phone layout, Back-button state and the no-JS path. Then phase 102 can close
 - Run the Phase 95 real-phone UAT (`/gsd-verify-work 95`); Phase 95 is executed (18/18) but stays open until it passes, and v6.0.0 waits on it
 - Rotate the iPhone calendar subscription: revoke it on the Profile page, re-subscribe the iPhone with a fresh address, and delete the downloaded `.ics` file from Downloads. Its address was exposed in a session transcript (Phase 88 T-88-22, the only open threat)
 
