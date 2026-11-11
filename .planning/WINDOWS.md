@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 8
+open_count: 9
 waived_count: 5
 fixed_count: 16
-total_count: 29
-last_updated: 2026-11-09T17:42:45.567Z
+total_count: 30
+last_updated: 2026-11-11T10:41:29.983Z
 ---
 
 # Broken Windows Ledger
@@ -44,6 +44,7 @@ last_updated: 2026-11-09T17:42:45.567Z
 | 27 | 94 | deviation | QuestBoard.Service/wwwroot/js/site.js |  | Scope proof (94-26) differs from the plan's allowed set: site.js gained a 13-line offcanvas aria-expanded sync (94-22; no date handling touched), and Views/Shared/_Calendar.cshtml and _LinkedDayEntries.cshtml had Razor comment-only edits (94-24) removing references to the retired card rule; nothing renders differently. Emails, Domain, Repository and HtmlHelperExtensions are unchanged against the baseline. | open |  | 2026-11-09T17:27:24.448Z |  |
 | 28 | 94 | deviation | QuestBoard.Service/wwwroot/css/legacy-pages.css |  | Code review WR-01: unlayered !important page rules that target Bootstrap colour utilities (e.g. legacy-pages.css:150-153 .item-name.text-light, quests.mobile.css:26-29, account.mobile.css:48-50, dm-manage.mobile.css:45-48, ~100 more) now lose to Bootstrap's layered !important utilities and are dead; elements take the token/--bs-* colour. The rendered result was swept and operator-reviewed at 94-24. Each area phase (95-100) deletes the dead overrides in its own sheets; the guard comment at UiFoundationLayerGuardTests.cs:229-231 states the opposite premise and must be corrected (first area phase to touch the guard). | open |  | 2026-11-09T17:42:45.466Z |  |
 | 29 | 94 | deviation | QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs |  | Code review WR-02 + info: the planning-reference guard scans only foundation CSS, layouts and ui-guidelines with phase-94/D-01..24 patterns and skips missing files; several guards pass silently when a file is missing (ExistingCssFiles, app.css lib check), the 16px check matches anywhere in base.css, Platform layout test matches bare substrings. Also stale comments naming the deleted card sheet (contacts.css:283, markdown-editor.css:17-30, quests.css:669,909), no guard for the site.js offcanvas sync, uncommitted fa-v4compatibility fonts referenced by all.min.css, unused tokens. Details in 94-REVIEW.md; small test-hardening follow-up. | open |  | 2026-11-09T17:42:45.567Z |  |
+| 30 | 95 | unmet-truth | QuestBoard.Service/wwwroot/css/quests.css |  | Poster p5 worst-glyph contrast measures 2.28 at the 304px card (320 window), under its 3.10 poster-glyph floor; operator decision needed (no zone, halo or tuning applied) | open |  | 2026-11-11T10:41:29.983Z |  |
 
 ````json
 [
@@ -393,6 +394,18 @@ last_updated: 2026-11-09T17:42:45.567Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-09T17:42:45.567Z",
+    "resolved_at": null
+  },
+  {
+    "id": 30,
+    "kind": "unmet-truth",
+    "phase": "95",
+    "file": "QuestBoard.Service/wwwroot/css/quests.css",
+    "line": null,
+    "description": "Poster p5 worst-glyph contrast measures 2.28 at the 304px card (320 window), under its 3.10 poster-glyph floor; operator decision needed (no zone, halo or tuning applied)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-11T10:41:29.983Z",
     "resolved_at": null
   }
 ]
