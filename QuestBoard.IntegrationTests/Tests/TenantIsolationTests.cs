@@ -1,5 +1,6 @@
 using QuestBoard.Domain.Extensions;
 using QuestBoard.IntegrationTests.Helpers;
+using System.Net;
 
 namespace QuestBoard.IntegrationTests.Tests;
 
@@ -182,19 +183,26 @@ public class TenantIsolationTests(WebApplicationFactoryBase factory)
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act — request the quest board (authenticated) with the singleton stub scoped to a
-        // group that does not exist in the database. Authenticated as SuperAdmin so this test
-        // exercises only the query filter's own null/non-existent-group behavior, not
-        // GroupSessionMiddleware's membership re-validation (SuperAdmin is exempt from that check
-        // since its group selection was never membership-gated in the first place).
+        // group that does not exist in the database. The session middleware now refuses a
+        // non-existent active board for every role, super admins included, and sends the
+        // request to the board picker; the query filter itself is checked directly below.
         factory.TestGroupContext.ActiveGroupId = 999;
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
             factory, "isolationviewer4", "isolationviewer4@example.com");
         var response = await client.GetAsync("/quests", TestContext.Current.CancellationToken);
 
-        // Assert — the Group-1 quest must not appear for a non-existent active group
-        response.EnsureSuccessStatusCode();
+        // Assert — redirected to the board picker, and the Group-1 quest is nowhere in the body
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().StartWith("/groups/pick");
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().NotContain("OnlyGroupOneQuest");
+
+        // The query filter fails closed on its own: scoped to a board that does not exist it
+        // returns nothing, while the unfiltered count still sees the Group-1 quest.
+        using var scope = factory.Services.CreateScope();
+        var scopedContext = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        (await scopedContext.Quests.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await scopedContext.Quests.IgnoreQueryFilters().CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     /// <summary>

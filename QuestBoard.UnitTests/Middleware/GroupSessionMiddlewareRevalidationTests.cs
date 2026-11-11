@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
 using QuestBoard.Service.Constants;
+using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Middleware;
 
 namespace QuestBoard.UnitTests.Middleware;
@@ -28,7 +30,8 @@ public class GroupSessionMiddlewareRevalidationTests
         bool isSuperAdmin,
         IUserService userService,
         int? activeGroupId = TestGroupId,
-        string method = "GET")
+        string method = "GET",
+        IGroupService? groupService = null)
     {
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, TestUserId.ToString()) };
         if (isSuperAdmin)
@@ -41,6 +44,13 @@ public class GroupSessionMiddlewareRevalidationTests
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
+        if (groupService == null)
+        {
+            groupService = Substitute.For<IGroupService>();
+            groupService.GetByIdAsync(TestGroupId, Arg.Any<CancellationToken>())
+                .Returns(new Group { Id = TestGroupId, Name = "Board" });
+        }
+        services.AddSingleton(groupService);
         services.AddSingleton<IActiveGroupContext>(new FakeActiveGroupContext(activeGroupId));
         var provider = services.BuildServiceProvider();
 
@@ -155,6 +165,118 @@ public class GroupSessionMiddlewareRevalidationTests
 
         wasCalled().Should().BeTrue();
         await userService.DidNotReceive().GetGroupRoleByIdAsync(Arg.Any<int>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task SuperAdmin_StaleTimestamp_DeletedBoard_Get_RedirectsToGroupPickAndClearsSession()
+    {
+        var userService = Substitute.For<IUserService>();
+        var groupService = Substitute.For<IGroupService>();
+        groupService.GetByIdAsync(TestGroupId, Arg.Any<CancellationToken>()).Returns((Group?)null);
+
+        var context = CreateContext(DateTime.UtcNow.AddMinutes(-10), isSuperAdmin: true, userService,
+            method: "GET", groupService: groupService);
+        context.Request.QueryString = new QueryString("?page=2");
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        var location = context.Response.Headers.Location.ToString();
+        location.Should().StartWith("/groups/pick?returnUrl=");
+        location.Should().Contain(Uri.EscapeDataString("/quests?page=2"));
+        AssertActiveBoardCleared(context);
+        wasCalled().Should().BeFalse();
+        await userService.DidNotReceive().GetGroupRoleByIdAsync(Arg.Any<int>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task SuperAdmin_StaleTimestamp_DeletedBoard_Post_Returns409AndClearsSession()
+    {
+        var userService = Substitute.For<IUserService>();
+        var groupService = Substitute.For<IGroupService>();
+        groupService.GetByIdAsync(TestGroupId, Arg.Any<CancellationToken>()).Returns((Group?)null);
+
+        var context = CreateContext(DateTime.UtcNow.AddMinutes(-10), isSuperAdmin: true, userService,
+            method: "POST", groupService: groupService);
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        AssertActiveBoardCleared(context);
+        wasCalled().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SuperAdmin_StaleTimestamp_ExistingBoard_InvokesNextAndRestamps()
+    {
+        var userService = Substitute.For<IUserService>();
+
+        var staleTimestamp = DateTime.UtcNow.AddMinutes(-10);
+        var context = CreateContext(staleTimestamp, isSuperAdmin: true, userService, method: "GET");
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        wasCalled().Should().BeTrue();
+        await userService.DidNotReceive().GetGroupRoleByIdAsync(Arg.Any<int>(), Arg.Any<int>());
+        ((FakeSession)context.Session).TryGetValue(SessionKeys.ActiveGroupValidatedAtUtc, out var raw).Should().BeTrue();
+        var restamped = DateTime.Parse(Encoding.UTF8.GetString(raw!), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        restamped.Should().BeAfter(DateTime.UtcNow.AddMinutes(-1));
+    }
+
+    [Fact]
+    public async Task SuperAdmin_FreshTimestamp_DoesNotLookUpTheBoard()
+    {
+        var userService = Substitute.For<IUserService>();
+        var groupService = Substitute.For<IGroupService>();
+
+        var context = CreateContext(DateTime.UtcNow.AddMinutes(-1), isSuperAdmin: true, userService,
+            method: "GET", groupService: groupService);
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        wasCalled().Should().BeTrue();
+        await groupService.DidNotReceive().GetByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ClearActiveBoardIfAsync_WhenTheSessionNamesTheBoard_ClearsAllThreeKeys()
+    {
+        var session = new FakeSession(DateTime.UtcNow);
+        session.SetInt32(SessionKeys.ActiveGroupId, TestGroupId);
+        session.SetString(SessionKeys.ActiveGroupName, "Board");
+
+        var cleared = await session.ClearActiveBoardIfAsync(TestGroupId, TestContext.Current.CancellationToken);
+
+        cleared.Should().BeTrue();
+        session.TryGetValue(SessionKeys.ActiveGroupId, out _).Should().BeFalse();
+        session.TryGetValue(SessionKeys.ActiveGroupName, out _).Should().BeFalse();
+        session.TryGetValue(SessionKeys.ActiveGroupValidatedAtUtc, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ClearActiveBoardIfAsync_WhenTheSessionNamesAnotherBoard_LeavesItAlone()
+    {
+        var session = new FakeSession(DateTime.UtcNow);
+        session.SetInt32(SessionKeys.ActiveGroupId, TestGroupId + 1);
+        session.SetString(SessionKeys.ActiveGroupName, "Other");
+
+        var cleared = await session.ClearActiveBoardIfAsync(TestGroupId, TestContext.Current.CancellationToken);
+
+        cleared.Should().BeFalse();
+        session.GetInt32(SessionKeys.ActiveGroupId).Should().Be(TestGroupId + 1);
+        session.GetString(SessionKeys.ActiveGroupName).Should().Be("Other");
+        session.TryGetValue(SessionKeys.ActiveGroupValidatedAtUtc, out _).Should().BeTrue();
+    }
+
+    private static void AssertActiveBoardCleared(HttpContext context)
+    {
+        var session = (FakeSession)context.Session;
+        session.TryGetValue(SessionKeys.ActiveGroupId, out _).Should().BeFalse();
+        session.TryGetValue(SessionKeys.ActiveGroupName, out _).Should().BeFalse();
+        session.TryGetValue(SessionKeys.ActiveGroupValidatedAtUtc, out _).Should().BeFalse();
     }
 
     private sealed class FakeActiveGroupContext(int? activeGroupId) : IActiveGroupContext
