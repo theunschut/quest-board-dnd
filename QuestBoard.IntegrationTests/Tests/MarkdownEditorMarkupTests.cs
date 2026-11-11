@@ -94,4 +94,16 @@ public class MarkdownEditorMarkupTests : IClassFixture<WebApplicationFactoryBase
 
         AssertEditorMarkup(html);
     }
+
+    [Fact]
+    public async Task QuestCreate_EditorToken_ReachesTheScriptThroughAMetaElement()
+    {
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            _factory, "editor_markup_dm3", "editor_markup_dm3@test.com", name: "Editor Markup Dm3");
+
+        var html = await GetHtmlAsync(client, "/Quest/Create", DesktopUserAgent);
+
+        html.Should().Contain("<meta name=\"request-verification-token\" content=\"");
+        html.Should().NotContain("window.markdownAntiforgeryToken =");
+    }
 }

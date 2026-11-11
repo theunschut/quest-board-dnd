@@ -1,58 +1,17 @@
 @using QuestBoard.Domain.Interfaces
 @*
-    Shared JavaScript for quest forms
+    Shared scripts for every form that authors Markdown or manages quest dates.
+    Loads the quest form submit guard and the Markdown editor with its stylesheet. No inline
+    script is rendered here: the antiforgery token the editor's preview request needs travels in a
+    meta element that markdown-editor.js reads, so the content security policy stays strict.
     Requires: site.js (contains addProposedDate and removeProposedDate functions)
 *@
 @{
     var markdownTokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
 }
 
-<script>
-    // Form validation for quest forms
-    document.addEventListener('DOMContentLoaded', function() {
-        // Scoped to the quest form specifically — document.querySelector('form') would
-        // instead match the navbar's Logout form, which renders earlier in the DOM on
-        // every authenticated page (see _Layout.cshtml / _Layout.Mobile.cshtml).
-        const form = document.querySelector('form[action*="/Quest/"]');
-        if (!form) return;
-
-        form.addEventListener('submit', function(e) {
-            // No #proposed-dates container means this form doesn't manage dates at all
-            // (a finalized-quest Edit, or a Campaign-board Create/Edit) — nothing to require.
-            const container = document.getElementById('proposed-dates');
-            if (container) {
-                // Existing dates render as hidden inputs (Edit.cshtml), newly-added ones as
-                // datetime-local (site.js addProposedDate) — both count toward "has a date".
-                const dateInputs = container.querySelectorAll('input[type="datetime-local"], input[type="hidden"][name*="ProposedDates"]');
-                let hasValidDate = false;
-
-                dateInputs.forEach(function(input) {
-                    if (input.value) {
-                        hasValidDate = true;
-                    }
-                });
-
-                if (!hasValidDate) {
-                    e.preventDefault();
-                    alert('Please provide at least one proposed date and time.');
-                    return false;
-                }
-            }
-
-            const submitButton = form.querySelector('button[type="submit"]');
-            if (submitButton) {
-                submitButton.disabled = true;
-                const originalText = submitButton.textContent;
-                const isEdit = originalText.includes('Update');
-                submitButton.textContent = isEdit ? 'Updating Quest...' : 'Creating Quest...';
-            }
-        });
-    });
-</script>
-
+<meta name="request-verification-token" content="@markdownTokens.RequestToken" />
 <link rel="stylesheet" href="~/lib/easymde-2.21.0/easymde.min.css">
 <script src="~/lib/easymde-2.21.0/easymde.min.js"></script>
-<script>
-    window.markdownAntiforgeryToken = '@markdownTokens.RequestToken';
-</script>
 <script src="~/js/markdown-editor.js" asp-append-version="true"></script>
+<script type="module" src="~/js/quest-form.js" asp-append-version="true"></script>
