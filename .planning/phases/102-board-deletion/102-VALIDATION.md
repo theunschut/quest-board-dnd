@@ -2,9 +2,9 @@
 phase: 102
 slug: board-deletion
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-11-11
 ---
 
@@ -44,25 +44,25 @@ Task IDs are filled in by the plans; behaviours and commands below are the contr
 
 | Behaviour | Decision | Test Type | Automated Command | File Exists | Status |
 |-----------|----------|-----------|-------------------|-------------|--------|
-| Every board-scoped type removed (quests, proposed dates, votes, signups, reminder logs, events, event signups, series, contacts, notes, categories, tags, characters, classes, shop items, transactions incl. chained returns, group row) | D-01/02/03 | unit (InMemory) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupRepositoryBoardDeletionTests"` | ❌ W0 | ⬜ pending |
-| Another board's full graph unchanged; works with active board = other board and = null | D-01 | unit | same | ❌ W0 | ⬜ pending |
-| Users, DM profiles + images, trade items, calendar subscriptions survive | D-04 | unit | same | ❌ W0 | ⬜ pending |
-| Other-board follow-up `OriginalQuestId` and signup `CharacterId` cleared, rows kept; defensive event `SeriesId`/`SeriesSlotIndex` cleared | D-05 | unit | same | ❌ W0 | ⬜ pending |
-| Linked-board set remains, board gone | D-06 | unit | same | ❌ W0 | ⬜ pending |
-| Members present → refused, nothing deleted; unknown id → not found | D-09 | unit | same | ❌ W0 | ⬜ pending |
-| Exactly one `SaveChanges`; save failure clears tracker and rethrows | D-11 | unit | same | ❌ W0 | ⬜ pending |
-| FK-integrity sweep: no dangling non-cascade FK after delete | D-11 | unit | same | ❌ W0 | ⬜ pending |
-| Model pin: FKs referencing `GroupEntity` + non-cascade FKs of board-owned tables equal the handled list | D-03 | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~BoardOwnedForeignKeys"` | ❌ W0 | ⬜ pending |
-| Preview parity: counts equal rows removed; zero-count types absent; names for named types | D-07 | unit | `GroupRepositoryBoardDeletionTests` filter | ❌ W0 | ⬜ pending |
-| Wrong/missing typed name → mismatch, nothing deleted | D-08 | unit (service) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupServiceBoardDeletion"` | ❌ W0 | ⬜ pending |
-| Controller: exception → `TempData["Error"]` + redirect, never 500; mismatch re-renders; success → Index + `TempData["Success"]`; own session cleared | D-10 | unit (controller) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupControllerBoardDeletion"` | ❌ W0 | ⬜ pending |
-| Middleware: super admin with deleted active board → keys cleared; existing board passes | stale-board | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupSessionMiddlewareRevalidationTests"` | ✅ edit + add | ⬜ pending |
-| GET Delete renders counts, collapsed names, unlink section, typed-name input (desktop + phone UA); POST right name deletes; wrong name keeps board; members → refused | D-07/D-10 | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~PlatformBoardDelete"` | ❌ W0 | ⬜ pending |
-| Existing `DeleteGroup_WhenEmpty_PostShouldRedirectToIndex` updated to post the name and assert row gone | D-08 | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~GroupManagementIntegrationTests"` | ✅ edit | ⬜ pending |
-| `/platform/Users` desktop + phone show board count and names; zero boards → 0 | D-12/D-13 | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~UsersControllerIntegrationTests"` | ✅ extend | ⬜ pending |
-| Real SQL Server accepts full-board delete and rolls back on failure | D-11 | integration (gated) | `QUESTBOARD_MIGRATOR_TEST_CONNECTION=... dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~BoardDeletionSqlServer"` | ❌ W0 (skips when unset) | ⬜ pending |
-| No inline style/script/handler in new Delete views | UI | integration (static) | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~UiFoundation"` | ✅ + new fact ❌ | ⬜ pending |
-| Guards stay green: `FeedRevisionWriteSeamTests`, `CrossBoardIgnoreQueryFiltersSeamTests`, `AmbientClockSeamTests`, `BoardMoveRepositorySingleSaveTests` | arch | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~Architecture"` | ✅ | ⬜ pending |
+| Every board-scoped type removed (quests, proposed dates, votes, signups, reminder logs, events, event signups, series, contacts, notes, categories, tags, characters, classes, shop items, transactions incl. chained returns, group row) | D-01/02/03 | unit (InMemory) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupRepositoryBoardDeletionTests"` | ✅ | ✅ green |
+| Another board's full graph unchanged; works with active board = other board and = null | D-01 | unit | same | ✅ | ✅ green |
+| Users, DM profiles + images, trade items, calendar subscriptions survive | D-04 | unit | same | ✅ | ✅ green |
+| Other-board follow-up `OriginalQuestId` and signup `CharacterId` cleared, rows kept; defensive event `SeriesId`/`SeriesSlotIndex` cleared | D-05 | unit | same | ✅ | ✅ green |
+| Linked-board set remains, board gone | D-06 | unit | same | ✅ | ✅ green |
+| Members present → refused, nothing deleted; unknown id → not found | D-09 | unit | same | ✅ | ✅ green |
+| Exactly one `SaveChanges`; save failure clears tracker and rethrows | D-11 | unit | same | ✅ | ✅ green |
+| FK-integrity sweep: no dangling non-cascade FK after delete | D-11 | unit | same | ✅ | ✅ green |
+| Model pin: FKs referencing `GroupEntity` + non-cascade FKs of board-owned tables equal the handled list | D-03 | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~BoardOwnedForeignKeys"` | ✅ | ✅ green |
+| Preview parity: counts equal rows removed; zero-count types absent; names for named types | D-07 | unit | `GroupRepositoryBoardDeletionTests` filter | ✅ | ✅ green |
+| Wrong/missing typed name → mismatch, nothing deleted | D-08 | unit (service) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupServiceBoardDeletion"` | ✅ | ✅ green |
+| Controller: exception → `TempData["Error"]` + redirect, never 500; mismatch re-renders; success → Index + `TempData["Success"]`; own session cleared | D-10 | unit (controller) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupControllerBoardDeletion"` | ✅ | ✅ green |
+| Middleware: super admin with deleted active board → keys cleared; existing board passes | stale-board | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~GroupSessionMiddlewareRevalidationTests"` | ✅ | ✅ green |
+| GET Delete renders counts, collapsed names, unlink section, typed-name input (desktop + phone UA); POST right name deletes; wrong name keeps board; members → refused | D-07/D-10 | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~PlatformBoardDelete"` | ✅ | ✅ green |
+| Existing `DeleteGroup_WhenEmpty_PostShouldRedirectToIndex` updated to post the name and assert row gone | D-08 | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~GroupManagementIntegrationTests"` | ✅ | ✅ green |
+| `/platform/Users` desktop + phone show board count and names; zero boards → 0 | D-12/D-13 | integration | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~UsersControllerIntegrationTests"` | ✅ | ✅ green |
+| Real SQL Server accepts full-board delete and rolls back on failure | D-11 | integration (gated) | `QUESTBOARD_MIGRATOR_TEST_CONNECTION=... dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~BoardDeletionSqlServer"` | ✅ (3 facts; run with the connection set) | ✅ green |
+| No inline style/script/handler in new Delete views | UI | integration (static) | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~UiFoundation"` | ✅ (+ BoardDeletionStaticGuardTests) | ✅ green |
+| Guards stay green: `FeedRevisionWriteSeamTests`, `CrossBoardIgnoreQueryFiltersSeamTests`, `AmbientClockSeamTests`, `BoardMoveRepositorySingleSaveTests` | arch | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~Architecture"` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -70,12 +70,12 @@ Task IDs are filled in by the plans; behaviours and commands below are the contr
 
 ## Wave 0 Requirements
 
-- [ ] `QuestBoard.UnitTests/Repository/GroupRepositoryBoardDeletionTests.cs` — behaviour tests + FK-integrity sweep helper
-- [ ] `QuestBoard.UnitTests/Repository/BoardOwnedForeignKeysTests.cs` — model-pin test
-- [ ] `QuestBoard.UnitTests/Services/GroupServiceBoardDeletionTests.cs`
-- [ ] `QuestBoard.UnitTests/Controllers/GroupControllerBoardDeletionTests.cs`
-- [ ] `QuestBoard.IntegrationTests/Controllers/PlatformBoardDeleteTests.cs` (+ Users-column facts, static guard fact for the Delete views)
-- [ ] `QuestBoard.IntegrationTests/Tests/BoardDeletionSqlServerTests.cs` — gated on `QUESTBOARD_MIGRATOR_TEST_CONNECTION`
+- [x] `QuestBoard.UnitTests/Repository/GroupRepositoryBoardDeletionTests.cs` — behaviour tests + FK-integrity sweep helper
+- [x] `QuestBoard.UnitTests/Repository/BoardOwnedForeignKeysTests.cs` — model-pin test
+- [x] `QuestBoard.UnitTests/Services/GroupServiceBoardDeletionTests.cs`
+- [x] `QuestBoard.UnitTests/Controllers/GroupControllerBoardDeletionTests.cs`
+- [x] `QuestBoard.IntegrationTests/Controllers/PlatformBoardDeleteTests.cs` (+ Users-column facts, static guard fact for the Delete views)
+- [x] `QuestBoard.IntegrationTests/Tests/BoardDeletionSqlServerTests.cs` — gated on `QUESTBOARD_MIGRATOR_TEST_CONNECTION`
 - Framework install: none
 
 ---
@@ -90,11 +90,25 @@ Task IDs are filled in by the plans; behaviours and commands below are the contr
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 180s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 180s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-11-11 (automated map fully green; the manual-only row is tracked in `102-UAT.md`)
+
+## Validation Audit 2026-11-11
+
+Every behaviour in the map was re-run by filter at HEAD `34ef3589` (after the code review fixes); all green.
+SQL Server-gated facts ran against the local server with `QUESTBOARD_MIGRATOR_TEST_REQUIRED=1` (3 passed,
+0 skipped: full delete, rollback, and the member-race added by the WR-01 fix). The D-07 "zero-count types
+absent" behaviour is pinned by `PlatformBoardDeleteTests` (no "0 events" row) and `BoardDeletePageViewModelTests`.
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Manual-only | 1 (real delete on the user's SQL Server through the UI — `102-UAT.md`) |
