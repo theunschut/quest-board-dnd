@@ -1,182 +1,139 @@
-/* Quest Details Mobile — quests.mobile.css */
+/*
+ * Quest Details, phone layout. The page is a single column of cards on the board: the quest itself, then one card
+ * per section (signup, participants, waitlist, join, current signups). A card sets its own text colour and its
+ * contents inherit it, so the rules here only place things and add what a row needs. Cards are never nested: a card
+ * inside a card stacks two glass layers, and the text on it then falls short of 4.5:1.
+ */
+@layer pages {
+  /*
+   * The muted tone the calendar partial asks for on its time lines is written for text on paper. On a glass card it
+   * is the card's own colour, so the framework's secondary colour is pointed at it for everything inside a card
+   * here, which also covers the help text under a field.
+   */
+  .quest-details-mobile .modern-card {
+    --bs-secondary-color: var(--qb-fg);
+  }
 
-/* Participant list — glass card matching desktop modern-card */
-.participant-list-mobile {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
+  /* Phone cards are tighter than desktop ones: the calendar rows and vote buttons need the width. */
+  .quest-details-mobile .modern-card-body {
+    padding: var(--qb-space-md);
+  }
 
-/* Headings inside participant list — parchment */
-.participant-list-mobile h6 {
-    color: var(--qb-fg-heading) !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
-}
+  /* Headings inside a card body: air above, a little below; the first one in a card sits flush through mt-0. */
+  .quest-details-mobile .modern-card-body > :is(h2, h3) {
+    margin-top: var(--qb-space-md);
+    margin-bottom: var(--qb-space-sm);
+  }
 
-/* Names and labels inside participant list — parchment */
-.participant-list-mobile .fw-bold {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9) !important;
-}
+  .quest-details-mobile .alert > :is(h2, h3):first-child {
+    margin-top: 0;
+  }
 
-/* Character names and muted text inside card — faded parchment */
-.participant-list-mobile small,
-.participant-list-mobile .text-muted {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
+  /* The sign-in and register links in the notice are sentences' links; each is still a full-size tap target. */
+  .quest-details-mobile .alert-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
+  }
 
-/* Badges inside card */
-.participant-list-mobile .badge {
-    text-shadow: none !important;
-}
+  /* The challenge rating beside the title: the commit-action wood fill with its paired label. */
+  .quest-details-cr {
+    background-color: var(--qb-action);
+    color: var(--qb-action-fg);
+  }
 
-/* Individual participant row */
-.participant-row {
-    font-size: 0.9rem;
-    border-color: rgba(139, 69, 19, 0.3) !important;
-}
+  /* The rewards text on its own opaque panel, so it reads the same wherever the card sits. */
+  .quest-rewards-mobile {
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+  }
 
-/* Remove bottom border from last participant row */
-.participant-row:last-child {
-    border-bottom: none !important;
-}
+  /* A participant, waitlist or not-selected row: name and character on the left, the badge on the right. */
+  .participant-row {
+    border-bottom: 1px solid var(--qb-surface-glass-border);
+  }
 
-/* Quest header card — glass card matching desktop modern-card */
-.quest-header-card-mobile {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
+  .participant-row:last-child {
+    border-bottom: none;
+  }
 
-/* Title inside header card — parchment */
-.quest-header-card-mobile h5 {
-    color: var(--qb-fg-heading) !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
-                 -1px -1px 2px rgba(0, 0, 0, 0.9),
-                 1px 1px 6px rgba(0, 0, 0, 0.8);
-}
+  /* The viewer's own row sits on the opaque dark surface; the "You" badge beside the name carries the meaning. */
+  .participant-row--own {
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+  }
 
-/* DM name inside header card — faded parchment */
-.quest-header-card-mobile small,
-.quest-header-card-mobile .text-muted {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
+  .participant-info {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 
-/* Badges inside header card */
-.quest-header-card-mobile .badge {
-    text-shadow: none !important;
-}
+  .participant-name {
+    font-weight: var(--qb-weight-strong);
+  }
 
-/* Divider inside header card */
-.quest-card-divider {
-    border-color: rgba(205, 133, 63, 0.4) !important;
-}
+  /* Month name above each calendar in the signup and update forms. */
+  .quest-details-month-heading-mobile {
+    margin: var(--qb-space-md) 0 var(--qb-space-sm);
+  }
 
-/* Section cards (vote + date selection) — same glass card as header */
-.quest-section-card-mobile {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
+  /* Calendar partial rows, used by the partial when it renders inside Quest Details. */
+  .calendar-date-entry-mobile {
+    border-bottom: 1px solid var(--qb-surface-glass-border);
+    padding-bottom: var(--qb-space-md);
+    margin-bottom: var(--qb-space-md);
+  }
 
-/* Section heading inside card — parchment, uppercase */
-.quest-section-heading {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.05em;
-}
-
-/* Quest description — inside header card, parchment text */
-.quest-description-mobile {
-    font-size: 1rem;
-    line-height: 1.6;
-    color: #F4E4BC;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9), -1px -1px 1px rgba(0, 0, 0, 0.9);
-    font-weight: 500;
-    white-space: pre-wrap;
-}
-
-/* Rendered Markdown description inside header card — same parchment contrast as
-   .quest-description-mobile above, since .markdown-content itself has no body-text color rule
-   and would otherwise fall through to the page's default (near-black) text color against this
-   card's dark, semi-transparent glass background. */
-.quest-header-card-mobile .markdown-content {
-    color: #F4E4BC;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9), -1px -1px 1px rgba(0, 0, 0, 0.9);
-}
-
-/* Calendar partial mobile rules */
-/* Used by _Calendar.Mobile.cshtml when rendered inside Quest Details */
-
-.calendar-date-entry-mobile {
-    border-bottom: 1px solid rgba(26, 15, 8, 0.15);
-    padding-bottom: 12px;
-    margin-bottom: 12px;
-}
-
-.calendar-date-entry-mobile:last-child {
+  .calendar-date-entry-mobile:last-child {
     border-bottom: none;
     margin-bottom: 0;
-}
+  }
 
-.calendar-date-label-mobile {
-    font-size: 0.875em; /* 14px — label/meta token */
-    color: #F4E4BC;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
+  .calendar-date-label-mobile {
+    font-size: var(--qb-text-sm);
+  }
 
-/* Read-only lines naming what other linked boards have on a proposed date. They sit between
-   the date label and the vote row, so the last one keeps the gap the label would have had. */
-.also-that-day {
-    font-size: 14px;
-    font-weight: 400;
-    color: #F4E4BC;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-    margin-top: 4px;
+  /*
+   * Read-only lines naming what other linked boards have on a proposed date. They sit between the date label and
+   * the vote row, so the last one keeps the gap the label would have had.
+   */
+  .also-that-day {
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-regular);
+    margin-top: var(--qb-space-xs);
     overflow-wrap: anywhere;
-}
+  }
 
-.also-that-day-board {
-    font-weight: 600;
-}
+  .also-that-day-board {
+    font-weight: var(--qb-weight-strong);
+  }
 
-.also-that-day .row-nav-link {
+  .also-that-day .row-nav-link {
     text-decoration: underline;
     color: inherit;
-}
+  }
 
-.also-that-day--cancelled {
-    opacity: 0.55;
-    text-decoration: line-through;
-}
+  .calendar-date-entry-mobile .also-that-day:last-of-type {
+    margin-bottom: var(--qb-space-sm);
+  }
 
-.calendar-date-entry-mobile .also-that-day:last-of-type {
-    margin-bottom: 8px;
-}
+  .also-that-day + .calendar-vote-row {
+    margin-top: var(--qb-space-sm);
+  }
 
-.also-that-day + .calendar-vote-row {
-    margin-top: 8px;
-}
-
-/* Vote button row: three equal-width buttons */
-/* gap-2 comes from Bootstrap d-flex gap-2 on the container */
-/* flex-fill on each label stretches buttons equally */
-.calendar-vote-row .btn {
-    min-height: 44px;
+  /* Vote button row: three equal-width buttons, each at least the phone target size. */
+  .calendar-vote-row .btn {
+    min-height: var(--qb-hit-min);
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  /* A cancelled entry is struck through, so a called-off session never reads as a live one. */
+  .also-that-day--cancelled {
+    text-decoration: line-through;
+  }
 }

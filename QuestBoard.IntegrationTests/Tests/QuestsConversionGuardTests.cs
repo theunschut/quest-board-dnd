@@ -45,16 +45,17 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Quest/_QuestFormScripts.cshtml",
         "QuestBoard.Service/Views/Shared/_CharacterSelectModal.cshtml",
         "QuestBoard.Service/Views/Quest/Details.cshtml",
+        "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
-    private static readonly string[] ConvertedSheets = ["quest-details.css", "quest-vote.css"];
+    private static readonly string[] ConvertedSheets = ["quest-details.css", "quest-vote.css", "quests.mobile.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
     {
         ["QuestBoard.Service/Views/Quest/Details.cshtml"] = ["calendar.css", "quest-details.css", "quest-vote.css"],
-        ["QuestBoard.Service/Views/Quest/Details.Mobile.cshtml"] = ["quest-vote.css"],
+        ["QuestBoard.Service/Views/Quest/Details.Mobile.cshtml"] = ["quests.mobile.css", "quest-vote.css"],
     };
 
     // Every source file this work touches, scanned for planning references. This test file is left
@@ -69,6 +70,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/js/avatar-fallback.js",
         "QuestBoard.Service/wwwroot/css/quest-details.css",
         "QuestBoard.Service/wwwroot/css/quest-vote.css",
+        "QuestBoard.Service/wwwroot/css/quests.mobile.css",
     ];
 
     private static string ReadRepoFile(string relativePath)
