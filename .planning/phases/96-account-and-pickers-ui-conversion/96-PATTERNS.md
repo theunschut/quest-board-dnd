@@ -101,7 +101,7 @@ Changes: capture `button.innerHTML` and class list once at wiring time and resto
 
 **Add-subscription and Rename modal wiring** (lines 292-327) move verbatim: the `calendar-subscription-add-form` submit handler (disable + `Adding…`), and the `show.bs.modal`/`shown.bs.modal` listeners that read `event.relatedTarget.dataset.subscriptionId/subscriptionName`.
 
-**Delete modal (replaces lines 329-337)**: copy the Rename modal wiring shape; on `show.bs.modal` read `event.relatedTarget.dataset` and set the name span with `textContent` only. Focus the `Keep Subscription` button on `shown.bs.modal`. Do not call `new bootstrap.Modal().show()` (loses focus return); open via `data-bs-toggle="modal"`. The `confirm()` call and the `calendar-subscription-delete-form` handler are deleted.
+**Delete modal (replaces lines 329-337)**: copy the Rename modal wiring shape; on `show.bs.modal` read `event.relatedTarget.dataset` and set the name span with `textContent` only. Focus the `Keep Subscription` button on `shown.bs.modal`. Do not call `new bootstrap.Modal().show()` (loses focus return); open via `data-bs-toggle="modal"`. The `confirm()` call and the `calendar-subscription-delete-form` handler are deleted. Superseded by plan 96-07: the row's Delete stays a submit button in its own form with no Bootstrap modal attribute, and the module's submit listener on `calendar-subscription-delete-form` cancels the post and opens the dialog with `bootstrap.Modal.getOrCreateInstance(dialog).show(opener)`, then returns focus to the opener on `hidden.bs.modal`, so the dialog never shows while a revoke is sent.
 
 **Load** (replace the inline `<script>` in `@section Scripts`; Profile.cshtml:243 already has the section):
 ```cshtml
