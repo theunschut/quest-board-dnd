@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: quests-and-quest-log-ui-conversion
 status: executing
-stopped_at: Completed 95-15-PLAN.md
-last_updated: "2026-11-11T12:05:24.506Z"
+stopped_at: Completed 95-16-PLAN.md
+last_updated: "2026-11-11T12:29:40.719Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 95 execution started
 progress:
   total_phases: 31
   completed_phases: 20
-  total_plans: 225
-  completed_plans: 196
+  total_plans: 230
+  completed_plans: 197
   percent: 65
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 95 (quests-and-quest-log-ui-conversion) — EXECUTING
-Plan: 15 of 18
+Plan: 16 of 18
 Status: Ready to execute
 Last activity: 2026-11-11 — Phase 95 execution started
 
@@ -90,6 +90,7 @@ introduced by Phase 87.
 | Phase 95 P13 | 2h | 2 tasks | 8 files |
 | Phase 95 P14 | 2h | 3 tasks | 14 files |
 | Phase 95 P15 | 1h | 2 tasks | 15 files |
+| Phase 95 P16 | 2.5h | 2 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,8 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 95]: 95-06: vote checked border is ink on desktop and parchment on phone; Details week row 160px; month heading carries a scrim band
 - [Phase 95]: 95-10: Quest/Edit merged into one view serving both layouts; required markers and validation messages sit on the overlay surface to hold 4.5:1
 - [Phase 95]: 95-08: DM line estimate widened to 0.57 em so no poster overflows at the 304px card floor; p5 breaches its poster-glyph floor at 304px and awaits an operator decision
+- [Phase ?]: 95-16: Markdown headings take --qb-fg-heading on every surface; the dark-ink heading rule for card bodies was removed because every card is glass with light text
+- [Phase ?]: 95-16: toolbar of the Markdown editor keeps 44px buttons and wraps to two rows at 320 (container is 236px); one row would need sub-44px buttons
 
 ### Roadmap Evolution
 
@@ -250,8 +253,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-11T12:05:24.473Z
-Stopped at: Completed 95-15-PLAN.md
+Last session: 2026-11-11T12:29:40.683Z
+Stopped at: Completed 95-16-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
