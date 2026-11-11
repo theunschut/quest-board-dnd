@@ -49,6 +49,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Quest/Create.cshtml",
         "QuestBoard.Service/Views/Quest/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Edit.cshtml",
+        "QuestBoard.Service/Views/Quest/CreateFollowUp.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
@@ -63,6 +64,7 @@ public class QuestsConversionGuardTests
         ["QuestBoard.Service/Views/Quest/Create.cshtml"] = ["quest-form.css"],
         ["QuestBoard.Service/Views/Quest/Create.Mobile.cshtml"] = ["quest-form.css", "dm-create.mobile.css"],
         ["QuestBoard.Service/Views/Quest/Edit.cshtml"] = ["quest-form.css"],
+        ["QuestBoard.Service/Views/Quest/CreateFollowUp.cshtml"] = ["quest-form.css"],
     };
 
     // Every source file this work touches, scanned for planning references. This test file is left
