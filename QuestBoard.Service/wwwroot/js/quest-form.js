@@ -133,6 +133,38 @@ document.addEventListener('click', function (e) {
     }
 });
 
+// The submit button names its own busy wording in data-busy-label. Only the text node is swapped, so
+// the icon and its spacing stay, and the wording it had is kept to restore on a bfcache return.
+function submitLabelNode(button) {
+    const nodes = Array.from(button.childNodes).filter(function (node) {
+        return node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '';
+    });
+    return nodes.length ? nodes[nodes.length - 1] : null;
+}
+
+function setSubmitBusy(button) {
+    if (!button || button.disabled) return;
+
+    const busyLabel = button.dataset.busyLabel;
+    const labelNode = busyLabel ? submitLabelNode(button) : null;
+    if (labelNode) {
+        button.dataset.idleLabel = labelNode.textContent;
+        labelNode.textContent = busyLabel;
+    }
+    button.disabled = true;
+}
+
+function clearSubmitBusy(button) {
+    if (!button) return;
+
+    const labelNode = button.dataset.idleLabel !== undefined ? submitLabelNode(button) : null;
+    if (labelNode) {
+        labelNode.textContent = button.dataset.idleLabel;
+        delete button.dataset.idleLabel;
+    }
+    button.disabled = false;
+}
+
 // Scoped to the quest form specifically: document.querySelector('form') would instead match the
 // navbar's Logout form, which renders earlier in the DOM on every authenticated page (see
 // _Layout.cshtml and _Layout.Mobile.cshtml). Pages that are not quest forms but still render the
@@ -162,13 +194,24 @@ if (form) {
                 return false;
             }
         }
+    });
 
-        const submitButton = form.querySelector('button[type="submit"]');
-        if (submitButton) {
-            submitButton.disabled = true;
-            const originalText = submitButton.textContent;
-            const isEdit = originalText.includes('Update');
-            submitButton.textContent = isEdit ? 'Updating Quest...' : 'Creating Quest...';
+    // Registered after the validation listener above so it is the last submit handler this module
+    // adds. The lock waits until every handler has run and only applies when nothing cancelled the
+    // submit, so a form that failed validation keeps a working button.
+    form.addEventListener('submit', function (e) {
+        window.setTimeout(function () {
+            if (!e.defaultPrevented) {
+                setSubmitBusy(form.querySelector('button[type="submit"]'));
+            }
+        }, 0);
+    });
+
+    // A page restored from the back-forward cache keeps its old DOM, so the button it left locked
+    // is unlocked again with its own wording.
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) {
+            clearSubmitBusy(form.querySelector('button[type="submit"]'));
         }
     });
 }
