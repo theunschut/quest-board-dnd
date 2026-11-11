@@ -27,8 +27,10 @@
             {
                 var selectedCount = quest.PlayerSignups.Count(ps => ps.IsSelected);
                 var plainDescription = MarkdownService.ExtractPlainText(quest.Description);
+                // Cut before a high surrogate that would be left without its pair, so an emoji is never split.
+                var excerptLength = plainDescription.Length > 200 && char.IsHighSurrogate(plainDescription[199]) ? 199 : 200;
                 var shortDescription = plainDescription.Length > 200
-                    ? plainDescription.Substring(0, 200) + "..."
+                    ? plainDescription.Substring(0, excerptLength) + "..."
                     : plainDescription;
 
                 <article class="card modern-card modern-card--interactive quest-log-card">
