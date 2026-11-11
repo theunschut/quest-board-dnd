@@ -59,4 +59,13 @@
     background: var(--qb-surface-scrim);
     font-weight: var(--qb-weight-strong);
   }
+
+  /* The Rewards text on a glass card: the scrim keeps it readable and sets it apart from the description above it. */
+  .quest-description-box {
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-border);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-scrim);
+    overflow-wrap: anywhere;
+  }
 }

@@ -57,6 +57,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Quest/Manage.Mobile.cshtml",
         "QuestBoard.Service/Views/QuestLog/Index.cshtml",
         "QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/QuestLog/Details.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
@@ -78,6 +79,7 @@ public class QuestsConversionGuardTests
         ["QuestBoard.Service/Views/Quest/Manage.Mobile.cshtml"] = ["dm-manage.mobile.css"],
         ["QuestBoard.Service/Views/QuestLog/Index.cshtml"] = ["quest-log.css"],
         ["QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml"] = ["quest-log.mobile.css"],
+        ["QuestBoard.Service/Views/QuestLog/Details.cshtml"] = ["quest-log.css"],
     };
 
     // Every source file this work touches, scanned for planning references. This test file is left
@@ -103,6 +105,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/css/quest-log.mobile.css",
         "QuestBoard.Service/Views/QuestLog/Index.cshtml",
         "QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/QuestLog/Details.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/js/quest-board.js",
         "QuestBoard.Service/Helpers/QuestPosterCatalog.cs",
@@ -288,7 +291,7 @@ public class QuestsConversionGuardTests
     {
         // The Quest Log is styled by the layered Quest Log sheets; an unlayered rule would beat them on every property.
         foreach (var name in new[] { "legacy-pages.css", "quests.css" })
-            Regex.Matches(StripCssComments(ReadRepoFile(SheetPath(name))), @"\.(?:quest-log-(?!details)[a-z-]+|empty-quest-log|recap-badge|view-details-text)\b")
+            Regex.Matches(StripCssComments(ReadRepoFile(SheetPath(name))), @"\.(?:quest-log-[a-z-]+|empty-quest-log|recap-badge|view-details-text)\b")
                 .Select(m => m.Value).Should().BeEmpty(
                     $"{name} is unlayered and would override the layered Quest Log sheets");
     }

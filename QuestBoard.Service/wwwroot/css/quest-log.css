@@ -114,4 +114,80 @@
     outline: none;
     box-shadow: none;
   }
+
+  /*
+   * Quest Log Details. One view serves both layouts: the main card and the side cards sit in a Bootstrap grid that
+   * stacks on its own below the medium breakpoint, so the page needs no media query of its own.
+   */
+  .quest-log-detail-main {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-section > h2 {
+    margin: 0 0 var(--qb-space-sm);
+  }
+
+  .quest-log-section p {
+    margin: 0 0 var(--qb-space-sm);
+  }
+
+  .quest-log-section > p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Written text (description, rewards, recap) on a scrim, so its colour never depends on the glass under it. */
+  .quest-log-text-box {
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-border);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-scrim);
+    overflow-wrap: anywhere;
+  }
+
+  .quest-log-adventurers {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    margin: 0;
+    padding: 0;
+  }
+
+  .quest-log-adventurer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--qb-space-sm);
+    row-gap: var(--qb-space-xs);
+  }
+
+  .quest-log-adventurer-character {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .quest-log-side-card {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-side-card .modern-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+  }
+
+  .quest-log-side-card h2,
+  .quest-log-side-card p {
+    margin: 0;
+  }
+
+  /* The phone layout's own container already pads the page, so the grid adds no gutter that would push past it. */
+  .mobile-layout .quest-log-detail-page .row {
+    --bs-gutter-x: 0;
+  }
+
+  /* The phone has tighter cards: less padding inside, the same order. */
+  .mobile-layout .quest-log-detail-page .modern-card-body {
+    padding: var(--qb-space-md);
+  }
 }

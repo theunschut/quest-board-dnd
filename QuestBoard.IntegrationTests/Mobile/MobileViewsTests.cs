@@ -1087,8 +1087,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /QuestLog/Details/{id} renders quest-log-detail-main-card glass card
-    /// and links quest-log-detail.mobile.css. Quest must be finalized with past FinalizedDate.
+    /// Mobile UA on /QuestLog/Details/{id} answers 200 with the phone layout (the mobile-layout body class),
+    /// the quest title and the Session Recap section, and links quest-log.css: Details is one view that
+    /// serves both layouts. Quest must be finalized with past FinalizedDate.
     /// /QuestLog now requires authentication.
     /// </summary>
     [Fact]
@@ -1116,8 +1117,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("quest-log-detail-main-card");
-        html.Should().Contain("quest-log-detail.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("Quest Log Detail Mobile18");
+        html.Should().Contain("Session Recap");
+        html.Should().Contain("quest-log.css");
+        html.Should().NotContain("quest-log-detail.mobile.css");
     }
 
     // -----------------------------------------------------------------------
