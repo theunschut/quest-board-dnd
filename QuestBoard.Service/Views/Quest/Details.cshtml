@@ -586,8 +586,8 @@
                                             </div>
                                         </div>
 
-                                        <h6>Vote on Proposed Dates:</h6>
-                                        <p class="text-muted mb-3" id="votingInstruction">Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.</p>
+                                        <h6>Vote on Proposed Dates</h6>
+                                        <p class="text-muted mb-3" id="votingInstruction" role="status">Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.</p>
 
                                         @* Hidden form fields for the DateVotes - these will be populated by the calendar vote buttons *@
                                         @{
@@ -608,20 +608,22 @@
                                         }
 
                                         @* Calendar views for each month with proposed dates *@
-                                        @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
-                                        {
-                                            <div class="card modern-card mb-3">
-                                                <div class="card-header modern-card-header">
-                                                    <h6 class="mb-0">
-                                                        <i class="fas fa-calendar-alt text-info me-2"></i>
-                                                        @calendarMonth.MonthName
-                                                    </h6>
+                                        <div data-vote-section>
+                                            @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
+                                            {
+                                                <div class="card modern-card mb-3">
+                                                    <div class="card-header modern-card-header">
+                                                        <h6 class="mb-0">
+                                                            <i class="fas fa-calendar-alt text-info me-2"></i>
+                                                            @calendarMonth.MonthName
+                                                        </h6>
+                                                    </div>
+                                                    <div class="card-body modern-card-body p-0">
+                                                        @await Html.PartialAsync("_Calendar", calendarMonth)
+                                                    </div>
                                                 </div>
-                                                <div class="card-body modern-card-body p-0">
-                                                    @await Html.PartialAsync("_Calendar", calendarMonth)
-                                                </div>
-                                            </div>
-                                        }
+                                            }
+                                        </div>
 
                                         <button type="submit" class="btn btn-primary">
                                             <i class="fas fa-user-plus me-2"></i>
@@ -1031,33 +1033,8 @@
         document.getElementById('viewSignupCalendar').style.display = 'block';
         document.querySelector('[onclick="showUpdateForm()"]').style.display = 'inline-block';
     }
-
-    // Handle role selection change to hide/show voting section
-    document.addEventListener('DOMContentLoaded', function() {
-        const roleSelect = document.getElementById('selectedRole');
-        const votingInstruction = document.getElementById('votingInstruction');
-        const calendarCards = document.querySelectorAll('.card.modern-card.mb-3');
-
-        if (roleSelect) {
-            roleSelect.addEventListener('change', function() {
-                const isSpectator = this.value === '1';
-
-                if (isSpectator) {
-                    // Hide voting for spectators
-                    calendarCards.forEach(card => card.style.display = 'none');
-                    if (votingInstruction) {
-                        votingInstruction.textContent = 'As a spectator, you will be automatically approved. No date voting required.';
-                        votingInstruction.classList.add('alert', 'alert-info');
-                    }
-                } else {
-                    // Show voting for players and assistant DMs
-                    calendarCards.forEach(card => card.style.display = 'block');
-                    if (votingInstruction) {
-                        votingInstruction.textContent = 'Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.';
-                        votingInstruction.classList.remove('alert', 'alert-info');
-                    }
-                }
-            });
-        }
-    });
 </script>
+
+@section Scripts {
+    <script type="module" src="~/js/quest-details.js" asp-append-version="true"></script>
+}
