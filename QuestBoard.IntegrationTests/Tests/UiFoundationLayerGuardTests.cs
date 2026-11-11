@@ -49,7 +49,8 @@ public class UiFoundationLayerGuardTests
     // The foundation, in the order the layouts must link it.
     private static readonly string[] FoundationInOrder = ["app", "tokens", "base", "components", "shell"];
 
-    // Each layered file and the layer it must open.
+    // Each layered file and the layer it must open. The quest board, quest log, move and shared Markdown sheets are
+    // page sheets: each opens the pages layer and each is linked by the views that use it, not by a layout.
     private static readonly (string File, string Layer)[] LayeredFiles =
     [
         ("tokens.css", "tokens"),
@@ -58,10 +59,25 @@ public class UiFoundationLayerGuardTests
         ("shell.css", "components"),
         ("shell.mobile.css", "components"),
         ("group-picker.css", "pages"),
+        ("quests.css", "pages"),
+        ("quest-details.css", "pages"),
+        ("quest-vote.css", "pages"),
+        ("quests.mobile.css", "pages"),
+        ("home.mobile.css", "pages"),
+        ("quest-form.css", "pages"),
+        ("dm-create.mobile.css", "pages"),
+        ("quest-manage.css", "pages"),
+        ("dm-manage.mobile.css", "pages"),
+        ("quest-log.css", "pages"),
+        ("quest-log.mobile.css", "pages"),
+        ("move-entry.css", "pages"),
+        ("markdown-content.css", "pages"),
+        ("markdown-editor.css", "pages"),
     ];
 
     // The layered files that may hold no colour literal: every one except the token file.
-    private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css", "group-picker.css"];
+    private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css", "group-picker.css",
+        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css"];
 
     private static readonly Regex LocalStylesheetHref = new(
         @"<link\b[^>]*\brel=""stylesheet""[^>]*\bhref=""~/css/(?<name>[\w.\-]+)\.css""[^>]*>",

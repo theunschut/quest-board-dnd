@@ -89,13 +89,9 @@
     --bs-secondary-color: var(--qb-on-fill);
   }
 
-  /* Light and white labels in the item name and the quest log body were parchment, not Bootstrap's near-white. */
+  /* Light labels in the item name are parchment, not Bootstrap's near-white. */
   .item-name {
     --bs-light-rgb: var(--qb-fg-rgb);
-  }
-
-  .quest-log-details {
-    --bs-white-rgb: var(--qb-fg-rgb);
   }
 
   /*

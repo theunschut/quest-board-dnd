@@ -114,6 +114,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Move/Index.cshtml",
         "QuestBoard.Service/wwwroot/css/move-entry.css",
+        "QuestBoard.Service/wwwroot/css/quests.css",
         "QuestBoard.Service/wwwroot/css/easymde-vendor.css",
         "QuestBoard.Service/wwwroot/css/markdown-editor.css",
         "QuestBoard.Service/wwwroot/css/markdown-content.css",
@@ -304,6 +305,63 @@ public class QuestsConversionGuardTests
             Regex.Matches(StripCssComments(ReadRepoFile(SheetPath(name))), @"\.(?:quest-log-[a-z-]+|empty-quest-log|recap-badge|view-details-text)\b")
                 .Select(m => m.Value).Should().BeEmpty(
                     $"{name} is unlayered and would override the layered Quest Log sheets");
+    }
+
+    // The area as it was scoped: ten view pairs and five partials, and thirteen stylesheets. A file that a merge or a
+    // deletion has since removed is not an error; one that still exists must be on the converted lists. A file left
+    // unconverted on purpose goes in the exceptions list below with the reason, so that nothing is left out silently.
+    private static readonly string[] ScopedViews =
+    [
+        .. new[] { "Index", "Details", "Create", "Edit", "CreateFollowUp", "Manage" }
+            .SelectMany(v => new[] { $"QuestBoard.Service/Views/Quest/{v}.cshtml", $"QuestBoard.Service/Views/Quest/{v}.Mobile.cshtml" }),
+        .. new[] { "Index", "Details", "EditRecap" }
+            .SelectMany(v => new[] { $"QuestBoard.Service/Views/QuestLog/{v}.cshtml", $"QuestBoard.Service/Views/QuestLog/{v}.Mobile.cshtml" }),
+        "QuestBoard.Service/Views/Move/Index.cshtml",
+        "QuestBoard.Service/Views/Move/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Quest/_QuestFormScripts.cshtml",
+        "QuestBoard.Service/Views/Quest/_QuestCard.cshtml",
+        "QuestBoard.Service/Views/Quest/_QuestSection.cshtml",
+        "QuestBoard.Service/Views/Shared/_MarkdownEditor.cshtml",
+        "QuestBoard.Service/Views/Shared/_CharacterSelectModal.cshtml",
+    ];
+
+    private static readonly string[] ScopedSheets =
+    [
+        "quests.css", "quests.mobile.css", "quest-edit.mobile.css", "quest-followup.mobile.css", "quest-log.mobile.css",
+        "quest-log-detail.mobile.css", "home.mobile.css", "move-entry.css", "move-entry.mobile.css", "markdown-editor.css",
+        "markdown-content.css", "dm-create.mobile.css", "dm-manage.mobile.css",
+    ];
+
+    // Scoped files deliberately left unconverted, each with the reason. None at present.
+    private static readonly Dictionary<string, string> UnconvertedByDecision = new();
+
+    [Fact]
+    public void PhaseScope_IsFullyConverted()
+    {
+        ScopedViews.Should().HaveCount(25, "the area has ten view pairs and five partials");
+        ScopedSheets.Should().HaveCount(13, "the area has thirteen stylesheets");
+
+        var views = ScopedViews.Where(v => File.Exists(ResolveRepoFile(v.Split('/'))))
+            .Where(v => !UnconvertedByDecision.ContainsKey(v)).ToList();
+        var sheets = ScopedSheets.Where(n => File.Exists(ResolveRepoFile(SheetPath(n).Split('/'))))
+            .Where(n => !UnconvertedByDecision.ContainsKey(n)).ToList();
+
+        views.Should().NotBeEmpty();
+        sheets.Should().NotBeEmpty();
+        views.Except(ConvertedViews).Should().BeEmpty(
+            "every scoped view that still exists must be guarded as converted, or listed with the reason it is not");
+        sheets.Except(ConvertedSheets).Should().BeEmpty(
+            "every scoped sheet that still exists must be guarded as converted, or listed with the reason it is not");
+
+        foreach (var removed in new[]
+                 {
+                     "QuestBoard.Service/Views/Quest/_QuestCard.cshtml",
+                     "QuestBoard.Service/Views/Quest/_QuestSection.cshtml",
+                 })
+            File.Exists(ResolveRepoFile(removed.Split('/'))).Should().BeFalse(
+                $"{removed} was an unreferenced partial and must not come back");
+
+        UnconvertedByDecision.Keys.Should().OnlyContain(k => ScopedViews.Contains(k) || ScopedSheets.Contains(k));
     }
 
     [Fact]
