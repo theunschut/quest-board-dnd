@@ -231,9 +231,9 @@ else
                             <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary">
                                 <i class="fas fa-edit me-1"></i>Edit Quest
                             </a>
-                            <a href="#" class="btn btn-danger ms-2" onclick="deleteQuest(@Model.Id)">
+                            <button type="button" class="btn btn-danger ms-2" data-action="delete-quest" data-quest-id="@Model.Id" data-confirm-message="Are you sure?">
                                 <i class="fas fa-trash me-1"></i>Delete Quest
-                            </a>
+                            </button>
                         </div>
                     </div>
                 }
@@ -437,9 +437,9 @@ else
                                class="btn btn-secondary flex-fill">
                                 <i class="fas fa-edit me-1"></i>Edit Quest
                             </a>
-                            <a href="#" class="btn btn-danger w-100" onclick="deleteQuest(@Model.Id)">
+                            <button type="button" class="btn btn-danger w-100" data-action="delete-quest" data-quest-id="@Model.Id" data-confirm-message="Are you sure?">
                                 <i class="fas fa-trash me-1"></i>Delete Quest
-                            </a>
+                            </button>
                             <button type="button" class="btn btn-outline-secondary w-100"
                                     onclick="window.location.reload()">
                                 <i class="fas fa-sync me-1"></i>Refresh Data
@@ -472,9 +472,9 @@ else
                             <button type="submit" class="btn btn-warning w-100">Reopen Quest</button>
                         </form>
                     }
-                    <a href="#" class="btn btn-danger w-100" onclick="deleteQuest(@Model.Id)">
+                    <button type="button" class="btn btn-danger w-100" data-action="delete-quest" data-quest-id="@Model.Id" data-confirm-message="Are you sure?">
                         <i class="fas fa-trash me-1"></i>Delete Quest
-                    </a>
+                    </button>
                     <button type="button" class="btn btn-outline-secondary w-100"
                             onclick="window.location.reload()">
                         <i class="fas fa-sync me-1"></i>Refresh Data
@@ -505,24 +505,12 @@ else
     </div>
 }
 
-<script>
-    function deleteQuest(id) {
-        if (confirm("Are you sure?")) {
-            fetch(`/Quest/Delete/${id}`, {
-                method: "DELETE",
-                headers: {
-                    'RequestVerificationToken': '@tokens.RequestToken'
-                }
-            }).then(res => {
-                if (res.ok) {
-                    window.location.href = window.location.origin;
-                } else {
-                    alert("Delete failed.");
-                }
-            });
-        }
-    }
+@section Scripts {
+    <meta name="request-verification-token" content="@tokens.RequestToken" />
+    <script type="module" src="~/js/quest-manage.js" asp-append-version="true"></script>
+}
 
+<script>
     function removePlayerSignup(signupId, playerName) {
         if (confirm(`Are you sure you want to remove ${playerName} from this quest? This will delete their signup and all associated votes.`)) {
             fetch(`/Quest/RemovePlayerSignup/${signupId}`, {
