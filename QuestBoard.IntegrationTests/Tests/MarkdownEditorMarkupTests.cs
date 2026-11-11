@@ -23,7 +23,7 @@ public class MarkdownEditorMarkupTests : IClassFixture<WebApplicationFactoryBase
     private const string HintSentence = "Supports Markdown formatting. Leave a blank line between paragraphs.";
 
     private static readonly Regex HintElement = new(
-        @"<div id=""(?<id>[^""]+-help)"" class=""form-text"">(?<text>[^<]*)</div>",
+        @"<div id=""(?<id>[^""]+-help)"" class=""markdown-editor-hint"">(?<text>[^<]*)</div>",
         RegexOptions.Compiled);
 
     private static readonly Regex EditorTextarea = new(

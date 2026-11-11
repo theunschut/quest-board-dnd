@@ -2,7 +2,7 @@
    the vendor layer through easymde-vendor.css, so the rules below win over it by layer order. They set the
    writing surface to ink on paper, the toolbar to the alternate paper with ink icons, the field border to
    the control border token, a two-tone focus ring on the whole editor, and keep the toolbar buttons at the
-   touch-target floor so all seven fit one row at 320px.
+   touch-target floor (the seven buttons wrap to a second row on a narrow phone rather than shrink).
 
    The editor's text is named explicitly because several unlayered page sheets repaint every span, paragraph
    and list item inside a card in pale parchment; those sheets exclude the editor from their selectors, and
@@ -30,6 +30,16 @@
 
     .EasyMDEContainer .CodeMirror {
         border-color: var(--qb-control-border);
+    }
+
+    /* The formatting hint under the editor sits on the page's glass, not on paper. It carries its own class instead
+       of the framework's help-text one because several page sheets repaint every help line in faded parchment with
+       an important flag, which leaves it under 4.5:1 on glass cards that are not yet scrimmed. The lighter heading
+       tone is the one the foundation names for text on those cards. */
+    .markdown-editor-hint {
+        margin-top: var(--qb-space-xs);
+        font-size: var(--qb-text-sm);
+        color: var(--qb-fg-heading);
     }
 
     .EasyMDEContainer .CodeMirror span,
