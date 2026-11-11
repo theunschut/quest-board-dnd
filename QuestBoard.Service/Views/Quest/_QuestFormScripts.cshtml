@@ -1,10 +1,11 @@
 @using QuestBoard.Domain.Interfaces
 @*
     Shared scripts for every form that authors Markdown or manages quest dates.
-    Loads the quest form submit guard and the Markdown editor with its stylesheet. No inline
+    Loads the quest form module (proposed-date rows and the submit guard) and the Markdown editor with its
+    stylesheet. No inline
     script is rendered here: the antiforgery token the editor's preview request needs travels in a
     meta element that markdown-editor.js reads, so the content security policy stays strict.
-    Requires: site.js (contains addProposedDate and removeProposedDate functions)
+    The date rows are driven by data-action="add-proposed-date" and "remove-proposed-date" in quest-form.js.
 *@
 @{
     var markdownTokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
