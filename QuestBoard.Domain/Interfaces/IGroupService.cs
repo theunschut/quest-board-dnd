@@ -46,4 +46,10 @@ public interface IGroupService : IBaseService<Group>
     /// NotFound when no such board exists.
     /// </summary>
     Task<BoardDeletionResult> DeleteBoardAsync(int groupId, string? confirmName, CancellationToken token = default);
+
+    /// <summary>
+    /// What deleting the board would remove, per kind of content, and which rows on other boards
+    /// would only be unlinked. Changes nothing.
+    /// </summary>
+    Task<BoardDeletionPreview> GetDeletionPreviewAsync(int groupId, CancellationToken token = default);
 }
