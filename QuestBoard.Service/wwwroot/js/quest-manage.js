@@ -24,6 +24,9 @@ function deleteQuest(button) {
         } else {
             alert('Delete failed.');
         }
+    }).catch(function (err) {
+        console.error('Error deleting quest:', err);
+        alert('An error occurred while deleting the quest.');
     });
 }
 
