@@ -61,11 +61,18 @@ function initRoleSelect(select) {
 // The character picked above the three join forms is copied into each form's hidden field, so
 // whichever role button is pressed posts the same character.
 function initJoinCharacter(source) {
-    source.addEventListener('change', function () {
+    function copy() {
         document.querySelectorAll('[data-join-character-target]').forEach(function (target) {
             target.value = source.value;
         });
-    });
+    }
+
+    source.addEventListener('change', copy);
+
+    // A restored select value does not fire change, so the copy also runs at start-up and on
+    // page show to keep the hidden fields in step with what the select displays.
+    copy();
+    window.addEventListener('pageshow', copy);
 }
 
 function setUpdateFormOpen(open) {
