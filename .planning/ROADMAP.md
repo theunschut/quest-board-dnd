@@ -2075,7 +2075,7 @@ Plans:
 **Goal:** A super admin can delete a board that no longer has any members, without a server error. Everything that belongs only to that board goes with it, and anything that must outlive the board (users, and whatever they own across boards) is unlinked instead of deleted.
 **Requirements**: TBD
 **Depends on:** Nothing in this milestone (independent bug fix; it can run at any point)
-**Plans:** 5/10 plans executed
+**Plans:** 6/10 plans executed
 
 **Scope:**
 
@@ -2101,7 +2101,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 102-06-PLAN.md — Deletion preview built from the delete's own query helpers
+- [x] 102-06-PLAN.md — Deletion preview built from the delete's own query helpers
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
