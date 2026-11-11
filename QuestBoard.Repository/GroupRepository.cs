@@ -301,6 +301,60 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     }
 
     /// <inheritdoc/>
+    public async Task<BoardDeletionPreview> GetDeletionPreviewAsync(int groupId, CancellationToken token = default)
+    {
+        // Names are sorted here rather than in the query so the order does not depend on the
+        // database collation. Only the name column is read, never a whole row, and nothing is
+        // saved.
+        static List<string> SortedNames(List<string> names)
+        {
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+            return names;
+        }
+
+        static BoardDeletionItem Counted(BoardContentKind kind, int count)
+            => new() { Kind = kind, Count = count };
+
+        static BoardDeletionItem Named(BoardContentKind kind, List<string> names)
+        {
+            var sorted = SortedNames(names);
+            return new BoardDeletionItem { Kind = kind, Count = sorted.Count, Names = sorted };
+        }
+
+        var items = new List<BoardDeletionItem>
+        {
+            Named(BoardContentKind.Quests, await BoardQuests(groupId).Select(q => q.Title).ToListAsync(token)),
+            Counted(BoardContentKind.ProposedDates, await BoardProposedDates(groupId).CountAsync(token)),
+            Counted(BoardContentKind.DateVotes, await BoardDateVotes(groupId).CountAsync(token)),
+            Counted(BoardContentKind.PlayerSignups, await BoardPlayerSignups(groupId).CountAsync(token)),
+            Counted(BoardContentKind.ReminderLogs, await BoardReminderLogs(groupId).CountAsync(token)),
+            Named(BoardContentKind.Events, await BoardEvents(groupId).Select(e => e.Title).ToListAsync(token)),
+            Counted(BoardContentKind.EventSignups, await BoardEventSignups(groupId).CountAsync(token)),
+            Named(BoardContentKind.EventSeries, await BoardEventSeries(groupId).Select(s => s.Title).ToListAsync(token)),
+            Named(BoardContentKind.Characters, await BoardCharacters(groupId).Select(c => c.Name).ToListAsync(token)),
+            Named(BoardContentKind.Contacts, await BoardContacts(groupId).Select(c => c.Name).ToListAsync(token)),
+            Counted(BoardContentKind.ContactNotes, await BoardContactNotes(groupId).CountAsync(token)),
+            Named(BoardContentKind.ContactCategories, await BoardContactCategories(groupId).Select(c => c.Name).ToListAsync(token)),
+            Named(BoardContentKind.ContactTags, await BoardContactTags(groupId).Select(t => t.Name).ToListAsync(token)),
+            Named(BoardContentKind.ShopItems, await BoardShopItems(groupId).Select(s => s.Name).ToListAsync(token)),
+            Counted(BoardContentKind.Transactions, await BoardTransactions(groupId).CountAsync(token))
+        };
+
+        var followUps = await FollowUpsOnOtherBoards(groupId)
+            .Select(q => new BoardUnlinkedFollowUp { Title = q.Title, BoardName = q.Group.Name })
+            .ToListAsync(token);
+        followUps.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Title, b.Title));
+
+        return new BoardDeletionPreview
+        {
+            Items = items,
+            FollowUpsOnOtherBoards = followUps,
+            SignupsLosingCharacter = await OtherBoardSignupsUsingBoardCharacters(groupId).CountAsync(token),
+            EventsLeavingSeries = await OtherBoardEventsInBoardSeries(groupId).CountAsync(token)
+        };
+    }
+
+    /// <inheritdoc/>
     public async Task<IList<UserGroup>> GetMembersAsync(int groupId, string? search = null, CancellationToken token = default)
     {
         var query = DbContext.UserGroups

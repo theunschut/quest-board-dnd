@@ -59,6 +59,10 @@ internal class GroupService(IGroupRepository repository, IMapper mapper)
     }
 
     /// <inheritdoc/>
+    public async Task<BoardDeletionPreview> GetDeletionPreviewAsync(int groupId, CancellationToken token = default)
+        => await repository.GetDeletionPreviewAsync(groupId, token);
+
+    /// <inheritdoc/>
     public override async Task AddAsync(Group model, CancellationToken token = default)
     {
         if (string.IsNullOrWhiteSpace(model.Name))

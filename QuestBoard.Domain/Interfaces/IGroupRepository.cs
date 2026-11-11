@@ -45,4 +45,10 @@ public interface IGroupRepository : IBaseRepository<Group>
     /// rethrows.
     /// </summary>
     Task<BoardDeletionResult> DeleteBoardAsync(int groupId, CancellationToken token = default);
+
+    /// <summary>
+    /// What deleting the board would remove, per kind of content, and which rows on other boards
+    /// would only be unlinked. Changes nothing and does not depend on the caller's active board.
+    /// </summary>
+    Task<BoardDeletionPreview> GetDeletionPreviewAsync(int groupId, CancellationToken token = default);
 }
