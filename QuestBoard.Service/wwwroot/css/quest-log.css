@@ -182,12 +182,29 @@
   }
 
   /* The phone layout's own container already pads the page, so the grid adds no gutter that would push past it. */
-  .mobile-layout .quest-log-detail-page .row {
+  .mobile-layout :is(.quest-log-detail-page, .quest-log-edit-page) .row {
     --bs-gutter-x: 0;
   }
 
   /* The phone has tighter cards: less padding inside, the same order. */
   .mobile-layout .quest-log-detail-page .modern-card-body {
     padding: var(--qb-space-md);
+  }
+
+  /*
+   * Recap editor. Help lines sit on the card's own glass, where the muted tone measures under 4.5:1, so here they
+   * take the card colour. On the phone the two actions share the row at tap size.
+   */
+  .quest-log-edit-page .form-text {
+    color: var(--qb-fg);
+  }
+
+  .mobile-layout .quest-log-edit-actions {
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .quest-log-edit-actions > .btn {
+    flex: 1 1 auto;
+    min-height: var(--qb-hit-min);
   }
 }

@@ -58,6 +58,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/QuestLog/Index.cshtml",
         "QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/QuestLog/Details.cshtml",
+        "QuestBoard.Service/Views/QuestLog/EditRecap.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
@@ -80,6 +81,7 @@ public class QuestsConversionGuardTests
         ["QuestBoard.Service/Views/QuestLog/Index.cshtml"] = ["quest-log.css"],
         ["QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml"] = ["quest-log.mobile.css"],
         ["QuestBoard.Service/Views/QuestLog/Details.cshtml"] = ["quest-log.css"],
+        ["QuestBoard.Service/Views/QuestLog/EditRecap.cshtml"] = ["quest-log.css"],
     };
 
     // Every source file this work touches, scanned for planning references. This test file is left
@@ -106,6 +108,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/QuestLog/Index.cshtml",
         "QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/QuestLog/Details.cshtml",
+        "QuestBoard.Service/Views/QuestLog/EditRecap.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/js/quest-board.js",
         "QuestBoard.Service/Helpers/QuestPosterCatalog.cs",
@@ -305,6 +308,17 @@ public class QuestsConversionGuardTests
         Regex.Matches(view, "<a class=\"row-nav-link\" href=").Count.Should().Be(1,
             $"{path} writes the card once, so it holds exactly one link to the log entry");
         view.Should().NotContain("onclick");
+    }
+
+    [Theory]
+    [InlineData("QuestBoard.Service/Views/QuestLog/Details.Mobile.cshtml")]
+    [InlineData("QuestBoard.Service/Views/QuestLog/EditRecap.Mobile.cshtml")]
+    [InlineData("QuestBoard.Service/wwwroot/css/quest-log-detail.mobile.css")]
+    [InlineData("QuestBoard.Service/wwwroot/css/quest-edit.mobile.css")]
+    public void QuestLogMergedViews_LeaveNoPhoneTwinOrPhoneSheet(string path)
+    {
+        // Details and EditRecap are one view each, served to both layouts; nothing may link or revive the retired files.
+        File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse($"{path} was merged into the shared view");
     }
 
     [Fact]
