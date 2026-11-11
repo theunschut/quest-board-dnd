@@ -862,12 +862,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // Quest Edit renders glass card form on mobile UA
+    // Quest Edit is one view that serves the phone layout too
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Quest/Edit/{id} renders quest-edit-card-mobile glass card form
-    /// and links quest-edit.mobile.css. Requires DM authentication and ownership of the quest.
+    /// Mobile UA on /Quest/Edit/{id} answers 200 with the phone layout (the mobile-layout body class),
+    /// the Edit form posting back to the quest, its tips card and the shared quest form sheet.
+    /// Requires DM authentication and ownership of the quest.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_QuestEdit_ReturnsSuccessAndMobileLayout()
@@ -884,8 +885,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("quest-edit-card-mobile");
-        html.Should().Contain("quest-edit.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain($"/Quest/Edit/{quest.Id}");
+        html.Should().Contain("Update Quest");
+        html.Should().Contain("Quest Editing Tips");
+        html.Should().Contain("quest-form.css");
     }
 
     // -----------------------------------------------------------------------

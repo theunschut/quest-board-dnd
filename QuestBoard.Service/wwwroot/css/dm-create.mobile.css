@@ -26,8 +26,4 @@
     padding-block: 0;
   }
 
-  /* The action row keeps its two buttons the same width. */
-  .dm-create-card-mobile .d-flex > .btn {
-    flex: 1 1 0;
-  }
 }

@@ -55,6 +55,7 @@
   /* A date that is already saved is shown as text with the same height as an editable date control. */
   .quest-form-page .proposed-date-item .form-control-plaintext {
     flex: 1 1 auto;
+    width: 1%;
     min-width: 0;
     padding: var(--qb-space-sm) var(--qb-space-md);
     border: 1px solid var(--qb-surface-glass-border);
@@ -66,8 +67,42 @@
     margin-bottom: var(--qb-space-md);
   }
 
-  /* On the phone the tips card sits below the form with the same gap the cards use between each other. */
-  .mobile-layout.quest-form-page .quest-form-tips-column {
-    margin-top: var(--qb-space-md);
+  /*
+   * Phone layout of the merged Edit view: the page sits in the same gutter as the other phone forms, the session
+   * checkbox row is the whole tap target (at least the minimum hit size, the label filling it), and the two action
+   * buttons share the row equally.
+   */
+  .mobile-layout .quest-form-wrap {
+    padding: var(--qb-space-sm) var(--qb-space-sm) 0;
+  }
+
+  .mobile-layout .quest-form-wrap .form-check {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-height: var(--qb-hit-min);
+    padding-left: 0;
+  }
+
+  .mobile-layout .quest-form-wrap .form-check .form-check-input {
+    flex: none;
+    float: none;
+    margin: 0;
+  }
+
+  .mobile-layout .quest-form-wrap .form-check .form-check-label {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
+    padding-block: 0;
+  }
+
+  .mobile-layout .quest-form-actions {
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .quest-form-actions > .btn {
+    flex: 1 1 auto;
   }
 }
