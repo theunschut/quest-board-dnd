@@ -2075,7 +2075,7 @@ Plans:
 **Goal:** A super admin can delete a board that no longer has any members, without a server error. Everything that belongs only to that board goes with it, and anything that must outlive the board (users, and whatever they own across boards) is unlinked instead of deleted.
 **Requirements**: TBD
 **Depends on:** Nothing in this milestone (independent bug fix; it can run at any point)
-**Plans:** 10 plans
+**Plans:** 3/10 plans executed
 
 **Scope:**
 
@@ -2090,9 +2090,9 @@ Plans:
 
 **Wave 1**
 
-- [ ] 102-01-PLAN.md — Tracer: typed-name delete POST through controller, service and repository in one save, for a board holding quests, proven over HTTP
-- [ ] 102-02-PLAN.md — Super-admin stale active-board recovery: shared session-clear helper and a board-exists check in the session middleware
-- [ ] 102-03-PLAN.md — Boards column on /platform/Users, desktop and phone
+- [x] 102-01-PLAN.md — Tracer: typed-name delete POST through controller, service and repository in one save, for a board holding quests, proven over HTTP
+- [x] 102-02-PLAN.md — Super-admin stale active-board recovery: shared session-clear helper and a board-exists check in the session middleware
+- [x] 102-03-PLAN.md — Boards column on /platform/Users, desktop and phone
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
