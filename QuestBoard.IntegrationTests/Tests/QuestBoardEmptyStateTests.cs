@@ -9,7 +9,7 @@ namespace QuestBoard.IntegrationTests.Tests;
 /// <summary>
 /// The desktop quest board draws nothing when it has no quests (only a visually hidden heading a screen reader
 /// can find) and, with quests, draws one poster per quest whose single link carries the quest's status in its
-/// name. The phone board has its own view and is not covered here.
+/// name. The phone board has its own view: with no quests it shows the visible empty state.
 /// </summary>
 public class QuestBoardEmptyStateTests(WebApplicationFactoryBase factory)
     : IClassFixture<WebApplicationFactoryBase>, IAsyncLifetime
@@ -60,6 +60,28 @@ public class QuestBoardEmptyStateTests(WebApplicationFactoryBase factory)
         var response = await client.GetAsync("/quests", token);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         return await response.Content.ReadAsStringAsync(token);
+    }
+
+    private const string PhoneUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
+    [Fact]
+    public async Task PhoneBoard_WithNoQuests_RendersTheVisibleEmptyState()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await SignInAsync("poster_empty_phone");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/quests");
+        request.Headers.TryAddWithoutValidation("User-Agent", PhoneUserAgent);
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        html.Should().Contain("<div class=\"empty-state\">");
+        html.Should().MatchRegex(@"<h2 class=""empty-state-heading"">No Quests Available</h2>");
+        html.Should().Contain("Check back soon");
+        html.Should().NotContain("quest-card-mobile");
+        html.Should().NotContain("quest-list-mobile");
     }
 
     [Fact]
