@@ -52,7 +52,7 @@
     <i class="fas fa-triangle-exclamation me-2" aria-hidden="true"></i>This cannot be undone. Nothing on this list can be recovered once you confirm.
 </div>
 
-<h3>What will be deleted</h3>
+<h3 class="board-delete-heading">What will be deleted</h3>
 @if (Model.HasNothingStored)
 {
     <p><i class="fas fa-circle-info me-2" aria-hidden="true"></i>Nothing is stored on this board. Only the board itself will be deleted.</p>
@@ -64,12 +64,12 @@ else
 
 @if (Model.UnlinkedRows.Count > 0)
 {
-    <h3>Kept, but unlinked</h3>
+    <h3 class="board-delete-heading">Kept, but unlinked</h3>
     <p>These rows live on other boards. They stay, and only their link to "@Model.Name" is removed.</p>
     RenderRows(Model.UnlinkedRows, "unlinked");
 }
 
-<h3>Not affected</h3>
+<h3 class="board-delete-heading">Not affected</h3>
 <ul class="board-delete-rows list-unstyled">
     <li class="board-delete-row board-delete-row--kept">
         <div class="board-delete-row-icon">
@@ -104,7 +104,7 @@ else
 
     <hr>
 
-    <div class="d-flex justify-content-between">
+    <div class="d-flex justify-content-between gap-2">
         <a asp-area="Platform" asp-controller="Group" asp-action="Index" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Keep board
         </a>
