@@ -91,7 +91,7 @@ else
                     <h6 class="dm-manage-subheading mb-2">Selected Date</h6>
                     <div class="manage-date-option date-option border-success mb-3 p-2">
                         <div class="mb-1">
-                            <strong class="dm-manage-date-label">@finalizedDate.Date.ToString("dddd, MMM dd 'at' h:mm tt")</strong>
+                            <strong class="dm-manage-date-label">@Html.WallClock(finalizedDate.Date, "date-time")</strong>
                             <span class="badge bg-success ms-1">Finalized</span>
                         </div>
                         <div class="d-flex gap-1 mt-1 dm-vote-summary">
@@ -201,8 +201,7 @@ else
                     </a>
                     <form asp-action="Open" method="post" class="flex-fill">
                         <input type="hidden" name="id" value="@Model.Id" />
-                        <button type="submit" class="btn btn-warning w-100"
-                                onclick="return confirm('Are you sure you want to open this quest? This will reopen it for changes and reset player selections.');">
+                        <button type="submit" class="btn btn-warning w-100" data-confirm-message="Are you sure you want to open this quest? This will reopen it for changes and reset player selections.">
                             <i class="fas fa-unlock me-1"></i>Open Quest
                         </button>
                     </form>
@@ -214,7 +213,7 @@ else
                         </a>
                     }
                     <button type="button" class="btn btn-outline-secondary w-100"
-                            onclick="window.location.reload()">
+                            data-action="reload">
                         <i class="fas fa-sync me-1"></i>Refresh Data
                     </button>
                 </div>
@@ -239,7 +238,7 @@ else
                 }
                 else
                 {
-                    <form asp-action="Finalize" asp-route-id="@Model.Id" method="post">
+                    <form asp-action="Finalize" asp-route-id="@Model.Id" method="post" data-max-players="@Model.TotalPlayerCount">
 
                         <h6 class="dm-manage-subheading mb-2">Proposed Dates &amp; Voting Results:</h6>
                         @{
@@ -264,7 +263,7 @@ else
                                            name="SelectedDateId" value="@date.Id"
                                            id="date_@date.Id" @(isRecommended ? "checked" : "") />
                                     <label class="form-check-label dm-manage-date-label" for="date_@date.Id">
-                                        <strong>@date.Date.ToString("dddd, MMM dd 'at' h:mm tt")</strong>
+                                        <strong>@Html.WallClock(date.Date, "date-time")</strong>
                                         @if (isRecommended)
                                         {
                                             <span class="badge bg-success ms-1">Recommended</span>
@@ -354,7 +353,7 @@ else
                                             @if ((bool)ViewBag.IsAdmin)
                                             {
                                                 <button type="button" class="btn btn-danger btn-sm ms-2"
-                                                        onclick="removePlayerSignup(@player.Id, '@player.Player.Name')"
+                                                        data-action="remove-player" data-signup-id="@player.Id" data-player-name="@player.Player.Name"
                                                         title="Remove player">
                                                     <i class="fas fa-times"></i>
                                                 </button>
@@ -389,7 +388,7 @@ else
                                             @if ((bool)ViewBag.IsAdmin)
                                             {
                                                 <button type="button" class="btn btn-danger btn-sm ms-2"
-                                                        onclick="removePlayerSignup(@assistant.Id, '@assistant.Player.Name')"
+                                                        data-action="remove-player" data-signup-id="@assistant.Id" data-player-name="@assistant.Player.Name"
                                                         title="Remove player">
                                                     <i class="fas fa-times"></i>
                                                 </button>
@@ -416,7 +415,7 @@ else
                                             @if ((bool)ViewBag.IsAdmin)
                                             {
                                                 <button type="button" class="btn btn-danger btn-sm ms-2"
-                                                        onclick="removePlayerSignup(@spectator.Id, '@spectator.Player.Name')"
+                                                        data-action="remove-player" data-signup-id="@spectator.Id" data-player-name="@spectator.Player.Name"
                                                         title="Remove spectator">
                                                     <i class="fas fa-times"></i>
                                                 </button>
@@ -441,7 +440,7 @@ else
                                 <i class="fas fa-trash me-1"></i>Delete Quest
                             </button>
                             <button type="button" class="btn btn-outline-secondary w-100"
-                                    onclick="window.location.reload()">
+                                    data-action="reload">
                                 <i class="fas fa-sync me-1"></i>Refresh Data
                             </button>
                         </div>
@@ -476,7 +475,7 @@ else
                         <i class="fas fa-trash me-1"></i>Delete Quest
                     </button>
                     <button type="button" class="btn btn-outline-secondary w-100"
-                            onclick="window.location.reload()">
+                            data-action="reload">
                         <i class="fas fa-sync me-1"></i>Refresh Data
                     </button>
                 </div>
@@ -509,98 +508,3 @@ else
     <meta name="request-verification-token" content="@tokens.RequestToken" />
     <script type="module" src="~/js/quest-manage.js" asp-append-version="true"></script>
 }
-
-<script>
-    function removePlayerSignup(signupId, playerName) {
-        if (confirm(`Are you sure you want to remove ${playerName} from this quest? This will delete their signup and all associated votes.`)) {
-            fetch(`/Quest/RemovePlayerSignup/${signupId}`, {
-                method: "DELETE",
-                headers: {
-                    'RequestVerificationToken': '@tokens.RequestToken'
-                }
-            }).then(async res => {
-                if (res.ok) {
-                    // Reload the page to show updated data
-                    window.location.reload();
-                } else {
-                    // Log the response for debugging
-                    const responseText = await res.text();
-                    console.error("Response status:", res.status);
-                    console.error("Response body:", responseText);
-                    alert(`Failed to remove player. Status: ${res.status}. Check console for details.`);
-                }
-            }).catch(err => {
-                console.error("Error removing player:", err);
-                alert("An error occurred while removing the player.");
-            });
-        }
-    }
-
-    function updatePlayerAvailability() {
-        const selectedDateOption = document.querySelector('.date-selector:checked');
-        if (!selectedDateOption) return;
-
-        const dateContainer = selectedDateOption.closest('.date-option');
-        const yesVotes = dateContainer.dataset.yesVotes ? dateContainer.dataset.yesVotes.split(',').filter(id => id) : [];
-        const maybeVotes = dateContainer.dataset.maybeVotes ? dateContainer.dataset.maybeVotes.split(',').filter(id => id) : [];
-        const noVotes = dateContainer.dataset.noVotes ? dateContainer.dataset.noVotes.split(',').filter(id => id) : [];
-
-        // Update each player item
-        document.querySelectorAll('.player-item').forEach(playerItem => {
-            const playerId = playerItem.dataset.playerId;
-            const checkbox = playerItem.querySelector('.player-checkbox');
-            const statusSpan = playerItem.querySelector('.availability-status');
-
-            // Determine availability status
-            let status = '';
-            let shouldBeChecked = false;
-
-            if (yesVotes.includes(playerId)) {
-                status = '<span class="text-success">- Available (Yes)</span>';
-                shouldBeChecked = true;
-            } else if (maybeVotes.includes(playerId)) {
-                status = '<span class="text-warning">- Maybe available</span>';
-                shouldBeChecked = true; // Consider "maybe" as selected per requirements
-            } else if (noVotes.includes(playerId)) {
-                status = '<span class="text-danger">- Not available (No)</span>';
-                shouldBeChecked = false;
-            } else {
-                status = '<span class="text-muted">- No vote</span>';
-                shouldBeChecked = false;
-            }
-
-            // Update the status display
-            statusSpan.innerHTML = status;
-
-            // Update checkbox based on availability
-            checkbox.checked = shouldBeChecked;
-        });
-    }
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        updatePlayerAvailability();
-
-        // Add event listeners to date radio buttons
-        document.querySelectorAll('.date-selector').forEach(radio => {
-            radio.addEventListener('change', updatePlayerAvailability);
-        });
-
-        // Add event listeners to player checkboxes for validation
-        // Only count Player role checkboxes toward the limit
-        document.querySelectorAll('.player-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                // Count only checkboxes whose parent has data-role="player"
-                const selectedPlayerCount = Array.from(document.querySelectorAll('.player-checkbox:checked'))
-                    .filter(cb => cb.closest('[data-role="player"]'))
-                    .length;
-                const maxPlayers = @Model.TotalPlayerCount;
-
-                if (selectedPlayerCount > maxPlayers) {
-                    this.checked = false;
-                    alert('Cannot select more than ' + maxPlayers + ' players for this quest.');
-                }
-            });
-        });
-    });
-</script>

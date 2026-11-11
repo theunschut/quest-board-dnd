@@ -53,6 +53,8 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Quest/CreateFollowUp.cshtml",
         "QuestBoard.Service/Views/Quest/Index.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Quest/Manage.cshtml",
+        "QuestBoard.Service/Views/Quest/Manage.Mobile.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
@@ -81,6 +83,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/js/quest-form.js",
         "QuestBoard.Service/wwwroot/js/markdown-editor.js",
         "QuestBoard.Service/wwwroot/js/quest-details.js",
+        "QuestBoard.Service/wwwroot/js/quest-manage.js",
         "QuestBoard.Service/wwwroot/js/avatar-fallback.js",
         "QuestBoard.Service/wwwroot/css/quest-details.css",
         "QuestBoard.Service/wwwroot/css/quest-vote.css",
@@ -219,6 +222,15 @@ public class QuestsConversionGuardTests
         foreach (var path in ConvertedViews)
             RawDateFormats(ReadRepoFile(path)).Should().BeEmpty(
                 $"{path} must render dates through the date helpers, not a format string");
+    }
+
+    [Fact]
+    public void QuestManageModule_WritesNoMarkupFromStrings()
+    {
+        // The module shows a player's name and a vote status, so it must only ever write text and elements.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/quest-manage.js");
+        Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML|document\.write")
+            .Select(m => m.Value).Should().BeEmpty("quest-manage.js must build nodes with createElement and textContent");
     }
 
     [Fact]

@@ -124,7 +124,9 @@ public class WallClockUnmovedTests(WebApplicationFactoryBase factory) : IClassFi
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
 
         var proposedDate = new DateTime(2026, 10, 3, 18, 30, 0);
-        var expectedProposedDateText = proposedDate.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt");
+        // The proposed date renders through the wall-clock helper's date-time style, so the expected
+        // text is that same style in the invariant culture.
+        var expectedProposedDateText = proposedDate.ToString("MMM d, yyyy, h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
 
         var firstZoneHtml = await RenderUnfinalizedQuestManageUnderZoneAsync("America/New_York", proposedDate);
         var secondZoneHtml = await RenderUnfinalizedQuestManageUnderZoneAsync("Asia/Tokyo", proposedDate);

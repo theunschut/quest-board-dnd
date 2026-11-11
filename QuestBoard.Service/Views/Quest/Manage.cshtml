@@ -100,7 +100,7 @@ else
 
                                 <div class="date-option border-success">
                                     <div class="mb-2">
-                                        <strong>@finalizedDate.Date.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</strong>
+                                        <strong>@Html.WallClock(finalizedDate.Date, "date-time")</strong>
                                         <span class="badge bg-success ms-2">Finalized</span>
                                     </div>
 
@@ -157,7 +157,7 @@ else
                             }
                             else
                             {
-                                <form asp-action="Finalize" asp-route-id="@Model.Id" method="post">
+                                <form asp-action="Finalize" asp-route-id="@Model.Id" method="post" data-max-players="@Model.TotalPlayerCount">
                                     <h6>Proposed Dates & Voting Results:</h6>
                                     @{
                                         var maxYesVotes = Model.ProposedDates!.Max(pd => pd.PlayerVotes.Count(v => v.Vote == VoteType.Yes));
@@ -180,7 +180,7 @@ else
                                                 <input class="form-check-input date-selector" type="radio" name="SelectedDateId" value="@date.Id"
                                                        id="date_@date.Id" @(isRecommended ? "checked" : "") />
                                                 <label class="form-check-label" for="date_@date.Id">
-                                                    <strong>@date.Date.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</strong>
+                                                    <strong>@Html.WallClock(date.Date, "date-time")</strong>
                                                     @if (isRecommended)
                                                     {
                                                         <span class="badge bg-success ms-2">Recommended</span>
@@ -296,7 +296,7 @@ else
                                                         </div>
                                                         @if ((bool)ViewBag.IsAdmin)
                                                         {
-                                                            <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removePlayerSignup(@player.Id, '@player.Player.Name')" title="Remove player">
+                                                            <button type="button" class="btn btn-danger btn-sm ms-2" data-action="remove-player" data-signup-id="@player.Id" data-player-name="@player.Player.Name" title="Remove player">
                                                                 <i class="fas fa-times"></i>
                                                             </button>
                                                         }
@@ -337,7 +337,7 @@ else
                                                         </div>
                                                         @if ((bool)ViewBag.IsAdmin)
                                                         {
-                                                            <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removePlayerSignup(@assistant.Id, '@assistant.Player.Name')" title="Remove player">
+                                                            <button type="button" class="btn btn-danger btn-sm ms-2" data-action="remove-player" data-signup-id="@assistant.Id" data-player-name="@assistant.Player.Name" title="Remove player">
                                                                 <i class="fas fa-times"></i>
                                                             </button>
                                                         }
@@ -367,7 +367,7 @@ else
                                                         </div>
                                                         @if ((bool)ViewBag.IsAdmin)
                                                         {
-                                                            <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removePlayerSignup(@spectator.Id, '@spectator.Player.Name')" title="Remove spectator">
+                                                            <button type="button" class="btn btn-danger btn-sm ms-2" data-action="remove-player" data-signup-id="@spectator.Id" data-player-name="@spectator.Player.Name" title="Remove spectator">
                                                                 <i class="fas fa-times"></i>
                                                             </button>
                                                         }
@@ -389,7 +389,7 @@ else
                                                 <i class="fas fa-trash me-1"></i>Delete
                                             </button>
                                         </div>
-                                        <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                                        <button type="button" class="btn btn-secondary" data-action="reload">Refresh Data</button>
                                     </div>
                                 </form>
                             }
@@ -450,11 +450,9 @@ else
                                                             <div class="d-flex align-items-center">
                                                                 <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = participant.Character.Id })"
                                                                      alt="@participant.Character.Name"
-                                                                     class="character-mini-avatar me-2"
-                                                                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
-                                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                                                <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
-                                                                    <i class="fas fa-user"></i>
+                                                                     class="avatar-32 me-2" />
+                                                                <span class="avatar-32 avatar-32--placeholder me-2" hidden aria-hidden="true">
+                                                                    <i class="fas fa-user" aria-hidden="true"></i>
                                                                 </span>
                                                                 <span>@participant.Character.Name</span>
                                                             </div>
@@ -520,7 +518,7 @@ else
                                                     @if ((bool)ViewBag.IsAdmin)
                                                     {
                                                         <td>
-                                                            <button type="button" class="btn btn-danger btn-sm" onclick="removePlayerSignup(@participant.Id, '@participant.Player.Name')" title="Remove participant">
+                                                            <button type="button" class="btn btn-danger btn-sm" data-action="remove-player" data-signup-id="@participant.Id" data-player-name="@participant.Player.Name" title="Remove participant">
                                                                 <i class="fas fa-trash me-1"></i>Remove
                                                             </button>
                                                         </td>
@@ -567,11 +565,9 @@ else
                                                             <div class="d-flex align-items-center">
                                                                 <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
                                                                      alt="@player.Character.Name"
-                                                                     class="character-mini-avatar me-2"
-                                                                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
-                                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                                                <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
-                                                                    <i class="fas fa-user"></i>
+                                                                     class="avatar-32 me-2" />
+                                                                <span class="avatar-32 avatar-32--placeholder me-2" hidden aria-hidden="true">
+                                                                    <i class="fas fa-user" aria-hidden="true"></i>
                                                                 </span>
                                                                 <span>@player.Character.Name</span>
                                                             </div>
@@ -626,12 +622,12 @@ else
                                     <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary">
                                         <i class="fas fa-edit me-1"></i>Edit Quest
                                     </a>
-                                    <form asp-action="Open" method="post" style="display: inline;">
+                                    <form asp-action="Open" method="post" class="d-inline">
                                         <input type="hidden" name="id" value="@Model.Id" />
-                                        <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure you want to open this quest? This will reopen it for changes and reset player selections.');">Open Quest</button>
+                                        <button type="submit" class="btn btn-warning" data-confirm-message="Are you sure you want to open this quest? This will reopen it for changes and reset player selections.">Open Quest</button>
                                     </form>
                                 </div>
-                                <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                                <button type="button" class="btn btn-secondary" data-action="reload">Refresh Data</button>
                             </div>
                         }
                     }
@@ -644,7 +640,7 @@ else
                                 </a>
                                 @if (!Model.IsClosed)
                                 {
-                                    <form asp-action="Close" method="post" style="display: inline;">
+                                    <form asp-action="Close" method="post" class="d-inline">
                                         <input type="hidden" name="id" value="@Model.Id" />
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-secondary">Close Quest</button>
@@ -652,7 +648,7 @@ else
                                 }
                                 else
                                 {
-                                    <form asp-action="Reopen" method="post" style="display: inline;">
+                                    <form asp-action="Reopen" method="post" class="d-inline">
                                         <input type="hidden" name="id" value="@Model.Id" />
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-warning">Reopen Quest</button>
@@ -662,7 +658,7 @@ else
                                     <i class="fas fa-trash me-1"></i>Delete
                                 </button>
                             </div>
-                            <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                            <button type="button" class="btn btn-secondary" data-action="reload">Refresh Data</button>
                         </div>
                     }
                 </div>
@@ -809,7 +805,7 @@ else
 
                         <p>
                             <strong>Best Date:</strong>
-                            <small>@mostPopularDate.Date.ToString("MMM dd, h:mm tt")</small>
+                            <small>@Html.WallClock(mostPopularDate.Date, "date-time-compact")</small>
                         </p>
                         <p>
                             <small class="text-success">@yesCount players available</small>
@@ -828,99 +824,5 @@ else
 @section Scripts {
     <meta name="request-verification-token" content="@tokens.RequestToken" />
     <script type="module" src="~/js/quest-manage.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/avatar-fallback.js" asp-append-version="true"></script>
 }
-
-<script>
-    function removePlayerSignup(signupId, playerName) {
-        if (confirm(`Are you sure you want to remove ${playerName} from this quest? This will delete their signup and all associated votes.`)) {
-            fetch(`/Quest/RemovePlayerSignup/${signupId}`, {
-                method: "DELETE",
-                headers: {
-                    'RequestVerificationToken': '@tokens.RequestToken'
-                }
-            }).then(async res => {
-                if (res.ok) {
-                    // Reload the page to show updated data
-                    window.location.reload();
-                } else {
-                    // Log the response for debugging
-                    const responseText = await res.text();
-                    console.error("Response status:", res.status);
-                    console.error("Response body:", responseText);
-                    alert(`Failed to remove player. Status: ${res.status}. Check console for details.`);
-                }
-            }).catch(err => {
-                console.error("Error removing player:", err);
-                alert("An error occurred while removing the player.");
-            });
-        }
-    }
-
-    function updatePlayerAvailability() {
-        const selectedDateOption = document.querySelector('.date-selector:checked');
-        if (!selectedDateOption) return;
-
-        const dateContainer = selectedDateOption.closest('.date-option');
-        const yesVotes = dateContainer.dataset.yesVotes ? dateContainer.dataset.yesVotes.split(',').filter(id => id) : [];
-        const maybeVotes = dateContainer.dataset.maybeVotes ? dateContainer.dataset.maybeVotes.split(',').filter(id => id) : [];
-        const noVotes = dateContainer.dataset.noVotes ? dateContainer.dataset.noVotes.split(',').filter(id => id) : [];
-
-        // Update each player item
-        document.querySelectorAll('.player-item').forEach(playerItem => {
-            const playerId = playerItem.dataset.playerId;
-            const checkbox = playerItem.querySelector('.player-checkbox');
-            const statusSpan = playerItem.querySelector('.availability-status');
-
-            // Determine availability status
-            let status = '';
-            let shouldBeChecked = false;
-
-            if (yesVotes.includes(playerId)) {
-                status = '<span class="text-success">- Available (Yes)</span>';
-                shouldBeChecked = true;
-            } else if (maybeVotes.includes(playerId)) {
-                status = '<span class="text-warning">- Maybe available</span>';
-                shouldBeChecked = true; // Consider "maybe" as selected per requirements
-            } else if (noVotes.includes(playerId)) {
-                status = '<span class="text-danger">- Not available (No)</span>';
-                shouldBeChecked = false;
-            } else {
-                status = '<span class="text-muted">- No vote</span>';
-                shouldBeChecked = false;
-            }
-
-            // Update the status display
-            statusSpan.innerHTML = status;
-
-            // Update checkbox based on availability
-            checkbox.checked = shouldBeChecked;
-        });
-    }
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        updatePlayerAvailability();
-
-        // Add event listeners to date radio buttons
-        document.querySelectorAll('.date-selector').forEach(radio => {
-            radio.addEventListener('change', updatePlayerAvailability);
-        });
-
-        // Add event listeners to player checkboxes for validation
-        // Only count Player role checkboxes toward the limit
-        document.querySelectorAll('.player-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                // Count only checkboxes whose parent has data-role="player"
-                const selectedPlayerCount = Array.from(document.querySelectorAll('.player-checkbox:checked'))
-                    .filter(cb => cb.closest('[data-role="player"]'))
-                    .length;
-                const maxPlayers = @Model.TotalPlayerCount;
-
-                if (selectedPlayerCount > maxPlayers) {
-                    this.checked = false;
-                    alert('Cannot select more than ' + maxPlayers + ' players for this quest.');
-                }
-            });
-        });
-    });
-</script>
