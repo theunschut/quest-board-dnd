@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using FluentAssertions;
+using QuestBoard.Service.Helpers;
 
 namespace QuestBoard.IntegrationTests.Tests;
 
@@ -261,6 +262,40 @@ public class QuestsConversionGuardTests
                 pattern.Matches(text).Select(m => m.Value).Should().BeEmpty(
                     $"{path} must not carry {label}: planning references go stale when the work closes");
         }
+    }
+
+    // The text of the first block in a stylesheet, from its opening brace to the matching closing brace.
+    private static string FirstBlock(string css)
+    {
+        var open = css.IndexOf('{');
+        open.Should().BeGreaterThanOrEqualTo(0, "the sheet must open a block");
+
+        var depth = 0;
+        for (var i = open; i < css.Length; i++)
+        {
+            if (css[i] == '{')
+                depth++;
+            else if (css[i] == '}' && --depth == 0)
+                return css[open..(i + 1)];
+        }
+
+        return css[open..];
+    }
+
+    [Fact]
+    public void PosterCatalog_AndPosterSheet_AgreeOnKeys()
+    {
+        var sheet = StripCssComments(ReadRepoFile(SheetPath("quests.css")));
+        OpensPagesLayer(sheet).Should().BeTrue("the poster rules live in the pages layer at the top of quests.css");
+
+        var layered = FirstBlock(sheet);
+        var ruleKeys = Regex.Matches(layered, @"\.quest-poster--(?<key>[a-z0-9]+)\s*\{")
+            .Select(m => m.Groups["key"].Value)
+            .ToList();
+
+        ruleKeys.Should().BeEquivalentTo(
+            QuestPosterCatalog.All.Select(p => p.Key),
+            "every catalog poster needs its modifier rule and every modifier rule needs a catalog poster");
     }
 
     [Fact]

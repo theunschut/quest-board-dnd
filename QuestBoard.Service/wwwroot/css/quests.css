@@ -1,3 +1,252 @@
+@layer pages {
+  /*
+   * Quest board posters (desktop). A poster is a parchment artwork with a measured text box. The box insets, the seal
+   * slots and the seal size travel with the artwork as custom properties on its modifier class, and the box is kept
+   * in step with the catalog the server picks from. The text is plain dark ink at weight 600 straight on the artwork:
+   * no tinted zone, halo or shadow sits behind it.
+   */
+  .quest-poster {
+    --paper-slab: linear-gradient(var(--qb-surface-paper), var(--qb-surface-paper));
+    --seal-size: var(--seal-size-base);
+    position: relative;
+    display: inline-block;
+    width: clamp(var(--card-width-floor), 100%, var(--card-width));
+    margin-block-end: var(--qb-space-md);
+    break-inside: avoid;
+    background-repeat: no-repeat;
+    /* The second layer is a paper slab under the text box: it shows only if the artwork does not load. */
+    background-size:
+      100% 100%,
+      calc((100 - var(--box-l) - var(--box-r)) * 1%) calc((100 - var(--box-t) - var(--box-b)) * 1%);
+    background-position:
+      0 0,
+      calc(var(--box-l) / (var(--box-l) + var(--box-r)) * 100%) calc(var(--box-t) / (var(--box-t) + var(--box-b)) * 100%);
+  }
+
+  .quest-poster-text {
+    position: absolute;
+    inset: calc(var(--box-t) * 1%) calc(var(--box-r) * 1%) calc(var(--box-b) * 1%) calc(var(--box-l) * 1%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    text-align: center;
+    color: var(--qb-ink);
+  }
+
+  .quest-poster-title {
+    margin: 0;
+    color: var(--qb-ink);
+    font-family: var(--qb-font-display);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: break-word;
+    max-width: 100%;
+  }
+
+  .quest-poster-title--tier2 {
+    font-size: var(--qb-text-base);
+  }
+
+  .quest-poster-title .row-nav-link {
+    color: var(--qb-ink);
+  }
+
+  .quest-poster-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    width: 100%;
+    font-size: var(--qb-text-sm);
+    line-height: var(--qb-leading-body);
+  }
+
+  .quest-poster-meta p {
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  .quest-poster-meta p,
+  .quest-poster-meta strong,
+  .quest-poster-label {
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .quest-poster-cr {
+    background-color: var(--qb-action);
+    color: var(--qb-action-fg);
+  }
+
+  /* One link per poster, stretched over the whole card; the ring is drawn on the card, not on the link text alone. */
+  .quest-poster .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .quest-poster:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .quest-poster .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* Wax seals sit at slots measured per poster; the signed-up seal is the same design shifted in hue. */
+  .quest-poster-seal {
+    position: absolute;
+    left: calc(var(--seal-x) * 1%);
+    top: calc(var(--seal-y) * 1%);
+    z-index: 2;
+    width: var(--seal-size);
+    height: var(--seal-size);
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  .quest-poster-seal--signed-up {
+    left: calc(var(--seal-signed-x) * 1%);
+    top: calc(var(--seal-signed-y) * 1%);
+  }
+
+  .quest-poster-seal img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .quest-poster-seal--signed-up img {
+    filter: hue-rotate(180deg);
+  }
+
+  @media (max-width: 480px) {
+    .quest-poster {
+      --seal-size: min(var(--seal-size-base), 64px);
+    }
+  }
+
+  @media (max-width: 320px) {
+    .quest-poster {
+      --seal-size: min(var(--seal-size-base), 56px);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .quest-poster {
+      transition: transform var(--qb-dur-base) var(--qb-ease);
+    }
+
+    .quest-poster-seal {
+      transition: transform var(--qb-dur-base) var(--qb-ease);
+    }
+
+    .quest-poster:hover {
+      transform: translateY(calc(-1 * var(--qb-space-xs)));
+    }
+
+    .quest-poster:hover .quest-poster-seal {
+      transform: translate(-50%, -50%) rotate(6deg);
+    }
+  }
+
+  .quest-poster--p1 {
+    --box-t: 7.5;
+    --box-r: 16.5;
+    --box-b: 9.6;
+    --box-l: 20.5;
+    --seal-x: 19.4;
+    --seal-y: 91.0;
+    --seal-signed-x: 79.3;
+    --seal-signed-y: 91.0;
+    --seal-size-base: 80px;
+    aspect-ratio: 1000 / 1400;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster1.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster1.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster1.png") type("image/png")), var(--paper-slab);
+  }
+
+  .quest-poster--p2 {
+    --box-t: 7.9;
+    --box-r: 16.5;
+    --box-b: 46.4;
+    --box-l: 21.0;
+    --seal-x: 44.1;
+    --seal-y: 59.4;
+    --seal-signed-x: 71.1;
+    --seal-signed-y: 59.4;
+    --seal-size-base: 64px;
+    aspect-ratio: 1000 / 1400;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster2.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster2.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster2.png") type("image/png")), var(--paper-slab);
+  }
+
+  .quest-poster--p4 {
+    --box-t: 13.8;
+    --box-r: 23.5;
+    --box-b: 15.8;
+    --box-l: 24.5;
+    --seal-x: 22.4;
+    --seal-y: 87.1;
+    --seal-signed-x: 80.3;
+    --seal-signed-y: 86.1;
+    --seal-size-base: 80px;
+    aspect-ratio: 1000 / 980;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster4.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster4.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster4.png") type("image/png")), var(--paper-slab);
+  }
+
+  .quest-poster--p5 {
+    --box-t: 17.8;
+    --box-r: 23.3;
+    --box-b: 21.5;
+    --box-l: 18.3;
+    --seal-x: 17.3;
+    --seal-y: 87.4;
+    --seal-signed-x: 80.3;
+    --seal-signed-y: 87.4;
+    --seal-size-base: 80px;
+    aspect-ratio: 600 / 675;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster5.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster5.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster5.png") type("image/png")), var(--paper-slab);
+  }
+
+  .quest-poster--p6 {
+    --box-t: 30.0;
+    --box-r: 21.7;
+    --box-b: 13.8;
+    --box-l: 20.0;
+    --seal-x: 22.3;
+    --seal-y: 19.8;
+    --seal-signed-x: 85.3;
+    --seal-signed-y: 10.8;
+    --seal-size-base: 80px;
+    aspect-ratio: 600 / 800;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster6.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster6.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster6.png") type("image/png")), var(--paper-slab);
+  }
+
+  .quest-poster--r1 {
+    --box-t: 14.4;
+    --box-r: 17.0;
+    --box-b: 28.9;
+    --box-l: 21.0;
+    --seal-x: 14.9;
+    --seal-y: 84.4;
+    --seal-signed-x: 31.9;
+    --seal-signed-y: 82.2;
+    --seal-size-base: 56px;
+    aspect-ratio: 1000 / 900;
+    background-image: url("../images/Ruined Posters/Ruined w Shadow/Ruined Poster 1.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Ruined Posters/Ruined w Shadow/Ruined Poster 1.webp") type("image/webp"), url("../images/Ruined Posters/Ruined w Shadow/Ruined Poster 1.png") type("image/png")), var(--paper-slab);
+  }
+}
+
 /* ========================================
    QUEST BOARD & QUEST CARDS STYLES
    ======================================== */

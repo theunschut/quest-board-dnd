@@ -172,6 +172,8 @@
     --card-width-tablet: 312px;
     --card-width-mobile: 276px;
     --card-width-small: 248px;
+    /* The poster board never draws a card narrower than this; the poster picker estimates at the same width. */
+    --card-width-floor: 304px;
     /* The shell stylesheet supplies the photo as --qb-board-photo; a theme replaces this whole name. */
     --qb-board-image: var(--qb-board-photo, none);
   }
