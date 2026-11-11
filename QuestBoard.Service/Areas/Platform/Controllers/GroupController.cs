@@ -9,6 +9,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Models.BoardDeletion;
 using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Jobs;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
@@ -182,16 +183,25 @@ public class GroupController(
         model.HomePage ??= group.HomePage;
     }
 
-    // Delete group (only empty groups)
+    private const string BoardGoneMessage = "That board no longer exists, so there was nothing to delete.";
+
+    private static string HasMembersMessage(string boardName)
+        => $"\"{boardName}\" still has members, so it was not deleted. Remove them first.";
+
+    // Delete board: the page previews what a delete removes and asks for the board's name to confirm
     [HttpGet]
     public async Task<IActionResult> Delete(int id)
     {
         var group = await groupService.GetByIdAsync(id);
-        if (group == null) return RedirectToAction(nameof(Index));
+        if (group == null)
+        {
+            TempData["Info"] = BoardGoneMessage;
+            return RedirectToAction(nameof(Index));
+        }
         var hasMembers = await groupService.HasMembersAsync(id);
         if (hasMembers)
         {
-            TempData["Error"] = "Cannot delete a group that has members.";
+            TempData["Error"] = HasMembersMessage(group.Name);
             return RedirectToAction(nameof(Index));
         }
         return View(group);
@@ -199,21 +209,35 @@ public class GroupController(
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int id)
+    public async Task<IActionResult> DeleteConfirmed(int id, string? confirmName)
     {
-        var group = await groupService.GetByIdAsync(id);
-        var hasMembers = await groupService.HasMembersAsync(id);
-        if (hasMembers)
+        BoardDeletionResult result;
+        try
         {
-            TempData["Error"] = "Cannot delete a group that has members.";
-            return RedirectToAction(nameof(Index));
+            result = await groupService.DeleteBoardAsync(id, confirmName);
         }
-        if (group != null)
+        catch (Exception ex)
         {
-            await groupService.RemoveAsync(group);
-            TempData["Success"] = "Group deleted.";
+            logger.LogError(ex, "Deleting board {BoardId} failed; nothing was changed", id);
+            TempData["Error"] = "The board could not be deleted and nothing was changed. Try again.";
+            return RedirectToAction(nameof(Delete), new { id });
         }
-        return RedirectToAction(nameof(Index));
+
+        switch (result.Status)
+        {
+            case BoardDeleteStatus.NotFound:
+                TempData["Info"] = BoardGoneMessage;
+                return RedirectToAction(nameof(Index));
+            case BoardDeleteStatus.HasMembers:
+                TempData["Error"] = HasMembersMessage(result.BoardName);
+                return RedirectToAction(nameof(Index));
+            case BoardDeleteStatus.NameMismatch:
+                TempData["Error"] = $"The name you typed does not match \"{result.BoardName}\". Check it and try again.";
+                return RedirectToAction(nameof(Delete), new { id });
+            default:
+                TempData["Success"] = $"Board \"{result.BoardName}\" was deleted.";
+                return RedirectToAction(nameof(Index));
+        }
     }
 
     // Members page
