@@ -211,6 +211,27 @@ Also add a safety margin (for example 10%) to `TitleEm` for uppercase-dominant t
 **Issue:** The join forms' hidden `characterId` fields are only synced on the select's `change` event. If the browser restores the select's value without firing `change`, a role button posts an empty character while the UI shows one selected.
 **Fix:** Run the same copy once at init (and on `pageshow`).
 
+## Fix outcomes
+
+Applied on `milestone/v9-rolling-improvements`, one commit per finding.
+
+| Finding | Outcome |
+|---------|---------|
+| WR-01 | fixed (partly), 3a7ab939. The fallback now picks the poster with the most room at the smaller title size. The class doc names its real inputs (id, title, DM name, finalized state, board type) and says the estimate can still be exceeded. The tautological test is replaced by one that checks a known long title against hand arithmetic. Skipped on purpose: the 10% `TitleEm` margin (it reshuffles every poster pick) and any CSS clamp or text-shadow change (the poster text treatment is an operator decision). A 200-character caps-heavy title can still run past the box on the roomiest poster. |
+| WR-02 | fixed, 8c402797. DM Controls and Quest Summary are `h2.h5`, Quick Stats is `h3.h6`, and a one-rule override in `quest-manage.css` keeps them at the body step (16px/600, body face) instead of the 28px display face the card header gives an `h2`. `QuestManageDmControlsTests` and `BoardMoveControlTests` pin the new markup with the same intent, and a new test checks that no heading level is skipped. |
+| WR-03 | fixed, 7da440df. The browser's `invalid` event on the hidden textarea now writes "Description is required." into the field's message element (`role="alert"`), sets `aria-invalid` and `aria-describedby` on the editor input, and focuses it. The message clears when the user types. The `required` attribute and the server rule are untouched. |
+| WR-04 | fixed, f3913d2e. The busy wording comes from `data-busy-label` on each submit button ("Saving follow-up quest..." for the Follow-Up form). Only the text node changes, so the icon stays. The lock runs after a `setTimeout` and only if the submit was not prevented. `pageshow` with `persisted` restores the label and re-enables the button. |
+| WR-05 | skipped: the calendar is phase 97's and the issue predates this phase. |
+| WR-06 | skipped: the bare empty board on desktop is the approved design. |
+| WR-07 | fixed, e49108bc. `apply()` runs at init and on `pageshow`. |
+| WR-08 | fixed, 4d7570b3. `deleteQuest` has a `.catch` with an alert, in the style of `removePlayer`. |
+| IN-01 | fixed, 3d5b5000. The two hidden date inputs format with `CultureInfo.InvariantCulture`. |
+| IN-02 | skipped: disabling or hiding the last remove button means choosing a behaviour and touching server-rendered rows on three forms; the current no-op is harmless. |
+| IN-03 | skipped: moving the antiforgery meta into the head needs a head section in both layouts and five views, which is more than a trivial change. |
+| IN-04 | fixed in part, 802bd8eb (dead `player-list` class removed). Skipped: the catalog-versus-CSS drift test, because the poster CSS is out of scope for this pass. |
+| IN-05 | fixed, c3d32afd. The excerpt backs up one character when the cut would split a surrogate pair. |
+| IN-06 | fixed, ea2179ad. The join forms' character field is copied at init and on `pageshow`. |
+
 ---
 
 _Reviewed: 2026-11-11_
