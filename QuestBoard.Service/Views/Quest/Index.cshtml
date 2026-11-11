@@ -51,14 +51,14 @@ else
                 {
                     <picture class="quest-poster-seal">
                         <source type="image/webp" srcset="/images/Wax%20Seals/@(sealFile).webp" />
-                        <img src="/images/Wax%20Seals/@(sealFile).png" alt="@(char.ToUpperInvariant(status[0]) + status[1..]) quest" width="80" height="80" />
+                        <img src="/images/Wax%20Seals/@(sealFile).png" alt="" width="80" height="80" />
                     </picture>
                 }
                 @if (isSignedUp)
                 {
                     <picture class="quest-poster-seal quest-poster-seal--signed-up">
                         <source type="image/webp" srcset="/images/Wax%20Seals/@(sealFile).webp" />
-                        <img src="/images/Wax%20Seals/@(sealFile).png" alt="You are signed up for this quest" width="80" height="80" />
+                        <img src="/images/Wax%20Seals/@(sealFile).png" alt="" width="80" height="80" />
                     </picture>
                 }
                 <div class="quest-poster-text">

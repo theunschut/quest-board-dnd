@@ -116,7 +116,7 @@ public class QuestBoardEmptyStateTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
-    public async Task DesktopBoard_WithFinalizedSignedUpQuest_NamesTheStatusInTheLinkAndBothSeals()
+    public async Task DesktopBoard_WithFinalizedSignedUpQuest_NamesTheStatusInTheLinkAndLeavesBothSealsDecorative()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (client, viewerId) = await SignInAsync("poster_signed_viewer");
@@ -126,8 +126,10 @@ public class QuestBoardEmptyStateTests(WebApplicationFactoryBase factory)
         var html = await GetBoardAsync(client, TestContext.Current.CancellationToken);
 
         html.Should().Contain(@"<span class=""visually-hidden"">, finalized, signed up</span>");
-        html.Should().Contain(@"alt=""Finalized quest""");
-        html.Should().Contain(@"alt=""You are signed up for this quest""");
+        // The link name already carries both facts, so the seals add nothing for a screen reader.
+        Regex.Matches(html, @"<picture class=""quest-poster-seal[^""]*"">[\s\S]*?<img [^>]*\balt=""""").Should().HaveCount(2);
+        html.Should().NotContain("Finalized quest");
+        html.Should().NotContain("You are signed up for this quest");
         html.Should().Contain("Quest Date:");
         html.Should().Contain("Selected Adventurers:");
     }
