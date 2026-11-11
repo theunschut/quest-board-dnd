@@ -67,10 +67,10 @@ public class BoardDeletePageViewModel
     public static BoardDeletePageViewModel Create(Group group, BoardDeletionPreview preview, bool nameMismatch = false)
     {
         var deleted = preview.Items
-            .Where(item => item.Count > 0 && Labels.ContainsKey(item.Kind))
+            .Where(item => item.Count > 0)
             .Select(item =>
             {
-                var labels = Labels[item.Kind];
+                var labels = LabelsFor(item.Kind);
                 var names = item.Names is { Count: > 0 } ? item.Names.Select(DisplayName).ToList() : [];
                 return new BoardDeleteRowViewModel
                 {
@@ -143,6 +143,14 @@ public class BoardDeletePageViewModel
 
         return rows;
     }
+
+    // The page exists to show everything a delete removes, so a kind the delete knows but the page has no
+    // words for fails loudly here instead of being left off the page while its rows are still deleted.
+    private static KindLabels LabelsFor(BoardContentKind kind)
+        => Labels.TryGetValue(kind, out var labels)
+            ? labels
+            : throw new InvalidOperationException(
+                $"The board delete page has no label for {kind}, so it cannot show rows the delete would remove.");
 
     private static string DisplayName(string? name) => string.IsNullOrWhiteSpace(name) ? UntitledName : name;
 }
