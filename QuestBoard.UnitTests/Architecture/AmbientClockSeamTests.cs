@@ -45,7 +45,6 @@ public class AmbientClockSeamTests
         "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Manage.cshtml",
-        "QuestBoard.Service/Views/Quest/_QuestCard.cshtml",
         "QuestBoard.Service/Views/Series/Details.cshtml",
     ];
 
@@ -105,7 +104,6 @@ public class AmbientClockSeamTests
         ["QuestBoard.Service/Views/Quest/Details.Mobile.cshtml"] = "ViewBag.BoardToday",
         ["QuestBoard.Service/Views/Quest/Index.Mobile.cshtml"] = "ViewBag.BoardToday",
         ["QuestBoard.Service/Views/Quest/Manage.cshtml"] = "ViewBag.BoardToday",
-        ["QuestBoard.Service/Views/Quest/_QuestCard.cshtml"] = "ViewBag.BoardToday",
     };
 
     private const string EmailPreviewControllerRelativePath = "QuestBoard.Service/Controllers/Admin/EmailPreviewController.cs";

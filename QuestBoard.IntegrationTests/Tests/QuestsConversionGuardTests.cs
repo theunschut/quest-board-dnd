@@ -64,7 +64,7 @@ public class QuestsConversionGuardTests
 
     // Page sheets under the css folder that open the pages layer, by file name.
     private static readonly string[] ConvertedSheets =
-        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-editor.css", "markdown-content.css"];
+        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quests.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-editor.css", "markdown-content.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
@@ -304,6 +304,21 @@ public class QuestsConversionGuardTests
             Regex.Matches(StripCssComments(ReadRepoFile(SheetPath(name))), @"\.(?:quest-log-[a-z-]+|empty-quest-log|recap-badge|view-details-text)\b")
                 .Select(m => m.Value).Should().BeEmpty(
                     $"{name} is unlayered and would override the layered Quest Log sheets");
+    }
+
+    [Fact]
+    public void LegacySheet_HoldsNoDeadQuestRules_AndTheSharedContainerRuleIsNotImportant()
+    {
+        // The quest card, wax seal, custom radio vote and vote button rules matched no view once the board and
+        // the vote moved to their layered sheets; an unlayered copy would only beat the layered ones again.
+        var legacy = StripCssComments(ReadRepoFile(SheetPath("legacy-pages.css")));
+        Regex.Matches(legacy, @"\.(?:quest-card|quest-status-[a-z]+|fantasy-quest-card|quest-title|quest-description|cr-badge|wax-seal|seal-image|custom-radio-[a-z]+|vote-btn)\b")
+            .Select(m => m.Value).Should().BeEmpty("legacy-pages.css must not carry the retired quest board and vote rules");
+
+        // The rule other areas still use: an unlayered rule already beats the vendor layer, so it needs no flag.
+        var container = Regex.Match(legacy, @"\.container\.mt-4\s*\{([^}]*)\}");
+        container.Success.Should().BeTrue("the shared wide-container rule is still used by the group picker layout and the DM profile pages");
+        ImportantFlag.IsMatch(container.Groups[1].Value).Should().BeFalse("the container rule beats the vendor layer without an important flag");
     }
 
     [Theory]
