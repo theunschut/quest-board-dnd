@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 95
-current_phase_name: quests-and-quest-log-ui-conversion
+current_phase: 102
+current_phase_name: board-deletion
 status: executing
 stopped_at: Completed 95-18-PLAN.md
-last_updated: "2026-11-11T14:16:06.721Z"
+last_updated: "2026-11-11T15:30:16.564Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 95 execution started
+last_activity_desc: Phase 102 execution started
 progress:
   total_phases: 31
-  completed_phases: 20
+  completed_phases: 21
   total_plans: 230
-  completed_plans: 198
-  percent: 65
+  completed_plans: 199
+  percent: 68
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
@@ -25,14 +25,19 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 95 — quests-and-quest-log-ui-conversion
+**Current focus:** Phase 102 — board-deletion
 
 ## Current Position
 
-Phase: 95 (quests-and-quest-log-ui-conversion) — EXECUTING
-Plan: 18 of 18
-Status: Ready to execute
-Last activity: 2026-11-11 — Phase 95 execution started
+Phase: 102 (board-deletion) — EXECUTING
+Plan: 1 of 10
+Status: Executing Phase 102
+Last activity: 2026-11-11 — Phase 102 execution started
+
+**Phase 95 (quests-and-quest-log-ui-conversion) is parked, not complete.** All 18 of 18 plans are
+executed (stopped at: Completed 95-18-PLAN.md), but the phase stays open until the operator's
+real-phone UAT passes (`/gsd-verify-work 95`). Phases 94, 95 and 102 ship together as v6.0.0 via a
+PR from `milestone/v9-rolling-improvements` to `main`, after that UAT and Phase 102 are done.
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -261,6 +266,7 @@ Resume file: None
 
 ## Operator Next Steps
 
+- Run the Phase 95 real-phone UAT (`/gsd-verify-work 95`); Phase 95 is executed (18/18) but stays open until it passes, and v6.0.0 waits on it
 - Rotate the iPhone calendar subscription: revoke it on the Profile page, re-subscribe the iPhone with a fresh address, and delete the downloaded `.ics` file from Downloads. Its address was exposed in a session transcript (Phase 88 T-88-22, the only open threat)
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this
