@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: quests-and-quest-log-ui-conversion
 status: executing
-stopped_at: Completed 95-14-PLAN.md
-last_updated: "2026-11-11T11:56:36.814Z"
+stopped_at: Completed 95-15-PLAN.md
+last_updated: "2026-11-11T12:05:24.506Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 95 execution started
 progress:
   total_phases: 31
   completed_phases: 20
-  total_plans: 220
-  completed_plans: 195
+  total_plans: 225
+  completed_plans: 196
   percent: 65
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 95 (quests-and-quest-log-ui-conversion) — EXECUTING
-Plan: 14 of 18
+Plan: 15 of 18
 Status: Ready to execute
 Last activity: 2026-11-11 — Phase 95 execution started
 
@@ -89,6 +89,7 @@ introduced by Phase 87.
 | Phase 95 P12 | 1h | 2 tasks | 6 files |
 | Phase 95 P13 | 2h | 2 tasks | 8 files |
 | Phase 95 P14 | 2h | 3 tasks | 14 files |
+| Phase 95 P15 | 1h | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -249,8 +250,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-11T11:56:36.780Z
-Stopped at: Completed 95-14-PLAN.md
+Last session: 2026-11-11T12:05:24.473Z
+Stopped at: Completed 95-15-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
