@@ -432,19 +432,20 @@ return rows.GroupBy(r => r.UserId)
 | A5 | The phone-sheet approach (new `platform-group-delete.mobile.css`) will not trip `MobileCssTests`/`UiFoundation*` guards | Pitfall 10 | A guard test fails and the sheet needs adjusting; run the guards in the first UI task |
 | A6 | `ui_phase` is `true` in `.planning/config.json`, so plan-phase may require a `102-UI-SPEC.md` before the view tasks | Open Questions | The workflow's UI gate blocks planning until the operator generates one or waives it |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **UI spec gate.**
+1. **UI spec gate.** RESOLVED: `102-UI-SPEC.md` exists and is approved (2026-11-11); plans 102-07 (page) and 102-08 (sheets and gate) implement it.
    - What we know: `.planning/config.json` has `ui_phase: true` and `ui_safety_gate: true`; Phase 93 was blocked by exactly this gate (STATE.md).
    - What's unclear: whether the operator wants a UI-SPEC for one confirmation page and one table column.
    - Recommendation: planner asks once; if waived, follow `.claude/ui-guidelines.md` plus the Phase 92 Move page as the visual precedent.
+   - RESOLVED: no waiver needed; the UI-SPEC was produced and approved before planning.
 
-2. **Overlap with Phase 100.** Phase 100 (not yet planned) will convert `Group/Delete*` and `Users/Index*`. Phase 102 rewrites the Delete twins and edits the Users twins first.
+2. **Overlap with Phase 100.** RESOLVED: the Delete twins, partial and sheets are built to Phase 100's definition of converted (plans 102-07, 102-08), so Phase 100 only verifies them; the Users views keep their legacy markup apart from the new column, phone block and sheet (plan 102-03) and remain Phase 100's to convert. Phase 100 (not yet planned) will convert `Group/Delete*` and `Users/Index*`. Phase 102 rewrites the Delete twins and edits the Users twins first.
    - Recommendation: build the new Delete markup to Phase 100's "definition of converted" now (so there is nothing to redo), touch only the minimal Users markup (one column / one line), and leave the existing inline `onclick` on Users for Phase 100.
 
-3. **Where does the typed name get checked: service or controller?** Either works; recommended in `GroupService.DeleteBoardAsync(id, confirmName)` so a status enum carries all outcomes and the unit test is on the service.
+3. **Where does the typed name get checked: service or controller?** RESOLVED: in `GroupService.DeleteBoardAsync(id, confirmName)` returning `BoardDeleteStatus.NameMismatch` (plan 102-01; service facts in plan 102-05). Either works; recommended in `GroupService.DeleteBoardAsync(id, confirmName)` so a status enum carries all outcomes and the unit test is on the service.
 
-4. **Success wording.** One sentence naming the board; whether to include row counts is a taste call (recommend no: keep to one sentence, the toast persists only 5 s).
+4. **Success wording.** RESOLVED: one sentence, `Board "{Name}" was deleted.`, no row counts (set in plan 102-01, kept by plan 102-09). One sentence naming the board; whether to include row counts is a taste call (recommend no: keep to one sentence, the toast persists only 5 s).
 
 ## Environment Availability
 

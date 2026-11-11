@@ -2075,7 +2075,7 @@ Plans:
 **Goal:** A super admin can delete a board that no longer has any members, without a server error. Everything that belongs only to that board goes with it, and anything that must outlive the board (users, and whatever they own across boards) is unlinked instead of deleted.
 **Requirements**: TBD
 **Depends on:** Nothing in this milestone (independent bug fix; it can run at any point)
-**Plans:** 0 plans
+**Plans:** 10 plans
 
 **Scope:**
 
@@ -2088,4 +2088,30 @@ Plans:
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 102 to break down)
+**Wave 1**
+
+- [ ] 102-01-PLAN.md — Tracer: typed-name delete POST through controller, service and repository in one save, for a board holding quests, proven over HTTP
+- [ ] 102-02-PLAN.md — Super-admin stale active-board recovery: shared session-clear helper and a board-exists check in the session middleware
+- [ ] 102-03-PLAN.md — Boards column on /platform/Users, desktop and phone
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 102-04-PLAN.md — Delete every board-owned table and unlink cross-board references, with per-kind counts and a foreign-key integrity sweep
+- [ ] 102-05-PLAN.md — Guard tests: foreign-key model pin, service typed-name rules, SQL Server delete and rollback test (skips without a server)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 102-06-PLAN.md — Deletion preview built from the delete's own query helpers
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 102-07-PLAN.md — Confirmation page on both twins through one shared partial, with refusal markup
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 102-08-PLAN.md — Page sheets, typed-name gate script and static guard
+- [ ] 102-09-PLAN.md — POST outcomes, own-session clear and audit log line
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 102-10-PLAN.md — Full suite, required SQL Server run, and manual check on the real database (checkpoint)
