@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Models.BoardDeletion;
 using QuestBoard.Repository.Entities;
 
 namespace QuestBoard.Repository;
@@ -149,6 +150,61 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
             .IgnoreQueryFilters()
             .Where(es => es.UserId == userId && es.Event.GroupId == groupId)
             .ToListAsync(token);
+    }
+
+    // The ambient board filter answers for the caller's currently selected board, which is the
+    // wrong question for an operation that targets a board named by an explicit groupId
+    // argument. Each helper below re-imposes scope from that argument, so none is broader than
+    // the board it is asked about. They are the single definition of what belongs to a board,
+    // shared by the delete and its preview.
+    private IQueryable<QuestEntity> BoardQuests(int groupId)
+        => DbContext.Quests.IgnoreQueryFilters().Where(q => q.GroupId == groupId);
+
+    private IQueryable<ProposedDateEntity> BoardProposedDates(int groupId)
+        => DbContext.Set<ProposedDateEntity>().IgnoreQueryFilters().Where(pd => pd.Quest.GroupId == groupId);
+
+    private IQueryable<PlayerDateVoteEntity> BoardDateVotes(int groupId)
+        => DbContext.Set<PlayerDateVoteEntity>().IgnoreQueryFilters().Where(v => v.ProposedDate.Quest.GroupId == groupId);
+
+    private IQueryable<PlayerSignupEntity> BoardPlayerSignups(int groupId)
+        => DbContext.PlayerSignups.IgnoreQueryFilters().Where(ps => ps.Quest.GroupId == groupId);
+
+    private IQueryable<ReminderLogEntity> BoardReminderLogs(int groupId)
+        => DbContext.ReminderLogs.IgnoreQueryFilters().Where(r => r.Quest.GroupId == groupId);
+
+    /// <inheritdoc/>
+    public async Task<BoardDeletionResult> DeleteBoardAsync(int groupId, CancellationToken token = default)
+    {
+        var group = await DbContext.Groups.FirstOrDefaultAsync(g => g.Id == groupId, token);
+        if (group == null)
+            return BoardDeletionResult.Refused(BoardDeleteStatus.NotFound);
+
+        // Members are rechecked here, before anything is staged, because the check made when the
+        // confirmation page was shown may be stale by the time it is confirmed.
+        if (await DbContext.UserGroups.AnyAsync(ug => ug.GroupId == groupId, token))
+            return BoardDeletionResult.Refused(BoardDeleteStatus.HasMembers, group.Name);
+
+        // EF orders the DELETE commands by the model's foreign keys inside the single save below,
+        // which is one database transaction, so this staging order is for readability only.
+        DbContext.Set<PlayerDateVoteEntity>().RemoveRange(await BoardDateVotes(groupId).ToListAsync(token));
+        DbContext.PlayerSignups.RemoveRange(await BoardPlayerSignups(groupId).ToListAsync(token));
+        DbContext.Set<ProposedDateEntity>().RemoveRange(await BoardProposedDates(groupId).ToListAsync(token));
+        DbContext.ReminderLogs.RemoveRange(await BoardReminderLogs(groupId).ToListAsync(token));
+        DbContext.Quests.RemoveRange(await BoardQuests(groupId).ToListAsync(token));
+        DbContext.Groups.Remove(group);
+
+        try
+        {
+            await DbContext.SaveChangesAsync(token);
+        }
+        catch
+        {
+            // No half-applied tracked graph may be saved by a subsequent save in the same request.
+            DbContext.ChangeTracker.Clear();
+            throw;
+        }
+
+        return new BoardDeletionResult { Status = BoardDeleteStatus.Deleted, BoardName = group.Name };
     }
 
     /// <inheritdoc/>
