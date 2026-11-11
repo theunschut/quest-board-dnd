@@ -1,5 +1,12 @@
 # Phase 95: Quests and Quest Log UI conversion - Research
 
+> **Revision 2026-11-11:** the operator moved execution to the Linux machine that ran Phase 94. Every
+> Windows-specific finding below (Edge via `channel: 'msedge'`, a fresh `playwright-core` 1.65.0 install,
+> PowerShell listener lookup, `Trusted_Connection`, Python 3.14 with scipy) is superseded. The phase now
+> reuses `~/qb-ui-review/phase-94` (Playwright 1.64.1 with its own headless Chromium, the Audit Board and
+> its `qb-audit-*` accounts, the Direction A renders). The Python here is `python3` with Pillow 12.1 and
+> numpy 2.3, and has no scipy. See 95-CONTEXT.md D-22 revision and 95-01-PLAN.md.
+
 **Researched:** 2026-11-10
 **Domain:** ASP.NET Core 10 MVC Razor views, plain CSS cascade layers, vanilla JS modules, EasyMDE 2.21.0, scripted browser capture (Windows 11)
 **Confidence:** MEDIUM-HIGH (in-repo facts and measurements HIGH; browser-behaviour claims that need a probe in the real page are flagged ASSUMED)

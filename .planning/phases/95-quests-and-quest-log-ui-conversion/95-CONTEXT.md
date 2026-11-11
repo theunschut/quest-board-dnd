@@ -136,8 +136,17 @@ identity and the reason the app exists. Keep them, keep them varied, and make th
   the Direction A renders (`mockups/direction-a/png/quest-details-*`, `quest-form-*`,
   `quest-form--edit-*`) over from the machine Phase 94 ran on, as the AFTER references for Q-111 to
   Q-113. Phase 95 scratch lives outside the repository (for example `~/qb-ui-review/phase-95/`).
+- **D-22 revision (2026-11-11, operator decision):** the phase runs on the Linux machine that ran
+  Phase 94 instead of the Windows machine, because the `senior-frontend` skill and the Phase 94
+  scratch mockups live there. The Phase 94 scratch (`~/qb-ui-review/phase-94`) is reused: its
+  Playwright 1.64.1 install and tools, the Audit Board (id 7) with its `qb-audit-*` accounts, and the
+  Direction A renders (copied by the executor, not the operator). BEFORE is still re-captured
+  from the current branch into `~/qb-ui-review/phase-95/`. Front-end work (mockups, the Gate sheets,
+  view and CSS conversion) invokes the `senior-frontend` skill. Python is `python3`; scipy is not
+  installed and is not added.
 - **D-23: The first plan opens with an operator checkpoint, as 94-01 did.** The operator confirms
-  SQL Server at `localhost:1433` (never provisioned by the agent) and bootstraps the admin account;
+  SQL Server at `localhost:1433` (never provisioned by the agent) and the admin account (since the
+  2026-11-11 revision: signs off on reusing the Phase 94 Audit Board accounts);
   the executor creates player and DM test accounts through Admin and the fixture quests the
   captures need (crowded board, empty board, voting, finalized, signed up, long titles, a Campaign
   board, a quest with a follow-up, a completed quest with and without a recap). Credentials stay in

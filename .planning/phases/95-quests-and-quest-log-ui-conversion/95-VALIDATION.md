@@ -23,7 +23,7 @@ created: "2026-11-10"
 | **Config file** | `QuestBoard.IntegrationTests/xunit.runner.json` (`parallelizeAssembly: false`) |
 | **Quick run command** | `dotnet test QuestBoard.IntegrationTests --filter "<per-slice expression>"` (see Per-slice sampling) |
 | **Full suite command** | `dotnet test` |
-| **Browser checks** | scratch Playwright under `~/qb-ui-review/phase-95/` (outside the repo), driving installed Edge via `channel: 'msedge'` |
+| **Browser checks** | scratch Playwright under `~/qb-ui-review/phase-95/` (outside the repo), reusing the Phase 94 `playwright` 1.64.1 install and its headless Chromium |
 | **Estimated runtime** | ~15 s per filtered integration run; full suite a few minutes |
 
 ---
