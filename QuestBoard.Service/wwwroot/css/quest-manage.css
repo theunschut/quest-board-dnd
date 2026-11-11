@@ -69,8 +69,10 @@
     text-align: start;
   }
 
+  /* Hover darkens the band instead of lightening it: a lighter band under the label would cost it contrast. */
   .quest-manage-disclosure-btn:hover {
-    background-color: var(--qb-surface-glass-hover);
+    background-color: var(--qb-surface-scrim);
+    border-color: var(--qb-border-strong);
   }
 
   .quest-manage-disclosure-btn .fa-chevron-down {
@@ -93,7 +95,7 @@
 
   /*
    * Date options: a dark band under the date so it holds contrast on its own, a gold border and inset ring while its
-   * radio is picked (the filled radio is the other marker), and a lighter band on hover. Nothing moves.
+   * radio is picked (the filled radio is the other marker), and a stronger border on hover. Nothing moves.
    */
   .quest-manage-page .date-option {
     margin-block-end: var(--qb-space-sm);
@@ -114,7 +116,7 @@
   }
 
   .quest-manage-page .manage-date-option:hover {
-    background-image: linear-gradient(var(--qb-surface-glass-hover), var(--qb-surface-glass-hover));
+    border-color: var(--qb-border-strong);
   }
 
   .quest-manage-page .manage-date-option:has(.date-selector:checked) {

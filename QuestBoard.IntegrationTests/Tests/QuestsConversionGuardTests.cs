@@ -59,7 +59,7 @@ public class QuestsConversionGuardTests
 
     // Page sheets under the css folder that open the pages layer, by file name.
     private static readonly string[] ConvertedSheets =
-        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css"];
+        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
@@ -73,6 +73,7 @@ public class QuestsConversionGuardTests
         ["QuestBoard.Service/Views/Quest/Index.cshtml"] = ["quests.css"],
         ["QuestBoard.Service/Views/Quest/Index.Mobile.cshtml"] = ["home.mobile.css"],
         ["QuestBoard.Service/Views/Quest/Manage.cshtml"] = ["quest-manage.css"],
+        ["QuestBoard.Service/Views/Quest/Manage.Mobile.cshtml"] = ["dm-manage.mobile.css"],
     };
 
     // Every source file this work touches, scanned for planning references. This test file is left
@@ -93,6 +94,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/css/dm-create.mobile.css",
         "QuestBoard.Service/wwwroot/css/home.mobile.css",
         "QuestBoard.Service/wwwroot/css/quest-manage.css",
+        "QuestBoard.Service/wwwroot/css/dm-manage.mobile.css",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/js/quest-board.js",
         "QuestBoard.Service/Helpers/QuestPosterCatalog.cs",

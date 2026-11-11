@@ -452,6 +452,85 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
+    /// The phone Manage page of an open quest carries a Quick Stats section above the date voting results,
+    /// with the same figures the desktop sidebar shows.
+    /// </summary>
+    [Fact]
+    public async Task MobileDmManage_OpenQuest_RendersQuickStatsAboveTheVotingResults()
+    {
+        var (authClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dm_dmview04", "dm_dmview04@test.com", roles: new[] { "DungeonMaster" });
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dmUser.Id, "Manage Mobile Quest DM04");
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, DateTime.UtcNow.AddDays(7));
+
+        var html = await GetManageAsMobileAsync(authClient, quest.Id);
+
+        html.Should().Contain("<h2>Quick Stats</h2>");
+        html.Should().Contain("Best Date:");
+        html.Should().Contain("players available");
+        html.IndexOf("<h2>Quick Stats</h2>", StringComparison.Ordinal)
+            .Should().BeLessThan(html.IndexOf("Voting Results</h2>", StringComparison.Ordinal),
+                "Quick Stats sits directly above the proposed dates");
+    }
+
+    /// <summary>
+    /// A finalized quest viewed by an Admin on the phone renders one Remove control for each selected
+    /// participant, the same control the desktop table carries.
+    /// </summary>
+    [Fact]
+    public async Task MobileDmManage_FinalizedQuestViewedByAdmin_RendersARemoveControlPerSelectedParticipant()
+    {
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "admin_dmview05", "admin_dmview05@test.com", roles: new[] { "Admin" });
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_dmview05", "dm_dmview05@test.com", name: "DM View05");
+        var finalizedDate = DateTime.UtcNow.AddDays(7);
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Manage Mobile Quest DM05", isFinalized: true, finalizedDate: finalizedDate);
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, finalizedDate);
+        var first = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "player_dmview05a", "player_dmview05a@test.com", name: "Player View05A");
+        var second = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "player_dmview05b", "player_dmview05b@test.com", name: "Player View05B");
+        var firstSignup = await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, first.Id, isSelected: true);
+        var secondSignup = await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, second.Id, isSelected: true);
+
+        var html = await GetManageAsMobileAsync(adminClient, quest.Id);
+
+        html.Should().Contain("<h2>Selected Participants</h2>");
+        html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{firstSignup.Id}\"");
+        html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{secondSignup.Id}\"");
+        System.Text.RegularExpressions.Regex.Matches(html, "data-action=\"remove-player\"").Count.Should().Be(2);
+    }
+
+    /// <summary>
+    /// The quest's own Dungeon Master is not an Admin, so the same finalized phone page carries no Remove
+    /// control for the participants; the server renders it only under the Admin condition.
+    /// </summary>
+    [Fact]
+    public async Task MobileDmManage_FinalizedQuestViewedByItsDungeonMaster_RendersNoRemoveControl()
+    {
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dm_dmview06", "dm_dmview06@test.com", roles: new[] { "DungeonMaster" });
+        var finalizedDate = DateTime.UtcNow.AddDays(7);
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dmUser.Id, "Manage Mobile Quest DM06", isFinalized: true, finalizedDate: finalizedDate);
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, finalizedDate);
+        var player = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "player_dmview06", "player_dmview06@test.com", name: "Player View06");
+        await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, player.Id, isSelected: true);
+
+        var html = await GetManageAsMobileAsync(dmClient, quest.Id);
+
+        html.Should().Contain("<h2>Selected Participants</h2>");
+        html.Should().NotContain("data-action=\"remove-player\"");
+    }
+
+    private async Task<string> GetManageAsMobileAsync(HttpClient authClient, int questId)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Manage/{questId}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
     /// DM Profile on mobile renders glass card layout (dm-profile-header-card).
     /// Also checks that dm-profile.mobile.css is linked.
     /// </summary>
