@@ -50,9 +50,13 @@
     font-size: var(--qb-text-sm);
   }
 
+  /*
+   * A summary only draws its disclosure triangle while it is a list item, so it stays one (a flex summary
+   * loses the triangle and no longer looks expandable). align-content centres the line in the taller row.
+   */
   .board-delete-names > summary {
-    display: flex;
-    align-items: center;
+    display: list-item;
+    align-content: center;
     min-height: var(--qb-hit-min);
     cursor: pointer;
   }

@@ -119,6 +119,18 @@ public class BoardDeletionStaticGuardTests
 
     private static readonly Regex MediaQuery = new(@"@media\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // A summary only draws its disclosure triangle while it is a list item, so the display each rule
+    // aimed at a summary sets is collected; anything but list-item hides the triangle.
+    private static readonly Regex SummaryRule = new(@"[^{}]*\bsummary\b[^{}]*\{([^{}]*)\}", RegexOptions.Compiled);
+
+    private static readonly Regex DisplayDeclaration = new(
+        @"(?<![\w-])display\s*:\s*([^;}]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static IEnumerable<string> SummaryDisplays(string strippedCss) =>
+        SummaryRule.Matches(strippedCss)
+            .SelectMany(rule => DisplayDeclaration.Matches(rule.Groups[1].Value))
+            .Select(declaration => declaration.Groups[1].Value.Trim());
+
     // Written as regex data so this file never holds a literal it forbids elsewhere: a hex colour
     // of 3, 4, 6 or 8 digits (not an id selector with a longer name), and the colour functions.
     private static readonly (string Label, Regex Pattern)[] ColourLiteralPatterns =
@@ -249,6 +261,17 @@ public class BoardDeletionStaticGuardTests
     }
 
     [Fact]
+    public void NewSheets_KeepTheSummaryDisclosureMarker()
+    {
+        // The collapsed name lists are how the admin checks what a delete removes, so they must look like
+        // they open: a summary given any display but list-item loses its disclosure triangle.
+        foreach (var path in NewSheets)
+            SummaryDisplays(StripCssComments(ReadRepoFile(path))).Should().OnlyContain(
+                display => display == "list-item",
+                $"{path} must leave each summary a list item so it keeps its disclosure triangle");
+    }
+
+    [Fact]
     public void GateModule_WritesNoMarkupFromStrings()
     {
         // The module shows a status line next to an admin-authored board name, so it only writes elements and text.
@@ -336,6 +359,11 @@ public class BoardDeletionStaticGuardTests
 
         MediaQuery.Matches("@med" + "ia (max-width: 10px) { .a { top: 0 } }").Should().HaveCount(1);
         MediaQuery.Matches(StripCssComments("/* no @med" + "ia here */ .a { top: 0 }")).Should().BeEmpty();
+
+        SummaryDisplays(StripCssComments(
+                "@layer pages { .a > summary { display: flex; } .b { display: grid; } " +
+                "/* summary { display: block } */ .c > summary { min-height: 1px; display: list-item; } }"))
+            .Should().Equal("flex", "list-item");
 
         MarkupSinkPattern.Matches("el.inner" + "HTML = x; el.insertAdjacent" + "HTML('a', b); document.wri" + "te(c);")
             .Should().HaveCount(3);
