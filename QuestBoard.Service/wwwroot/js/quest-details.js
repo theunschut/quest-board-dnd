@@ -51,6 +51,11 @@ function initRoleSelect(select) {
     }
 
     select.addEventListener('change', apply);
+
+    // A browser can restore the select's value (Back navigation, soft reload) without firing
+    // change, so the state is applied once now and again when the page is shown.
+    apply();
+    window.addEventListener('pageshow', apply);
 }
 
 // The character picked above the three join forms is copied into each form's hidden field, so
