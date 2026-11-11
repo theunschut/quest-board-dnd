@@ -103,6 +103,9 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         // GET /platform/Group/Delete/{id} should return 200 (delete confirmation page)
         var deleteResponse = await client.GetAsync($"/platform/Group/Delete/{group!.Id}", TestContext.Current.CancellationToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deletePage = await deleteResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        deletePage.Should().Contain("Delete board");
+        deletePage.Should().Contain("name=\"confirmName\"");
     }
 
     // Delete empty group via POST succeeds
@@ -123,10 +126,16 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         var group = dbContext.Groups.FirstOrDefault(g => g.Name == uniqueName);
         group.Should().NotBeNull();
 
-        // POST /platform/Group/Delete/{id}
-        var deleteResponse = await client.PostAsync($"/platform/Group/Delete/{group!.Id}",
-            new FormUrlEncodedContent(new Dictionary<string, string>()), TestContext.Current.CancellationToken);
-        deleteResponse.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        // POST /platform/Group/Delete/{id} with the board's exact name
+        var groupId = group!.Id;
+        var deleteResponse = await client.PostAsync($"/platform/Group/Delete/{groupId}",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["confirmName"] = uniqueName }),
+            TestContext.Current.CancellationToken);
+        deleteResponse.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+
+        using var freshScope = _factory.Services.CreateScope();
+        var freshContext = freshScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        freshContext.Groups.Any(g => g.Id == groupId).Should().BeFalse();
     }
 
     // Delete GET is blocked (redirects to Index) when group has members
