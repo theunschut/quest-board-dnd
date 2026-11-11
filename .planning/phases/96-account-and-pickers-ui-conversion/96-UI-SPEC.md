@@ -255,6 +255,8 @@ When the fallback reveals the address field it takes its own full-width line ins
 | Without script | the Delete button no longer posts on its own. Today's no-script path posted with no confirmation at all, so nothing a user relied on is lost; the plan states it |
 | Other dialogs | Rename and QR dialogs take the same overlay surface and 44px close on the phone; Rename's `Save` becomes `Save Name` and `btn-primary` (the dialog's one commit), and its `Cancel` becomes `Keep Current Name` (`btn-secondary`) (labels and fill are defaults, confirm at Gate 2; neither string is pinned by a test); the QR dialog's `Copy` and `Open in Calendar App` take the same `btn-secondary btn-sm` mapping |
 
+> **Superseded by the plans:** the Delete row of "The five row actions" table above (`type="button"`) and this table's "Without script" row no longer hold: per Gate 1 item 14 (default `kept`) and plan 96-07, Delete stays a `type="submit"` button in its per-row revoke form, so without JavaScript it still posts the same revoke as today, and the script opens this dialog by cancelling that submit only when the dialog can open.
+
 ### Profile read-only fields (A-account-026, A-account-029; default, confirm at Gate 2)
 
 Both twins use one description list: `<dl class="profile-fields">` with `dt` and `dd` pairs. `dt` is the Label step (14px, 600, `--qb-fg-muted`), `dd` is the Body step (16px, 400, `--qb-fg`, margin `0` and `--qb-space-md` below). Desktop: `dl.row`, `dt.col-sm-3`, `dd.col-sm-9` (Bootstrap's grid); phone: stacked, no grid. Labels carry no trailing colon on either twin. Values and wording are unchanged except where a decision below says so.

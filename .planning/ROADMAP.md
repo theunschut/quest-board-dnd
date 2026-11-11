@@ -1638,7 +1638,7 @@ Plans:
 **Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
-**Plans:** 0 plans
+**Plans:** 12 plans
 
 **Scope:**
 
@@ -1691,8 +1691,41 @@ Plus, specific to this phase: the foundation delivers `.modern-card--interactive
 - Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
 
 Plans:
+**Wave 1**
+- [ ] 96-01-PLAN.md — Review environment: operator checkpoint (scratch tooling, database, privileged accounts, no other phase executing), capture-harness tracer, review accounts
 
-- [ ] TBD (run /gsd-plan-phase to break down)
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 96-02-PLAN.md — Fixtures through the app forms, tools, frozen baseline on port 8097, fresh BEFORE capture of every page including the populated Profile
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 96-03-PLAN.md — Gate 1 package A: picker flat-row mockup, Home look and merge proposal, measured AccessDenied overflow fix
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 96-04-PLAN.md — Gate 1 package B: Profile mockups for both twins, item list, Gate 1 (operator, redraw loop)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 96-05-PLAN.md — Picker first: merge, flat rows and keyboard fix in one change; account conversion guard test
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 96-06-PLAN.md — Profile onto the foundation: account sheet from the legacy Profile block, row-action relayout, meta-text contrast
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 96-07-PLAN.md — Profile script module, Delete dialog (still posts without script), empty-state wording, named row actions
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 96-08-PLAN.md — The four credential pages merged as one change; phone overflow fix
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 96-09-PLAN.md — Edit twins, AccessDenied, phone account sheet retired
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [ ] 96-10-PLAN.md — Home landing page (merged only on an explicit Gate 1 yes), area-wide guard and counts
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [ ] 96-11-PLAN.md — SetPassword verified with a freshly mailed link (operator)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [ ] 96-12-PLAN.md — AFTER sweep, accessibility-bar table, Gate 2 review sheet and gate (operator, gap-closure loop), release handoff
 
 ### Phase 97: Events, Series, Calendar and Agenda UI conversion
 
