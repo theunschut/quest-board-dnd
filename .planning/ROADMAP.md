@@ -2084,6 +2084,7 @@ Plans:
 - Map every entity that hangs off a board, directly or through another row (signups, date votes, purchases, calendar feed rows, linked-board-set membership, follow-up quest chains, home-page and page selections, and so on), and decide for each whether it is deleted with the board or only unlinked.
 - Delete in one transaction, behind a confirmation page that lists what will be removed. Any failure shows a friendly error, never a 500.
 - Writes to quests and events go through the change tracker, so the calendar feed revision guard holds.
+- Platform Users page (`/platform/Users`): add a column showing how many boards each user is a member of, so a super admin can see who is still linked where (for example while emptying a board before deleting it).
 
 Plans:
 
