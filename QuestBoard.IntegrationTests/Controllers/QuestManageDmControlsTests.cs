@@ -26,8 +26,8 @@ public class QuestManageDmControlsTests(WebApplicationFactoryBase factory)
     private const string MobileUserAgent =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
-    private const string CardHeading = "<h5>DM Controls</h5>";
-    private const string NextCardHeading = "<h5>Quest Summary</h5>";
+    private const string CardHeading = "<h2 class=\"h5 mb-0\">DM Controls</h2>";
+    private const string NextCardHeading = "<h2 class=\"h5 mb-0\">Quest Summary</h2>";
 
     private static readonly DateTime[] UpcomingDates = [new(2031, 5, 10, 19, 0, 0), new(2031, 5, 11, 19, 0, 0)];
 
@@ -99,7 +99,7 @@ public class QuestManageDmControlsTests(WebApplicationFactoryBase factory)
 
         status.Should().Be(HttpStatusCode.OK);
         Regex.Matches(html, Regex.Escape(CardHeading)).Count.Should().Be(1);
-        html.Should().NotContain("<h5>View Public Page</h5>");
+        html.Should().NotMatchRegex(@"<h[1-6]\b[^>]*>\s*View Public Page\s*</h[1-6]>");
         html.Should().Contain("View Public Page");
 
         var card = CardSegment(html);
@@ -116,6 +116,28 @@ public class QuestManageDmControlsTests(WebApplicationFactoryBase factory)
         card.Should().MatchRegex($"<a href=\"/Quest/Details/{questId}\" class=\"btn btn-secondary w-100\"");
         card.Should().MatchRegex($"<a href=\"/Quest/CreateFollowUp/{questId}\"\\s+class=\"btn btn-primary w-100 mt-2\"");
         card.Should().MatchRegex("<button type=\"submit\" class=\"btn btn-info w-100\"");
+    }
+
+    [Fact]
+    public async Task DesktopManage_HeadingLevelsNeverSkipBelowThePageTitle()
+    {
+        var (client, questId) = await SeedFinalizedOneShotAsync("dm_controls_headings", withFollowUp: false);
+
+        var (status, html) = await ManageAsync(client, questId, DesktopUserAgent);
+
+        status.Should().Be(HttpStatusCode.OK);
+        var pageTitle = html.IndexOf("<h1", StringComparison.Ordinal);
+        pageTitle.Should().BeGreaterThanOrEqualTo(0, "the page has one h1 title");
+
+        var levels = Regex.Matches(html[pageTitle..], @"<h([1-6])\b")
+            .Select(match => int.Parse(match.Groups[1].Value))
+            .ToList();
+        var previous = levels[0];
+        foreach (var level in levels.Skip(1))
+        {
+            level.Should().BeLessThanOrEqualTo(previous + 1, "a heading may go one level deeper than the one before it, never more");
+            previous = level;
+        }
     }
 
     [Fact]

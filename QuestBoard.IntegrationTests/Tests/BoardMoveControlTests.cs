@@ -115,8 +115,8 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
 
     private static string DmControlsCardSegment(string html)
     {
-        const string heading = "<h5>DM Controls</h5>";
-        const string nextHeading = "<h5>Quest Summary</h5>";
+        const string heading = "<h2 class=\"h5 mb-0\">DM Controls</h2>";
+        const string nextHeading = "<h2 class=\"h5 mb-0\">Quest Summary</h2>";
         Regex.Matches(html, Regex.Escape(heading)).Count.Should().Be(1);
         var start = html.IndexOf(heading, StringComparison.Ordinal);
         var end = html.IndexOf(nextHeading, start, StringComparison.Ordinal);
@@ -365,7 +365,7 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
             html.Should().NotContain("/Move/Quest");
             if (userAgent == DesktopUserAgent)
             {
-                html.Should().Contain("<h5>DM Controls</h5>");
+                html.Should().Contain("<h2 class=\"h5 mb-0\">DM Controls</h2>");
             }
         }
     }
@@ -396,7 +396,7 @@ public class BoardMoveControlTests(WebApplicationFactoryBase factory)
         html.Should().NotContain("/Move/Quest");
         if (userAgent == DesktopUserAgent)
         {
-            html.Should().Contain("<h5>DM Controls</h5>");
+            html.Should().Contain("<h2 class=\"h5 mb-0\">DM Controls</h2>");
         }
     }
 
