@@ -196,4 +196,19 @@ public class QuestManageDmControlsTests(WebApplicationFactoryBase factory)
         html.Should().Contain($"href=\"/Quest/CreateFollowUp/{questId}\"");
         html.Should().NotContain(CardHeading);
     }
+
+    [Fact]
+    public async Task PhoneLayout_NamesASelectedAssistantDmInFullInTheParticipantRows()
+    {
+        var (client, questId) = await SeedFinalizedOneShotAsync("dm_controls_assistant", withFollowUp: false);
+        var (_, assistant) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "dm_controls_assistant_player", "dm_controls_assistant_player@example.com");
+        await TestDataHelper.CreatePlayerSignupAsync(factory.Services, questId, assistant.Id, signupRole: 2, isSelected: true);
+
+        var (status, html) = await ManageAsync(client, questId, MobileUserAgent);
+
+        status.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(">Assistant DM</span>");
+        html.Should().NotContain("Asst. DM");
+    }
 }
