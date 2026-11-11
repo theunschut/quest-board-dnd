@@ -251,4 +251,26 @@ public class QuestDetailsSignupFormTests : IClassFixture<WebApplicationFactoryBa
             named.Groups["text"].Value.Should().StartWith("Your vote for");
         }
     }
+
+    [Theory]
+    [InlineData(DesktopUserAgent, "signupform_dm12", "signupform_player12")]
+    [InlineData(MobileUserAgent, "signupform_dm13", "signupform_player13")]
+    public async Task OpenQuest_BothLayouts_MonthsSitDirectlyInTheSignupCardWithoutNestedCards(string userAgent, string dmName, string playerName)
+    {
+        var questId = await SeedOpenQuestAsync(dmName, $"Signup Form Months {dmName}");
+        var client = await SignedInPlayerAsync(_factory, playerName);
+
+        var form = SignupForm(await GetHtmlAsync(client, $"/Quest/Details/{questId}", userAgent));
+
+        var marker = form.IndexOf("data-vote-section", StringComparison.Ordinal);
+        marker.Should().BeGreaterThan(-1);
+        var voting = form[marker..];
+
+        voting.Should().NotContain("modern-card", "the months are drawn inside the one signup card, not in a card each");
+        var months = Regex.Matches(voting, @"<h3\b[^>]*>\s*<i class=""fas fa-calendar-alt[^>]*aria-hidden=""true""");
+        months.Count.Should().BeGreaterThan(0, "each month starts with a heading");
+        var firstDate = userAgent == DesktopUserAgent ? "calendar-grid" : "calendar-date-entry-mobile";
+        voting.IndexOf(firstDate, StringComparison.Ordinal).Should().BeGreaterThan(months[0].Index,
+            "the calendar follows its month heading directly");
+    }
 }

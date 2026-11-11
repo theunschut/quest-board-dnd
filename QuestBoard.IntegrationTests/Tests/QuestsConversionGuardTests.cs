@@ -47,12 +47,12 @@ public class QuestsConversionGuardTests
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
-    private static readonly string[] ConvertedSheets = ["quest-vote.css"];
+    private static readonly string[] ConvertedSheets = ["quest-details.css", "quest-vote.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
     {
-        ["QuestBoard.Service/Views/Quest/Details.cshtml"] = ["calendar.css", "quest-vote.css"],
+        ["QuestBoard.Service/Views/Quest/Details.cshtml"] = ["calendar.css", "quest-details.css", "quest-vote.css"],
         ["QuestBoard.Service/Views/Quest/Details.Mobile.cshtml"] = ["quest-vote.css"],
     };
 
@@ -65,6 +65,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/js/quest-form.js",
         "QuestBoard.Service/wwwroot/js/markdown-editor.js",
         "QuestBoard.Service/wwwroot/js/quest-details.js",
+        "QuestBoard.Service/wwwroot/css/quest-details.css",
         "QuestBoard.Service/wwwroot/css/quest-vote.css",
     ];
 

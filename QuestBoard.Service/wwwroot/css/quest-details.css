@@ -1,0 +1,19 @@
+/*
+ * Quest Details, desktop. The calendar months are drawn straight inside the signup card, each as a
+ * month heading followed by its calendar, so the card reads as one surface instead of a card per month.
+ * This sheet holds the spacing between those month blocks.
+ */
+@layer pages {
+  .quest-details-month {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-details-month-heading {
+    margin-bottom: var(--qb-space-sm);
+    padding: var(--qb-space-xs) var(--qb-space-sm);
+    border-radius: var(--qb-radius-sm);
+    /* The scrim keeps the month name readable over the glass of the signup card. */
+    background: var(--qb-surface-scrim);
+    font-weight: var(--qb-weight-strong);
+  }
+}
