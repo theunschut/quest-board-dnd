@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: quests-and-quest-log-ui-conversion
 status: executing
-stopped_at: Completed 95-02-PLAN.md
-last_updated: "2026-11-11T08:32:17.212Z"
+stopped_at: Completed 95-04-PLAN.md
+last_updated: "2026-11-11T08:42:43.005Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 95 execution started
 progress:
   total_phases: 30
   completed_phases: 20
   total_plans: 220
-  completed_plans: 183
+  completed_plans: 184
   percent: 67
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 95 (quests-and-quest-log-ui-conversion) — EXECUTING
-Plan: 3 of 18
+Plan: 4 of 18
 Status: Ready to execute
 Last activity: 2026-11-11 — Phase 95 execution started
 
@@ -78,6 +78,7 @@ introduced by Phase 87.
 | Phase 93 P11 | 18 min | 2 tasks | 4 files |
 | Phase 95 P01 | 25min | 3 tasks | 0 files |
 | Phase 95 P02 | 2h | 3 tasks | 0 files |
+| Phase 95 P04 | 75min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 93]: A stale Platform Edit form is refused by comparing the posted rendered mask and home with the stored ones (no concurrency token, no migration); the count-then-save window stays an accepted residual
 - [Phase 93]: The open-signup POST now builds the signup server-side from CharacterId and this quest's date votes only, closing T-93-28 and a pre-existing hole that let a player post IsSelected, SignupTime and votes on another quest's dates
 - [Phase 93]: The operator accepted the real-phone checks as a risk deferred to a todo rather than holding the phase for them
+- [Phase 95]: 95-04: Tab released from the Markdown editor with extraKeys false; antiforgery token via meta element; new hint inherits the page sheets' existing form-text contrast debt until each sheet converts
 
 ### Roadmap Evolution
 
@@ -233,8 +235,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-11T08:32:17.176Z
-Stopped at: Completed 95-02-PLAN.md
+Last session: 2026-11-11T08:42:42.970Z
+Stopped at: Completed 95-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
