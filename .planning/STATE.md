@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 95
 current_phase_name: quests-and-quest-log-ui-conversion
 status: executing
-stopped_at: Completed 95-07-PLAN.md
-last_updated: "2026-11-11T09:41:03.514Z"
+stopped_at: Completed 95-10-PLAN.md
+last_updated: "2026-11-11T10:14:35.923Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 95 execution started
 progress:
   total_phases: 30
   completed_phases: 20
   total_plans: 220
-  completed_plans: 187
+  completed_plans: 188
   percent: 67
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 95 (quests-and-quest-log-ui-conversion) — EXECUTING
-Plan: 7 of 18
+Plan: 8 of 18
 Status: Ready to execute
 Last activity: 2026-11-11 — Phase 95 execution started
 
@@ -82,6 +82,7 @@ introduced by Phase 87.
 | Phase 95 P05 | 1h30m | 2 tasks | 8 files |
 | Phase 95 P06 | 50min | 2 tasks | 9 files |
 | Phase 95 P07 | 90min | 2 tasks | 9 files |
+| Phase 95 P10 | 2h | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 93]: The operator accepted the real-phone checks as a risk deferred to a todo rather than holding the phase for them
 - [Phase 95]: 95-04: Tab released from the Markdown editor with extraKeys false; antiforgery token via meta element; new hint inherits the page sheets' existing form-text contrast debt until each sheet converts
 - [Phase 95]: 95-06: vote checked border is ink on desktop and parchment on phone; Details week row 160px; month heading carries a scrim band
+- [Phase 95]: 95-10: Quest/Edit merged into one view serving both layouts; required markers and validation messages sit on the overlay surface to hold 4.5:1
 
 ### Roadmap Evolution
 
@@ -239,8 +241,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-11T09:41:03.479Z
-Stopped at: Completed 95-07-PLAN.md
+Last session: 2026-11-11T10:14:35.886Z
+Stopped at: Completed 95-10-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
