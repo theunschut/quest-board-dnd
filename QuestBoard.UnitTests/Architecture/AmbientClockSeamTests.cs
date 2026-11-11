@@ -41,7 +41,6 @@ public class AmbientClockSeamTests
         "QuestBoard.Service/Views/Admin/Quests.cshtml",
         "QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml",
         "QuestBoard.Service/Views/Move/Index.cshtml",
-        "QuestBoard.Service/Views/Move/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Details.cshtml",
         "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",

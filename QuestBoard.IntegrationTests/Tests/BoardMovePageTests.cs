@@ -270,7 +270,7 @@ public class BoardMovePageTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
-    public async Task AMobileUserAgent_GetsTheMobileCardsWithTheSameSentences()
+    public async Task AMobileUserAgent_GetsThePhoneLayoutWithTheSameSentences()
     {
         var scenario = await SeedScenarioAsync();
         var questId = await BoardMoveSeed.SeedQuestAsync(factory, BoardAlpha, "Goblin Market", scenario.DmId, [FirstDate, SecondDate]);
@@ -278,13 +278,14 @@ public class BoardMovePageTests(WebApplicationFactoryBase factory)
         var (html, response) = await GetPageAsync(scenario.SuperAdminClient, questId, userAgent: MobileUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("move-card-mobile");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("move-page");
         html.Should().Contain("Moving to Board Bravo");
         html.Should().Contain("What will happen on Board Bravo");
         html.Should().Contain("No signups to keep.");
         html.Should().Contain("Back to This Quest");
         html.Should().Contain("Move to Board Bravo");
-        html.Should().Contain("d-flex gap-2");
+        html.Should().Contain("move-actions");
     }
 
     [Theory]

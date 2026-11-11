@@ -194,11 +194,12 @@ public class BoardMoveEndToEndTests(MoveWebApplicationFactory factory)
         page.Should().Contain("Dropped One", because: "the preview names the player who will be removed");
         if (userAgent == MobileUserAgent)
         {
-            walk.MovePageHtml.Should().Contain("move-card-mobile");
+            walk.MovePageHtml.Should().Contain("mobile-layout");
+            walk.MovePageHtml.Should().Contain("move-page");
         }
         else
         {
-            walk.MovePageHtml.Should().NotContain("move-card-mobile");
+            walk.MovePageHtml.Should().NotContain("mobile-layout");
         }
 
         var toast = WebUtility.HtmlDecode(walk.ToastPageHtml);

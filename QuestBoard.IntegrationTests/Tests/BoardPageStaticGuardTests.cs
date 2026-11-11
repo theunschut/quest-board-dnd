@@ -127,7 +127,6 @@ public class BoardPageStaticGuardTests
         "QuestBoard.Service/Views/Account/Profile.cshtml",
         "QuestBoard.Service/Views/Account/Profile.Mobile.cshtml",
         "QuestBoard.Service/Views/Move/Index.cshtml",
-        "QuestBoard.Service/Views/Move/Index.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml",

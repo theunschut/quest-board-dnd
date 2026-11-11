@@ -59,11 +59,12 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/QuestLog/Details.cshtml",
         "QuestBoard.Service/Views/QuestLog/EditRecap.cshtml",
+        "QuestBoard.Service/Views/Move/Index.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
     private static readonly string[] ConvertedSheets =
-        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css"];
+        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
@@ -82,6 +83,7 @@ public class QuestsConversionGuardTests
         ["QuestBoard.Service/Views/QuestLog/Index.Mobile.cshtml"] = ["quest-log.mobile.css"],
         ["QuestBoard.Service/Views/QuestLog/Details.cshtml"] = ["quest-log.css"],
         ["QuestBoard.Service/Views/QuestLog/EditRecap.cshtml"] = ["quest-log.css"],
+        ["QuestBoard.Service/Views/Move/Index.cshtml"] = ["move-entry.css"],
     };
 
     // Every source file this work touches, scanned for planning references. This test file is left
@@ -110,6 +112,8 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/QuestLog/Details.cshtml",
         "QuestBoard.Service/Views/QuestLog/EditRecap.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Move/Index.cshtml",
+        "QuestBoard.Service/wwwroot/css/move-entry.css",
         "QuestBoard.Service/wwwroot/js/quest-board.js",
         "QuestBoard.Service/Helpers/QuestPosterCatalog.cs",
         "QuestBoard.Service/Helpers/QuestPosterPicker.cs",
@@ -318,6 +322,15 @@ public class QuestsConversionGuardTests
     public void QuestLogMergedViews_LeaveNoPhoneTwinOrPhoneSheet(string path)
     {
         // Details and EditRecap are one view each, served to both layouts; nothing may link or revive the retired files.
+        File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse($"{path} was merged into the shared view");
+    }
+
+    [Theory]
+    [InlineData("QuestBoard.Service/Views/Move/Index.Mobile.cshtml")]
+    [InlineData("QuestBoard.Service/wwwroot/css/move-entry.mobile.css")]
+    public void MoveMergedView_LeavesNoPhoneTwinOrPhoneSheet(string path)
+    {
+        // The Move page is one view served to both layouts; nothing may link or revive the retired files.
         File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse($"{path} was merged into the shared view");
     }
 
