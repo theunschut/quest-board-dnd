@@ -43,7 +43,7 @@ public static class QuestPosterCatalog
         new("r1", "quest-poster--r1", RuinedFolder + "Ruined Poster 1.png", RuinedFolder + "Ruined Poster 1.webp", 218, 180, 0)
     ];
 
-    /// <summary>The poster with the tallest text box: the home of titles that fit nowhere else.</summary>
+    /// <summary>The poster with the tallest text box.</summary>
     public static QuestPoster Tallest { get; } = All.MaxBy(p => p.BoxHeightPx)!;
 
     /// <summary>File base names of the four wax seal designs (a PNG and a WebP of each exist).</summary>

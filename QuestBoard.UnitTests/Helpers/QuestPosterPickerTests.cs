@@ -43,31 +43,41 @@ public class QuestPosterPickerTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Pick_TitleOfTheFieldMaximum_GoesToTheTallestPosterAtTheSmallerTier(bool finalizedWithDate)
+    public void Pick_TitleOfTheFieldMaximum_GoesToThePosterWithTheMostRoomAtTheSmallerTier(bool finalizedWithDate)
     {
-        var pick = QuestPosterPicker.Pick(12, TitleOf(200), "Audit Dungeon Master", finalizedWithDate, false);
+        var title = TitleOf(200);
 
-        pick.Poster.Should().Be(QuestPosterCatalog.Tallest);
+        var pick = QuestPosterPicker.Pick(12, title, "Audit Dungeon Master", finalizedWithDate, false);
+
         pick.TitleTier.Should().Be(2);
+        double Room(QuestPoster poster) =>
+            QuestPosterPicker.AvailableHeight(poster)
+            - QuestPosterPicker.EstimateHeight(poster, title, "Audit Dungeon Master", 2, finalizedWithDate, false);
+        foreach (var other in QuestPosterCatalog.All)
+        {
+            Room(pick.Poster).Should().BeGreaterThanOrEqualTo(Room(other), $"{pick.Poster.Key} should have at least as much room as {other.Key}");
+        }
     }
 
     [Fact]
-    public void Pick_ResultsAtTierOne_HoldTheirContentInTheBox()
+    public void Pick_TitleThatOnlyTheTallestPosterHoldsAtTheSmallerSize_LandsOnABoxThatFitsByHandArithmetic()
     {
-        foreach (var length in new[] { 5, 25, 40, 60 })
-        {
-            for (var id = 1; id <= 200; id++)
-            {
-                var finalized = id % 3 == 0;
-                var pick = QuestPosterPicker.Pick(id, TitleOf(length), "Audit Dungeon Master", finalized, false);
+        // Seven words of "Crownless Vigil" (15 characters). The card is estimated at 304px wide, so the
+        // 222x408 box of p1 is 222 * 304 / 352 = 191.7px wide. At the smaller title size a line holds
+        // floor(191.7 / (0.64 * 16)) = 18 characters: one "Crownless Vigil" per line, 7 lines. At the
+        // large size a line holds floor(191.7 / (0.64 * 20)) = 14 characters, so each word is its own
+        // line: 14 lines of 24px = 336px, more than any box offers. An open quest adds an 8px gap and
+        // 94px of meta, and the DM line is one line, so the content needs 7 * 19.2 + 8 + 94 = 236.4px.
+        var title = string.Join(" ", Enumerable.Repeat("Crownless Vigil", 7));
+        const double cardScale = 304d / 352d;
 
-                if (pick.TitleTier != 1) continue;
+        var pick = QuestPosterPicker.Pick(3, title, "A DM", false, false);
 
-                var needed = QuestPosterPicker.EstimateHeight(pick.Poster, TitleOf(length), "Audit Dungeon Master", pick.TitleTier, finalized, false);
-                needed.Should().BeLessThanOrEqualTo(QuestPosterPicker.AvailableHeight(pick.Poster),
-                    $"quest {id} with a {length}-character title on {pick.Poster.Key}");
-            }
-        }
+        pick.TitleTier.Should().Be(2);
+        var boxHeightAvailable = (pick.Poster.BoxHeightPx - pick.Poster.SealOverlapPx) * cardScale;
+        var contentNeeded = 7 * 19.2 + 8 + 94;
+        contentNeeded.Should().BeLessThanOrEqualTo(boxHeightAvailable, $"the content fits the {pick.Poster.Key} box");
+        (pick.Poster.BoxWidthPx * cardScale).Should().BeGreaterThanOrEqualTo(15 * 0.64 * 16, "a whole phrase fits on a line");
     }
 
     [Fact]

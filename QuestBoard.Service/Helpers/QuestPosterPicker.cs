@@ -7,10 +7,14 @@ namespace QuestBoard.Service.Helpers;
 public sealed record QuestPosterChoice(QuestPoster Poster, int TitleTier, string Seal);
 
 /// <summary>
-/// Chooses a poster for a quest. The choice is a pure function of the quest, so a quest keeps the same
-/// poster and seal on every visit and for every viewer. Only posters whose measured text box holds the
-/// estimated content are candidates, so text never runs past the artwork; a title too long for every
-/// poster goes to the tallest one at the smaller title size and wraps, and is never truncated.
+/// Chooses a poster for a quest. The choice is a pure function of the quest's id, its title and DM name,
+/// whether it is finalized with a date and whether it sits on a campaign board, so the same quest keeps
+/// the same poster and seal on every visit and for every viewer until one of those changes. Editing the
+/// title or finalizing a quest can therefore move it to another poster. Only posters whose measured text
+/// box is estimated to hold the content at the large title size are candidates. A title too long for
+/// every poster is set at the smaller size on the poster with the most room left for it, wraps and is
+/// never truncated; the estimate is an average over measured glyphs, so a caps-heavy or very long title
+/// can still run past the box on that poster.
 /// </summary>
 public static class QuestPosterPicker
 {
@@ -49,10 +53,21 @@ public static class QuestPosterPicker
             .Where(poster => Holds(poster, title, dmName, 1, finalizedWithDate, campaign))
             .ToList();
 
-        return fits.Count > 0
-            ? new QuestPosterChoice(fits[Reduce(mixed, fits.Count)], 1, seal)
-            : new QuestPosterChoice(QuestPosterCatalog.Tallest, 2, seal);
+        if (fits.Count > 0)
+        {
+            return new QuestPosterChoice(fits[Reduce(mixed, fits.Count)], 1, seal);
+        }
+
+        return new QuestPosterChoice(RoomiestAtSmallerTitle(title, dmName, finalizedWithDate, campaign), 2, seal);
     }
+
+    // When no poster holds the content at the large title, the one with the most height left over (or the
+    // least short of it) at the smaller title gets the quest. A taller box breaks a tie.
+    private static QuestPoster RoomiestAtSmallerTitle(string? title, string? dmName, bool finalizedWithDate, bool campaign) =>
+        QuestPosterCatalog.All
+            .OrderByDescending(poster => AvailableHeight(poster) - EstimateHeight(poster, title, dmName, 2, finalizedWithDate, campaign))
+            .ThenByDescending(poster => poster.BoxHeightPx)
+            .First();
 
     /// <summary>Whether the poster's text box holds the quest's content at the given title tier.</summary>
     public static bool Holds(QuestPoster poster, string? title, string? dmName, int tier, bool finalizedWithDate, bool campaign) =>
