@@ -44,6 +44,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Shared/_MarkdownEditor.cshtml",
         "QuestBoard.Service/Views/Quest/_QuestFormScripts.cshtml",
         "QuestBoard.Service/Views/Shared/_CharacterSelectModal.cshtml",
+        "QuestBoard.Service/Views/Quest/Details.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
@@ -65,6 +66,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/js/quest-form.js",
         "QuestBoard.Service/wwwroot/js/markdown-editor.js",
         "QuestBoard.Service/wwwroot/js/quest-details.js",
+        "QuestBoard.Service/wwwroot/js/avatar-fallback.js",
         "QuestBoard.Service/wwwroot/css/quest-details.css",
         "QuestBoard.Service/wwwroot/css/quest-vote.css",
     ];

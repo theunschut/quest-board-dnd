@@ -637,6 +637,27 @@
   }
 
   /*
+   * Character portrait beside a name in a table or list: a 32px round image. When the image fails to load the page
+   * script swaps it for a sibling placeholder (the neutral fill with a person icon), so a missing portrait leaves a
+   * disc of the same size instead of a broken-image box. The placeholder starts with the hidden attribute.
+   */
+  .avatar-32 {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .avatar-32--placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
+
+  /*
    * Empty state: the shared shape of "there is nothing here yet". An icon, a heading, one sentence and, when the
    * reader can fix it, an action. The page supplies the words.
    */

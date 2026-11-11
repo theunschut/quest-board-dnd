@@ -1,14 +1,57 @@
 /*
- * Quest Details, desktop. The calendar months are drawn straight inside the signup card, each as a
- * month heading followed by its calendar, so the card reads as one surface instead of a card per month.
- * This sheet holds the spacing between those month blocks.
+ * Quest Details, desktop. The page is one card for the quest itself (title, description, rewards, signup) and a
+ * narrow column of cards beside it (summary, DM controls). Sections inside the main card are headings, not cards of
+ * their own: a card inside a card stacks two glass layers, and the text on it then falls short of 4.5:1.
+ * The calendar months are drawn straight inside the signup card, each as a month heading followed by its calendar.
  */
 @layer pages {
+  /* Help lines sit on the card's own glass; the muted tone is for text on paper, so here they take the card colour. */
+  .quest-details-page .form-text {
+    color: var(--qb-fg);
+  }
+
+  /* Headings inside a card body need air above them; the first thing in a panel or a section sits flush. */
+  :where(.quest-details-page .modern-card-body) h2 {
+    margin-top: var(--qb-space-lg);
+    margin-bottom: var(--qb-space-sm);
+  }
+
+  :where(.quest-details-page .modern-card-body) h3 {
+    margin-top: var(--qb-space-md);
+    margin-bottom: var(--qb-space-sm);
+  }
+
+  :where(.quest-details-page .alert, .quest-details-section) > :is(h2, h3):first-child,
+  .quest-details-page .alert :is(h2, h3):first-child {
+    margin-top: 0;
+  }
+
+  /* A section of the main card: a heading and what belongs to it, set apart from the next one. */
+  .quest-details-section {
+    margin-top: var(--qb-space-lg);
+    margin-bottom: var(--qb-space-lg);
+  }
+
+  /* The challenge rating beside the title: the commit-action wood fill with its paired label. */
+  .quest-details-cr {
+    background-color: var(--qb-action);
+    color: var(--qb-action-fg);
+  }
+
+  /*
+   * The viewer's own row in a participant table. The tint is a mix of paper and the gold accent so the dark ink
+   * of the row still reads; the "You" badge beside the name carries the meaning, the tint only helps the eye.
+   */
+  .quest-details-own-row > * {
+    --bs-table-bg-type: color-mix(in srgb, var(--qb-accent) 28%, var(--qb-surface-paper));
+  }
+
   .quest-details-month {
     margin-bottom: var(--qb-space-md);
   }
 
   .quest-details-month-heading {
+    margin-top: 0;
     margin-bottom: var(--qb-space-sm);
     padding: var(--qb-space-xs) var(--qb-space-sm);
     border-radius: var(--qb-radius-sm);

@@ -70,7 +70,9 @@ public class WallClockUnmovedTests(WebApplicationFactoryBase factory) : IClassFi
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
 
         var finalizedDate = new DateTime(2026, 9, 20, 19, 0, 0);
-        var expectedGameNightText = finalizedDate.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt");
+        // The finalized game night renders through the wall-clock helper's date-time style, in the
+        // invariant culture, so the expected text is that same style and not a bespoke format.
+        var expectedGameNightText = finalizedDate.ToString("MMM d, yyyy, h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
 
         // Two structurally distinct quests, one seeded and rendered under each zone's own
         // variant host, so each client resolves IBoardClock independently. The actual proof
@@ -91,7 +93,9 @@ public class WallClockUnmovedTests(WebApplicationFactoryBase factory) : IClassFi
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
 
         var finalizedDate = new DateTime(2026, 9, 20, 19, 0, 0);
-        var expectedGameNightText = finalizedDate.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt");
+        // The finalized game night renders through the wall-clock helper's date-time style, in the
+        // invariant culture, so the expected text is that same style and not a bespoke format.
+        var expectedGameNightText = finalizedDate.ToString("MMM d, yyyy, h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
 
         var html = await RenderFinalizedQuestDetailsUnderZoneAsync(
             "Pacific/Auckland", finalizedDate, "Wall Clock Structural Marker Quest");
