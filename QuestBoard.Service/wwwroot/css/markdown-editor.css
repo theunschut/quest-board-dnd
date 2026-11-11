@@ -59,6 +59,14 @@
         text-shadow: none;
     }
 
+    /* The same quote bar and italics as saved Markdown (markdown-content.css), on the control border because gold
+       is not used on a paper surface. */
+    .EasyMDEContainer .editor-preview blockquote {
+        border-left: 3px solid var(--qb-control-border);
+        padding-left: var(--qb-space-sm);
+        font-style: italic;
+    }
+
     .EasyMDEContainer .editor-preview pre {
         background: var(--qb-surface-paper-alt);
     }

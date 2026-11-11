@@ -64,7 +64,7 @@ public class QuestsConversionGuardTests
 
     // Page sheets under the css folder that open the pages layer, by file name.
     private static readonly string[] ConvertedSheets =
-        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-editor.css"];
+        ["quest-details.css", "quest-vote.css", "quests.mobile.css", "quest-form.css", "dm-create.mobile.css", "home.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-editor.css", "markdown-content.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
@@ -116,6 +116,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/css/move-entry.css",
         "QuestBoard.Service/wwwroot/css/easymde-vendor.css",
         "QuestBoard.Service/wwwroot/css/markdown-editor.css",
+        "QuestBoard.Service/wwwroot/css/markdown-content.css",
         "QuestBoard.Service/wwwroot/js/quest-board.js",
         "QuestBoard.Service/Helpers/QuestPosterCatalog.cs",
         "QuestBoard.Service/Helpers/QuestPosterPicker.cs",
@@ -361,6 +362,32 @@ public class QuestsConversionGuardTests
         foreach (var layout in new[] { "_Layout.cshtml", "_Layout.Mobile.cshtml" })
             ReadRepoFile("QuestBoard.Service/Views/Shared/" + layout).Should().NotContain("markdown-editor.css",
                 $"{layout} must not load the editor sheet on pages that have no editor");
+    }
+
+    [Fact]
+    public void MarkdownOutputViews_LinkTheContentSheet_AndNoLayoutDoes()
+    {
+        // The content sheet loads through each view that renders Markdown output, so a page that has none never
+        // fetches it. A partial is satisfied by the views that host it: the shop item details partial is rendered
+        // by the Shop details view and loaded into a modal by the two Shop index views.
+        var viewsRoot = ResolveRepoFile("QuestBoard.Service", "Views");
+        var hosts = Directory.EnumerateFiles(viewsRoot, "*.cshtml", SearchOption.AllDirectories)
+            .Where(f => !Path.GetFileName(f).StartsWith('_'))
+            .Where(f =>
+            {
+                var text = File.ReadAllText(f);
+                return text.Contains("Html.Markdown(") || text.Contains("\"_ShopItemDetailsContent\"") || text.Contains("isModal = true");
+            })
+            .ToList();
+
+        hosts.Count.Should().BeGreaterThanOrEqualTo(15, "the search must find every view that renders Markdown output");
+        foreach (var view in hosts)
+            LinksSheet(File.ReadAllText(view), "markdown-content.css").Should().BeTrue(
+                $"{Path.GetRelativePath(viewsRoot, view)} renders Markdown output, so it must link ~/css/markdown-content.css from its Styles section");
+
+        foreach (var layout in new[] { "_Layout.cshtml", "_Layout.Mobile.cshtml" })
+            ReadRepoFile("QuestBoard.Service/Views/Shared/" + layout).Should().NotContain("markdown-content.css",
+                $"{layout} must not load the content sheet on pages that render no Markdown output");
     }
 
     [Fact]

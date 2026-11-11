@@ -6,6 +6,10 @@
     var questsOn = (await BoardPages.GetAsync()).Serves(BoardPage.Quests);
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+}
+
 <div class="dm-profile-page container mt-4">
     <div class="row">
         <!-- Left column: photo, name, role label, edit button -->
