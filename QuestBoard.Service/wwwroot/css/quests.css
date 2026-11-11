@@ -5,6 +5,47 @@
    * in step with the catalog the server picks from. The text is plain dark ink at weight 600 straight on the artwork:
    * no tinted zone, halo or shadow sits behind it.
    */
+  /*
+   * The board. Without a script the posters flow in CSS columns; the board module then switches the container to
+   * absolute positions (is-masonry), taking each poster's height from its aspect ratio.
+   */
+  body:has(.quest-board-container) .container.mt-3 {
+    max-width: none;
+    padding-inline: var(--qb-space-sm);
+  }
+
+  .quest-board-container {
+    column-width: var(--card-width);
+    column-gap: var(--qb-space-md);
+    padding-block: var(--qb-space-md);
+    margin-inline: auto;
+    max-width: calc(3 * var(--card-width) + 2 * var(--qb-space-md) + 2 * var(--qb-space-md));
+  }
+
+  .quest-board-container.is-masonry {
+    position: relative;
+    column-width: auto;
+    height: var(--board-height);
+  }
+
+  .quest-board-container.is-masonry > .quest-poster {
+    position: absolute;
+    left: var(--poster-x);
+    top: var(--poster-y);
+    width: var(--poster-w);
+    margin-block-end: 0;
+  }
+
+  @media (min-width: 640px) {
+    body:has(.quest-board-container) .container.mt-3 {
+      padding-inline: var(--qb-space-lg);
+    }
+
+    .quest-board-container {
+      padding-inline: var(--qb-space-md);
+    }
+  }
+
   .quest-poster {
     --paper-slab: linear-gradient(var(--qb-surface-paper), var(--qb-surface-paper));
     --seal-size: var(--seal-size-base);
@@ -294,72 +335,6 @@
     /* List is never too large to fit naturally */
 }
 
-/* Fantasy Quest Board Container */
-.quest-board-container {
-    padding: 1rem;
-    margin: 0 auto;
-    position: relative;
-    width: 100%;
-    max-width: none;
-}
-
-/* Fantasy Quest Cards */
-:root {
-    --card-width: 350px;
-    --card-width-tablet: calc(var(--card-width) * 0.89);
-    --card-width-mobile: calc(var(--card-width) * 0.79);
-    --card-width-small: calc(var(--card-width) * 0.71);
-}
-
-.fantasy-quest-card {
-    position: relative;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    width: var(--card-width);
-    margin-bottom: 1rem;
-    cursor: pointer;
-    transition: transform 0.3s ease, filter 0.3s ease;
-    filter: drop-shadow(5px 5px 10px rgba(0, 0, 0, 0.3));
-    break-inside: avoid;
-    display: inline-block;
-}
-
-.fantasy-quest-card:hover {
-    transform: scale(1.05) rotate(1deg);
-    filter: drop-shadow(8px 8px 15px rgba(0, 0, 0, 0.4));
-}
-
-.quest-content {
-    position: absolute;
-    top: 10%;
-    left: 12%;
-    right: 12%;
-    bottom: 12%;
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-    color: #2c1810;
-    text-align: center;
-    justify-content: space-between;
-}
-
-.quest-header {
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-    margin-bottom: 0.5rem;
-}
-
-.challenge-rating {
-    position: absolute;
-    top: 5%;
-    left: 8%;
-    z-index: 10;
-    transform: rotate(-5deg);
-    pointer-events: none;
-}
-
 .cr-badge {
     background: linear-gradient(135deg, #8B4513, #A0522D) !important;
     color: var(--qb-fg-heading) !important;
@@ -373,31 +348,6 @@
     display: inline-flex !important;
     align-items: center !important;
     gap: 0.25rem !important;
-}
-
-.cr-icon {
-    font-size: 1.2rem;
-    color: #FFD700;
-    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
-}
-
-.quest-top {
-    flex-shrink: 0;
-    margin-bottom: 1rem;
-}
-
-.quest-middle {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    margin: 0.5rem 0;
-    min-height: 0;
-}
-
-.quest-bottom {
-    flex-shrink: 0;
-    margin-top: 1rem;
 }
 
 .quest-title {
@@ -466,53 +416,6 @@
     text-shadow: 2px 2px 4px rgba(255,255,255,0.95),
                  -1px -1px 2px rgba(255,255,255,0.95),
                  1px 1px 5px rgba(0,0,0,0.6);
-}
-
-/* Wax Seal Styling */
-.wax-seal {
-    position: absolute;
-    z-index: 10;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-
-.seal-image {
-    width: 80px;
-    height: 80px;
-    transition: all 0.3s ease;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.7));
-}
-
-.open-seal {
-    display: none;
-}
-
-.finalized-seal {
-    opacity: 1;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.8)) 
-            saturate(1.4) brightness(1.2) contrast(1.1);
-}
-
-.user-signup-seal {
-    transform: translate(50%, 50%);
-}
-
-.signup-seal-image {
-    opacity: 1;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.8)) 
-            hue-rotate(180deg) saturate(1.5) brightness(1.1);
-}
-
-.fantasy-quest-card:hover .seal-image {
-    transform: scale(1.15) rotate(8deg);
-    filter: drop-shadow(4px 4px 10px rgba(0, 0, 0, 0.8)) 
-            brightness(1.3) saturate(1.3);
-}
-
-.fantasy-quest-card:hover .signup-seal-image {
-    transform: scale(1.15) rotate(-8deg);
-    filter: drop-shadow(4px 4px 10px rgba(0, 0, 0, 0.8)) 
-            hue-rotate(180deg) saturate(1.6) brightness(1.3);
 }
 
 /* Quest Signup List - Character Display */
@@ -635,68 +538,20 @@
     }
 }
 
-/* Responsive Design for Quest Cards */
-@media (max-width: 580px) {
-    .quest-board-container {
-        column-count: 1;
-        padding: 0.5rem;
-        max-width: var(--card-width-tablet);
-        margin: 0 auto;
-    }
-    
-    .fantasy-quest-card {
-        width: var(--card-width-tablet);
-    }
-}
-
+/* Smaller text for the shared description and title on very small screens */
 @media (max-width: 480px) {
-    .quest-board-container {
-        column-count: 1;
-        padding: 0.5rem;
-        max-width: var(--card-width-mobile);
-        margin: 0 auto;
-    }
-    
-    .fantasy-quest-card {
-        width: var(--card-width-mobile);
-    }
-    
     .quest-description {
         font-size: 0.8rem;
-    }
-    
-    .seal-image {
-        width: 65px;
-        height: 65px;
-    }
-    
-    .signup-seal-image {
-        width: 65px;
-        height: 65px;
     }
 }
 
 @media (max-width: 320px) {
-    .fantasy-quest-card {
-        width: var(--card-width-small);
-    }
-    
     .quest-title {
         font-size: 1rem;
     }
-    
+
     .quest-description {
         font-size: 0.75rem;
-    }
-    
-    .seal-image {
-        width: 55px;
-        height: 55px;
-    }
-    
-    .signup-seal-image {
-        width: 55px;
-        height: 55px;
     }
 }
 

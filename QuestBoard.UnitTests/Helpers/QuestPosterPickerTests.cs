@@ -133,6 +133,20 @@ public class QuestPosterPickerTests
     }
 
     [Fact]
+    public void Holds_DmLineAsWideAsTheBox_CountsTheLineAsWrapped()
+    {
+        // "DM: Audit Dungeon Master" measures about 190px at 14px and weight 600, which is wider than the
+        // 188px box of the ruined poster on the narrowest card, so its second line must be budgeted.
+        var ruined = QuestPosterCatalog.All.Single(p => p.Key == "r1");
+
+        var withWrap = QuestPosterPicker.EstimateHeight(ruined, "Ravenfall Crossing", "Audit Dungeon Master", 1, false, false);
+        var shortDm = QuestPosterPicker.EstimateHeight(ruined, "Ravenfall Crossing", "Audit DM", 1, false, false);
+
+        withWrap.Should().BeGreaterThan(shortDm);
+        QuestPosterPicker.Holds(ruined, "Ravenfall Crossing", "Audit Dungeon Master", 1, false, false).Should().BeFalse();
+    }
+
+    [Fact]
     public void Catalog_EveryPoster_HasPngAndWebpUrlsAndAModifierClassMatchingItsKey()
     {
         foreach (var poster in QuestPosterCatalog.All)

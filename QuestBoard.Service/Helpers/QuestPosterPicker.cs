@@ -14,10 +14,11 @@ public sealed record QuestPosterChoice(QuestPoster Poster, int TitleTier, string
 /// </summary>
 public static class QuestPosterPicker
 {
-    // Cinzel at weight 600 measured 0.578 to 0.633 em per character; the body face 0.507 to 0.564 em.
-    // Both are rounded up so the estimate errs towards a taller poster.
+    // Cinzel at weight 600 measured 0.578 to 0.633 em per character; the body face 0.507 to 0.564 em (the
+    // widest was a 24-character DM line, which a 189px box just fails to hold on one line). Both are rounded
+    // up so the estimate errs towards a taller poster.
     private const double TitleEm = 0.64;
-    private const double BodyEm = 0.55;
+    private const double BodyEm = 0.57;
     private const double BodyPx = 14;
 
     // The board never draws a card narrower than this, and the estimate uses the same width, so a pick

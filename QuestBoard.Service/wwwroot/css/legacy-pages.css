@@ -301,28 +301,6 @@
     max-width: none !important;
 }
 
-/* Full width for home page quest board */
-body:has(.quest-board-container) .container.mt-3 {
-    max-width: none !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
-}
-
-/* Fallback for browsers that don't support :has() */
-.home-page .container.mt-3 {
-    max-width: none !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
-}
-
-.quest-board-container {
-    padding: 1rem;
-    margin: 0 auto;
-    position: relative;
-    width: 100%;
-    max-width: none;
-}
-
 .fantasy-quest-card {
     position: relative;
     background-size: contain;
@@ -544,13 +522,6 @@ body:has(.quest-board-container) .container.mt-3 {
 
 
 @media (max-width: 580px) {
-    .quest-board-container {
-        column-count: 1;
-        padding: 0.5rem;
-        max-width: var(--card-width-tablet);
-        margin: 0 auto;
-    }
-    
     .fantasy-quest-card {
         width: var(--card-width-tablet);
         /* Height calculated dynamically */
@@ -558,13 +529,6 @@ body:has(.quest-board-container) .container.mt-3 {
 }
 
 @media (max-width: 480px) {
-    .quest-board-container {
-        column-count: 1;
-        padding: 0.5rem;
-        max-width: var(--card-width-mobile);
-        margin: 0 auto;
-    }
-    
     .fantasy-quest-card {
         width: var(--card-width-mobile);
         /* Height calculated dynamically */

@@ -51,6 +51,7 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/Views/Quest/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Edit.cshtml",
         "QuestBoard.Service/Views/Quest/CreateFollowUp.cshtml",
+        "QuestBoard.Service/Views/Quest/Index.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
@@ -66,6 +67,7 @@ public class QuestsConversionGuardTests
         ["QuestBoard.Service/Views/Quest/Create.Mobile.cshtml"] = ["quest-form.css", "dm-create.mobile.css"],
         ["QuestBoard.Service/Views/Quest/Edit.cshtml"] = ["quest-form.css"],
         ["QuestBoard.Service/Views/Quest/CreateFollowUp.cshtml"] = ["quest-form.css"],
+        ["QuestBoard.Service/Views/Quest/Index.cshtml"] = ["quests.css"],
     };
 
     // Every source file this work touches, scanned for planning references. This test file is left
@@ -83,6 +85,9 @@ public class QuestsConversionGuardTests
         "QuestBoard.Service/wwwroot/css/quests.mobile.css",
         "QuestBoard.Service/wwwroot/css/quest-form.css",
         "QuestBoard.Service/wwwroot/css/dm-create.mobile.css",
+        "QuestBoard.Service/wwwroot/js/quest-board.js",
+        "QuestBoard.Service/Helpers/QuestPosterCatalog.cs",
+        "QuestBoard.Service/Helpers/QuestPosterPicker.cs",
     ];
 
     private static string ReadRepoFile(string relativePath)
