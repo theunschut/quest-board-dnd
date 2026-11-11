@@ -465,8 +465,8 @@
                                         {
                                             @* Single Character Selection for All Roles *@
                                             <div class="mb-3">
-                                                <label class="form-label">Select Character (Optional)</label>
-                                                <select id="finalizedQuestCharacter" class="form-select">
+                                                <label for="finalizedQuestCharacter" class="form-label">Select Character (Optional)</label>
+                                                <select id="finalizedQuestCharacter" class="form-select" data-join-character-source>
                                                     <option value="">-- Join without character --</option>
                                                     @foreach (var character in ownedCharacters)
                                                     {
@@ -481,7 +481,7 @@
                                             <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinPlayerForm">
                                                 <input type="hidden" name="questId" value="@Model.Quest?.Id" />
                                                 <input type="hidden" name="selectedRole" value="0" />
-                                                <input type="hidden" name="characterId" id="playerCharacterId" value="" />
+                                                <input type="hidden" name="characterId" id="playerCharacterId" value="" data-join-character-target />
 
                                                 <button type="submit" class="btn btn-primary w-100">
                                                     <i class="fas fa-users me-2"></i>Join as Player
@@ -492,7 +492,7 @@
                                             <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinAssistantForm">
                                                 <input type="hidden" name="questId" value="@Model.Quest?.Id" />
                                                 <input type="hidden" name="selectedRole" value="2" />
-                                                <input type="hidden" name="characterId" id="assistantCharacterId" value="" />
+                                                <input type="hidden" name="characterId" id="assistantCharacterId" value="" data-join-character-target />
 
                                                 <button type="submit" class="btn btn-success w-100">
                                                     <i class="fas fa-user-shield me-2"></i>Join as Assistant DM
@@ -503,26 +503,13 @@
                                             <form asp-action="JoinFinalizedQuest" method="post" class="d-inline" id="joinSpectatorForm">
                                                 <input type="hidden" name="questId" value="@Model.Quest?.Id" />
                                                 <input type="hidden" name="selectedRole" value="1" />
-                                                <input type="hidden" name="characterId" id="spectatorCharacterId" value="" />
+                                                <input type="hidden" name="characterId" id="spectatorCharacterId" value="" data-join-character-target />
                                                 <button type="submit" class="btn btn-info w-100">
                                                     <i class="fas fa-eye me-2"></i>Join as Spectator
                                                     <small class="d-block mt-1" style="font-size: 0.8em;">Watch the session (auto-approved)</small>
                                                 </button>
                                             </form>
                                         </div>
-
-                                        @if (charactersOn)
-                                        {
-                                            <script>
-                                                                            // Sync character selection to all forms
-                                                                            document.getElementById('finalizedQuestCharacter').addEventListener('change', function() {
-                                                                                const characterId = this.value;
-                                                                                document.getElementById('playerCharacterId').value = characterId;
-                                                                                document.getElementById('assistantCharacterId').value = characterId;
-                                                                                document.getElementById('spectatorCharacterId').value = characterId;
-                                                                            });
-                                            </script>
-                                        }
                                     </div>
                                 </div>
                             }
@@ -554,15 +541,15 @@
                                         {
                                             @* Character Selection *@
                                             <div class="mb-3">
-                                                <label class="form-label">Select Character (Optional)</label>
-                                                <select name="CharacterId" class="form-select">
+                                                <label for="signupCharacter" class="form-label">Select Character (Optional)</label>
+                                                <select name="CharacterId" id="signupCharacter" class="form-select" aria-describedby="signupCharacter-help">
                                                     <option value="">-- Sign up without character --</option>
                                                     @foreach (var character in ownedCharacters)
                                                     {
                                                         <option value="@character.Id">@character.ToSelectLabel()</option>
                                                     }
                                                 </select>
-                                                <small class="form-text">Choose which character you'll be playing, or sign up without one.</small>
+                                                <small id="signupCharacter-help" class="form-text">Choose which character you'll be playing, or sign up without one.</small>
                                             </div>
                                         }
 
@@ -572,12 +559,12 @@
                                                 <i class="fas fa-user-tag me-2"></i>
                                                 <strong>Select Your Role:</strong>
                                             </label>
-                                            <select name="selectedRole" id="selectedRole" class="form-select" required>
+                                            <select name="selectedRole" id="selectedRole" class="form-select" aria-describedby="selectedRole-help" required>
                                                 <option value="0" selected>Player - Join as an active player</option>
                                                 <option value="2">Assistant DM - Help the Dungeon Master</option>
                                                 <option value="1">Spectator - Watch the session</option>
                                             </select>
-                                            <div class="form-text">
+                                            <div id="selectedRole-help" class="form-text">
                                                 <ul class="mb-0 small">
                                                     <li><strong>Player:</strong> Participate in the quest (counts toward player limit)</li>
                                                     <li><strong>Assistant DM:</strong> Help the DM run the session (can vote on dates)</li>
@@ -672,7 +659,7 @@
                             </div>
 
                             @* Update signup form - hidden by default *@
-                            <div class="card modern-card mb-4" id="updateSignupForm" style="display: none;">
+                            <div class="card modern-card mb-4" id="updateSignupForm" hidden>
                                 <div class="card-header modern-card-header">
                                     <h5>Update Your Signup</h5>
                                 </div>
@@ -721,7 +708,7 @@
                                             <button type="submit" class="btn btn-primary me-2">
                                                 <i class="fas fa-check me-2"></i>Update Signup
                                             </button>
-                                            <button type="button" class="btn btn-secondary" onclick="hideUpdateForm()">
+                                            <button type="button" class="btn btn-secondary" data-action="hide-update-form">
                                                 <i class="fas fa-times me-2"></i>Cancel
                                             </button>
                                         </div>
@@ -738,24 +725,24 @@
                             <div class="d-flex gap-2">
                                 @if (Model.Quest?.IsFinalized != true)
                                 {
-                                    <button type="button" class="btn btn-primary" onclick="showUpdateForm()">
+                                    <button type="button" class="btn btn-primary" data-action="show-update-form">
                                         <i class="fas fa-edit me-2"></i>Update Signup
                                     </button>
                                 }
-                                <button type="button" class="btn btn-danger" onclick="revokeSignup(@ViewContext.RouteData.Values["id"])">
+                                <button type="button" class="btn btn-danger" data-action="revoke-signup" data-quest-id="@ViewContext.RouteData.Values["id"]" data-confirm-message="Are you sure you want to revoke your signup for this quest? This action cannot be undone.">
                                     <i class="fas fa-times me-2"></i>Revoke My Signup
                                 </button>
                             </div>
                             @if (Model.Quest?.IsFinalized == true)
                             {
                                 <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-success" onclick="changeVote(@Model.Quest?.Id, 2)">
+                                    <button type="button" class="btn btn-success" data-action="change-vote" data-quest-id="@Model.Quest?.Id" data-vote="2">
                                         <i class="fas fa-check me-2"></i>Vote Yes
                                     </button>
-                                    <button type="button" class="btn btn-warning" onclick="changeVote(@Model.Quest?.Id, 1)">
+                                    <button type="button" class="btn btn-warning" data-action="change-vote" data-quest-id="@Model.Quest?.Id" data-vote="1">
                                         <i class="fas fa-question me-2"></i>Vote Maybe
                                     </button>
-                                    <button type="button" class="btn btn-danger" onclick="changeVote(@Model.Quest?.Id, 0)">
+                                    <button type="button" class="btn btn-danger" data-action="change-vote" data-quest-id="@Model.Quest?.Id" data-vote="0">
                                         <i class="fas fa-times me-2"></i>Vote No
                                     </button>
                                 </div>
@@ -978,63 +965,7 @@
     await Html.RenderPartialAsync("_CharacterSelectModal");
 }
 
-<script>
-    function revokeSignup(questId) {
-        if (confirm("Are you sure you want to revoke your signup for this quest? This action cannot be undone.")) {
-            const formData = new FormData();
-            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
-
-            fetch(`/Quest/RevokeSignup/${questId}`, {
-                method: "DELETE",
-                body: formData
-            }).then(res => {
-                if (res.ok) {
-                    location.reload();
-                } else {
-                    res.text().then(text => {
-                        alert(`Failed to revoke signup: ${text}`);
-                    });
-                }
-            }).catch(err => {
-                alert("An error occurred while revoking signup.");
-            });
-        }
-    }
-
-    function changeVote(questId, vote) {
-        const formData = new FormData();
-        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
-        formData.append('vote', vote);
-
-        fetch(`/Quest/ChangeVote/${questId}`, {
-            method: "POST",
-            body: formData
-        }).then(res => {
-            if (res.ok) {
-                location.reload();
-            } else {
-                res.text().then(text => {
-                    alert(`Failed to change vote: ${text}`);
-                });
-            }
-        }).catch(err => {
-            alert("An error occurred while changing vote.");
-        });
-    }
-
-    function showUpdateForm() {
-        document.getElementById('viewSignupCalendar').style.display = 'none';
-        document.getElementById('updateSignupForm').style.display = 'block';
-        document.querySelector('[onclick="showUpdateForm()"]').style.display = 'none';
-    }
-
-    function hideUpdateForm() {
-        document.getElementById('updateSignupForm').style.display = 'none';
-        document.getElementById('viewSignupCalendar').style.display = 'block';
-        document.querySelector('[onclick="showUpdateForm()"]').style.display = 'inline-block';
-    }
-</script>
-
 @section Scripts {
+    <meta name="request-verification-token" content="@tokens.RequestToken" />
     <script type="module" src="~/js/quest-details.js" asp-append-version="true"></script>
 }

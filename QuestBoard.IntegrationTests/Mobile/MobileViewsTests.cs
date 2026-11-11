@@ -523,7 +523,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     /// <summary>
     /// Regression guard: the "Join This Quest" card is finalized-quest-only. An authenticated,
     /// not-yet-signed-up player viewing an OPEN (non-finalized) quest must NOT see it — only the
-    /// pre-finalization "Choose a Date" signup card should render.
+    /// pre-finalization "Vote on Proposed Dates" signup section should render.
     /// </summary>
     [Fact]
     public async Task MobileQuestDetails_OpenQuest_AuthenticatedNotSignedUp_DoesNotRenderJoinCard()
@@ -541,7 +541,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("joinPlayerFormMobile");
-        html.Should().Contain("Choose a Date");
+        html.Should().Contain("Vote on Proposed Dates");
     }
 
     // -----------------------------------------------------------------------

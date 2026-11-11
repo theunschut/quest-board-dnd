@@ -166,7 +166,7 @@
                     @await Html.PartialAsync("_Calendar", calendarMonth)
                 }
                 <button type="submit" class="btn btn-primary w-100 mt-2">
-                    <i class="fas fa-check me-2"></i>Update Votes
+                    <i class="fas fa-check me-2"></i>Update Signup
                 </button>
             </form>
         </div>
@@ -176,13 +176,49 @@
     @if (boardType != BoardType.Campaign && User.Identity?.IsAuthenticated == true && !isPlayerSignedUp && Model.Quest?.IsFinalized == false)
     {
         <div class="quest-section-card-mobile mb-3">
-            <h6 class="quest-section-heading mb-2">
-                <i class="fas fa-calendar-alt me-1"></i>Choose a Date
-            </h6>
             <form asp-action="Details" asp-controller="Quest" asp-route-id="@Model.Quest?.Id" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="Id" value="0" />
                 <input type="hidden" name="Quest.Id" value="@Model.Quest?.Id" />
+
+                @if (charactersOn)
+                {
+                    <div class="mb-3">
+                        <label for="signupCharacter" class="form-label">Select Character (Optional)</label>
+                        <select name="CharacterId" id="signupCharacter" class="form-select" aria-describedby="signupCharacter-help">
+                            <option value="">-- Sign up without character --</option>
+                            @foreach (var character in ownedCharacters)
+                            {
+                                <option value="@character.Id">@character.ToSelectLabel()</option>
+                            }
+                        </select>
+                        <div id="signupCharacter-help" class="form-text">Choose which character you'll be playing, or sign up without one.</div>
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label for="selectedRole" class="form-label">
+                        <i class="fas fa-user-tag me-2" aria-hidden="true"></i>
+                        <strong>Select Your Role:</strong>
+                    </label>
+                    <select name="selectedRole" id="selectedRole" class="form-select" aria-describedby="selectedRole-help" required>
+                        <option value="0" selected>Player - Join as an active player</option>
+                        <option value="2">Assistant DM - Help the Dungeon Master</option>
+                        <option value="1">Spectator - Watch the session</option>
+                    </select>
+                    <div id="selectedRole-help" class="form-text">
+                        <ul class="mb-0 small">
+                            <li><strong>Player:</strong> Participate in the quest (counts toward player limit)</li>
+                            <li><strong>Assistant DM:</strong> Help the DM run the session (can vote on dates)</li>
+                            <li><strong>Spectator:</strong> Observe the session (auto-approved, cannot vote)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h6 class="quest-section-heading mb-2">
+                    <i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>Vote on Proposed Dates
+                </h6>
+                <p class="text-muted mb-3" id="votingInstruction" role="status">Click on the Yes/Maybe/No buttons for each proposed date in the calendar below.</p>
                 @{
                     var sortedDateVotes = Model.Quest?.ProposedDates
                         .OrderBy(pd => pd.Date)
@@ -199,10 +235,12 @@
                 {
                     <input type="hidden" name="DateVotes[@i].ProposedDateId" value="@sortedDateVotes[i].ProposedDateId" />
                 }
-                @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
-                {
-                    @await Html.PartialAsync("_Calendar", calendarMonth)
-                }
+                <div data-vote-section>
+                    @foreach (var calendarMonth in ViewBag.CalendarMonths as List<CalendarViewModel> ?? new List<CalendarViewModel>())
+                    {
+                        @await Html.PartialAsync("_Calendar", calendarMonth)
+                    }
+                </div>
                 <button type="submit" class="btn btn-primary w-100 mt-2">
                     <i class="fas fa-user-plus me-2"></i>Sign Up with Votes
                 </button>
@@ -391,8 +429,8 @@
             @if (charactersOn)
             {
                 <div class="mb-3">
-                    <label class="form-label">Select Character (Optional)</label>
-                    <select id="finalizedQuestCharacterMobile" class="form-select">
+                    <label for="finalizedQuestCharacterMobile" class="form-label">Select Character (Optional)</label>
+                    <select id="finalizedQuestCharacterMobile" class="form-select" data-join-character-source>
                         <option value="">-- Join without character --</option>
                         @foreach (var character in ownedCharacters)
                         {
@@ -407,7 +445,7 @@
                 <form asp-action="JoinFinalizedQuest" method="post" id="joinPlayerFormMobile">
                     <input type="hidden" name="questId" value="@Model.Quest?.Id" />
                     <input type="hidden" name="selectedRole" value="0" />
-                    <input type="hidden" name="characterId" id="playerCharacterIdMobile" value="" />
+                    <input type="hidden" name="characterId" id="playerCharacterIdMobile" value="" data-join-character-target />
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-users me-2"></i>Join as Player
                         <small class="d-block mt-1" style="font-size: 0.8em;">Participate in the quest (counts toward player limit)</small>
@@ -417,7 +455,7 @@
                 <form asp-action="JoinFinalizedQuest" method="post" id="joinAssistantFormMobile">
                     <input type="hidden" name="questId" value="@Model.Quest?.Id" />
                     <input type="hidden" name="selectedRole" value="2" />
-                    <input type="hidden" name="characterId" id="assistantCharacterIdMobile" value="" />
+                    <input type="hidden" name="characterId" id="assistantCharacterIdMobile" value="" data-join-character-target />
                     <button type="submit" class="btn btn-success w-100">
                         <i class="fas fa-user-shield me-2"></i>Join as Assistant DM
                         <small class="d-block mt-1" style="font-size: 0.8em;">Help the DM run the session</small>
@@ -427,7 +465,7 @@
                 <form asp-action="JoinFinalizedQuest" method="post" id="joinSpectatorFormMobile">
                     <input type="hidden" name="questId" value="@Model.Quest?.Id" />
                     <input type="hidden" name="selectedRole" value="1" />
-                    <input type="hidden" name="characterId" id="spectatorCharacterIdMobile" value="" />
+                    <input type="hidden" name="characterId" id="spectatorCharacterIdMobile" value="" data-join-character-target />
                     <button type="submit" class="btn btn-info w-100">
                         <i class="fas fa-eye me-2"></i>Join as Spectator
                         <small class="d-block mt-1" style="font-size: 0.8em;">Watch the session (auto-approved)</small>
@@ -435,18 +473,6 @@
                 </form>
             </div>
         </div>
-
-        @if (charactersOn)
-        {
-            <script>
-                document.getElementById('finalizedQuestCharacterMobile').addEventListener('change', function () {
-                    const characterId = this.value;
-                    document.getElementById('playerCharacterIdMobile').value = characterId;
-                    document.getElementById('assistantCharacterIdMobile').value = characterId;
-                    document.getElementById('spectatorCharacterIdMobile').value = characterId;
-                });
-            </script>
-        }
     }
 
     @* DM controls link *@
@@ -481,17 +507,17 @@
         @if (Model.Quest?.IsFinalized == true)
         {
             <div class="d-flex justify-content-between gap-2 mt-2">
-                <button type="button" class="btn btn-danger" onclick="revokeSignup(@Model.Quest?.Id)">
-                    <i class="fas fa-times me-2"></i>Revoke
+                <button type="button" class="btn btn-danger" data-action="revoke-signup" data-quest-id="@Model.Quest?.Id" data-confirm-message="Are you sure you want to revoke your signup for this quest? This action cannot be undone.">
+                    <i class="fas fa-times me-2"></i>Revoke My Signup
                 </button>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-success" onclick="changeVote(@Model.Quest?.Id, 2)">
+                    <button type="button" class="btn btn-success" data-action="change-vote" data-quest-id="@Model.Quest?.Id" data-vote="2">
                         <i class="fas fa-check me-2"></i>Yes
                     </button>
-                    <button type="button" class="btn btn-warning" onclick="changeVote(@Model.Quest?.Id, 1)">
+                    <button type="button" class="btn btn-warning" data-action="change-vote" data-quest-id="@Model.Quest?.Id" data-vote="1">
                         <i class="fas fa-question me-2"></i>Maybe
                     </button>
-                    <button type="button" class="btn btn-danger" onclick="changeVote(@Model.Quest?.Id, 0)">
+                    <button type="button" class="btn btn-danger" data-action="change-vote" data-quest-id="@Model.Quest?.Id" data-vote="0">
                         <i class="fas fa-times me-2"></i>No
                     </button>
                 </div>
@@ -500,8 +526,9 @@
         else
         {
             <button type="button" class="btn btn-danger w-100 mt-2"
-                    onclick="revokeSignup(@Model.Quest?.Id)">
-                <i class="fas fa-times me-2"></i>Revoke Signup
+                    data-action="revoke-signup" data-quest-id="@Model.Quest?.Id"
+                    data-confirm-message="Are you sure you want to revoke your signup for this quest? This action cannot be undone.">
+                <i class="fas fa-times me-2"></i>Revoke My Signup
             </button>
         }
     }
@@ -514,40 +541,6 @@
 </div>
 
 @section Scripts {
-<script>
-    function revokeSignup(questId) {
-        if (confirm("Are you sure you want to revoke your signup for this quest? This action cannot be undone.")) {
-            const formData = new FormData();
-            formData.append('__RequestVerificationToken', '@tokens.RequestToken');
-            fetch(`/Quest/RevokeSignup/${questId}`, {
-                method: "DELETE",
-                body: formData
-            }).then(res => {
-                if (res.ok) { location.reload(); }
-                else { res.text().then(text => { alert(`Failed to revoke signup: ${text}`); }); }
-            }).catch(err => { alert("An error occurred while revoking signup."); });
-        }
-    }
-
-    function changeVote(questId, vote) {
-        const formData = new FormData();
-        formData.append('__RequestVerificationToken', '@tokens.RequestToken');
-        formData.append('vote', vote);
-
-        fetch(`/Quest/ChangeVote/${questId}`, {
-            method: "POST",
-            body: formData
-        }).then(res => {
-            if (res.ok) {
-                location.reload();
-            } else {
-                res.text().then(text => {
-                    alert(`Failed to change vote: ${text}`);
-                });
-            }
-        }).catch(err => {
-            alert("An error occurred while changing vote.");
-        });
-    }
-</script>
+    <meta name="request-verification-token" content="@tokens.RequestToken" />
+    <script type="module" src="~/js/quest-details.js" asp-append-version="true"></script>
 }

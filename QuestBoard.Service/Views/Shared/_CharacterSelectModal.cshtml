@@ -14,12 +14,15 @@
    ViewBag.UserCharacters. A host that forgets renders an empty required select, and the
    user is silently locked out of saving with nothing on screen explaining why.
 
+   The behaviour (priming from the trigger, the Remove button) lives in quest-details.js, which the
+   hosting view loads.
+
    The form names its controller explicitly rather than inheriting it from the ambient
    ViewContext, so the post keeps targeting the right action when a view outside the Quest
    controller renders this partial.
 *@
 <div class="modal fade" id="characterSelectModal" tabindex="-1" aria-labelledby="characterSelectModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content bg-dark text-light">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title" id="characterSelectModalLabel">
@@ -43,7 +46,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-secondary d-flex justify-content-between">
-                    <button type="button" class="btn btn-outline-danger d-none" id="characterSelectRemoveBtn">
+                    <button type="button" class="btn btn-danger" id="characterSelectRemoveBtn" hidden>
                         <i class="fas fa-user-minus me-2"></i>Remove Character
                     </button>
                     <div class="d-flex gap-2">
@@ -59,85 +62,3 @@
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const characterSelectModal = document.getElementById('characterSelectModal');
-        if (!characterSelectModal) {
-            return;
-        }
-
-        characterSelectModal.addEventListener('show.bs.modal', function (event) {
-            const trigger = event.relatedTarget;
-            if (!trigger) {
-                return;
-            }
-
-            const questId = trigger.dataset.questId || '';
-            const currentCharacterId = trigger.dataset.currentCharacterId || '';
-            const currentCharacterLabel = trigger.dataset.currentCharacterLabel || '';
-
-            document.getElementById('characterSelectQuestId').value = questId;
-
-            const select = document.getElementById('characterSelect');
-
-            // A previous invocation may have left the select disabled/non-required from the
-            // Remove path, and may have injected a stand-in option for a different row's
-            // current character. Reset both before priming for this trigger, since one modal
-            // instance is reused by every row on the page.
-            select.disabled = false;
-            select.required = true;
-            const previousCurrentOption = document.getElementById('characterSelectCurrentOption');
-            if (previousCurrentOption) {
-                previousCurrentOption.remove();
-            }
-
-            if (currentCharacterId) {
-                let matchingOption = Array.from(select.options).find(function (option) {
-                    return option.value === currentCharacterId;
-                });
-
-                if (!matchingOption) {
-                    // The signup's current character is not in the option list (for example,
-                    // it belongs to another group's roster or was excluded some other way).
-                    // Inject it as a real option rather than assigning select.value with no
-                    // matching option, which would silently fall back to the placeholder and
-                    // make an untouched Save wipe the player's character.
-                    matchingOption = document.createElement('option');
-                    matchingOption.id = 'characterSelectCurrentOption';
-                    matchingOption.value = currentCharacterId;
-                    matchingOption.textContent = currentCharacterLabel || 'Current character';
-                    select.options[0].after(matchingOption);
-                }
-
-                select.value = currentCharacterId;
-            } else {
-                select.value = '';
-            }
-
-            document.getElementById('characterSelectRemoveBtn').classList.toggle('d-none', !currentCharacterId);
-            document.getElementById('characterSelectModalTitle').textContent = currentCharacterId
-                ? 'Change Character on Your Signup'
-                : 'Add Character to Signup';
-        });
-
-        document.getElementById('characterSelectRemoveBtn').addEventListener('click', function () {
-            if (!confirm('Remove this character from your signup?')) {
-                return;
-            }
-
-            const select = document.getElementById('characterSelect');
-            select.required = false;
-            select.value = '';
-            // A disabled control is excluded from form submission entirely, so characterId
-            // arrives absent on the server and binds to null -- the existing clear path.
-            // This also sidesteps the select's required attribute without editing it back
-            // and forth around the submit call.
-            select.disabled = true;
-
-            // Submitting the form directly (rather than clicking Save) bypasses the browser's
-            // constraint validation, so a disabled required-looking select can never block it.
-            document.getElementById('characterSelectForm').submit();
-        });
-    });
-</script>

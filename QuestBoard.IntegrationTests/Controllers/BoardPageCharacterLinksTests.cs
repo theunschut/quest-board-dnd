@@ -282,7 +282,7 @@ public class BoardPageCharacterLinksTests : IClassFixture<WebApplicationFactoryB
     [Theory]
     [InlineData(DesktopUserAgent, "id=\"finalizedQuestCharacter\"")]
     [InlineData(MobileUserAgent, "id=\"finalizedQuestCharacterMobile\"")]
-    public async Task CharactersOn_FinalizedJoin_OffersTheSelectItsScriptAndTheModal(string userAgent, string selectMarkup)
+    public async Task CharactersOn_FinalizedJoin_OffersTheSelectItsWiringAndTheModal(string userAgent, string selectMarkup)
     {
         // Arrange
         var (client, _, quest, _) = await SeedFinalizedQuestAsync("2", playerHasSignup: false, signupHasCharacter: false, "Visible Hero");
@@ -292,7 +292,9 @@ public class BoardPageCharacterLinksTests : IClassFixture<WebApplicationFactoryB
 
         // Assert
         body.Should().Contain(selectMarkup);
-        body.Should().Contain("getElementById('finalizedQuestCharacter");
+        body.Should().Contain("data-join-character-source", "the select is wired to the join forms' hidden character fields");
+        body.Should().Contain("data-join-character-target");
+        body.Should().Contain("js/quest-details.js", "the page script that copies the choice into the forms is loaded");
         body.Should().Contain("id=\"characterSelectModal\"");
         body.Should().Contain("Visible Hero");
     }
