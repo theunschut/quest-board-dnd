@@ -241,6 +241,76 @@ public class GroupSessionMiddlewareRevalidationTests
         await groupService.DidNotReceive().GetByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData("POST")]
+    [InlineData("PUT")]
+    [InlineData("DELETE")]
+    public async Task SuperAdmin_FreshTimestamp_DeletedBoard_Write_Returns409AndClearsSession(string method)
+    {
+        // A board deleted a moment ago must stop a write at once rather than after the interval, or the
+        // write would stamp a board that no longer exists and fail on the foreign key.
+        var userService = Substitute.For<IUserService>();
+        var groupService = Substitute.For<IGroupService>();
+        groupService.GetByIdAsync(TestGroupId, Arg.Any<CancellationToken>()).Returns((Group?)null);
+
+        var context = CreateContext(DateTime.UtcNow.AddMinutes(-1), isSuperAdmin: true, userService,
+            method: method, groupService: groupService);
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        AssertActiveBoardCleared(context);
+        wasCalled().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemovedMember_FreshTimestamp_Post_Returns409AndClearsSession()
+    {
+        var userService = Substitute.For<IUserService>();
+        userService.GetGroupRoleByIdAsync(TestUserId, TestGroupId).Returns((GroupRole?)null);
+
+        var context = CreateContext(DateTime.UtcNow.AddMinutes(-1), isSuperAdmin: false, userService, method: "POST");
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        AssertActiveBoardCleared(context);
+        wasCalled().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task StillMember_FreshTimestamp_Post_ChecksMembershipAndInvokesNext()
+    {
+        var userService = Substitute.For<IUserService>();
+        userService.GetGroupRoleByIdAsync(TestUserId, TestGroupId).Returns(GroupRole.Player);
+
+        var context = CreateContext(DateTime.UtcNow.AddMinutes(-1), isSuperAdmin: false, userService, method: "POST");
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        wasCalled().Should().BeTrue();
+        await userService.Received(1).GetGroupRoleByIdAsync(TestUserId, TestGroupId);
+    }
+
+    [Fact]
+    public async Task SuperAdmin_FreshTimestamp_Head_DoesNotLookUpTheBoard()
+    {
+        var userService = Substitute.For<IUserService>();
+        var groupService = Substitute.For<IGroupService>();
+
+        var context = CreateContext(DateTime.UtcNow.AddMinutes(-1), isSuperAdmin: true, userService,
+            method: "HEAD", groupService: groupService);
+        var (next, wasCalled) = CreateNext();
+
+        await new GroupSessionMiddleware(next).InvokeAsync(context);
+
+        wasCalled().Should().BeTrue();
+        await groupService.DidNotReceive().GetByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task ClearActiveBoardIfAsync_WhenTheSessionNamesTheBoard_ClearsAllThreeKeys()
     {

@@ -40,10 +40,11 @@ namespace QuestBoard.Service.Middleware;
 ///      from their active group mid-session doesn't keep board access indefinitely just because
 ///      their session still holds a group id that happens to still exist. If more than
 ///      MembershipRevalidationInterval has elapsed since the last check (or the timestamp is
-///      missing/unparseable), membership is re-verified via GetGroupRoleByIdAsync. A no-longer-member
+///      missing/unparseable), or the request is anything other than GET or HEAD, membership is
+///      re-verified via GetGroupRoleByIdAsync. A no-longer-member
 ///      is gated out using the exact same GET/HEAD-redirect vs. POST-409 branch as step 3. SuperAdmin
 ///      is never membership-checked — their group selection was never membership-gated, so there is
-///      no membership row that can go stale — but on the same interval the board's existence is
+///      no membership row that can go stale — but on the same terms the board's existence is
 ///      verified, because a board can be deleted from the Platform area while a super admin's
 ///      session still names it. A missing board is gated exactly like a lost membership.
 ///   5. Otherwise, the request proceeds with a resolved, still-valid active group.
@@ -124,8 +125,13 @@ public class GroupSessionMiddleware(RequestDelegate next)
             return;
         }
 
+        // A write is revalidated on every request, not only once the interval has passed: a board
+        // deleted from the Platform area, or a membership removed, must stop a write at once, because
+        // a write that stamps a board that no longer exists fails on the foreign key. Reads keep the
+        // interval, so the common page view costs no extra query.
         var validatedAtRaw = context.Session.GetString(SessionKeys.ActiveGroupValidatedAtUtc);
-        var needsRevalidation = validatedAtRaw == null
+        var needsRevalidation = IsWrite(context.Request)
+            || validatedAtRaw == null
             || !DateTime.TryParse(validatedAtRaw, System.Globalization.CultureInfo.InvariantCulture,
                    System.Globalization.DateTimeStyles.RoundtripKind, out var validatedAt)
             || DateTime.UtcNow - validatedAt > MembershipRevalidationInterval;
@@ -169,6 +175,9 @@ public class GroupSessionMiddleware(RequestDelegate next)
         await next(context);
     }
 
+    private static bool IsWrite(HttpRequest request)
+        => !HttpMethods.IsGet(request.Method) && !HttpMethods.IsHead(request.Method);
+
     /// <summary>
     /// Gates a request that has no usable active board: 409 for anything that is not GET or HEAD,
     /// otherwise a redirect to the hardcoded board picker carrying the request's own path and
@@ -176,7 +185,7 @@ public class GroupSessionMiddleware(RequestDelegate next)
     /// </summary>
     private static void GateToBoardPicker(HttpContext context)
     {
-        if (!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method))
+        if (IsWrite(context.Request))
         {
             context.Response.StatusCode = StatusCodes.Status409Conflict;
             return;
