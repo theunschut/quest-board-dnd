@@ -106,6 +106,52 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
+    /// A phone card carries the adventurer count in the poster's words, and no count on a Campaign board.
+    /// </summary>
+    [Fact]
+    public async Task MobileHome_MobileUserAgent_QuestCardShowsAdventurerCount()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_home05", "dm_home05@test.com", name: "DM Home05");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Counted Adventure Home05");
+        var (authClient, playerUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "player_home05", "player_home05@test.com");
+        await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, playerUser.Id, isSelected: false);
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var card = QuestCardContaining(html, "Counted Adventure Home05");
+        card.Should().Contain("Adventurers signed up:</strong> 1");
+        card.Should().Contain("DM:</strong> DM Home05");
+        card.Should().NotContain("onclick");
+
+        // The board type is read from the active group's stored row, so the Campaign case needs a Campaign group.
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, groupId: 2);
+        await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Campaign Card Home05", groupId: 2);
+        try
+        {
+            _factory.TestGroupContext.ActiveGroupId = 2;
+            _factory.TestGroupContext.BoardType = BoardType.Campaign;
+            var (campaignResponse, campaignHtml) = await GetWithUserAgentAsync("/quests", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+            campaignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var campaignCard = QuestCardContaining(campaignHtml, "Campaign Card Home05");
+            campaignCard.Should().Contain("DM:</strong>");
+            campaignCard.Should().NotContain("Adventurers signed up");
+            campaignCard.Should().NotContain("Selected Adventurers");
+        }
+        finally
+        {
+            _factory.TestGroupContext.ActiveGroupId = 1;
+            _factory.TestGroupContext.BoardType = BoardType.OneShot;
+        }
+    }
+
+    private static string QuestCardContaining(string html, string title)
+    {
+        var cards = html.Split("<div class=\"quest-card-mobile", StringSplitOptions.None).Skip(1);
+        return cards.Single(c => c.Contains(title));
+    }
+
+    /// <summary>
     /// Finalized quest shows the primary badge (date confirmed, future date).
     /// Note: repository filters out finalized quests with null or past FinalizedDate;
     /// a future FinalizedDate is required for the quest to appear on the board.

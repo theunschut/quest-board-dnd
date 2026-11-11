@@ -1,67 +1,60 @@
-/* Quest Board Mobile — home.mobile.css */
-
-/* Card stack container */
-.quest-list-mobile {
+/*
+ * Quest board, phone layout. A card is a glass card that is itself one link: the title anchor is stretched over the
+ * whole card, so the card is the tap target and keyboard focus rings the card rather than the title text. The glass,
+ * the text colour and the badge fills come from the shared foundation; the rules here only place the card's lines.
+ */
+@layer pages {
+  .quest-list-mobile {
     display: flex;
     flex-direction: column;
-}
+    gap: var(--qb-space-sm);
+  }
 
-/* Individual quest card — modern-card glass effect matching desktop */
-.quest-card-mobile {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
+  /* The card is the positioning context for the stretched link and is never shorter than a tap target. */
+  .quest-card-mobile {
+    position: relative;
+    min-height: var(--qb-hit-min);
+    padding: var(--qb-space-md);
+  }
 
-/* Card title — parchment matching desktop modern-card headings */
-.quest-card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
-                 -1px -1px 2px rgba(0, 0, 0, 0.9),
-                 1px 1px 6px rgba(0, 0, 0, 0.8);
-    margin-bottom: 0;
-}
+  /* The heading step is the phone card title; the card sets its own colour, so the title inherits it. */
+  .quest-card-title {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
 
-/* All headings inside card — parchment */
-.quest-card-mobile h5,
-.quest-card-mobile h6 {
-    color: var(--qb-fg-heading) !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
-}
+  .quest-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    margin-top: var(--qb-space-sm);
+    font-size: var(--qb-text-sm);
+  }
 
-/* Meta text (DM name, date) inside card — faded parchment matching modern-card .text-muted */
-.quest-card-mobile small {
-    color: rgba(244, 228, 188, 0.8) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9), -1px -1px 1px rgba(0, 0, 0, 0.9) !important;
-}
+  .quest-card-line {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
 
-.quest-card-mobile .text-muted {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-    font-weight: 500;
-}
+  /* One link per card, stretched over the whole card so the whole card is the target. */
+  .quest-card-mobile .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
 
-/* Badges inside card — clear text-shadow so colored bg stays readable */
-.quest-card-mobile .badge {
-    text-shadow: none !important;
-}
+  /* The ring is drawn on the card, not on the link text alone; the link itself shows none. */
+  .quest-card-mobile:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
 
-/* Hover/active feedback — matches modern-card:hover */
-.quest-card-mobile:hover {
-    background: rgba(255, 255, 255, 0.25);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    transform: translateY(-2px);
-}
-
-.quest-card-mobile:active {
-    background: rgba(255, 255, 255, 0.35);
-    transform: translateY(0);
+  .quest-card-mobile .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
 }

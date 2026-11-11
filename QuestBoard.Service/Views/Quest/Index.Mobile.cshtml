@@ -15,12 +15,14 @@
 }
 
 <div class="container-fluid px-2 mt-2">
+    <h1 class="visually-hidden">Quest Board</h1>
+
     @if (!Model.Any())
     {
-        <div class="text-center text-muted py-5">
-            <i class="fas fa-scroll fa-3x mb-3"></i>
-            <h5>No Quests Available</h5>
-            <p>Check back soon — a Dungeon Master may post a quest at any time.</p>
+        <div class="empty-state">
+            <i class="fas fa-scroll empty-state-icon" aria-hidden="true"></i>
+            <h2 class="empty-state-heading">No Quests Available</h2>
+            <p class="empty-state-text">Check back soon — a Dungeon Master may post a quest at any time.</p>
         </div>
     }
     else
@@ -34,6 +36,9 @@
                 var navUrl = currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id
                     ? Url.Action("Manage", "Quest", new { id = quest.Id })
                     : Url.Action("Details", "Quest", new { id = quest.Id });
+
+                var dmName = string.IsNullOrWhiteSpace(quest.DungeonMaster?.Name) ? "Unknown DM" : quest.DungeonMaster!.Name;
+                var finalizedWithDate = boardType != BoardType.Campaign && quest.IsFinalized && quest.FinalizedDate.HasValue;
 
                 string statusBadge;
                 string statusIcon;
@@ -72,45 +77,50 @@
                     statusIcon = "fas fa-clock";
                     statusText = "Open";
                 }
-                <div class="quest-card-mobile"
-                     onclick="window.location.href='@navUrl'">
-
-                    <div class="d-flex justify-content-between align-items-start mb-1">
-                        <h6 class="quest-card-title mb-0 pe-2"><a class="row-nav-link" href="@navUrl">@quest.Title</a></h6>
+                <div class="quest-card-mobile modern-card modern-card--interactive">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <h2 class="quest-card-title"><a class="row-nav-link" href="@navUrl">@quest.Title</a></h2>
                         <div class="d-flex flex-column align-items-end gap-1">
                             <span class="badge @statusBadge flex-shrink-0">
-                                <i class="@statusIcon me-1"></i>@statusText
+                                <i class="@statusIcon me-1" aria-hidden="true"></i>@statusText
                             </span>
                             @if (isUserSignedUp)
                             {
                                 <span class="badge bg-success flex-shrink-0">
-                                    <i class="fas fa-check me-1"></i>Signed up
+                                    <i class="fas fa-check me-1" aria-hidden="true"></i>Signed up
                                 </span>
                             }
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">
-                            <i class="fas fa-crown me-1"></i>@(quest.DungeonMaster?.Name ?? "Unknown DM")
-                        </small>
+                    <div class="quest-card-meta">
+                        <p class="quest-card-line">
+                            <i class="fas fa-crown me-1" aria-hidden="true"></i><strong>DM:</strong> @dmName
+                        </p>
+                        @if (finalizedWithDate)
+                        {
+                            <p class="quest-card-line">
+                                <i class="fas fa-calendar-check me-1" aria-hidden="true"></i><strong>Quest Date:</strong> @Html.WallClock(quest.FinalizedDate!.Value, "date-time")
+                            </p>
+                            <p class="quest-card-line">
+                                <i class="fas fa-users me-1" aria-hidden="true"></i><strong>Selected Adventurers:</strong> @quest.PlayerSignups.Count(ps => ps.IsSelected)
+                            </p>
+                        }
+                        else if (boardType != BoardType.Campaign)
+                        {
+                            <p class="quest-card-line">
+                                <i class="fas fa-users me-1" aria-hidden="true"></i><strong>Adventurers signed up:</strong> @quest.PlayerSignups.Count()
+                            </p>
+                        }
                         @if (boardType != BoardType.Campaign)
                         {
-                            <span class="badge bg-dark border">
-                                <i class="fas fa-dice-d20 me-1"></i>CR @quest.ChallengeRating
-                            </span>
+                            <p class="quest-card-line">
+                                <span class="badge bg-dark border">
+                                    <i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>CR @quest.ChallengeRating
+                                </span>
+                            </p>
                         }
                     </div>
-
-                    @if (boardType != BoardType.Campaign && quest.IsFinalized && quest.FinalizedDate.HasValue)
-                    {
-                        <div class="mt-1">
-                            <small class="text-muted">
-                                <i class="fas fa-calendar-check me-1"></i>
-                                @quest.FinalizedDate.Value.ToString("MMM dd, yyyy 'at' h:mm tt")
-                            </small>
-                        </div>
-                    }
                 </div>
             }
         </div>
