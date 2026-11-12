@@ -212,4 +212,29 @@ public class EventFormMarkupTests(WebApplicationFactoryBase factory)
             "the page title sits in the form card's header");
         body.Should().NotContain("quest-form-page");
     }
+
+    [Theory]
+    [InlineData("desktop")]
+    [InlineData("phone")]
+    public async Task Create_CycleControlsAreNamed(string layout)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var client = await DungeonMasterAsync("evform_cycle_" + layout);
+
+        var body = await GetBodyAsync(client, "/Events/Create", layout == "phone" ? MobileUserAgent : DesktopUserAgent);
+
+        foreach (var (id, name) in new[]
+                 {
+                     ("seriesCycleAddBtn", "Add a cycle position"),
+                     ("seriesCycleRemoveBtn", "Remove a cycle position")
+                 })
+        {
+            var button = Regex.Match(body, $@"<button\b[^>]*id=""{id}""[^>]*>");
+            button.Success.Should().BeTrue();
+            button.Value.Should().Contain($"aria-label=\"{name}\"");
+            button.Value.Should().Contain($"title=\"{name}\"");
+            button.Value.Should().Contain("btn btn-secondary btn-sm", "the cycle buttons are filled secondary buttons");
+            button.Value.Should().NotContain("btn-outline");
+        }
+    }
 }

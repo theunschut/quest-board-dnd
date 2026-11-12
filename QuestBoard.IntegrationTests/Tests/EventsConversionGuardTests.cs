@@ -86,6 +86,7 @@ public class EventsConversionGuardTests
     [
         "events-overview.css",
         "events-overview.mobile.css",
+        "event-forms.css",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name.
@@ -93,6 +94,8 @@ public class EventsConversionGuardTests
     {
         ["QuestBoard.Service/Views/Events/Index.cshtml"] = ["events-overview.css"],
         ["QuestBoard.Service/Views/Events/Index.Mobile.cshtml"] = ["events-overview.mobile.css"],
+        ["QuestBoard.Service/Views/Events/Create.cshtml"] = ["event-forms.css"],
+        ["QuestBoard.Service/Views/Events/Edit.cshtml"] = ["event-forms.css"],
     };
 
     // The area files scanned for raw date formatting: all of them.
@@ -122,6 +125,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/wwwroot/js/event-series-form.js",
         "QuestBoard.Service/wwwroot/css/events-overview.css",
         "QuestBoard.Service/wwwroot/css/events-overview.mobile.css",
+        "QuestBoard.Service/wwwroot/css/event-forms.css",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
         ".claude/ui-guidelines.md",

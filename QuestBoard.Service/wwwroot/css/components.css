@@ -712,9 +712,9 @@
     width: 32px;
     height: 32px;
     padding: 0;
-    border: 1px solid var(--qb-border-strong);
+    border: 1px solid var(--qb-control-border);
     border-radius: var(--qb-radius-sm);
-    background-color: transparent;
+    background-color: var(--qb-control-bg);
     cursor: pointer;
   }
 
@@ -723,6 +723,12 @@
     border-color: var(--qb-event);
     background-color: var(--qb-event);
     color: var(--qb-event-fg);
+  }
+
+  /* On the phone each cell is a full touch target; the strip wraps, so a longer cycle takes another line. */
+  .mobile-layout .cycle-mask-cell {
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
   }
 
   /*

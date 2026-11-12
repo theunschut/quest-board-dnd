@@ -6,7 +6,11 @@
     var pages = await BoardPages.GetAsync();
 }
 
-<div class="card modern-card">
+@section Styles {
+    <link rel="stylesheet" href="~/css/event-forms.css" asp-append-version="true" />
+}
+
+<div class="card modern-card event-form">
     <div class="card-header modern-card-header">
         <h1 class="mb-0">
             <i class="fas fa-pen me-2" aria-hidden="true"></i>
@@ -29,20 +33,20 @@
             <div class="mb-3">
                 <label asp-for="Title" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
                 <input asp-for="Title" class="form-control" placeholder="Enter event title" />
-                <span asp-validation-for="Title" class="field-validation-error"></span>
+                <span asp-validation-for="Title"></span>
             </div>
 
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label asp-for="Date" class="form-label">Date <span class="text-danger" aria-hidden="true">*</span></label>
                     <input asp-for="Date" type="date" class="form-control" />
-                    <span asp-validation-for="Date" class="field-validation-error"></span>
+                    <span asp-validation-for="Date"></span>
                 </div>
 
                 <div class="col-md-6 mb-3">
                     <label asp-for="StartTime" class="form-label">Start Time (optional)</label>
                     <input asp-for="StartTime" type="time" class="form-control" />
-                    <span asp-validation-for="StartTime" class="field-validation-error"></span>
+                    <span asp-validation-for="StartTime"></span>
                 </div>
             </div>
 
