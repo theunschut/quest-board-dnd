@@ -283,7 +283,7 @@ public class AccountConversionGuardTests
     [Fact]
     public void ProfileDelete_OnlyTheScriptOpensTheDialog()
     {
-        var script = File.ReadAllText(ResolveRepoFile(ProfileScriptPath));
+        var script = Script(ProfileScriptPath);
 
         script.Should().Contain("getOrCreateInstance(", "the script opens the dialog through the Modal API");
         script.Should().Contain("preventDefault()", "the script cancels the row's post in the listener that opens the dialog");
@@ -292,6 +292,39 @@ public class AccountConversionGuardTests
         foreach (var view in ProfileViews)
             Markup(view).Should().NotContain("data-bs-target=\"#deleteSubscriptionModal\"",
                 $"{view} must not let a data attribute open the dialog by itself");
+    }
+
+    [Theory]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.cshtml")]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml")]
+    public void ProfileDeleteDialog_CarriesEveryHookTheScriptReads(string view)
+    {
+        var markup = Markup(view);
+
+        Regex.Matches(markup, "id=\"deleteSubscriptionModal\"").Count.Should().Be(1,
+            $"{view} carries the delete dialog once; without it the row's form would post with no confirmation");
+
+        var dialog = Regex.Match(markup, "id=\"deleteSubscriptionModal\"(?<block>[\\s\\S]*?)id=\"renameSubscriptionModal\"");
+        dialog.Success.Should().BeTrue($"{view} keeps the delete dialog ahead of the rename dialog");
+        var block = dialog.Groups["block"].Value;
+
+        block.Should().Contain("data-subscription-name-target", "the script fills the member's subscription name here");
+        block.Should().Contain("data-keep-subscription", "the script focuses the safe choice when the dialog opens");
+
+        var form = Regex.Match(
+            block,
+            "<form\\b(?=[^>]*asp-action=\"RevokeCalendarSubscription\")[^>]*>(?<body>.*?)</form>",
+            RegexOptions.Singleline);
+        form.Success.Should().BeTrue($"{view}: the dialog posts through its own revoke form");
+        form.Groups["body"].Value.Should().Contain("@Html.AntiForgeryToken()", "the dialog's form carries its own antiforgery token");
+        Regex.IsMatch(form.Groups["body"].Value, "<input\\b(?=[^>]*type=\"hidden\")(?=[^>]*name=\"id\")[^>]*>").Should().BeTrue(
+            $"{view}: the dialog's form holds the id field the script fills");
+
+        var script = Script(ProfileScriptPath);
+        script.Should().Contain("getElementById('deleteSubscriptionModal')");
+        script.Should().Contain("[data-subscription-name-target]");
+        script.Should().Contain("input[name=\"id\"]");
+        script.Should().Contain("[data-keep-subscription]");
     }
 
     [Theory]
