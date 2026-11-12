@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 96
 current_phase_name: account-and-pickers-ui-conversion
 status: executing
-stopped_at: Completed 96-05-PLAN.md
-last_updated: "2026-11-12T13:30:36.068Z"
+stopped_at: Completed 96-06-PLAN.md
+last_updated: "2026-11-12T14:03:37.856Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
 progress:
   total_phases: 31
   completed_phases: 22
   total_plans: 247
-  completed_plans: 214
+  completed_plans: 215
   percent: 71
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 96 (account-and-pickers-ui-conversion) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
 Last activity: 2026-11-12 — Phase 96 execution started
@@ -102,6 +102,7 @@ introduced by Phase 87.
 | Phase 96 P02 | 1.5h | 3 tasks | 0 files |
 | Phase 96 P03 | 2.5 h | 3 tasks | 0 files |
 | Phase 96 P05 | 1.2h | 2 tasks | 7 files |
+| Phase 96 P06 | 2h | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase ?]: 96-03: picker/Home mockups link a copy of the frozen baseline foundation sheets (file:// pages cannot load app fonts); contrast probe gains opt-in stack mode and color-mix parsing; AFTER sweeps must use stack mode or panel muted text reads 4.25 instead of 6.09
 - [Phase 96]: Gate 1 approved by operator: all 16 recommendations, Home merge yes
 - [Phase 96]: 96-05: picker sheet linked through the view's Styles section (out of the picker layout's global list); landmark and third-party-host facts are theories over both User-Agents
+- [Phase ?]: 96-06: Profile address field keeps the approved control-fill look; phone rows share one wrapper so the last row drops its hairline
 
 ### Roadmap Evolution
 
@@ -270,8 +272,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-12T13:30:36.028Z
-Stopped at: Completed 96-05-PLAN.md
+Last session: 2026-11-12T14:03:37.817Z
+Stopped at: Completed 96-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -1655,7 +1655,7 @@ Plans:
 **Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
-**Plans:** 5/12 plans executed
+**Plans:** 6/12 plans executed
 
 **Scope:**
 
@@ -1730,7 +1730,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 96-06-PLAN.md — Profile onto the foundation: account sheet from the legacy Profile block, row-action relayout, meta-text contrast
+- [x] 96-06-PLAN.md — Profile onto the foundation: account sheet from the legacy Profile block, row-action relayout, meta-text contrast
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
