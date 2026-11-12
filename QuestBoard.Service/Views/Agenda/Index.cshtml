@@ -8,6 +8,9 @@
     var isDm = (await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;
     var pages = await BoardPages.GetAsync();
 }
+@section Styles {
+    <link rel="stylesheet" href="~/css/agenda.css" asp-append-version="true" />
+}
 @* This page's row action deliberately does not follow the availability overview's
    whole-row click target. Each row here also carries a full roster, and a full-row target
    would swallow text selection inside it -- and here the consequence of a click is a board
@@ -19,27 +22,27 @@
 <div class="row">
     <div class="col-12">
         <div class="card modern-card">
-            <div class="card-header modern-card-header d-flex justify-content-between align-items-start">
+            <div class="card-header modern-card-header d-flex justify-content-between align-items-start gap-2">
                 <div>
-                    <h2 class="mb-0">
-                        <i class="fas fa-calendar-days text-purple me-2"></i>@ViewData["Title"]
-                    </h2>
+                    <h1 class="mb-0">
+                        <i class="fas fa-calendar-days text-purple me-2" aria-hidden="true"></i>@ViewData["Title"]
+                    </h1>
                     <p class="header-subtitle mb-0">Upcoming events across all your boards</p>
                 </div>
                 @if (isDm && pages.Serves(BoardPage.Events))
                 {
                     <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-calendar-check me-2"></i>Board Availability
+                        <i class="fas fa-calendar-check me-2" aria-hidden="true"></i>Board Availability
                     </a>
                 }
             </div>
             <div class="card-body modern-card-body">
                 @if (Model.EmptyState == AgendaEmptyState.NoBoards)
                 {
-                    <div class="text-center text-muted py-5">
-                        <i class="fas fa-calendar-xmark fa-3x mb-3"></i>
-                        <h5>No Boards Yet</h5>
-                        <p class="mb-0">You're not a member of any board yet. Once you join one, your upcoming events will appear here.</p>
+                    <div class="empty-state agenda-empty-state">
+                        <i class="fas fa-calendar-xmark empty-state-icon" aria-hidden="true"></i>
+                        <h2 class="empty-state-heading">No Boards Yet</h2>
+                        <p class="empty-state-text">You're not a member of any board yet. Once you join one, your upcoming events will appear here.</p>
                     </div>
                 }
                 else
@@ -47,10 +50,10 @@
                     <div class="dropdown mb-3">
                         <button class="btn btn-secondary btn-sm dropdown-toggle" type="button"
                                 data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                            <i class="fas fa-filter me-1"></i>Filter Boards
+                            <i class="fas fa-filter me-1" aria-hidden="true"></i>Filter Boards
                             <span class="badge bg-secondary ms-1">@Model.SelectedCount of @Model.TotalCount</span>
                         </button>
-                        <div class="dropdown-menu p-3" style="min-width: 260px;">
+                        <div class="dropdown-menu p-3 agenda-filter-menu">
                             <p class="small text-muted mb-2">
                                 Choose which of your own boards to show. This never adds boards you don't belong to -- only narrows the ones shown.
                             </p>
@@ -70,27 +73,27 @@
                                     </div>
                                 }
                                 <hr class="my-2" />
-                                <button type="submit" class="btn btn-primary btn-sm w-100">Apply</button>
+                                <button type="submit" class="btn btn-secondary btn-sm w-100">Apply</button>
                             </form>
                         </div>
                     </div>
 
                     @if (Model.EmptyState == AgendaEmptyState.NoUpcomingEvents)
                     {
-                        <div class="text-center text-muted py-5">
-                            <i class="fas fa-calendar-alt fa-3x mb-3"></i>
-                            <h5>No Upcoming Events</h5>
-                            <p class="mb-0">None of your boards have anything scheduled yet. Once a DM schedules a session, it will appear here.</p>
+                        <div class="empty-state agenda-empty-state">
+                            <i class="fas fa-calendar-alt empty-state-icon" aria-hidden="true"></i>
+                            <h2 class="empty-state-heading">No Upcoming Events</h2>
+                            <p class="empty-state-text">None of your boards have anything scheduled yet. Once a DM schedules a session, it will appear here.</p>
                         </div>
                     }
                     else if (Model.EmptyState == AgendaEmptyState.AllBoardsFiltered)
                     {
-                        <div class="text-center text-muted py-5">
-                            <i class="fas fa-filter-circle-xmark fa-3x mb-3"></i>
-                            <h5>All Boards Filtered Out</h5>
-                            <p class="mb-2">You've hidden every board from view. Adjust the filter above, or</p>
+                        <div class="empty-state agenda-empty-state">
+                            <i class="fas fa-filter-circle-xmark empty-state-icon" aria-hidden="true"></i>
+                            <h2 class="empty-state-heading">All Boards Filtered Out</h2>
+                            <p class="empty-state-text">You've hidden every board from view. Adjust the filter above, or</p>
                             <a asp-action="Index" asp-route-boards="@SessionKeys.AgendaBoardFilterResetSentinel" class="btn btn-secondary btn-sm">
-                                <i class="fas fa-rotate-left me-1"></i>Show All Boards
+                                <i class="fas fa-rotate-left me-1" aria-hidden="true"></i>Show All Boards
                             </a>
                         </div>
                     }
@@ -100,9 +103,9 @@
                             @foreach (var row in Model.Rows)
                             {
                                 <div class="agenda-row">
-                                    <div class="d-flex justify-content-between align-items-start flex-wrap">
+                                    <div class="agenda-row-head">
                                         <div>
-                                            <strong class="fs-6">@row.Title</strong>
+                                            <h2 class="agenda-row-title">@row.Title</h2>
                                             <div class="small text-muted">
                                                 @Html.WallClock(row.Date.ToDateTime(TimeOnly.MinValue), "weekday-short")
                                                 @if (row.StartTime.HasValue)
@@ -111,20 +114,20 @@
                                                 }
                                             </div>
                                         </div>
-                                        <div class="text-end">
+                                        <div class="agenda-row-board">
                                             <span class="fw-semibold">@row.BoardName</span>
                                             @if (row.BoardType == BoardType.Campaign)
                                             {
-                                                <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1"></i>Campaign</span>
+                                                <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1" aria-hidden="true"></i>Campaign</span>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1"></i>One-Shot</span>
+                                                <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>One-Shot</span>
                                             }
                                             @if (row.IsActiveBoard)
                                             {
                                                 <span class="badge bg-secondary">
-                                                    <i class="fas fa-check-circle me-1"></i>Active
+                                                    <i class="fas fa-check-circle me-1" aria-hidden="true"></i>Active
                                                 </span>
                                             }
                                         </div>
@@ -153,18 +156,18 @@
                                         @if (row.IsActiveBoard)
                                         {
                                             <a asp-controller="Events" asp-action="Details" asp-route-id="@row.EventId" asp-route-from="agenda"
-                                               class="btn btn-primary btn-sm">
-                                                <i class="fas fa-arrow-right me-1"></i>Open Event
+                                               class="btn btn-info btn-sm">
+                                                <i class="fas fa-arrow-right me-1" aria-hidden="true"></i>Open Event
                                             </a>
                                         }
                                         else
                                         {
-                                            <button type="button" class="btn btn-primary btn-sm"
+                                            <button type="button" class="btn btn-info btn-sm"
                                                     data-bs-toggle="modal" data-bs-target="#switchBoardModal"
                                                     data-group-id="@row.BoardId"
                                                     data-board-name="@row.BoardName"
                                                     data-return-url="@Url.Action("Details", "Events", new { id = row.EventId, from = "agenda" })">
-                                                <i class="fas fa-right-left me-1"></i>Switch &amp; Open
+                                                <i class="fas fa-right-left me-1" aria-hidden="true"></i>Switch &amp; Open
                                             </button>
                                         }
                                     </div>
@@ -176,8 +179,8 @@
                         {
                             <div class="text-center mt-3">
                                 <a href="@Url.Action("Index", new { take = Model.NextTake, boards = Model.SelectedBoardIds })"
-                                   class="btn btn-primary">
-                                    <i class="fas fa-chevron-down me-2"></i>Show More Events
+                                   class="btn btn-secondary">
+                                    <i class="fas fa-chevron-down me-2" aria-hidden="true"></i>Show More Events
                                 </a>
                             </div>
                         }

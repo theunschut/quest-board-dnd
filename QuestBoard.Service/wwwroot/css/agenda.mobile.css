@@ -1,49 +1,64 @@
-/* ========================================
-   MY AGENDA STYLES (MOBILE)
-   ======================================== */
+/*
+ * My Agenda, phone layout. The page is one title card; inside it each upcoming event is a slip: a darker band over
+ * the card with its own border, so the muted dates and labels hold their contrast. A slip is not a card of its own,
+ * so it takes no panel blur however many repeat. The availability cell states are the shared rules in components.css.
+ * This sheet and its desktop sibling are a pair rather than one shared file because the phone layout loads its own
+ * stylesheet set.
+ */
+@layer pages {
+  .agenda-page-body {
+    padding: var(--qb-space-sm);
+  }
 
-/* The availability cell states are the shared availability rules in components.css; this stylesheet only places
-   the agenda's own cards and rows. */
+  .agenda-card,
+  .agenda-filter-panel {
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-scrim);
+  }
 
-/* The empty dash sits on this card's own lighter glass, where the parchment tone measures under 4.5:1 over the
-   brightest board pixel; white holds it. */
-.agenda-card .avail-cell-empty {
+  .agenda-card {
+    margin-bottom: var(--qb-space-sm);
+  }
+
+  .agenda-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
+
+  /* The card title step on the phone is 20px; the title wraps and never truncates. */
+  .agenda-card-title {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .agenda-card-board {
+    text-align: end;
+  }
+
+  .agenda-card-board .agenda-board-name {
+    overflow-wrap: anywhere;
+  }
+
+  /* The empty dash sits on the darker slip, where the foundation's muted tone reads; white keeps it equal to the labels. */
+  .agenda-card .avail-cell-empty {
     color: var(--qb-on-fill);
-}
+  }
 
-/* This card sits directly on the page's background image with nothing wrapping it, so it
-   carries the app's glass treatment directly rather than through a shared class, and must
-   stay in step with the shared card styling if that styling ever changes. Without the blur
-   and the border the page background reads straight through the card and the text on it
-   becomes unreadable over the darker parts of the image. */
-.agenda-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px 14px;
-    margin-bottom: 12px;
-}
-
-.agenda-card-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: #F4E4BC;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* The board name sits on the same line as its type badge and has no chip of its own, so it
-   needs the same shadow the card title carries to stay legible against the page image. */
-.agenda-card .agenda-board-name {
-    color: #F4E4BC;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* This is a real tap target, so it reaches the 44px iOS/Android floor through padding rather
-   than through font size -- do not shrink it to fit the 4px spacing scale. */
-.agenda-roster-toggle {
-    min-height: 44px;
+  /* The roster toggle is a real tap target: padding, not font size, takes it to the 44px floor. */
+  .agenda-roster-toggle {
     display: inline-flex;
     align-items: center;
+    min-height: var(--qb-hit-min);
+  }
+
+  .agenda-empty-state .empty-state-text {
+    color: var(--qb-fg);
+  }
 }

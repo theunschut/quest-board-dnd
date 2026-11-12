@@ -74,6 +74,8 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
         "QuestBoard.Service/Views/Series/Details.cshtml",
+        "QuestBoard.Service/Views/Agenda/Index.cshtml",
+        "QuestBoard.Service/Views/Agenda/Index.Mobile.cshtml",
     ];
 
     // Files this work retires; each is deleted and must stay deleted, because its behaviour moved into a script file.
@@ -88,6 +90,8 @@ public class EventsConversionGuardTests
         "events-overview.css",
         "events-overview.mobile.css",
         "event-forms.css",
+        "agenda.css",
+        "agenda.mobile.css",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name.
@@ -97,6 +101,8 @@ public class EventsConversionGuardTests
         ["QuestBoard.Service/Views/Events/Index.Mobile.cshtml"] = ["events-overview.mobile.css"],
         ["QuestBoard.Service/Views/Events/Create.cshtml"] = ["event-forms.css"],
         ["QuestBoard.Service/Views/Events/Edit.cshtml"] = ["event-forms.css"],
+        ["QuestBoard.Service/Views/Agenda/Index.cshtml"] = ["agenda.css"],
+        ["QuestBoard.Service/Views/Agenda/Index.Mobile.cshtml"] = ["agenda.mobile.css"],
     };
 
     // The area files scanned for raw date formatting: all of them.
@@ -128,6 +134,8 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/wwwroot/css/events-overview.css",
         "QuestBoard.Service/wwwroot/css/events-overview.mobile.css",
         "QuestBoard.Service/wwwroot/css/event-forms.css",
+        "QuestBoard.Service/wwwroot/css/agenda.css",
+        "QuestBoard.Service/wwwroot/css/agenda.mobile.css",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
         ".claude/ui-guidelines.md",

@@ -163,4 +163,143 @@ public class AgendaConversionTests(WebApplicationFactoryBase factory)
         html.Should().Contain($"data-return-url=\"/Events/Details/{otherEventId}?from=agenda\"");
         html.Should().Contain("action=\"/GroupPicker/SelectGroup\"");
     }
+
+    // The page's own markup, without the layout's navigation and footer.
+    private static string Main(string html)
+    {
+        var match = Regex.Match(html, @"<main\b[\s\S]*</main>", RegexOptions.IgnoreCase);
+        match.Success.Should().BeTrue("the layout wraps the page in <main>");
+        return match.Value;
+    }
+
+    // The page's own markup with the dialog removed, so a check on the page's buttons never reads the dialog footer.
+    private static string MainWithoutDialog(string html)
+    {
+        var page = Main(html);
+        var dialogAt = page.IndexOf("id=\"switchBoardModal\"", StringComparison.Ordinal);
+        return dialogAt < 0 ? page : page[..dialogAt];
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Agenda_BothLayouts_ShareTheHeadingOutline(bool mobile)
+    {
+        var (client, _, _) = await SeedTwoBoardPlayerAsync($"agconv_outline_{(mobile ? "m" : "d")}");
+
+        var page = Main(await GetAsync(client, "/Agenda", AgentFor(mobile)));
+
+        Regex.Matches(page, @"<h1\b").Should().HaveCount(1, "the page has one title");
+        Regex.IsMatch(
+            page,
+            @"<div class=""card-header modern-card-header[^""]*"">[\s\S]*?<h1\b[^>]*>[\s\S]*?My Agenda\s*</h1>[\s\S]*?<p class=""header-subtitle[^""]*"">Upcoming events across all your boards</p>")
+            .Should().BeTrue("the title and its subtitle sit in the page card's header");
+        Regex.IsMatch(page, @"<h2\b[^>]*>\s*Conversion Active Session\s*</h2>").Should().BeTrue(
+            "a row title is a second-level heading on both layouts");
+        Regex.Matches(page, @"<h[3-6]\b").Should().BeEmpty("the outline has no deeper level than the row titles");
+        page.Should().NotContain("<h4", "the phone page no longer titles itself with a fourth-level heading");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Agenda_EmptyStates_AreVerbatim(bool mobile)
+    {
+        var agent = AgentFor(mobile);
+
+        // No board at all.
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (noBoards, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"agconv_noboards_{(mobile ? "m" : "d")}", $"agconv_noboards_{(mobile ? "m" : "d")}@example.com", roles: []);
+        AssertEmptyState(
+            Main(await GetAsync(noBoards, "/Agenda", agent)),
+            "No Boards Yet",
+            "You're not a member of any board yet. Once you join one, your upcoming events will appear here.");
+
+        // A board with nothing scheduled.
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (quiet, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"agconv_quiet_{(mobile ? "m" : "d")}", $"agconv_quiet_{(mobile ? "m" : "d")}@example.com");
+        AssertEmptyState(
+            Main(await GetAsync(quiet, "/Agenda", agent)),
+            "No Upcoming Events",
+            "None of your boards have anything scheduled yet. Once a DM schedules a session, it will appear here.");
+
+        // Every board filtered out, with the way back.
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (filtered, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"agconv_filtered_{(mobile ? "m" : "d")}", $"agconv_filtered_{(mobile ? "m" : "d")}@example.com");
+        await SeedEventAsync(1, "Conversion Hidden Session", 1);
+        var page = Main(await GetAsync(filtered, "/Agenda?boards=", agent));
+        AssertEmptyState(
+            page,
+            "All Boards Filtered Out",
+            "You've hidden every board from view. Adjust the filter above, or");
+        Regex.IsMatch(page, @"<a\b[^>]*class=""btn btn-secondary[^""]*""[^>]*>[\s\S]*?Show All Boards\s*</a>")
+            .Should().BeTrue("the way back is a secondary button");
+    }
+
+    private static void AssertEmptyState(string page, string heading, string sentence)
+    {
+        Regex.IsMatch(page, @"<div class=""empty-state[\s""]").Should().BeTrue("an empty list uses the shared empty state");
+        Regex.IsMatch(page, $@"<h2 class=""empty-state-heading"">{Regex.Escape(heading)}</h2>").Should().BeTrue(
+            $"the empty state is headed \"{heading}\"");
+        WebUtility.HtmlDecode(page).Should().Contain(sentence);
+    }
+
+    [Fact]
+    public async Task Agenda_PhoneRoster_OpensWithoutAnyHandler()
+    {
+        var (client, activeEventId, _) = await SeedTwoBoardPlayerAsync("agconv_roster");
+
+        var html = await GetAsync(client, "/Agenda", MobileUserAgent);
+
+        var toggle = Regex.Match(html, @"<button\b[^>]*agenda-roster-toggle[^>]*>").Value;
+        toggle.Should().NotBeEmpty("each phone row has a roster toggle");
+        toggle.Should().Contain("data-bs-toggle=\"collapse\"");
+        toggle.Should().Contain($"data-bs-target=\"#roster-{activeEventId}\"");
+        toggle.Should().NotContain("onclick");
+
+        var roster = OpeningTag(html, "div", $"roster-{activeEventId}");
+        roster.Should().NotContain("onclick");
+        html.Should().NotContain("stopPropagation", "no row-level handler sits above the toggle, so nothing needs to stop a click");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Agenda_ButtonRoles_LeaveNoPagePrimary(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"agconv_roles_{(mobile ? "m" : "d")}", $"agconv_roles_{(mobile ? "m" : "d")}@example.com");
+        await SeedGroupAsync(2, "Conversion Other Board");
+        await SeedMembershipAsync(user.Id, 2);
+        for (var i = 1; i <= 6; i++)
+            await SeedEventAsync(1, $"Conversion Roles Session {i}", i);
+        await SeedEventAsync(2, "Conversion Roles Other Session", 1);
+
+        var html = await GetAsync(client, "/Agenda?boards=1&boards=2", AgentFor(mobile));
+        var page = MainWithoutDialog(html);
+
+        page.Should().Contain("Show More Events");
+        page.Should().NotContain("btn-primary", "the page itself has no primary button; the dialog's confirm is its own context");
+
+        Regex.Matches(page, @"<a\b[^>]*>\s*<i\b[^>]*></i>Open Event\s*</a>").Should().NotBeEmpty();
+        foreach (Match open in Regex.Matches(page, @"<a\b[^>]*>(?=\s*<i\b[^>]*></i>Open Event)"))
+            open.Value.Should().Contain("btn btn-info btn-sm");
+        foreach (Match trigger in Regex.Matches(page, @"<button\b[^>]*data-bs-target=""#switchBoardModal""[^>]*>"))
+            trigger.Value.Should().Contain("btn btn-info btn-sm");
+        Regex.IsMatch(page, @"<a\b[^>]*class=""btn btn-secondary[^""]*""[^>]*>\s*<i\b[^>]*></i>Show More Events").Should().BeTrue(
+            "loading more is a secondary action");
+        Regex.IsMatch(page, @"<button type=""submit"" class=""btn btn-secondary btn-sm w-100"">Apply</button>").Should().BeTrue(
+            "applying the filter is a secondary action");
+
+        // The dialog keeps the one primary action.
+        var dialog = html[html.IndexOf("id=\"switchBoardModal\"", StringComparison.Ordinal)..];
+        dialog.Should().Contain("btn btn-primary");
+    }
 }
