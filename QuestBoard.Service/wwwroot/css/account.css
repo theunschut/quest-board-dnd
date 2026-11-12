@@ -135,4 +135,18 @@
     align-items: center;
     min-height: var(--qb-hit-min);
   }
+
+  /*
+   * The signed-out landing card sits a step below the bar and never lifts, because it is a statement and not a control.
+   * On a phone the log in button spans the card's content width; the phone class is on the body, so the one view serves
+   * both layouts.
+   */
+  .landing-card {
+    margin-top: var(--qb-space-xl);
+  }
+
+  .mobile-layout .landing-action .btn {
+    display: block;
+    width: 100%;
+  }
 }

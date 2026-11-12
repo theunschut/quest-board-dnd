@@ -24,12 +24,14 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/Account/Edit.cshtml",
         "QuestBoard.Service/Views/Account/Edit.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/AccessDenied.cshtml",
+        "QuestBoard.Service/Views/Home/Index.cshtml",
     ];
 
     // Phone twins that were merged into their desktop view and must not come back.
     private static readonly string[] RetiredFiles =
     [
         "QuestBoard.Service/Views/GroupPicker/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Home/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/Login.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/ForgotPassword.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/SetPassword.Mobile.cshtml",
@@ -50,6 +52,7 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/Account/Edit.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/Edit.Mobile.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Shared/AccessDenied.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Home/Index.cshtml", "account.css"),
     ];
 
     // The area's sheets, scanned for planning references with the converted views.
