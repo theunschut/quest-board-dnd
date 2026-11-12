@@ -737,6 +737,29 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         Regex.Matches(html, "autocomplete=\"new-password\"").Count.Should().Be(2);
     }
 
+    /// <summary>
+    /// Mobile UA on /Account/ChangePassword (signed in) is served the shared view in the phone shell
+    /// with the document title the desktop page has and the Back to Profile link.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountChangePassword_MobileUserAgent_RendersTheSharedViewWithItsTitle()
+    {
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "acct_chgpw17", "acct_chgpw17@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/Account/ChangePassword");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("<title>Change Password - ");
+        html.Should().Contain("Back to Profile");
+    }
+
     // -----------------------------------------------------------------------
     // Register page renders glass card form on mobile UA
     // -----------------------------------------------------------------------

@@ -20,6 +20,7 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/Account/Login.cshtml",
         "QuestBoard.Service/Views/Account/ForgotPassword.cshtml",
         "QuestBoard.Service/Views/Account/SetPassword.cshtml",
+        "QuestBoard.Service/Views/Account/ChangePassword.cshtml",
     ];
 
     // Phone twins that were merged into their desktop view and must not come back.
@@ -29,6 +30,7 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/Account/Login.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/ForgotPassword.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/SetPassword.Mobile.cshtml",
+        "QuestBoard.Service/Views/Account/ChangePassword.Mobile.cshtml",
     ];
 
     // Each view with the sheet it must link through its own Styles section.
@@ -40,6 +42,7 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/Account/Login.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/ForgotPassword.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/SetPassword.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Account/ChangePassword.cshtml", "account.css"),
     ];
 
     // The area's sheets, scanned for planning references with the converted views.
@@ -286,6 +289,7 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/Account/Login.cshtml", ["username", "current-password"]),
         ("QuestBoard.Service/Views/Account/ForgotPassword.cshtml", ["email"]),
         ("QuestBoard.Service/Views/Account/SetPassword.cshtml", ["new-password"]),
+        ("QuestBoard.Service/Views/Account/ChangePassword.cshtml", ["current-password", "new-password"]),
     ];
 
     [Fact]
