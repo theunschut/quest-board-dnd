@@ -1,5 +1,6 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models.Shop;
 using QuestBoard.Service.Filters;
@@ -12,6 +13,7 @@ namespace QuestBoard.Service.Controllers.Shop;
 [Authorize(Policy = "DungeonMasterOnly")]
 [BoardPage(BoardPage.Shop)]
 public class ShopManagementController(
+    IActiveGroupContext activeGroupContext,
     IAuthorizationService authorizationService,
     IShopService shopService,
     IUserService userService,
@@ -76,6 +78,9 @@ public class ShopManagementController(
             ReferenceUrl = viewModel.ReferenceUrl,
             Status = ItemStatus.Draft,
             CreatedByDmId = currentUser.Id,
+            // Tag the item to the active board: ShopItems.GroupId is a required foreign key, and
+            // the board query filter would hide an item stamped with any other board.
+            GroupId = activeGroupContext.RequireActiveGroupId(),
             AvailableFrom = viewModel.AvailableFrom,
             AvailableUntil = viewModel.AvailableUntil
         };
