@@ -118,6 +118,19 @@ public class AccountConversionGuardTests
     private static string Markup(string relativePath) =>
         Regex.Replace(File.ReadAllText(ResolveRepoFile(relativePath)), @"@\*[\s\S]*?\*@", " ");
 
+    // A quoted string, a template literal, a line comment or a block comment, matched left to right so a comment marker
+    // inside a string is kept and an apostrophe inside a comment is dropped with it.
+    private static readonly Regex ScriptTokens = new(
+        @"'(?:\\.|[^'\\\n])*'|""(?:\\.|[^""\\\n])*""|`(?:\\.|[^`\\])*`|//[^\n]*|/\*[\s\S]*?\*/");
+
+    // The script without its comments, which describe the code in the same words it uses.
+    private static string Script(string relativePath) =>
+        ScriptTokens.Replace(
+            File.ReadAllText(ResolveRepoFile(relativePath)),
+            match => match.Value.StartsWith("//", StringComparison.Ordinal) || match.Value.StartsWith("/*", StringComparison.Ordinal)
+                ? " "
+                : match.Value);
+
     [Fact]
     public void ConvertedViews_CarryNoInlineStyleScriptOrHandler()
     {
@@ -220,18 +233,25 @@ public class AccountConversionGuardTests
     [Fact]
     public void ProfileScript_FillsTheDialogNameAsTextOnly()
     {
-        var script = File.ReadAllText(ResolveRepoFile(ProfileScriptPath));
+        var script = Script(ProfileScriptPath);
 
         script.Should().Contain("data-subscription-name-target", "the script finds the dialog's name slot");
-        script.Should().Contain(".textContent = ", "the member-supplied name is written as text");
+        Regex.IsMatch(
+                script,
+                @"querySelector\('\[data-subscription-name-target\]'\)\.textContent\s*=\s*trigger\.dataset\.subscriptionName")
+            .Should().BeTrue("the dialog's name slot is filled with textContent from the trigger's dataset");
         script.Should().NotContain("confirm(", "the browser prompt is replaced by the dialog");
 
-        foreach (var line in script.Split('\n'))
-        {
-            var assignsMarkup = line.Contains("innerHTML", StringComparison.Ordinal) || line.Contains("insertAdjacentHTML", StringComparison.Ordinal);
-            (assignsMarkup && line.Contains("dataset", StringComparison.Ordinal)).Should().BeFalse(
-                $"a dataset value must never reach markup: {line.Trim()}");
-        }
+        foreach (var sink in new[] { "insertAdjacentHTML", "document.write", "createContextualFragment" })
+            script.Should().NotContain(sink, $"{sink} would turn a member-supplied value into markup");
+
+        // Markup is only ever assigned from the two literal restore and success strings the script itself holds.
+        var allowedMarkup = new Regex(@"^(?:restHtml|iconOnly\s*\?\s*'[^']*'\s*:\s*'[^']*')$");
+        var assignments = Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\s*=(?!=)(?<value>[^;]*);");
+        assignments.Should().NotBeEmpty("the Copy button's own restore and success markup is assigned somewhere");
+        foreach (Match assignment in assignments)
+            allowedMarkup.IsMatch(assignment.Groups["value"].Value.Trim()).Should().BeTrue(
+                $"only the script's own literal markup may be assigned, never a dataset value: {assignment.Value.Trim()}");
     }
 
     [Theory]
