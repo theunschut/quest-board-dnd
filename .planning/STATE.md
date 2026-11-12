@@ -4,7 +4,7 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 102
 status: completed
-stopped_at: Phase 102 complete (UAT 6/6 passed 2026-11-12); Phase 95 UAT next
+stopped_at: Phase 102 complete; Phase 95 UAT 11/11 local passed, 2 real-device items deferred to post-deploy (phase stays open)
 last_updated: "2026-11-12T09:27:45.734Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
@@ -34,6 +34,11 @@ Plan: 10 of 10
 Status: Phase 102 complete (manual UAT 6/6 passed locally 2026-11-12, verification passed). Not all phases are
 complete: Phase 95 is still open (see below), and Phases 78, 79 and 90 are not done.
 Last activity: 2026-11-12 — Phase 102 UAT passed and phase marked complete
+
+**Phase 95 UAT run locally 2026-11-12 (`95-UAT.md`): 11 of 11 local checks passed, 2 real-device items deferred to after
+the production deploy by the user's decision (real-phone checklist incl. WINDOWS #32, and WINDOWS #3).** `phase uat-passed 95`
+therefore still refuses: it counts the two deferred (skipped) items as blockers and needs `95-VERIFICATION.md` at `passed`.
+Left open on purpose; not forced.
 
 **Phase 95 (quests-and-quest-log-ui-conversion) is parked, not complete.** All 18 of 18 plans are
 executed (stopped at: Completed 95-18-PLAN.md), but the phase stays open until the operator's
