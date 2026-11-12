@@ -374,10 +374,13 @@ public class CalendarMonthMarkupTests(WebApplicationFactoryBase factory)
             .Should().BeLessThan(html.IndexOf("class=\"calendar-grid ", StringComparison.Ordinal),
                 because: "the note sits between the header and the weekday row");
         html.Should().Contain("class=\"day-number\">31<", because: "the grid still renders its day numbers");
+        html.Should().Contain("calendar-card calendar-card--empty",
+            because: "an empty month tells the stylesheet to drop the slot minimum so the note never pushes the grid past the window");
 
         await SeedEventAsync(BoardA, "Busy Month Night", 12, new TimeOnly(18, 0));
         var busy = await GetAsync(client);
         busy.Should().NotContain("calendar-empty-note");
+        busy.Should().NotContain("calendar-card--empty");
     }
 
     [Fact]

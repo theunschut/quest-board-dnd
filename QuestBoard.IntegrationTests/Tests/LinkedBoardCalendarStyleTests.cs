@@ -129,6 +129,20 @@ public class LinkedBoardCalendarStyleTests
             because: "a keyboard user focusing an openable linked chip must get the same detail line a hover shows");
     }
 
+    [Fact]
+    public void CancelledLinkedEntry_OnQuestDetails_TakesMutedInkOnQuieterPaperInsteadOfFading()
+    {
+        var css = ReadStylesheet(CalendarCss);
+
+        var rule = ExtractRuleBody(css, ".details-page .linked-entry--cancelled");
+
+        rule.Should().Contain("color: var(--qb-ink-muted)",
+            because: "a called-off chip keeps 4.5:1 through the muted ink");
+        rule.Should().Contain("background-color: var(--qb-surface-paper-alt)");
+        rule.Should().NotContain("opacity",
+            because: "fading the whole chip dropped its text under the contrast bar");
+    }
+
     [Theory]
     [InlineData(CalendarCss, ".calendar-page .linked-entry--cancelled .cal-entry__title")]
     [InlineData(CalendarCss, ".calendar-page .calendar-event.cancelled .cal-entry__title")]

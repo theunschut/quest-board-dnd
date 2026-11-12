@@ -16,7 +16,7 @@
 
 @* Board Availability and My Agenda are not repeated here: both stay one click away in the navigation bar. *@
 <div class="calendar-page">
-    <div class="card modern-card calendar-card">
+    <div class="card modern-card calendar-card@(monthIsEmpty ? " calendar-card--empty" : "")">
         <div class="card-header modern-card-header calendar-head">
             <h1><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>@ViewData["Title"]</h1>
             <div class="calendar-legend-area">

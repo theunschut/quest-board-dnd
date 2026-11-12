@@ -352,6 +352,16 @@
         }
     }
 
+    /*
+     * An empty month has no entry to hold a slot for, so its rows share the height with no slot minimum and the
+     * one-line note above the grid never pushes a six-week month past the window.
+     */
+    @media (min-width: 992px) {
+        .calendar-page .calendar-card--empty .calendar-body {
+            grid-template-rows: repeat(var(--cal-weeks), minmax(calc(var(--cal-top-h) + 2 * var(--cal-cell-pad-y)), 1fr));
+        }
+    }
+
     /* ---------- Day cell ---------- */
     .calendar-page .calendar-day {
         display: flex;
@@ -1041,14 +1051,24 @@
         cursor: default;
     }
 
+    /* A called-off linked chip sits on the quieter paper with the muted ink, which holds 4.5:1; fading the whole chip did not. */
     .details-page .linked-entry--cancelled {
-        opacity: 0.55;
+        background-color: var(--qb-surface-paper-alt);
+        color: var(--qb-ink-muted);
         text-decoration: line-through;
     }
 
     .details-page .linked-entry--cancelled .linked-entry-title,
     .details-page .linked-entry--cancelled .linked-entry-detail {
+        color: var(--qb-ink-muted);
         text-decoration: line-through;
+    }
+
+    /* Words only a screen reader hears take the ink colour of the chip they sit on, so a contrast check reads them against paper. */
+    .details-page .warning-icon-display .visually-hidden,
+    .details-page .finalized-icon-display .visually-hidden,
+    .details-page .vote-indicator .visually-hidden {
+        color: var(--qb-ink);
     }
 
     /* Sits in the top-right corner of the day cell, outside the scrolling item region, so linked
