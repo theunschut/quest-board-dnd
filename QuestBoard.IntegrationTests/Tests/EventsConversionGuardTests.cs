@@ -124,6 +124,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/wwwroot/js/row-link.js",
         "QuestBoard.Service/wwwroot/js/event-details.js",
         "QuestBoard.Service/wwwroot/js/event-series-form.js",
+        "QuestBoard.Service/wwwroot/js/agenda.js",
         "QuestBoard.Service/wwwroot/css/events-overview.css",
         "QuestBoard.Service/wwwroot/css/events-overview.mobile.css",
         "QuestBoard.Service/wwwroot/css/event-forms.css",
@@ -347,6 +348,16 @@ public class EventsConversionGuardTests
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/event-details.js");
         Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML|document\.write")
             .Select(m => m.Value).Should().BeEmpty("event-details.js must build no markup from strings");
+    }
+
+    [Fact]
+    public void AgendaModule_WritesNoMarkupFromStrings()
+    {
+        // The module copies a board id, a return address and a board name from the trigger into the dialog, as
+        // field values and text content, so it never hands a string to the parser.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/agenda.js");
+        Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\b|insertAdjacentHTML|document\.write")
+            .Select(m => m.Value).Should().BeEmpty("agenda.js must build no markup from strings");
     }
 
     [Fact]

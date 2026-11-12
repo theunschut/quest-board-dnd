@@ -193,17 +193,17 @@
     <div class="modal fade" id="switchBoardModal" tabindex="-1"
          aria-labelledby="switchBoardModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-light">
+            <div class="modal-content">
                 <form id="switchBoardForm" asp-controller="GroupPicker" asp-action="SelectGroup" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="groupId" id="switchBoardGroupId" />
                     <input type="hidden" name="returnUrl" id="switchBoardReturnUrl" />
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title" id="switchBoardModalLabel">
-                            <i class="fas fa-right-left me-2"></i>
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="switchBoardModalLabel">
+                            <i class="fas fa-right-left me-2" aria-hidden="true"></i>
                             Switch to <span id="switchBoardName"></span>?
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         @if (Model.ActiveBoardName != null)
@@ -225,10 +225,10 @@
                             </p>
                         }
                     </div>
-                    <div class="modal-footer border-secondary d-flex justify-content-between">
+                    <div class="modal-footer d-flex justify-content-between">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-right-left me-2"></i>Switch &amp; Continue
+                            <i class="fas fa-right-left me-2" aria-hidden="true"></i>Switch &amp; Continue
                         </button>
                     </div>
                 </form>
@@ -238,18 +238,5 @@
 }
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const modal = document.getElementById('switchBoardModal');
-            if (modal) {
-                modal.addEventListener('show.bs.modal', function (event) {
-                    const button = event.relatedTarget;
-                    document.getElementById('switchBoardGroupId').value = button.getAttribute('data-group-id');
-                    document.getElementById('switchBoardReturnUrl').value = button.getAttribute('data-return-url');
-                    document.getElementById('switchBoardName').textContent = button.getAttribute('data-board-name');
-                    document.getElementById('switchBoardNameInline').textContent = button.getAttribute('data-board-name');
-                });
-            }
-        });
-    </script>
+    <script type="module" src="~/js/agenda.js" asp-append-version="true"></script>
 }
