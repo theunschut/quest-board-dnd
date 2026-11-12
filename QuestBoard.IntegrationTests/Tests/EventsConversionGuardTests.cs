@@ -69,6 +69,7 @@ public class EventsConversionGuardTests
     [
         "QuestBoard.Service/Views/Events/Index.cshtml",
         "QuestBoard.Service/Views/Events/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Events/Details.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
     ];

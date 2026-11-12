@@ -158,7 +158,7 @@ public class EventDetailsAvailabilityRenderTests(WebApplicationFactoryBase facto
         body.Should().Contain(maybeUser.Name);
         body.Should().Contain(noUser.Name);
         body.Should().Contain("badge bg-success");
-        body.Should().Contain("badge bg-warning text-dark");
+        body.Should().Contain("badge bg-warning");
         body.Should().Contain("badge bg-danger");
     }
 

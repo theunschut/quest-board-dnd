@@ -67,3 +67,12 @@ document.querySelectorAll('[data-withdraw-url]').forEach(function (button) {
         withdrawAvailability(button);
     });
 });
+
+// The delete, cancel and restore forms each carry the sentence to confirm; declining stops the post.
+document.querySelectorAll('form[data-confirm-message]').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+        if (!confirm(form.dataset.confirmMessage)) {
+            event.preventDefault();
+        }
+    });
+});
