@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 96
 current_phase_name: account-and-pickers-ui-conversion
 status: executing
-stopped_at: Completed 96-10-PLAN.md
-last_updated: "2026-11-12T14:44:19.854Z"
+stopped_at: Completed 96-11-PLAN.md
+last_updated: "2026-11-12T14:51:26.564Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
 progress:
   total_phases: 31
   completed_phases: 22
   total_plans: 247
-  completed_plans: 219
+  completed_plans: 220
   percent: 71
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 96 (account-and-pickers-ui-conversion) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
 Last activity: 2026-11-12 — Phase 96 execution started
@@ -107,6 +107,7 @@ introduced by Phase 87.
 | Phase 96 P08 | 1.5 h | 3 tasks | 12 files |
 | Phase 96 P09 | 1h | 2 tasks | 7 files |
 | Phase 96 P10 | 25min | 2 tasks | 5 files |
+| Phase 96 P11 | 30min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase ?]: 96-06: Profile address field keeps the approved control-fill look; phone rows share one wrapper so the last row drops its hairline
 - [Phase 96]: 96-07: Profile Delete stays a real submit button in its own form; only the shared module opens the dialog, in the submit listener that cancels the post
 - [Phase 96]: 96-08: Gate 1 gutter answer shell applied; four credential pages merged into one view each; refusal line summary stays All
+- [Phase 96]: 96-11: SetPassword verified with a real token via a local SMTP sink; no mail left the machine
 
 ### Roadmap Evolution
 
@@ -278,8 +280,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-12T14:44:19.819Z
-Stopped at: Completed 96-10-PLAN.md
+Last session: 2026-11-12T14:51:26.524Z
+Stopped at: Completed 96-11-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
