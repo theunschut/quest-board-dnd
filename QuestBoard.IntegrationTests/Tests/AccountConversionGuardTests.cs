@@ -341,6 +341,54 @@ public class AccountConversionGuardTests
         }
     }
 
+    // Every folder whose views belong to the area; a view added later must be listed above or this fails.
+    private static readonly string[] AreaViewFolders =
+    [
+        "QuestBoard.Service/Views/Account",
+        "QuestBoard.Service/Views/GroupPicker",
+        "QuestBoard.Service/Views/Home",
+    ];
+
+    private const string PickerView = "QuestBoard.Service/Views/GroupPicker/Index.cshtml";
+
+    [Fact]
+    public void TheWholeAreaIsConverted()
+    {
+        var root = FindRepositoryRoot().FullName;
+        var existing = AreaViewFolders
+            .SelectMany(folder => Directory.EnumerateFiles(Path.Combine(root, Path.Combine(folder.Split('/'))), "*.cshtml"))
+            .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/'))
+            .Append("QuestBoard.Service/Views/Shared/AccessDenied.cshtml")
+            .ToList();
+
+        existing.Should().NotBeEmpty();
+
+        foreach (var view in existing)
+        {
+            ConvertedViews.Should().Contain(view, $"{view} is in the area and must be listed as converted");
+
+            var markup = Markup(view);
+            foreach (var (label, pattern) in InlineCodePatterns)
+                pattern.IsMatch(markup).Should().BeFalse($"{view} must not contain {label}");
+
+            if (view != PickerView)
+                SheetLinks.Should().Contain(link => link.View == view && link.Sheet == "account.css",
+                    $"{view} links the account sheet through its Styles section");
+        }
+
+        foreach (var path in RetiredFiles)
+            File.Exists(ResolveRepoFile(path)).Should().BeFalse($"{path} is retired and must stay deleted");
+
+        var colourLiteral = new Regex(@"#[0-9a-fA-F]{3,8}\b|\brgba?\(", RegexOptions.IgnoreCase);
+        var importantFlag = new Regex(@"!\s*important", RegexOptions.IgnoreCase);
+        foreach (var sheet in AreaSheets)
+        {
+            var css = Regex.Replace(File.ReadAllText(ResolveRepoFile(sheet)), @"/\*[\s\S]*?\*/", " ");
+            colourLiteral.IsMatch(css).Should().BeFalse($"{sheet} takes every colour from a token");
+            importantFlag.IsMatch(css).Should().BeFalse($"{sheet} outranks Bootstrap through the pages layer, not an important flag");
+        }
+    }
+
     [Fact]
     public void SetPassword_KeepsItsHiddenIdentityAndTokenInputsAndRendersTheTokenNowhereElse()
     {
