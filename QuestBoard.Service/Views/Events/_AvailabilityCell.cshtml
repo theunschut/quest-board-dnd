@@ -8,13 +8,13 @@
 @switch (Model)
 {
     case AvailabilityCellState.ConfirmedYes:
-        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Yes</span>
+        <span class="badge bg-success"><i class="fas fa-check me-1" aria-hidden="true"></i>Yes</span>
         break;
     case AvailabilityCellState.ConfirmedMaybe:
-        <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>Maybe</span>
+        <span class="badge bg-warning"><i class="fas fa-question me-1" aria-hidden="true"></i>Maybe</span>
         break;
     case AvailabilityCellState.ConfirmedNo:
-        <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+        <span class="badge bg-danger"><i class="fas fa-times me-1" aria-hidden="true"></i>No</span>
         break;
     case AvailabilityCellState.UnconfirmedYes:
         @* The icon is the clock, never the tick: fill alone is a difference of degree that
@@ -24,13 +24,13 @@
         <span class="badge avail-cell-yes-muted"
               title="Yes — counted, but not yet confirmed by this member"
               aria-label="Yes, unconfirmed default">
-            <i class="fas fa-clock me-1"></i><em>Yes</em>
+            <i class="fas fa-clock me-1" aria-hidden="true"></i><em>Yes</em>
         </span>
         break;
     default:
         @* Deliberately not a badge: the shape alone separates "no signup row exists" from
            every vote-bearing state before colour is read, and it must stay visibly
            different from the unconfirmed default above, which stores a Yes and is counted. *@
-        <span class="text-muted avail-cell-empty" aria-label="No signup for this event">&mdash;</span>
+        <span class="avail-cell-empty" aria-label="No signup for this event">&mdash;</span>
         break;
 }

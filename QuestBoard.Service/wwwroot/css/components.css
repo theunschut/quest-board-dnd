@@ -84,11 +84,6 @@
     --bs-link-hover-color-rgb: var(--qb-ink-rgb);
   }
 
-  /* The availability card states white for its own muted lines, directly on the board. */
-  .avail-card {
-    --bs-secondary-color: var(--qb-on-fill);
-  }
-
   /* Light labels in the item name are parchment, not Bootstrap's near-white. */
   .item-name {
     --bs-light-rgb: var(--qb-fg-rgb);
@@ -533,6 +528,58 @@
 
   .badge.bg-warning {
     --bs-badge-color: var(--qb-warning-fg);
+  }
+
+  /*
+   * Availability vocabulary, shared by the events overview, the agenda and the event details page. Each state is
+   * told apart by three cues that survive greyscale: the shape (a badge or a bare dash), the icon and the words.
+   * The unconfirmed yes keeps the confirmed fill but draws a dashed edge and an italic label: the fill stops at the
+   * padding box, so the dashes read against the surface behind the chip instead of against the green. The rules
+   * below are written for glass first (parchment text) and then for paper, the surface of a table cell or an agenda
+   * row (ink tones). The muted parchment tone measures under 4.5:1 on a card body over the brightest board pixel,
+   * so on glass the empty dash and the count detail take the full parchment colour; only the dashed edge, which is
+   * not text, takes the muted one.
+   */
+  .avail-cell-yes-muted {
+    background-color: var(--qb-success);
+    background-clip: padding-box;
+    border: 1px dashed var(--qb-fg-muted);
+    color: var(--qb-success-fg);
+  }
+
+  .avail-cell-yes-muted em {
+    font-style: italic;
+  }
+
+  .avail-cell-empty {
+    color: var(--qb-fg);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  .avail-count-summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+  }
+
+  .avail-count-headline {
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+  }
+
+  .avail-count-detail {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  :is(.table, .agenda-row) .avail-cell-yes-muted {
+    border-color: var(--qb-ink-muted);
+  }
+
+  :is(.table, .agenda-row) :is(.avail-cell-empty, .avail-count-detail) {
+    color: var(--qb-ink-muted);
   }
 
   /*

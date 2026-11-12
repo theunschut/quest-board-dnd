@@ -219,6 +219,25 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
     }
 
     [Fact]
+    public async Task Index_Desktop_RowsCarryTheirAddressForTheRowModuleAndNoInlineHandler()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync("Row Module Session", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtoverview_rowmodule", "evtoverview_rowmodule@example.com");
+
+        var response = await client.GetAsync("/Events", TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().MatchRegex($"""<tr class="avail-row-clickable" data-row-href="[^"]*Events/Details/{eventId}[^"]*">""");
+        html.Should().NotContain("onclick");
+        html.Should().MatchRegex("""<script type="module" src="/js/row-link\.js[^"]*"></script>""");
+        html.Should().MatchRegex("""<link rel="stylesheet" href="/css/events-overview\.css[^"]*" />""");
+    }
+
+    [Fact]
     public async Task Index_MobileUserAgent_RendersCardList()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
