@@ -585,6 +585,75 @@ public class EventsConversionGuardTests
         script.Should().Contain("cloneNode(true)", "the card shows a copy of the entry's server-rendered detail");
     }
 
+    // A view or sheet the area keeps on purpose without converting, with the reason. It stays empty: the area is
+    // converted in full, and an entry here would be a deliberate exception that has to be argued for.
+    private static readonly Dictionary<string, string> UnconvertedByDecision = new();
+
+    // The area's own folders under the views folder: a view added to one of them has to join the guard lists.
+    private static readonly string[] AreaViewFolders = ["Calendar", "Agenda", "Events", "Series"];
+
+    // The calendar, overview and agenda sheets with their phone twins, plus the shared event form sheet.
+    private static readonly string[] AreaSheets =
+    [
+        "calendar.css",
+        "calendar.mobile.css",
+        "events-overview.css",
+        "events-overview.mobile.css",
+        "agenda.css",
+        "agenda.mobile.css",
+        "event-forms.css",
+    ];
+
+    [Fact]
+    public void PhaseScope_IsFullyConverted()
+    {
+        var views = AreaFiles
+            .Select(f => ViewsRoot + f)
+            .Where(f => File.Exists(ResolveRepoFile(f.Split('/'))))
+            .Where(f => !UnconvertedByDecision.ContainsKey(f))
+            .ToList();
+        var sheets = AreaSheets
+            .Where(n => File.Exists(ResolveRepoFile(SheetPath(n).Split('/'))))
+            .Where(n => !UnconvertedByDecision.ContainsKey(n))
+            .ToList();
+
+        views.Should().NotBeEmpty("the scan must find the area's views, or it guards nothing");
+        sheets.Should().HaveCount(AreaSheets.Length, "every area sheet is present and none was dropped from the area");
+        views.Except(ConvertedViews).Should().BeEmpty(
+            "every area view that still exists must be guarded as converted, or listed with the reason it is not");
+        sheets.Except(ConvertedSheets).Should().BeEmpty(
+            "every area sheet that still exists must be guarded as converted, or listed with the reason it is not");
+
+        // A view dropped into one of the area's folders must join AreaFiles, or it would escape this scan.
+        var onDisk = AreaViewFolders
+            .SelectMany(folder => Directory.EnumerateFiles(
+                ResolveRepoFile((ViewsRoot + folder).Split('/')), "*.cshtml"))
+            .Select(path => Path.GetRelativePath(ResolveRepoFile(ViewsRoot.TrimEnd('/').Split('/')), path)
+                .Replace('\\', '/'))
+            .ToList();
+        onDisk.Should().NotBeEmpty();
+        onDisk.Except(AreaFiles).Should().BeEmpty("every view in the area's folders must be listed in AreaFiles");
+
+        UnconvertedByDecision.Should().BeEmpty("the area is converted in full, with no view or sheet kept back");
+    }
+
+    [Fact]
+    public void Layouts_LinkNoAreaSheet()
+    {
+        // The area's sheets load from the Styles section of the pages that use them, never for every page.
+        foreach (var layout in new[]
+                 {
+                     "QuestBoard.Service/Views/Shared/_Layout.cshtml",
+                     "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml",
+                 })
+        {
+            var text = StripRazorAndHtmlComments(ReadRepoFile(layout));
+            foreach (var sheet in AreaSheets)
+                text.Should().NotContain("css/" + sheet,
+                    $"{layout} must not link {sheet}: it is page-specific and belongs in the Styles section of its pages");
+        }
+    }
+
     [Fact]
     public void RetiredFiles_AreGone()
     {
