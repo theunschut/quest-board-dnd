@@ -1655,7 +1655,7 @@ Plans:
 **Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
-**Plans:** 8/12 plans executed
+**Plans:** 9/12 plans executed
 
 **Scope:**
 
@@ -1742,7 +1742,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 96-09-PLAN.md — Edit twins, AccessDenied, phone account sheet retired
+- [x] 96-09-PLAN.md — Edit twins, AccessDenied, phone account sheet retired
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
