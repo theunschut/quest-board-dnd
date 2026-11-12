@@ -107,6 +107,10 @@ public class CalendarController(
             calendarModel.SeriesBelowRunway = [.. await eventSeriesService.GetSeriesBelowRunwayAsync(token)];
         }
 
+        // The container clock is UTC, so near midnight it names a different day than the board
+        // does; the views mark today from the board's own date.
+        ViewBag.BoardToday = boardClock.Today;
+
         return View(calendarModel);
     }
 

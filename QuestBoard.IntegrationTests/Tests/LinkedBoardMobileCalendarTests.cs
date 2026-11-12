@@ -147,13 +147,15 @@ public class LinkedBoardMobileCalendarTests(WebApplicationFactoryBase factory)
         new DateTime(Year, Month, day).ToString("dddd, MMMM d").ToUpper();
 
     // The markup of one agenda day section, found by splitting on the section class and
-    // picking the segment whose label is that day. Null when the day has no section.
+    // picking the segment whose label is that day. Null when the day has no section. The label is
+    // matched without regard to case because the page shows it in capitals through a style rule
+    // rather than in its text.
     private static string? DaySection(string html, int day)
     {
         var label = DayLabel(day);
         return html.Split("class=\"agenda-day-section")
             .Skip(1)
-            .SingleOrDefault(segment => segment.Contains(label));
+            .SingleOrDefault(segment => segment.Contains(label, StringComparison.OrdinalIgnoreCase));
     }
 
     // Two linked boards plus an outside board. Board A's own event and one event on each of B

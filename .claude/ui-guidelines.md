@@ -286,3 +286,7 @@ Never call `.ToString(...)` directly on a `DateTime` in a view. Use the helpers:
 Styles are `date`, `date-time`, `date-compact`, `date-time-compact` — the same four names on both
 the server (`HtmlHelperExtensions`) and the client (`TIMESTAMP_FORMATS` in `site.js`). Both helpers
 share one format table per side; keep the two sides in agreement.
+
+The server table may also carry server-only wall-clock styles (`time-24h`, `weekday-short`,
+`weekday-long`, `weekday-long-year`) that have no client entry, so the client leaves their text exactly
+as the server rendered it; add a client entry only when a style should follow the viewer's locale.

@@ -40,12 +40,16 @@ public class AmbientClockSeamTests
         "QuestBoard.Service/Jobs/DailyReminderJob.cs",
         "QuestBoard.Service/Views/Admin/Quests.cshtml",
         "QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml",
+        "QuestBoard.Service/Views/Calendar/Index.cshtml",
+        "QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Move/Index.cshtml",
         "QuestBoard.Service/Views/Quest/Details.cshtml",
         "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Manage.cshtml",
         "QuestBoard.Service/Views/Series/Details.cshtml",
+        "QuestBoard.Service/Views/Shared/_Calendar.cshtml",
+        "QuestBoard.Service/Views/Shared/_Calendar.Mobile.cshtml",
     ];
 
     // A handful of guarded files carry a deliberate DateTime.UtcNow read of a *real instant* --
@@ -104,6 +108,8 @@ public class AmbientClockSeamTests
         ["QuestBoard.Service/Views/Quest/Details.Mobile.cshtml"] = "ViewBag.BoardToday",
         ["QuestBoard.Service/Views/Quest/Index.Mobile.cshtml"] = "ViewBag.BoardToday",
         ["QuestBoard.Service/Views/Quest/Manage.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Shared/_Calendar.cshtml"] = "ViewBag.BoardToday",
+        ["QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml"] = "ViewBag.BoardToday",
     };
 
     private const string EmailPreviewControllerRelativePath = "QuestBoard.Service/Controllers/Admin/EmailPreviewController.cs";

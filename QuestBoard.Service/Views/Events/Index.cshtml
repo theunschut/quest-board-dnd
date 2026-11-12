@@ -63,10 +63,10 @@
                                         <td class="avail-sticky-col avail-col-event">
                                             <strong><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></strong><br />
                                             <small class="text-muted">
-                                                @row.Date.ToString("ddd, MMM d")
+                                                @Html.WallClock(row.Date.ToDateTime(TimeOnly.MinValue), "weekday-short")
                                                 @if (row.StartTime.HasValue)
                                                 {
-                                                    @:&middot; @row.StartTime.Value.ToString("HH:mm")
+                                                    @:&middot; @Html.WallClock(row.Date.ToDateTime(row.StartTime.Value), "time-24h")
                                                 }
                                             </small>
                                         </td>
