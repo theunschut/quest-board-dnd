@@ -18,6 +18,8 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/Account/Profile.cshtml",
         "QuestBoard.Service/Views/Account/Profile.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/Login.cshtml",
+        "QuestBoard.Service/Views/Account/ForgotPassword.cshtml",
+        "QuestBoard.Service/Views/Account/SetPassword.cshtml",
     ];
 
     // Phone twins that were merged into their desktop view and must not come back.
@@ -25,6 +27,8 @@ public class AccountConversionGuardTests
     [
         "QuestBoard.Service/Views/GroupPicker/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/Login.Mobile.cshtml",
+        "QuestBoard.Service/Views/Account/ForgotPassword.Mobile.cshtml",
+        "QuestBoard.Service/Views/Account/SetPassword.Mobile.cshtml",
     ];
 
     // Each view with the sheet it must link through its own Styles section.
@@ -34,6 +38,8 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/Account/Profile.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/Login.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Account/ForgotPassword.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Account/SetPassword.cshtml", "account.css"),
     ];
 
     // The area's sheets, scanned for planning references with the converted views.
@@ -278,6 +284,8 @@ public class AccountConversionGuardTests
     private static readonly (string View, string[] Tokens)[] CredentialViews =
     [
         ("QuestBoard.Service/Views/Account/Login.cshtml", ["username", "current-password"]),
+        ("QuestBoard.Service/Views/Account/ForgotPassword.cshtml", ["email"]),
+        ("QuestBoard.Service/Views/Account/SetPassword.cshtml", ["new-password"]),
     ];
 
     [Fact]
@@ -322,5 +330,16 @@ public class AccountConversionGuardTests
             css.Should().Contain("{", $"{path} must hold at least one rule, or the check proves nothing");
             transitionOnAll.IsMatch(css).Should().BeFalse($"{path} must not declare a transition on every property");
         }
+    }
+
+    [Fact]
+    public void SetPassword_KeepsItsHiddenIdentityAndTokenInputsAndRendersTheTokenNowhereElse()
+    {
+        var markup = Markup("QuestBoard.Service/Views/Account/SetPassword.cshtml");
+
+        markup.Should().Contain("<input type=\"hidden\" asp-for=\"UserId\" />");
+        markup.Should().Contain("<input type=\"hidden\" asp-for=\"Token\" />");
+        Regex.Matches(markup, @"Model\.Token|asp-for=""Token""").Count.Should().Be(1,
+            "the reset token reaches the page only through its hidden input");
     }
 }

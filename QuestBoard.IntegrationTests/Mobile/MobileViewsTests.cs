@@ -707,6 +707,36 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         html.Should().Contain("<title>Log in - ");
     }
 
+    /// <summary>
+    /// Mobile UA on /Account/ForgotPassword is served the shared view in the phone shell with the
+    /// document title the desktop page has and the email autofill token.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountForgotPassword_MobileUserAgent_RendersTheSharedViewWithItsTitle()
+    {
+        var (response, html) = await GetWithUserAgentAsync("/Account/ForgotPassword", MobileUserAgent);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("<title>Forgot Password - ");
+        html.Should().Contain("autocomplete=\"email\"");
+    }
+
+    /// <summary>
+    /// Mobile UA on /Account/SetPassword is served the shared view in the phone shell with the
+    /// document title the desktop page has and both fields marked as a new password.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountSetPassword_MobileUserAgent_RendersTheSharedViewWithItsTitle()
+    {
+        var (response, html) = await GetWithUserAgentAsync("/Account/SetPassword?userId=1&token=not-a-token", MobileUserAgent);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("<title>Set Your Password - ");
+        Regex.Matches(html, "autocomplete=\"new-password\"").Count.Should().Be(2);
+    }
+
     // -----------------------------------------------------------------------
     // Register page renders glass card form on mobile UA
     // -----------------------------------------------------------------------
