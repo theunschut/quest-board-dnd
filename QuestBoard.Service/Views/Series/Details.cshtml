@@ -37,7 +37,7 @@
     </div>
     <div class="card-body modern-card-body">
         <p class="mb-1">
-            <i class="fas fa-calendar-day me-2"></i>Anchor date: @Model.AnchorDate.ToString("dddd, MMMM d, yyyy")
+            <i class="fas fa-calendar-day me-2"></i>Anchor date: @Html.WallClock(Model.AnchorDate.ToDateTime(TimeOnly.MinValue), "weekday-long-year")
         </p>
         <p class="mb-3">
             <i class="fas fa-repeat me-2"></i>@Model.CadenceLabel
@@ -61,7 +61,7 @@
         <p class="mb-3">
             @if (Model.EndDate.HasValue)
             {
-                <text><i class="fas fa-flag-checkered me-2"></i>Ends: @Model.EndDate.Value.ToString("dddd, MMMM d, yyyy")</text>
+                <text><i class="fas fa-flag-checkered me-2"></i>Ends: @Html.WallClock(Model.EndDate.Value.ToDateTime(TimeOnly.MinValue), "weekday-long-year")</text>
             }
             else
             {
@@ -113,7 +113,7 @@
                                 </tr>
                             }
                             <tr class="@(occurrence.IsCancelled ? "text-decoration-line-through" : "")">
-                                <td>@occurrence.Date.ToString("dddd, MMMM d, yyyy") &middot; @occurrence.TimeLabel</td>
+                                <td>@Html.WallClock(occurrence.Date.ToDateTime(TimeOnly.MinValue), "weekday-long-year") &middot; @occurrence.TimeLabel</td>
                                 <td>
                                     @if (occurrence.IsCancelled)
                                     {

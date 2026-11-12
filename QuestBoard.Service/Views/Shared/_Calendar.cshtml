@@ -75,7 +75,7 @@
                             @foreach (var questOnDay in day.QuestsOnDay)
                             {
                                 <div class="quest-event @(questOnDay.IsFinalized ? "finalized" : "proposed") @(isDetailsPage && questOnDay.Quest.Id == currentQuestId ? "current-quest" : "")" 
-                                     title="@questOnDay.Quest.Title - @questOnDay.ProposedDate.Date.ToString("HH:mm")"
+                                     title="@questOnDay.Quest.Title - @questOnDay.TimeLabel"
                                      data-quest-id="@questOnDay.Quest.Id"
                                      data-proposed-date-id="@questOnDay.ProposedDate.Id"
                                      data-is-details-page="@isDetailsPage.ToString().ToLower()">
@@ -83,7 +83,7 @@
                                        class="quest-link">
                                         <div class="calendar-quest-title">@questOnDay.Quest.Title</div>
                                         <div class="calendar-quest-dm">@questOnDay.Quest.DungeonMaster?.Name</div>
-                                        <div class="quest-time">@questOnDay.ProposedDate.Date.ToString("HH:mm")</div>
+                                        <div class="quest-time">@Html.WallClock(questOnDay.ProposedDate.Date, "time-24h")</div>
                                     </a>
 
                                     @* Status icons (finalized/warning) - positioned outside the link *@

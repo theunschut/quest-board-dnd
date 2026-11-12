@@ -105,10 +105,10 @@
                         <div>
                             <div class="fw-bold agenda-card-title">@row.Title</div>
                             <small class="text-muted">
-                                @row.Date.ToString("ddd, MMM d")
+                                @Html.WallClock(row.Date.ToDateTime(TimeOnly.MinValue), "weekday-short")
                                 @if (row.StartTime.HasValue)
                                 {
-                                    @:&middot; @row.StartTime.Value.ToString("HH:mm")
+                                    @:&middot; @Html.WallClock(row.Date.ToDateTime(row.StartTime.Value), "time-24h")
                                 }
                             </small>
                         </div>

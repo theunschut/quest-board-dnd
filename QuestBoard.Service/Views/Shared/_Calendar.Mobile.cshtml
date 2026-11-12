@@ -23,8 +23,8 @@
             <div class="calendar-date-entry-mobile mb-3">
                 @* Date label: Saturday, June 14 at 20:00 *@
                 <div class="calendar-date-label-mobile fw-bold small mb-2">
-                    @questOnDay.ProposedDate.Date.ToString("dddd, MMMM d")
-                    <small class="text-muted ms-1">at @questOnDay.ProposedDate.Date.ToString("HH:mm")</small>
+                    @Html.WallClock(questOnDay.ProposedDate.Date, "weekday-long")
+                    <small class="text-muted ms-1">at @Html.WallClock(questOnDay.ProposedDate.Date, "time-24h")</small>
                 </div>
 
                 @if (day.Linked.HasEntries)

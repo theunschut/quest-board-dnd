@@ -104,10 +104,10 @@
                                         <div>
                                             <strong class="fs-6">@row.Title</strong>
                                             <div class="small text-muted">
-                                                @row.Date.ToString("ddd, MMM d")
+                                                @Html.WallClock(row.Date.ToDateTime(TimeOnly.MinValue), "weekday-short")
                                                 @if (row.StartTime.HasValue)
                                                 {
-                                                    @:&middot; @row.StartTime.Value.ToString("HH:mm")
+                                                    @:&middot; @Html.WallClock(row.Date.ToDateTime(row.StartTime.Value), "time-24h")
                                                 }
                                             </div>
                                         </div>

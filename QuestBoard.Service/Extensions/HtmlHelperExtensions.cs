@@ -36,6 +36,18 @@ internal static class HtmlHelperExtensions
         ["date-time-compact"] = "MMM d, h:mm tt",
     };
 
+    // Wall-clock styles the client table in site.js deliberately does not know, so the browser
+    // leaves their text exactly as rendered. They format with the current culture because they
+    // replace view code that did, which keeps their text what it was on any host; the
+    // `datetime` attribute stays invariant for every style.
+    private static readonly IReadOnlyDictionary<string, string> ServerOnlyWallClockFormats = new Dictionary<string, string>
+    {
+        ["time-24h"] = "HH:mm",
+        ["weekday-short"] = "ddd, MMM d",
+        ["weekday-long"] = "dddd, MMMM d",
+        ["weekday-long-year"] = "dddd, MMMM d, yyyy",
+    };
+
     /// <summary>
     /// Builds the `&lt;time&gt;` element a real (UTC) instant renders as: board-zone text on
     /// first paint, the raw UTC instant in `datetime` for the client to re-format, and the raw
@@ -90,7 +102,19 @@ internal static class HtmlHelperExtensions
     /// </summary>
     internal static IHtmlContent BuildWallClock(DateTime wallClock, string style)
     {
-        if (!LocalTimeFormats.TryGetValue(style, out var format))
+        string format;
+        CultureInfo culture;
+        if (LocalTimeFormats.TryGetValue(style, out var clientFormat))
+        {
+            format = clientFormat;
+            culture = CultureInfo.InvariantCulture;
+        }
+        else if (ServerOnlyWallClockFormats.TryGetValue(style, out var serverFormat))
+        {
+            format = serverFormat;
+            culture = CultureInfo.CurrentCulture;
+        }
+        else
         {
             throw new ArgumentOutOfRangeException(nameof(style), style, "Unrecognised wall-clock style.");
         }
@@ -99,7 +123,7 @@ internal static class HtmlHelperExtensions
         tag.MergeAttribute("class", "wall-clock");
         tag.MergeAttribute("data-style", style);
         tag.MergeAttribute("datetime", wallClock.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture));
-        tag.InnerHtml.SetContent(wallClock.ToString(format, CultureInfo.InvariantCulture));
+        tag.InnerHtml.SetContent(wallClock.ToString(format, culture));
 
         return tag;
     }
