@@ -66,6 +66,10 @@ public class CalendarSubscriptionStaticGuardTests
 
     // ---- Copy parity between the layouts ----
 
+    // The empty-state sentence up to and including the clause that says what the address is like; one place to change it.
+    private const string EmptyStateSentence =
+        "Get this board's schedule onto your phone's own calendar app. The address you create acts like a password";
+
     // Every non-interpolated string from the Copywriting Contract, as data rather than as a
     // hand-copied fact per string -- adding a string to the contract means adding one entry here.
     public static IEnumerable<object[]> CopyContractStrings()
@@ -75,7 +79,7 @@ public class CalendarSubscriptionStaticGuardTests
             "Calendar Subscription",
             "Add Subscription",
             "No calendar subscriptions yet",
-            "Get this board's schedule onto your phone's own calendar app. The address below acts like a password",
+            EmptyStateSentence,
             "Created ",
             "Never fetched yet",
             "Last fetched",

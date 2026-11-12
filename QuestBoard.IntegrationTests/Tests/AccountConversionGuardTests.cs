@@ -251,4 +251,22 @@ public class AccountConversionGuardTests
             Markup(view).Should().NotContain("data-bs-target=\"#deleteSubscriptionModal\"",
                 $"{view} must not let a data attribute open the dialog by itself");
     }
+
+    [Theory]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.cshtml")]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml")]
+    public void ProfileRows_NameTheirActionsAndKeepTheHiddenAddressOutOfTheTabOrder(string view)
+    {
+        var markup = Markup(view);
+
+        Regex.IsMatch(markup, "<input(?=[^>]*calendar-subscription-address)(?=[^>]*tabindex=\"-1\")[^>]*>").Should().BeTrue(
+            $"{view} keeps the hidden address field out of the tab order");
+        markup.Should().Contain("aria-label=\"Copy address for @subscription.Name\"");
+        markup.Should().Contain("aria-label=\"Rename @subscription.Name\"");
+        markup.Should().Contain("aria-label=\"Delete @subscription.Name\"");
+        markup.Should().Contain("Keep Current Name");
+        markup.Should().Contain("Save Name");
+        markup.Should().Contain("data-copy-status", $"{view} carries the status element that announces Copy results");
+        markup.Should().NotContain("<h5", $"{view} titles its dialogs with a heading of the right level");
+    }
 }
