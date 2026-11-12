@@ -73,7 +73,7 @@ findings:
 status: issues_found
 fixes:
   WR-01: fixed (29dddb00)
-  WR-02: fixed (560e7d55)
+  WR-02: fixed (560e7d55, d6f6e8ef)
   info: left open
 ---
 
@@ -134,7 +134,7 @@ Alternatively, reuse the `account-link-inline` pattern under a shared class. Re-
 
 ### WR-02: `calendar.css` reintroduces colour literals as `black`, past the literal guards
 
-**Fix status:** Fixed in 560e7d55. The twelve `black` mixes now use existing tokens and no token was added: box shadows take `--qb-shadow-raised` (chip, event and linked-entry hover lifts, current quest) and `--qb-shadow-chrome` (vote group) and `--qb-shadow-rest` (vote box), text shadows take `--qb-text-halo`, and the empty-cell tint and vote group edge mix `--qb-ink`. Both colour guards now also flag any CSS named colour used as a value, with a self-test, and the widened scan finds nothing else in any file on either list.
+**Fix status:** Fixed in 560e7d55 and refined in the follow-up commit. The twelve `black` mixes no longer name a colour literal and no token was added. Every shadow keeps its original offsets, blur and strength and mixes the `--qb-ink` token instead of black (`0 4px 12px` at 30% on the hover lifts, `0 2px 8px` at 30% on the vote group, `0 2px 4px` at 10% on the vote box, `2px 2px 4px` at 90% on the text shadows), and the empty-cell tint and vote group edge mix `--qb-ink` the same way, so Quest Details renders as it was approved. Both colour guards now also flag any CSS named colour used as a value, with a self-test, and the widened scan finds nothing else in any file on either list.
 
 **File:** `QuestBoard.Service/wwwroot/css/calendar.css:970, 982, 1108, 1163, 1312, 1369, 1382, 1389, 1393, 1507, 1529, 1599` (guards: `QuestBoard.IntegrationTests/Tests/EventsConversionGuardTests.cs:203-209`, `QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs:168-174`)
 
