@@ -1,25 +1,104 @@
 /*
- * The group picker is served to phones as well as desktops, from the one layout and with the desktop stylesheets
- * (it has no phone twin), so its own small-screen rules live here and not in a phone sheet.
+ * The board picker is served to phones as well as desktops, from the one layout and with the desktop stylesheets (it
+ * has no phone twin), so its small-screen rule lives here and not in a phone sheet.
+ *
+ * Each board is one native submit button in its own form, so the keyboard and a screen reader reach it like any other
+ * control. The rows are flat: they sit directly on the one glass panel, are told apart by a hairline between them,
+ * and show that they lead somewhere with a trailing chevron. They never take a glass fill of their own: glass
+ * stacked on the panel pushes the parchment text under the contrast bar. Hover and press only darken the panel
+ * beneath with the page's own scrim. The focus ring is the foundation's two-tone ring (base.css lists button), so
+ * nothing here draws one; the focused row only lifts above its neighbours so the ring is never painted over.
  */
 @layer pages {
+  /* A list of rows, not a bulleted list; the explicit role on the element keeps it announced as a list. */
+  .group-picker-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .group-picker-list > li + li {
+    border-top: 1px solid var(--qb-border);
+  }
+
+  /*
+   * A button does not inherit the way a div does, so the reset is spelled out. No outline, shadow or overflow is
+   * set here: the focus ring owns the first two and the third would clip it.
+   */
+  .group-picker-row {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-md);
+    width: 100%;
+    min-height: var(--qb-hit-min);
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border: 0;
+    border-radius: var(--qb-radius-md);
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    transition: background-color var(--qb-dur-fast) var(--qb-ease);
+  }
+
+  .group-picker-row:hover {
+    background-color: color-mix(in srgb, var(--qb-surface-scrim) 60%, transparent);
+  }
+
+  .group-picker-row:active {
+    background-color: var(--qb-surface-scrim);
+  }
+
+  .group-picker-row:focus-visible {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* The name and the member count stack in the space the chevron leaves, and may shrink so a long name can wrap. */
+  .group-picker-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .group-picker-name {
+    display: block;
+    color: var(--qb-fg);
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  .group-picker-meta {
+    display: block;
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  .group-picker-chevron {
+    flex: none;
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  .group-picker-row:hover .group-picker-chevron {
+    color: var(--qb-fg);
+  }
+
   @media (max-width: 767.98px) {
-    /* Every control on the page, the Logout button in the bar included, is a full-size touch target. */
+    /*
+     * The page title takes the phone step, the 20px every other phone page gives its title, so it stays on one line, and the
+     * parchment colour those pages use there: the gold of the desktop title is for the display size, and this page has no
+     * phone layout to switch it.
+     */
+    .group-picker .modern-card-header h1 {
+      color: var(--qb-fg);
+      font-size: var(--qb-text-lg);
+    }
+
+    /* Every button on the page, the Logout button in the bar included, is a full-size touch target. */
     .group-picker .btn {
       min-height: var(--qb-hit-min);
       min-width: var(--qb-hit-min);
-    }
-
-    /* Group cards are tappable as a whole; keep each at least a touch target tall and inside the screen. */
-    .group-picker .modern-card {
-      min-height: var(--qb-hit-min);
-      max-width: 100%;
-    }
-
-    /* A long group name wraps inside its card instead of widening the page. */
-    .group-picker .card-title,
-    .group-picker .card-text {
-      overflow-wrap: anywhere;
     }
   }
 }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
@@ -496,7 +497,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         html.Should().Contain("<h2>Selected Participants</h2>");
         html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{firstSignup.Id}\"");
         html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{secondSignup.Id}\"");
-        System.Text.RegularExpressions.Regex.Matches(html, "data-action=\"remove-player\"").Count.Should().Be(2);
+        Regex.Matches(html, "data-action=\"remove-player\"").Count.Should().Be(2);
     }
 
     /// <summary>
@@ -741,51 +742,149 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// Mobile UA on /GroupPicker/Index renders the group-selection cards and links
-    /// account.mobile.css. Guards against the unrendered-Styles-section white-page regression:
-    /// Index.Mobile.cshtml defines a Styles section that _Layout.GroupPicker.cshtml must render.
-    /// The test user is seeded into two groups so the controller returns the card-picker view
-    /// instead of auto-redirecting (which happens when a user belongs to exactly one group).
+    /// Seeds a user who belongs to two boards, so the picker renders its list instead of redirecting
+    /// (a user in exactly one board is sent straight in), and returns that user's authorization header
+    /// with the number of boards the picker is expected to list.
+    /// </summary>
+    private async Task<(AuthenticationHeaderValue? Authorization, int BoardCount)> SeedPickerMemberAsync(string username)
+    {
+        var (authClient, pickerUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, username, $"{username}@test.com");
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        // AuthenticationHelper seeds a UserGroups row referencing GroupId=1, but does not
+        // guarantee a matching GroupEntity row exists (this test class does not call
+        // TestDataHelper.SeedDefaultGroupAsync). Ensure it exists so GroupId=1 is a real,
+        // queryable group rather than a dangling FK reference the InMemory provider silently allows.
+        if (!await context.Groups.AnyAsync(g => g.Id == 1, TestContext.Current.CancellationToken))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "EuphoriaInn", CreatedAt = DateTime.UtcNow });
+        }
+
+        // Use a random large Id for the second group so it cannot collide with Id=1 or with
+        // groups created by other tests sharing this class fixture's database.
+        var secondGroupId = Random.Shared.Next(100_000, 999_999);
+        context.Groups.Add(new GroupEntity { Id = secondGroupId, Name = $"GroupPickerTest_{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow });
+
+        context.UserGroups.Add(new UserGroupEntity { UserId = pickerUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+        context.UserGroups.Add(new UserGroupEntity { UserId = pickerUser.Id, GroupId = secondGroupId, GroupRole = (int)GroupRole.Player });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        return (authClient.DefaultRequestHeaders.Authorization, 2);
+    }
+
+    /// <summary>
+    /// Asserts the picker body: one submit-button row per board inside a SelectGroup form, the page
+    /// sheet linked exactly once and after the legacy sheets, and no phone layout class (the picker
+    /// layout serves both User-Agents).
+    /// </summary>
+    private static void AssertPickerRows(string html, int boardCount)
+    {
+        var rows = Regex.Matches(html, "<button type=\"submit\" class=\"group-picker-row\"");
+        rows.Count.Should().Be(boardCount, "every board the user belongs to is one submit button row");
+        html.Should().Contain("SelectGroup");
+
+        var sheet = html.IndexOf("/css/group-picker.css", StringComparison.Ordinal);
+        sheet.Should().BeGreaterThan(-1, "the picker's own sheet reaches the page through the view's Styles section");
+        html.LastIndexOf("/css/group-picker.css", StringComparison.Ordinal)
+            .Should().Be(sheet, "the picker sheet is linked exactly once");
+        sheet.Should().BeGreaterThan(
+            html.IndexOf("/css/legacy-pages.css", StringComparison.Ordinal),
+            "the picker sheet follows the legacy sheets, where it sat when the layout linked it");
+
+        html.Should().NotContain("mobile-layout", "the picker layout serves phones and desktops alike");
+        html.Should().NotContain("account.mobile.css", "the merged picker view needs no account phone sheet");
+    }
+
+    /// <summary>
+    /// Mobile UA on /GroupPicker/Index renders one native submit button per board and links the
+    /// picker sheet. Guards against the unrendered-Styles-section white-page regression: the picker's
+    /// sheet now reaches the page only through the view's Styles section, so a picker layout that
+    /// stopped rendering that section would drop the sheet and fail here. The test user is seeded
+    /// into two groups so the controller returns the list instead of auto-redirecting (which happens
+    /// when a user belongs to exactly one group).
     /// </summary>
     [Fact]
     public async Task MobileGroupPicker_MobileUserAgent_RendersGroupCardsAndStylesSection()
     {
-        var (authClient, gpUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            _factory, "gp_mobile01", "gp_mobile01@test.com");
+        var (authorization, boardCount) = await SeedPickerMemberAsync("gp_mobile01");
 
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
-
-            // AuthenticationHelper seeds a UserGroups row referencing GroupId=1, but does not
-            // guarantee a matching GroupEntity row exists (this test class does not call
-            // TestDataHelper.SeedDefaultGroupAsync). Ensure it exists so GroupId=1 is a real,
-            // queryable group rather than a dangling FK reference the InMemory provider silently allows.
-            if (!await context.Groups.AnyAsync(g => g.Id == 1, TestContext.Current.CancellationToken))
-            {
-                context.Groups.Add(new GroupEntity { Id = 1, Name = "EuphoriaInn", CreatedAt = DateTime.UtcNow });
-            }
-
-            // Use a random large Id for the second group so it cannot collide with Id=1 or with
-            // groups created by other tests sharing this class fixture's database.
-            var secondGroupId = Random.Shared.Next(100_000, 999_999);
-            var secondGroup = new GroupEntity { Id = secondGroupId, Name = $"GroupPickerTest_{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow };
-            context.Groups.Add(secondGroup);
-
-            context.UserGroups.Add(new UserGroupEntity { UserId = gpUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
-            context.UserGroups.Add(new UserGroupEntity { UserId = gpUser.Id, GroupId = secondGroupId, GroupRole = (int)GroupRole.Player });
-            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
-        }
-
-        var request = new HttpRequestMessage(HttpMethod.Get, "/GroupPicker/Index");
-        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
-        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
-        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
-        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var (response, html) = await GetWithUserAgentAsync("/GroupPicker/Index", MobileUserAgent, authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
-        html.Should().Contain("account.mobile.css");
+        AssertPickerRows(html, boardCount);
+    }
+
+    /// <summary>
+    /// Desktop UA on /GroupPicker/Index is served the same view with the same submit rows.
+    /// </summary>
+    [Fact]
+    public async Task MobileGroupPicker_DesktopUserAgent_RendersTheSameSubmitRows()
+    {
+        var (authorization, boardCount) = await SeedPickerMemberAsync("gp_desktop01");
+
+        var (response, html) = await GetWithUserAgentAsync("/GroupPicker/Index", DesktopUserAgent, authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        AssertPickerRows(html, boardCount);
+    }
+
+    /// <summary>
+    /// The picker layout's landmarks under both User-Agents: one skip link to the main region, one
+    /// labelled navigation, one main element carrying the skip target, and no redundant main role.
+    /// </summary>
+    [Theory]
+    [InlineData("mobile")]
+    [InlineData("desktop")]
+    public async Task GroupPicker_BothUserAgents_RenderTheirLandmarks(string agent)
+    {
+        var (authorization, _) = await SeedPickerMemberAsync($"gp_land_{agent}");
+
+        var (response, html) = await GetWithUserAgentAsync(
+            "/GroupPicker/Index", agent == "mobile" ? MobileUserAgent : DesktopUserAgent, authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        Regex.Matches(html, "<a\\b[^>]*\\bclass=\"[^\"]*\\bskip-link\\b[^\"]*\"[^>]*\\bhref=\"#main-content\"")
+            .Count.Should().Be(1, $"{agent}: one skip link to the main region");
+        Regex.Matches(html, "<nav\\b[^>]*\\baria-label=\"[^\"]+\"")
+            .Count.Should().Be(1, $"{agent}: one navigation landmark with a name");
+        Regex.Matches(html, "<nav\\b").Count.Should().Be(1, $"{agent}: only one navigation element");
+        Regex.Matches(html, "<main\\b[^>]*\\bid=\"main-content\"")
+            .Count.Should().Be(1, $"{agent}: one main element carrying the skip target");
+        Regex.Matches(html, "<main\\b").Count.Should().Be(1, $"{agent}: only one main element");
+        html.Should().NotContain("role=\"main\"", "a main element already carries that role");
+    }
+
+    /// <summary>
+    /// The picker page requests no third-party host under either User-Agent: every asset reference
+    /// on its link, script and img elements is a same-origin path.
+    /// </summary>
+    [Theory]
+    [InlineData("mobile")]
+    [InlineData("desktop")]
+    public async Task GroupPicker_BothUserAgents_RequestNoThirdPartyHost(string agent)
+    {
+        var (authorization, _) = await SeedPickerMemberAsync($"gp_host_{agent}");
+
+        var (response, html) = await GetWithUserAgentAsync(
+            "/GroupPicker/Index", agent == "mobile" ? MobileUserAgent : DesktopUserAgent, authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var references = Regex
+            .Matches(html, "<(?:link|script|img)\\b[^>]*?\\b(?:src|href)=\"([^\"]*)\"")
+            .Select(m => m.Groups[1].Value)
+            .ToList();
+
+        references.Count.Should().BeGreaterThanOrEqualTo(5, $"{agent}: the page's asset references must be found, not an empty parse");
+        foreach (var reference in references)
+        {
+            var offsite = reference.StartsWith("http:", StringComparison.OrdinalIgnoreCase)
+                || reference.StartsWith("https:", StringComparison.OrdinalIgnoreCase)
+                || reference.StartsWith("//", StringComparison.Ordinal);
+            offsite.Should().BeFalse($"{agent}: '{reference}' is not a same-origin path");
+        }
     }
 
     /// <summary>
