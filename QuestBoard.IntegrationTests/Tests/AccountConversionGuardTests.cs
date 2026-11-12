@@ -15,6 +15,8 @@ public class AccountConversionGuardTests
     private static readonly string[] ConvertedViews =
     [
         "QuestBoard.Service/Views/GroupPicker/Index.cshtml",
+        "QuestBoard.Service/Views/Account/Profile.cshtml",
+        "QuestBoard.Service/Views/Account/Profile.Mobile.cshtml",
     ];
 
     // Phone twins that were merged into their desktop view and must not come back.
@@ -36,6 +38,15 @@ public class AccountConversionGuardTests
     [
         "QuestBoard.Service/wwwroot/css/group-picker.css",
         "QuestBoard.Service/wwwroot/css/account.css",
+    ];
+
+    // The area's page scripts, scanned for planning references and held to the Profile script facts below.
+    private const string ProfileScriptPath = "QuestBoard.Service/wwwroot/js/profile-subscriptions.js";
+
+    private static readonly string[] ProfileViews =
+    [
+        "QuestBoard.Service/Views/Account/Profile.cshtml",
+        "QuestBoard.Service/Views/Account/Profile.Mobile.cshtml",
     ];
 
     // Written as regex data, with each forbidden literal built from fragments, so this file never holds the
@@ -139,7 +150,7 @@ public class AccountConversionGuardTests
     [Fact]
     public void AreaFiles_CarryNoPlanningReference()
     {
-        foreach (var path in ConvertedViews.Concat(AreaSheets))
+        foreach (var path in ConvertedViews.Concat(AreaSheets).Append(ProfileScriptPath))
         {
             if (!File.Exists(ResolveRepoFile(path)))
                 continue;
@@ -166,5 +177,78 @@ public class AccountConversionGuardTests
             $"{view} renders the last-fetched time through the instant helper exactly once");
         markup.Should().NotContain(RetiredPhoneWrapper, $"{view} sits on the shared card");
         markup.Should().NotContain("account.mobile.css", $"{view} no longer links the phone account sheet");
+    }
+
+    [Theory]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.cshtml")]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml")]
+    public void ProfileViews_LoadTheSharedScriptAsAModule(string view)
+    {
+        var markup = Markup(view);
+        var section = Regex.Match(markup, @"@section\s+Scripts\s*\{(?<body>[^}]*)\}");
+
+        section.Success.Should().BeTrue($"{view} must declare a Scripts section");
+        section.Groups["body"].Value.Should().Contain(
+            "<script type=\"module\" src=\"~/js/profile-subscriptions.js\"",
+            $"{view} loads the shared Profile script as a module");
+        Regex.Matches(markup, Regex.Escape("~/js/profile-subscriptions.js")).Count.Should().Be(1,
+            $"{view} loads the shared script exactly once");
+    }
+
+    [Fact]
+    public void ProfileScript_FillsTheDialogNameAsTextOnly()
+    {
+        var script = File.ReadAllText(ResolveRepoFile(ProfileScriptPath));
+
+        script.Should().Contain("data-subscription-name-target", "the script finds the dialog's name slot");
+        script.Should().Contain(".textContent = ", "the member-supplied name is written as text");
+        script.Should().NotContain("confirm(", "the browser prompt is replaced by the dialog");
+
+        foreach (var line in script.Split('\n'))
+        {
+            var assignsMarkup = line.Contains("innerHTML", StringComparison.Ordinal) || line.Contains("insertAdjacentHTML", StringComparison.Ordinal);
+            (assignsMarkup && line.Contains("dataset", StringComparison.Ordinal)).Should().BeFalse(
+                $"a dataset value must never reach markup: {line.Trim()}");
+        }
+    }
+
+    [Theory]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.cshtml")]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml")]
+    public void ProfileDelete_StillPostsWithoutScript(string view)
+    {
+        var markup = Markup(view);
+
+        Regex.Matches(markup, "calendar-subscription-delete-form").Count.Should().Be(1,
+            $"{view} carries the per-row class once, in the row template, so the dialog's own revoke form never has it");
+
+        var form = Regex.Match(
+            markup,
+            "<form\\b(?=[^>]*asp-action=\"RevokeCalendarSubscription\")(?=[^>]*calendar-subscription-delete-form)[^>]*>(?<body>.*?)</form>",
+            RegexOptions.Singleline);
+
+        form.Success.Should().BeTrue($"{view} keeps each row's own revoke form");
+        var body = form.Groups["body"].Value;
+
+        body.Should().Contain("@Html.AntiForgeryToken()", "the row's form keeps its antiforgery token");
+        body.Should().Contain("name=\"id\" value=\"@subscription.Id\"", "the row's form carries the subscription id");
+        Regex.IsMatch(body, "<button type=\"submit\"[^>]*data-subscription-id=\"@subscription.Id\"").Should().BeTrue(
+            "Delete stays a real submit button, so it posts with no script");
+        body.Should().NotContain("data-bs-toggle", "Bootstrap must never open the dialog while the form still posts");
+        body.Should().NotContain("data-bs-target", "Bootstrap must never open the dialog while the form still posts");
+    }
+
+    [Fact]
+    public void ProfileDelete_OnlyTheScriptOpensTheDialog()
+    {
+        var script = File.ReadAllText(ResolveRepoFile(ProfileScriptPath));
+
+        script.Should().Contain("getOrCreateInstance(", "the script opens the dialog through the Modal API");
+        script.Should().Contain("preventDefault()", "the script cancels the row's post in the listener that opens the dialog");
+        script.Should().Contain("hidden.bs.modal", "the script returns focus itself, as the API open gives none");
+
+        foreach (var view in ProfileViews)
+            Markup(view).Should().NotContain("data-bs-target=\"#deleteSubscriptionModal\"",
+                $"{view} must not let a data attribute open the dialog by itself");
     }
 }

@@ -51,6 +51,9 @@ public class CalendarSubscriptionStaticGuardTests
     private static string ReadMobileView() => File.ReadAllText(
         ResolveRepoFile("QuestBoard.Service", "Views", "Account", "Profile.Mobile.cshtml"));
 
+    private static string ReadScript() => File.ReadAllText(
+        ResolveRepoFile("QuestBoard.Service", "wwwroot", "js", "profile-subscriptions.js"));
+
     private static string ExtractCssRule(string css, string selectorWithOpenBrace)
     {
         var start = css.IndexOf(selectorWithOpenBrace, StringComparison.Ordinal);
@@ -77,8 +80,6 @@ public class CalendarSubscriptionStaticGuardTests
             "Never fetched yet",
             "Last fetched",
             "Copy",
-            "Copied!",
-            "Press Ctrl+C",
             "Open in Calendar App",
             "If nothing happens, copy the address and add it in your calendar app manually.",
             "Show QR Code",
@@ -111,23 +112,51 @@ public class CalendarSubscriptionStaticGuardTests
                      "this codebase has shipped a control on one Profile layout and not the other more than once");
     }
 
-    // ---- The destructive confirm text is byte-identical ----
+    // ---- The strings the script owns ----
+
+    // The two Copy results are written by the shared script rather than by either view, so they are held where they live.
+    [Fact]
+    public void ScriptContractStrings_LiveInTheSharedScript()
+    {
+        var script = ReadScript();
+
+        script.Should().Contain("Copied!", because: "the script writes the Copy success label");
+        script.Should().Contain("Press Ctrl+C", because: "the script writes the clipboard-denied label");
+
+        ReadDesktopView().Should().Contain("~/js/profile-subscriptions.js",
+            because: "the desktop Profile loads the shared script that holds those strings");
+        ReadMobileView().Should().Contain("~/js/profile-subscriptions.js",
+            because: "the phone Profile loads the shared script that holds those strings");
+    }
+
+    // ---- The destructive confirmation text is byte-identical ----
 
     [Fact]
     public void DeleteConfirmText_IsByteIdenticalBetweenLayouts()
     {
-        var desktopConfirm = ExtractConfirmMessage(ReadDesktopView());
-        var mobileConfirm = ExtractConfirmMessage(ReadMobileView());
+        var desktop = ReadDesktopView();
+        var mobile = ReadMobileView();
+        var desktopMessage = ExtractDeleteMessage(desktop);
+        var mobileMessage = ExtractDeleteMessage(mobile);
 
-        desktopConfirm.Should().NotBeNullOrEmpty("the desktop layout must define the delete confirm() message");
-        mobileConfirm.Should().NotBeNullOrEmpty("the mobile layout must define the delete confirm() message");
-        mobileConfirm.Should().Be(desktopConfirm,
+        desktopMessage.Should().NotBeNullOrEmpty("the desktop layout must carry the delete dialog's message");
+        mobileMessage.Should().NotBeNullOrEmpty("the phone layout must carry the delete dialog's message");
+        mobileMessage.Should().Be(desktopMessage,
             because: "two hand-maintained copies of a destructive confirmation sentence drift; this is what stops it");
+
+        foreach (var message in new[] { desktopMessage, mobileMessage })
+        {
+            message.Should().Contain("? Any device using this address will silently stop receiving updates the next time it checks");
+            message.Should().Contain("this cannot be undone. You can always create a new subscription afterward.");
+        }
+
+        desktop.Should().NotContain("confirm(", because: "the browser prompt is replaced by the dialog");
+        mobile.Should().NotContain("confirm(", because: "the browser prompt is replaced by the dialog");
     }
 
-    private static string ExtractConfirmMessage(string source)
+    private static string ExtractDeleteMessage(string source)
     {
-        var match = Regex.Match(source, @"var message = 'Delete ""' \+ name \+ '(.*?)';");
+        var match = Regex.Match(source, @"<p[^>]*\bid=""deleteSubscriptionMessage""[^>]*>(.*?)</p>", RegexOptions.Singleline);
         return match.Success ? match.Groups[1].Value : string.Empty;
     }
 
@@ -176,11 +205,14 @@ public class CalendarSubscriptionStaticGuardTests
     {
         var desktop = ReadDesktopView();
         var mobile = ReadMobileView();
+        var script = ReadScript();
 
         desktop.Should().NotContainEquivalentOf(forbiddenPhrase,
             because: $"the desktop layout must never claim '{forbiddenPhrase}'");
         mobile.Should().NotContainEquivalentOf(forbiddenPhrase,
             because: $"the mobile layout must never claim '{forbiddenPhrase}'");
+        script.Should().NotContainEquivalentOf(forbiddenPhrase,
+            because: $"the shared script writes copy for both layouts and must never claim '{forbiddenPhrase}'");
     }
 
     // ---- The mobile touch-target floor exists and reaches its element ----

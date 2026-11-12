@@ -110,10 +110,10 @@
                                                     <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
                                                         <i class="fas fa-pen me-2" aria-hidden="true"></i>Rename
                                                     </button>
-                                                    <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
+                                                    <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="id" value="@subscription.Id" />
-                                                        <button type="submit" class="btn btn-danger btn-sm">
+                                                        <button type="submit" class="btn btn-danger btn-sm" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
                                                             <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete
                                                         </button>
                                                     </form>
@@ -162,6 +162,30 @@
    including Close. *@
     @if (Model.CalendarSubscriptions.Any())
     {
+        <div class="modal fade" id="deleteSubscriptionModal" tabindex="-1" aria-labelledby="deleteSubscriptionModalLabel" aria-describedby="deleteSubscriptionMessage" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="deleteSubscriptionModalLabel">Delete Subscription</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-0" id="deleteSubscriptionMessage">Delete "<span data-subscription-name-target></span>"? Any device using this address will silently stop receiving updates the next time it checks — this cannot be undone. You can always create a new subscription afterward.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-keep-subscription data-bs-dismiss="modal">Keep Subscription</button>
+                        <form asp-action="RevokeCalendarSubscription" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="" />
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete Subscription
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="renameSubscriptionModal" tabindex="-1" aria-labelledby="renameSubscriptionModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -218,97 +242,5 @@
     }
 
 @section Scripts {
-    <script>
-        document.querySelectorAll('.calendar-subscription-copy-btn').forEach(function (button) {
-            button.addEventListener('click', function () {
-                var targetSelector = button.dataset.addressTarget;
-                var field = targetSelector ? document.querySelector(targetSelector) : null;
-                if (!field) {
-                    return;
-                }
-
-                var restoreLabel = function (label, iconClass, extraButtonClass) {
-                    setTimeout(function () {
-                        button.classList.remove('btn-success');
-                        if (extraButtonClass) {
-                            button.classList.remove(extraButtonClass);
-                        }
-                        button.classList.add('btn-primary');
-                        button.innerHTML = '<i class="fas fa-copy me-2" aria-hidden="true"></i>Copy';
-                    }, 2000);
-                };
-
-                var showManualFallback = function () {
-                    // The address is hidden by default because it is a bearer credential and
-                    // nothing on the page needs a person to read it. This is the one path that
-                    // does: reveal it so the selection is visible, then leave it revealed --
-                    // the person is mid-copy and hiding it again under them would be hostile.
-                    field.classList.remove('visually-hidden');
-                    field.focus();
-                    field.select();
-                    button.innerHTML = 'Press Ctrl+C';
-                    restoreLabel();
-                };
-
-                if (!navigator.clipboard || !navigator.clipboard.writeText) {
-                    showManualFallback();
-                    return;
-                }
-
-                navigator.clipboard.writeText(field.value).then(function () {
-                    button.classList.remove('btn-primary');
-                    button.classList.add('btn-success');
-                    button.innerHTML = '<i class="fas fa-check me-2" aria-hidden="true"></i>Copied!';
-                    restoreLabel();
-                }).catch(function () {
-                    showManualFallback();
-                });
-            });
-        });
-
-        // The disable-and-relabel here is a courtesy for the common case; the actual guard
-        // against a double-submitted mint is the server-side ten-second window enforced in
-        // AccountController, so removing this script would not remove the protection.
-        var addSubscriptionForm = document.querySelector('.calendar-subscription-add-form');
-        if (addSubscriptionForm) {
-            addSubscriptionForm.addEventListener('submit', function () {
-                var submitButton = addSubscriptionForm.querySelector('button[type="submit"]');
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = 'Adding…';
-                }
-            });
-        }
-
-        var renameSubscriptionModal = document.getElementById('renameSubscriptionModal');
-        if (renameSubscriptionModal) {
-            renameSubscriptionModal.addEventListener('show.bs.modal', function (event) {
-                var trigger = event.relatedTarget;
-                if (!trigger) {
-                    return;
-                }
-
-                var subscriptionId = trigger.dataset.subscriptionId || '';
-                var subscriptionName = trigger.dataset.subscriptionName || '';
-
-                document.getElementById('renameSubscriptionId').value = subscriptionId;
-                var nameInput = document.getElementById('renameSubscriptionName');
-                nameInput.value = subscriptionName;
-            });
-
-            renameSubscriptionModal.addEventListener('shown.bs.modal', function () {
-                document.getElementById('renameSubscriptionName').focus();
-            });
-        }
-
-        document.querySelectorAll('.calendar-subscription-delete-form').forEach(function (form) {
-            form.addEventListener('submit', function (e) {
-                var name = form.dataset.subscriptionName;
-                var message = 'Delete "' + name + '"? Any device using this address will silently stop receiving updates the next time it checks — this cannot be undone. You can always create a new subscription afterward.';
-                if (!confirm(message)) {
-                    e.preventDefault();
-                }
-            });
-        });
-    </script>
+    <script type="module" src="~/js/profile-subscriptions.js" asp-append-version="true"></script>
 }
