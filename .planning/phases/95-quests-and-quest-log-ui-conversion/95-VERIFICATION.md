@@ -1,7 +1,7 @@
 ---
 phase: 95-quests-and-quest-log-ui-conversion
 verified: 2026-11-11T16:00:00Z
-status: human_needed
+status: passed
 score: 17/17 must-haves verified (3 by browser evidence from the orchestrator, see "Orchestrator re-check")
 behavior_unverified: 0
 overrides_applied: 0
@@ -172,3 +172,6 @@ The verifier left three truths as present but behaviour-unverified because it wa
 
 The remaining human item is the real-phone UAT checklist above, which includes WINDOWS #32 (the Rewards disclosure, which no fixture has). That is why the status stays `human_needed`: it is a real-device check, not a code gap.
 
+## Human verification (2026-11-12)
+
+The three runtime behaviours above were re-run in a browser by the orchestrator and passed; the local UAT (95-UAT.md items 1-11) passed under phone User-Agents; the real-phone checklist and the real-device calendar subscription (items 12-13) were confirmed by the user against production after the v6.0.0 deploy. Status set to passed.

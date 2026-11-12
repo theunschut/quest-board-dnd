@@ -2,10 +2,11 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 102
-status: completed
-stopped_at: Phase 102 complete; Phase 95 UAT 11/11 local passed, 2 real-device items deferred to post-deploy (phase stays open)
-last_updated: "2026-11-12T09:27:45.734Z"
+current_phase: 96
+current_phase_name: Account and pickers UI conversion
+status: planning
+stopped_at: v6.0.0 released and deployed (phases 94, 95, 102); phase 95 real-phone UAT passed in production; next is phase 96 (already planned)
+last_updated: "2026-11-12T10:48:18.631Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
 progress:
@@ -14,7 +15,6 @@ progress:
   total_plans: 230
   completed_plans: 209
   percent: 71
-current_phase_name: board-deletion
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
@@ -25,25 +25,19 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 102 — board-deletion
+**Current focus:** Phase 96 — Account and pickers UI conversion
 
 ## Current Position
 
-Phase: 102 (board-deletion) — COMPLETE
-Plan: 10 of 10
-Status: Phase 102 complete (manual UAT 6/6 passed locally 2026-11-12, verification passed). Not all phases are
-complete: Phase 95 is still open (see below), and Phases 78, 79 and 90 are not done.
-Last activity: 2026-11-12 — Phase 102 UAT passed and phase marked complete
+Phase: 96 — Account and pickers UI conversion
+Plan: Not started (12 plans already written)
+Status: Ready to execute
+Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
+Last activity: 2026-11-12 — v6.0.0 (phases 94, 95, 102) released and deployed; phase 95 real-phone UAT passed in production, phase complete
 
-**Phase 95 UAT run locally 2026-11-12 (`95-UAT.md`): 11 of 11 local checks passed, 2 real-device items deferred to after
-the production deploy by the user's decision (real-phone checklist incl. WINDOWS #32, and WINDOWS #3).** `phase uat-passed 95`
-therefore still refuses: it counts the two deferred (skipped) items as blockers and needs `95-VERIFICATION.md` at `passed`.
-Left open on purpose; not forced.
-
-**Phase 95 (quests-and-quest-log-ui-conversion) is parked, not complete.** All 18 of 18 plans are
-executed (stopped at: Completed 95-18-PLAN.md), but the phase stays open until the operator's
-real-phone UAT passes (`/gsd-verify-work 95`). Phases 94, 95 and 102 ship together as v6.0.0 via a
-PR from `milestone/v9-rolling-improvements` to `main`, after that UAT and Phase 102 are done.
+**Phase 95 complete 2026-11-12.** Local UAT 11/11 passed; the two real-device items (real-phone checklist incl.
+WINDOWS #32, and the WINDOWS #3 calendar subscription) were confirmed by the operator against production after the
+v6.0.0 deploy.
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -60,7 +54,6 @@ phase counters understate progress. Pre-existing and consistent across every pha
 introduced by Phase 87.
 
 ## Performance Metrics
-
 **Velocity:**
 
 - Total plans completed (v8.0): 26/26 across 7 phases (65–71)
