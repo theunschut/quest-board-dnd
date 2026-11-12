@@ -8,9 +8,11 @@ namespace QuestBoard.IntegrationTests.Controllers;
 // buttons appear for every signed-in board member, the withdraw control appears only where a
 // one-shot board's viewer already holds a signup row, the named roster shows plain Yes/Maybe/No
 // badges without ever leaking whether an answer was automatic, and the delete confirmation
-// carries the live signup count. Confirming the layout renders correctly on a real mobile
-// device stays a manual check -- this page has no mobile variant, and devtools emulation has
-// masked a live case of mobile markup never actually being selected before.
+// carries the live signup count. The answer and withdraw controls are wired by a script module
+// from data attributes, so these facts count those attributes rather than any inline call.
+// Confirming the layout renders correctly on a real mobile device stays a manual check -- this
+// page has no mobile variant, and devtools emulation has masked a live case of mobile markup
+// never actually being selected before.
 public class EventDetailsAvailabilityRenderTests(WebApplicationFactoryBase factory)
     : IClassFixture<WebApplicationFactoryBase>, IAsyncLifetime
 {
@@ -68,7 +70,13 @@ public class EventDetailsAvailabilityRenderTests(WebApplicationFactoryBase facto
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        (body.Split("onclick=\"setAvailability(", StringSplitOptions.None).Length - 1).Should().Be(3);
+        // The buttons carry their answer and address as data attributes for the page's script module;
+        // no inline call remains in the markup.
+        System.Text.RegularExpressions.Regex.Matches(body, @"<button\b[^>]*\bdata-answer=""\d+""[^>]*\bdata-answer-url=""/Events/SetAvailability/\d+""")
+            .Count.Should().Be(3);
+        body.Should().NotContain("setAvailability(");
+        body.Should().Contain("name=\"request-verification-token\"");
+        body.Should().Contain("/js/event-details.js");
     }
 
     [Fact]
@@ -85,7 +93,8 @@ public class EventDetailsAvailabilityRenderTests(WebApplicationFactoryBase facto
         var response = await client.GetAsync($"/Events/Details/{eventId}", TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-        body.Should().Contain("withdrawAvailability(");
+        body.Should().Contain("data-withdraw-url=\"/Events/Withdraw/");
+        body.Should().Contain("data-confirm-message=\"Withdrawing removes your answer entirely and returns you to not having responded. Continue?\"");
     }
 
     [Fact]
@@ -101,7 +110,7 @@ public class EventDetailsAvailabilityRenderTests(WebApplicationFactoryBase facto
         var response = await client.GetAsync($"/Events/Details/{eventId}", TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-        body.Should().NotContain("withdrawAvailability(");
+        body.Should().NotContain("data-withdraw-url");
     }
 
     [Fact]
@@ -120,7 +129,7 @@ public class EventDetailsAvailabilityRenderTests(WebApplicationFactoryBase facto
 
         // The control is hidden here even though the row exists -- opting out on a campaign
         // board means answering No, not deleting the row.
-        body.Should().NotContain("withdrawAvailability(");
+        body.Should().NotContain("data-withdraw-url");
     }
 
     [Fact]

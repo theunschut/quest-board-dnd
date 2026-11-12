@@ -108,6 +108,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Shared/_Calendar.cshtml",
         "QuestBoard.Service/Views/Shared/_Calendar.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/js/row-link.js",
+        "QuestBoard.Service/wwwroot/js/event-details.js",
         "QuestBoard.Service/wwwroot/css/events-overview.css",
         "QuestBoard.Service/wwwroot/css/events-overview.mobile.css",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
@@ -320,6 +321,16 @@ public class EventsConversionGuardTests
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/row-link.js");
         Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML|document\.write")
             .Select(m => m.Value).Should().BeEmpty("row-link.js must build no markup from strings");
+    }
+
+    [Fact]
+    public void EventDetailsModule_WritesNoMarkupFromStrings()
+    {
+        // The module posts the viewer's answer and shows server text through alert() and confirm(),
+        // which take plain text, so it needs no markup from strings.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/event-details.js");
+        Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML|document\.write")
+            .Select(m => m.Value).Should().BeEmpty("event-details.js must build no markup from strings");
     }
 
     [Fact]
