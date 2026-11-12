@@ -14,7 +14,7 @@ function editorAccessibleName(textarea) {
         return '';
     }
     const label = document.querySelector('label[for="' + CSS.escape(textarea.id) + '"]');
-    return label ? label.textContent.replace('*', '').trim() : '';
+    return label ? label.textContent.replace(/\*/g, '').trim() : '';
 }
 
 // Build one EasyMDE instance bound to a single textarea. previewRender POSTs the current text
