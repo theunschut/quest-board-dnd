@@ -1655,7 +1655,7 @@ Plans:
 **Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
-**Plans:** 3/12 plans executed
+**Plans:** 4/12 plans executed
 
 **Scope:**
 
@@ -1722,7 +1722,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 96-04-PLAN.md — Gate 1 package B: Profile mockups for both twins, item list, Gate 1 (operator, redraw loop)
+- [x] 96-04-PLAN.md — Gate 1 package B: Profile mockups for both twins, item list, Gate 1 (operator, redraw loop)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -1873,6 +1873,7 @@ Plans:
 **Wave 15** *(blocked on Wave 14 completion)*
 
 - [ ] 97-17-PLAN.md — Gate 2 review sheet and orphan review branch, Gate 2 (operator, redraw loop), release handoff
+
 ### Phase 98: Characters, Contacts, DM profile and Players UI conversion
 
 **Goal:** Convert characters, contacts, categories, the DM profile and the players list, and the image crop dialog. Convert characters, contacts, contact categories, the DM profile and the players list, with the image crop dialog and the six approved twin merges, to the foundation, keeping every field and action and fixing the editor keyboard trap and the dialog findings.
