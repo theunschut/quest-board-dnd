@@ -33,16 +33,6 @@
     margin-block: 0 var(--qb-space-sm);
   }
 
-  /*
-   * The sidebar card titles are h2 so the outline has no skipped level, but they keep the body-step look the sidebar
-   * always had: the card header would otherwise set an h2 in the display face at 28px.
-   */
-  .quest-manage-page .modern-card-header h2.h5 {
-    font-family: inherit;
-    font-size: var(--qb-text-base);
-    letter-spacing: normal;
-  }
-
   :where(.quest-manage-page .modern-card-body) h3 {
     margin-block: var(--qb-space-md) var(--qb-space-sm);
   }
