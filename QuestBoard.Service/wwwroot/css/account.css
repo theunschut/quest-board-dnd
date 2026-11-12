@@ -137,6 +137,16 @@
   }
 
   /*
+   * A link that sits inside a sentence stays an inline box so the words around it wrap as they always did. Its tap
+   * target on the phone grows through padding, which adds hit area without adding line height; the sideways growth is
+   * cancelled by an equal negative margin so the sentence does not shift.
+   */
+  .mobile-layout .account-link-inline {
+    padding: calc((var(--qb-hit-min) - 1em) / 2) var(--qb-space-sm);
+    margin-inline: calc(-1 * var(--qb-space-sm));
+  }
+
+  /*
    * The signed-out landing card sits a step below the bar and never lifts, because it is a statement and not a control.
    * On a phone the log in button spans the card's content width; the phone class is on the body, so the one view serves
    * both layouts.
