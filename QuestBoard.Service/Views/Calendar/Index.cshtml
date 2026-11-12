@@ -6,7 +6,11 @@
     var pages = await BoardPages.GetAsync();
 }
 
-<div class="row">
+@section Styles {
+    <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
+}
+
+<div class="row calendar-page">
     <div class="col-lg-10 col-md-9">
         <div class="card modern-card">
             <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
@@ -125,4 +129,3 @@
         </div>
     </div>
 </div>
-

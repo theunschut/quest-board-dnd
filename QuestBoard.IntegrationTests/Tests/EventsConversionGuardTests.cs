@@ -96,6 +96,7 @@ public class EventsConversionGuardTests
         "agenda.css",
         "agenda.mobile.css",
         "calendar.mobile.css",
+        "calendar.css",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name.
@@ -108,6 +109,7 @@ public class EventsConversionGuardTests
         ["QuestBoard.Service/Views/Agenda/Index.cshtml"] = ["agenda.css"],
         ["QuestBoard.Service/Views/Agenda/Index.Mobile.cshtml"] = ["agenda.mobile.css"],
         ["QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml"] = ["calendar.mobile.css"],
+        ["QuestBoard.Service/Views/Calendar/Index.cshtml"] = ["calendar.css"],
     };
 
     // The area files scanned for raw date formatting: all of them.
@@ -142,6 +144,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/wwwroot/css/agenda.css",
         "QuestBoard.Service/wwwroot/css/agenda.mobile.css",
         "QuestBoard.Service/wwwroot/css/calendar.mobile.css",
+        "QuestBoard.Service/wwwroot/css/calendar.css",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
         ".claude/ui-guidelines.md",
@@ -344,6 +347,81 @@ public class EventsConversionGuardTests
                 LinksSheet(view, sheet).Should().BeTrue(
                     $"{path} must link {sheet} from its Styles section so the sheet loads only where it is used");
         }
+    }
+
+    [Fact]
+    public void CalendarSheet_LoadsOnlyWhereItIsUsed()
+    {
+        // The month and Quest Details are the only pages that draw the calendar grid, so the sheet is
+        // linked from their own Styles sections and not from the shared layout.
+        ReadRepoFile("QuestBoard.Service/Views/Shared/_Layout.cshtml").Should().NotContain("calendar.css",
+            "the calendar sheet is page-specific and must not load on every page");
+        ReadRepoFile("QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml").Should().NotContain("calendar.css");
+
+        LinksSheet(StripRazorAndHtmlComments(ReadRepoFile("QuestBoard.Service/Views/Quest/Details.cshtml")), "calendar.css")
+            .Should().BeTrue("Quest Details draws the same grid and links the sheet itself");
+        ReadRepoFile("QuestBoard.Service/Views/Calendar/Index.cshtml").Should().Contain("calendar-page",
+            "the month rules are scoped to the page wrapper");
+    }
+
+    [Fact]
+    public void CalendarSheet_HasNoTransitionAll()
+    {
+        Regex.IsMatch(StripCssComments(ReadRepoFile(SheetPath("calendar.css"))), @"transition\s*:\s*all\b")
+            .Should().BeFalse("a transition names the properties it animates");
+    }
+
+    [Fact]
+    public void CalendarSheet_KeepsMonthAndQuestDetailsRulesApart()
+    {
+        // Every rule is either the shared weekday header or sits under one of the two page scopes, so a
+        // rule written for the month can never reach Quest Details and the other way round.
+        var allowedStarts = new[] { ".calendar-page ", ".details-page ", ".calendar-grid.details-page", ".quest-details-page " };
+        var shared = new[] { ".calendar-header", ".calendar-day-header", ".calendar-day-header:last-child" };
+
+        var unscoped = CssRuleSelectors(StripCssComments(ReadRepoFile(SheetPath("calendar.css"))))
+            .Where(sel => !shared.Contains(sel) && !allowedStarts.Any(start => sel.StartsWith(start, StringComparison.Ordinal)))
+            .ToList();
+
+        unscoped.Should().BeEmpty("only the weekday header may be shared between the month and Quest Details");
+    }
+
+    [Fact]
+    public void CalendarWeekdayHeader_IsAWoodBandWithParchmentText()
+    {
+        var css = StripCssComments(ReadRepoFile(SheetPath("calendar.css")));
+
+        Regex.IsMatch(css, @"\.calendar-header\s*\{[^}]*background-color:\s*var\(--qb-wood\)[^}]*color:\s*var\(--qb-fg\)")
+            .Should().BeTrue("the weekday band is the wood fill with parchment text, which holds 4.5:1 on both pages");
+        Regex.IsMatch(css, @"\.calendar-day-header\s*\{[^}]*color:\s*var\(--qb-fg\)")
+            .Should().BeTrue("each weekday name takes the parchment colour");
+        Regex.IsMatch(css, @"\.calendar-day-header\s*\{[^}]*text-shadow").Should().BeFalse(
+            "a shadow behind text on a solid fill only blurs it");
+    }
+
+    // The selector of every rule in a stylesheet (comments stripped), one entry per comma-separated selector;
+    // a layer or media wrapper is entered, other at-rules are skipped.
+    private static IEnumerable<string> CssRuleSelectors(string css)
+    {
+        var result = new List<string>();
+        var start = 0;
+        for (var i = 0; i < css.Length; i++)
+        {
+            if (css[i] == '{')
+            {
+                var prelude = css[start..i].Trim();
+                if (!prelude.StartsWith('@'))
+                    result.AddRange(prelude.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()));
+
+                start = i + 1;
+            }
+            else if (css[i] == '}' || css[i] == ';')
+            {
+                start = i + 1;
+            }
+        }
+
+        return result;
     }
 
     [Fact]

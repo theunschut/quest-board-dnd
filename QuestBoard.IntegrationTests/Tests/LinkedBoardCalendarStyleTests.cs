@@ -14,6 +14,13 @@ public class LinkedBoardCalendarStyleTests
     private const string QuestsMobileCss = "quests.mobile.css";
 
     /// <summary>
+    /// The month on the Calendar page and the calendar on Quest Details each carry their own copy of
+    /// the linked-entry rules, so a change to one cannot reach the other. Every fact about those
+    /// rules holds for both scopes.
+    /// </summary>
+    private static readonly string[] CalendarScopes = [".calendar-page", ".details-page"];
+
+    /// <summary>
     /// Resolves a stylesheet under QuestBoard.Service/wwwroot/css by walking up from
     /// AppContext.BaseDirectory until the project folder is found, so the facts run from any
     /// working directory. Fails with a descriptive message naming the attempted path if the file
@@ -87,10 +94,13 @@ public class LinkedBoardCalendarStyleTests
     {
         var css = ReadStylesheet(CalendarCss);
 
-        var rule = ExtractRuleBody(css, ".linked-entry");
+        foreach (var scope in CalendarScopes)
+        {
+            var rule = ExtractRuleBody(css, $"{scope} .linked-entry");
 
-        rule.Should().Contain("border-left: 4px dashed",
-            because: "a linked chip must read as borrowed from another board, not as one of this board's own entries");
+            rule.Should().Contain("border-left: 4px dashed",
+                because: $"a linked chip under {scope} must read as borrowed from another board, not as one of this board's own entries");
+        }
     }
 
     [Fact]
@@ -98,10 +108,13 @@ public class LinkedBoardCalendarStyleTests
     {
         var css = ReadStylesheet(CalendarCss);
 
-        var rule = ExtractRuleBody(css, ".linked-entry-detail");
+        foreach (var scope in CalendarScopes)
+        {
+            var rule = ExtractRuleBody(css, $"{scope} .linked-entry-detail");
 
-        rule.Should().Contain("display: none",
-            because: "the board, DM and time line stays out of the chip until a pointer or keyboard user asks for it");
+            rule.Should().Contain("display: none",
+                because: $"under {scope} the board, DM and time line stays out of the chip until a pointer or keyboard user asks for it");
+        }
     }
 
     [Fact]
@@ -109,10 +122,13 @@ public class LinkedBoardCalendarStyleTests
     {
         var css = ReadStylesheet(CalendarCss);
 
-        var rule = ExtractRuleBody(css, ".linked-entry:hover .linked-entry-detail");
+        foreach (var scope in CalendarScopes)
+        {
+            var rule = ExtractRuleBody(css, $"{scope} .linked-entry:hover .linked-entry-detail");
 
-        rule.Should().Contain("display: block",
-            because: "hovering a linked chip must show its detail line");
+            rule.Should().Contain("display: block",
+                because: $"hovering a linked chip under {scope} must show its detail line");
+        }
     }
 
     [Fact]
@@ -120,10 +136,13 @@ public class LinkedBoardCalendarStyleTests
     {
         var css = ReadStylesheet(CalendarCss);
 
-        var rule = ExtractRuleBody(css, ".linked-entry--open:focus-visible .linked-entry-detail");
+        foreach (var scope in CalendarScopes)
+        {
+            var rule = ExtractRuleBody(css, $"{scope} .linked-entry--open:focus-visible .linked-entry-detail");
 
-        rule.Should().Contain("display: block",
-            because: "a keyboard user focusing an openable linked chip must get the same detail line a hover shows");
+            rule.Should().Contain("display: block",
+                because: $"a keyboard user focusing an openable linked chip under {scope} must get the same detail line a hover shows");
+        }
     }
 
     [Theory]
@@ -135,10 +154,19 @@ public class LinkedBoardCalendarStyleTests
     {
         var css = ReadStylesheet(fileName);
 
-        var rule = ExtractRuleBody(css, selector);
+        // The calendar sheet scopes the rule once for the month and once for Quest Details; the phone
+        // sheets hold it unscoped.
+        var selectors = fileName == CalendarCss
+            ? CalendarScopes.Select(scope => $"{scope} {selector}").ToArray()
+            : [selector];
 
-        rule.Should().Contain("text-decoration: line-through",
-            because: $"{selector} in {fileName} must strike the cancelled linked entry through so it reads as called off");
+        foreach (var scoped in selectors)
+        {
+            var rule = ExtractRuleBody(css, scoped);
+
+            rule.Should().Contain("text-decoration: line-through",
+                because: $"{scoped} in {fileName} must strike the cancelled linked entry through so it reads as called off");
+        }
     }
 
     [Fact]

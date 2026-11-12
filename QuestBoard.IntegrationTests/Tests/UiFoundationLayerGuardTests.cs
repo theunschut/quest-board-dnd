@@ -79,11 +79,12 @@ public class UiFoundationLayerGuardTests
         ("agenda.css", "pages"),
         ("agenda.mobile.css", "pages"),
         ("calendar.mobile.css", "pages"),
+        ("calendar.css", "pages"),
     ];
 
     // The layered files that may hold no colour literal: every one except the token file.
     private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css", "group-picker.css",
-        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css", "events-overview.css", "events-overview.mobile.css", "agenda.css", "agenda.mobile.css", "calendar.mobile.css"];
+        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css", "events-overview.css", "events-overview.mobile.css", "agenda.css", "agenda.mobile.css", "calendar.mobile.css", "calendar.css"];
 
     private static readonly Regex LocalStylesheetHref = new(
         @"<link\b[^>]*\brel=""stylesheet""[^>]*\bhref=""~/css/(?<name>[\w.\-]+)\.css""[^>]*>",
@@ -399,7 +400,7 @@ public class UiFoundationLayerGuardTests
         new("Text on glass, at rest and nested",           GlassText,                     ["glass", "glass-nested"],                                TextBar),
         new("Text on hovered glass",                       GlassText,                     ["glass-hover"],                                          TextBar),
         new("Page title on the card's title band",         ["--qb-accent", "--qb-fg"],   ["glass-nested"],                                         TextBar),
-        new("Parchment on the wood chrome and in overlays", ["--qb-fg"],                  ["chrome", "--qb-surface-overlay"],                       TextBar),
+        new("Parchment on the wood chrome and in overlays", ["--qb-fg"],                  ["chrome", "--qb-surface-overlay", "--qb-wood"],          TextBar),
         new("Status text and alert stripes on the overlay", [.. StatusNames.Select(n => $"--qb-{n}-text"), "--qb-accent-text"], ["--qb-surface-overlay"], TextBar),
         new("Light text on the bare board and its fallback", ["--qb-fg-on-board"],        ["board", "fallback"],                                    TextBar),
         new("Ink on paper",                                ["--qb-ink", "--qb-ink-muted"], ["--qb-surface-paper", "--qb-surface-paper-alt"],        TextBar),
