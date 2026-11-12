@@ -392,6 +392,7 @@ public class UiFoundationLayerGuardTests
         // Rule                                            Foregrounds                    Surfaces                                                  Min
         new("Text on glass, at rest and nested",           GlassText,                     ["glass", "glass-nested"],                                TextBar),
         new("Text on hovered glass",                       GlassText,                     ["glass-hover"],                                          TextBar),
+        new("Page title on the card's title band",         ["--qb-accent", "--qb-fg"],   ["glass-nested"],                                         TextBar),
         new("Parchment on the wood chrome and in overlays", ["--qb-fg"],                  ["chrome", "--qb-surface-overlay"],                       TextBar),
         new("Status text and alert stripes on the overlay", [.. StatusNames.Select(n => $"--qb-{n}-text"), "--qb-accent-text"], ["--qb-surface-overlay"], TextBar),
         new("Light text on the bare board and its fallback", ["--qb-fg-on-board"],        ["board", "fallback"],                                    TextBar),
