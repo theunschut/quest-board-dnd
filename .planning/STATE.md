@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 96
 current_phase_name: account-and-pickers-ui-conversion
 status: executing
-stopped_at: Completed 96-02-PLAN.md
-last_updated: "2026-11-12T11:10:35.767Z"
+stopped_at: Completed 96-03-PLAN.md
+last_updated: "2026-11-12T11:34:07.983Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
 progress:
   total_phases: 31
   completed_phases: 22
   total_plans: 230
-  completed_plans: 211
+  completed_plans: 212
   percent: 71
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 96 (account-and-pickers-ui-conversion) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
 Last activity: 2026-11-12 — Phase 96 execution started
@@ -100,6 +100,7 @@ introduced by Phase 87.
 | Phase 95 P18 | about 5 h | 3 tasks | 0 files |
 | Phase 96 P01 | 20min | 3 tasks | 0 files |
 | Phase 96 P02 | 1.5h | 3 tasks | 0 files |
+| Phase 96 P03 | 2.5 h | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase ?]: 96-01: review environment on Linux ports 8000/8001, bundled Chromium, reused phase-95 Audit accounts; nine roles incl. multi and noboard
 - [Phase 96]: 96-02: rate-limited error rows (forgot and set password) split over 127.0.0.1 and [::1]; restart the app before each sweep of them
 - [Phase 96]: 96-02: event.single reuses the Phase 94 event, so phase 96 writes no Events or Quests row
+- [Phase ?]: 96-03: picker/Home mockups link a copy of the frozen baseline foundation sheets (file:// pages cannot load app fonts); contrast probe gains opt-in stack mode and color-mix parsing; AFTER sweeps must use stack mode or panel muted text reads 4.25 instead of 6.09
 
 ### Roadmap Evolution
 
@@ -265,8 +267,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-12T11:10:35.733Z
-Stopped at: Completed 96-02-PLAN.md
+Last session: 2026-11-12T11:34:07.948Z
+Stopped at: Completed 96-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
