@@ -47,7 +47,7 @@
   /* ---------- Also showing and the legend disclosure ---------- */
   .agenda-linked-note {
     margin: 0;
-    color: var(--qb-fg-muted);
+    color: var(--qb-fg);
     font-size: var(--qb-text-sm);
     overflow-wrap: anywhere;
   }
@@ -56,10 +56,15 @@
     align-self: flex-start;
   }
 
-  /* The legend sits in a nested card with no header, so it carries no blur of its own. */
+  /*
+   * The legend sits in a nested card with no header, so it carries no blur of its own. A second sheet of glass over the
+   * panel would lighten it under the text, so it takes the darker band the slips of the agenda page use instead.
+   */
   .agenda-legend {
     margin: 0;
     padding: var(--qb-space-md);
+    background-color: var(--qb-surface-scrim);
+    background-image: none;
   }
 
   .agenda-legend h2 {
@@ -89,7 +94,7 @@
 
   .agenda-legend p {
     margin: 0 0 var(--qb-space-sm);
-    color: var(--qb-fg-muted);
+    color: var(--qb-fg);
     font-size: var(--qb-text-sm);
   }
 
@@ -112,6 +117,11 @@
     background: var(--qb-surface-paper-alt);
     color: var(--qb-ink-muted);
     font-size: var(--qb-text-sm);
+  }
+
+  /* The empty month sentence takes the full parchment tone: the muted one measures under the bar on the panel. */
+  .agenda-page .empty-state-text {
+    color: var(--qb-fg);
   }
 
   /* ---------- Day sections ---------- */

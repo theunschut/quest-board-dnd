@@ -153,4 +153,26 @@ public class LinkedBoardCalendarStyleTests
         css.TrimStart().Should().Contain("@layer pages {",
             because: "the phone sheet belongs to the pages layer");
     }
+
+    [Fact]
+    public void AlsoThatDayLink_OnThePhone_TakesTheTouchTargetFloor()
+    {
+        var css = ReadStylesheet(QuestsMobileCss);
+
+        var rule = ExtractRuleBody(css, ".also-that-day .row-nav-link");
+
+        rule.Should().Contain("min-height: var(--qb-hit-min)",
+            because: "the title link in an also-that-day line is something a thumb taps, so it keeps the 44px floor");
+    }
+
+    [Fact]
+    public void LinkedLegend_AndNote_OnThePhone_UseTheFullTextToneAndNoSecondGlass()
+    {
+        var css = ReadStylesheet(CalendarMobileCss);
+
+        ExtractRuleBody(css, ".agenda-linked-note").Should().Contain("color: var(--qb-fg);",
+            because: "the muted tone measures under the contrast bar on the page panel");
+        ExtractRuleBody(css, ".agenda-legend").Should().Contain("background-image: none",
+            because: "a second sheet of glass over the panel would lighten the legend under its text");
+    }
 }

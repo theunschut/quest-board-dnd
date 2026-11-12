@@ -111,7 +111,11 @@
     font-weight: var(--qb-weight-strong);
   }
 
+  /* The title link is a real tap target: a link inside a sentence still takes the 44px floor on a phone. */
   .also-that-day .row-nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
     text-decoration: underline;
     color: inherit;
   }
