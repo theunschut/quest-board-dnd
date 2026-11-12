@@ -70,6 +70,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Events/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Events/Create.cshtml",
         "QuestBoard.Service/Views/Events/Details.cshtml",
+        "QuestBoard.Service/Views/Events/Edit.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
     ];
@@ -112,6 +113,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Events/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Events/Create.cshtml",
         "QuestBoard.Service/Views/Events/Details.cshtml",
+        "QuestBoard.Service/Views/Events/Edit.cshtml",
         "QuestBoard.Service/Views/Series/Details.cshtml",
         "QuestBoard.Service/Views/Shared/_Calendar.cshtml",
         "QuestBoard.Service/Views/Shared/_Calendar.Mobile.cshtml",

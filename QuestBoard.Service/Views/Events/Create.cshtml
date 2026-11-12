@@ -8,32 +8,32 @@
 
 <div class="card modern-card">
     <div class="card-header modern-card-header">
-        <h2 class="mb-0">
-            <i class="fas fa-calendar-plus me-2"></i>
+        <h1 class="mb-0">
+            <i class="fas fa-calendar-plus me-2" aria-hidden="true"></i>
             Create Event
-        </h2>
+        </h1>
     </div>
     <div class="card-body modern-card-body">
         <form asp-action="Create" method="post">
-            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+            <div asp-validation-summary="All" class="mb-3"></div>
 
             <div class="mb-3">
-                <label asp-for="Title" class="form-label">Title <span class="text-danger">*</span></label>
+                <label asp-for="Title" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
                 <input asp-for="Title" class="form-control" placeholder="Enter event title" />
-                <span asp-validation-for="Title" class="text-danger"></span>
+                <span asp-validation-for="Title" class="field-validation-error"></span>
             </div>
 
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label asp-for="Date" class="form-label">Date <span class="text-danger">*</span></label>
+                    <label asp-for="Date" class="form-label">Date <span class="text-danger" aria-hidden="true">*</span></label>
                     <input asp-for="Date" type="date" class="form-control" />
-                    <span asp-validation-for="Date" class="text-danger"></span>
+                    <span asp-validation-for="Date" class="field-validation-error"></span>
                 </div>
 
                 <div class="col-md-6 mb-3">
                     <label asp-for="StartTime" class="form-label">Start Time (optional)</label>
                     <input asp-for="StartTime" type="time" class="form-control" />
-                    <span asp-validation-for="StartTime" class="text-danger"></span>
+                    <span asp-validation-for="StartTime" class="field-validation-error"></span>
                 </div>
             </div>
 
@@ -60,7 +60,7 @@
                             <input asp-for="IntervalWeeks" type="number" min="1" class="form-control" />
                             <span class="input-group-text">week(s)</span>
                         </div>
-                        <span asp-validation-for="IntervalWeeks" class="text-danger"></span>
+                        <span asp-validation-for="IntervalWeeks" class="field-validation-error"></span>
                     </div>
                     <div class="col-md-6 mb-3 d-flex align-items-end">
                         @* Presentation only -- the actual dates always come from the server preview below. *@
@@ -82,20 +82,20 @@
                         </div>
                     </div>
                     <input type="hidden" asp-for="CycleMask" />
-                    <span asp-validation-for="CycleMask" class="text-danger"></span>
+                    <span asp-validation-for="CycleMask" class="field-validation-error"></span>
                 </div>
 
                 <div class="mb-3">
                     <label asp-for="SeriesEndDate" class="form-label">End after (optional)</label>
                     <input asp-for="SeriesEndDate" type="date" class="form-control" />
-                    <span asp-validation-for="SeriesEndDate" class="text-danger"></span>
+                    <span asp-validation-for="SeriesEndDate" class="field-validation-error"></span>
                     <div class="form-text">Leave blank for an open-ended series. You can end it later from the series page.</div>
                 </div>
 
                 <div class="mb-3">
                     <h5 class="mb-2">Next occurrences</h5>
                     <ul id="seriesPreviewList" class="mb-0">
-                        <li class="text-muted">Enter a start date and cadence to see the dates this series will generate.</li>
+                        <li>Enter a start date and cadence to see the dates this series will generate.</li>
                     </ul>
                 </div>
             </div>
@@ -104,10 +104,10 @@
 
             <div class="d-flex justify-content-between">
                 <a href="@(pages.Serves(BoardPage.Calendar) ? Url.Action("Index", "Calendar") : Url.Action("Index", "Events"))" class="btn btn-secondary">
-                    <i class="fas fa-times me-2"></i>Cancel
+                    <i class="fas fa-times me-2" aria-hidden="true"></i>Cancel
                 </a>
-                <button type="submit" class="btn btn-warning">
-                    <i class="fas fa-plus me-2"></i>Create Event
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus me-2" aria-hidden="true"></i>Create Event
                 </button>
             </div>
         </form>

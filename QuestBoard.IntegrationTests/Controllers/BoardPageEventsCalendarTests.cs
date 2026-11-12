@@ -343,7 +343,7 @@ public class BoardPageEventsCalendarTests(WebApplicationFactoryBase factory)
     private static string CancelHref(string html)
     {
         var match = Regex.Match(
-            html, @"<a href=""([^""]*)""\s+class=""btn btn-secondary"">\s*<i class=""fas fa-times me-2""></i>Cancel");
+            html, @"<a href=""([^""]*)""\s+class=""btn btn-secondary"">\s*<i class=""fas fa-times me-2"" aria-hidden=""true""></i>Cancel");
         match.Success.Should().BeTrue("the form has a Cancel link");
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
