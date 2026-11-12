@@ -8,6 +8,7 @@
     var pages = await BoardPages.GetAsync();
     var prevMonth = Model.FirstDayOfMonth.AddMonths(-1);
     var nextMonth = Model.FirstDayOfMonth.AddMonths(1);
+    var boardToday = (DateOnly)ViewBag.BoardToday;
     var agendaDays = Model.GetCalendarDays().Where(d => !d.IsEmpty && (d.QuestsOnDay.Any() || d.EventsOnDay.Any() || d.Linked.HasEntries)).ToList();
 }
 @section Styles {
@@ -92,7 +93,7 @@
     {
         @foreach (var day in agendaDays)
         {
-            <div class="agenda-day-section mb-2">
+            <div class="agenda-day-section mb-2" aria-current="@(DateOnly.FromDateTime(day.Date) == boardToday ? "date" : null)">
                 @* Day label: SATURDAY, JUNE 14 *@
                 <div class="agenda-day-label text-uppercase fw-bold small mb-1">
                     @day.Date.ToString("dddd, MMMM d").ToUpper()

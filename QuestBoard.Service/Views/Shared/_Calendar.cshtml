@@ -5,6 +5,7 @@
 @{
     var isDetailsPage = ViewBag.IsDetailsPage == true;
     var currentQuestId = ViewBag.CurrentQuestId as int?;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
 }
 
 @if (isDetailsPage && Model.LinkedBoards.Count > 0)
@@ -30,7 +31,8 @@
     <div class="calendar-body">
         @foreach (var day in Model.GetCalendarDays())
         {
-            <div class="calendar-day @(day.IsEmpty ? "empty" : "") @(day.Date.Date == DateTime.Today ? "today" : "")">
+            var isBoardToday = !day.IsEmpty && DateOnly.FromDateTime(day.Date) == boardToday;
+            <div class="calendar-day @(day.IsEmpty ? "empty" : "") @(isBoardToday ? "today" : "")" aria-current="@(isBoardToday ? "date" : null)">
                 @if (!day.IsEmpty)
                 {
                     <div class="day-number">@day.Day</div>
