@@ -17,12 +17,14 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/GroupPicker/Index.cshtml",
         "QuestBoard.Service/Views/Account/Profile.cshtml",
         "QuestBoard.Service/Views/Account/Profile.Mobile.cshtml",
+        "QuestBoard.Service/Views/Account/Login.cshtml",
     ];
 
     // Phone twins that were merged into their desktop view and must not come back.
     private static readonly string[] RetiredFiles =
     [
         "QuestBoard.Service/Views/GroupPicker/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Account/Login.Mobile.cshtml",
     ];
 
     // Each view with the sheet it must link through its own Styles section.
@@ -31,6 +33,7 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/GroupPicker/Index.cshtml", "group-picker.css"),
         ("QuestBoard.Service/Views/Account/Profile.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Account/Login.cshtml", "account.css"),
     ];
 
     // The area's sheets, scanned for planning references with the converted views.
@@ -268,5 +271,56 @@ public class AccountConversionGuardTests
         markup.Should().Contain("Save Name");
         markup.Should().Contain("data-copy-status", $"{view} carries the status element that announces Copy results");
         markup.Should().NotContain("<h5", $"{view} titles its dialogs with a heading of the right level");
+    }
+
+    // Each credential view with the autofill tokens its fields must carry, so a password manager knows
+    // which field is which.
+    private static readonly (string View, string[] Tokens)[] CredentialViews =
+    [
+        ("QuestBoard.Service/Views/Account/Login.cshtml", ["username", "current-password"]),
+    ];
+
+    [Fact]
+    public void CredentialViews_CarryTheirAutocompleteTokensAndOneHeading()
+    {
+        CredentialViews.Should().NotBeEmpty();
+
+        foreach (var (view, tokens) in CredentialViews)
+        {
+            var markup = Markup(view);
+            foreach (var token in tokens)
+                markup.Should().Contain($"autocomplete=\"{token}\"", $"{view} names its field with the {token} token");
+
+            Regex.Matches(markup, @"<h1\b").Count.Should().Be(1, $"{view} carries exactly one page heading");
+        }
+    }
+
+    // The area's sheets that must not animate every property at once; the phone sheet is read only while it exists.
+    private static readonly string[] TransitionGuardedSheets =
+    [
+        "QuestBoard.Service/wwwroot/css/account.css",
+        "QuestBoard.Service/wwwroot/css/group-picker.css",
+        "QuestBoard.Service/wwwroot/css/account.mobile.css",
+    ];
+
+    [Fact]
+    public void AccountSheets_DeclareNoTransitionOnAll()
+    {
+        var transitionOnAll = new Regex(@"transition(-property)?\s*:\s*all\b", RegexOptions.IgnoreCase);
+        var required = TransitionGuardedSheets.Take(2);
+
+        foreach (var path in TransitionGuardedSheets)
+        {
+            var exists = File.Exists(ResolveRepoFile(path));
+            if (!exists)
+            {
+                required.Contains(path).Should().BeFalse($"{path} is a live sheet of the area and must exist");
+                continue;
+            }
+
+            var css = Regex.Replace(File.ReadAllText(ResolveRepoFile(path)), @"/\*[\s\S]*?\*/", " ");
+            css.Should().Contain("{", $"{path} must hold at least one rule, or the check proves nothing");
+            transitionOnAll.IsMatch(css).Should().BeFalse($"{path} must not declare a transition on every property");
+        }
     }
 }

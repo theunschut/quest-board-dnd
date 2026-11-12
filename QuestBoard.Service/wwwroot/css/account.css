@@ -1,6 +1,7 @@
 /*
- * Account pages: the Profile page's read-only fields and its calendar subscription list. Both Profile layouts link this
- * one sheet and stay twins; the list reflows by itself, so neither carries a breakpoint of its own. Every value is a
+ * Account pages: the credential forms (log in, forgot and set password, change password), the Profile page's read-only
+ * fields and its calendar subscription list. The credential pages are one view each for every device; both Profile
+ * layouts link this one sheet and stay twins; the list reflows by itself, so neither carries a breakpoint of its own. Every value is a
  * token from tokens.css, and the rules sit in the pages layer so they outrank Bootstrap without an important flag.
  */
 @layer pages {
@@ -116,5 +117,22 @@
   /* The section title sits one step under the page title on the phone. */
   .mobile-layout .section-heading {
     font-size: var(--qb-text-base);
+  }
+
+  /*
+   * The server's sentences inside a refusal line come as a list; the line already carries the icon, so the list shows
+   * no bullets or indent and the sentences line up beside the icon.
+   */
+  .refusal-line ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* The link to the recovery page keeps its underline; on the phone it is a full-height tap target. */
+  .mobile-layout .account-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
   }
 }

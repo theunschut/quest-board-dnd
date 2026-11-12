@@ -675,28 +675,36 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Account/Login renders account-card-mobile glass card form and
-    /// links account.mobile.css. Test starts RED — Login.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Account/Login is served the one shared Login view inside the phone shell: the
+    /// phone layout, the shared account sheet, the autofill tokens, one heading, the document title the
+    /// desktop page has, and no separate phone account sheet.
     /// </summary>
     [Fact]
     public async Task MobileAccountLogin_MobileUserAgent_RendersGlassCardForm()
     {
         var (response, html) = await GetWithUserAgentAsync("/Account/Login", MobileUserAgent);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
-        html.Should().Contain("account.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("autocomplete=\"username\"");
+        html.Should().Contain("autocomplete=\"current-password\"");
+        html.Should().Contain("<title>Log in - ");
+        Regex.Matches(html, "<h1\\b").Count.Should().Be(1);
     }
 
     /// <summary>
-    /// Regression guard: Desktop UA on /Account/Login must NOT render the mobile glass card.
-    /// Proves the desktop view is unchanged after the mobile view is added.
+    /// Regression guard: Desktop UA on /Account/Login is served the same view inside the desktop layout:
+    /// the shared account sheet, the same title, and none of the phone shell.
     /// </summary>
     [Fact]
     public async Task MobileAccountLogin_DesktopUserAgent_DoesNotRenderGlassCard()
     {
         var (response, html) = await GetWithUserAgentAsync("/Account/Login", DesktopUserAgent);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().NotContain("account-card-mobile");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("mobile-layout");
+        html.Should().Contain("<title>Log in - ");
     }
 
     // -----------------------------------------------------------------------
