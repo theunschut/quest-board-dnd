@@ -4,17 +4,17 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 96
 current_phase_name: account-and-pickers-ui-conversion
-status: executing
-stopped_at: Completed 96-11-PLAN.md
-last_updated: "2026-11-12T14:51:26.564Z"
+status: verifying
+stopped_at: Completed 96-12-PLAN.md (Gate 2 approved)
+last_updated: "2026-11-12T15:39:06.782Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
 progress:
   total_phases: 31
-  completed_phases: 22
+  completed_phases: 23
   total_plans: 247
-  completed_plans: 220
-  percent: 71
+  completed_plans: 221
+  percent: 74
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 Phase: 96 (account-and-pickers-ui-conversion) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
 Last activity: 2026-11-12 — Phase 96 execution started
 
@@ -108,6 +108,7 @@ introduced by Phase 87.
 | Phase 96 P09 | 1h | 2 tasks | 7 files |
 | Phase 96 P10 | 25min | 2 tasks | 5 files |
 | Phase 96 P11 | 30min | 3 tasks | 0 files |
+| Phase 96 P12 | 4h | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 96]: 96-07: Profile Delete stays a real submit button in its own form; only the shared module opens the dialog, in the submit listener that cancels the post
 - [Phase 96]: 96-08: Gate 1 gutter answer shell applied; four credential pages merged into one view each; refusal line summary stays All
 - [Phase 96]: 96-11: SetPassword verified with a real token via a local SMTP sink; no mail left the machine
+- [Phase 96]: 96-12: Gate 2 approved by the operator (relayed by the orchestrating session); G2-11 changed to 1 member / N members, every other item at its recommendation, no contrast exceptions
 
 ### Roadmap Evolution
 
@@ -280,8 +282,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-12T14:51:26.524Z
-Stopped at: Completed 96-11-PLAN.md
+Last session: 2026-11-12T15:39:06.746Z
+Stopped at: Completed 96-12-PLAN.md (Gate 2 approved)
 Resume file: None
 
 ## Operator Next Steps
