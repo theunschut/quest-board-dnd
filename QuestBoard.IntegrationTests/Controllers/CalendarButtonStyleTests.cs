@@ -5,15 +5,13 @@ using QuestBoard.IntegrationTests.Helpers;
 namespace QuestBoard.IntegrationTests.Controllers;
 
 /// <summary>
-/// Verifies the Calendar page's cross-link to Board Availability. On the desktop it uses filled
-/// button classes (btn-secondary) rather than outline variants (btn-outline-), following the
-/// UI/UX design guidelines that require filled colored buttons, and it is present for a
-/// Dungeon Master but absent for a Player. On the phone the page carries neither the Board
-/// Availability nor the My Agenda button; the navigation menu holds both. The link's site was role-blind before this link
-/// became gated, so proving both presence for a DM and absence for a Player is what shows
-/// the link now lives inside a Dungeon-Master-only condition -- presence alone could not
-/// tell the difference. If the site this link renders from ever becomes role-aware for a
-/// different reason, this role flip stops proving placement and the suite needs rethinking.
+/// Verifies where the Board Availability and My Agenda links live relative to the Calendar page. On
+/// both layouts the page itself carries neither button (its own buttons are the filled month
+/// buttons, never outline variants, following the UI/UX design guidelines); the desktop navigation
+/// bar and the phone navigation menu hold both links, Board Availability for a Dungeon Master only
+/// and My Agenda for every member. Proving presence for a DM and absence for a Player is what shows
+/// the Board Availability link lives inside a Dungeon-Master-only condition -- presence alone could
+/// not tell the difference.
 /// </summary>
 public class CalendarButtonStyleTests(WebApplicationFactoryBase factory)
     : IClassFixture<WebApplicationFactoryBase>
@@ -35,22 +33,31 @@ public class CalendarButtonStyleTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
-    public async Task DesktopCalendar_BoardAvailabilityLink_DmSeesFilled_NotOutline()
+    public async Task DesktopCalendar_Page_CarriesNoBoardAvailabilityOrAgendaButton_DmReachesThemFromTheNavigationBar()
     {
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
             factory, "cal_desktop_dm", "cal_desktop_dm@example.com");
 
-        var response = await client.GetAsync("/Calendar", TestContext.Current.CancellationToken);
-        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var (response, html) = await GetWithUserAgentAsync(client, "/Calendar", DesktopUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        // The Board Availability link must use btn-secondary (filled) class.
-        html.Should().Contain("""btn btn-secondary""");
-        html.Should().Contain("Board Availability");
-        // Verify it does NOT use the outline variant.
-        html.Should().NotContain("""btn btn-outline-secondary""").And
+        var page = DesktopPageRegions.PageContent(html);
+        // The page proves it rendered through its own filled buttons, so an empty region cannot pass.
+        page.Should().Contain("""btn btn-secondary""");
+        page.Should().NotContain("""btn btn-outline-secondary""").And
             .NotContain("""btn btn-outline-primary""").And
             .NotContain("""btn btn-outline-danger""");
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("My Agenda");
+        page.Should().NotContain("href=\"/Events\"");
+        page.Should().NotContain("href=\"/Agenda\"");
+
+        // Both stay one click away in the navigation bar.
+        var bar = DesktopPageRegions.NavigationBar(html);
+        bar.Should().Contain("href=\"/Events\"");
+        bar.Should().Contain("Board Availability");
+        bar.Should().Contain("href=\"/Agenda\"");
+        bar.Should().Contain("My Agenda");
     }
 
     [Fact]
@@ -83,7 +90,7 @@ public class CalendarButtonStyleTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
-    public async Task DesktopCalendar_BoardAvailabilityLink_AbsentForPlayer()
+    public async Task DesktopCalendar_NavigationBar_ShowsAPlayerMyAgendaButNoBoardAvailability()
     {
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             factory, "cal_player", "cal_player@example.com", roles: ["Player"]);
@@ -91,10 +98,15 @@ public class CalendarButtonStyleTests(WebApplicationFactoryBase factory)
         var (response, html) = await GetWithUserAgentAsync(client, "/Calendar", DesktopUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().NotContain("Board Availability");
-        // A Player must still see the adjacent My Agenda button -- this catches the failure
-        // mode where the wrong one of the two adjacent buttons was gated.
-        html.Should().Contain("My Agenda");
+        var page = DesktopPageRegions.PageContent(html);
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("My Agenda");
+
+        // A player never gets the Board Availability link, and the My Agenda link stays in the bar for
+        // every member -- this catches the failure mode where the wrong one of the two was gated.
+        var bar = DesktopPageRegions.NavigationBar(html);
+        bar.Should().NotContain("Board Availability");
+        bar.Should().Contain("My Agenda");
     }
 
     [Fact]

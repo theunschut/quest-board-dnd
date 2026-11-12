@@ -2,8 +2,9 @@ namespace QuestBoard.IntegrationTests.Tests;
 
 /// <summary>
 /// Pins the visual rules that say a linked booking is borrowed and a cancelled one is called
-/// off: the dashed edge on desktop linked chips, the strike-through on cancelled linked entries
-/// on all three surfaces, and the desktop detail line that stays hidden at rest and appears on
+/// off: the dashed outline on the month's linked rows and the dashed edge on Quest Details' linked
+/// chips, the strike-through on cancelled entries on every surface, the month's detail block that
+/// never shows in the row, and Quest Details' detail line that stays hidden at rest and appears on
 /// hover or keyboard focus. Nothing in the request pipeline evaluates CSS, so a regression in
 /// these rules would otherwise only be caught by eye.
 /// </summary>
@@ -12,13 +13,6 @@ public class LinkedBoardCalendarStyleTests
     private const string CalendarCss = "calendar.css";
     private const string CalendarMobileCss = "calendar.mobile.css";
     private const string QuestsMobileCss = "quests.mobile.css";
-
-    /// <summary>
-    /// The month on the Calendar page and the calendar on Quest Details each carry their own copy of
-    /// the linked-entry rules, so a change to one cannot reach the other. Every fact about those
-    /// rules holds for both scopes.
-    /// </summary>
-    private static readonly string[] CalendarScopes = [".calendar-page", ".details-page"];
 
     /// <summary>
     /// Resolves a stylesheet under QuestBoard.Service/wwwroot/css by walking up from
@@ -90,83 +84,66 @@ public class LinkedBoardCalendarStyleTests
     }
 
     [Fact]
-    public void LinkedEntry_Base_HasDashedLeftEdgeToMarkItBorrowed()
+    public void LinkedEntry_OnTheMonth_HasADashedOutlineToMarkItBorrowed()
     {
         var css = ReadStylesheet(CalendarCss);
 
-        foreach (var scope in CalendarScopes)
-        {
-            var rule = ExtractRuleBody(css, $"{scope} .linked-entry");
+        var rule = ExtractRuleBody(css, ".calendar-page .linked-entry");
 
-            rule.Should().Contain("border-left: 4px dashed",
-                because: $"a linked chip under {scope} must read as borrowed from another board, not as one of this board's own entries");
-        }
+        rule.Should().Contain("border: 1px dashed",
+            because: "a linked row on the month must read as borrowed from another board, not as one of this board's own entries");
     }
 
     [Fact]
-    public void LinkedEntryDetail_AtRest_IsHidden()
+    public void LinkedEntry_OnQuestDetails_HasDashedLeftEdgeToMarkItBorrowed()
     {
         var css = ReadStylesheet(CalendarCss);
 
-        foreach (var scope in CalendarScopes)
-        {
-            var rule = ExtractRuleBody(css, $"{scope} .linked-entry-detail");
+        var rule = ExtractRuleBody(css, ".details-page .linked-entry");
 
-            rule.Should().Contain("display: none",
-                because: $"under {scope} the board, DM and time line stays out of the chip until a pointer or keyboard user asks for it");
-        }
+        rule.Should().Contain("border-left: 4px dashed",
+            because: "a linked chip on Quest Details must read as borrowed from another board, not as one of this board's own entries");
     }
 
     [Fact]
-    public void LinkedEntryDetail_OnHover_IsRevealed()
+    public void EntryDetailBlock_OnTheMonth_StaysHiddenAtRest()
     {
         var css = ReadStylesheet(CalendarCss);
 
-        foreach (var scope in CalendarScopes)
-        {
-            var rule = ExtractRuleBody(css, $"{scope} .linked-entry:hover .linked-entry-detail");
+        var rule = ExtractRuleBody(css, ".calendar-page .cal-entry-detail");
 
-            rule.Should().Contain("display: block",
-                because: $"hovering a linked chip under {scope} must show its detail line");
-        }
+        rule.Should().Contain("display: none",
+            because: "a month row is one line; its board, DM and time wait in a block that never shows in the row itself");
     }
 
     [Fact]
-    public void LinkedEntryDetail_OnKeyboardFocus_IsRevealed()
+    public void LinkedEntryDetail_OnQuestDetails_IsHiddenAtRestAndRevealedByHoverAndKeyboardFocus()
     {
         var css = ReadStylesheet(CalendarCss);
 
-        foreach (var scope in CalendarScopes)
-        {
-            var rule = ExtractRuleBody(css, $"{scope} .linked-entry--open:focus-visible .linked-entry-detail");
-
-            rule.Should().Contain("display: block",
-                because: $"a keyboard user focusing an openable linked chip under {scope} must get the same detail line a hover shows");
-        }
+        ExtractRuleBody(css, ".details-page .linked-entry-detail").Should().Contain("display: none",
+            because: "on Quest Details the board, DM and time line stays out of the chip until a pointer or keyboard user asks for it");
+        ExtractRuleBody(css, ".details-page .linked-entry:hover .linked-entry-detail").Should().Contain("display: block",
+            because: "hovering a linked chip on Quest Details must show its detail line");
+        ExtractRuleBody(css, ".details-page .linked-entry--open:focus-visible .linked-entry-detail").Should().Contain("display: block",
+            because: "a keyboard user focusing an openable linked chip must get the same detail line a hover shows");
     }
 
     [Theory]
-    [InlineData(CalendarCss, ".linked-entry--cancelled")]
-    [InlineData(CalendarCss, ".linked-entry--cancelled .linked-entry-title")]
+    [InlineData(CalendarCss, ".calendar-page .linked-entry--cancelled .cal-entry__title")]
+    [InlineData(CalendarCss, ".calendar-page .calendar-event.cancelled .cal-entry__title")]
+    [InlineData(CalendarCss, ".details-page .linked-entry--cancelled")]
+    [InlineData(CalendarCss, ".details-page .linked-entry--cancelled .linked-entry-title")]
     [InlineData(CalendarMobileCss, ".agenda-linked-entry--cancelled .agenda-slip__title")]
     [InlineData(QuestsMobileCss, ".also-that-day--cancelled")]
-    public void CancelledLinkedEntry_OnEverySurface_IsStruckThrough(string fileName, string selector)
+    public void CancelledEntry_OnEverySurface_IsStruckThrough(string fileName, string selector)
     {
         var css = ReadStylesheet(fileName);
 
-        // The calendar sheet scopes the rule once for the month and once for Quest Details; the phone
-        // sheets hold it unscoped.
-        var selectors = fileName == CalendarCss
-            ? CalendarScopes.Select(scope => $"{scope} {selector}").ToArray()
-            : [selector];
+        var rule = ExtractRuleBody(css, selector);
 
-        foreach (var scoped in selectors)
-        {
-            var rule = ExtractRuleBody(css, scoped);
-
-            rule.Should().Contain("text-decoration: line-through",
-                because: $"{scoped} in {fileName} must strike the cancelled linked entry through so it reads as called off");
-        }
+        rule.Should().Contain("text-decoration: line-through",
+            because: $"{selector} in {fileName} must strike the cancelled entry through so it reads as called off");
     }
 
     [Fact]

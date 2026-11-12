@@ -3,129 +3,96 @@
 @model CalendarViewModel
 @{
     ViewData["Title"] = "Quest Calendar";
-    var pages = await BoardPages.GetAsync();
+    var previousMonth = Model.FirstDayOfMonth.AddMonths(-1);
+    var nextMonth = Model.FirstDayOfMonth.AddMonths(1);
+    var hasLinkedBoards = Model.LinkedBoards.Count > 0;
+    var calendarDays = Model.GetCalendarDays();
+    var monthIsEmpty = !calendarDays.Any(d => !d.IsEmpty && (d.QuestsOnDay.Any() || d.EventsOnDay.Any() || d.Linked.HasEntries));
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
 }
 
-<div class="row calendar-page">
-    <div class="col-lg-10 col-md-9">
-        <div class="card modern-card">
-            <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                <h2 class="mb-0">
-                    <i class="fas fa-calendar-alt text-info me-2"></i>
-                    @ViewData["Title"]
-                </h2>
-                @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded && pages.Serves(BoardPage.Events))
-                {
-                    <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm me-2">
-                        <i class="fas fa-calendar-check me-2"></i>Board Availability
-                    </a>
-                }
-                <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm me-2">
-                    <i class="fas fa-calendar-days me-2"></i>My Agenda
-                </a>
-                <div class="calendar-navigation">
-                    <a href="@Url.Action("Index", new { year = Model.FirstDayOfMonth.AddMonths(-1).Year, month = Model.FirstDayOfMonth.AddMonths(-1).Month })" 
-                       class="btn btn-primary btn-sm me-2">
-                        <i class="fas fa-chevron-left"></i>
-                    </a>
-                    <span class="fw-bold">@Model.MonthName</span>
-                    <a href="@Url.Action("Index", new { year = Model.FirstDayOfMonth.AddMonths(1).Year, month = Model.FirstDayOfMonth.AddMonths(1).Month })" 
-                       class="btn btn-primary btn-sm ms-2">
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                </div>
-            </div>
-            <div class="card-body modern-card-body p-0">
-                @if (Model.CanManage && Model.SeriesBelowRunway.Any())
-                {
-                    <div class="alert alert-warning m-3 mb-0" role="alert">
-                        @if (Model.SeriesBelowRunway.Count == 1)
-                        {
-                            var series = Model.SeriesBelowRunway[0];
-                            <text>The '</text><a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a><text>' series is running low — only @series.UpcomingCount upcoming session(s) left. Visit its series page to check the cadence.</text>
-                        }
-                        else
-                        {
-                            <text>@Model.SeriesBelowRunway.Count recurring series are running low on upcoming sessions: </text>
-                            @for (var i = 0; i < Model.SeriesBelowRunway.Count; i++)
-                            {
-                                var series = Model.SeriesBelowRunway[i];
-                                <a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a>
-                                if (i < Model.SeriesBelowRunway.Count - 1)
-                                {
-                                    <text>, </text>
-                                }
-                            }
-                            <text>. Visit each series page to check its cadence.</text>
-                        }
-                    </div>
-                }
-                @{
-                    ViewBag.IsDetailsPage = false;
-                }
-                @await Html.PartialAsync("_Calendar", Model)
-            </div>
-        </div>
-    </div>
-    
-    <!-- Legend -->
-    <div class="col-lg-2 col-md-3">
-        <div class="card modern-card legend-card">
-            <div class="card-header modern-card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Legend
-                </h6>
-            </div>
-            <div class="card-body modern-card-body p-2">
-                <div class="d-flex align-items-center mb-2">
-                    <div class="legend-item proposed me-2"></div>
-                    <small>Proposed</small>
-                </div>
-                <div class="d-flex align-items-center mb-2">
-                    <div class="legend-item finalized me-2"></div>
-                    <small>Finalized</small>
-                </div>
-                <div class="d-flex align-items-center mb-2">
-                    <div class="legend-item event me-2"></div>
-                    <small>Event</small>
-                </div>
-                <div class="d-flex align-items-center mb-2">
-                    <div class="legend-item cancelled me-2"></div>
-                    <small>Cancelled</small>
-                </div>
-                @if (Model.LinkedBoards.Count > 0)
-                {
-                    <hr class="my-2">
-                    <small class="fw-semibold d-block mb-1">Linked boards</small>
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="legend-item linked me-2"></div>
-                        <small>Dashed = from a linked board</small>
-                    </div>
-                    @foreach (var linkedBoard in Model.LinkedBoards)
+@* Board Availability and My Agenda are not repeated here: both stay one click away in the navigation bar. *@
+<div class="calendar-page">
+    <div class="card modern-card calendar-card">
+        <div class="card-header modern-card-header calendar-head">
+            <h1><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>@ViewData["Title"]</h1>
+            <div class="calendar-legend-area">
+                <ul class="calendar-legend" aria-label="Legend">
+                    <li><span class="cal-mark cal-mark--proposed" aria-hidden="true"><i class="fas fa-hourglass-half"></i></span><span>Proposed</span></li>
+                    <li><span class="cal-mark cal-mark--finalized" aria-hidden="true"><i class="fas fa-circle-check"></i></span><span>Finalized</span></li>
+                    <li><span class="cal-mark cal-mark--event" aria-hidden="true"><i class="fas fa-calendar-day"></i></span><span>Event</span></li>
+                    <li><span class="cal-mark cal-mark--cancelled" aria-hidden="true"><i class="fas fa-ban"></i></span><span>Cancelled</span></li>
+                    <li><span class="cal-mark cal-mark--nokey" aria-hidden="true"><i class="fas fa-exclamation-triangle"></i></span><span>No building key</span></li>
+                    @if (hasLinkedBoards)
                     {
-                        <div class="d-flex align-items-start mb-2">
-                            <div class="legend-item linked me-2"></div>
-                            <small class="legend-board-name">@linkedBoard.Name</small>
-                        </div>
+                        <li><span class="calendar-legend__swatch" aria-hidden="true"><i class="fas fa-link"></i></span><span>Dashed = from a linked board</span></li>
                     }
-                    <small class="text-muted d-block mb-2">Dashed entries belong to a linked board. You can open them only if you are a member of that board.</small>
-                }
-                <div class="d-flex align-items-center mb-2">
-                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-                    <small>No building key</small>
-                </div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="fas fa-lightbulb me-1"></i>
-                        Click quests or events for details
-                    </small>
+                </ul>
+                <div class="dropdown calendar-legend__more">
+                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside" aria-expanded="false" aria-controls="calendar-legend-menu">What do these mean?</button>
+                    <div class="dropdown-menu dropdown-menu-end calendar-legend__menu" id="calendar-legend-menu">
+                        @if (hasLinkedBoards)
+                        {
+                            <h2>Linked boards</h2>
+                            <ul>
+                                @foreach (var linkedBoard in Model.LinkedBoards)
+                                {
+                                    <li><span class="calendar-legend__swatch" aria-hidden="true"><i class="fas fa-link"></i></span><span class="legend-board-name">@linkedBoard.Name</span></li>
+                                }
+                            </ul>
+                            <p>Dashed entries belong to a linked board. You can open them only if you are a member of that board.</p>
+                        }
+                        <p><i class="fas fa-lightbulb" aria-hidden="true"></i><span>Click quests or events for details</span></p>
+                    </div>
                 </div>
             </div>
+            <nav class="calendar-nav" aria-label="Month">
+                <a class="btn btn-secondary calendar-nav__btn" aria-label="Previous month"
+                   href="@Url.Action("Index", new { year = previousMonth.Year, month = previousMonth.Month })"><i class="fas fa-chevron-left" aria-hidden="true"></i></a>
+                <span class="calendar-month-name">@Model.MonthName</span>
+                <a class="btn btn-secondary calendar-nav__btn" aria-label="Next month"
+                   href="@Url.Action("Index", new { year = nextMonth.Year, month = nextMonth.Month })"><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+            </nav>
+        </div>
+        <div class="card-body modern-card-body p-0">
+            @if (Model.CanManage && Model.SeriesBelowRunway.Any())
+            {
+                <div class="alert alert-warning m-3 mb-0" role="alert">
+                    @if (Model.SeriesBelowRunway.Count == 1)
+                    {
+                        var series = Model.SeriesBelowRunway[0];
+                        <text>The '</text><a class="alert-link" href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a><text>' series is running low — only @series.UpcomingCount upcoming session(s) left. Visit its series page to check the cadence.</text>
+                    }
+                    else
+                    {
+                        <text>@Model.SeriesBelowRunway.Count recurring series are running low on upcoming sessions: </text>
+                        @for (var i = 0; i < Model.SeriesBelowRunway.Count; i++)
+                        {
+                            var series = Model.SeriesBelowRunway[i];
+                            <a class="alert-link" href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a>
+                            if (i < Model.SeriesBelowRunway.Count - 1)
+                            {
+                                <text>, </text>
+                            }
+                        }
+                        <text>. Visit each series page to check its cadence.</text>
+                    }
+                </div>
+            }
+            @if (monthIsEmpty)
+            {
+                @* An empty month says so in one line, so the grid is never pushed below the fold. *@
+                <p class="calendar-empty-note" role="status"><i class="fas fa-calendar-alt" aria-hidden="true"></i><span><strong>Nothing This Month</strong> No quests or events are planned for @Model.MonthName. Check another month.</span></p>
+            }
+            @{
+                ViewBag.IsDetailsPage = false;
+                ViewData["CalendarDays"] = calendarDays;
+            }
+            @await Html.PartialAsync("_Calendar", Model)
         </div>
     </div>
 </div>

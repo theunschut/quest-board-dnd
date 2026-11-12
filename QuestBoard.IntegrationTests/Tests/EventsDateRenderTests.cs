@@ -152,7 +152,7 @@ public class EventsDateRenderTests(WebApplicationFactoryBase factory)
             var expected = ProposedAt.ToString("HH:mm");
             var times = Regex.Matches(
                     html,
-                    "<div class=\"quest-time\">\\s*<time\\b[^>]*data-style=\"time-24h\"[^>]*>(?<t>[^<]*)</time>")
+                    "<span class=\"cal-entry__time\">\\s*<time\\b[^>]*data-style=\"time-24h\"[^>]*>(?<t>[^<]*)</time>")
                 .Select(m => m.Groups["t"].Value)
                 .ToList();
             times.Should().Equal(expected);

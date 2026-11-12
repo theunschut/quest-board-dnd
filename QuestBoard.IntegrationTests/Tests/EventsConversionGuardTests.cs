@@ -79,6 +79,9 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_Calendar.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_LinkedAlsoThatDay.cshtml",
+        "QuestBoard.Service/Views/Calendar/Index.cshtml",
+        "QuestBoard.Service/Views/Shared/_Calendar.cshtml",
+        "QuestBoard.Service/Views/Shared/_LinkedDayEntries.cshtml",
     ];
 
     // Files this work retires; each is deleted and must stay deleted, because its behaviour moved into a script file.
@@ -152,6 +155,8 @@ public class EventsConversionGuardTests
         "QuestBoard.IntegrationTests/Tests/EventsDateRenderTests.cs",
         "QuestBoard.IntegrationTests/Controllers/CalendarBoardClockTests.cs",
         "QuestBoard.IntegrationTests/Tests/CalendarPhoneAgendaTests.cs",
+        "QuestBoard.IntegrationTests/Tests/CalendarMonthMarkupTests.cs",
+        "QuestBoard.Service/Views/Shared/_LinkedDayEntries.cshtml",
     ];
 
     // A date-pattern format string handed to ToString, other than the machine values a date input
@@ -374,13 +379,14 @@ public class EventsConversionGuardTests
     [Fact]
     public void CalendarSheet_KeepsMonthAndQuestDetailsRulesApart()
     {
-        // Every rule is either the shared weekday header or sits under one of the two page scopes, so a
-        // rule written for the month can never reach Quest Details and the other way round.
+        // Every rule is either the shared weekday header, the month's own wrapper (the page root that holds
+        // its sizing variables) or sits under one of the two page scopes, so a rule written for the month can
+        // never reach Quest Details and the other way round.
         var allowedStarts = new[] { ".calendar-page ", ".details-page ", ".calendar-grid.details-page", ".quest-details-page " };
         var shared = new[] { ".calendar-header", ".calendar-day-header", ".calendar-day-header:last-child" };
 
         var unscoped = CssRuleSelectors(StripCssComments(ReadRepoFile(SheetPath("calendar.css"))))
-            .Where(sel => !shared.Contains(sel) && !allowedStarts.Any(start => sel.StartsWith(start, StringComparison.Ordinal)))
+            .Where(sel => !shared.Contains(sel) && sel != ".calendar-page" && !allowedStarts.Any(start => sel.StartsWith(start, StringComparison.Ordinal)))
             .ToList();
 
         unscoped.Should().BeEmpty("only the weekday header may be shared between the month and Quest Details");
@@ -397,6 +403,37 @@ public class EventsConversionGuardTests
             .Should().BeTrue("each weekday name takes the parchment colour");
         Regex.IsMatch(css, @"\.calendar-day-header\s*\{[^}]*text-shadow").Should().BeFalse(
             "a shadow behind text on a solid fill only blurs it");
+    }
+
+    // The declaration block of the one rule whose whole selector is the given text, in a stylesheet with its
+    // comments stripped.
+    private static string RuleBodyOf(string strippedCss, string selector) =>
+        CssRule.Matches(strippedCss)
+            .Where(m => m.Groups["selector"].Value.Trim() == selector)
+            .Select(m => m.Groups["body"].Value)
+            .Single();
+
+    [Fact]
+    public void CalendarTitle_StaysParchment()
+    {
+        var css = StripCssComments(ReadRepoFile(SheetPath("calendar.css")));
+
+        OpensPagesLayer(css).Should().BeTrue("the rule belongs to the pages layer, which beats the foundation's gold heading");
+        var body = RuleBodyOf(css, ".calendar-page .modern-card-header h1");
+
+        Regex.Replace(body, @"\s+", "").Should().Be("color:var(--qb-fg);",
+            "the title keeps the parchment colour through the token and declares nothing else on a card title");
+    }
+
+    [Fact]
+    public void CalendarHeader_UsesTheCompactBandPadding()
+    {
+        var css = StripCssComments(ReadRepoFile(SheetPath("calendar.css")));
+
+        var body = RuleBodyOf(css, ".calendar-page .modern-card-header");
+
+        body.Should().Contain("padding-block: var(--qb-space-xs)");
+        body.Should().Contain("padding-inline: var(--qb-space-md)");
     }
 
     // The selector of every rule in a stylesheet (comments stripped), one entry per comma-separated selector;

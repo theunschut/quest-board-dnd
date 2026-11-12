@@ -176,11 +176,12 @@ public class CalendarControllerIntegrationTests(WebApplicationFactoryBase factor
         content.Should().Contain("Same Day Ordering Quest");
 
         // Position, not colour, is what tells the two apart at a glance, so the ordering is
-        // asserted rather than assumed.
-        var eventsContainerIndex = content.IndexOf("calendar-events", StringComparison.Ordinal);
-        var questContainerIndex = content.IndexOf("quest-events", StringComparison.Ordinal);
-        eventsContainerIndex.Should().BeGreaterThan(0);
-        eventsContainerIndex.Should().BeLessThan(questContainerIndex);
+        // asserted rather than assumed: the event's row comes before the quest's row in the day's list.
+        var eventRowIndex = content.IndexOf("class=\"cal-entry calendar-event", StringComparison.Ordinal);
+        var questRowIndex = content.IndexOf("class=\"cal-entry quest-event", StringComparison.Ordinal);
+        eventRowIndex.Should().BeGreaterThan(0);
+        questRowIndex.Should().BeGreaterThan(0);
+        eventRowIndex.Should().BeLessThan(questRowIndex);
     }
 
     [Fact]
@@ -224,7 +225,7 @@ public class CalendarControllerIntegrationTests(WebApplicationFactoryBase factor
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        content.Should().Contain("legend-item event");
+        content.Should().Contain("cal-mark cal-mark--event");
         content.Should().Contain("Click quests or events for details");
     }
 

@@ -117,14 +117,23 @@ public class LinkedBoardStaticGuardTests
     // ---- The partials sit where the contract needs them ----
 
     [Fact]
-    public void DesktopCalendar_PlacesTheLinkedPartialOnceAfterTheOwnQuestAnswerBranch()
+    public void DesktopCalendar_PlacesTheLinkedPartialAfterTheOwnEntriesInEveryBranch()
     {
         var source = ReadView("_Calendar.cshtml");
 
-        Regex.Matches(source, "_LinkedDayEntries").Count.Should().Be(1);
+        // One reference ends each branch of the cell: the quest details cell and the month's list.
+        var references = Regex.Matches(source, "_LinkedDayEntries");
+        references.Count.Should().Be(2);
+
         var answerBranch = source.LastIndexOf("isDetailsPage && questOnDay.Quest.Id == currentQuestId", StringComparison.Ordinal);
         answerBranch.Should().BeGreaterThan(-1);
-        source.IndexOf("_LinkedDayEntries", StringComparison.Ordinal).Should().BeGreaterThan(answerBranch);
+        references[0].Index.Should().BeGreaterThan(answerBranch,
+            because: "on quest details the linked entries come after the quest answer markup");
+
+        var monthQuestRows = source.IndexOf("foreach (var questOnDay in day.QuestsOnDay)", references[0].Index, StringComparison.Ordinal);
+        monthQuestRows.Should().BeGreaterThan(-1);
+        references[1].Index.Should().BeGreaterThan(monthQuestRows,
+            because: "on the month the linked rows come after the board's own events and quests");
     }
 
     [Fact]

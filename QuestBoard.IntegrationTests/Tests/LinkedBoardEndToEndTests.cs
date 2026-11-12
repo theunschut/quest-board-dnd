@@ -164,7 +164,7 @@ public class LinkedBoardEndToEndTests(WebApplicationFactoryBase factory)
 
         var linked = await GetSurfacesAsync(viewer, questXId);
 
-        linked.DesktopCalendar.Should().Contain("linked-day-entries");
+        linked.DesktopCalendar.Should().Contain("cal-entry linked-entry");
         linked.DesktopCalendar.Should().Contain(BravoSession);
         linked.MobileCalendar.Should().Contain("agenda-linked-entry");
         linked.MobileCalendar.Should().Contain(BravoSession);
@@ -190,6 +190,7 @@ public class LinkedBoardEndToEndTests(WebApplicationFactoryBase factory)
             html.Should().NotContain(CharlieSession);
             html.Should().NotContain("also-that-day");
             html.Should().NotContain("linked-day-entries");
+            html.Should().NotContain("cal-entry linked-entry");
             html.Should().NotContain("agenda-linked-entry");
             html.Should().NotContain("calendar-linked-note");
         }

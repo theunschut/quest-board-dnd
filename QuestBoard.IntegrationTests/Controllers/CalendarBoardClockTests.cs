@@ -85,7 +85,7 @@ public class CalendarBoardClockTests(WebApplicationFactoryBase factory) : IClass
     // the rest of that opening tag. The day number is looked up in the chunk, not matched across
     // chunks, so the fact survives a rewrite of the cell's markup.
     private static string DayCellChunk(string html, Regex dayNumber) =>
-        html.Split("class=\"calendar-day", StringSplitOptions.None)
+        Regex.Split(html, "class=\"calendar-day(?=[\" ])")
             .Skip(1)
             .First(chunk => dayNumber.IsMatch(chunk));
 

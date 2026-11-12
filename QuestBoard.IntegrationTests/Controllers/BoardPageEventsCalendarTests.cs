@@ -307,7 +307,7 @@ public class BoardPageEventsCalendarTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
-    public async Task DesktopCalendar_EventsOff_HidesTheBoardAvailabilityButton()
+    public async Task DesktopCalendar_EventsOff_NavigationBarHasNoBoardAvailabilityLink()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         await BoardPageSeed.SetAsync(factory, 1, EventsOff, BoardPage.Quests);
@@ -316,14 +316,19 @@ public class BoardPageEventsCalendarTests(WebApplicationFactoryBase factory)
         var (response, html) = await GetAsync(client, "/Calendar", DesktopUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        // The adjacent My Agenda button anchors the assertion on the right button row, so the
-        // absence cannot pass because the whole row went missing.
-        html.Should().Contain("My Agenda");
-        html.Should().NotContain("Board Availability");
+        // The page carries neither button; the bar's My Agenda link anchors the assertion on the
+        // right bar, so the absence cannot pass because the bar went missing.
+        var page = DesktopPageRegions.PageContent(html);
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("My Agenda");
+        var bar = DesktopPageRegions.NavigationBar(html);
+        bar.Should().Contain("My Agenda");
+        bar.Should().NotContain("Board Availability");
+        bar.Should().NotContain("href=\"/Events\"");
     }
 
     [Fact]
-    public async Task DesktopCalendar_EventsOn_ShowsTheBoardAvailabilityButton()
+    public async Task DesktopCalendar_EventsOn_NavigationBarLinksBoardAvailabilityAndThePageDoesNot()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
@@ -331,7 +336,13 @@ public class BoardPageEventsCalendarTests(WebApplicationFactoryBase factory)
         var (response, html) = await GetAsync(client, "/Calendar", DesktopUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("Board Availability");
+        var page = DesktopPageRegions.PageContent(html);
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("href=\"/Events\"");
+        var bar = DesktopPageRegions.NavigationBar(html);
+        bar.Should().Contain("href=\"/Events\"");
+        bar.Should().Contain("Board Availability");
+        bar.Should().Contain("href=\"/Agenda\"");
     }
 
     [Fact]
