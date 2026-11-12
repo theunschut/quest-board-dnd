@@ -249,7 +249,7 @@ public class LinkedBoardMobileCalendarTests(WebApplicationFactoryBase factory)
 
         html.Should().Contain("Also showing: Linked Board Bravo");
         html.IndexOf("agenda-linked-note", StringComparison.Ordinal)
-            .Should().BeGreaterThan(html.IndexOf("calendar-month-nav", StringComparison.Ordinal));
+            .Should().BeGreaterThan(html.IndexOf("agenda-month-nav", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -307,12 +307,16 @@ public class LinkedBoardMobileCalendarTests(WebApplicationFactoryBase factory)
         var questRow = DaySection(html, 10)!;
         questRow.Should().Contain("agenda-linked-entry--open");
         questRow.Should().NotContain("agenda-linked-entry--static");
-        questRow.Should().Contain($"window.location.href='/Quest/Details/{questId}'");
+        questRow.Should().NotContain("onclick");
+        CountOccurrences(questRow, $"href=\"/Quest/Details/{questId}\"").Should().Be(1,
+            because: "the whole slip opens through its one stretched link and nothing else");
         questRow.Should().Contain($"<a class=\"row-nav-link\" href=\"/Quest/Details/{questId}\">Bravo Member Crypt Member</a>");
 
         var eventRow = DaySection(html, 12)!;
         eventRow.Should().Contain("agenda-linked-entry--open");
-        eventRow.Should().Contain($"window.location.href='/Events/Details/{eventId}'");
+        eventRow.Should().NotContain("onclick");
+        CountOccurrences(eventRow, $"href=\"/Events/Details/{eventId}\"").Should().Be(1,
+            because: "the whole slip opens through its one stretched link and nothing else");
         eventRow.Should().Contain($"<a class=\"row-nav-link\" href=\"/Events/Details/{eventId}\">Bravo Member Night Member</a>");
     }
 
@@ -373,7 +377,7 @@ public class LinkedBoardMobileCalendarTests(WebApplicationFactoryBase factory)
         var cancelled = DaySection(html, 20)!;
         cancelled.Should().Contain("Bravo Called Off Night Cancelled");
         cancelled.Should().Contain("agenda-linked-entry--cancelled");
-        cancelled.Should().Contain("<span class=\"visually-hidden\"> Cancelled.</span>");
+        cancelled.Should().Contain("<span class=\"visually-hidden\">Cancelled.</span>");
 
         var ordinary = DaySection(html, 21)!;
         ordinary.Should().NotContain("agenda-linked-entry--cancelled");
@@ -428,6 +432,9 @@ public class LinkedBoardMobileCalendarTests(WebApplicationFactoryBase factory)
         section.Should().NotBeNull();
         section.Should().Contain("Bravo Secret Session Shown");
     }
+
+    private static int CountOccurrences(string text, string value) =>
+        text.Split(value, StringSplitOptions.None).Length - 1;
 
     // The first linked row of one agenda day section, up to its closing line.
     private static string LinkedRow(string section)

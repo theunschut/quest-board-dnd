@@ -173,16 +173,16 @@ public class EventsDateRenderTests(WebApplicationFactoryBase factory)
 
             var label = Regex.Matches(
                     html,
-                    "<div class=\"agenda-day-label text-uppercase[^\"]*\"[^>]*>\\s*<time\\b[^>]*data-style=\"weekday-long\"[^>]*>(?<t>[^<]*)</time>")
+                    "<h2 class=\"agenda-day-label[^\"]*\"[^>]*>\\s*<time\\b[^>]*data-style=\"weekday-long\"[^>]*>(?<t>[^<]*)</time>")
                 .Select(m => m.Groups["t"].Value)
                 .ToList();
             label.Should().Equal(ProposedAt.Date.ToString("dddd, MMMM d"));
-            label[0].Should().NotBe(label[0].ToUpper(culture), because: "the upper case comes from the text-uppercase class, not from the text");
+            label[0].Should().NotBe(label[0].ToUpper(culture), because: "the upper case comes from the sheet, not from the text");
             AssertNotEnglish(culture, label[0], ProposedAt, "dddd, MMMM d");
 
             Regex.Matches(
                     html,
-                    "<small class=\"text-muted ms-2 flex-shrink-0\">\\s*<time\\b[^>]*data-style=\"time-24h\"[^>]*>(?<t>[^<]*)</time>")
+                    "<span class=\"agenda-time\">\\s*<time\\b[^>]*data-style=\"time-24h\"[^>]*>(?<t>[^<]*)</time>")
                 .Select(m => m.Groups["t"].Value)
                 .Should().Equal(ProposedAt.ToString("HH:mm"));
         });

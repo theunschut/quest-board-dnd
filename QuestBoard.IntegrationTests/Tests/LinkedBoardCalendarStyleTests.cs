@@ -129,8 +129,7 @@ public class LinkedBoardCalendarStyleTests
     [Theory]
     [InlineData(CalendarCss, ".linked-entry--cancelled")]
     [InlineData(CalendarCss, ".linked-entry--cancelled .linked-entry-title")]
-    [InlineData(CalendarMobileCss, ".agenda-linked-entry--cancelled")]
-    [InlineData(CalendarMobileCss, ".agenda-linked-entry--cancelled .agenda-linked-title")]
+    [InlineData(CalendarMobileCss, ".agenda-linked-entry--cancelled .agenda-slip__title")]
     [InlineData(QuestsMobileCss, ".also-that-day--cancelled")]
     public void CancelledLinkedEntry_OnEverySurface_IsStruckThrough(string fileName, string selector)
     {
@@ -140,5 +139,18 @@ public class LinkedBoardCalendarStyleTests
 
         rule.Should().Contain("text-decoration: line-through",
             because: $"{selector} in {fileName} must strike the cancelled linked entry through so it reads as called off");
+    }
+
+    [Fact]
+    public void CancelledLinkedEntry_OnThePhone_TakesTheQuieterPaperInTheLayeredSheet()
+    {
+        var css = ReadStylesheet(CalendarMobileCss);
+
+        var rule = ExtractRuleBody(css, ".agenda-linked-entry--cancelled");
+
+        rule.Should().Contain("background:",
+            because: "a called-off linked slip sits on quieter paper as well as carrying the struck-through title");
+        css.TrimStart().Should().Contain("@layer pages {",
+            because: "the phone sheet belongs to the pages layer");
     }
 }
