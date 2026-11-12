@@ -67,6 +67,11 @@
     margin: 0 auto;
   }
 
+  /* The sentence that leads into the password button on the desktop Edit page: the muted text step, not a Bootstrap utility. */
+  .account-prompt {
+    color: var(--qb-fg-muted);
+  }
+
   /* The read-only fields: a label step in the muted text colour above or beside a body-step value. */
   .profile-fields dt {
     color: var(--qb-fg-muted);
