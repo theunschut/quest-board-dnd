@@ -196,6 +196,31 @@ public class CalendarMonthMarkupTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
+    public async Task DetailBlocks_RenderDateAndTimeThroughTheWallClockHelper()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await CreateViewerAsync("monthmarkup_detail", (BoardA, GroupRole.Player));
+        await SeedQuestAsync(BoardA, "Detail Quest", "Dungeon Master Dana", [10]);
+        await SeedEventAsync(BoardA, "Detail Event", 16, new TimeOnly(18, 30));
+
+        var html = await GetAsync(client);
+
+        string Detail(int day) =>
+            Regex.Match(DayCell(html, day), "<div class=\"cal-entry-detail\" hidden>[\\s\\S]*?</div>").Value;
+
+        var questDetail = Detail(10);
+        questDetail.Should().MatchRegex(
+            "<dt>Date</dt>\\s*<dd><time\\b[^>]*data-style=\"weekday-long-year\"[^>]*datetime=\"2031-03-10T00:00\"[^>]*>",
+            because: "the card's date is a wall-clock value, rendered like the panel title and Events/Details");
+        questDetail.Should().MatchRegex(
+            "<dt>Time</dt>\\s*<dd><time\\b[^>]*data-style=\"time-24h\"[^>]*>19:00</time></dd>",
+            because: "the card's time matches the compact row's wall-clock time");
+
+        Detail(16).Should().MatchRegex(
+            "<dt>Date</dt>\\s*<dd><time\\b[^>]*data-style=\"weekday-long-year\"[^>]*datetime=\"2031-03-16T00:00\"[^>]*>");
+    }
+
+    [Fact]
     public async Task StaticLinkedEntries_StayInert()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);

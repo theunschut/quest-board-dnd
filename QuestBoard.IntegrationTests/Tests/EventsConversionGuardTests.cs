@@ -160,10 +160,12 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Shared/_LinkedDayEntries.cshtml",
     ];
 
-    // A date-pattern format string handed to ToString, other than the machine values a date input
-    // or an attribute reads back, which have to stay in the pattern they are parsed with.
+    // A date format string handed to ToString, other than the machine values a date input or an
+    // attribute reads back, which have to stay in the pattern they are parsed with. Both custom
+    // patterns and the one-letter standard formats ("D", "g", ...) count: a standard format reads
+    // the host culture just the same.
     private static readonly Regex DateFormatCall = new(
-        @"\.ToString\(\s*""(?<format>[^""]*(?:yy|MM|dd|HH|hh|mm|ss|tt)[^""]*)""",
+        @"\.ToString\(\s*""(?<format>[^""]*(?:yy|MM|dd|HH|hh|mm|ss|tt)[^""]*|[dDfFgGmMoOrRsStTuUyY])""",
         RegexOptions.Compiled);
 
     private static readonly string[] MachineValueFormats = ["yyyy-MM-dd", "yyyy-MM-ddTHH:mm"];

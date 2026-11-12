@@ -274,9 +274,6 @@
                     else
                     {
                         var viewerId = ViewBag.CurrentUserId as int?;
-                        @* The detail blocks carry the date as text with a machine-readable time element and no data attribute. *@
-                        var dayIso = day.Date.ToString("yyyy-MM-dd");
-                        var dayText = day.Date.ToString("D");
                         <div class="calendar-day__top">
                             <span class="day-number">@day.Day</span>
                             <span class="visually-hidden">@(isBoardToday ? "Today. " : "")@Html.WallClock(day.Date, "weekday-long")</span>
@@ -313,7 +310,7 @@
                                             <p class="cal-detail__title">@calendarEvent.Title</p>
                                             <dl class="cal-detail__facts">
                                                 <dt>Date</dt>
-                                                <dd><time datetime="@dayIso">@dayText</time></dd>
+                                                <dd>@Html.WallClock(day.Date, "weekday-long-year")</dd>
                                                 <dt>Time</dt>
                                                 <dd>@eventOnDay.TimeLabel</dd>
                                                 @if (!string.IsNullOrEmpty(ownBoardName))
@@ -368,9 +365,9 @@
                                             <p class="cal-detail__title">@quest.Title</p>
                                             <dl class="cal-detail__facts">
                                                 <dt>Date</dt>
-                                                <dd><time datetime="@dayIso">@dayText</time></dd>
+                                                <dd>@Html.WallClock(day.Date, "weekday-long-year")</dd>
                                                 <dt>Time</dt>
-                                                <dd>@questOnDay.TimeLabel</dd>
+                                                <dd>@Html.WallClock(questOnDay.ProposedDate.Date, "time-24h")</dd>
                                                 @if (!string.IsNullOrEmpty(questDmName))
                                                 {
                                                     <dt>DM</dt>
