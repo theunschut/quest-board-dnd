@@ -77,6 +77,8 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Agenda/Index.cshtml",
         "QuestBoard.Service/Views/Agenda/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Shared/_Calendar.Mobile.cshtml",
+        "QuestBoard.Service/Views/Shared/_LinkedAlsoThatDay.cshtml",
     ];
 
     // Files this work retires; each is deleted and must stay deleted, because its behaviour moved into a script file.
@@ -146,6 +148,7 @@ public class EventsConversionGuardTests
         "QuestBoard.UnitTests/Extensions/WallClockAreaStylesTests.cs",
         "QuestBoard.IntegrationTests/Tests/EventsDateRenderTests.cs",
         "QuestBoard.IntegrationTests/Controllers/CalendarBoardClockTests.cs",
+        "QuestBoard.IntegrationTests/Tests/CalendarPhoneAgendaTests.cs",
     ];
 
     // A date-pattern format string handed to ToString, other than the machine values a date input
