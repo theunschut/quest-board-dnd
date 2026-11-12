@@ -21,6 +21,8 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/Account/ForgotPassword.cshtml",
         "QuestBoard.Service/Views/Account/SetPassword.cshtml",
         "QuestBoard.Service/Views/Account/ChangePassword.cshtml",
+        "QuestBoard.Service/Views/Account/Edit.cshtml",
+        "QuestBoard.Service/Views/Account/Edit.Mobile.cshtml",
     ];
 
     // Phone twins that were merged into their desktop view and must not come back.
@@ -31,6 +33,7 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/Account/ForgotPassword.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/SetPassword.Mobile.cshtml",
         "QuestBoard.Service/Views/Account/ChangePassword.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/account.mobile.css",
     ];
 
     // Each view with the sheet it must link through its own Styles section.
@@ -43,6 +46,8 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/Account/ForgotPassword.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/SetPassword.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/ChangePassword.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Account/Edit.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Account/Edit.Mobile.cshtml", "account.css"),
     ];
 
     // The area's sheets, scanned for planning references with the converted views.
@@ -290,6 +295,8 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/Account/ForgotPassword.cshtml", ["email"]),
         ("QuestBoard.Service/Views/Account/SetPassword.cshtml", ["new-password"]),
         ("QuestBoard.Service/Views/Account/ChangePassword.cshtml", ["current-password", "new-password"]),
+        ("QuestBoard.Service/Views/Account/Edit.cshtml", ["name", "email"]),
+        ("QuestBoard.Service/Views/Account/Edit.Mobile.cshtml", ["name", "email"]),
     ];
 
     [Fact]
@@ -307,28 +314,21 @@ public class AccountConversionGuardTests
         }
     }
 
-    // The area's sheets that must not animate every property at once; the phone sheet is read only while it exists.
+    // The area's sheets that must not animate every property at once.
     private static readonly string[] TransitionGuardedSheets =
     [
         "QuestBoard.Service/wwwroot/css/account.css",
         "QuestBoard.Service/wwwroot/css/group-picker.css",
-        "QuestBoard.Service/wwwroot/css/account.mobile.css",
     ];
 
     [Fact]
     public void AccountSheets_DeclareNoTransitionOnAll()
     {
         var transitionOnAll = new Regex(@"transition(-property)?\s*:\s*all\b", RegexOptions.IgnoreCase);
-        var required = TransitionGuardedSheets.Take(2);
 
         foreach (var path in TransitionGuardedSheets)
         {
-            var exists = File.Exists(ResolveRepoFile(path));
-            if (!exists)
-            {
-                required.Contains(path).Should().BeFalse($"{path} is a live sheet of the area and must exist");
-                continue;
-            }
+            File.Exists(ResolveRepoFile(path)).Should().BeTrue($"{path} is a live sheet of the area and must exist");
 
             var css = Regex.Replace(File.ReadAllText(ResolveRepoFile(path)), @"/\*[\s\S]*?\*/", " ");
             css.Should().Contain("{", $"{path} must hold at least one rule, or the check proves nothing");
@@ -345,5 +345,20 @@ public class AccountConversionGuardTests
         markup.Should().Contain("<input type=\"hidden\" asp-for=\"Token\" />");
         Regex.Matches(markup, @"Model\.Token|asp-for=""Token""").Count.Should().Be(1,
             "the reset token reaches the page only through its hidden input");
+    }
+
+    [Fact]
+    public void NoAreaViewLinksARetiredSheet()
+    {
+        var views = Path.Combine(FindRepositoryRoot().FullName, "QuestBoard.Service", "Views");
+        var retiredSheets = RetiredFiles.Where(f => f.EndsWith(".css", StringComparison.Ordinal)).Select(Path.GetFileName).ToArray();
+        retiredSheets.Should().NotBeEmpty("at least the phone account sheet is retired");
+
+        foreach (var file in Directory.EnumerateFiles(views, "*.cshtml", SearchOption.AllDirectories))
+        {
+            var text = File.ReadAllText(file);
+            foreach (var sheet in retiredSheets)
+                text.Should().NotContain(sheet!, $"{Path.GetRelativePath(views, file)} must not link the retired sheet {sheet}");
+        }
     }
 }

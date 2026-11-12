@@ -782,9 +782,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// (Edit) Mobile UA on /Account/Edit renders account-card-mobile glass card form.
-    /// Uses authenticated request — AccountController.Edit carries [Authorize].
-    /// Test starts RED — Edit.Mobile.cshtml does not exist yet.
+    /// (Edit) The phone User-Agent on /Account/Edit gets the phone shell with the shared card, the shared
+    /// account sheet, its own document title and the name autofill token, and no password sentence (the
+    /// phone shows the button alone). Authenticated, because AccountController.Edit carries [Authorize].
     /// </summary>
     [Fact]
     public async Task MobileAccountEdit_MobileUserAgent_RendersGlassCardForm()
@@ -792,14 +792,33 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "acct_edit16", "acct_edit16@test.com");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/Account/Edit");
-        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
-        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
-        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
-        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var (response, html) = await GetWithUserAgentAsync("/Account/Edit", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("modern-card");
+        html.Should().Contain("/css/account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("<title>Edit Profile - ");
+        html.Should().Contain("autocomplete=\"name\"");
+        html.Should().NotContain("Want to change your password?");
+    }
+
+    /// <summary>
+    /// (Edit) The desktop twin keeps the sentence that asks whether the member wants to change the password,
+    /// and is served in the desktop layout.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountEdit_DesktopUserAgent_KeepsThePasswordPrompt()
+    {
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "acct_edit16d", "acct_edit16d@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/Account/Edit", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Want to change your password?");
+        html.Should().NotContain("mobile-layout");
     }
 
     /// <summary>
