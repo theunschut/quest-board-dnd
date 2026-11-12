@@ -967,7 +967,7 @@
     }
 
     .details-page .calendar-day.empty {
-        background-color: color-mix(in srgb, black 10%, transparent);
+        background-color: color-mix(in srgb, var(--qb-ink) 10%, transparent);
     }
 
     .details-page .calendar-day.today {
@@ -979,7 +979,7 @@
         font-weight: var(--qb-weight-strong);
         font-size: var(--qb-text-sm);
         color: var(--qb-fg);
-        text-shadow: 2px 2px 4px color-mix(in srgb, black 90%, transparent);
+        text-shadow: var(--qb-text-halo);
         margin-bottom: var(--qb-space-xs);
         /* Stays outside the scrolling item region below so the date never scrolls out of view. */
         flex-shrink: 0;
@@ -1105,7 +1105,7 @@
     /* Hovering a chip opens it up to show the DM and the time. */
     .details-page .quest-event:hover {
         background-color: color-mix(in srgb, var(--qb-on-fill) 100%, transparent);
-        box-shadow: 0 4px 12px color-mix(in srgb, black 30%, transparent);
+        box-shadow: var(--qb-shadow-raised);
         z-index: 10;
         min-height: 50px;
         width: 100%;
@@ -1160,7 +1160,7 @@
 
     .details-page .calendar-event:hover {
         background-color: color-mix(in srgb, var(--qb-on-fill) 100%, transparent);
-        box-shadow: 0 4px 12px color-mix(in srgb, black 30%, transparent);
+        box-shadow: var(--qb-shadow-raised);
         z-index: 10;
         min-height: 48px;
     }
@@ -1309,7 +1309,7 @@
     .details-page .linked-entry--open:focus-visible {
         min-height: 48px;
         background-color: color-mix(in srgb, var(--qb-on-fill) 80%, transparent);
-        box-shadow: 0 4px 12px color-mix(in srgb, black 30%, transparent);
+        box-shadow: var(--qb-shadow-raised);
         z-index: 10;
     }
 
@@ -1366,7 +1366,7 @@
         font-size: 10px;
         font-weight: var(--qb-weight-strong);
         color: var(--qb-fg);
-        text-shadow: 2px 2px 4px color-mix(in srgb, black 90%, transparent);
+        text-shadow: var(--qb-text-halo);
         line-height: 1;
     }
 
@@ -1379,18 +1379,18 @@
         background: color-mix(in srgb, var(--qb-on-fill) 95%, transparent);
         border-radius: 4px;
         padding: 2px;
-        box-shadow: 0 2px 4px color-mix(in srgb, black 10%, transparent);
+        box-shadow: var(--qb-shadow-rest);
     }
 
     .details-page .vote-buttons .btn-group-vertical {
         gap: 2px;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 2px 8px color-mix(in srgb, black 30%, transparent);
+        box-shadow: var(--qb-shadow-chrome);
         border-radius: 4px;
         font-weight: var(--qb-weight-strong);
         text-shadow: none;
-        border: 1px solid color-mix(in srgb, black 20%, transparent);
+        border: 1px solid color-mix(in srgb, var(--qb-ink) 20%, transparent);
         transition: box-shadow var(--qb-dur-base) ease;
     }
 
@@ -1504,7 +1504,7 @@
         padding-right: 44px;
         border-radius: 3px;
         position: relative;
-        box-shadow: 0 4px 12px color-mix(in srgb, black 30%, transparent);
+        box-shadow: var(--qb-shadow-raised);
         z-index: 10;
         overflow: visible;
         width: 100%;
@@ -1526,7 +1526,7 @@
 
     .details-page .quest-event.current-quest:hover {
         background-color: color-mix(in srgb, var(--qb-on-fill) 100%, transparent);
-        box-shadow: 0 4px 12px color-mix(in srgb, black 30%, transparent);
+        box-shadow: var(--qb-shadow-raised);
         z-index: 10;
         border-radius: 3px;
         font-size: var(--qb-text-sm);
@@ -1596,6 +1596,6 @@
         font-size: 12px;
         font-weight: var(--qb-weight-regular);
         color: var(--qb-fg);
-        text-shadow: 2px 2px 4px color-mix(in srgb, black 90%, transparent);
+        text-shadow: var(--qb-text-halo);
     }
 }
