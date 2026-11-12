@@ -208,6 +208,6 @@ public class BoardPageHomeTests : IClassFixture<WebApplicationFactoryBase>, IAsy
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        html.Should().Contain("""<a class="btn btn-warning" href="/">""");
+        html.Should().Contain("""<a class="btn btn-secondary" href="/">""");
     }
 }

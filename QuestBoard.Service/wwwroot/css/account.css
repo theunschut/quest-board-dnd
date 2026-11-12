@@ -112,4 +112,9 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
+
+  /* The section title sits one step under the page title on the phone. */
+  .mobile-layout .section-heading {
+    font-size: var(--qb-text-base);
+  }
 }

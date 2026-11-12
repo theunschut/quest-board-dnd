@@ -27,12 +27,15 @@ public class AccountConversionGuardTests
     private static readonly (string View, string Sheet)[] SheetLinks =
     [
         ("QuestBoard.Service/Views/GroupPicker/Index.cshtml", "group-picker.css"),
+        ("QuestBoard.Service/Views/Account/Profile.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml", "account.css"),
     ];
 
     // The area's sheets, scanned for planning references with the converted views.
     private static readonly string[] AreaSheets =
     [
         "QuestBoard.Service/wwwroot/css/group-picker.css",
+        "QuestBoard.Service/wwwroot/css/account.css",
     ];
 
     // Written as regex data, with each forbidden literal built from fragments, so this file never holds the
@@ -145,5 +148,23 @@ public class AccountConversionGuardTests
             foreach (var (label, pattern) in PlanningReferencePatterns)
                 pattern.IsMatch(text).Should().BeFalse($"{path} must not carry {label}");
         }
+    }
+
+    // The wrapper class of the retired phone card, written from fragments so this file never holds it whole.
+    private static readonly string RetiredPhoneWrapper = "account-" + "card-" + "mobile";
+
+    [Theory]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.cshtml")]
+    [InlineData("QuestBoard.Service/Views/Account/Profile.Mobile.cshtml")]
+    public void Profile_KeepsItsDateHelpersAndRetiresThePhoneWrapper(string view)
+    {
+        var markup = Markup(view);
+
+        Regex.Matches(markup, Regex.Escape("Html.LocalTime(subscription.CreatedAt, \"date\")")).Count.Should().Be(1,
+            $"{view} renders the creation date through the instant helper exactly once");
+        Regex.Matches(markup, Regex.Escape("Html.LocalTime(subscription.LastFetchedAt.Value, \"date-time\")")).Count.Should().Be(1,
+            $"{view} renders the last-fetched time through the instant helper exactly once");
+        markup.Should().NotContain(RetiredPhoneWrapper, $"{view} sits on the shared card");
+        markup.Should().NotContain("account.mobile.css", $"{view} no longer links the phone account sheet");
     }
 }

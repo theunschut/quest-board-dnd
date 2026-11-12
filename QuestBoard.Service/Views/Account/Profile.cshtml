@@ -16,81 +16,53 @@
     <div class="col-lg-9 col-md-11">
         <div class="card modern-card">
             <div class="card-header modern-card-header">
-                <h2 class="mb-0">
-                    <i class="fas fa-user-cog text-success me-2"></i>
+                <h1 class="mb-0">
+                    <i class="fas fa-user-cog me-2" aria-hidden="true"></i>
                     @ViewData["Title"]
-                </h2>
+                </h1>
             </div>
             <div class="card-body modern-card-body">
-                <div class="row mb-3">
-                    <label class="col-sm-3 col-form-label">Name:</label>
-                    <div class="col-sm-9">
-                        <p class="form-control-plaintext">@Model.User?.Name</p>
-                    </div>
-                </div>
+                <dl class="row profile-fields">
+                    <dt class="col-sm-3">Name</dt>
+                    <dd class="col-sm-9">@Model.User?.Name</dd>
 
-                <div class="row mb-3">
-                    <label class="col-sm-3 col-form-label">Email:</label>
-                    <div class="col-sm-9">
-                        <p class="form-control-plaintext">@Model.User?.Email</p>
-                    </div>
-                </div>
+                    <dt class="col-sm-3">Email</dt>
+                    <dd class="col-sm-9">@Model.User?.Email</dd>
 
-                <div class="row mb-3">
-                    <label class="col-sm-3 col-form-label">Account Type:</label>
-                    <div class="col-sm-9">
-                        @if ((bool?)ViewData["IsAdmin"] == true)
-                        {
-                            <p class="form-control-plaintext">
-                                <i class="fas fa-shield-alt text-danger me-2"></i>
-                                Administrator
-                            </p>
-                        }
-                        else if ((bool?)ViewData["IsDungeonMaster"] == true)
-                        {
-                            <p class="form-control-plaintext">
-                                <i class="fas fa-crown text-warning me-2"></i>
-                                Dungeon Master & Player
-                            </p>
-                        }
-                        else
-                        {
-                            <p class="form-control-plaintext">
-                                Player
-                            </p>
-                        }
-                    </div>
-                </div>
+                    <dt class="col-sm-3">Account Type</dt>
+                    @if ((bool?)ViewData["IsAdmin"] == true)
+                    {
+                        <dd class="col-sm-9"><i class="fas fa-shield-alt text-danger me-2" aria-hidden="true"></i>Administrator</dd>
+                    }
+                    else if ((bool?)ViewData["IsDungeonMaster"] == true)
+                    {
+                        <dd class="col-sm-9"><i class="fas fa-crown text-warning me-2" aria-hidden="true"></i>Dungeon Master & Player</dd>
+                    }
+                    else
+                    {
+                        <dd class="col-sm-9">Player</dd>
+                    }
 
-                <div class="row mb-3">
-                    <label class="col-sm-3 col-form-label">Building Access:</label>
-                    <div class="col-sm-9">
-                        @if (Model.User?.HasKey == true)
-                        {
-                            <p class="form-control-plaintext">
-                                <i class="fas fa-key text-success me-2"></i>
-                                Has Building Key
-                            </p>
-                        }
-                        else
-                        {
-                            <p class="form-control-plaintext">
-                                <i class="fas fa-times text-muted me-2"></i>
-                                No Building Key
-                            </p>
-                        }
-                    </div>
-                </div>
+                    <dt class="col-sm-3">Building Access</dt>
+                    @if (Model.User?.HasKey == true)
+                    {
+                        <dd class="col-sm-9"><i class="fas fa-key text-success me-2" aria-hidden="true"></i>Has Building Key</dd>
+                    }
+                    else
+                    {
+                        <dd class="col-sm-9"><i class="fas fa-times text-muted me-2" aria-hidden="true"></i>No Building Key</dd>
+                    }
+                </dl>
 
                 <div class="calendar-subscription-section">
-                    <h5 class="mb-3"><i class="fas fa-rss text-purple me-2"></i>Calendar Subscription</h5>
+                    <h2 class="section-heading mb-3"><i class="fas fa-rss text-purple me-2" aria-hidden="true"></i>Calendar Subscription</h2>
 
                     @if (!Model.CalendarSubscriptions.Any())
                     {
-                        <div class="text-center py-5">
-                            <i class="fas fa-rss fa-3x text-muted mb-3"></i>
-                            <h4>No calendar subscriptions yet</h4>
-                            <p class="text-muted">Get this board's schedule onto your phone's own calendar app. The address below acts like a password — anyone who has it can see your events, dates, and times, and it never expires on its own. Press Add Subscription to create one; nothing is generated until you do.</p>
+                        <div class="empty-state">
+                            <i class="fas fa-rss empty-state-icon" aria-hidden="true"></i>
+                            <h3 class="empty-state-heading">No calendar subscriptions yet</h3>
+                            <p class="empty-state-text">Get this board's schedule onto your phone's own calendar app. The address below acts like a password — anyone who has it can see your events, dates, and times, and it never expires on its own. Press Add Subscription to create one; nothing is generated until you do.</p>
                         </div>
                     }
                     else
@@ -127,22 +99,22 @@
                                                        fallback, which reveals it. *@
                                                     <input type="text" readonly id="subscriptionAddress-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address visually-hidden" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
                                                     <button type="button" class="btn btn-primary btn-sm calendar-subscription-copy-btn" data-address-target="#subscriptionAddress-@subscription.Id">
-                                                        <i class="fas fa-copy me-2"></i>Copy
+                                                        <i class="fas fa-copy me-2" aria-hidden="true"></i>Copy
                                                     </button>
                                                     <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
-                                                        <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
+                                                        <i class="fas fa-mobile-screen-button me-2" aria-hidden="true"></i>Open in Calendar App
                                                     </a>
                                                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id">
-                                                        <i class="fas fa-qrcode me-2"></i>Show QR Code
+                                                        <i class="fas fa-qrcode me-2" aria-hidden="true"></i>Show QR Code
                                                     </button>
                                                     <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
-                                                        <i class="fas fa-pen me-2"></i>Rename
+                                                        <i class="fas fa-pen me-2" aria-hidden="true"></i>Rename
                                                     </button>
                                                     <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="id" value="@subscription.Id" />
                                                         <button type="submit" class="btn btn-danger btn-sm">
-                                                            <i class="fas fa-trash me-2"></i>Delete
+                                                            <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete
                                                         </button>
                                                     </form>
                                                 </div>
@@ -160,8 +132,8 @@
 
                     <form asp-action="AddCalendarSubscription" method="post" class="calendar-subscription-add-form">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-warning">
-                            <i class="fas fa-plus me-2"></i>Add Subscription
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-2" aria-hidden="true"></i>Add Subscription
                         </button>
                     </form>
 
@@ -170,12 +142,12 @@
                 <hr>
 
                 <div class="d-flex justify-content-between">
-                    <a asp-controller="Home" asp-action="Index" class="btn btn-warning">
-                        <i class="fas fa-home me-2"></i>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-home me-2" aria-hidden="true"></i>
                         Back to Quest Board
                     </a>
-                    <a asp-action="Edit" class="btn btn-primary">
-                        <i class="fas fa-edit me-2"></i>
+                    <a asp-action="Edit" class="btn btn-warning">
+                        <i class="fas fa-edit me-2" aria-hidden="true"></i>
                         Edit Profile
                     </a>
                 </div>
@@ -184,10 +156,10 @@
     </div>
 </div>
 
-@* Modals live outside the card: the card applies a backdrop filter, which makes it the
-   containing block for fixed-position descendants. A modal nested inside it is trapped in
-   the card's stacking context, so the body-level backdrop paints over it and swallows every
-   click, including Close. *@
+@* Dialogs live outside the card: a transformed or filtered ancestor becomes the containing
+   block for fixed-position descendants, so a dialog nested in the card would be trapped in
+   its stacking context and the page backdrop would paint over it and swallow every click,
+   including Close. *@
     @if (Model.CalendarSubscriptions.Any())
     {
         <div class="modal fade" id="renameSubscriptionModal" tabindex="-1" aria-labelledby="renameSubscriptionModalLabel" aria-hidden="true">
@@ -232,10 +204,10 @@
                             }
                             <div class="calendar-subscription-actions justify-content-center mt-3">
                                 <button type="button" class="btn btn-primary btn-sm calendar-subscription-copy-btn" data-address-target="#subscriptionAddress-@subscription.Id">
-                                    <i class="fas fa-copy me-2"></i>Copy
+                                    <i class="fas fa-copy me-2" aria-hidden="true"></i>Copy
                                 </button>
                                 <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
-                                    <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
+                                    <i class="fas fa-mobile-screen-button me-2" aria-hidden="true"></i>Open in Calendar App
                                 </a>
                             </div>
                         </div>
@@ -262,7 +234,7 @@
                             button.classList.remove(extraButtonClass);
                         }
                         button.classList.add('btn-primary');
-                        button.innerHTML = '<i class="fas fa-copy me-2"></i>Copy';
+                        button.innerHTML = '<i class="fas fa-copy me-2" aria-hidden="true"></i>Copy';
                     }, 2000);
                 };
 
@@ -286,7 +258,7 @@
                 navigator.clipboard.writeText(field.value).then(function () {
                     button.classList.remove('btn-primary');
                     button.classList.add('btn-success');
-                    button.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+                    button.innerHTML = '<i class="fas fa-check me-2" aria-hidden="true"></i>Copied!';
                     restoreLabel();
                 }).catch(function () {
                     showManualFallback();
