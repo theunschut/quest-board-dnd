@@ -1,23 +1,28 @@
 ---
 phase: 102-board-deletion
-verified: 2026-11-11T18:00:00Z
-status: human_needed
-score: 11/11 automated must-haves verified (D-01..D-13 plus ROADMAP scope); manual UAT (plan 102-10 Task 3) pending
+verified: 2026-11-12T09:40:00Z
+status: passed
+score: 11/11 automated must-haves verified (D-01..D-13 plus ROADMAP scope); manual UAT (plan 102-10 Task 3) passed 6/6 on 2026-11-12
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Real delete on the user's own local SQL Server, desktop browser (plan 102-10 Task 3 steps 1-8)"
     expected: "Throwaway board with a quest+signup+vote, a character used by a signup on another board, an event series with an occurrence, a contact with image and tag, and a shop item bought and returned: board gone, no error page, success toast on the board list, survivor board keeps its quest signup (character cleared) and everything else, any board page sends the admin to the picker"
     why_human: "Needs the running app, a browser and the user's own data; automated SQL Server facts use a scratch database, not the app's QuestBoard database"
+
   - test: "/platform/Users Boards column on desktop (title on hover) and phone User-Agent (details list)"
     expected: "Counts and board names match the memberships; zero boards shows 0"
     why_human: "Hover title and touch details expansion are visual/interactive"
+
   - test: "Phone User-Agent at 390px: very long board name and a 40-name list (plan 102-10 Task 3 step 9)"
     expected: "No horizontal scroll, every name wraps, wrong name blocks submit"
     why_human: "Overflow/visual layout cannot be checked by grep or HTTP-level tests (backstop truth)"
+
   - test: "bfcache: Back after a cancelled or failed delete attempt"
     expected: "Delete button state matches the text in the input"
     why_human: "Browser back-forward cache behaviour; pageshow handler exists in platform-board-delete.js but cannot be exercised without a real browser (backstop truth)"
+
   - test: "No-JS path"
     expected: "Delete button never unlocks without JavaScript (rendered disabled)"
     why_human: "Needs a browser with scripting disabled; the disabled-by-default markup is present and covered by a test"
@@ -130,3 +135,12 @@ No automated gaps. Every decision D-01..D-13 is implemented, wired and backed by
 
 _Verified: 2026-11-11_
 _Verifier: Claude (gsd-verifier)_
+
+## Human Verification Result (2026-11-12)
+
+All six `human_verification` items passed when run locally against the real SQL Server (`102-UAT.md`, 6/6, evidence there).
+The full suite was re-run first with SQL Server required: 1389 unit + 1855 integration passed, 0 skipped.
+Two parts of the desktop delete scenario could not be produced through the app's forms and so rest on the automated tests:
+the cross-board "Kept, but unlinked" rows, and the shop purchase, because shop item creation fails on an older, separate bug.
+Status set to `passed`.
+
