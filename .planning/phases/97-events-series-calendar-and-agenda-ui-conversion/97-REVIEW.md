@@ -71,6 +71,10 @@ findings:
   info: 7
   total: 9
 status: issues_found
+fixes:
+  WR-01: fixed (29dddb00)
+  WR-02: fixed (560e7d55)
+  info: left open
 ---
 
 # Phase 97: Code Review Report
@@ -105,6 +109,8 @@ The rest is Info: accessibility and culture inconsistencies, guard blind spots a
 
 ### WR-01: The "Also that day" link becomes a 44px inline-flex box inside a sentence
 
+**Fix status:** Fixed in 29dddb00. The link stays an inline box and takes the 44px floor through padding of `calc((var(--qb-hit-min) - 1em) / 2)` with an equal negative sideways margin, the same pattern as `account-link-inline`. The style test now pins the padding and rejects `display` and `min-height` on the rule.
+
 **File:** `QuestBoard.Service/wwwroot/css/quests.mobile.css:114-121` (markup: `QuestBoard.Service/Views/Shared/_LinkedAlsoThatDay.cshtml:14-21, 28-35`, rendered by `_Calendar.Mobile.cshtml:32` on phone Quest Details)
 
 **Issue:** The new rule gives `.also-that-day .row-nav-link` `display: inline-flex; align-items: center; min-height: var(--qb-hit-min)`. That anchor sits in the middle of a sentence: "Also that day: **Board** — *Title*, 19:00".
@@ -127,6 +133,8 @@ This is the defect phase 96 WR-01 found in `.account-link` and fixed in bfbd1eb5
 Alternatively, reuse the `account-link-inline` pattern under a shared class. Re-run the phone 44px sweep on Quest Details afterwards with a long linked title.
 
 ### WR-02: `calendar.css` reintroduces colour literals as `black`, past the literal guards
+
+**Fix status:** Fixed in 560e7d55. The twelve `black` mixes now use existing tokens and no token was added: box shadows take `--qb-shadow-raised` (chip, event and linked-entry hover lifts, current quest) and `--qb-shadow-chrome` (vote group) and `--qb-shadow-rest` (vote box), text shadows take `--qb-text-halo`, and the empty-cell tint and vote group edge mix `--qb-ink`. Both colour guards now also flag any CSS named colour used as a value, with a self-test, and the widened scan finds nothing else in any file on either list.
 
 **File:** `QuestBoard.Service/wwwroot/css/calendar.css:970, 982, 1108, 1163, 1312, 1369, 1382, 1389, 1393, 1507, 1529, 1599` (guards: `QuestBoard.IntegrationTests/Tests/EventsConversionGuardTests.cs:203-209`, `QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs:168-174`)
 
