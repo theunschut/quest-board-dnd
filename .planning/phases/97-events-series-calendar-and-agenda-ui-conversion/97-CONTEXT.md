@@ -55,8 +55,8 @@ events and series keep working exactly as today.
 - **D-02: The per-entry detail card works as in the mockup**: it opens on hover, keyboard focus and
   tap; it can be hovered, it persists (no timeout) and Esc dismisses it. A first tap opens it, a
   second tap on the same entry follows the link, and a tap elsewhere closes it.
-- **D-03: Compact entries stay 20px tall, recorded as a contrast-style exception against WCAG 2.5.8
-  (24px target).** This is the density the operator asked for. Every entry stays reachable at a
+- **D-03: Compact entries stay 20px tall, recorded as a contrast-style exception against WCAG 2.5.8 (24px target).**
+  This is the density the operator asked for. Every entry stays reachable at a
   passing size through the day panel's 48px rows and through the detail card. It is recorded in the
   phase verification the way Phase 95 recorded the poster exception. The slot table is as in the
   mockup: 3 slots at 712 to 849px high (2 entries plus "+N more" at 1280x720), 4 at 850 to 979px,
@@ -83,8 +83,8 @@ events and series keep working exactly as today.
   `div.calendar-day-header` entries (3.76:1) that Phase 95 Gate 2 accepted go: the weekday header in
   `calendar.css` reaches 4.5:1 on Quest Details as well as on Calendar/Index (5.63:1 in the
   calendar-fit mockup). Quest Details is re-verified on both layouts.
-- **D-09: Direct `.ToString` date renderings in the area's views move to `Html.WallClock`, with
-  byte-identical visible text.** This covers about 18 lines in `_Calendar`, `_Calendar.Mobile`,
+- **D-09: Direct `.ToString` date renderings in the area's views move to `Html.WallClock`, with byte-identical visible text.**
+  This covers about 18 lines in `_Calendar`, `_Calendar.Mobile`,
   `Calendar/Index.Mobile`, `Events/Index` (both), `Agenda/Index` (both), `Events/Details` and
   `Series/Details`; all are wall-clock values, so nothing is converted. Where the helper has no style
   that produces the identical text, a matching style is **added** to its format table. This is an
@@ -92,8 +92,8 @@ events and series keep working exactly as today.
   every existing style stay untouched, and the existing helper tests stay green unchanged; only new
   format entries are added. Each moved line keeps its exact current text (the roadmap's "every date
   line keeps its format"), proven by a test.
-- **D-10: The today highlight reads the board clock (Q-133), and the calendar partials go under the
-  ambient-clock guard.** `_Calendar.cshtml` (and `_Calendar.Mobile.cshtml` if it gains a today marker
+- **D-10: The today highlight reads the board clock (Q-133), and the calendar partials go under the ambient-clock guard.**
+  `_Calendar.cshtml` (and `_Calendar.Mobile.cshtml` if it gains a today marker
   through Q-46) compare against the board's today (for example `ViewBag.BoardToday` or an equivalent
   value from `IBoardClock`), never `DateTime.Today`. The change gets its own behaviour test, separate
   from the restyle. `AmbientClockSeamTests` scans the partials so an ambient read cannot return. Its
