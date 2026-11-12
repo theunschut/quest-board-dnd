@@ -111,11 +111,14 @@
     font-weight: var(--qb-weight-strong);
   }
 
-  /* The title link is a real tap target: a link inside a sentence still takes the 44px floor on a phone. */
+  /*
+   * The title link is a real tap target, but it sits inside a sentence, so it stays an inline box and the words around
+   * it wrap as they always did. Its hit area grows through padding, which adds no line height; the sideways growth is
+   * cancelled by an equal negative margin so the sentence does not shift.
+   */
   .also-that-day .row-nav-link {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--qb-hit-min);
+    padding: calc((var(--qb-hit-min) - 1em) / 2) var(--qb-space-sm);
+    margin-inline: calc(-1 * var(--qb-space-sm));
     text-decoration: underline;
     color: inherit;
   }

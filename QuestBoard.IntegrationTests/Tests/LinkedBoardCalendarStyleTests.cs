@@ -180,8 +180,14 @@ public class LinkedBoardCalendarStyleTests
 
         var rule = ExtractRuleBody(css, ".also-that-day .row-nav-link");
 
-        rule.Should().Contain("min-height: var(--qb-hit-min)",
-            because: "the title link in an also-that-day line is something a thumb taps, so it keeps the 44px floor");
+        rule.Should().Contain("padding: calc((var(--qb-hit-min) - 1em) / 2)",
+            because: "the title link in an also-that-day line is something a thumb taps, so it keeps the 44px floor through padding");
+        rule.Should().Contain("margin-inline: calc(-1 * var(--qb-space-sm))",
+            because: "the sideways padding is cancelled so the sentence does not shift");
+        rule.Should().NotContain("display:",
+            because: "an inline-flex or block box would stop the link wrapping with the sentence it sits in");
+        rule.Should().NotContain("min-height",
+            because: "a minimum height on an inline link inflates the line it sits on");
     }
 
     [Fact]
