@@ -23,6 +23,7 @@ public class AccountConversionGuardTests
         "QuestBoard.Service/Views/Account/ChangePassword.cshtml",
         "QuestBoard.Service/Views/Account/Edit.cshtml",
         "QuestBoard.Service/Views/Account/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Views/Shared/AccessDenied.cshtml",
     ];
 
     // Phone twins that were merged into their desktop view and must not come back.
@@ -48,6 +49,7 @@ public class AccountConversionGuardTests
         ("QuestBoard.Service/Views/Account/ChangePassword.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/Edit.cshtml", "account.css"),
         ("QuestBoard.Service/Views/Account/Edit.Mobile.cshtml", "account.css"),
+        ("QuestBoard.Service/Views/Shared/AccessDenied.cshtml", "account.css"),
     ];
 
     // The area's sheets, scanned for planning references with the converted views.
