@@ -61,7 +61,6 @@ public class EventsConversionGuardTests
         "Shared/_LinkedAlsoThatDay.cshtml",
         "Events/_AvailabilityCell.cshtml",
         "Events/_AvailabilityCounts.cshtml",
-        "Events/_SeriesFormScripts.cshtml",
     ];
 
     // Views that carry no inline code, repository-relative. Grows as each view is converted.
@@ -69,9 +68,16 @@ public class EventsConversionGuardTests
     [
         "QuestBoard.Service/Views/Events/Index.cshtml",
         "QuestBoard.Service/Views/Events/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Events/Create.cshtml",
         "QuestBoard.Service/Views/Events/Details.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
+    ];
+
+    // Files this work retires; each is deleted and must stay deleted, because its behaviour moved into a script file.
+    private static readonly string[] RetiredFiles =
+    [
+        "QuestBoard.Service/Views/Events/_SeriesFormScripts.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
@@ -104,12 +110,14 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Agenda/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Events/Index.cshtml",
         "QuestBoard.Service/Views/Events/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Events/Create.cshtml",
         "QuestBoard.Service/Views/Events/Details.cshtml",
         "QuestBoard.Service/Views/Series/Details.cshtml",
         "QuestBoard.Service/Views/Shared/_Calendar.cshtml",
         "QuestBoard.Service/Views/Shared/_Calendar.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/js/row-link.js",
         "QuestBoard.Service/wwwroot/js/event-details.js",
+        "QuestBoard.Service/wwwroot/js/event-series-form.js",
         "QuestBoard.Service/wwwroot/css/events-overview.css",
         "QuestBoard.Service/wwwroot/css/events-overview.mobile.css",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
@@ -332,6 +340,24 @@ public class EventsConversionGuardTests
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/event-details.js");
         Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML|document\.write")
             .Select(m => m.Value).Should().BeEmpty("event-details.js must build no markup from strings");
+    }
+
+    [Fact]
+    public void RetiredFiles_AreGone()
+    {
+        foreach (var path in RetiredFiles)
+            File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse(
+                $"{path} was folded into a script file and must not come back");
+    }
+
+    [Fact]
+    public void SeriesFormModule_WritesNoMarkupFromStrings()
+    {
+        // The module writes dates and notices the server returned into the page, so it builds every node with
+        // createElement and textContent and never hands a string to the parser.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/event-series-form.js");
+        Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\b|insertAdjacentHTML|document\.write")
+            .Select(m => m.Value).Should().BeEmpty("event-series-form.js must build no markup from strings");
     }
 
     [Fact]

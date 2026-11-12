@@ -3,7 +3,6 @@
 @model EventViewModel
 @{
     ViewData["Title"] = "Create Event";
-    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var pages = await BoardPages.GetAsync();
 }
 
@@ -49,7 +48,7 @@
 
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" asp-for="IsRecurring" id="enableRecurrence" />
-                <label class="form-check-label" asp-for="IsRecurring">Make this a recurring series</label>
+                <label class="form-check-label" for="enableRecurrence">Make this a recurring series</label>
                 <div class="form-text">Generates future occurrences automatically on a repeating schedule.</div>
             </div>
 
@@ -117,8 +116,5 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
-    <script>
-        window.seriesAntiforgeryToken = '@tokens.RequestToken';
-    </script>
-    @{ await Html.RenderPartialAsync("_SeriesFormScripts"); }
+    <script type="module" src="~/js/event-series-form.js" asp-append-version="true"></script>
 }
