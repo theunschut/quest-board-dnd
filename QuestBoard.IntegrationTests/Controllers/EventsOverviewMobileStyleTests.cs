@@ -1,6 +1,7 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -8,9 +9,10 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// Guards the mobile availability overview's styling contract. The mobile card list at
 /// /Events is selected by the request's user agent rather than by a CSS breakpoint, and its
 /// styling was not covered by the calendar or Platform-area style-conformance tests already in
-/// this project. This class pins the card's glass surface, the explicit light colour on every
-/// text run inside it, the filled-button convention, and the tap-target floor on the roster
-/// toggle, so a regression in any of them turns a test red instead of only being caught by eye.
+/// this project. This class pins the card's shared glass surface without a repeated blur, the
+/// token colour of the attendance counts, the filled-button convention, and the tap-target floor
+/// on the roster toggle, so a regression in any of them turns a test red instead of only being
+/// caught by eye.
 /// </summary>
 public class EventsOverviewMobileStyleTests(WebApplicationFactoryBase factory)
     : IClassFixture<WebApplicationFactoryBase>, IAsyncLifetime
@@ -124,19 +126,22 @@ public class EventsOverviewMobileStyleTests(WebApplicationFactoryBase factory)
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
+    private static string StripCssComments(string css) => Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+
+    // The components sheet holds the shared availability rules, so the counts are read from it as well.
+    private static string ResolveComponentsCssPath() =>
+        Path.Combine(Path.GetDirectoryName(ResolveOverviewMobileCssPath())!, "components.css");
+
     [Fact]
-    public void MobileOverviewCss_AvailCard_UsesGlassSurfaceNotOpaqueSlab()
+    public void MobileOverviewCss_AvailCard_AddsNoRepeatedBackdropBlurOrOpaqueSlab()
     {
         var cssPath = ResolveOverviewMobileCssPath();
-        var css = File.ReadAllText(cssPath);
+        var css = StripCssComments(File.ReadAllText(cssPath));
         var lowerCss = css.ToLowerInvariant();
 
-        css.Should().Contain(
-            "background: rgba(255, 255, 255, 0.15);",
-            because: $"events-overview.mobile.css at '{cssPath}' must put the mobile card on the app's shared glass surface");
-        css.Should().Contain(
-            "backdrop-filter: blur(15px);",
-            because: $"events-overview.mobile.css at '{cssPath}' must apply the same blur the rest of the app's glass cards use");
+        lowerCss.Should().NotContain(
+            "backdrop-filter",
+            because: $"the card at '{cssPath}' repeats once per event, and a blur on every item is what makes a phone stutter while scrolling");
         lowerCss.Should().NotContain(
             "#343a40",
             because: "the opaque slab background the card used before the fix must not be reintroduced");
@@ -146,30 +151,42 @@ public class EventsOverviewMobileStyleTests(WebApplicationFactoryBase factory)
     }
 
     [Fact]
-    public void MobileOverviewCss_CountBlock_SetsExplicitLightColour()
+    public void MobileOverviewCss_CountBlock_TakesItsColourByTokenOrInheritance()
     {
-        var cssPath = ResolveOverviewMobileCssPath();
-        var css = File.ReadAllText(cssPath);
+        var sheets = new[] { ResolveOverviewMobileCssPath(), ResolveComponentsCssPath() };
+        var countRules = new List<(string Sheet, string Selector, string Body)>();
+        foreach (var sheet in sheets)
+        {
+            var css = StripCssComments(File.ReadAllText(sheet));
+            foreach (Match rule in Regex.Matches(css, @"(?<selector>[^{}]+)\{(?<body>[^{}]*)\}"))
+                if (rule.Groups["selector"].Value.Contains("avail-count"))
+                    countRules.Add((sheet, rule.Groups["selector"].Value.Trim(), rule.Groups["body"].Value));
+        }
 
-        var headlineRule = ExtractCssRule(css, ".avail-card .avail-count-headline {");
-        headlineRule.Should().Contain(
-            "color: #FFFFFF;",
-            because: $"the count headline rule in '{cssPath}' must state its own colour instead of inheriting the desktop table cell's dark text");
+        countRules.Should().NotBeEmpty("the count rules must exist, or the counts are unstyled");
+        foreach (var (sheet, selector, body) in countRules)
+        {
+            // A colour is either absent (the surface's colour is inherited) or a design token.
+            foreach (Match colour in Regex.Matches(body, @"(?<![-\w])color\s*:\s*(?<value>[^;]+);"))
+                colour.Groups["value"].Value.Trim().Should().StartWith(
+                    "var(--qb-",
+                    because: $"'{selector}' in '{sheet}' must name its colour by token so it reads on its surface");
+            body.Should().NotContain("!important", because: $"'{selector}' in '{sheet}' must win by layer order, not by force");
+        }
 
-        var detailRule = ExtractCssRule(css, ".avail-card .avail-count-detail {");
-        detailRule.Should().Contain(
-            "color: #FFFFFF !important;",
-            because: $"the count detail rule in '{cssPath}' must beat Bootstrap's .text-muted on this dark surface, or the page repeats its measured 1.34:1 contrast failure");
+        var components = StripCssComments(File.ReadAllText(ResolveComponentsCssPath()));
+        components.Should().Contain(".avail-count-detail {");
     }
 
     [Fact]
     public void MobileOverviewCss_ExpandToggle_KeepsMinimumTapTarget()
     {
         var cssPath = ResolveOverviewMobileCssPath();
-        var css = File.ReadAllText(cssPath);
+        var css = StripCssComments(File.ReadAllText(cssPath));
 
-        css.Should().Contain(
-            "min-height: 44px",
+        var toggleRule = ExtractCssRule(css, ".avail-expand-toggle {");
+        toggleRule.Should().Contain(
+            "min-height: var(--qb-hit-min)",
             because: $"the roster expand toggle rule in '{cssPath}' must keep the 44px iOS/Android tap-target floor");
     }
 
@@ -214,6 +231,8 @@ public class EventsOverviewMobileStyleTests(WebApplicationFactoryBase factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("avail-card");
+        // The interactive class is what keeps the repeated card unblurred while it takes the shared surface.
+        html.Should().MatchRegex("""class="avail-card modern-card modern-card--interactive""");
         html.Should().Contain("avail-count-summary");
         html.Should().Contain("avail-card-meta");
         html.Should().Contain("avail-roster-name");

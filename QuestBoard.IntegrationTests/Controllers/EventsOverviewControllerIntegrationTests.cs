@@ -1,6 +1,7 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -276,10 +277,34 @@ public class EventsOverviewControllerIntegrationTests(WebApplicationFactoryBase 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("avail-expand-toggle");
         html.Should().Contain($"roster-{eventId}");
-        // One guard on the toggle button and one on the collapse container it opens, so a tap
-        // inside an expanded roster cannot bubble up to the card's navigation handler.
-        var guardCount = html.Split("event.stopPropagation()").Length - 1;
-        guardCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task MobileOverview_RosterToggle_OpensWithoutAnyHandler()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var eventId = await SeedEventAsync("Mobile Toggle Session", DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+        var memberId = await SeedMemberAsync("evtoverview_mobiletoggle", "Mobile Toggle Member");
+        await SeedSignupAsync(eventId, memberId, VoteType.Yes, confirmed: true);
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "evtoverview_mobiletoggle_viewer", "evtoverview_mobiletoggle_viewer@example.com");
+
+        var (response, html) = await GetMobileAsync(client, "/Events");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The toggle and the roster sit above the card's stretched link, so no handler has to stop a tap from
+        // reaching the card; the collapse is opened by Bootstrap's data attributes alone.
+        var toggle = Regex.Match(html, """<button\b[^>]*\bavail-expand-toggle\b[^>]*>""").Value;
+        toggle.Should().NotBeEmpty();
+        toggle.Should().Contain("data-bs-toggle=\"collapse\"");
+        toggle.Should().Contain($"data-bs-target=\"#roster-{eventId}\"");
+        toggle.Should().NotContain("onclick");
+        var roster = Regex.Match(html, $"""<div\b[^>]*\bid="roster-{eventId}"[^>]*>""").Value;
+        roster.Should().NotBeEmpty();
+        roster.Should().NotContain("onclick");
+        html.Should().NotContain("stopPropagation");
+        html.Should().NotContain("onclick");
     }
 
     [Fact]

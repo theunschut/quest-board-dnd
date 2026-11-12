@@ -13,28 +13,28 @@
 }
 
 <div class="container-fluid px-2 mt-2">
-    <div class="d-flex justify-content-between align-items-start mb-2">
+    <div class="avail-page-header">
         <div>
-            <h4 class="mb-0">
-                <i class="fas fa-calendar-check text-purple me-2"></i>@ViewData["Title"]
-            </h4>
+            <h1 class="mb-0">
+                <i class="fas fa-calendar-check text-purple me-2" aria-hidden="true"></i>@ViewData["Title"]
+            </h1>
             <p class="header-subtitle mb-0">Events on @subtitleBoardName</p>
         </div>
         @if (isDm)
         {
             <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
-                <i class="fas fa-calendar-days me-1"></i>My Agenda
+                <i class="fas fa-calendar-days me-1" aria-hidden="true"></i>My Agenda
             </a>
         }
     </div>
 
     <div class="mb-3">
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="collapse" data-bs-target="#avail-legend" aria-expanded="false">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="collapse" data-bs-target="#avail-legend" aria-expanded="false" aria-controls="avail-legend">
             What do these mean?
         </button>
         <div class="collapse mt-2" id="avail-legend">
-            <div class="card modern-card legend-card">
-                <div class="card-body modern-card-body p-2">
+            <div class="card modern-card">
+                <div class="card-body modern-card-body">
                     <div class="d-flex align-items-center mb-2">
                         @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedYes)
                         <small class="ms-2">Confirmed available</small>
@@ -51,7 +51,7 @@
                         @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.UnconfirmedYes)
                         <small class="ms-2">Counted by default — not yet confirmed</small>
                     </div>
-                    <div class="d-flex align-items-center mb-0">
+                    <div class="d-flex align-items-center">
                         @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.Empty)
                         <small class="ms-2">No signup for this event</small>
                     </div>
@@ -62,55 +62,59 @@
 
     @if (!Model.Rows.Any())
     {
-        <div class="text-center text-muted py-5">
-            <i class="fas fa-calendar-alt fa-3x mb-3"></i>
-            <h5>No Upcoming Events</h5>
-            <p class="mb-0">This board has no upcoming events yet. Once a DM schedules one, it will appear here.</p>
+        <div class="empty-state">
+            <i class="fas fa-calendar-alt empty-state-icon" aria-hidden="true"></i>
+            <h2 class="empty-state-heading">No Upcoming Events</h2>
+            <p class="empty-state-text">This board has no upcoming events yet. Once a DM schedules one, it will appear here.</p>
         </div>
     }
     else
     {
-        @foreach (var row in Model.Rows)
-        {
-            <div class="avail-card mb-3" onclick="window.location.href='@Url.Action("Details", "Events", new { id = row.EventId })'">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="fw-bold avail-card-title"><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></div>
-                        <small class="text-muted avail-card-meta">
-                            @Html.WallClock(row.Date.ToDateTime(TimeOnly.MinValue), "weekday-short")
-                            @if (row.StartTime.HasValue)
-                            {
-                                @:&middot; @Html.WallClock(row.Date.ToDateTime(row.StartTime.Value), "time-24h")
-                            }
-                        </small>
+        <div class="avail-card-list">
+            @foreach (var row in Model.Rows)
+            {
+                @* The title link is stretched over the card, so the card is the tap target. The roster toggle and the
+                   roster sit above that link, so a tap on them never reaches it and no handler is needed. *@
+                <div class="avail-card modern-card modern-card--interactive">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <h2 class="avail-card-title"><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></h2>
+                            <small class="avail-card-meta">
+                                @Html.WallClock(row.Date.ToDateTime(TimeOnly.MinValue), "weekday-short")
+                                @if (row.StartTime.HasValue)
+                                {
+                                    @:&middot; @Html.WallClock(row.Date.ToDateTime(row.StartTime.Value), "time-24h")
+                                }
+                            </small>
+                        </div>
+                        @await Html.PartialAsync("_AvailabilityCounts", row)
                     </div>
-                    @await Html.PartialAsync("_AvailabilityCounts", row)
+                    <button type="button" class="btn btn-sm btn-secondary avail-expand-toggle"
+                            data-bs-toggle="collapse" data-bs-target="#roster-@row.EventId"
+                            aria-expanded="false" aria-controls="roster-@row.EventId">
+                        <i class="fas fa-chevron-down me-1" aria-hidden="true"></i>Show players
+                    </button>
+                    <div class="collapse avail-roster" id="roster-@row.EventId">
+                        <ul class="list-unstyled mb-0 small">
+                            @for (var i = 0; i < Model.Members.Count; i++)
+                            {
+                                var member = Model.Members[i];
+                                var cell = i < row.Cells.Count ? row.Cells[i] : AvailabilityCellState.Empty;
+                                <li class="d-flex justify-content-between align-items-center">
+                                    <span class="avail-roster-name">@member.Name@(member.UserId == Model.CurrentUserId ? " (you)" : "")</span>
+                                    @await Html.PartialAsync("_AvailabilityCell", cell)
+                                </li>
+                            }
+                        </ul>
+                    </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-2 avail-expand-toggle"
-                        data-bs-toggle="collapse" data-bs-target="#roster-@row.EventId"
-                        onclick="event.stopPropagation();" aria-expanded="false">
-                    <i class="fas fa-chevron-down me-1"></i>Show players
-                </button>
-                <div class="collapse mt-2" id="roster-@row.EventId" onclick="event.stopPropagation();">
-                    <ul class="list-unstyled mb-0 small">
-                        @for (var i = 0; i < Model.Members.Count; i++)
-                        {
-                            var member = Model.Members[i];
-                            var cell = i < row.Cells.Count ? row.Cells[i] : AvailabilityCellState.Empty;
-                            <li class="d-flex justify-content-between">
-                                <span class="avail-roster-name">@member.Name@(member.UserId == Model.CurrentUserId ? " (you)" : "")</span>
-                                @await Html.PartialAsync("_AvailabilityCell", cell)
-                            </li>
-                        }
-                    </ul>
-                </div>
-            </div>
-        }
+            }
+        </div>
         @if (Model.CanShowMore)
         {
             <div class="d-grid mb-3">
                 <a href="@Url.Action("Index", new { take = Model.NextTake })" class="btn btn-primary">
-                    <i class="fas fa-chevron-down me-2"></i>Show More Events
+                    <i class="fas fa-chevron-down me-2" aria-hidden="true"></i>Show More Events
                 </a>
             </div>
         }

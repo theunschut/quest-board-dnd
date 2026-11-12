@@ -68,18 +68,23 @@ public class EventsConversionGuardTests
     private static readonly string[] ConvertedViews =
     [
         "QuestBoard.Service/Views/Events/Index.cshtml",
+        "QuestBoard.Service/Views/Events/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
+        "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name.
     private static readonly string[] ConvertedSheets =
     [
         "events-overview.css",
+        "events-overview.mobile.css",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
     {
         ["QuestBoard.Service/Views/Events/Index.cshtml"] = ["events-overview.css"],
+        ["QuestBoard.Service/Views/Events/Index.Mobile.cshtml"] = ["events-overview.mobile.css"],
     };
 
     // The area files scanned for raw date formatting: all of them.
@@ -104,6 +109,9 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Shared/_Calendar.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/js/row-link.js",
         "QuestBoard.Service/wwwroot/css/events-overview.css",
+        "QuestBoard.Service/wwwroot/css/events-overview.mobile.css",
+        "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
+        "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
         ".claude/ui-guidelines.md",
         "QuestBoard.UnitTests/Extensions/WallClockAreaStylesTests.cs",
         "QuestBoard.IntegrationTests/Tests/EventsDateRenderTests.cs",
