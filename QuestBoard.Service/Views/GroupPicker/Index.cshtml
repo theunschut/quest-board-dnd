@@ -48,7 +48,7 @@
                                     <button type="submit" class="group-picker-row">
                                         <span class="group-picker-text">
                                             <span class="group-picker-name">@group.Name</span>
-                                            <span class="group-picker-meta"><i class="fas fa-users me-1" aria-hidden="true"></i>@group.MemberCount member(s)</span>
+                                            <span class="group-picker-meta"><i class="fas fa-users me-1" aria-hidden="true"></i>@group.MemberCount @(group.MemberCount == 1 ? "member" : "members")</span>
                                         </span>
                                         <i class="fas fa-chevron-right group-picker-chevron" aria-hidden="true"></i>
                                     </button>

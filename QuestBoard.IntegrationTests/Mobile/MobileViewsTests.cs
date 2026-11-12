@@ -912,6 +912,45 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
+    /// The member count on a picker row reads "1 member" for exactly one member and "N members"
+    /// otherwise, and never the old "member(s)" placeholder.
+    /// </summary>
+    [Fact]
+    public async Task GroupPicker_MemberCount_ReadsSingularForOneAndPluralOtherwise()
+    {
+        var (authClient, firstUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "gp_count01", "gp_count01@test.com");
+        var (_, secondUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "gp_count02", "gp_count02@test.com");
+
+        var soloName = $"SoloBoard{Guid.NewGuid():N}";
+        var pairName = $"PairBoard{Guid.NewGuid():N}";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var soloId = Random.Shared.Next(100_000, 499_999);
+            var pairId = Random.Shared.Next(500_000, 999_999);
+            context.Groups.Add(new GroupEntity { Id = soloId, Name = soloName, CreatedAt = DateTime.UtcNow });
+            context.Groups.Add(new GroupEntity { Id = pairId, Name = pairName, CreatedAt = DateTime.UtcNow });
+            context.UserGroups.Add(new UserGroupEntity { UserId = firstUser.Id, GroupId = soloId, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = firstUser.Id, GroupId = pairId, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = secondUser.Id, GroupId = pairId, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var (response, html) = await GetWithUserAgentAsync("/GroupPicker/Index", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("member(s)");
+        var countOf = (string name) => Regex.Match(
+            html,
+            Regex.Escape(name) + "</span>\\s*<span class=\"group-picker-meta\">.*?</i>([^<]+)</span>",
+            RegexOptions.Singleline).Groups[1].Value.Trim();
+        countOf(soloName).Should().Be("1 member");
+        countOf(pairName).Should().Be("2 members");
+    }
+
+    /// <summary>
     /// The picker layout's landmarks under both User-Agents: one skip link to the main region, one
     /// labelled navigation, one main element carrying the skip target, and no redundant main role.
     /// </summary>
