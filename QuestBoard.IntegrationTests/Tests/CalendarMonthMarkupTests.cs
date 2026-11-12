@@ -364,6 +364,27 @@ public class CalendarMonthMarkupTests(WebApplicationFactoryBase factory)
         details.Should().NotContain("calendar-month.js");
     }
 
+    [Fact]
+    public void Module_IsLoadedOnlyByTheCalendarPage()
+    {
+        // Quest Details draws the same month partial but is not a compact month, and the phone twin renders an
+        // agenda, so only the desktop Calendar page may reference the script.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !dir.EnumerateFiles("*.slnx").Any())
+        {
+            dir = dir.Parent;
+        }
+
+        dir.Should().NotBeNull("the repository root holds the solution file");
+        var views = Path.Combine(dir!.FullName, "QuestBoard.Service", "Views");
+        var referencing = Directory.EnumerateFiles(views, "*.cshtml", SearchOption.AllDirectories)
+            .Where(file => File.ReadAllText(file).Contains("calendar-month.js", StringComparison.Ordinal))
+            .Select(file => Path.GetRelativePath(views, file).Replace('\\', '/'))
+            .ToList();
+
+        referencing.Should().Equal("Calendar/Index.cshtml");
+    }
+
     // ---- Header, legend, empty month ----
 
     [Fact]
