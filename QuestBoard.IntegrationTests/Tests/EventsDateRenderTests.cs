@@ -294,9 +294,12 @@ public class EventsDateRenderTests(WebApplicationFactoryBase factory)
             var html = await GetAsync(client, $"/Series/Details/{seriesId}", DesktopUserAgent);
 
             var texts = TimeTexts(html, "weekday-long-year");
+            // Anchor, end date, the occurrence row, then the same date again inside the occurrence link's
+            // visually hidden name.
             texts.Should().Equal(
                 anchor.ToString("dddd, MMMM d, yyyy"),
                 end.ToString("dddd, MMMM d, yyyy"),
+                anchor.ToString("dddd, MMMM d, yyyy"),
                 anchor.ToString("dddd, MMMM d, yyyy"));
             AssertNotEnglish(culture, texts[0], anchor.ToDateTime(TimeOnly.MinValue), "dddd, MMMM d, yyyy");
             html.Should().MatchRegex("</time>\\s*&middot;\\s*19:00");

@@ -73,6 +73,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/Views/Events/Edit.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCell.cshtml",
         "QuestBoard.Service/Views/Events/_AvailabilityCounts.cshtml",
+        "QuestBoard.Service/Views/Series/Details.cshtml",
     ];
 
     // Files this work retires; each is deleted and must stay deleted, because its behaviour moved into a script file.

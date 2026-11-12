@@ -725,6 +725,19 @@
     color: var(--qb-event-fg);
   }
 
+  /* The read-only strip on the series page: the cells show the rule but take no clicks. */
+  .cycle-mask-cell--readonly {
+    pointer-events: none;
+  }
+
+  /* A link that stands alone in a table cell: on the phone it is a full touch target, vertically centred in the row. */
+  .mobile-layout .table-cell-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
+  }
+
   /* On the phone each cell is a full touch target; the strip wraps, so a longer cycle takes another line. */
   .mobile-layout .cycle-mask-cell {
     min-width: var(--qb-hit-min);
