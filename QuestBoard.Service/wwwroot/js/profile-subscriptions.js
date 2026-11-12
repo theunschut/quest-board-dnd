@@ -37,13 +37,32 @@ document.querySelectorAll('.calendar-subscription-copy-btn').forEach(function (b
         }, COPY_RESTORE_MS);
     };
 
+    // Inside an open dialog the page behind it cannot take focus, because the dialog traps it. So the dialog gets its own
+    // read-only copy of the address, added the first time it is needed, and that is the field that is revealed and selected.
+    const dialogAddressField = function (dialog, source) {
+        let copy = dialog.querySelector('[data-dialog-address]');
+        if (!copy) {
+            copy = document.createElement('input');
+            copy.type = 'text';
+            copy.readOnly = true;
+            copy.setAttribute('data-dialog-address', '');
+            copy.className = 'form-control-plaintext font-monospace calendar-subscription-address mt-3';
+            copy.setAttribute('aria-label', source.getAttribute('aria-label') || 'Subscription address');
+            copy.value = source.value;
+            button.parentElement.insertAdjacentElement('afterend', copy);
+        }
+        return copy;
+    };
+
     const showManualFallback = function (field) {
         // The address is hidden by default because it is a bearer credential and nothing on the page needs a person to
         // read it. This is the one path that does: reveal it so the selection is visible, then leave it revealed, because
         // the person is mid-copy and hiding it again under them would be hostile.
-        field.classList.remove('visually-hidden');
-        field.focus();
-        field.select();
+        const dialog = button.closest('.modal');
+        const shown = dialog ? dialogAddressField(dialog, field) : field;
+        shown.classList.remove('visually-hidden');
+        shown.focus();
+        shown.select();
         if (!iconOnly) {
             button.textContent = 'Press Ctrl+C';
         }
