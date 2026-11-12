@@ -3,7 +3,7 @@ phase: 102-board-deletion
 plan: 10
 subsystem: platform-board-deletion
 tags: [verification, sql-server, uat]
-status: partial
+status: complete
 requires: [102-05, 102-08, 102-09]
 provides:
   - full-suite gate result
@@ -15,13 +15,13 @@ key-files:
 decisions: []
 actuals:
   tokens: 0
-  tasks: 2
+  tasks: 3
   commits: 1
 ---
 
 # Phase 102 Plan 10: Verification and sign-off Summary
 
-**Status: PARTIAL - awaiting human verification (Task 3). Tasks 1 and 2 are done; the phase must not close until the user completes Task 3.**
+**Status: COMPLETE. Tasks 1 and 2 by the executor; Task 3 run on 2026-11-12 (all 6 UAT items passed, see `102-UAT.md`).**
 
 Verification-only plan: no source code changed. The full suite is green, and the required gated SQL Server run against the reachable local server reports 2 passed, which proves the self-referencing chain ordering, the cascades and the rollback on real SQL Server.
 
@@ -60,20 +60,15 @@ documented gap-plan fallback is not needed. The tests only use their own `QuestB
 database (InitialCatalog forced to master, dropped on dispose); the app's QuestBoard database was not touched.
 A read-only leftover-database check was skipped (no `sqlcmd` available in this environment).
 
-## Task 3: Real SQL Server delete and UI backstops - PENDING (user's hands-on check)
+## Task 3: Real SQL Server delete and UI backstops - DONE (2026-11-12)
 
-Not run by the executor: no app was started, no browser driven, no boards created. Awaiting the user. Steps:
-
-1. Start the app against the local SQL Server; as super admin create throwaway boards "UAT Doomed Board" and "UAT Survivor Board".
-2. On the doomed board add a quest with signup and date vote, a character signed up to a quest on the survivor board, an event series with an occurrence, a contact with image and tag, and a shop item that is bought and returned.
-3. On the survivor board create a follow-up quest of a doomed-board quest if the UI allows it.
-4. Check /platform/Users Boards column counts, names on hover (desktop) and in the details list (phone User-Agent with touch).
-5. Select the doomed board as the active board, remove every member on its Platform Members page, open Delete from the Platform board list.
-6. Check per-type counts, collapsed name lists, "Kept, but unlinked", "Not affected" row, Delete button disabled until the exact name is typed, green "Name matches" line.
-7. Wrong case keeps the button disabled and Enter does not submit; exact name then Delete board gives the board list with toast and no error page.
-8. Any board page sends you to the board picker; survivor board keeps its quest signup (without character) and everything else intact.
-9. Phone User-Agent at 390px: very long name and many quests, no horizontal scroll, names wrap; wrong name blocks submit; Back after a cancelled attempt shows button state matching the field.
-10. Delete the survivor board to clean up.
+Run by Claude for the user against the local SQL Server, app on localhost:8000, driven with Playwright as the
+qb-audit super admin. Re-run first: full suite with SQL Server required, 1389 unit + 1855 integration passed, 0 skipped.
+"UAT Doomed Board" (13 quests, dates, votes, a signup, an event series, a character, a contact with image and tag) and
+"UAT Survivor Board" were created through the app and deleted through the typed-name page with the toast and no error
+page. All six items in `102-UAT.md` pass, with evidence there. Not exercised in the browser: the cross-board
+"Kept, but unlinked" rows (the forms cannot create that data; covered by the integration and SQL Server tests) and the
+shop purchase step (shop item creation fails on an older, separate bug in `ShopManagementController.Create`).
 
 Backstops left from 102-08 for this UAT: bfcache restore state (button state matches input after Back) and the no-JS
 path (button never unlocks without JavaScript; the rendered disabled state is already covered by a test).
