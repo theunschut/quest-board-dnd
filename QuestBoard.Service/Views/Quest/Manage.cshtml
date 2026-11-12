@@ -12,66 +12,105 @@
     var boardType = (BoardType)ViewBag.BoardType;
     var boardToday = (DateOnly)ViewBag.BoardToday;
     var moveControl = ViewBag.MoveControl as MoveControlState;
+
+    // One date's votes as three columns: a badge carrying the icon and the word, then who voted that way.
+    void VoteColumns(ProposedDate date)
+    {
+        var yesVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Yes).OrderBy(v => v.PlayerSignup?.SignupTime).ToList();
+        var maybeVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Maybe).OrderBy(v => v.PlayerSignup?.SignupTime).ToList();
+        var noVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.No).OrderBy(v => v.PlayerSignup?.SignupTime).ToList();
+
+        <div class="row quest-manage-votes">
+            <div class="col-md-4">
+                <span class="badge bg-success"><i class="fas fa-check me-1" aria-hidden="true"></i>Yes (@yesVotes.Count)</span>
+                <ul class="list-unstyled mt-2 mb-0">
+                    @foreach (var vote in yesVotes)
+                    {
+                        <li>@vote.PlayerSignup?.Player.Name</li>
+                    }
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <span class="badge bg-warning"><i class="fas fa-question me-1" aria-hidden="true"></i>Maybe (@maybeVotes.Count)</span>
+                <ul class="list-unstyled mt-2 mb-0">
+                    @foreach (var vote in maybeVotes)
+                    {
+                        <li>@vote.PlayerSignup?.Player.Name</li>
+                    }
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <span class="badge bg-danger"><i class="fas fa-times me-1" aria-hidden="true"></i>No (@noVotes.Count)</span>
+                <ul class="list-unstyled mt-2 mb-0">
+                    @foreach (var vote in noVotes)
+                    {
+                        <li>@vote.PlayerSignup?.Player.Name</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/quest-manage.css" asp-append-version="true" />
+}
 
 @if (!(bool)ViewBag.IsAuthorized)
 {
     <div class="alert alert-danger">
-        <h5>Access Denied</h5>
+        <h2><i class="fas fa-ban me-2" aria-hidden="true"></i>Access Denied</h2>
         <p>You are not authorized to manage this quest. Only the quest's Dungeon Master can access this page.</p>
         <a href="@Url.Action("Details", "Quest", new { id = Model.Id })" class="btn btn-secondary">Back to Quest Details</a>
     </div>
 }
 else
 {
+    <div class="quest-manage-page">
     <div class="row">
         <div class="col-md-8">
-            <div class="card modern-card">
-                <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                    <h2 class="mb-0">@ViewData["Title"]</h2>
+            <div class="card modern-card mb-3">
+                <div class="card-header modern-card-header d-flex justify-content-between align-items-start gap-3">
+                    <h1 class="mb-0">@ViewData["Title"]</h1>
                     @if (boardType != BoardType.Campaign)
                     {
-                        <span class="badge cr-badge fs-6">
-                            <i class="fas fa-dice-d20 me-1"></i>
+                        <span class="badge quest-manage-cr flex-shrink-0">
+                            <i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>
                             CR @Model.ChallengeRating
                         </span>
                     }
                 </div>
                 <div class="card-body modern-card-body">
-                    <div class="card modern-card mb-3">
-                        <div class="card-header modern-card-header">
-                            <h5 class="mb-0">
-                                <button class="btn btn-link text-decoration-none text-warning fw-bold p-0" type="button" data-bs-toggle="collapse" data-bs-target="#questDescriptionCollapse" aria-expanded="false" aria-controls="questDescriptionCollapse">
-                                    <i class="fas fa-scroll me-2"></i>Description
-                                    <i class="fas fa-chevron-down ms-2"></i>
-                                </button>
-                            </h5>
-                        </div>
+                    <section class="quest-manage-disclosure">
+                        <h2>
+                            <button class="quest-manage-disclosure-btn" type="button" data-bs-toggle="collapse" data-bs-target="#questDescriptionCollapse" aria-expanded="false" aria-controls="questDescriptionCollapse">
+                                <span><i class="fas fa-scroll me-2" aria-hidden="true"></i>Description</span>
+                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                            </button>
+                        </h2>
                         <div id="questDescriptionCollapse" class="collapse">
-                            <div class="card-body modern-card-body">
+                            <div class="quest-manage-disclosure-body">
                                 @Html.Markdown(Model.Description)
                             </div>
                         </div>
-                    </div>
+                    </section>
 
                     @if (!string.IsNullOrWhiteSpace(Model.Rewards))
                     {
-                        <div class="card modern-card mb-3">
-                            <div class="card-header modern-card-header">
-                                <h5 class="mb-0">
-                                    <button class="btn btn-link text-decoration-none text-warning fw-bold p-0" type="button" data-bs-toggle="collapse" data-bs-target="#questRewardsCollapse" aria-expanded="false" aria-controls="questRewardsCollapse">
-                                        <i class="fas fa-coins me-2"></i>Rewards
-                                        <i class="fas fa-chevron-down ms-2"></i>
-                                    </button>
-                                </h5>
-                            </div>
+                        <section class="quest-manage-disclosure">
+                            <h2>
+                                <button class="quest-manage-disclosure-btn" type="button" data-bs-toggle="collapse" data-bs-target="#questRewardsCollapse" aria-expanded="false" aria-controls="questRewardsCollapse">
+                                    <span><i class="fas fa-coins me-2" aria-hidden="true"></i>Rewards</span>
+                                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                </button>
+                            </h2>
                             <div id="questRewardsCollapse" class="collapse">
-                                <div class="card-body modern-card-body">
+                                <div class="quest-manage-disclosure-body">
                                     @Html.Markdown(Model.Rewards)
                                 </div>
                             </div>
-                        </div>
+                        </section>
                     }
 
                     @if (TempData["Success"] != null)
@@ -79,8 +118,8 @@ else
                         <form asp-action="SendReminder" asp-route-id="@Model.Id" method="post" class="mb-2">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="forceResend" value="true" />
-                            <button type="submit" class="btn btn-sm btn-outline-warning">
-                                <i class="fas fa-redo me-1"></i>Send again (bypasses duplicate check)
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                <i class="fas fa-redo me-2" aria-hidden="true"></i>Send again (bypasses duplicate check)
                             </button>
                         </form>
                     }
@@ -89,53 +128,19 @@ else
                     {
                         @if (Model.IsFinalized)
                         {
-                            <h6>Selected Date:</h6>
-
                             var finalizedDate = Model.ProposedDates!.FirstOrDefault(pd => pd.Date.Date == Model.FinalizedDate?.Date);
                             if (finalizedDate != null)
                             {
-                                var yesVotes = finalizedDate.PlayerVotes.Where(v => v.Vote == VoteType.Yes).ToList();
-                                var maybeVotes = finalizedDate.PlayerVotes.Where(v => v.Vote == VoteType.Maybe).ToList();
-                                var noVotes = finalizedDate.PlayerVotes.Where(v => v.Vote == VoteType.No).ToList();
-
-                                <div class="date-option border-success">
-                                    <div class="mb-2">
-                                        <strong>@finalizedDate.Date.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</strong>
-                                        <span class="badge bg-success ms-2">Finalized</span>
-                                    </div>
-
-                                    <div class="mt-2">
-                                        <div class="row">
-                                            <div class="col-md-4">
-                                                <small class="text-success"><strong>Yes (@yesVotes.Count):</strong></small>
-                                                <ul class="list-unstyled small">
-                                                    @foreach (var vote in yesVotes.OrderBy(v => v.PlayerSignup?.SignupTime))
-                                                    {
-                                                        <li>@vote.PlayerSignup?.Player.Name</li>
-                                                    }
-                                                </ul>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <small class="text-warning"><strong>Maybe (@maybeVotes.Count):</strong></small>
-                                                <ul class="list-unstyled small">
-                                                    @foreach (var vote in maybeVotes.OrderBy(v => v.PlayerSignup?.SignupTime))
-                                                    {
-                                                        <li>@vote.PlayerSignup?.Player.Name</li>
-                                                    }
-                                                </ul>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <small class="text-danger"><strong>No (@noVotes.Count):</strong></small>
-                                                <ul class="list-unstyled small">
-                                                    @foreach (var vote in noVotes.OrderBy(v => v.PlayerSignup?.SignupTime))
-                                                    {
-                                                        <li>@vote.PlayerSignup?.Player.Name</li>
-                                                    }
-                                                </ul>
-                                            </div>
+                                <section class="quest-manage-section">
+                                    <h2>Selected Date</h2>
+                                    <div class="date-option border-success">
+                                        <div class="mb-2">
+                                            <strong>@Html.WallClock(finalizedDate.Date, "date-time")</strong>
+                                            <span class="badge bg-success ms-2"><i class="fas fa-check-circle me-1" aria-hidden="true"></i>Finalized</span>
                                         </div>
+                                        @{ VoteColumns(finalizedDate); }
                                     </div>
-                                </div>
+                                </section>
                             }
                         }
                         else
@@ -143,89 +148,57 @@ else
                             @if (!Model.ProposedDates?.Any() == true)
                             {
                                 <div class="alert alert-warning">
-                                    <h5><i class="fas fa-exclamation-triangle me-2"></i>No Proposed Dates</h5>
+                                    <h2><i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>No Proposed Dates</h2>
                                     <p>This quest doesn't have any proposed dates yet. Please edit the quest to add some dates before you can finalize it.</p>
-                                    <div class="mt-3">
-                                        <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary">
-                                            <i class="fas fa-edit me-1"></i>Edit Quest
+                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                        <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-warning">
+                                            <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit Quest
                                         </a>
-                                        <a href="#" class="btn btn-danger ms-2" onclick="deleteQuest(@Model.Id)">
-                                            <i class="fas fa-trash me-1"></i>Delete Quest
-                                        </a>
+                                        <button type="button" class="btn btn-danger" data-action="delete-quest" data-quest-id="@Model.Id" data-confirm-message="Are you sure?">
+                                            <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete Quest
+                                        </button>
                                     </div>
                                 </div>
                             }
                             else
                             {
-                                <form asp-action="Finalize" asp-route-id="@Model.Id" method="post">
-                                    <h6>Proposed Dates & Voting Results:</h6>
+                                <form asp-action="Finalize" asp-route-id="@Model.Id" method="post" data-max-players="@Model.TotalPlayerCount">
                                     @{
                                         var maxYesVotes = Model.ProposedDates!.Max(pd => pd.PlayerVotes.Count(v => v.Vote == VoteType.Yes));
                                         var hasMultipleDatesWithSameVotes = Model.ProposedDates?.Count(pd => pd.PlayerVotes.Count(v => v.Vote == VoteType.Yes) == maxYesVotes) > 1;
                                         var orderedDates = Model.ProposedDates?.OrderBy(pd => pd.Date).ToList();
                                     }
-                                    @foreach (var date in orderedDates ?? [])
-                                    {
-                                        var yesVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Yes).ToList();
-                                        var maybeVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Maybe).ToList();
-                                        var noVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.No).ToList();
-                                        var isRecommended = !hasMultipleDatesWithSameVotes && yesVotes.Count == maxYesVotes;
+                                    <section class="quest-manage-section">
+                                        <h2>Proposed Dates &amp; Voting Results</h2>
+                                        @foreach (var date in orderedDates ?? [])
+                                        {
+                                            var yesVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Yes).ToList();
+                                            var maybeVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.Maybe).ToList();
+                                            var noVotes = date.PlayerVotes.Where(v => v.Vote == VoteType.No).ToList();
+                                            var isRecommended = !hasMultipleDatesWithSameVotes && yesVotes.Count == maxYesVotes;
 
-                                        <div class="date-option manage-date-option @(isRecommended ? "border-success" : "")"
-                                             data-date-id="@date.Id"
-                                             data-yes-votes="@string.Join(",", yesVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))"
-                                             data-maybe-votes="@string.Join(",", maybeVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))"
-                                             data-no-votes="@string.Join(",", noVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))">
-                                            <div class="form-check">
-                                                <input class="form-check-input date-selector" type="radio" name="SelectedDateId" value="@date.Id"
-                                                       id="date_@date.Id" @(isRecommended ? "checked" : "") />
-                                                <label class="form-check-label" for="date_@date.Id">
-                                                    <strong>@date.Date.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</strong>
-                                                    @if (isRecommended)
-                                                    {
-                                                        <span class="badge bg-success ms-2">Recommended</span>
-                                                    }
-                                                </label>
-                                            </div>
-
-                                            <div class="mt-2">
-                                                <div class="row">
-                                                    <div class="col-md-4">
-                                                        <small class="text-success"><strong>Yes (@yesVotes.Count):</strong></small>
-                                                        <ul class="list-unstyled small">
-                                                            @foreach (var vote in yesVotes.OrderBy(v => v.PlayerSignup?.SignupTime))
-                                                            {
-                                                                <li>@vote.PlayerSignup?.Player.Name</li>
-                                                            }
-                                                        </ul>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <small class="text-warning"><strong>Maybe (@maybeVotes.Count):</strong></small>
-                                                        <ul class="list-unstyled small">
-                                                            @foreach (var vote in maybeVotes.OrderBy(v => v.PlayerSignup?.SignupTime))
-                                                            {
-                                                                <li>@vote.PlayerSignup?.Player.Name</li>
-                                                            }
-                                                        </ul>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <small class="text-danger"><strong>No (@noVotes.Count):</strong></small>
-                                                        <ul class="list-unstyled small">
-                                                            @foreach (var vote in noVotes.OrderBy(v => v.PlayerSignup?.SignupTime))
-                                                            {
-                                                                <li>@vote.PlayerSignup?.Player.Name</li>
-                                                            }
-                                                        </ul>
-                                                    </div>
+                                            <div class="date-option manage-date-option @(isRecommended ? "border-success" : "")"
+                                                 data-date-id="@date.Id"
+                                                 data-yes-votes="@string.Join(",", yesVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))"
+                                                 data-maybe-votes="@string.Join(",", maybeVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))"
+                                                 data-no-votes="@string.Join(",", noVotes.Select(v => v.PlayerSignup?.Id.ToString()).Where(id => !string.IsNullOrEmpty(id)))">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input date-selector" type="radio" name="SelectedDateId" value="@date.Id"
+                                                           id="date_@date.Id" @(isRecommended ? "checked" : "") />
+                                                    <label class="form-check-label" for="date_@date.Id">
+                                                        <strong>@Html.WallClock(date.Date, "date-time")</strong>
+                                                        @if (isRecommended)
+                                                        {
+                                                            <span class="badge bg-success ms-2"><i class="fas fa-star me-1" aria-hidden="true"></i>Recommended</span>
+                                                        }
+                                                    </label>
                                                 </div>
+                                                @{ VoteColumns(date); }
                                             </div>
-                                        </div>
-                                    }
+                                        }
+                                    </section>
 
                                     <hr>
-
-                                    <h6>Player Selection:</h6>
-                                    <p class="text-muted">Select up to @Model.TotalPlayerCount players for this quest.</p>
 
                                     @{
                                         ProposedDate? dateForPlayerSelection = null;
@@ -262,134 +235,145 @@ else
                                             .ToList();
                                     }
 
-                                    <div id="player-selection">
-                                        @* Players Section *@
-                                        @if (playerSignups.Any())
-                                        {
-                                            <div class="mb-3">
-                                                <h6 class="text-primary">
-                                                    <i class="fas fa-users me-2"></i>
-                                                    Players (Select up to @Model.TotalPlayerCount)
-                                                </h6>
-                                                @for (int i = 0; i < playerSignups.Count; i++)
-                                                {
-                                                    var player = playerSignups[i];
-                                                    var isInTopPlayers = i < Model.TotalPlayerCount && availablePlayers.Contains(player);
+                                    <section class="quest-manage-section">
+                                        <h2>Player Selection</h2>
+                                        <p>Select up to @Model.TotalPlayerCount players for this quest.</p>
 
-                                                    <div class="form-check player-item d-flex justify-content-between align-items-center" data-player-id="@player.Id" data-role="player">
-                                                        <div class="flex-grow-1">
-                                                            <input class="form-check-input player-checkbox" type="checkbox" name="SelectedPlayerIds"
-                                                                   value="@player.Id" id="player_@player.Id"
-                                                            @(isInTopPlayers ? "checked" : "") />
-                                                            <label class="form-check-label" for="player_@player.Id">
-                                                                @player.Player.Name
-                                                                <small class="text-muted">
-                                                                    (Signed up: @Html.LocalTime(player.SignupTime, "date-time-compact"))
-                                                                    <span class="availability-status">
-                                                                        @if (availablePlayers.Contains(player))
+                                        <div id="player-selection">
+                                            @* Players Section *@
+                                            @if (playerSignups.Any())
+                                            {
+                                                <div class="mb-3">
+                                                    <h3>
+                                                        <i class="fas fa-users me-2" aria-hidden="true"></i>
+                                                        Players (Select up to @Model.TotalPlayerCount)
+                                                    </h3>
+                                                    @for (int i = 0; i < playerSignups.Count; i++)
+                                                    {
+                                                        var player = playerSignups[i];
+                                                        var isInTopPlayers = i < Model.TotalPlayerCount && availablePlayers.Contains(player);
+
+                                                        <div class="form-check player-item d-flex justify-content-between align-items-center" data-player-id="@player.Id" data-role="player">
+                                                            <div class="flex-grow-1">
+                                                                <input class="form-check-input player-checkbox" type="checkbox" name="SelectedPlayerIds"
+                                                                       value="@player.Id" id="player_@player.Id"
+                                                                @(isInTopPlayers ? "checked" : "") />
+                                                                <label class="form-check-label" for="player_@player.Id">
+                                                                    @player.Player.Name
+                                                                    <small>
+                                                                        (Signed up: @Html.LocalTime(player.SignupTime, "date-time-compact"))
+                                                                        <span class="availability-status">
+                                                                            @if (availablePlayers.Contains(player))
+                                                                            {
+                                                                                <span>- Available for recommended date</span>
+                                                                            }
+                                                                        </span>
+                                                                    </small>
+                                                                </label>
+                                                            </div>
+                                                            @if ((bool)ViewBag.IsAdmin)
+                                                            {
+                                                                <button type="button" class="btn btn-danger btn-sm ms-2" data-action="remove-player" data-signup-id="@player.Id" data-player-name="@player.Player.Name" title="Remove player" aria-label="Remove player @player.Player.Name">
+                                                                    <i class="fas fa-times" aria-hidden="true"></i>
+                                                                </button>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+
+                                            @* Assistant DMs Section *@
+                                            @if (assistantDMs.Any())
+                                            {
+                                                <div class="mb-3">
+                                                    <h3>
+                                                        <i class="fas fa-user-shield me-2" aria-hidden="true"></i>
+                                                        Assistant DMs (Pre-selected, uncheck to exclude)
+                                                    </h3>
+                                                    <div class="alert alert-info small">
+                                                        Assistant DMs are pre-selected by default. Uncheck to exclude them from the quest.
+                                                    </div>
+                                                    @foreach (var assistant in assistantDMs)
+                                                    {
+                                                        var isAvailable = availablePlayers.Contains(assistant);
+                                                        <div class="form-check player-item d-flex justify-content-between align-items-center" data-player-id="@assistant.Id" data-role="assistant">
+                                                            <div class="flex-grow-1">
+                                                                <input class="form-check-input assistant-checkbox" type="checkbox" name="SelectedPlayerIds"
+                                                                       value="@assistant.Id" id="assistant_@assistant.Id"
+                                                                       checked />
+                                                                <label class="form-check-label" for="assistant_@assistant.Id">
+                                                                    @assistant.Player.Name
+                                                                    <small>
+                                                                        (Signed up: @Html.LocalTime(assistant.SignupTime, "date-time-compact"))
+                                                                        @if (isAvailable)
                                                                         {
-                                                                            <span class="text-success">- Available for recommended date</span>
+                                                                            <span>- Available</span>
                                                                         }
-                                                                    </span>
-                                                                </small>
-                                                            </label>
+                                                                    </small>
+                                                                </label>
+                                                            </div>
+                                                            @if ((bool)ViewBag.IsAdmin)
+                                                            {
+                                                                <button type="button" class="btn btn-danger btn-sm ms-2" data-action="remove-player" data-signup-id="@assistant.Id" data-player-name="@assistant.Player.Name" title="Remove player" aria-label="Remove player @assistant.Player.Name">
+                                                                    <i class="fas fa-times" aria-hidden="true"></i>
+                                                                </button>
+                                                            }
                                                         </div>
-                                                        @if ((bool)ViewBag.IsAdmin)
-                                                        {
-                                                            <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removePlayerSignup(@player.Id, '@player.Player.Name')" title="Remove player">
-                                                                <i class="fas fa-times"></i>
-                                                            </button>
-                                                        }
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-
-                                        @* Assistant DMs Section *@
-                                        @if (assistantDMs.Any())
-                                        {
-                                            <div class="mb-3">
-                                                <h6 class="text-success">
-                                                    <i class="fas fa-user-shield me-2"></i>
-                                                    Assistant DMs (Pre-selected, uncheck to exclude)
-                                                </h6>
-                                                <div class="alert alert-info small">
-                                                    Assistant DMs are pre-selected by default. Uncheck to exclude them from the quest.
+                                                    }
                                                 </div>
-                                                @foreach (var assistant in assistantDMs)
-                                                {
-                                                    var isAvailable = availablePlayers.Contains(assistant);
-                                                    <div class="form-check player-item d-flex justify-content-between align-items-center" data-player-id="@assistant.Id" data-role="assistant">
-                                                        <div class="flex-grow-1">
-                                                            <input class="form-check-input assistant-checkbox" type="checkbox" name="SelectedPlayerIds"
-                                                                   value="@assistant.Id" id="assistant_@assistant.Id"
-                                                                   checked />
-                                                            <label class="form-check-label" for="assistant_@assistant.Id">
-                                                                @assistant.Player.Name
-                                                                <small class="text-muted">
-                                                                    (Signed up: @Html.LocalTime(assistant.SignupTime, "date-time-compact"))
-                                                                    @if (isAvailable)
-                                                                    {
-                                                                        <span class="text-success">- Available</span>
-                                                                    }
-                                                                </small>
-                                                            </label>
-                                                        </div>
-                                                        @if ((bool)ViewBag.IsAdmin)
-                                                        {
-                                                            <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removePlayerSignup(@assistant.Id, '@assistant.Player.Name')" title="Remove player">
-                                                                <i class="fas fa-times"></i>
-                                                            </button>
-                                                        }
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
+                                            }
 
-                                        @* Spectators Section *@
-                                        @if (spectators.Any())
-                                        {
-                                            <div class="mb-3">
-                                                <h6 class="text-info">
-                                                    <i class="fas fa-eye me-2"></i>
-                                                    Spectators (Auto-approved)
-                                                </h6>
-                                                <div class="alert alert-success small">
-                                                    Spectators are automatically approved and do not require selection.
-                                                </div>
-                                                @foreach (var spectator in spectators)
-                                                {
-                                                    <div class="player-item text-muted d-flex justify-content-between align-items-center">
-                                                        <div class="flex-grow-1">
-                                                            <i class="fas fa-check-circle text-success me-2"></i>
-                                                            @spectator.Player.Name
-                                                            <small>(Signed up: @Html.LocalTime(spectator.SignupTime, "date-time-compact"))</small>
-                                                        </div>
-                                                        @if ((bool)ViewBag.IsAdmin)
-                                                        {
-                                                            <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removePlayerSignup(@spectator.Id, '@spectator.Player.Name')" title="Remove spectator">
-                                                                <i class="fas fa-times"></i>
-                                                            </button>
-                                                        }
+                                            @* Spectators Section *@
+                                            @if (spectators.Any())
+                                            {
+                                                <div class="mb-3">
+                                                    <h3>
+                                                        <i class="fas fa-eye me-2" aria-hidden="true"></i>
+                                                        Spectators (Auto-approved)
+                                                    </h3>
+                                                    <div class="alert alert-success small">
+                                                        Spectators are automatically approved and do not require selection.
                                                     </div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
+                                                    @foreach (var spectator in spectators)
+                                                    {
+                                                        <div class="player-item d-flex justify-content-between align-items-center">
+                                                            <div class="flex-grow-1">
+                                                                <i class="fas fa-check-circle me-2" aria-hidden="true"></i>
+                                                                @spectator.Player.Name
+                                                                <small>(Signed up: @Html.LocalTime(spectator.SignupTime, "date-time-compact"))</small>
+                                                            </div>
+                                                            @if ((bool)ViewBag.IsAdmin)
+                                                            {
+                                                                <button type="button" class="btn btn-danger btn-sm ms-2" data-action="remove-player" data-signup-id="@spectator.Id" data-player-name="@spectator.Player.Name" title="Remove spectator" aria-label="Remove spectator @spectator.Player.Name">
+                                                                    <i class="fas fa-times" aria-hidden="true"></i>
+                                                                </button>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </section>
 
                                     <hr>
 
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <button type="submit" class="btn btn-success">Finalize Quest</button>
-                                            <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary ms-2">
-                                                <i class="fas fa-edit me-1"></i>Edit Quest
-                                            </a>
-                                            <a href="#" class="btn btn-danger ms-2" onclick="deleteQuest(@Model.Id)">
-                                                <i class="fas fa-trash me-1"></i>Delete
+                                    <div class="d-flex flex-wrap justify-content-between gap-2">
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="fas fa-check-circle me-2" aria-hidden="true"></i>Finalize Quest
+                                            </button>
+                                            <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-warning">
+                                                <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit Quest
                                             </a>
                                         </div>
-                                        <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button type="button" class="btn btn-secondary" data-action="reload">
+                                                <i class="fas fa-sync me-2" aria-hidden="true"></i>Refresh Data
+                                            </button>
+                                            <button type="button" class="btn btn-danger" data-action="delete-quest" data-quest-id="@Model.Id" data-confirm-message="Are you sure?">
+                                                <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete Quest
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             }
@@ -397,7 +381,6 @@ else
 
                         @if (Model.IsFinalized)
                         {
-                            <hr>
                             var selectedPlayers = Model.PlayerSignups
                                 .Where(ps => ps.IsSelected && ps.Role == SignupRole.Player)
                                 .OrderBy(ps => ps.SignupTime)
@@ -416,125 +399,125 @@ else
                             allSelectedParticipants.AddRange(selectedAssistants);
                             allSelectedParticipants.AddRange(selectedSpectators);
 
-                            @if (allSelectedParticipants.Any())
-                            {
-                                var finalizedProposedDateManage = Model.ProposedDates
-                                    ?.FirstOrDefault(pd => pd.Date == Model.FinalizedDate);
+                            <section class="quest-manage-section">
+                                <h2>Selected Participants</h2>
+                                @if (allSelectedParticipants.Any())
+                                {
+                                    var finalizedProposedDateManage = Model.ProposedDates
+                                        ?.FirstOrDefault(pd => pd.Date == Model.FinalizedDate);
 
-                                <h6>Selected Participants:</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Player Name</th>
-                                                <th>Character</th>
-                                                <th>Role</th>
-                                                <th>Vote</th>
-                                                <th>Signup Time</th>
-                                                @if ((bool)ViewBag.IsAdmin)
-                                                {
-                                                    <th>Actions</th>
-                                                }
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var participant in allSelectedParticipants)
-                                            {
-                                                var manageParticipantVote = participant.DateVotes
-                                                    ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDateManage?.Id)?.Vote;
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
                                                 <tr>
-                                                    <td>@participant.Player.Name</td>
-                                                    <td>
-                                                        @if (participant.Character != null)
-                                                        {
-                                                            <div class="d-flex align-items-center">
-                                                                <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = participant.Character.Id })"
-                                                                     alt="@participant.Character.Name"
-                                                                     class="character-mini-avatar me-2"
-                                                                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
-                                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                                                <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
-                                                                    <i class="fas fa-user"></i>
-                                                                </span>
-                                                                <span>@participant.Character.Name</span>
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted fst-italic">No character</span>
-                                                        }
-                                                    </td>
-                                                    <td>
-                                                        @if (participant.Role == SignupRole.Player)
-                                                        {
-                                                            <span class="badge bg-primary">
-                                                                <i class="fas fa-user me-1"></i>Player
-                                                            </span>
-                                                        }
-                                                        else if (participant.Role == SignupRole.AssistantDM)
-                                                        {
-                                                            <span class="badge bg-success">
-                                                                <i class="fas fa-user-shield me-1"></i>Assistant DM
-                                                            </span>
-                                                        }
-                                                        else if (participant.Role == SignupRole.Spectator)
-                                                        {
-                                                            <span class="badge bg-info">
-                                                                <i class="fas fa-eye me-1"></i>Spectator
-                                                            </span>
-                                                        }
-                                                    </td>
-                                                    <td>
-                                                        @if (participant.Role == SignupRole.Spectator)
-                                                        {
-                                                            <span class="badge bg-secondary">
-                                                                <i class="fas fa-minus me-1"></i>N/A
-                                                            </span>
-                                                        }
-                                                        else if (manageParticipantVote == VoteType.Yes)
-                                                        {
-                                                            <span class="badge bg-success">
-                                                                <i class="fas fa-check me-1"></i>Yes
-                                                            </span>
-                                                        }
-                                                        else if (manageParticipantVote == VoteType.Maybe)
-                                                        {
-                                                            <span class="badge bg-warning text-dark">
-                                                                <i class="fas fa-question me-1"></i>Maybe
-                                                            </span>
-                                                        }
-                                                        else if (manageParticipantVote == VoteType.No)
-                                                        {
-                                                            <span class="badge bg-danger">
-                                                                <i class="fas fa-times me-1"></i>No
-                                                            </span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="badge bg-secondary">
-                                                                <i class="fas fa-minus me-1"></i>No Vote
-                                                            </span>
-                                                        }
-                                                    </td>
-                                                    <td><small class="text-muted">@Html.LocalTime(participant.SignupTime, "date-time-compact")</small></td>
+                                                    <th>Player Name</th>
+                                                    <th>Character</th>
+                                                    <th>Role</th>
+                                                    <th>Vote</th>
+                                                    <th>Signup Time</th>
                                                     @if ((bool)ViewBag.IsAdmin)
                                                     {
-                                                        <td>
-                                                            <button type="button" class="btn btn-danger btn-sm" onclick="removePlayerSignup(@participant.Id, '@participant.Player.Name')" title="Remove participant">
-                                                                <i class="fas fa-trash me-1"></i>Remove
-                                                            </button>
-                                                        </td>
+                                                        <th>Actions</th>
                                                     }
                                                 </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                            else
-                            {
-                                <p class="text-muted">No participants selected for this quest.</p>
-                            }
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var participant in allSelectedParticipants)
+                                                {
+                                                    var manageParticipantVote = participant.DateVotes
+                                                        ?.FirstOrDefault(dv => dv.ProposedDateId == finalizedProposedDateManage?.Id)?.Vote;
+                                                    <tr>
+                                                        <td>@participant.Player.Name</td>
+                                                        <td>
+                                                            @if (participant.Character != null)
+                                                            {
+                                                                <div class="d-flex align-items-center">
+                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = participant.Character.Id })"
+                                                                         alt="@participant.Character.Name"
+                                                                         class="avatar-32 me-2" />
+                                                                    <span class="avatar-32 avatar-32--placeholder me-2" hidden aria-hidden="true">
+                                                                        <i class="fas fa-user" aria-hidden="true"></i>
+                                                                    </span>
+                                                                    <span>@participant.Character.Name</span>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted fst-italic">No character</span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (participant.Role == SignupRole.Player)
+                                                            {
+                                                                <span class="badge bg-primary">
+                                                                    <i class="fas fa-user me-1" aria-hidden="true"></i>Player
+                                                                </span>
+                                                            }
+                                                            else if (participant.Role == SignupRole.AssistantDM)
+                                                            {
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-user-shield me-1" aria-hidden="true"></i>Assistant DM
+                                                                </span>
+                                                            }
+                                                            else if (participant.Role == SignupRole.Spectator)
+                                                            {
+                                                                <span class="badge bg-info">
+                                                                    <i class="fas fa-eye me-1" aria-hidden="true"></i>Spectator
+                                                                </span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (participant.Role == SignupRole.Spectator)
+                                                            {
+                                                                <span class="badge bg-secondary">
+                                                                    <i class="fas fa-minus me-1" aria-hidden="true"></i>N/A
+                                                                </span>
+                                                            }
+                                                            else if (manageParticipantVote == VoteType.Yes)
+                                                            {
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-check me-1" aria-hidden="true"></i>Yes
+                                                                </span>
+                                                            }
+                                                            else if (manageParticipantVote == VoteType.Maybe)
+                                                            {
+                                                                <span class="badge bg-warning text-dark">
+                                                                    <i class="fas fa-question me-1" aria-hidden="true"></i>Maybe
+                                                                </span>
+                                                            }
+                                                            else if (manageParticipantVote == VoteType.No)
+                                                            {
+                                                                <span class="badge bg-danger">
+                                                                    <i class="fas fa-times me-1" aria-hidden="true"></i>No
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-secondary">
+                                                                    <i class="fas fa-minus me-1" aria-hidden="true"></i>No Vote
+                                                                </span>
+                                                            }
+                                                        </td>
+                                                        <td><small class="text-muted">@Html.LocalTime(participant.SignupTime, "date-time-compact")</small></td>
+                                                        @if ((bool)ViewBag.IsAdmin)
+                                                        {
+                                                            <td>
+                                                                <button type="button" class="btn btn-danger btn-sm" data-action="remove-player" data-signup-id="@participant.Id" data-player-name="@participant.Player.Name" title="Remove participant" aria-label="Remove participant @participant.Player.Name">
+                                                                    <i class="fas fa-trash me-1" aria-hidden="true"></i>Remove
+                                                                </button>
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p>No participants selected for this quest.</p>
+                                }
+                            </section>
 
                             var waitlistFinalizedProposedDateManage = Model.ProposedDates?.FirstOrDefault(pd => pd.Date == Model.FinalizedDate);
                             var waitlistPlayersManage = waitlistFinalizedProposedDateManage != null
@@ -543,126 +526,138 @@ else
 
                             @if (waitlistPlayersManage.Any())
                             {
-                                <h6>Waitlist:</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Player Name</th>
-                                                <th>Character</th>
-                                                <th>Role</th>
-                                                <th>Vote</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var player in waitlistPlayersManage)
-                                            {
-                                                var waitlistPlayerVoteManage = player.DateVotes
-                                                    ?.FirstOrDefault(dv => dv.ProposedDateId == waitlistFinalizedProposedDateManage?.Id)?.Vote;
+                                <section class="quest-manage-section">
+                                    <h2>Waitlist</h2>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
                                                 <tr>
-                                                    <td>@player.Player.Name</td>
-                                                    <td>
-                                                        @if (player.Character != null)
-                                                        {
-                                                            <div class="d-flex align-items-center">
-                                                                <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
-                                                                     alt="@player.Character.Name"
-                                                                     class="character-mini-avatar me-2"
-                                                                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
-                                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                                                <span class="character-mini-avatar-placeholder me-2" style="width: 32px; height: 32px; display: none; align-items: center; justify-content: center; background-color: #6c757d; color: white; border-radius: 50%;">
-                                                                    <i class="fas fa-user"></i>
-                                                                </span>
-                                                                <span>@player.Character.Name</span>
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted fst-italic">No character</span>
-                                                        }
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-secondary">
-                                                            <i class="fas fa-user me-1"></i>Player (Waitlist)
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        @if (waitlistPlayerVoteManage == VoteType.Yes)
-                                                        {
-                                                            <span class="badge bg-success">
-                                                                <i class="fas fa-check me-1"></i>Yes
-                                                            </span>
-                                                        }
-                                                        else if (waitlistPlayerVoteManage == VoteType.Maybe)
-                                                        {
-                                                            <span class="badge bg-warning text-dark">
-                                                                <i class="fas fa-question me-1"></i>Maybe
-                                                            </span>
-                                                        }
-                                                        else if (waitlistPlayerVoteManage == VoteType.No)
-                                                        {
-                                                            <span class="badge bg-danger">
-                                                                <i class="fas fa-times me-1"></i>No
-                                                            </span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="badge bg-secondary">
-                                                                <i class="fas fa-minus me-1"></i>No Vote
-                                                            </span>
-                                                        }
-                                                    </td>
+                                                    <th>Player Name</th>
+                                                    <th>Character</th>
+                                                    <th>Role</th>
+                                                    <th>Vote</th>
                                                 </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var player in waitlistPlayersManage)
+                                                {
+                                                    var waitlistPlayerVoteManage = player.DateVotes
+                                                        ?.FirstOrDefault(dv => dv.ProposedDateId == waitlistFinalizedProposedDateManage?.Id)?.Vote;
+                                                    <tr>
+                                                        <td>@player.Player.Name</td>
+                                                        <td>
+                                                            @if (player.Character != null)
+                                                            {
+                                                                <div class="d-flex align-items-center">
+                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
+                                                                         alt="@player.Character.Name"
+                                                                         class="avatar-32 me-2" />
+                                                                    <span class="avatar-32 avatar-32--placeholder me-2" hidden aria-hidden="true">
+                                                                        <i class="fas fa-user" aria-hidden="true"></i>
+                                                                    </span>
+                                                                    <span>@player.Character.Name</span>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted fst-italic">No character</span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-secondary">
+                                                                <i class="fas fa-user me-1" aria-hidden="true"></i>Player (Waitlist)
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            @if (waitlistPlayerVoteManage == VoteType.Yes)
+                                                            {
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-check me-1" aria-hidden="true"></i>Yes
+                                                                </span>
+                                                            }
+                                                            else if (waitlistPlayerVoteManage == VoteType.Maybe)
+                                                            {
+                                                                <span class="badge bg-warning text-dark">
+                                                                    <i class="fas fa-question me-1" aria-hidden="true"></i>Maybe
+                                                                </span>
+                                                            }
+                                                            else if (waitlistPlayerVoteManage == VoteType.No)
+                                                            {
+                                                                <span class="badge bg-danger">
+                                                                    <i class="fas fa-times me-1" aria-hidden="true"></i>No
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-secondary">
+                                                                    <i class="fas fa-minus me-1" aria-hidden="true"></i>No Vote
+                                                                </span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
                             }
 
                             <hr>
 
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="d-flex gap-2">
-                                    <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary">
-                                        <i class="fas fa-edit me-1"></i>Edit Quest
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-warning">
+                                        <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit Quest
                                     </a>
-                                    <form asp-action="Open" method="post" style="display: inline;">
+                                    <form asp-action="Open" method="post" class="d-inline">
                                         <input type="hidden" name="id" value="@Model.Id" />
-                                        <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure you want to open this quest? This will reopen it for changes and reset player selections.');">Open Quest</button>
+                                        <button type="submit" class="btn btn-warning" data-confirm-message="Are you sure you want to open this quest? This will reopen it for changes and reset player selections.">
+                                            <i class="fas fa-unlock me-2" aria-hidden="true"></i>Open Quest
+                                        </button>
                                     </form>
                                 </div>
-                                <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                                <button type="button" class="btn btn-secondary" data-action="reload">
+                                    <i class="fas fa-sync me-2" aria-hidden="true"></i>Refresh Data
+                                </button>
                             </div>
                         }
                     }
                     @if (boardType == BoardType.Campaign)
                     {
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex gap-2">
-                                <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-primary">
-                                    <i class="fas fa-edit me-1"></i>Edit Quest
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="@Url.Action("Edit", "Quest", new { id = Model.Id })" class="btn btn-warning">
+                                    <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit Quest
                                 </a>
                                 @if (!Model.IsClosed)
                                 {
-                                    <form asp-action="Close" method="post" style="display: inline;">
+                                    <form asp-action="Close" method="post" class="d-inline">
                                         <input type="hidden" name="id" value="@Model.Id" />
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-secondary">Close Quest</button>
+                                        <button type="submit" class="btn btn-secondary">
+                                            <i class="fas fa-lock me-2" aria-hidden="true"></i>Close Quest
+                                        </button>
                                     </form>
                                 }
                                 else
                                 {
-                                    <form asp-action="Reopen" method="post" style="display: inline;">
+                                    <form asp-action="Reopen" method="post" class="d-inline">
                                         <input type="hidden" name="id" value="@Model.Id" />
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-warning">Reopen Quest</button>
+                                        <button type="submit" class="btn btn-warning">
+                                            <i class="fas fa-unlock me-2" aria-hidden="true"></i>Reopen Quest
+                                        </button>
                                     </form>
                                 }
-                                <a href="#" class="btn btn-danger" onclick="deleteQuest(@Model.Id)">
-                                    <i class="fas fa-trash me-1"></i>Delete
-                                </a>
                             </div>
-                            <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Refresh Data</button>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-secondary" data-action="reload">
+                                    <i class="fas fa-sync me-2" aria-hidden="true"></i>Refresh Data
+                                </button>
+                                <button type="button" class="btn btn-danger" data-action="delete-quest" data-quest-id="@Model.Id" data-confirm-message="Are you sure?">
+                                    <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete Quest
+                                </button>
+                            </div>
                         </div>
                     }
                 </div>
@@ -672,11 +667,11 @@ else
         <div class="col-md-4">
             <div class="card modern-card mb-3">
                 <div class="card-header modern-card-header">
-                    <h5>DM Controls</h5>
+                    <h2 class="h5 mb-0">DM Controls</h2>
                 </div>
                 <div class="card-body modern-card-body">
                     <a href="@Url.Action("Details", "Quest", new { id = Model.Id })" class="btn btn-secondary w-100">
-                        <i class="fas fa-eye me-2"></i>
+                        <i class="fas fa-eye me-2" aria-hidden="true"></i>
                         View Public Page
                     </a>
                     @if (boardType != BoardType.Campaign && Model.IsFinalized)
@@ -685,13 +680,13 @@ else
                         {
                             <a href="@Url.Action("CreateFollowUp", "Quest", new { id = Model.Id })"
                                class="btn btn-primary w-100 mt-2">
-                                <i class="fas fa-scroll me-2"></i>Create Follow-Up Quest
+                                <i class="fas fa-scroll me-2" aria-hidden="true"></i>Create Follow-Up Quest
                             </a>
                         }
                         <form asp-action="SendReminder" asp-route-id="@Model.Id" method="post" class="mt-2">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-info w-100">
-                                <i class="fas fa-envelope me-2"></i>Send Reminder
+                                <i class="fas fa-envelope me-2" aria-hidden="true"></i>Send Reminder
                             </button>
                         </form>
                     }
@@ -716,7 +711,7 @@ else
 
             <div class="card modern-card">
                 <div class="card-header modern-card-header">
-                    <h5>Quest Summary</h5>
+                    <h2 class="h5 mb-0">Quest Summary</h2>
                 </div>
                 <div class="card-body modern-card-body">
                     <p><strong>DM:</strong> @Model.DungeonMaster?.Name</p>
@@ -749,7 +744,7 @@ else
                                 }
                             }
                             <span class="badge @statusBadge">
-                                <i class="@statusIcon me-1"></i>
+                                <i class="@statusIcon me-1" aria-hidden="true"></i>
                                 @statusText
                             </span>
                         </p>
@@ -763,11 +758,11 @@ else
                             <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
                                 @if (anyoneHasKey)
                                 {
-                                    <i class="fas fa-key me-1"></i>@:Available
+                                    <i class="fas fa-key me-1" aria-hidden="true"></i>@:Available
                                 }
                                 else
                                 {
-                                    <i class="fas fa-lock me-1"></i>@:No Key
+                                    <i class="fas fa-lock me-1" aria-hidden="true"></i>@:No Key
                                 }
                             </span>
                         </p>
@@ -779,7 +774,7 @@ else
                     @if (Model.FollowUpQuest != null)
                     {
                         <p>
-                            <i class="fas fa-scroll text-warning me-2"></i>
+                            <i class="fas fa-scroll me-2" aria-hidden="true"></i>
                             <strong>Continues in:</strong>
                             <a href="@Url.Action("Details", "Quest", new { id = Model.FollowUpQuest.Id })">
                                 @Model.FollowUpQuest.Title
@@ -789,7 +784,7 @@ else
                     @if (Model.OriginalQuest != null)
                     {
                         <p>
-                            <i class="fas fa-scroll text-warning me-2"></i>
+                            <i class="fas fa-scroll me-2" aria-hidden="true"></i>
                             <strong>Continues from:</strong>
                             <a href="@Url.Action("Details", "Quest", new { id = Model.OriginalQuest.Id })">
                                 @Model.OriginalQuest.Title
@@ -799,7 +794,7 @@ else
 
                     <hr>
 
-                    <h6>Quick Stats:</h6>
+                    <h3 class="h6">Quick Stats</h3>
                     @if (Model.ProposedDates?.Any() == true)
                     {
                         var mostPopularDate = Model.ProposedDates
@@ -809,130 +804,25 @@ else
 
                         <p>
                             <strong>Best Date:</strong>
-                            <small>@mostPopularDate.Date.ToString("MMM dd, h:mm tt")</small>
+                            <small>@Html.WallClock(mostPopularDate.Date, "date-time-compact")</small>
                         </p>
                         <p>
-                            <small class="text-success">@yesCount players available</small>
+                            <small>@yesCount players available</small>
                         </p>
                     }
                     else
                     {
-                        <p class="text-muted">No proposed dates yet</p>
+                        <p>No proposed dates yet</p>
                     }
                 </div>
             </div>
         </div>
     </div>
+    </div>
 }
 
-<script>
-    function deleteQuest(id) {
-        if (confirm("Are you sure?")) {
-            fetch(`/Quest/Delete/${id}`, {
-                method: "DELETE",
-                headers: {
-                    'RequestVerificationToken': '@tokens.RequestToken'
-                }
-            }).then(res => {
-                if (res.ok) {
-                    window.location.href = window.location.origin;
-                } else {
-                    alert("Delete failed.");
-                }
-            });
-        }
-    }
-
-    function removePlayerSignup(signupId, playerName) {
-        if (confirm(`Are you sure you want to remove ${playerName} from this quest? This will delete their signup and all associated votes.`)) {
-            fetch(`/Quest/RemovePlayerSignup/${signupId}`, {
-                method: "DELETE",
-                headers: {
-                    'RequestVerificationToken': '@tokens.RequestToken'
-                }
-            }).then(async res => {
-                if (res.ok) {
-                    // Reload the page to show updated data
-                    window.location.reload();
-                } else {
-                    // Log the response for debugging
-                    const responseText = await res.text();
-                    console.error("Response status:", res.status);
-                    console.error("Response body:", responseText);
-                    alert(`Failed to remove player. Status: ${res.status}. Check console for details.`);
-                }
-            }).catch(err => {
-                console.error("Error removing player:", err);
-                alert("An error occurred while removing the player.");
-            });
-        }
-    }
-
-    function updatePlayerAvailability() {
-        const selectedDateOption = document.querySelector('.date-selector:checked');
-        if (!selectedDateOption) return;
-
-        const dateContainer = selectedDateOption.closest('.date-option');
-        const yesVotes = dateContainer.dataset.yesVotes ? dateContainer.dataset.yesVotes.split(',').filter(id => id) : [];
-        const maybeVotes = dateContainer.dataset.maybeVotes ? dateContainer.dataset.maybeVotes.split(',').filter(id => id) : [];
-        const noVotes = dateContainer.dataset.noVotes ? dateContainer.dataset.noVotes.split(',').filter(id => id) : [];
-
-        // Update each player item
-        document.querySelectorAll('.player-item').forEach(playerItem => {
-            const playerId = playerItem.dataset.playerId;
-            const checkbox = playerItem.querySelector('.player-checkbox');
-            const statusSpan = playerItem.querySelector('.availability-status');
-
-            // Determine availability status
-            let status = '';
-            let shouldBeChecked = false;
-
-            if (yesVotes.includes(playerId)) {
-                status = '<span class="text-success">- Available (Yes)</span>';
-                shouldBeChecked = true;
-            } else if (maybeVotes.includes(playerId)) {
-                status = '<span class="text-warning">- Maybe available</span>';
-                shouldBeChecked = true; // Consider "maybe" as selected per requirements
-            } else if (noVotes.includes(playerId)) {
-                status = '<span class="text-danger">- Not available (No)</span>';
-                shouldBeChecked = false;
-            } else {
-                status = '<span class="text-muted">- No vote</span>';
-                shouldBeChecked = false;
-            }
-
-            // Update the status display
-            statusSpan.innerHTML = status;
-
-            // Update checkbox based on availability
-            checkbox.checked = shouldBeChecked;
-        });
-    }
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        updatePlayerAvailability();
-
-        // Add event listeners to date radio buttons
-        document.querySelectorAll('.date-selector').forEach(radio => {
-            radio.addEventListener('change', updatePlayerAvailability);
-        });
-
-        // Add event listeners to player checkboxes for validation
-        // Only count Player role checkboxes toward the limit
-        document.querySelectorAll('.player-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                // Count only checkboxes whose parent has data-role="player"
-                const selectedPlayerCount = Array.from(document.querySelectorAll('.player-checkbox:checked'))
-                    .filter(cb => cb.closest('[data-role="player"]'))
-                    .length;
-                const maxPlayers = @Model.TotalPlayerCount;
-
-                if (selectedPlayerCount > maxPlayers) {
-                    this.checked = false;
-                    alert('Cannot select more than ' + maxPlayers + ' players for this quest.');
-                }
-            });
-        });
-    });
-</script>
+@section Scripts {
+    <meta name="request-verification-token" content="@tokens.RequestToken" />
+    <script type="module" src="~/js/quest-manage.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/avatar-fallback.js" asp-append-version="true"></script>
+}

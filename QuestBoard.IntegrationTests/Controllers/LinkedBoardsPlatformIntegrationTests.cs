@@ -425,7 +425,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         await SeedBoardAsync(36, "Doomed Table", linkedBoardSetId: setId);
         await SeedBoardAsync(37, "Surviving Table", linkedBoardSetId: setId);
 
-        var response = await PostAsync(client, "/platform/Group/Delete/36");
+        var response = await PostAsync(client, "/platform/Group/Delete/36", ("confirmName", "Doomed Table"));
 
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
         await using (var context = _factory.Database.CreateContext())
@@ -437,7 +437,9 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         var html = await GetIndexHtmlAsync(client);
         html.Should().Contain("Survivor Set");
         html.Should().Contain("Surviving Table");
-        html.Should().NotContain("Doomed Table");
+        // The one-time success toast on the page names the deleted board, so it is set aside
+        // before checking that the board no longer appears in the set.
+        html.Replace("Board &quot;Doomed Table&quot; was deleted.", string.Empty).Should().NotContain("Doomed Table");
     }
 
     [Fact]

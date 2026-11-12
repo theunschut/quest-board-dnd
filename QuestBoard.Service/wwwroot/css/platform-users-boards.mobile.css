@@ -1,0 +1,26 @@
+/*
+ * Platform Users, phone layout: the collapsed list of boards each user belongs to.
+ * These rules are phone-only; the desktop table shows the count in a plain cell.
+ */
+@layer pages {
+  /*
+   * The whole summary is the tap target: at least the minimum hit size. It stays a list item, because a
+   * summary only draws its disclosure triangle as one; align-content centres the line in the taller row.
+   */
+  .user-boards > summary {
+    display: list-item;
+    align-content: center;
+    min-height: var(--qb-hit-min);
+    cursor: pointer;
+  }
+
+  .user-boards-list {
+    padding-left: var(--qb-space-lg);
+    margin: var(--qb-space-xs) 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  .user-boards-list > li + li {
+    margin-top: var(--qb-space-xs);
+  }
+}

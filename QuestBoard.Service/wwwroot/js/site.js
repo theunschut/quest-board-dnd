@@ -1,193 +1,3 @@
-// Add additional proposed date input
-function addProposedDate() {
-    const container = document.getElementById('proposed-dates');
-    if (!container) return;
-    
-    const index = container.children.length;
-    
-    // Determine the correct field name prefix based on the form context
-    // Check if we're in the edit form (has Quest. prefix) or create form (direct ProposedDates)
-    // Also check hidden inputs — Edit.cshtml renders existing dates as hidden inputs, not datetime-local
-    const existingInput = container.querySelector('input[type="datetime-local"], input[type="hidden"][name*="ProposedDates"]');
-    const isEditForm = existingInput && existingInput.name.includes('Quest.ProposedDates');
-    const fieldPrefix = isEditForm ? 'Quest.ProposedDates' : 'ProposedDates';
-    
-    const div = document.createElement('div');
-    div.className = 'mb-3 proposed-date-item';
-    div.innerHTML = `
-        <label class="form-label">Proposed Date ${index + 1}</label>
-        <div class="input-group">
-            <input type="datetime-local" name="${fieldPrefix}[${index}]" class="form-control" required step="60">
-            <button type="button" class="btn btn-danger" onclick="removeProposedDate(this)">
-                <i class="fas fa-trash me-1"></i>Remove
-            </button>
-        </div>
-    `;
-    
-    container.appendChild(div);
-
-    // Pre-fill new input: last filled date + 1 day at 18:00, or today at 18:00
-    const newInput = div.querySelector('input[type="datetime-local"]');
-    const allInputs = container.querySelectorAll('input[type="datetime-local"]');
-    // allInputs now includes the new one; look at all but the last for a prior value
-    let baseDate = null;
-    for (let i = allInputs.length - 2; i >= 0; i--) {
-        if (allInputs[i].value) {
-            baseDate = new Date(allInputs[i].value);
-            break;
-        }
-    }
-    if (baseDate && !isNaN(baseDate.getTime())) {
-        baseDate.setDate(baseDate.getDate() + 1);
-        baseDate.setHours(18, 0, 0, 0);
-    } else {
-        baseDate = new Date();
-        baseDate.setHours(18, 0, 0, 0);
-    }
-    const year = baseDate.getFullYear();
-    const month = String(baseDate.getMonth() + 1).padStart(2, '0');
-    const day = String(baseDate.getDate()).padStart(2, '0');
-    const hours = String(baseDate.getHours()).padStart(2, '0');
-    const minutes = String(baseDate.getMinutes()).padStart(2, '0');
-    newInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-// Remove proposed date input
-function removeProposedDate(button) {
-    const container = document.getElementById('proposed-dates');
-    if (!container || container.children.length <= 1) return;
-    
-    button.closest('.proposed-date-item').remove();
-    
-    // Determine the correct field name prefix based on the form context
-    const existingInput = container.querySelector('input[type="datetime-local"], input[type="hidden"][name*="ProposedDates"]');
-    const isEditForm = existingInput && existingInput.name.includes('Quest.ProposedDates');
-    const fieldPrefix = isEditForm ? 'Quest.ProposedDates' : 'ProposedDates';
-    
-    // Reindex remaining inputs
-    const dateItems = container.querySelectorAll('.proposed-date-item');
-    dateItems.forEach((item, index) => {
-        const label = item.querySelector('label');
-        const visibleInput = item.querySelector('input[type="datetime-local"]');
-        const hiddenInput = item.querySelector('input[type="hidden"]');
-        
-        if (label) label.textContent = `Proposed Date ${index + 1}`;
-        if (visibleInput) visibleInput.name = `${fieldPrefix}[${index}]`;
-        if (hiddenInput) hiddenInput.name = `${fieldPrefix}[${index}]`;
-    });
-}
-
-
-// Calculate optimal number of columns based on container width
-function calculateColumns(containerWidth, cardWidth, gap) {
-    const minColumns = 1; // Always show at least 1 column
-    const maxColumns = Math.floor((containerWidth + gap) / (cardWidth + gap));
-    return Math.max(minColumns, maxColumns);
-}
-
-// Calculate and set card heights based on image proportions
-function setCardHeights() {
-    const cards = document.querySelectorAll('.fantasy-quest-card');
-    
-    cards.forEach(card => {
-        const imageWidth = parseInt(card.dataset.imageWidth);
-        const imageHeight = parseInt(card.dataset.imageHeight);
-        const cardWidth = card.offsetWidth;
-        
-        if (imageWidth && imageHeight && cardWidth) {
-            const proportionalHeight = Math.round(cardWidth * (imageHeight / imageWidth));
-            card.style.height = `${proportionalHeight}px`;
-        }
-    });
-}
-
-// JavaScript masonry layout
-function layoutMasonry() {
-    const container = document.querySelector('.quest-board-container');
-    if (!container) return;
-    
-    const cards = Array.from(container.children);
-    if (cards.length === 0) return;
-    
-    // Reset cards to get natural dimensions
-    cards.forEach(card => {
-        card.style.position = '';
-        card.style.left = '';
-        card.style.top = '';
-        card.style.width = '';
-    });
-    
-    // Set card heights based on image proportions
-    setCardHeights();
-    
-    // Force a reflow to get updated dimensions
-    container.offsetHeight;
-    
-    const containerWidth = container.offsetWidth;
-    
-    // Get card width from CSS custom property (handles responsive breakpoints automatically)
-    const computedStyle = getComputedStyle(document.documentElement);
-    const cardWidthFromCSS = parseInt(computedStyle.getPropertyValue('--card-width').trim());
-    
-    // Get actual rendered card width (in case CSS media queries changed it)
-    const firstCard = cards[0];
-    const cardWidth = firstCard ? firstCard.offsetWidth : cardWidthFromCSS || 420;
-    
-    const gap = 16; // 1rem
-    const padding = 16; // 1rem container padding
-    
-    // Calculate available width inside padding
-    const availableWidth = containerWidth - (padding * 2);
-    const columnCount = calculateColumns(availableWidth, cardWidth, gap);
-    
-    // Don't proceed if we can't fit any columns
-    if (columnCount <= 0) return;
-    
-    // Reset container to block layout
-    container.style.display = 'block';
-    container.style.columnCount = 'auto';
-    container.style.position = 'relative';
-    
-    // Initialize column heights
-    const columnHeights = new Array(columnCount).fill(0);
-    
-    // Center the columns within the available space
-    const totalColumnsWidth = (columnCount * cardWidth) + ((columnCount - 1) * gap);
-    const leftOffset = Math.max(0, (availableWidth - totalColumnsWidth) / 2) + padding;
-    
-    // Position each card
-    cards.forEach((card, index) => {
-        // Find shortest column
-        const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
-        
-        // Calculate left position with centering offset
-        const leftPosition = leftOffset + (shortestColumnIndex * (cardWidth + gap));
-        
-        // Position the card
-        card.style.position = 'absolute';
-        card.style.left = `${leftPosition}px`;
-        card.style.top = `${columnHeights[shortestColumnIndex]}px`;
-        card.style.width = `${cardWidth}px`;
-        
-        // Update column height
-        const cardHeight = card.offsetHeight || 392; // fallback height
-        columnHeights[shortestColumnIndex] += cardHeight + gap;
-    });
-    
-    // Set container height
-    const maxHeight = Math.max(...columnHeights) - gap;
-    container.style.height = `${maxHeight}px`;
-}
-
-// Debounced resize handler
-let resizeTimeout;
-function handleResize() {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        layoutMasonry();
-    }, 100); // Reduced delay for more responsive resizing
-}
-
 // Set default date and time to 18:00 for datetime-local inputs
 function setDefaultDateTime(input) {
     if (!input || input.value) return; // Don't override existing values
@@ -384,22 +194,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Add resize listener for masonry layout
-    window.addEventListener('resize', handleResize);
-    
-    // Also listen for orientation changes on mobile
-    window.addEventListener('orientationchange', () => {
-        setTimeout(layoutMasonry, 200);
-    });
-    
-    // Initialize masonry layout after a short delay
-    setTimeout(layoutMasonry, 100);
-    
-    // Re-layout when images load (in case background images affect sizing)
-    window.addEventListener('load', () => {
-        setTimeout(layoutMasonry, 100);
-    });
-    
     // Make date options clickable
     makeDataOptionsClickable();
 
@@ -412,6 +206,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Rewrite every server-rendered wall-clock (floating local time) timestamp to the viewer's
     // own locale wording -- never their timezone, since a wall-clock value has no UTC instant.
     hydrateWallClockTimes();
+
+    // An offcanvas panel does not report its state on the button that opens it (a collapse does), so a
+    // toggler that declares aria-expanded is kept in step here.
+    ['show', 'hidden'].forEach(function(phase) {
+        document.addEventListener(phase + '.bs.offcanvas', function(event) {
+            if (!event.target.id) return;
+            document.querySelectorAll('[data-bs-toggle="offcanvas"][aria-expanded]').forEach(function(toggler) {
+                if (toggler.getAttribute('data-bs-target') === '#' + event.target.id) {
+                    toggler.setAttribute('aria-expanded', phase === 'show' ? 'true' : 'false');
+                }
+            });
+        });
+    });
 
     // Initialize toasts
     const toastElements = document.querySelectorAll('.toast');

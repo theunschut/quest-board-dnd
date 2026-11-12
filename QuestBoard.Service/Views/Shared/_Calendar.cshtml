@@ -38,7 +38,7 @@
                     @if (day.Linked.HasEntries)
                     {
                         var linkedNoun = day.Linked.Count == 1 ? "entry" : "entries";
-                        @* A div, not a span, so the card's cream span rule does not override its own style. *@
+                        @* A div, not a span, so the count keeps the colour calendar.css gives it whatever colour the card gives its text. *@
                         <div class="linked-day-count" title="@day.Linked.Count @linkedNoun from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count<span class="visually-hidden"> @linkedNoun from linked boards</span></div>
                     }
 
@@ -130,20 +130,21 @@
                                             @if (voteIndex >= 0)
                                             {
                                                 <div class="vote-buttons">
-                                                    <div class="btn-group-vertical" role="group">
+                                                    <span class="visually-hidden" id="vote-for-@voteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
+                                                    <div class="btn-group-vertical" role="group" aria-labelledby="vote-for-@voteIndex">
                                                         <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_yes" value="2" autocomplete="off">
-                                                        <label class="btn btn-sm btn-outline-success" for="vote_@(voteIndex)_yes">
-                                                            <i class="fas fa-check"></i>
+                                                        <label class="btn vote-choice vote-choice--yes" for="vote_@(voteIndex)_yes">
+                                                            <i class="fas fa-check" aria-hidden="true"></i><span class="visually-hidden">Yes</span>
                                                         </label>
 
                                                         <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_maybe" value="1" autocomplete="off">
-                                                        <label class="btn btn-sm btn-outline-warning" for="vote_@(voteIndex)_maybe">
-                                                            <i class="fas fa-question"></i>
+                                                        <label class="btn vote-choice vote-choice--maybe" for="vote_@(voteIndex)_maybe">
+                                                            <i class="fas fa-question" aria-hidden="true"></i><span class="visually-hidden">Maybe</span>
                                                         </label>
 
                                                         <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_no" value="0" autocomplete="off">
-                                                        <label class="btn btn-sm btn-outline-danger" for="vote_@(voteIndex)_no">
-                                                            <i class="fas fa-times"></i>
+                                                        <label class="btn vote-choice vote-choice--no" for="vote_@(voteIndex)_no">
+                                                            <i class="fas fa-times" aria-hidden="true"></i><span class="visually-hidden">No</span>
                                                         </label>
                                                     </div>
                                                 </div>
@@ -163,20 +164,21 @@
                                                 var isCheckedNo = userVote.HasValue && userVote == VoteType.No;
 
                                                 <div class="vote-buttons">
-                                                    <div class="btn-group-vertical" role="group">
+                                                    <span class="visually-hidden" id="update-vote-for-@updateVoteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
+                                                    <div class="btn-group-vertical" role="group" aria-labelledby="update-vote-for-@updateVoteIndex">
                                                         <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_yes" value="2" autocomplete="off" @(isCheckedYes ? "checked" : "")>
-                                                        <label class="btn btn-sm btn-outline-success" for="update_vote_@(updateVoteIndex)_yes">
-                                                            <i class="fas fa-check"></i>
+                                                        <label class="btn vote-choice vote-choice--yes" for="update_vote_@(updateVoteIndex)_yes">
+                                                            <i class="fas fa-check" aria-hidden="true"></i><span class="visually-hidden">Yes</span>
                                                         </label>
 
                                                         <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_maybe" value="1" autocomplete="off" @(isCheckedMaybe ? "checked" : "")>
-                                                        <label class="btn btn-sm btn-outline-warning" for="update_vote_@(updateVoteIndex)_maybe">
-                                                            <i class="fas fa-question"></i>
+                                                        <label class="btn vote-choice vote-choice--maybe" for="update_vote_@(updateVoteIndex)_maybe">
+                                                            <i class="fas fa-question" aria-hidden="true"></i><span class="visually-hidden">Maybe</span>
                                                         </label>
 
                                                         <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_no" value="0" autocomplete="off" @(isCheckedNo ? "checked" : "")>
-                                                        <label class="btn btn-sm btn-outline-danger" for="update_vote_@(updateVoteIndex)_no">
-                                                            <i class="fas fa-times"></i>
+                                                        <label class="btn vote-choice vote-choice--no" for="update_vote_@(updateVoteIndex)_no">
+                                                            <i class="fas fa-times" aria-hidden="true"></i><span class="visually-hidden">No</span>
                                                         </label>
                                                     </div>
                                                 </div>

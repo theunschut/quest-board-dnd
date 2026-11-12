@@ -332,19 +332,19 @@
 
     /* Style the label as the button */
     .vote-buttons .btn {
-        width: 20px;
-        height: 20px;
+        width: 32px;
+        height: 32px;
         padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 3px;
-        font-size: 10px;
+        font-size: var(--qb-text-sm);
         line-height: 1;
         cursor: pointer;
         transition: all 0.15s ease;
-        min-width: 16px;
-        border: 1px solid;
+        min-width: 32px;
+        border: 2px solid transparent;
     }
 
         .vote-buttons .btn:first-child {
@@ -643,15 +643,16 @@
 }
 
 .details-page .calendar-body {
-    grid-auto-rows: 120px;
+    grid-auto-rows: 160px;
 }
 
 .quest-details-page .calendar-grid {
     max-width: none;
 }
 
+/* A week with a vote cell needs room for three 32px buttons under the day number. */
 .quest-details-page .calendar-body {
-    grid-auto-rows: 120px;
+    grid-auto-rows: 160px;
 }
 
 /* Calendar container styling for details page */
@@ -675,11 +676,11 @@
     background-color: rgba(255, 255, 255, 1) !important;
     border-left-color: #3498db;
     border-width: 3px;
-    font-size: 9px !important;
+    font-size: var(--qb-text-sm) !important;
     min-height: 48px !important;
     height: auto !important;
     padding: 2px 4px !important;
-    padding-right: 30px !important;
+    padding-right: 44px !important;
     border-radius: 3px !important;
     position: relative !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
@@ -691,7 +692,7 @@
 
 /* Fixed height when vote buttons are present (to prevent cutoff) */
 .quest-event.current-quest:has(.vote-buttons) {
-    height: 90px !important;
+    height: 116px !important;
 }
 
     .quest-event.current-quest .quest-link {
@@ -715,7 +716,7 @@
     white-space: nowrap !important;
     text-overflow: ellipsis !important;
     overflow: hidden !important;
-    font-size: 10px !important;
+    font-size: var(--qb-text-sm) !important;
     flex-shrink: 0 !important;
     margin-bottom: 2px !important;
     width: 100%;
@@ -724,17 +725,17 @@
 
 .details-page .quest-event.current-quest .calendar-quest-dm {
     display: block !important;
-    font-size: 8px !important;
+    font-size: var(--qb-text-sm) !important;
     margin-bottom: 2px !important;
 }
 
 .details-page .quest-event.current-quest .quest-time {
     display: block !important;
-    font-size: 8px !important;
+    font-size: var(--qb-text-sm) !important;
 }
 
 .details-page .quest-event.current-quest .finalized-icon {
-    font-size: 10px !important;
+    font-size: var(--qb-text-sm) !important;
     opacity: 1 !important;
 }
 
@@ -744,21 +745,21 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
     z-index: 10 !important;
     border-radius: 3px !important;
-    font-size: 9px !important;
+    font-size: var(--qb-text-sm) !important;
     position: relative !important;
     left: auto !important;
     right: auto !important;
     height: auto !important;
     min-height: 48px !important;
     padding: 2px 4px !important;
-    padding-right: 30px !important;
+    padding-right: 44px !important;
     overflow: visible !important;
     transform: none !important;
 }
 
 /* Fixed height on hover when vote buttons are present */
 .details-page .quest-event.current-quest:hover:has(.vote-buttons) {
-    height: 90px !important;
+    height: 116px !important;
 }
 
 /* Non-current quest events on details page automatically inherit base styles */

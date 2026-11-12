@@ -222,7 +222,7 @@ public class BoardMoveViewsTests(MoveWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task TheDesktopLayoutLinksTheDesktopSheetOnly_AndTheMobileLayoutTheMobileSheetOnly()
+    public async Task BothLayoutsLinkTheOneMoveSheetAndNoPhoneOnlySheet_AndThePhoneAnswerCarriesTheMobileLayoutBodyClass()
     {
         var (questId, _, client) = await SeedQuestBasicsAsync("views_css");
 
@@ -231,9 +231,11 @@ public class BoardMoveViewsTests(MoveWebApplicationFactory factory)
 
         desktop.Should().Contain("/css/move-entry.css");
         desktop.Should().NotContain("move-entry.mobile.css");
-        mobile.Should().Contain("/css/move-entry.mobile.css");
-        mobile.Should().NotContain("/css/move-entry.css");
-        mobile.Should().Contain("move-card-mobile");
+        desktop.Should().NotContain("mobile-layout");
+        mobile.Should().Contain("/css/move-entry.css");
+        mobile.Should().NotContain("move-entry.mobile.css");
+        mobile.Should().Contain("mobile-layout");
+        mobile.Should().Contain("move-page");
     }
 
     private async Task<(int EventId, HttpClient Client)> SeedEventBasicsAsync(
@@ -389,7 +391,6 @@ public class BoardMoveViewsTests(MoveWebApplicationFactory factory)
 
     [Theory]
     [InlineData("QuestBoard.Service/Views/Move/Index.cshtml")]
-    [InlineData("QuestBoard.Service/Views/Move/Index.Mobile.cshtml")]
     public void TheMoveViews_KeepScriptInlineStyleAndTheTrapClassesOut(string path)
     {
         var source = ReadRepoFile(path);
@@ -412,7 +413,6 @@ public class BoardMoveViewsTests(MoveWebApplicationFactory factory)
 
     [Theory]
     [InlineData("QuestBoard.Service/wwwroot/css/move-entry.css")]
-    [InlineData("QuestBoard.Service/wwwroot/css/move-entry.mobile.css")]
     public void TheMoveStylesheets_HaveNoMediaQuery(string path)
     {
         var source = ReadRepoFile(path);

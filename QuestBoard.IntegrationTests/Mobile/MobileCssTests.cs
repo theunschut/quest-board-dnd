@@ -4,11 +4,12 @@ using System.Net.Http.Headers;
 namespace QuestBoard.IntegrationTests.Mobile;
 
 /// <summary>
-/// Tests for mobile.css content integrity and link presence in mobile responses.
+/// Tests for the phone stylesheets' content integrity and link presence in mobile responses.
 ///
 /// Two test kinds:
-/// 1. File-content test — reads mobile.css from disk and asserts it contains min-height: 44px
-/// 2. Link-presence integration tests — mobile UA response links mobile.css; desktop UA response does not
+/// 1. File-content tests — read the phone shell sheet, base.css and tokens.css from disk and assert the 44px
+///    touch-target rule and the 16px body size
+/// 2. Link-presence integration tests — mobile UA response links the phone shell sheet; desktop UA response does not
 /// </summary>
 public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 {
@@ -35,19 +36,19 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// Resolves the path to mobile.css by walking up from AppContext.BaseDirectory
-    /// until a directory named "QuestBoard.Service" is found (the repo root is its parent).
+    /// Resolves the path to a stylesheet under QuestBoard.Service/wwwroot/css by walking up from
+    /// AppContext.BaseDirectory until a directory holding it is found.
     /// Fails with a descriptive message if the path cannot be resolved.
     /// </summary>
-    private static string ResolveMobileCssPath()
+    private static string ResolveCssPath(string fileName)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
 
         // Walk up the directory tree to find the repo root — identified by
-        // the presence of an "QuestBoard.Service" child directory.
+        // the presence of the stylesheet under an "QuestBoard.Service" child directory.
         while (dir != null)
         {
-            var candidate = Path.Combine(dir.FullName, "QuestBoard.Service", "wwwroot", "css", "mobile.css");
+            var candidate = Path.Combine(dir.FullName, "QuestBoard.Service", "wwwroot", "css", fileName);
             if (File.Exists(candidate))
                 return candidate;
 
@@ -56,49 +57,67 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 
         // Compute the attempted path for the failure message.
         var attemptedBase = AppContext.BaseDirectory;
-        var attemptedPath = Path.Combine(attemptedBase, "QuestBoard.Service", "wwwroot", "css", "mobile.css");
+        var attemptedPath = Path.Combine(attemptedBase, "QuestBoard.Service", "wwwroot", "css", fileName);
         throw new FileNotFoundException(
-            $"mobile.css not found. Searched upward from '{attemptedBase}'. " +
+            $"{fileName} not found. Searched upward from '{attemptedBase}'. " +
             $"Last attempted path: '{attemptedPath}'. " +
-            "Ensure QuestBoard.Service/wwwroot/css/mobile.css exists in the repo.",
+            $"Ensure QuestBoard.Service/wwwroot/css/{fileName} exists in the repo.",
             attemptedPath);
     }
 
     /// <summary>
-    /// File-content test: mobile.css must contain the literal 'min-height: 44px'
-    /// to enforce 44px touch targets on interactive elements.
-    /// Fails with a clear path-naming message if the file cannot be located.
+    /// File-content test: the phone shell sheet must declare the 44px touch-target rule over the control list,
+    /// sized from the shared token, and the token must be 44px.
+    /// Fails with a clear path-naming message if a file cannot be located.
     /// </summary>
     [Fact]
     public void MobileCss_File_Contains44pxTouchTargetRule()
     {
         // Arrange
-        var cssPath = ResolveMobileCssPath();
-        var css = File.ReadAllText(cssPath);
+        var shellPath = ResolveCssPath("shell.mobile.css");
+        var shell = File.ReadAllText(shellPath);
+        var tokensPath = ResolveCssPath("tokens.css");
+        var tokens = File.ReadAllText(tokensPath);
 
         // Assert
-        css.Should().Contain("min-height: 44px",
-            because: $"mobile.css at '{cssPath}' must enforce a 44px minimum touch target");
+        shell.Should().Contain(".mobile-layout :where(",
+            because: $"shell.mobile.css at '{shellPath}' must scope the touch-target rule to the mobile layout at zero specificity");
+        shell.Should().Contain("min-height: var(--qb-hit-min)",
+            because: $"shell.mobile.css at '{shellPath}' must enforce a minimum touch target tall enough");
+        shell.Should().Contain("min-width: var(--qb-hit-min)",
+            because: $"shell.mobile.css at '{shellPath}' must enforce a minimum touch target wide enough");
+        tokens.Should().Contain("--qb-hit-min: 44px",
+            because: $"tokens.css at '{tokensPath}' defines the touch target size the shell rule reads");
     }
 
     /// <summary>
-    /// File-content test: mobile.css must contain the 16px body font-size rule
-    /// to prevent iOS input-focus auto-zoom.
+    /// File-content test: the page's body text is 16px (1rem) so iOS does not auto-zoom on input focus. The size
+    /// is set once for every layout in the base stylesheet, from the shared token.
     /// </summary>
     [Fact]
     public void MobileCss_File_Contains16pxBodyFontSize()
     {
         // Arrange
-        var cssPath = ResolveMobileCssPath();
-        var css = File.ReadAllText(cssPath);
+        var basePath = ResolveCssPath("base.css");
+        var baseCss = File.ReadAllText(basePath);
+        var tokensPath = ResolveCssPath("tokens.css");
+        var tokens = File.ReadAllText(tokensPath);
 
         // Assert
-        css.Should().Contain("font-size: 16px",
-            because: $"mobile.css at '{cssPath}' must set 16px body font-size to prevent iOS auto-zoom");
+        // The declaration must sit in the body rule itself: the same text in any other rule would size something else.
+        var withoutComments = System.Text.RegularExpressions.Regex.Replace(baseCss, @"/\*[\s\S]*?\*/", " ");
+        var bodyRules = System.Text.RegularExpressions.Regex.Matches(withoutComments, @"(?<![\w.#:\-])body\s*\{(?<block>[^{}]*)\}")
+            .Select(m => m.Groups["block"].Value)
+            .ToList();
+        bodyRules.Should().Contain(
+            block => System.Text.RegularExpressions.Regex.IsMatch(block, @"(?<![\w-])font-size:\s*var\(--qb-text-base\)\s*;"),
+            because: $"base.css at '{basePath}' must size the body text, in the body rule, from the shared token to prevent iOS auto-zoom");
+        tokens.Should().Contain("--qb-text-base: 1rem",
+            because: $"tokens.css at '{tokensPath}' defines the body text size the base rule reads, 16px");
     }
 
     /// <summary>
-    /// Link-presence test: a mobile User-Agent GET "/" response must link mobile.css
+    /// Link-presence test: a mobile User-Agent GET "/" response must link the phone shell stylesheet
     /// (rendered by _Layout.Mobile.cshtml via asp-append-version).
     /// </summary>
     [Fact]
@@ -109,13 +128,13 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("mobile.css",
-            because: "a mobile-UA response must include the mobile.css stylesheet link");
+        html.Should().Contain("shell.mobile.css",
+            because: "a mobile-UA response must include the phone shell stylesheet link");
     }
 
     /// <summary>
     /// Parity test: a desktop User-Agent GET "/" response must NOT link mobile.css
-    /// and MUST still link site.css — confirming the desktop layout is unchanged.
+    /// and MUST still link its desktop legacy stylesheet, legacy-pages.css — confirming the desktop layout is unchanged.
     /// </summary>
     [Fact]
     public async Task MobileCss_DesktopUserAgent_ResponseDoesNotLinkMobileStylesheet()
@@ -127,7 +146,7 @@ public class MobileCssTests : IClassFixture<WebApplicationFactoryBase>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("mobile.css",
             because: "a desktop-UA response must not include the mobile.css stylesheet link");
-        html.Should().Contain("site.css",
-            because: "a desktop-UA response must still link site.css — desktop layout is unchanged");
+        html.Should().Contain("legacy-pages.css",
+            because: "a desktop-UA response must still link legacy-pages.css — desktop layout is unchanged");
     }
 }

@@ -7,6 +7,10 @@
     ViewData["Title"] = "The Mystical Merchant's Emporium";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+}
+
 @functions {
     string BuildTabUrl(ItemType? tabType, IList<ItemRarity> rarities, string? sort, string? search = null)
     {

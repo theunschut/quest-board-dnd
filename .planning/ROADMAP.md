@@ -1,7 +1,7 @@
 # Milestone v9.0: Rolling Improvements
 
 **Status:** 🚧 IN PROGRESS
-**Phases:** 72–93 so far (open-ended)
+**Phases:** 72–94 so far (open-ended)
 **Working branch:** `milestone/v9-rolling-improvements`
 
 ## Overview
@@ -1402,6 +1402,645 @@ Plans:
 
 - [x] 93-11-PLAN.md — No-planning-reference guard, production DI proof, and the operator's end-to-end walk with the full suite (W5)
 
+### Phase 94: Whole-App UI Review and Unification
+
+**Goal:** Every page in the quest board, on desktop and mobile, is reviewed with the `senior-frontend` skill, and the app gets the one consistent, polished visual system every page will move onto. Phase 94 is the first phase of that sweep: it delivers the page-by-page audit (visual bugs, inconsistencies, cascade fights, mobile-twin drift and accessibility failures), a visual direction the operator signs off from mockups, the foundation (tokens, the layered cascade, shared components, all layouts, self-hosted vendor assets, dead dependencies removed), a rewritten `.claude/ui-guidelines.md` that records the system so new views follow it, and the appended area phases that move the remaining pages onto it and upgrade those that would clearly benefit. Every existing flow keeps working exactly as it does today.
+
+*Goal restated on 2026-10-30 to match the scope decided in discuss-phase (Phase 94 CONTEXT, D-05); the original sentence promised every page converted within this one phase.*
+**Requirements**: TBD
+**Depends on:** Phase 93, for sequencing only. It touches every view, and Phase 93 was the last phase to change both layouts.
+**Plans:** 27/27 plans complete
+
+**Origin:** raised by the operator on 2026-10-30, who expects many enhancements are possible across the views and wants the `senior-frontend` skill to update, fix, unify and possibly upgrade the UI.
+
+**Starting point** (scoped 2026-10-30):
+
+- **Size:** 133 `.cshtml` files across `Views/` and `Areas/Platform/Views/` (pages, partials and layouts), 55 of them `.Mobile.cshtml` twins. The largest folders are Quest (15), Shared (14), Account (12), Admin (11) and Platform Group (10).
+- **Styling:** 48 stylesheets in `wwwroot/css`, about 8,900 lines; `site.css` alone is about 1,700. Bootstrap 5.3.0 and Font Awesome 6.4.0 come from CDNs, plus Font Awesome's v4 shim stylesheet, which suggests old icon names are still in use. The Bootstrap and main Font Awesome links carry no SRI hash; the shim does.
+- **No shared tokens to speak of:** the CSS defines 18 custom properties but contains about 615 hex colour literals and about 814 `!important` declarations. Phases 66–68 each hit a specificity collision (the `.modern-card` gold rule leaking into the editor, a page-wide `!important` hiding recap text on mobile), so the cascade is a known source of bugs, not only of inconsistency.
+- **Markup outside the stylesheets:** 97 inline `style="…"` attributes, 4 views with `<style>` blocks and 43 views with inline `<script>` blocks. There is no Content-Security-Policy header, and `senior-frontend` assumes a strict CSP, so its default patterns will not match this code as it stands.
+- **Existing rules:** `.claude/ui-guidelines.md` sets the modern-card pattern (`modern-card`, `modern-card-header`, `modern-card-body`), the button layout and the `Html.LocalTime` / `Html.WallClock` date helpers, and warns that mobile twins drift and are sometimes deliberately not content-equivalent.
+
+**To decide in discuss-phase:**
+
+- **How far "upgrade" goes.** Either unify and fix within today's look (parchment, gold, modern cards), or settle a refreshed visual direction first, with mockups from `senior-frontend` or `/gsd-sketch`, and then move every page onto it. The second is a much larger phase and needs the direction signed off before any view changes.
+- **Whether this stays one phase.** 133 views will not fit one reviewable phase. One likely shape: Phase 94 does the audit, the shared tokens and component classes, and the layouts, and per-area phases are appended after it (quests and quest log; events, series and calendar; characters, contacts and DM profile; shop; account, admin and Platform). The audit's findings decide the split.
+- **Bootstrap and Font Awesome.** Whether both stay, whether to pin them with SRI or self-host them, and whether to migrate the v4 icon names and drop the shim.
+- **Inline scripts and styles.** Whether moving them into stylesheets and ES modules is in scope. Adopting a CSP header is a security change and is better split into its own phase, but the move would prepare for it.
+- **Mobile twins.** Whether any desktop and mobile pair is merged into one responsive view, or every twin stays and is only brought into line with its partner.
+- **The accessibility bar:** contrast on the parchment and gold theme, visible focus, and 44px touch targets on mobile.
+- **Email templates** (`.razor` components) are not views and are left out unless discuss-phase pulls them in.
+
+**Constraints:** no user-facing functionality is removed or broken, as the project-wide rule requires. Every desktop change is checked against its mobile twin. Dates keep going through `Html.LocalTime` and `Html.WallClock`. Nothing writes to `Events` or `Quests`, so feed revisions do not move. Verification is by before-and-after screenshots of each page and, for mobile, on a real phone, as this project's earlier mobile work required. The Docker self-hosting path keeps working. CSS comments carry no planning references.
+
+Plans:
+**Wave 1**
+
+- [x] 94-01-PLAN.md — Audit environment: one operator checkpoint (tooling, database, privileged accounts), player and DM accounts, capture harness (wave 1, checkpoint)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 94-02-PLAN.md — Route manifest, fixtures, frozen baseline app on its own port and full BEFORE sweep with gate tools (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 94-03-PLAN.md — Audit: Quests and Quest Log (wave 3)
+- [x] 94-04-PLAN.md — Audit: Events, Series, Calendar and Agenda (wave 3)
+- [x] 94-05-PLAN.md — Audit: Characters, Contacts, DM profile and Players (wave 3)
+- [x] 94-06-PLAN.md — Audit: Shop and Shop management (wave 3)
+- [x] 94-07-PLAN.md — Audit: Account, pickers and access denied (wave 3)
+- [x] 94-08-PLAN.md — Audit: Admin and Platform (wave 3)
+- [x] 94-09-PLAN.md — Mockups: fixture content, tools, all five baselines, Direction A Quest board and Details (wave 3)
+- [x] 94-11-PLAN.md — Self-host Bootstrap, Font Awesome and Cinzel at today's versions; release smoke test (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 94-10-PLAN.md — Mockups: Direction A form, Calendar, Shop both ways, crops and write-up (wave 4)
+- [x] 94-12-PLAN.md — Self-host Cropper.js, Tagify and EasyMDE at today's versions (wave 4, after 94-11)
+- [x] 94-14-PLAN.md — Shell audit, cascade probe, audit index, operator questions, proposed cut (wave 4)
+- [x] 94-15-PLAN.md — Mockups: Direction B with the primary-action switcher (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 94-13-PLAN.md — Remove jQuery and the v4 shim after proofs; layer order statement (wave 5)
+- [x] 94-16-PLAN.md — Mockups: comparison page, all switchers, combined contrast report, sign-off sheet (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 94-17-PLAN.md — Direction sign-off gate G1 and final token values (wave 6, checkpoint)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 94-18-PLAN.md — Token layer, foundation link order, layer and contrast guards (wave 7)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [x] 94-19-PLAN.md — Vendor bump, Bootstrap into layer(vendor) with variable re-theme, base layer (wave 8)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [x] 94-20-PLAN.md — Component layer and toasts with persistent errors and warnings (wave 9)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [x] 94-21-PLAN.md — Desktop shell: three layouts, desktop footer, backdrop (wave 10, after 94-20)
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [x] 94-22-PLAN.md — Mobile shell: two mobile layouts, mobile footer, 44px targets (wave 11, after 94-21)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [x] 94-23-PLAN.md — Retire desktop and mobile global rules; site.css renamed legacy-pages.css (wave 12)
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [x] 94-24-PLAN.md — Retire modern-card.css and the cream rule; full readability sweep reviewed (wave 13, checkpoint)
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [x] 94-25-PLAN.md — Rewrite .claude/ui-guidelines.md; correct the Platform mobile note (wave 14)
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [x] 94-26-PLAN.md — Final verification, scope proof, audit refresh (wave 15, after 94-25)
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [x] 94-27-PLAN.md — Area-phase cut gate G2 and roadmap appends (wave 16, checkpoint)
+
+**Cross-cutting constraints:**
+
+- Merge proposals appear only for identical or layout-only pairs whose mobile differences are CSS-only, each listing the precedent views, the CSS-loading change in both layouts and the MobileViewsTests facts that would change, flagged costly to reverse and awaiting operator approval (D-13)
+- Relayout proposals keep every field, link, button and action and each control's type, and never collapse a section behind a toggle; each is listed for sign-off with its BEFORE screenshot (D-04)
+- Contrast findings are measured against the D-16 bar (4.5:1 text, 3:1 large and non-text, composited over B-max) and propose a token use that keeps the signature colour per D-17
+- The report quotes no member name, email or user-entered text from real data and references screenshots only by scratch path
+- Each twin pair is classified identical, layout-only, content-differs or deliberate from extracted inventories (asp-for and name fields, asp-action/href links and submit buttons, h1-h6 and card blocks, BoardPages conditions); no deliberate differences are pre-recorded for this area; every content difference not recorded as deliberate is an operator question in the standard wording with only 'Deliberate, record it' or 'Add it to the other view' (D-14)
+- Mockups live only under ~/qb-ui-review/phase-94/mockups/ and nothing is committed (D-02)
+
+Wave note: plans that edit tracked source, build or run the working tree, or commit code never share a wave. Waves 6 to 16 hold one plan each; in waves 3, 4 and 5 the only such plan is 94-11, 94-12 and 94-13, and the plans beside it write only scratch output or planning docs and probe the frozen baseline.
+
+### Phase 95: Quests and Quest Log UI conversion
+
+**Goal:** Convert the core loop (quest board, quest details, create and edit forms, DM manage, quest log, move) to the foundation, carrying the shared pieces the loop depends on, so a DM can post a quest and a player can sign up on converted pages. Convert the quest board, quest details, quest forms, DM manage, quest log and move pages, with the shared editor, signup modal and vote UI, to the foundation: scrimmed card surfaces, no inline styles or scripts, the approved poster relayout, and every page readable at 4.5:1 on phone and desktop.
+**Requirements**: TBD
+**Depends on:** Phase 94
+**Plans:** 18/18 plans executed
+
+**Scope:**
+
+- Views: 10 view pairs, 20 files: `Quest/{Index,Details,Create,Edit,CreateFollowUp,Manage}`, `QuestLog/{Index,Details,EditRecap}`, `Move/Index` (serves quests and events). The landing page (Home/Index) is not here: adjustment 1 moved it to Phase 96. Partials: `Quest/_QuestFormScripts`, `Shared/_MarkdownEditor` (also fixes the keyboard trap for six Characters-area pages), and, by the proposed adjustments, `Shared/_CharacterSelectModal`. The vote UI of the shared calendar partial is a scoped patch made here (Q-134); Phase 97 owns the partial itself. `Quest/_QuestCard` and `_QuestSection` are unreferenced (Q-130).
+- Stylesheets: `quests.css`, `quests.mobile.css`, `quest-edit.mobile.css`, `quest-followup.mobile.css`, `quest-log.mobile.css`, `quest-log-detail.mobile.css`, `home.mobile.css`, `move-entry.css`, `move-entry.mobile.css`, `markdown-editor.css`, `markdown-content.css`, and by adjustment `dm-create.mobile.css` and `dm-manage.mobile.css`
+- Moves into `@section Styles`: `quests.css`, `markdown-editor.css`, `markdown-content.css` and `move-entry.css` leave the global list of `_Layout.cshtml`; `markdown-editor.css` and `markdown-content.css` also leave `_Layout.Mobile.cshtml`. `calendar.css` stays global until Phase 97 moves it; Quest Details then links it itself for the vote UI.
+- Counts after the foundation: 25 view files (the 10 view pairs of the quest, quest log and move pages, 20 files, plus `_QuestFormScripts`, the two unreferenced `_QuestCard` and `_QuestSection`, `_MarkdownEditor` and `_CharacterSelectModal`); 13 stylesheets plus the Quest, board, vote and Quest Log ranges of `legacy-pages.css` (lines 1-38, 299-791, 1185-1264) and the Move rule of `mobile.css`: **126 hex, 276 `rgb()`, 212 `!important`**; in the views **26 inline `style=`, 0 `<style>`, 11 inline `<script>`, 59 inline event handlers**; 8 utility-colour fights (`home.mobile`, `quest-log.mobile`, `quest-log-detail.mobile`, `quests.css` 2, `quests.mobile` 2, `dm-manage.mobile`); rendered contrast **123 failing rows on 37 elements on 13 pages** (outline buttons on glass 1.17 to 1.88:1, the poster date 2.14:1, the phone form labels and help text 2.99 to 4.34:1); overflow at 320 on `Quest/Details` and `QuestLog/Index`; 5 test files read its sheets (`MobileViewsTests` 16 references).
+- Findings owned: S1 8 and S2 22 of 100 findings (S3 65, S4 5); the S1 items are contrast (table cells, role labels, vote buttons, required marks, outline controls, dark ink on bare board)
+- Deferred items landing here: G1-O1 (desktop quest poster relayout: drawn first, the text zone gently lightened so body text reaches 4.5:1, no slip surface [Gate 1 outcome, 2026-11-11: the operator rejected the visible zone; posters use heavier ink only, with no zone or halo, a recorded contrast exception below 4.5:1 held to per-poster floors]); WINDOWS 12 for Quest Create, CreateFollowUp and Edit (phone required asterisk, 14 rows at 3.36:1, until the cards move to the scrimmed surface); WINDOWS 24 (six `a.row-nav-link` quest titles 27px tall on the phone `/quests`); the vote buttons (`btn-outline-success`, `-danger` and `-warning` at 1.21 to 3.36:1) and the Bootstrap outline buttons on glass; the five Quest findings of the 94-AUDIT-quests.md report (S1 8, S2 22 of 100).
+
+**Guard tests to rewrite to the same intent (none deleted):** `Mobile/MobileViewsTests` facts for the Quest, QuestLog, Home and Move pages (including the `quest-edit.mobile.css` link fact near line 888 and the Quest Log detail fact near lines 953-987); `Tests/BoardMoveViewsTests` (Move desktop sheet only, mobile sheet only, `move-card-mobile`), `BoardMoveEventTests`, `BoardMovePageTests`, `BoardMoveEndToEndTests` and the presence lists in `BoardMoveStaticGuardTests` and `BoardPageStaticGuardTests`; `QuestLogControllerIntegrationTests` (recap edit); `LinkedBoardCalendarStyleTests` and `LinkedBoardStaticGuardTests` for `quests.mobile.css` and the calendar partials; the closed `AmbientClockSeamTests` list if the dead partials go
+
+**Inherited decisions:**
+
+- Desktop top bar (the relayout approved in principle for 992 to 1280 px): already addressed by the desktop shell delivered in Phase 94 (a 56px bar at every width, collapsing below 1200px, accepted by the operator). In this phase it is a verification check only, on the quest pages at 992 to 1280 px; there is no new work and no AFTER to draw.
+- Operator answers: 21 "add it to the other view" answers (Q-07 to Q-39, 33 questions, 12 deliberate), 2 approved merges (Q-95, Q-96), 5 approved relayouts (Q-111 to Q-114 and the poster relayout G1-R1), plus a verification of the desktop top bar (Q-127, adjustment 12).
+- Open questions inherited: twin questions Q-07 to Q-39, merges Q-95 to Q-96 (QuestLog/EditRecap and QuestLog/Details), relayouts Q-111 to Q-114 and the Q-127 verification (the desktop top bar, adjustment 12), and the other decisions on the Markdown editor host, dead files, posters and ownership
+- Signed-off direction: Direction A (refined glass) with the operator's stated exceptions; the Shop uses variant (a), the navy theme, on `<html data-theme="shop">`.
+- Every relayout was approved in principle at the first sign-off (2026-11-01) and is re-confirmed with its AFTER in this phase: no page is re-laid out until its before/after sign-off in this phase, mocked pages included.
+- Approved merge: M-quests-01 (Q-95) QuestLog/EditRecap: approved at G1 (2026-11-01), carried into the Quests and Quest Log phase; costly to reverse
+- Approved merge: M-quests-02 (Q-96) QuestLog/Details: approved at G1 (2026-11-01), carried into the Quests and Quest Log phase; costly to reverse
+- Approved relayouts (`$QBR` is `~/qb-ui-review/phase-94`):
+  - Quest/Details: Q-111 (R-quests-01): Quest/Details (desktop): split the columns col-lg-9 / col-lg-3 instead of col-lg-10 / col-lg-2 so the Quest Summary reads without wrapping (width change only, order unchanged). BEFORE desktop `$QBR/before/desktop/Quest-Details.png`, mobile `$QBR/before/mobile/Quest-Details.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/quest-details-1440.png`, `$QBR/mockups/direction-a/png/quest-details-390.png`. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Quest/Details (voting): Q-111 (R-quests-01): Quest/Details (desktop): split the columns col-lg-9 / col-lg-3 instead of col-lg-10 / col-lg-2 so the Quest Summary reads without wrapping (width change only, order unchanged). BEFORE desktop `$QBR/before/desktop/Quest-Details--voting.png`, mobile `$QBR/before/mobile/Quest-Details--voting.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/quest-details-1440.png`, `$QBR/mockups/direction-a/png/quest-details-390.png` (the mockups draw the finalized Quest Details page; the voting calendar is not drawn). Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Quest/Details (voting): Q-112 (R-quests-02): Quest/Details (desktop, voting and update states): draw the calendar months directly inside the one signup card instead of one nested card per month (removes two levels of blur). BEFORE desktop `$QBR/before/desktop/Quest-Details--voting.png`, mobile `$QBR/before/mobile/Quest-Details--voting.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/quest-details-1440.png`, `$QBR/mockups/direction-a/png/quest-details-390.png` (the mockups draw the finalized Quest Details page; the voting calendar is not drawn). Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Quest/Create: Q-113 (R-quests-03): Quest/Create and Quest/Edit (desktop): action row Cancel left and the commit action right after an hr, instead of commit left with no hr (reordering inside the action row only). BEFORE desktop `$QBR/before/desktop/Quest-Create.png`, mobile `$QBR/before/mobile/Quest-Create.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/quest-form-1440.png`, `$QBR/mockups/direction-a/png/quest-form-390.png`. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Quest/Edit: Q-113 (R-quests-03): Quest/Create and Quest/Edit (desktop): action row Cancel left and the commit action right after an hr, instead of commit left with no hr (reordering inside the action row only). BEFORE desktop `$QBR/before/desktop/Quest-Edit.png`, mobile `$QBR/before/mobile/Quest-Edit.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/quest-form--edit-1440.png`, `$QBR/mockups/direction-a/png/quest-form--edit-390.png` (Direction B draws the form once, as Create; Edit uses the same layout). Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Quest/Manage: Q-114 (R-quests-04): Quest/Manage (mobile): remove the card-in-card nesting; Description and Rewards become headed sections inside the single card, collapsible exactly as today. BEFORE desktop `$QBR/before/desktop/Quest-Manage.png`, mobile `$QBR/before/mobile/Quest-Manage.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Quest/Index (desktop poster cards): G1-R1 (operator-initiated at G1): keep today's parchment poster images; re-lay out only the information inside the poster, with a very gently lightened text zone so body text reaches 4.5:1 at B-max (ink on the bare poster measured 3.8 to 4.2:1 at the 5th percentile); titles stay large text at 3:1. [Gate 1 outcome, 2026-11-11: the operator rejected the visible zone; posters use heavier ink only, with no zone or halo, a recorded contrast exception below 4.5:1 held to per-poster floors] BEFORE desktop `$QBR/before/desktop/Quest-Index.png`, mobile not applicable (the poster cards are desktop only; the phone keeps its glass cards). AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out (Direction A's pinned-slip render of this page is not the AFTER: the operator kept the poster artwork). Answer: approved in principle — re-confirmed with its AFTER in the area phase; Quests phase.
+
+**Definition of converted:**
+
+1. Zero inline `style=""`, `<style>` and `<script>` and no inline event handler in the area's views; styles in stylesheets, scripts in files or ES modules.
+2. Zero hex or `rgb()` literals and zero `!important` in the area's stylesheets; they live in the `pages` layer or move into `components`.
+3. The area's stylesheet is loaded through `@section Styles`, not the global list.
+4. Every twin aligned with its partner; every twin content difference answered; approved merges done.
+5. The accessibility bar (A-1 to A-11) verified on each page, desktop and mobile.
+6. Before and after screenshots stored outside the repository; relaid-out pages signed off.
+7. Mobile checks listed in the phase UAT and run under a mobile User-Agent.
+8. Static guard tests that read the area's files are rewritten to pin the same intent; none is deleted.
+9. `Html.LocalTime` and `Html.WallClock` untouched; nothing writes to `Events` or `Quests`.
+10. At merge, every page still works and reads.
+
+Plus, specific to this phase: the Quest board mockup page is built from this phase (it is first because it carries it); the role-select script no longer hides the DM Controls card; the vote buttons on Quest Details pass the bar in both layouts; Quest Details is re-verified with `_Calendar` in both layouts
+
+**Constraints:**
+
+- No user-facing flow is removed or broken; every page stays usable at every merge.
+- Mobile checks run under a mobile User-Agent with touch.
+- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; nothing writes to `Events` or `Quests`, and the calendar feed files are untouched.
+- Before and after screenshots are kept outside the repository.
+- No planning references (requirement, phase or plan ids, planning document names) in CSS or source comments.
+- Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
+
+Plans:
+**Wave 1**
+
+- [x] 95-01-PLAN.md — Review environment: operator checkpoint (database, privileged accounts, scratch tooling), player and DM accounts, Edge capture harness
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 95-02-PLAN.md — Fixtures through the app forms, frozen baseline app, probes and BEFORE capture under both User-Agents
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 95-03-PLAN.md — Gate 1 package and gate: poster mockup with switchers and measured pool, phone Manage mockup, merge evidence (operator, redraw loop)
+- [x] 95-04-PLAN.md — Phase tracer: Markdown editor keyboard trap fix, visible hint, form scripts out of inline code, conversion guard test
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 95-05-PLAN.md — Quest Details A: Spectator marker, phone signup selects, details module, character modal
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 95-06-PLAN.md — Quest Details B: scoped vote-button patch, calendar months inside the signup card
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 95-07-PLAN.md — Quest Details C: column split, twin wording, dates, layered sheets
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 95-08-PLAN.md — Desktop quest board from the approved mockup: poster picker, WebP art, layered poster CSS, masonry module, bare empty board
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [x] 95-09-PLAN.md — Phone quest board: stretched card links, empty state
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [x] 95-10-PLAN.md — Quest Create and Edit (Edit merges if approved at Gate 1)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [x] 95-11-PLAN.md — Quest CreateFollowUp (merges if approved at Gate 1)
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [x] 95-12-PLAN.md — Quest Manage scripts and handlers into one module
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [x] 95-13-PLAN.md — Quest Manage conversion and the approved phone relayout
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [x] 95-14-PLAN.md — Quest Log index plus the two approved merges (Details, EditRecap)
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [x] 95-15-PLAN.md — Move page and the shared move reason line in components
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [x] 95-16-PLAN.md — Shared Markdown stylesheets and where they load
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [x] 95-17-PLAN.md — Closure: dead partials and legacy rules, global sheet list trimmed, counts
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [x] 95-18-PLAN.md — AFTER sweep, Gate 2 review sheet and gate (operator, gap-closure loop)
+
+### Phase 96: Account and pickers UI conversion
+
+**Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
+**Requirements**: TBD
+**Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
+**Plans:** 12 plans
+
+**Scope:**
+
+- Views: 6 Account pairs, the picker pair and the twin-less `Shared/AccessDenied`: `Account/{Login,ForgotPassword,SetPassword,ChangePassword,Edit,Profile}`, `GroupPicker/Index`, `Shared/AccessDenied`; plus `Home/Index` (moved here by adjustment 1, Q-136). 17 files in all.
+- Stylesheets: `account.mobile.css` and the Profile block of legacy-pages.css (line range in the post-foundation numbers below)
+- Moves into `@section Styles`: no sheet leaves a desktop layout's global list (Account pages have no desktop page sheet); the Profile block moves out of `legacy-pages.css` into the account sheet, which the five merged views (Login, ForgotPassword, SetPassword, ChangePassword, GroupPicker) link once through `@section Styles` for both layouts.
+- Counts after the foundation: 17 view files (6 Account pairs, the picker pair, `AccessDenied` and the `Home/Index` pair); `account.mobile.css`, `group-picker.css` (layered, already clean) and the Profile block of `legacy-pages.css` (lines 1265-1329): **4 hex, 14 `rgb()`, 11 `!important`**; in the views **2 inline `style=`, 0 `<style>`, 2 inline `<script>`, 2 inline event handlers**; 1 utility-colour fight (`account.mobile.css`); rendered contrast **12 failing rows on 7 elements on 4 pages** (the outline-primary "Change Password" link on the desktop Account Edit at 1.88:1, the phone account field labels at 2.99:1); overflow of `Shared/AccessDenied` on the phone (394 at 390); 5 test files read its sheets.
+- Findings owned: S1 2 and S2 15 of 43 findings (S3 14, S4 12); S1: picker cards not keyboard-reachable (A-account-031), profile meta text (A-account-019)
+- Deferred items landing here: the `AccessDenied` overflow (reused on `Events/Details` by Phase 97: one fix, here); the `Home/Index` landing page (Q-136); the 43 account findings of 94-AUDIT-account.md (S1 2, S2 15), the picker keyboard finding first.
+
+**Guard tests to rewrite to the same intent (none deleted):** `MobileViewsTests` Login (lines 552-575), GroupPicker (619-663), Edit and Profile facts; `ProfileCalendarSubscriptionTests` (both subscription shapes are pinned deliberately); `CalendarSubscriptionStaticGuardTests` (the QR sizing rule on `site.css` and `account.mobile.css`); `GroupPickerControllerIntegrationTests` and `CrossBoardPickerSkipTests` (do not branch on User-Agent; keep green)
+
+**Inherited decisions:**
+
+- Operator answers: 7 "add it to the other view" answers (Q-76 to Q-84, 9 questions, 2 deliberate), 5 approved merges (Q-103 to Q-107), 2 approved relayouts (Q-122, Q-123).
+- Open questions inherited: twin questions Q-76 to Q-84, merges Q-103 to Q-107 (Login, ForgotPassword, SetPassword, ChangePassword, GroupPicker), relayouts Q-122 to Q-123
+- Signed-off direction: Direction A (refined glass) with the operator's stated exceptions; the Shop uses variant (a), the navy theme, on `<html data-theme="shop">`.
+- Every relayout was approved in principle at the first sign-off (2026-11-01) and is re-confirmed with its AFTER in this phase: no page is re-laid out until its before/after sign-off in this phase, mocked pages included.
+- Approved merge: M-account-1 (Q-103) Account/Login: approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: Q-account-1 must not be answered "Deliberate" (an untitled mobile page cannot merge with a titled desktop one); costly to reverse
+- Approved merge: M-account-2 (Q-104) Account/ForgotPassword: approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: Q-account-2; costly to reverse
+- Approved merge: M-account-3 (Q-105) Account/SetPassword: approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: Q-account-3; source-only audit, so the merge must be verified with a freshly mailed token; costly to reverse
+- Approved merge: M-account-4 (Q-106) Account/ChangePassword: approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: Q-account-4; costly to reverse
+- Approved merge: M-account-5 (Q-107) GroupPicker/Index: approved at G1 (2026-11-01), carried into the Account and pickers phase; condition: A-account-031 and the R1 relayout land in the same change; costly to reverse
+- Approved relayouts (`$QBR` is `~/qb-ui-review/phase-94`):
+  - GroupPicker/Index: Q-122 (R1 (account)): GroupPicker/Index (desktop and mobile): the per-board cards become flat rows on the one panel, each row being the submit control; every board entry, hidden input and the Go to Platform link stay. BEFORE desktop `$QBR/before/desktop/GroupPicker-Index.png`, mobile `$QBR/before/mobile/GroupPicker-Index.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Account/Profile: Q-123 (R2 (account)): Account/Profile (desktop, populated, narrow widths): the five row actions drop beneath the subscription name and dates instead of sitting to their right (no BEFORE capture of the populated state exists; two scratch frames were taken for the audit). BEFORE desktop `$QBR/before/desktop/Account-Profile.png`, mobile `$QBR/before/mobile/Account-Profile.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+
+**Definition of converted:**
+
+1. Zero inline `style=""`, `<style>` and `<script>` and no inline event handler in the area's views; styles in stylesheets, scripts in files or ES modules.
+2. Zero hex or `rgb()` literals and zero `!important` in the area's stylesheets; they live in the `pages` layer or move into `components`.
+3. The area's stylesheet is loaded through `@section Styles`, not the global list.
+4. Every twin aligned with its partner; every twin content difference answered; approved merges done.
+5. The accessibility bar (A-1 to A-11) verified on each page, desktop and mobile.
+6. Before and after screenshots stored outside the repository; relaid-out pages signed off.
+7. Mobile checks listed in the phase UAT and run under a mobile User-Agent.
+8. Static guard tests that read the area's files are rewritten to pin the same intent; none is deleted.
+9. `Html.LocalTime` and `Html.WallClock` untouched; nothing writes to `Events` or `Quests`.
+10. At merge, every page still works and reads.
+
+Plus, specific to this phase: the foundation delivers `.modern-card--interactive`, the opaque modal surface, `--qb-fg-muted` and `--qb-danger-text` first; the AFTER sweep adds Profile with one subscription, AccessDenied signed out and the Login validation state; SetPassword is verified with a freshly mailed token; the AccessDenied overflow fix is reused on `Events/Details`
+
+**Constraints:**
+
+- No user-facing flow is removed or broken; every page stays usable at every merge.
+- Mobile checks run under a mobile User-Agent with touch.
+- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; nothing writes to `Events` or `Quests`, and the calendar feed files are untouched.
+- Before and after screenshots are kept outside the repository.
+- No planning references (requirement, phase or plan ids, planning document names) in CSS or source comments.
+- Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
+
+Plans:
+**Wave 1**
+
+- [ ] 96-01-PLAN.md — Review environment: operator checkpoint (scratch tooling, database, privileged accounts, no other phase executing), capture-harness tracer, review accounts
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 96-02-PLAN.md — Fixtures through the app forms, tools, frozen baseline on port 8097, fresh BEFORE capture of every page including the populated Profile
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 96-03-PLAN.md — Gate 1 package A: picker flat-row mockup, Home look and merge proposal, measured AccessDenied overflow fix
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 96-04-PLAN.md — Gate 1 package B: Profile mockups for both twins, item list, Gate 1 (operator, redraw loop)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 96-05-PLAN.md — Picker first: merge, flat rows and keyboard fix in one change; account conversion guard test
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 96-06-PLAN.md — Profile onto the foundation: account sheet from the legacy Profile block, row-action relayout, meta-text contrast
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 96-07-PLAN.md — Profile script module, Delete dialog (still posts without script), empty-state wording, named row actions
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 96-08-PLAN.md — The four credential pages merged as one change; phone overflow fix
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 96-09-PLAN.md — Edit twins, AccessDenied, phone account sheet retired
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 96-10-PLAN.md — Home landing page (merged only on an explicit Gate 1 yes), area-wide guard and counts
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 96-11-PLAN.md — SetPassword verified with a freshly mailed link (operator)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 96-12-PLAN.md — AFTER sweep, accessibility-bar table, Gate 2 review sheet and gate (operator, gap-closure loop), release handoff
+
+### Phase 97: Events, Series, Calendar and Agenda UI conversion
+
+**Goal:** Convert the calendar, agenda and events overview with their shared partials, keeping the date helpers and the linked-board entries intact. Convert the calendar, agenda, events overview, event details and series pages and their shared partials to the foundation, with a desktop month that fits without scrolling and every date still rendered through the wall-clock and local-time helpers.
+**Requirements**: TBD
+**Depends on:** Phase 94 and Phase 95 (Phase 95 patches the calendar vote UI this phase inherits)
+**Plans:** 0 plans
+
+**Scope:**
+
+- Views: 7 views and 10 files: `Calendar/Index`, `Agenda/Index`, `Events/Index` (each with a twin), the four twin-less `Events/Create`, `Events/Details`, `Events/Edit`, `Series/Details`; partials `Shared/_Calendar`, `_Calendar.Mobile`, `_LinkedDayEntries`, `_LinkedAlsoThatDay`, `Events/_AvailabilityCell`, `_AvailabilityCounts`, `_SeriesFormScripts`
+- Stylesheets: `calendar.css`, `calendar.mobile.css`, `events-overview.css`, `events-overview.mobile.css`, `agenda.css`, `agenda.mobile.css` (the vote and current-quest block of `calendar.css`, lines 385-440 and 673-765, per Q-134)
+- Moves into `@section Styles`: `calendar.css`, `events-overview.css` and `agenda.css` leave the global list of `_Layout.cshtml` (Quest Details links `calendar.css` itself once Phase 95 and this phase agree on the vote block).
+- Counts after the foundation: 17 view files; 6 stylesheets: **65 hex, 71 `rgb()`, 70 `!important`**; in the views **2 inline `style=`, 0 `<style>`, 7 inline `<script>`, 18 inline event handlers**; 2 utility-colour fights (`agenda.css`, `calendar.mobile.css`); rendered contrast **78 failing rows on 6 elements on 5 pages** (the empty availability dash at 2.28:1, phone agenda dates and day labels at 3.94 to 4.34:1); overflow of `Events/Details` on the phone (394 at 390); 4 test files read its sheets (`EventsOverviewMobileStyleTests` 7 references).
+- Findings owned: S1 3 and S2 23 of 51 findings (S3 22, S4 3); S1: attendance counts cream on cream, availability badge labels, dark subtitle on bare board
+- Deferred items landing here: G1-O3 (the calendar month view spec: the desktop month fits without scrolling at 1280 by 720 and up; the operator confirms "+N more" against `$QBR/mockups/calendar-fit/` before this phase starts); the `Events/Details` 4px overflow (reusing the `AccessDenied` fix); the 51 events findings of 94-AUDIT-events.md (S1 3, S2 23).
+
+**Guard tests to rewrite to the same intent (none deleted):** `EventsOverviewMobileStyleTests` (its literal colours and `!important` conflict with the foundation: re-pin readable counts, a glass-or-paper surface, 44px targets), `LinkedBoardStaticGuardTests`, `LinkedBoardCalendarStyleTests`, and the Events parts of `MobileViewsTests` and `BoardPageStaticGuardTests`; the `AmbientClockSeamTests` list gains the corrected today read if Q-133 is approved
+
+**Inherited decisions:**
+
+- Before this phase starts, the operator confirms the "+N more" behaviour against the calendar-fit mockup (`$QBR/mockups/calendar-fit/`).
+- Operator answers: 6 "add it to the other view" answers (Q-40 to Q-49, 10 questions, 4 deliberate), no merges, 2 approved relayouts (Q-115, Q-116) plus the calendar month fit (G1-R2).
+- Open questions inherited: twin questions Q-40 to Q-49, no merges (none qualifies), relayouts Q-115 to Q-116
+- Signed-off direction: Direction A (refined glass) with the operator's stated exceptions; the Shop uses variant (a), the navy theme, on `<html data-theme="shop">`.
+- Every relayout was approved in principle at the first sign-off (2026-11-01) and is re-confirmed with its AFTER in this phase: no page is re-laid out until its before/after sign-off in this phase, mocked pages included.
+- Approved relayouts (`$QBR` is `~/qb-ui-review/phase-94`):
+  - Events/Details: Q-115 (R1 (events)): Events/Details (both layouts): move the "Your Availability" card above "Description" so the main player action is the first card after the title block (order only). BEFORE desktop `$QBR/before/desktop/Events-Details.png`, mobile `$QBR/before/mobile/Events-Details.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Calendar/Index: Q-116 (R2 (events)): Calendar/Index (desktop, below the large breakpoint): month navigation on its own row under the title, "Board Availability" and "My Agenda" in a wrapping button row; same four controls and labels. BEFORE desktop `$QBR/before/desktop/Calendar-Index.png`, mobile `$QBR/before/mobile/Calendar-Index.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/calendar-1440.png`, `$QBR/mockups/direction-a/png/calendar-390.png`. Answer: approved in principle — re-confirmed with its AFTER in the area phase; constraint G1-R2: the whole desktop month stays visible without scrolling at 1280 by 720 and up.
+  - Calendar/Index (desktop month fit): G1-R2 (operator requirement at G1): the desktop month fits without scrolling at 1280 by 720 and up: compact one-line entries (marker with a non-colour cue, title with an ellipsis, 4.5:1), "+N more" in busy cells so cells never grow, an entry expands on hover, keyboard focus and tap (dismissible with Esc, hoverable, persistent); phones keep the agenda list. Entries collapse behind "+N more": an operator-requested exception to the no-collapse rule, limited to day cells, every entry stays reachable. BEFORE desktop `$QBR/before/desktop/Calendar-Index.png`, mobile `$QBR/before/mobile/Calendar-Index.png`. AFTER: Direction A calendar at 1440 and 390: `$QBR/mockups/direction-a/png/calendar-1440.png`, `$QBR/mockups/direction-a/png/calendar-390.png`; the "+N more" interaction is shown in the calendar-fit mockup the operator tries before the Events phase (`$QBR/mockups/calendar-fit/`, being built; open item G1-O3). Answer: approved in principle — re-confirmed with its AFTER in the area phase; "+N more" behaviour confirmed against the calendar-fit mockup before the Events phase.
+
+**Definition of converted:**
+
+1. Zero inline `style=""`, `<style>` and `<script>` and no inline event handler in the area's views; styles in stylesheets, scripts in files or ES modules.
+2. Zero hex or `rgb()` literals and zero `!important` in the area's stylesheets; they live in the `pages` layer or move into `components`.
+3. The area's stylesheet is loaded through `@section Styles`, not the global list.
+4. Every twin aligned with its partner; every twin content difference answered; approved merges done.
+5. The accessibility bar (A-1 to A-11) verified on each page, desktop and mobile.
+6. Before and after screenshots stored outside the repository; relaid-out pages signed off.
+7. Mobile checks listed in the phase UAT and run under a mobile User-Agent.
+8. Static guard tests that read the area's files are rewritten to pin the same intent; none is deleted.
+9. `Html.LocalTime` and `Html.WallClock` untouched; nothing writes to `Events` or `Quests`.
+10. At merge, every page still works and reads.
+
+Plus, specific to this phase: linked-entry dashed border, the inert `--static` rule and the visually hidden status text stay; no date conversion; every date line keeps its format; calendar-feed files are untouched; the twin-less views get their narrow-width rules in the `pages` layer
+
+**Constraints:**
+
+- No user-facing flow is removed or broken; every page stays usable at every merge.
+- Mobile checks run under a mobile User-Agent with touch.
+- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; nothing writes to `Events` or `Quests`, and the calendar feed files are untouched.
+- Before and after screenshots are kept outside the repository.
+- No planning references (requirement, phase or plan ids, planning document names) in CSS or source comments.
+- Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase to break down)
+
+### Phase 98: Characters, Contacts, DM profile and Players UI conversion
+
+**Goal:** Convert characters, contacts, categories, the DM profile and the players list, and the image crop dialog. Convert characters, contacts, contact categories, the DM profile and the players list, with the image crop dialog and the six approved twin merges, to the foundation, keeping every field and action and fixing the editor keyboard trap and the dialog findings.
+**Requirements**: TBD
+**Depends on:** Phase 94 and Phase 95 (Phase 95 fixes the Markdown editor keyboard trap this phase verifies on six pages)
+**Plans:** 0 plans
+
+**Scope:**
+
+- Views: 13 rows, 26 files: `Characters/*` (8), `Contacts/*` (8), `ContactCategoryManagement/*` (4), `DungeonMaster/{Profile,EditProfile}` (4), `Players/Index` (2); `wwwroot/js/image-crop.js` and its dialog markup. The character select modal (Q-135) goes with Phase 95, and the Markdown editor is fixed in Phase 95 and verified here on six pages
+- Stylesheets: `characters.css`, `characters.mobile.css`, `character-detail.mobile.css`, `character-form.mobile.css`, `contacts.css`, `contacts.mobile.css`, `contact-detail.mobile.css`, `contact-form.mobile.css`, `dm-profile.css`, `dm-profile.mobile.css`, `dm-editprofile.mobile.css`, `players.mobile.css`, `image-crop.css` (13; `dm-create.mobile.css` and `dm-manage.mobile.css` go to Phase 95)
+- Moves into `@section Styles`: `characters.css`, `contacts.css`, `dm-profile.css` and `image-crop.css` leave the global list of `_Layout.cshtml`.
+- Counts after the foundation: 26 view files; 13 stylesheets: **70 hex, 243 `rgb()`, 88 `!important`**; in the views **49 inline `style=`, 0 `<style>`, 22 inline `<script>`, 11 inline event handlers**; 8 utility-colour fights; rendered contrast **97 failing rows on 32 elements on 13 pages** (an amber Edit Character button on the phone at 1.68:1, form help text at 2.99:1, the phone required asterisk at 3.36:1, `row-nav-link` names at 4.34:1); overflow of `ContactCategoryManagement/Manage` at 320 desktop; 3 test files read its sheets (`MobileViewsTests` 14 references, `ContactCategoryContrastGuardTests` 5).
+- Findings owned: S1 6 and S2 13 of 55 findings (S3 25, S4 11); S1: crop dialog and character dialog text, two amber mobile buttons, a dark category label, the editor keyboard trap
+- Deferred items landing here: WINDOWS 12 for Characters Create and Edit and Contacts Create, Edit and Details (phone required asterisk, 7 rows at 3.36:1); the crop dialog and character dialog findings; the 55 findings of 94-AUDIT-characters.md (S1 6, S2 13).
+
+**Guard tests to rewrite to the same intent (none deleted):** `MobileViewsTests` facts for Characters (near line 767), DM EditProfile (`GetMobilePage_DmEditProfile_...`), Contacts; `ContactCategoryContrastGuardTests` (the `contacts.mobile.css` and `contact-form.mobile.css` facts and the two rendered-HTML facts, the three facts that pinned `modern-card.css`, re-pinned when the foundation deleted it and rewritten again as the contact sheets move), `ContactsTagsFormMarkupTests`, `ContactsTagsDesktopMarkupTests`, `ContactDetailsCategoryTests`, `ContactCategoryManagementControllerIntegrationTests`
+
+**Inherited decisions:**
+
+- Operator answers: 5 "add it to the other view" answers (Q-50 to Q-55, 6 questions, 1 deliberate), 6 approved merges (Q-97 to Q-102), 3 approved relayouts (Q-117 to Q-119).
+- Open questions inherited: twin questions Q-50 to Q-55, merges Q-97 to Q-102 (six pairs), relayouts Q-117 to Q-119, and the crop dialog decision
+- Signed-off direction: Direction A (refined glass) with the operator's stated exceptions; the Shop uses variant (a), the navy theme, on `<html data-theme="shop">`.
+- Every relayout was approved in principle at the first sign-off (2026-11-01) and is re-confirmed with its AFTER in this phase: no page is re-laid out until its before/after sign-off in this phase, mocked pages included.
+- Approved merge: M-characters-1 (Q-97) Characters/Details: approved at G1 (2026-11-01), carried into the Characters, Contacts, DM profile and Players phase; costly to reverse
+- Approved merge: M-characters-2 (Q-98) Contacts/Details: approved at G1 (2026-11-01), carried into the Characters, Contacts, DM profile and Players phase; costly to reverse
+- Approved merge: M-characters-3 (Q-99) Contacts/Create: approved at G1 (2026-11-01), carried into the Characters, Contacts, DM profile and Players phase; costly to reverse
+- Approved merge: M-characters-4 (Q-100) Contacts/Edit: approved at G1 (2026-11-01), carried into the Characters, Contacts, DM profile and Players phase; costly to reverse
+- Approved merge: M-characters-5 (Q-101) ContactCategoryManagement/Edit: approved at G1 (2026-11-01), carried into the Characters, Contacts, DM profile and Players phase; costly to reverse
+- Approved merge: M-characters-6 (Q-102) DungeonMaster/EditProfile: approved at G1 (2026-11-01), carried into the Characters, Contacts, DM profile and Players phase; costly to reverse
+- Approved relayouts (`$QBR` is `~/qb-ui-review/phase-94`):
+  - ContactCategoryManagement/Manage: Q-117 (R-1 (characters)): ContactCategoryManagement/Manage (desktop): wrap the category table in a responsive container so it scrolls inside its card at narrow widths; columns, buttons and order unchanged. BEFORE desktop `$QBR/before/desktop/ContactCategoryManagement-Manage.png`, mobile `$QBR/before/mobile/ContactCategoryManagement-Manage.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Characters/Create: Q-118 (R-2 (characters, OQ-8)): Form pages of the Characters area: one button row (hr, Cancel or Back left, primary right on desktop; one stacked order on mobile); buttons move within their row only. BEFORE desktop `$QBR/before/desktop/Characters-Create.png`, mobile `$QBR/before/mobile/Characters-Create.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Characters/Edit: Q-118 (R-2 (characters, OQ-8)): Form pages of the Characters area: one button row (hr, Cancel or Back left, primary right on desktop; one stacked order on mobile); buttons move within their row only. BEFORE desktop `$QBR/before/desktop/Characters-Edit.png`, mobile `$QBR/before/mobile/Characters-Edit.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Contacts/Create: Q-118 (R-2 (characters, OQ-8)): Form pages of the Characters area: one button row (hr, Cancel or Back left, primary right on desktop; one stacked order on mobile); buttons move within their row only. BEFORE desktop `$QBR/before/desktop/Contacts-Create.png`, mobile `$QBR/before/mobile/Contacts-Create.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Contacts/Edit: Q-118 (R-2 (characters, OQ-8)): Form pages of the Characters area: one button row (hr, Cancel or Back left, primary right on desktop; one stacked order on mobile); buttons move within their row only. BEFORE desktop `$QBR/before/desktop/Contacts-Edit.png`, mobile `$QBR/before/mobile/Contacts-Edit.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - ContactCategoryManagement/Edit: Q-118 (R-2 (characters, OQ-8)): Form pages of the Characters area: one button row (hr, Cancel or Back left, primary right on desktop; one stacked order on mobile); buttons move within their row only. BEFORE desktop `$QBR/before/desktop/ContactCategoryManagement-Edit.png`, mobile `$QBR/before/mobile/ContactCategoryManagement-Edit.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - DungeonMaster/EditProfile: Q-118 (R-2 (characters, OQ-8)): Form pages of the Characters area: one button row (hr, Cancel or Back left, primary right on desktop; one stacked order on mobile); buttons move within their row only. BEFORE desktop `$QBR/before/desktop/DungeonMaster-EditProfile.png`, mobile `$QBR/before/mobile/DungeonMaster-EditProfile.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Contacts/Create: Q-119 (R-3 (characters)): Contacts and Characters Create/Edit (desktop): align the image block with the field stack so the empty block under the file input goes away; fields keep their order. BEFORE desktop `$QBR/before/desktop/Contacts-Create.png`, mobile `$QBR/before/mobile/Contacts-Create.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Contacts/Edit: Q-119 (R-3 (characters)): Contacts and Characters Create/Edit (desktop): align the image block with the field stack so the empty block under the file input goes away; fields keep their order. BEFORE desktop `$QBR/before/desktop/Contacts-Edit.png`, mobile `$QBR/before/mobile/Contacts-Edit.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Characters/Create: Q-119 (R-3 (characters)): Contacts and Characters Create/Edit (desktop): align the image block with the field stack so the empty block under the file input goes away; fields keep their order. BEFORE desktop `$QBR/before/desktop/Characters-Create.png`, mobile `$QBR/before/mobile/Characters-Create.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Characters/Edit: Q-119 (R-3 (characters)): Contacts and Characters Create/Edit (desktop): align the image block with the field stack so the empty block under the file input goes away; fields keep their order. BEFORE desktop `$QBR/before/desktop/Characters-Edit.png`, mobile `$QBR/before/mobile/Characters-Edit.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+
+**Definition of converted:**
+
+1. Zero inline `style=""`, `<style>` and `<script>` and no inline event handler in the area's views; styles in stylesheets, scripts in files or ES modules.
+2. Zero hex or `rgb()` literals and zero `!important` in the area's stylesheets; they live in the `pages` layer or move into `components`.
+3. The area's stylesheet is loaded through `@section Styles`, not the global list.
+4. Every twin aligned with its partner; every twin content difference answered; approved merges done.
+5. The accessibility bar (A-1 to A-11) verified on each page, desktop and mobile.
+6. Before and after screenshots stored outside the repository; relaid-out pages signed off.
+7. Mobile checks listed in the phase UAT and run under a mobile User-Agent.
+8. Static guard tests that read the area's files are rewritten to pin the same intent; none is deleted.
+9. `Html.LocalTime` and `Html.WallClock` untouched; nothing writes to `Events` or `Quests`.
+10. At merge, every page still works and reads.
+
+Plus, specific to this phase: the crop dialog meets 2.5.7 per the answer to Q-132; the one remaining infinite animation (`characters.css:203`) is capped; the editor keyboard trap fix is verified on all six pages
+
+**Constraints:**
+
+- No user-facing flow is removed or broken; every page stays usable at every merge.
+- Mobile checks run under a mobile User-Agent with touch.
+- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; nothing writes to `Events` or `Quests`, and the calendar feed files are untouched.
+- Before and after screenshots are kept outside the repository.
+- No planning references (requirement, phase or plan ids, planning document names) in CSS or source comments.
+- Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase to break down)
+
+### Phase 99: Shop and Shop management UI conversion
+
+**Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
+**Requirements**: TBD
+**Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
+**Plans:** 0 plans
+
+**Scope:**
+
+- Views: 10 view files plus the partial `Shared/_ShopItemDetailsContent`: `Shop/{Index,Details}` and `ShopManagement/{Index,Create,Edit}`, each with a twin (11 with the partial)
+- Stylesheets: `shop.css`, `shop.mobile.css`, `shop-details.mobile.css`, `shop-management-index.mobile.css`, `shop-management-create.mobile.css`, `shop-management-edit.mobile.css`, plus the Shop ranges of legacy-pages.css (line ranges in the post-foundation numbers below), which the phase removes, and the shop.css line in `_Layout.cshtml`
+- Moves into `@section Styles`: `shop.css` leaves the global list of `_Layout.cshtml`; the Shop theme goes on `<html data-theme="shop">`, never through a body-level custom property.
+- Counts after the foundation: 11 view files; 6 stylesheets plus the Shop ranges of `legacy-pages.css` (lines 39-298 and 792-1184): **189 hex, 209 `rgb()`, 152 `!important`**; in the views **15 inline `style=`, 4 `<style>` blocks, 9 inline `<script>`, 40 inline event handlers**; 14 utility-colour fights (7 in `legacy-pages.css`, 6 in `shop.css`, 1 in `shop.mobile.css`); rendered contrast **59 failing rows on 20 elements on 11 pages** (legendary and rare rarity labels at 1.63 and 2.15:1, the Purchase button at 2.13:1, outline buttons at 1.70 and 1.88:1); no overflow flag; 1 test file reads its sheets (`MobileViewsTests`, 10 references).
+- Findings owned: S1 10 and S2 19 of 65 findings (S3 29, S4 7); S1 includes the creation failure A-shop-010, which is handed off, not fixed here
+- Deferred items landing here: G1-O2 (the floating merchant button needs a new place, a required fix); the three shop alerts still on literal colours with important flags (`#denyModal .alert-warning` and `#addCharacterModal .alert-info` in `shop.css`, and the help and small text of the management edit card in `shop-management-edit.mobile.css`), to move to the foundation's alert variables; the `#denyModal` and `#addCharacterModal` required-mark rules; WINDOWS 22 (the board photo token: the Shop theme must replace `--qb-board-image` through `data-theme`, keeping the photo behind `--qb-board-photo`, which the foundation already does); WINDOWS 12 for Shop management Create and Edit (2 rows); the four functional breaks (Q-137); the 65 shop findings of 94-AUDIT-shop.md (S1 10, S2 19). The Shop item creation bug is a separate fix, not part of this phase (see below).
+
+**Guard tests to rewrite to the same intent (none deleted):** `MobileViewsTests` Shop and ShopManagement entries (the purchase-panel omission at lines 716-733 and the management mobile layout at 1123), `BoardPageStaticGuardTests` (controller file list), `BoardPageGateMatrixTests`, the Shop controller integration tests
+
+**Inherited decisions:**
+
+- Operator answers: 11 "add it to the other view" answers (Q-56 to Q-75, 20 questions, 9 deliberate), no merges, 2 approved relayouts (Q-120, Q-121).
+- Open questions inherited: twin questions Q-56 to Q-75, no merges (none qualifies), relayouts Q-120 to Q-121, the theme decision and the functional-breaks owner
+- Signed-off direction: Direction A (refined glass) with the operator's stated exceptions; the Shop uses variant (a), the navy theme, on `<html data-theme="shop">`.
+- Every relayout was approved in principle at the first sign-off (2026-11-01) and is re-confirmed with its AFTER in this phase: no page is re-laid out until its before/after sign-off in this phase, mocked pages included.
+- Approved relayouts (`$QBR` is `~/qb-ui-review/phase-94`):
+  - Shop/Index: Q-120 (R-1 (shop)): Shop/Index (desktop): move the purchase history from a fixed 280px side panel to an in-flow section under the item grid (a reorder of two blocks; same rows, same Return and Sell forms), so it is reachable at every width. BEFORE desktop `$QBR/before/desktop/Shop-Index.png`, mobile `$QBR/before/mobile/Shop-Index.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/shop-a-1440.png`, `$QBR/mockups/direction-a/png/shop-a-390.png`. Answer: approved in principle — re-confirmed with its AFTER in the area phase; drawn in the navy Shop theme (a); the floating merchant button gets a new place (G1-O2).
+  - Shop/Index (empty-category): Q-120 (R-1 (shop)): Shop/Index (desktop): move the purchase history from a fixed 280px side panel to an in-flow section under the item grid (a reorder of two blocks; same rows, same Return and Sell forms), so it is reachable at every width. BEFORE desktop `$QBR/before/desktop/Shop-Index--empty-category.png`, mobile `$QBR/before/mobile/Shop-Index--empty-category.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/shop-a--empty-1440.png`, `$QBR/mockups/direction-a/png/shop-a--empty-390.png`. Answer: approved in principle — re-confirmed with its AFTER in the area phase; drawn in the navy Shop theme (a); the floating merchant button gets a new place (G1-O2).
+  - Shop/Index: Q-121 (R-2 (shop)): Shop/Index (desktop): one filter card containing the rarity checkboxes, sort select, search input and the Apply Filters and Search buttons, instead of two stacked bars tied by a form attribute. BEFORE desktop `$QBR/before/desktop/Shop-Index.png`, mobile `$QBR/before/mobile/Shop-Index.png`. AFTER: Direction A (signed off) renders: `$QBR/mockups/direction-a/png/shop-a-1440.png`, `$QBR/mockups/direction-a/png/shop-a-390.png`. Answer: approved in principle — re-confirmed with its AFTER in the area phase; drawn in the navy Shop theme (a); the floating merchant button gets a new place (G1-O2).
+
+**Definition of converted:**
+
+1. Zero inline `style=""`, `<style>` and `<script>` and no inline event handler in the area's views; styles in stylesheets, scripts in files or ES modules.
+2. Zero hex or `rgb()` literals and zero `!important` in the area's stylesheets; they live in the `pages` layer or move into `components`.
+3. The area's stylesheet is loaded through `@section Styles`, not the global list.
+4. Every twin aligned with its partner; every twin content difference answered; approved merges done.
+5. The accessibility bar (A-1 to A-11) verified on each page, desktop and mobile.
+6. Before and after screenshots stored outside the repository; relaid-out pages signed off.
+7. Mobile checks listed in the phase UAT and run under a mobile User-Agent.
+8. Static guard tests that read the area's files are rewritten to pin the same intent; none is deleted.
+9. `Html.LocalTime` and `Html.WallClock` untouched; nothing writes to `Events` or `Quests`.
+10. At merge, every page still works and reads.
+
+Plus, specific to this phase: ten infinite animation declarations (not six; four are dead copies in the Create and Edit `<style>` blocks) are removed or capped; the four views with `<style>` lose it; Return and Sell are verified with a purchase made through the Purchase form on the audit board; Create works first (separate fix off `main`)
+
+**Constraints:**
+
+- The Shop item creation failure (the missing board on a new item) is fixed separately before this phase; its after-capture of Create needs it. It is not part of this phase.
+- No user-facing flow is removed or broken; every page stays usable at every merge.
+- Mobile checks run under a mobile User-Agent with touch.
+- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; nothing writes to `Events` or `Quests`, and the calendar feed files are untouched.
+- Before and after screenshots are kept outside the repository.
+- No planning references (requirement, phase or plan ids, planning document names) in CSS or source comments.
+- Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase to break down)
+
+### Phase 100: Admin and Platform UI conversion
+
+**Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
+**Requirements**: TBD
+**Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
+**Plans:** 0 plans
+
+**Scope:**
+
+- Views: 25 view files: `Admin/*` (11: five twin pairs plus `EmailStats`), `Platform/Group/*` (10), `Platform/Users/Index` (2), `Platform/LinkedBoards/Index` (2). The two Platform layouts are Foundation work that this phase verifies (A-admin-008, A-admin-014, A-shell-037, A-shell-038)
+- Stylesheets: `admin-form.mobile.css`, `admin-quests.mobile.css`, `admin-users.mobile.css`, `platform-group.mobile.css`, `platform-users.mobile.css`, `platform-linked-boards.mobile.css`
+- Moves into `@section Styles`: nothing leaves a desktop layout's global list (the Platform layouts link no page sheet); the phone sheets are linked from their views through the section the Platform layouts already render.
+- Counts after the foundation: 25 view files; 6 stylesheets: **6 hex, 57 `rgb()`, 28 `!important`**; in the views **1 inline `style=`, 0 `<style>`, 4 inline `<script>`, 12 inline event handlers**; 5 utility-colour fights (`platform-group.mobile` 3, `platform-users.mobile` 2); rendered contrast **254 failing rows on 16 elements on 13 pages** (the outline Reset Password button at 1.21:1, Platform phone meta text and dates at 2.35:1, 43 mailto links at 3.11:1); overflow of `Platform/Group/Index` at 320 desktop; 4 test files read its sheets.
+- Findings owned: S1 8 and S2 14 of 44 findings (S3 16, S4 6); S1: badge and table-cell readability, mailto links on Platform phones, the dark modal, the outline Reset Password button, the Platform bar at 320px
+- Deferred items landing here: WINDOWS 24 (43 `a.email-link` links 22px tall on the phone `/Platform/Users`); the `Platform/Group/Index` 320 overflow; the 44 findings of 94-AUDIT-admin.md (S1 8, S2 14).
+
+**Guard tests to rewrite to the same intent (none deleted):** `PlatformAreaLayoutTests` (the Platform layout loads the card styles), `LinkedBoardsPlatformIntegrationTests` (`platform-linked-boards.mobile.css`, `platform-group-card-mobile`), `BoardPageStaticGuardTests` (reads `platform-group.mobile.css`), the Admin and Platform entries of `MobileViewsTests`
+
+**Inherited decisions:**
+
+- Operator answers: 5 "add it to the other view" answers (Q-85 to Q-94, 10 questions, 5 deliberate), no merges to do (Q-108 to Q-110 kept the twins), 3 approved relayouts (Q-124 to Q-126).
+- Open questions inherited: twin questions Q-85 to Q-94, merges Q-108 to Q-110 (Platform Group Create, Delete, Edit), relayouts Q-124 to Q-126
+- Signed-off direction: Direction A (refined glass) with the operator's stated exceptions; the Shop uses variant (a), the navy theme, on `<html data-theme="shop">`.
+- Every relayout was approved in principle at the first sign-off (2026-11-01) and is re-confirmed with its AFTER in this phase: no page is re-laid out until its before/after sign-off in this phase, mocked pages included.
+- Approved merge: M-admin-1 (Q-108) Platform Group/Create: kept at G1 (2026-11-01): the twin stays; costly to reverse
+- Approved merge: M-admin-2 (Q-109) Platform Group/Delete: kept at G1 (2026-11-01): the twin stays; costly to reverse
+- Approved merge: M-admin-3 (Q-110) Platform Group/Edit: kept at G1 (2026-11-01): the twin stays; costly to reverse
+- Approved relayouts (`$QBR` is `~/qb-ui-review/phase-94`):
+  - Admin/CreateUser: Q-124 (R-admin-1): Admin/CreateUser and Admin/EditUser (desktop): merge the bare-board duplicate h1 and the card h2 into one page title in the card header; no field or action moves. BEFORE desktop `$QBR/before/desktop/Admin-CreateUser.png`, mobile `$QBR/before/mobile/Admin-CreateUser.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Admin/EditUser: Q-124 (R-admin-1): Admin/CreateUser and Admin/EditUser (desktop): merge the bare-board duplicate h1 and the card h2 into one page title in the card header; no field or action moves. BEFORE desktop `$QBR/before/desktop/Admin-EditUser.png`, mobile `$QBR/before/mobile/Admin-EditUser.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Group/Members: Q-125 (R-admin-2): Platform Group/Members (desktop): stack "Current Members" and "Available Users" full width instead of two half-width columns; all columns, forms and buttons stay. BEFORE desktop `$QBR/before/desktop/Platform-Group-Members.png`, mobile `$QBR/before/mobile/Platform-Group-Members.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+  - Admin/Users: Q-126 (R-admin-3): Admin/Users (desktop): stack the Email under the Name in one cell so the Actions cell gets the freed width; every column's content and every button stays. BEFORE desktop `$QBR/before/desktop/Admin-Users.png`, mobile `$QBR/before/mobile/Admin-Users.png`. AFTER: after: not yet drawn — drawn in its area phase before that page is re-laid out. Answer: approved in principle — re-confirmed with its AFTER in the area phase.
+
+**Definition of converted:**
+
+1. Zero inline `style=""`, `<style>` and `<script>` and no inline event handler in the area's views; styles in stylesheets, scripts in files or ES modules.
+2. Zero hex or `rgb()` literals and zero `!important` in the area's stylesheets; they live in the `pages` layer or move into `components`.
+3. The area's stylesheet is loaded through `@section Styles`, not the global list.
+4. Every twin aligned with its partner; every twin content difference answered; approved merges done.
+5. The accessibility bar (A-1 to A-11) verified on each page, desktop and mobile.
+6. Before and after screenshots stored outside the repository; relaid-out pages signed off.
+7. Mobile checks listed in the phase UAT and run under a mobile User-Agent.
+8. Static guard tests that read the area's files are rewritten to pin the same intent; none is deleted.
+9. `Html.LocalTime` and `Html.WallClock` untouched; nothing writes to `Events` or `Quests`.
+10. At merge, every page still works and reads.
+
+Plus, specific to this phase: a configured provider key (or a seeded stub) so `Admin/EmailStats` tile contrast is measured, not read; the Campaign status mapping (A-admin-016) is answered with the Quests owner's knowledge before it is fixed; the stale note about `_Layout.Platform.Mobile` being dead code is already corrected (PROJECT.md says the Platform mobile layout is live)
+
+**Constraints:**
+
+- No user-facing flow is removed or broken; every page stays usable at every merge.
+- Mobile checks run under a mobile User-Agent with touch.
+- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; nothing writes to `Events` or `Quests`, and the calendar feed files are untouched.
+- Before and after screenshots are kept outside the repository.
+- No planning references (requirement, phase or plan ids, planning document names) in CSS or source comments.
+- Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase to break down)
+
+### Phase 101: Email templates restyle
+
+**Goal:** Give the ten email components the same brand look as the converted web pages, within what mail clients support, with every message's content and trigger unchanged. Restyle the ten email templates to the web pages' brand look with inline styles only and a real test send of each, leaving every message's content and trigger unchanged.
+**Requirements**: TBD
+**Depends on:** Phase 94 (the final tokens; it is independent of the web phases and can run at any point after them)
+**Plans:** 0 plans
+
+**Scope:**
+
+- Components: all 10 `.razor` components under `QuestBoard.Service/Components/Emails/`: `AddedToGroup`, `ChangeEmailConfirm`, `ForgotPassword`, `QuestDateChanged`, `QuestFinalized`, `QuestMoved`, `SessionReminder`, `WaitlistPromoted`, `Welcome` and `_EmailLayout.razor`, which carries the shared shell and today's remote Font Awesome and Google Fonts links and a `<style>` block.
+- Stylesheets: none (email styling is inline); the shell's tokens are translated to literal values once, in `_EmailLayout.razor`.
+- Counts after the foundation: 10 components; **192 inline `style=` attributes and 134 hex literals** (mail clients need both), 1 `<style>` block and 2 remote stylesheet links (Font Awesome 6.4.0 from cdnjs, Cinzel from Google Fonts) in `_EmailLayout.razor`; no CSS custom properties, no scripts; unchanged by the foundation (the email diff against the baseline is empty).
+- Findings owned: none from this audit (the email templates are not web views and were not part of the manifest); the phase starts with its own inventory of the ten components.
+
+**Guard tests to rewrite to the same intent (none deleted):** `Emails/QuestFinalizedMarkdownRenderTests`, `Emails/WaitlistPromotedMarkdownRenderTests`, `Emails/SessionReminderMarkdownRenderTests` (the markdown `<div>` wrapper), `UnitTests/Services/SessionReminderJobTests`, and the email file references in `Tests/BoardMoveStaticGuardTests`.
+
+**Inherited decisions:**
+
+- No relayouts and no merges apply to email. Content, subjects, send triggers and recipients stay exactly as they are.
+- The remote fonts in `_EmailLayout.razor` (Font Awesome 6.4.0 from cdnjs, Cinzel from Google Fonts) are decided inside the phase with the operator: keep web fonts as progressive enhancement behind safe fallbacks, or drop them.
+- The test-send inbox is the operator's; the mail clients the group uses are named in the phase.
+
+**Definition of converted:** the ten points above read for email: points 1 to 3 become "inline styles only, no custom properties, no scripts" and point 5 is checked on the rendered preview and the received message; points 6 and 7 become the preview plus the real test send of each template.
+
+**Constraints:**
+
+- Inline styles are required; no CSS custom properties (mail clients do not resolve `var()`); limited mail-client CSS (no layers, no `:where()`, no `backdrop-filter`; table or div layouts that survive the common clients).
+- Markdown-rendered sections keep their `<div>` wrapper; the `@Html.Markdown(...)` output is untouched.
+- Content, subjects, triggers and recipients unchanged; `Html.LocalTime` and `Html.WallClock` markup untouched where used.
+- Verification: a rendered preview screenshot of every template plus a real test send of each template to the operator's inbox (the development setting that suppresses sending is switched off for the test send only), checked in the mail clients the group uses; preview and received message compared per template.
+- Pages-style constraints carried over: no user-facing flow removed; screenshots kept outside the repository; no planning references in source comments.
+- Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase to break down)
+
 ## Backlog
 
 Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
@@ -1430,3 +2069,49 @@ Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-b
 Plans:
 
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 102: Board deletion
+
+**Goal:** A super admin can delete a board that no longer has any members, without a server error. Everything that belongs only to that board goes with it, and anything that must outlive the board (users, and whatever they own across boards) is unlinked instead of deleted.
+**Requirements**: TBD
+**Depends on:** Nothing in this milestone (independent bug fix; it can run at any point)
+**Plans:** 10/10 plans complete
+
+**Scope:**
+
+- The bug: the Platform board Delete posts to `GroupController.DeleteConfirmed`, which removes only the board row through `groupService.RemoveAsync`. Memberships (`UserGroups`) cascade, but quests, characters, events, event series, contacts, contact categories, contact tags and shop items reference the board with no delete rule (`NoAction`), so SQL Server rejects the delete and the user sees a 500.
+- Keep the existing guard: the Delete button only appears, and the delete is only accepted, once every member has been removed from the board.
+- Map every entity that hangs off a board, directly or through another row (signups, date votes, purchases, calendar feed rows, linked-board-set membership, follow-up quest chains, home-page and page selections, and so on), and decide for each whether it is deleted with the board or only unlinked.
+- Delete in one transaction, behind a confirmation page that lists what will be removed. Any failure shows a friendly error, never a 500.
+- Writes to quests and events go through the change tracker, so the calendar feed revision guard holds.
+- Platform Users page (`/platform/Users`): add a column showing how many boards each user is a member of, so a super admin can see who is still linked where (for example while emptying a board before deleting it).
+
+Plans:
+
+**Wave 1**
+
+- [x] 102-01-PLAN.md — Tracer: typed-name delete POST through controller, service and repository in one save, for a board holding quests, proven over HTTP
+- [x] 102-02-PLAN.md — Super-admin stale active-board recovery: shared session-clear helper and a board-exists check in the session middleware
+- [x] 102-03-PLAN.md — Boards column on /platform/Users, desktop and phone
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 102-04-PLAN.md — Delete every board-owned table and unlink cross-board references, with per-kind counts and a foreign-key integrity sweep
+- [x] 102-05-PLAN.md — Guard tests: foreign-key model pin, service typed-name rules, SQL Server delete and rollback test (skips without a server)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 102-06-PLAN.md — Deletion preview built from the delete's own query helpers
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 102-07-PLAN.md — Confirmation page on both twins through one shared partial, with refusal markup
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 102-08-PLAN.md — Page sheets, typed-name gate script and static guard
+- [x] 102-09-PLAN.md — POST outcomes, own-session clear and audit log line
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 102-10-PLAN.md — Full suite, required SQL Server run, and manual check on the real database (checkpoint)

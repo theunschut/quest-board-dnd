@@ -3,6 +3,20 @@
 // site.js's no-module, no-bundler convention) and self-initializes every matching textarea on
 // DOMContentLoaded -- callers do not need to invoke anything manually.
 
+// The field's name for assistive technology: the server-rendered data-editor-label when the
+// shared partial produced the textarea, otherwise the text of its label (without the required
+// marker). Returns an empty string when neither exists.
+function editorAccessibleName(textarea) {
+    if (textarea.dataset.editorLabel) {
+        return textarea.dataset.editorLabel.trim();
+    }
+    if (!textarea.id) {
+        return '';
+    }
+    const label = document.querySelector('label[for="' + CSS.escape(textarea.id) + '"]');
+    return label ? label.textContent.replace(/\*/g, '').trim() : '';
+}
+
 // Build one EasyMDE instance bound to a single textarea. previewRender POSTs the current text
 // to the server so Preview renders through the exact same sanitizer/parser as the saved output
 // (no second, client-side Markdown parser) -- see /markdown/preview.
@@ -61,6 +75,28 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
         }
     });
 
+    // EasyMDE binds Tab to list indentation, which traps a keyboard user inside the field with
+    // no way to reach the next control. Releasing Tab and Shift-Tab hands them back to the
+    // browser so focus moves on like it does from any other field. Enter still continues a
+    // Markdown list.
+    const codemirror = easyMDE.codemirror;
+    codemirror.setOption('extraKeys', Object.assign({}, codemirror.getOption('extraKeys'), {
+        'Tab': false,
+        'Shift-Tab': false
+    }));
+
+    // The editable surface is CodeMirror's own input, not the textarea the label points at, so
+    // give it its own accessible name and tie it to the visible hint under the field.
+    const inputField = codemirror.getInputField();
+    const accessibleName = editorAccessibleName(textarea);
+    if (accessibleName) {
+        codemirror.setOption('screenReaderLabel', accessibleName);
+    }
+    const hint = textarea.id ? document.getElementById(textarea.id + '-help') : null;
+    if (hint) {
+        inputField.setAttribute('aria-describedby', hint.id);
+    }
+
     // Native <textarea maxlength> only guards typing into the raw textarea, but EasyMDE/CodeMirror
     // intercepts every keystroke itself and never touches the textarea until submit -- so the
     // browser's built-in limit never fires while editing. Re-implement it against CodeMirror's own
@@ -109,7 +145,69 @@ function initMarkdownEditor(textarea, antiforgeryToken) {
         });
     }
 
+    // The textarea is hidden by EasyMDE, so the browser cannot anchor its own "fill this in" bubble
+    // to it and would otherwise cancel the submit without a word. The browser still fires "invalid"
+    // on the hidden textarea, which is the cue to say what is wrong in the field's own message
+    // element, mark the editable surface invalid and hand it focus. The textarea keeps its
+    // required attribute, so the native check and the server-side rule are untouched.
+    if (textarea.required) {
+        const container = textarea.closest('.mb-3');
+        const message = container ? container.querySelector('[data-valmsg-for]') : null;
+        if (message) {
+            const describedBy = inputField.getAttribute('aria-describedby');
+            const clearRequiredMessage = function () {
+                if (!message.hasChildNodes()) {
+                    return;
+                }
+                message.replaceChildren();
+                inputField.removeAttribute('aria-invalid');
+                if (describedBy) {
+                    inputField.setAttribute('aria-describedby', describedBy);
+                } else {
+                    inputField.removeAttribute('aria-describedby');
+                }
+            };
+
+            textarea.addEventListener('invalid', function (event) {
+                if (!textarea.validity.valueMissing) {
+                    return;
+                }
+                event.preventDefault();
+
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-circle-exclamation me-1';
+                icon.setAttribute('aria-hidden', 'true');
+                const name = editorAccessibleName(textarea) || 'This field';
+                message.replaceChildren(icon, document.createTextNode(name + ' is required.'));
+
+                inputField.setAttribute('aria-invalid', 'true');
+                if (message.id) {
+                    inputField.setAttribute('aria-describedby', (describedBy ? describedBy + ' ' : '') + message.id);
+                }
+
+                // Only the first invalid control takes focus, as the browser would do itself, so
+                // an earlier field with its own native bubble is not stolen from.
+                const firstInvalid = form ? form.querySelector(':invalid') : textarea;
+                if (firstInvalid === textarea) {
+                    codemirror.focus();
+                }
+            });
+
+            codemirror.on('change', clearRequiredMessage);
+        }
+    }
+
     return easyMDE;
+}
+
+// The antiforgery token reaches this script through a meta element rather than an inline
+// script, so a page that has no inline script can still preview. A page that already set the
+// global keeps its value.
+if (!window.markdownAntiforgeryToken) {
+    const tokenMeta = document.querySelector('meta[name="request-verification-token"]');
+    if (tokenMeta) {
+        window.markdownAntiforgeryToken = tokenMeta.content;
+    }
 }
 
 // Class-selector-driven, not ID-driven: asp-for generates a different id per form

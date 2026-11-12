@@ -49,8 +49,9 @@ public class ContactsTagsFormMarkupTests(WebApplicationFactoryBase factory) : IC
 
         statusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("id=\"TagsInput\"");
-        html.Should().Contain("@yaireo/tagify@4.38.0");
-        html.Should().Contain("integrity=\"sha384-");
+        html.Should().Contain("/lib/tagify-4.38.0/tagify.min.js");
+        html.Should().Contain("/lib/tagify-4.38.0/tagify.css");
+        html.Should().NotContain("@yaireo/tagify@");
         html.Should().Contain("initContactTags(");
     }
 
@@ -66,8 +67,9 @@ public class ContactsTagsFormMarkupTests(WebApplicationFactoryBase factory) : IC
 
         statusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("id=\"TagsInput\"");
-        html.Should().Contain("@yaireo/tagify@4.38.0");
-        html.Should().Contain("integrity=\"sha384-");
+        html.Should().Contain("/lib/tagify-4.38.0/tagify.min.js");
+        html.Should().Contain("/lib/tagify-4.38.0/tagify.css");
+        html.Should().NotContain("@yaireo/tagify@");
         html.Should().Contain("initContactTags(");
     }
 

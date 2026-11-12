@@ -72,7 +72,7 @@ public class QuestCampaignUiParityTests(WebApplicationFactoryBase factory) : ICl
     }
 
     [Fact]
-    public async Task CampaignManage_Desktop_RendersDeleteLinkWiredToDeleteQuest()
+    public async Task CampaignManage_Desktop_RendersDeleteControlWiredToThisQuest()
     {
         // Arrange
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
@@ -92,7 +92,8 @@ public class QuestCampaignUiParityTests(WebApplicationFactoryBase factory) : ICl
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.OK);
-            content.Should().Contain($"deleteQuest({quest.Id})");
+            content.Should().Contain("data-action=\"delete-quest\"");
+            content.Should().Contain($"data-quest-id=\"{quest.Id}\"");
         }
         finally
         {
@@ -126,7 +127,8 @@ public class QuestCampaignUiParityTests(WebApplicationFactoryBase factory) : ICl
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             content.Should().Contain("Edit Quest");
             content.Should().Contain($"/Quest/Edit/{quest.Id}");
-            content.Should().Contain($"deleteQuest({quest.Id})");
+            content.Should().Contain("data-action=\"delete-quest\"");
+            content.Should().Contain($"data-quest-id=\"{quest.Id}\"");
         }
         finally
         {

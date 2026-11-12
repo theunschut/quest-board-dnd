@@ -106,6 +106,52 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
+    /// A phone card carries the adventurer count in the poster's words, and no count on a Campaign board.
+    /// </summary>
+    [Fact]
+    public async Task MobileHome_MobileUserAgent_QuestCardShowsAdventurerCount()
+    {
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_home05", "dm_home05@test.com", name: "DM Home05");
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Counted Adventure Home05");
+        var (authClient, playerUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "player_home05", "player_home05@test.com");
+        await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, playerUser.Id, isSelected: false);
+
+        var (response, html) = await GetWithUserAgentAsync("/quests", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var card = QuestCardContaining(html, "Counted Adventure Home05");
+        card.Should().Contain("Adventurers signed up:</strong> 1");
+        card.Should().Contain("DM:</strong> DM Home05");
+        card.Should().NotContain("onclick");
+
+        // The board type is read from the active group's stored row, so the Campaign case needs a Campaign group.
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, groupId: 2);
+        await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Campaign Card Home05", groupId: 2);
+        try
+        {
+            _factory.TestGroupContext.ActiveGroupId = 2;
+            _factory.TestGroupContext.BoardType = BoardType.Campaign;
+            var (campaignResponse, campaignHtml) = await GetWithUserAgentAsync("/quests", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
+            campaignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var campaignCard = QuestCardContaining(campaignHtml, "Campaign Card Home05");
+            campaignCard.Should().Contain("DM:</strong>");
+            campaignCard.Should().NotContain("Adventurers signed up");
+            campaignCard.Should().NotContain("Selected Adventurers");
+        }
+        finally
+        {
+            _factory.TestGroupContext.ActiveGroupId = 1;
+            _factory.TestGroupContext.BoardType = BoardType.OneShot;
+        }
+    }
+
+    private static string QuestCardContaining(string html, string title)
+    {
+        var cards = html.Split("<div class=\"quest-card-mobile", StringSplitOptions.None).Skip(1);
+        return cards.Single(c => c.Contains(title));
+    }
+
+    /// <summary>
     /// Finalized quest shows the primary badge (date confirmed, future date).
     /// Note: repository filters out finalized quests with null or past FinalizedDate;
     /// a future FinalizedDate is required for the quest to appear on the board.
@@ -406,6 +452,85 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
+    /// The phone Manage page of an open quest carries a Quick Stats section above the date voting results,
+    /// with the same figures the desktop sidebar shows.
+    /// </summary>
+    [Fact]
+    public async Task MobileDmManage_OpenQuest_RendersQuickStatsAboveTheVotingResults()
+    {
+        var (authClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dm_dmview04", "dm_dmview04@test.com", roles: new[] { "DungeonMaster" });
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dmUser.Id, "Manage Mobile Quest DM04");
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, DateTime.UtcNow.AddDays(7));
+
+        var html = await GetManageAsMobileAsync(authClient, quest.Id);
+
+        html.Should().Contain("<h2>Quick Stats</h2>");
+        html.Should().Contain("Best Date:");
+        html.Should().Contain("players available");
+        html.IndexOf("<h2>Quick Stats</h2>", StringComparison.Ordinal)
+            .Should().BeLessThan(html.IndexOf("Voting Results</h2>", StringComparison.Ordinal),
+                "Quick Stats sits directly above the proposed dates");
+    }
+
+    /// <summary>
+    /// A finalized quest viewed by an Admin on the phone renders one Remove control for each selected
+    /// participant, the same control the desktop table carries.
+    /// </summary>
+    [Fact]
+    public async Task MobileDmManage_FinalizedQuestViewedByAdmin_RendersARemoveControlPerSelectedParticipant()
+    {
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "admin_dmview05", "admin_dmview05@test.com", roles: new[] { "Admin" });
+        var dm = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "dm_dmview05", "dm_dmview05@test.com", name: "DM View05");
+        var finalizedDate = DateTime.UtcNow.AddDays(7);
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dm.Id, "Manage Mobile Quest DM05", isFinalized: true, finalizedDate: finalizedDate);
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, finalizedDate);
+        var first = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "player_dmview05a", "player_dmview05a@test.com", name: "Player View05A");
+        var second = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "player_dmview05b", "player_dmview05b@test.com", name: "Player View05B");
+        var firstSignup = await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, first.Id, isSelected: true);
+        var secondSignup = await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, second.Id, isSelected: true);
+
+        var html = await GetManageAsMobileAsync(adminClient, quest.Id);
+
+        html.Should().Contain("<h2>Selected Participants</h2>");
+        html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{firstSignup.Id}\"");
+        html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{secondSignup.Id}\"");
+        System.Text.RegularExpressions.Regex.Matches(html, "data-action=\"remove-player\"").Count.Should().Be(2);
+    }
+
+    /// <summary>
+    /// The quest's own Dungeon Master is not an Admin, so the same finalized phone page carries no Remove
+    /// control for the participants; the server renders it only under the Admin condition.
+    /// </summary>
+    [Fact]
+    public async Task MobileDmManage_FinalizedQuestViewedByItsDungeonMaster_RendersNoRemoveControl()
+    {
+        var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dm_dmview06", "dm_dmview06@test.com", roles: new[] { "DungeonMaster" });
+        var finalizedDate = DateTime.UtcNow.AddDays(7);
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dmUser.Id, "Manage Mobile Quest DM06", isFinalized: true, finalizedDate: finalizedDate);
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, finalizedDate);
+        var player = await AuthenticationHelper.CreateTestUserAsync(_factory.Services, "player_dmview06", "player_dmview06@test.com", name: "Player View06");
+        await TestDataHelper.CreatePlayerSignupAsync(_factory.Services, quest.Id, player.Id, isSelected: true);
+
+        var html = await GetManageAsMobileAsync(dmClient, quest.Id);
+
+        html.Should().Contain("<h2>Selected Participants</h2>");
+        html.Should().NotContain("data-action=\"remove-player\"");
+    }
+
+    private async Task<string> GetManageAsMobileAsync(HttpClient authClient, int questId)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Quest/Manage/{questId}");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
     /// DM Profile on mobile renders glass card layout (dm-profile-header-card).
     /// Also checks that dm-profile.mobile.css is linked.
     /// </summary>
@@ -523,7 +648,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     /// <summary>
     /// Regression guard: the "Join This Quest" card is finalized-quest-only. An authenticated,
     /// not-yet-signed-up player viewing an OPEN (non-finalized) quest must NOT see it — only the
-    /// pre-finalization "Choose a Date" signup card should render.
+    /// pre-finalization "Vote on Proposed Dates" signup section should render.
     /// </summary>
     [Fact]
     public async Task MobileQuestDetails_OpenQuest_AuthenticatedNotSignedUp_DoesNotRenderJoinCard()
@@ -541,7 +666,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().NotContain("joinPlayerFormMobile");
-        html.Should().Contain("Choose a Date");
+        html.Should().Contain("Vote on Proposed Dates");
     }
 
     // -----------------------------------------------------------------------
@@ -862,12 +987,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // Quest Edit renders glass card form on mobile UA
+    // Quest Edit is one view that serves the phone layout too
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Quest/Edit/{id} renders quest-edit-card-mobile glass card form
-    /// and links quest-edit.mobile.css. Requires DM authentication and ownership of the quest.
+    /// Mobile UA on /Quest/Edit/{id} answers 200 with the phone layout (the mobile-layout body class),
+    /// the Edit form posting back to the quest, its tips card and the shared quest form sheet.
+    /// Requires DM authentication and ownership of the quest.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_QuestEdit_ReturnsSuccessAndMobileLayout()
@@ -884,17 +1010,20 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("quest-edit-card-mobile");
-        html.Should().Contain("quest-edit.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain($"/Quest/Edit/{quest.Id}");
+        html.Should().Contain("Update Quest");
+        html.Should().Contain("Quest Editing Tips");
+        html.Should().Contain("quest-form.css");
     }
 
     // -----------------------------------------------------------------------
-    // CreateFollowUp renders glass card form on mobile UA
+    // CreateFollowUp is one view serving the phone layout
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Quest/CreateFollowUp/{id} renders quest-followup-card-mobile
-    /// glass card form and links quest-followup.mobile.css.
+    /// Mobile UA on /Quest/CreateFollowUp/{id} answers 200 with the mobile-layout body class, the
+    /// follow-up form, the pre-approved players card and its sentence, and links quest-form.css.
     /// Requires DM authentication — CreateFollowUp action enforces DM role.
     /// </summary>
     [Fact]
@@ -919,8 +1048,12 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("quest-followup-card-mobile");
-        html.Should().Contain("quest-followup.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain($"/Quest/CreateFollowUp/{quest.Id}");
+        html.Should().Contain("Save Follow-Up Quest");
+        html.Should().Contain("Pre-Approved Players");
+        html.Should().Contain("Selected players from the original quest will be automatically added");
+        html.Should().Contain("quest-form.css");
     }
 
     // -----------------------------------------------------------------------
@@ -954,8 +1087,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /QuestLog/Details/{id} renders quest-log-detail-main-card glass card
-    /// and links quest-log-detail.mobile.css. Quest must be finalized with past FinalizedDate.
+    /// Mobile UA on /QuestLog/Details/{id} answers 200 with the phone layout (the mobile-layout body class),
+    /// the quest title and the Session Recap section, and links quest-log.css: Details is one view that
+    /// serves both layouts. Quest must be finalized with past FinalizedDate.
     /// /QuestLog now requires authentication.
     /// </summary>
     [Fact]
@@ -983,8 +1117,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("quest-log-detail-main-card");
-        html.Should().Contain("quest-log-detail.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("Quest Log Detail Mobile18");
+        html.Should().Contain("Session Recap");
+        html.Should().Contain("quest-log.css");
+        html.Should().NotContain("quest-log-detail.mobile.css");
     }
 
     // -----------------------------------------------------------------------

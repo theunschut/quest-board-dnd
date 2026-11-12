@@ -1,0 +1,723 @@
+/* Shop Styles - Witcher 3 Inspired */
+.shop-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+.shop-header {
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.shop-header h1 {
+    font-family: 'Cinzel', serif;
+    color: #ffc107;
+    font-weight: 600;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.shop-categories {
+    margin-bottom: 2rem;
+}
+
+.category-btn {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #444;
+    color: #fff;
+    padding: 0.75rem 1.5rem;
+    margin: 0.25rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.category-btn:hover, .category-btn.active {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
+.shop-inventory {
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 1.5rem;
+    min-height: 500px;
+}
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.item-card {
+    background: rgba(20, 20, 30, 0.9);
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.item-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.item-card:hover::before {
+    left: 100%;
+}
+
+.item-card:hover {
+    border-color: #ffc107;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.item-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 0;
+    flex-grow: 1;
+    color: #F4E4BC !important;
+    text-shadow: none !important;
+}
+
+.item-name.text-light {
+    color: #F4E4BC !important;
+    text-shadow: none !important;
+}
+
+.item-rarity {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 0.5rem;
+}
+
+.rarity-common { 
+    background: #6c757d; 
+    color: white; 
+}
+
+.rarity-uncommon { 
+    background: #198754; 
+    color: white; 
+}
+
+.rarity-rare { 
+    background: #0d6efd; 
+    color: white; 
+}
+
+.rarity-veryrare { 
+    background: #6f42c1; 
+    color: white; 
+}
+
+.rarity-legendary { 
+    background: linear-gradient(45deg, #dc3545, #ffc107);
+    color: white;
+    animation: legendary-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes legendary-glow {
+    0% { box-shadow: 0 0 5px rgba(220, 53, 69, 0.5); }
+    100% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.8); }
+}
+
+.item-description {
+    color: rgba(244, 228, 188, 0.8) !important;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+    flex-grow: 1;
+}
+
+.item-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.75rem;
+    border-top: 1px solid #444;
+    margin-top: 0;
+}
+
+.item-price {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #ffc107;
+}
+
+.item-stock {
+    color: rgba(244, 228, 188, 0.7) !important;
+    font-size: 0.85rem;
+}
+
+.item-stock.unlimited {
+    color: #198754;
+}
+
+.item-stock.low {
+    color: #dc3545;
+}
+
+.item-stock.sold-out {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.purchase-btn {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+}
+
+.purchase-btn:hover {
+    background: linear-gradient(45deg, #218838, #1ea085);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.purchase-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.empty-shop {
+    text-align: center;
+    color: #6c757d;
+    padding: 3rem;
+    font-size: 1.1rem;
+}
+
+.shop-merchant {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(45deg, #ffc107, #fd7e14);
+    border-radius: 50%;
+    border: 3px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.shop-merchant:hover {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 6px 25px rgba(255, 193, 7, 0.5);
+}
+
+/* Only override max-width for the main content container, not navbar */
+.container.mt-4 {
+    max-width: none;
+}
+
+/* Purchase History Side Panel Styles */
+.purchase-history-panel {
+    position: fixed;
+    top: 56px; /* Height of Bootstrap navbar */
+    left: 0;
+    width: 280px;
+    height: calc(100vh - 56px);
+    background: rgba(15, 15, 25, 0.95);
+    border-right: 3px solid #ffc107;
+    border-top: 2px solid rgba(139, 69, 19, 0.9); /* Connect with navbar border */
+    box-shadow: 3px 0 15px rgba(0, 0, 0, 0.5);
+    z-index: 1025; /* Below navbar but above other content */
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(10px);
+    margin: 0; /* Remove all margins */
+    padding: 0; /* Remove all padding */
+}
+
+.purchase-history-panel .panel-header {
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 2px solid #444;
+    color: #F4E4BC;
+    padding: 1rem;
+    font-family: 'Cinzel', serif;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    text-shadow: none !important;
+}
+
+.purchase-history-panel .panel-header h6 {
+    color: #F4E4BC !important;
+    text-shadow: none !important;
+}
+
+.purchase-history-panel .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: #ffc107 rgba(0, 0, 0, 0.3);
+}
+
+.purchase-history-panel .panel-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.purchase-history-panel .panel-body::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.purchase-history-panel .panel-body::-webkit-scrollbar-thumb {
+    background: #ffc107;
+    border-radius: 4px;
+}
+
+.purchase-item {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #444;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.purchase-item:hover {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: #ffc107;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+}
+
+.purchase-name {
+    color: #F4E4BC;
+    font-size: 0.85rem;
+    line-height: 1.2;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px -1px 2px rgba(0, 0, 0, 0.9),
+                 -1px 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.purchase-details {
+    margin-top: 0.25rem;
+}
+
+.purchase-details small {
+    font-size: 0.75rem;
+    color: #F4E4BC !important;
+    text-shadow: none !important;
+}
+
+.purchase-details .text-muted {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: none !important;
+}
+
+.purchase-details .text-warning {
+    color: #ffc107 !important;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px -1px 2px rgba(0, 0, 0, 0.9),
+                 -1px 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Fix date styling in purchase items */
+.purchase-item small.text-muted {
+    color: rgba(244, 228, 188, 0.7) !important;
+    text-shadow: none !important;
+}
+
+/* Shop container adjustment when panel is present */
+.shop-container.with-panel {
+    margin-left: 280px;
+    transition: margin-left 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .purchase-history-panel {
+        width: 250px;
+    }
+
+    .shop-container.with-panel {
+        margin-left: 250px;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .purchase-history-panel {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .purchase-history-panel.mobile-open {
+        transform: translateX(0);
+    }
+
+    .shop-container.with-panel {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .purchase-history-panel {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .purchase-history-panel.mobile-open {
+        transform: translateX(0);
+    }
+
+    .shop-container.with-panel {
+        margin-left: 0;
+    }
+}
+
+/* Return/Sell buttons that appear on hover */
+.return-sell-buttons {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.return-sell-buttons .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.return-sell-buttons .btn-success {
+    background: linear-gradient(45deg, #28a745, #20c997) !important;
+    border-color: #1e7e34 !important;
+    color: white !important;
+}
+
+.return-sell-buttons .btn-success:hover {
+    background: linear-gradient(45deg, #218838, #1a9174) !important;
+    border-color: #1c7430 !important;
+}
+
+.return-sell-buttons .btn-warning {
+    background: linear-gradient(45deg, #ffc107, #e0a800) !important;
+    border-color: #d39e00 !important;
+    color: #212529 !important;
+}
+
+.return-sell-buttons .btn-warning:hover {
+    background: linear-gradient(45deg, #e0a800, #c69500) !important;
+    border-color: #b08800 !important;
+}
+
+/* Success colored items for sold/returned transactions */
+.purchase-details .text-success {
+    color: #28a745 !important;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                 -1px -1px 2px rgba(0, 0, 0, 0.9),
+                 1px -1px 2px rgba(0, 0, 0, 0.9),
+                 -1px 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Style for purchase details text like (Fully Returned/Sold) */
+.purchase-details-text {
+    color: rgba(244, 228, 188, 0.7) !important;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-shadow: none !important;
+    margin-left: 0.5rem;
+}
+
+/* Magic Item type badge styling */
+.type-magic-item {
+    background: linear-gradient(45deg, #6f42c1, #4c6ef5) !important;
+    color: white !important;
+    border: 1px solid rgba(111, 66, 193, 0.3) !important;
+    box-shadow: 0 0 8px rgba(111, 66, 193, 0.4);
+    animation: magic-shimmer 3s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+.type-magic-item::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: magic-shine 4s ease-in-out infinite;
+}
+
+@keyframes magic-shimmer {
+    0%, 100% {
+        box-shadow: 0 0 8px rgba(111, 66, 193, 0.4), 0 0 12px rgba(76, 110, 245, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 12px rgba(111, 66, 193, 0.6), 0 0 16px rgba(76, 110, 245, 0.4);
+    }
+}
+
+@keyframes magic-shine {
+    0% { transform: translateX(-200%) translateY(-200%) rotate(45deg); }
+    50% { transform: translateX(-200%) translateY(-200%) rotate(45deg); }
+    75% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+/* Equipment type badge - subtle styling for contrast */
+.type-equipment {
+    background-color: #6c757d !important;
+    color: white !important;
+    border: 1px solid rgba(108, 117, 125, 0.3) !important;
+}
+
+/* Consistent sizing for action buttons in tables */
+.btn-sm.btn-action {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+/* Quest Item type badge styling */
+.type-quest-item {
+    background: linear-gradient(45deg, #ffc107, #fd7e14, #dc3545) !important;
+    color: white !important;
+    border: 2px solid rgba(255, 193, 7, 0.6) !important;
+    box-shadow: 0 0 12px rgba(255, 193, 7, 0.5);
+    animation: quest-pulse 2.5s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+    font-weight: bold !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+}
+
+.type-quest-item::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -150%;
+    width: 300%;
+    height: 200%;
+    background: linear-gradient(45deg,
+        transparent,
+        rgba(255, 255, 255, 0.15),
+        rgba(255, 215, 0, 0.2),
+        rgba(255, 255, 255, 0.15),
+        transparent);
+    transform: rotate(25deg);
+    animation: quest-sweep 5s ease-in-out infinite;
+}
+
+.type-quest-item::after {
+    content: '✦';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    animation: quest-sparkle 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes quest-pulse {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba(255, 193, 7, 0.5), 0 0 20px rgba(255, 126, 20, 0.3);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.8), 0 0 30px rgba(255, 126, 20, 0.5);
+        transform: scale(1.02);
+    }
+}
+
+@keyframes quest-sweep {
+    0% { transform: translateX(-300%) translateY(-100%) rotate(25deg); }
+    20% { transform: translateX(-300%) translateY(-100%) rotate(25deg); }
+    40% { transform: translateX(200%) translateY(50%) rotate(25deg); }
+    100% { transform: translateX(200%) translateY(50%) rotate(25deg); }
+}
+
+@keyframes quest-sparkle {
+    0% {
+        opacity: 0.6;
+        transform: scale(0.8) rotate(0deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1.2) rotate(180deg);
+    }
+}
+
+/* Merchant toast styling */
+.merchant-toast {
+    max-width: 350px;
+    border: 2px solid #ffc107;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.merchant-toast .toast-header {
+    background: linear-gradient(45deg, #ffc107, #e0a800) !important;
+    color: #1a1a1a !important;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.merchant-toast .toast-body {
+    background: rgba(255, 255, 255, 0.95);
+    color: #1a1a1a;
+    font-style: italic;
+    font-weight: 500;
+    padding: 1rem;
+    border-radius: 0 0 6px 6px;
+}
+
+/* Gray-out styling for sold/returned items */
+.purchase-item.sold-returned {
+    opacity: 0.6;
+    filter: grayscale(50%);
+    transition: all 0.3s ease;
+}
+
+.purchase-item.sold-returned:hover {
+    opacity: 0.8;
+    filter: grayscale(30%);
+    transform: translateX(2px); /* Less movement than active items */
+}
+
+.purchase-item.sold-returned .purchase-name {
+    color: rgba(244, 228, 188, 0.5) !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7),
+                 -1px -1px 1px rgba(0, 0, 0, 0.7) !important;
+}
+
+.purchase-item.sold-returned .purchase-details small {
+    color: rgba(244, 228, 188, 0.4) !important;
+}
+
+.purchase-item.sold-returned .purchase-details .text-warning {
+    color: rgba(255, 193, 7, 0.5) !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
+}
+
+.purchase-item.sold-returned .purchase-details .text-success {
+    color: rgba(40, 167, 69, 0.6) !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ========================================
+   QUEST EVENT STYLES
+   ======================================== */
+
+/* Calendar Subscription section — Views/Account/Profile.cshtml only */
+.calendar-subscription-address {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* The address is ~85 characters and is the one thing on the row a person must be able to
+   read and select, so it gets an explicit share of the table. Without this the action
+   buttons' intrinsic width wins the layout and squeezes the address down to a dozen
+   visible characters. */
+.calendar-subscription-section th:nth-child(1),
+.calendar-subscription-section td:nth-child(1) {
+    width: 28%;
+}
+
+
+
+
+
+/* The action buttons keep their labels on one line; wrapping inside a button is worse than
+   wrapping the group. */
+.calendar-subscription-actions .btn {
+    white-space: nowrap;
+}
+
+/* The row is a single line of controls; keep the cells from adding vertical padding on top
+   of that. */
+.calendar-subscription-section td {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+
+.calendar-subscription-meta {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* The created/last-fetched line is one line: wrapping it was the row's remaining height. */
+.calendar-subscription-section td .calendar-subscription-meta {
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.calendar-subscription-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.calendar-subscription-qr svg {
+    width: 100%;
+    height: auto;
+    max-width: 240px;
+    display: block;
+    margin: 0 auto;
+}

@@ -448,11 +448,11 @@ public class BoardMoveEventTests(MoveWebApplicationFactory factory)
         html.Should().Contain("This Event");
         html.Should().Contain("No availability answers to keep.");
         html.Should().Contain("No emails are sent for an event move.");
-        html.Should().NotContain("move-card-mobile");
+        html.Should().NotContain("mobile-layout");
     }
 
     [Fact]
-    public async Task Page_OnMobile_ShowsTheEventCopyInTheMobileCards()
+    public async Task Page_OnMobile_ShowsTheEventCopyInThePhoneLayout()
     {
         var client = await SeedBoardsAsync();
         var eventId = await BoardMoveSeed.SeedEventAsync(factory, BoardAlpha, EventTitle, Upcoming);
@@ -460,7 +460,8 @@ public class BoardMoveEventTests(MoveWebApplicationFactory factory)
         var (html, response) = await GetPageAsync(client, eventId, MobileUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("move-card-mobile");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("move-page");
         html.Should().Contain("Move Event to Linked Board");
         html.Should().Contain("This Event");
         html.Should().Contain("No emails are sent for an event move.");

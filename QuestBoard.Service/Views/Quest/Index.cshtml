@@ -1,153 +1,88 @@
 @using QuestBoard.Domain.Enums
-@using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
-@inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @model IEnumerable<Quest>
 @{
     ViewData["Title"] = "Quest Board";
     ViewData["BodyClass"] = "home-page";
     var boardType = (BoardType)ViewBag.BoardType;
-    var posterImages = new string[]
-    {
-        "Poster1.png",
-        // "Poster3.png",
-        // "Poster4.png",
-        // "Poster5.png",
-        "Poster6.png"
-    };
-    var waxSeals = new string[] { "Crown Seal.png", "Eagle Seal.png", "Flower Seal.png", "Sigil Seal.png" };
-    var random = new Random();
-
-    // Image dimensions for calculating proportional heights (width, height)
-    var imageDimensions = new Dictionary<string, (int width, int height)>
-    {
-        { "Poster1.png", (1000, 1400) },
-        { "Poster2.png", (1000, 1400) },
-        { "Poster3.png", (601, 1400) },
-        { "Poster4.png", (1000, 980) },
-        { "Poster5.png", (600, 675) },
-        { "Poster6.png", (600, 800) }
-    };
-
-    // Function to select poster based on content extremes only
-    string SelectPosterByContent(Quest quest, string[] availablePosters)
-    {
-        var title = quest.Title ?? "";
-        var description = MarkdownService.ExtractPlainText(quest.Description);
-        var totalCharacters = title.Length + description.Length;
-
-        switch (totalCharacters)
-        {
-            case <= 130:
-                return "Poster4.png"; // Very short content
-            case <= 250:
-                return "Poster5.png"; // Short content
-            case >= 500:
-                return "Poster3.png"; // Very long content
-            default:
-            {
-                // For everything else, use random selection as before
-                var posterIndex = Math.Abs(quest.Id.GetHashCode()) % availablePosters.Length;
-                return availablePosters[posterIndex];
-            }
-        }
-    }
+    var campaign = boardType == BoardType.Campaign;
+    var currentUserId = ViewBag.CurrentUserId as int?;
+    var quests = Model.ToList();
 }
-<div class="quest-board-container">
-    @foreach (var quest in Model)
-    {
-        // Select poster based on content extremes, otherwise random
-        var posterImage = SelectPosterByContent(quest, posterImages);
-        var sealIndex = Math.Abs(quest.Id.GetHashCode()) % waxSeals.Length;
-        var waxSeal = waxSeals[sealIndex];
+@section Styles {
+    <link rel="stylesheet" href="~/css/quests.css" asp-append-version="true" />
+}
 
-        // Calculate proportional height based on image dimensions
-        var dimensions = imageDimensions[posterImage];
+@section Scripts {
+    <script type="module" src="~/js/quest-board.js" asp-append-version="true"></script>
+}
 
-        // Position wax seal in the left bottom corner, well within poster borders
-        var sealBottom = 15; // Distance from bottom edge, inside poster area
-        var sealLeft = 15; // Distance from left edge, inside poster area
+<h1 class="visually-hidden">Quest Board</h1>
 
-        // Check if current user is signed up for this quest
-        var currentUserId = ViewBag.CurrentUserId as int?;
-        var isUserSignedUp = currentUserId.HasValue && quest.PlayerSignups.Any(ps => ps.Player.Id == currentUserId.Value);
+@if (quests.Count == 0)
+{
+    <h2 class="visually-hidden">No quests available</h2>
+}
+else
+{
+    <div class="quest-board-container">
+        @foreach (var quest in quests)
+        {
+            var dmName = quest.DungeonMaster?.Name;
+            var finalizedWithDate = !campaign && quest.IsFinalized && quest.FinalizedDate.HasValue;
+            var pick = QuestPosterPicker.Pick(quest.Id, quest.Title, dmName, finalizedWithDate, campaign);
 
-        // Position user signup seal in the top-right corner
-        var signupSealTop = 15; // Distance from top edge
-        var signupSealRight = 15; // Distance from right edge
+            var isSignedUp = currentUserId.HasValue
+                && quest.PlayerSignups.Any(ps => ps.Player.Id == currentUserId.Value);
 
-        <div class="fantasy-quest-card"
-             style="background-image: url('/images/Blanks/Blanks w Shadow/@posterImage');"
-             data-image-width="@dimensions.width"
-             data-image-height="@dimensions.height"
-             onclick="window.location.href='@(currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id ? Url.Action("Manage", "Quest", new { id = quest.Id }) : Url.Action("Details", "Quest", new { id = quest.Id }))'">
+            var navUrl = currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id
+                ? Url.Action("Manage", "Quest", new { id = quest.Id })
+                : Url.Action("Details", "Quest", new { id = quest.Id });
 
-            <!-- Wax Seal (Finalized Quest) -->
-            <div class="wax-seal" style="bottom: @(sealBottom)%; left: @(sealLeft)%;">
-                <img src="/images/Wax Seals/@waxSeal"
-                     alt="@((boardType == BoardType.Campaign ? (quest.IsClosed ? "Closed" : "Open") : (quest.IsFinalized ? "Finalized" : "Open"))) Quest"
-                     class="seal-image @((boardType == BoardType.Campaign || quest.IsFinalized) ? "finalized-seal" : "open-seal")" />
-            </div>
+            var status = campaign
+                ? (quest.IsClosed ? "closed" : "open")
+                : (quest.IsFinalized ? "finalized" : "open");
+            var statusSeal = campaign || quest.IsFinalized;
+            var sealFile = Uri.EscapeDataString(pick.Seal);
+            var titleClass = pick.TitleTier == 2 ? "quest-poster-title quest-poster-title--tier2" : "quest-poster-title";
 
-            <!-- User Signup Seal -->
-            @if (isUserSignedUp)
-            {
-                <div class="wax-seal user-signup-seal" style="top: @(signupSealTop)%; right: @(signupSealRight)%;">
-                    <img src="/images/Wax Seals/@waxSeal" alt="You are signed up for this quest"
-                         class="seal-image signup-seal-image" />
-                </div>
-            }
-
-            @if (boardType != BoardType.Campaign)
-            {
-                <!-- Challenge Rating -->
-                <div class="challenge-rating">
-                    <span class="cr-badge">
-                        <i class="fas fa-dice-d20 cr-icon" title="Challenge Rating"></i>
-                        CR @quest.ChallengeRating
-                    </span>
-                </div>
-            }
-
-            <div class="quest-content">
-                <!-- Title at top -->
-                <div class="quest-top">
-                    <h3 class="quest-title"><a class="row-nav-link" href="@(currentUserId.HasValue && currentUserId.Value == quest.DungeonMaster?.Id ? Url.Action("Manage", "Quest", new { id = quest.Id }) : Url.Action("Details", "Quest", new { id = quest.Id }))">@quest.Title</a></h3>
-                </div>
-
-                <!-- Description fills middle space -->
-                <div class="quest-middle">
-                    <div class="quest-description">@MarkdownService.ExtractPlainText(quest.Description)</div>
-                </div>
-
-                <!-- Info at bottom -->
-                <div class="quest-bottom">
-                    <div class="quest-dm">
-                        <strong>DM:</strong> @quest.DungeonMaster?.Name
+            <article class="quest-poster @pick.Poster.CssClass">
+                @if (statusSeal)
+                {
+                    <picture class="quest-poster-seal">
+                        <source type="image/webp" srcset="/images/Wax%20Seals/@(sealFile).webp" />
+                        <img src="/images/Wax%20Seals/@(sealFile).png" alt="" width="80" height="80" />
+                    </picture>
+                }
+                @if (isSignedUp)
+                {
+                    <picture class="quest-poster-seal quest-poster-seal--signed-up">
+                        <source type="image/webp" srcset="/images/Wax%20Seals/@(sealFile).webp" />
+                        <img src="/images/Wax%20Seals/@(sealFile).png" alt="" width="80" height="80" />
+                    </picture>
+                }
+                <div class="quest-poster-text">
+                    <h2 class="@titleClass">
+                        <a class="row-nav-link" href="@navUrl">@quest.Title<span class="visually-hidden">, @status@(isSignedUp ? ", signed up" : "")</span></a>
+                    </h2>
+                    <div class="quest-poster-meta">
+                        @if (finalizedWithDate)
+                        {
+                            <p><strong class="quest-poster-label">Quest Date:</strong><br />@Html.WallClock(quest.FinalizedDate!.Value, "date-time")</p>
+                            <p><strong class="quest-poster-label">Selected Adventurers:</strong> @quest.PlayerSignups.Count(ps => ps.IsSelected)</p>
+                        }
+                        else if (!campaign)
+                        {
+                            <p><strong class="quest-poster-label">Adventurers signed up:</strong> @quest.PlayerSignups.Count()</p>
+                        }
+                        <p><strong class="quest-poster-label">DM:</strong> @(string.IsNullOrWhiteSpace(dmName) ? "Unknown DM" : dmName)</p>
+                        @if (!campaign)
+                        {
+                            <span class="badge quest-poster-cr"><i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>CR @quest.ChallengeRating</span>
+                        }
                     </div>
-
-                    @if (boardType != BoardType.Campaign)
-                    {
-                        @if (quest.IsFinalized && quest.FinalizedDate.HasValue)
-                        {
-                            <div class="quest-date">
-                                <strong>Quest Date:</strong><br>
-                                @quest.FinalizedDate.Value.ToString("MMM dd, yyyy 'at' h:mm tt")
-                            </div>
-                            <div class="quest-players">
-                                <strong>Selected Adventurers:</strong> @quest.PlayerSignups.Where(ps => ps.IsSelected).Count()
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="quest-signups">
-                                <strong>Adventurers signed up:</strong> @quest.PlayerSignups.Count()
-                            </div>
-                        }
-                    }
                 </div>
-            </div>
-        </div>
-    }
-</div>
-
+            </article>
+        }
+    </div>
+}

@@ -1,20 +1,21 @@
 ---
-gsd_state_version: "1.0"
+gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 93
+current_phase: 102
 status: completed
-stopped_at: Phase 93 complete — all phases complete
-last_updated: "2026-10-21T14:49:49.221Z"
-last_activity: 2026-10-21
-last_activity_desc: Phase 93 complete
-state_head: 2777f4082e0b974492f8b2ba0a271ba5d73118f8
+stopped_at: Phase 102 complete; Phase 95 UAT 11/11 local passed, 2 real-device items deferred to post-deploy (phase stays open)
+last_updated: "2026-11-12T09:27:45.734Z"
+last_activity: 2026-11-12
+last_activity_desc: Phase 102 complete
 progress:
-  total_phases: 22
-  completed_phases: 18
-  total_plans: 163
-  completed_plans: 154
-  percent: 82
+  total_phases: 31
+  completed_phases: 22
+  total_plans: 230
+  completed_plans: 209
+  percent: 71
+current_phase_name: board-deletion
+state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
 # Project State
@@ -24,14 +25,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 93 complete; remaining open phases are 78, 79 and 90
+**Current focus:** Phase 102 — board-deletion
 
 ## Current Position
 
-Phase: 93
-Plan: Not started
-Status: Phase 93 complete — open phases remain (78, 79, 90)
-Last activity: 2026-10-21 — Phase 93 complete (15/15 plans, verification passed, security 49/49, real-phone checks deferred)
+Phase: 102 (board-deletion) — COMPLETE
+Plan: 10 of 10
+Status: Phase 102 complete (manual UAT 6/6 passed locally 2026-11-12, verification passed). Not all phases are
+complete: Phase 95 is still open (see below), and Phases 78, 79 and 90 are not done.
+Last activity: 2026-11-12 — Phase 102 UAT passed and phase marked complete
+
+**Phase 95 UAT run locally 2026-11-12 (`95-UAT.md`): 11 of 11 local checks passed, 2 real-device items deferred to after
+the production deploy by the user's decision (real-phone checklist incl. WINDOWS #32, and WINDOWS #3).** `phase uat-passed 95`
+therefore still refuses: it counts the two deferred (skipped) items as blockers and needs `95-VERIFICATION.md` at `passed`.
+Left open on purpose; not forced.
+
+**Phase 95 (quests-and-quest-log-ui-conversion) is parked, not complete.** All 18 of 18 plans are
+executed (stopped at: Completed 95-18-PLAN.md), but the phase stays open until the operator's
+real-phone UAT passes (`/gsd-verify-work 95`). Phases 94, 95 and 102 ship together as v6.0.0 via a
+PR from `milestone/v9-rolling-improvements` to `main`, after that UAT and Phase 102 are done.
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -75,6 +87,23 @@ introduced by Phase 87.
 | Phase 93 P01 | 14 min | 2 tasks | 16 files |
 | Phase 93 P10 | 12 min | 2 tasks | 13 files |
 | Phase 93 P11 | 18 min | 2 tasks | 4 files |
+| Phase 95 P01 | 25min | 3 tasks | 0 files |
+| Phase 95 P02 | 2h | 3 tasks | 0 files |
+| Phase 95 P04 | 75min | 2 tasks | 6 files |
+| Phase 95 P05 | 1h30m | 2 tasks | 8 files |
+| Phase 95 P06 | 50min | 2 tasks | 9 files |
+| Phase 95 P07 | 90min | 2 tasks | 9 files |
+| Phase 95 P10 | 2h | 2 tasks | 11 files |
+| Phase 95 P11 | 1 h | 2 tasks | 6 files |
+| Phase 95 P08 | 2h | 3 tasks | 28 files |
+| Phase 95 P09 | 1h | 2 tasks | 5 files |
+| Phase 95 P12 | 1h | 2 tasks | 6 files |
+| Phase 95 P13 | 2h | 2 tasks | 8 files |
+| Phase 95 P14 | 2h | 3 tasks | 14 files |
+| Phase 95 P15 | 1h | 2 tasks | 15 files |
+| Phase 95 P16 | 2.5h | 2 tasks | 31 files |
+| Phase 95 P17 | 2.5h | 2 tasks | 10 files |
+| Phase 95 P18 | about 5 h | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -129,6 +158,12 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 93]: A stale Platform Edit form is refused by comparing the posted rendered mask and home with the stored ones (no concurrency token, no migration); the count-then-save window stays an accepted residual
 - [Phase 93]: The open-signup POST now builds the signup server-side from CharacterId and this quest's date votes only, closing T-93-28 and a pre-existing hole that let a player post IsSelected, SignupTime and votes on another quest's dates
 - [Phase 93]: The operator accepted the real-phone checks as a risk deferred to a todo rather than holding the phase for them
+- [Phase 95]: 95-04: Tab released from the Markdown editor with extraKeys false; antiforgery token via meta element; new hint inherits the page sheets' existing form-text contrast debt until each sheet converts
+- [Phase 95]: 95-06: vote checked border is ink on desktop and parchment on phone; Details week row 160px; month heading carries a scrim band
+- [Phase 95]: 95-10: Quest/Edit merged into one view serving both layouts; required markers and validation messages sit on the overlay surface to hold 4.5:1
+- [Phase 95]: 95-08: DM line estimate widened to 0.57 em so no poster overflows at the 304px card floor; p5 breaches its poster-glyph floor at 304px and awaits an operator decision
+- [Phase ?]: 95-16: Markdown headings take --qb-fg-heading on every surface; the dark-ink heading rule for card bodies was removed because every card is glass with light text
+- [Phase ?]: 95-16: toolbar of the Markdown editor keeps 44px buttons and wraps to two rows at 320 (container is 236px); one row would need sub-44px buttons
 
 ### Roadmap Evolution
 
@@ -151,6 +186,8 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 91 added 2026-10-15: Linked Boards with a Shared Calendar -- a super admin links two or more boards of the same `BoardType` in the Platform area, and `/calendar` on each linked board then shows every linked board's events and quests, marked by board. Raised by the operator: the same players run several campaigns as separate boards, and a new one-shot board must not book a date the existing board already has. Scoping found `_Calendar` rendered by desktop `Calendar/Index` and by the Quest Details date-vote calendar on both layouts, while `Calendar/Index.Mobile.cshtml` builds its own agenda list, so the change reaches past the partial. Same-type-only holds for good because `BoardType` cannot be edited after creation. Visibility for non-members of a linked board, the link model and whether the date-vote calendar also shows linked dates are left to discuss-phase.
 - Phase 92 added 2026-10-15: Move a Quest or Event to a Linked Board -- a super admin moves an existing quest or event to another board in the same link group, from its Details page. Raised by the operator at the end of Phase 91's discussion and kept out of Phase 91 on purpose, because that phase is read-only and a move is a cross-board write. Open questions for discuss-phase: signups tied to board-scoped characters and to players who may not be on the target board, events in a recurring series, the feed revision a board change raises, and whether people are notified.
 - Phase 93 added 2026-10-20: Per-Board Page Selection and Home Page -- in the Platform area a super admin chooses which pages each board offers (Shop, Contacts, Players, Characters, Quest Log, Events, Calendar and the like) and which page the board opens on. The quest list stays the default, and at least one board can open on `/calendar`. Raised by the operator. Scoping found that boards have no per-board settings yet, and today's board-type gating lives only in the two layouts' menus: `ShopController` and `PlayersController` have no board-type check, so `/shop` and `/players` still open on a Campaign board when typed. The home page has to reach `HomeController.Index`, the navbar brand in both layouts, and the `Quest/Index` fallbacks in `GroupPickerController` and `MoveController`. Open questions for discuss-phase: which pages can be switched off, how toggles relate to board type, what a switched-off URL returns, links and dependent flows (signup characters, gold) that point into a switched-off page, whether the calendar feed and My Agenda follow the toggles, and whether the home page is per board or shared by a linked set.
+- Phase 94 added 2026-10-30: Whole-App UI Review and Unification -- run the `senior-frontend` skill over every view, desktop and mobile, to fix, unify and where it pays off upgrade the UI. Raised by the operator. Scoping found 133 `.cshtml` files (55 mobile twins), 48 stylesheets of about 8,900 lines with only 18 custom properties against about 615 hex colours and 814 `!important`, 97 inline `style` attributes, 43 views with inline scripts, and no CSP header, which the skill otherwise assumes. Open questions for discuss-phase: unify within today's look or settle a new visual direction first, how to split the work into per-area phases, Bootstrap and Font Awesome (SRI, self-hosting, v4 shim), whether inline scripts and styles move out ahead of a later CSP phase, whether any mobile twins merge into responsive views, and the accessibility bar.
+- Phase 102 added 2026-11-11: Board deletion -- deleting a member-less board currently 500s because quests, characters, events and other board-owned rows have no delete rule; delete what belongs to the board, unlink what must outlive it, keep the no-members guard. Reported by the operator.
 
 ### Pending Todos
 
@@ -229,12 +266,14 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-10-21T19:00:00.000Z
-Stopped at: Phase 93 complete; PR to main next
+Last session: 2026-11-11T14:16:06.687Z
+Stopped at: Phase 102 — 102-10 human-verify checkpoint (manual browser UAT); Phase 95 parked on its real-phone UAT
 Resume file: None
 
 ## Operator Next Steps
 
+- Run the Phase 102 manual UAT (`/gsd-verify-work 102`, items in `102-UAT.md`): a real delete of two throwaway "UAT …" boards on the local SQL Server, the Users Boards column, phone layout, Back-button state and the no-JS path. Then phase 102 can close
+- Run the Phase 95 real-phone UAT (`/gsd-verify-work 95`); Phase 95 is executed (18/18) but stays open until it passes, and v6.0.0 waits on it
 - Rotate the iPhone calendar subscription: revoke it on the Profile page, re-subscribe the iPhone with a fresh address, and delete the downloaded `.ics` file from Downloads. Its address was exposed in a session transcript (Phase 88 T-88-22, the only open threat)
 
 - Use the board across two boards for a few minutes and say whether the automatic switch removes friction or is more surprising than the old 404 — Phase 87's approval was explicitly conditional on this

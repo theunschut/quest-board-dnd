@@ -20,6 +20,7 @@
                         <tr>
                             <th scope="col">Name</th>
                             <th scope="col">Email</th>
+                            <th scope="col">Boards</th>
                             <th scope="col">Confirmed</th>
                             <th scope="col">Status</th>
                             <th scope="col">Actions</th>
@@ -43,6 +44,15 @@
                                         <span class="text-muted fst-italic">No email provided</span>
                                     }
                                 </td>
+                                @if (item.BoardNames.Count == 0)
+                                {
+                                    <td>0</td>
+                                }
+                                else
+                                {
+                                    var boardList = string.Join(", ", item.BoardNames);
+                                    <td title="@boardList">@(item.BoardNames.Count)<span class="visually-hidden"> @(item.BoardNames.Count == 1 ? "board" : "boards"): @boardList</span></td>
+                                }
                                 <td>
                                     @if (item.User.EmailConfirmed)
                                     {

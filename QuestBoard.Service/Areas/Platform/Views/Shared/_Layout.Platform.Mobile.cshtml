@@ -4,41 +4,49 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - D&D Quest Board Platform</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="~/lib/bootstrap-5.3.8/css/bootstrap.min.css" as="style" />
+    <link rel="preload" href="~/lib/fontawesome-6.7.2/css/all.min.css" as="style" />
+    <link rel="preload" href="~/lib/cinzel/cinzel-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shell.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shell.mobile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100 mobile-layout @ViewData["BodyClass"]">
+    <a class="visually-hidden-focusable skip-link" href="#main-content">Skip to main content</a>
     <header>
-        <nav class="navbar navbar-dark bg-dark py-2">
+        <div class="navbar navbar-dark chrome">
             <div class="container-fluid px-3">
                 <a class="navbar-brand" asp-controller="Group" asp-action="Index" asp-area="Platform">
                     <i class="fas fa-dice-d20"></i> D&D Quest Board
                 </a>
                 <button class="navbar-toggler" type="button"
-                        data-bs-toggle="offcanvas" data-bs-target="#platformMobileNav">
+                        data-bs-toggle="offcanvas" data-bs-target="#platformMobileNav"
+                        aria-controls="platformMobileNav" aria-expanded="false" aria-label="Open navigation menu">
                     <span class="navbar-toggler-icon"></span>
                 </button>
             </div>
-        </nav>
+        </div>
     </header>
 
-    <div class="offcanvas offcanvas-end" id="platformMobileNav" tabindex="-1">
-        <div class="offcanvas-header bg-dark text-white">
-            <h5 class="offcanvas-title">
+    <div class="offcanvas offcanvas-end" id="platformMobileNav" tabindex="-1" aria-labelledby="platformMobileNavTitle">
+        <div class="offcanvas-header">
+            <div class="offcanvas-title h5" id="platformMobileNavTitle">
                 <i class="fas fa-dice-d20 me-2"></i>Platform
-            </h5>
+            </div>
             <button type="button" class="btn-close btn-close-white"
-                    data-bs-dismiss="offcanvas"></button>
+                    data-bs-dismiss="offcanvas" aria-label="Close navigation menu"></button>
         </div>
-        <div class="offcanvas-body">
+        <nav class="offcanvas-body" aria-label="Platform">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <span class="navbar-text text-light">
+                    <div class="navbar-text">
                         <i class="fas fa-user me-2"></i>@User.Identity?.Name
-                    </span>
+                    </div>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" asp-controller="Home" asp-action="Index" asp-area="">
@@ -54,18 +62,17 @@
                     </form>
                 </li>
             </ul>
-        </div>
+        </nav>
     </div>
 
-    <main class="container-fluid px-2 mt-2">
+    <main id="main-content" tabindex="-1" class="container-fluid px-2 mt-2 flex-grow-1">
         @RenderBody()
     </main>
     <partial name="_Toasts" />
 
     <partial name="_Footer.Mobile" />
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/bootstrap-5.3.8/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

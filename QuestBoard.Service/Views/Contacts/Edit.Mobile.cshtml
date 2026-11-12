@@ -157,19 +157,13 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
-    <script src="https://cdn.jsdelivr.net/npm/cropperjs@2.1.1/dist/cropper.min.js"
-            integrity="sha384-pDSc1bjpfKbaO0DjoZ/uKmzKaARM4658N3xT1ARgy5AKyR6O2UrecaAO8fdv39y9"
-            crossorigin="anonymous"></script>
+    <script src="~/lib/cropperjs-2.1.1/cropper.min.js"></script>
     <script src="~/js/image-crop.js" asp-append-version="true"></script>
     <script>
         initImageCrop({ fileInputId: 'contactImageInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1, recropButtonId: 'recropPhotoBtn', originalImageUrl: '@Url.Action("GetContactImage", new { id = Model.Id })' });
     </script>
-    <link href="https://cdn.jsdelivr.net/npm/@@yaireo/tagify@4.38.0/dist/tagify.css"
-          integrity="sha384-C4PNucE7dGKU8Ad5d3yFKR13AcpKTe+MbcGsu83yTrSmvAMWiPj7Gb2vUJth6uLu"
-          crossorigin="anonymous" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/@@yaireo/tagify@4.38.0/dist/tagify.min.js"
-            integrity="sha384-YtX1Y58YfRTMkRpmTDmpcMyzLXjMKMypzK5BNd5PRLaoZfVSFefqUZ855u0XJn0E"
-            crossorigin="anonymous"></script>
+    <link href="~/lib/tagify-4.38.0/tagify.css" rel="stylesheet" />
+    <script src="~/lib/tagify-4.38.0/tagify.min.js"></script>
     <script src="~/js/contact-tags.js" asp-append-version="true"></script>
     <script>
         initContactTags({ inputId: 'TagsInput', whitelist: @Html.Raw(Json.Serialize(Model.AvailableTagNames)) });

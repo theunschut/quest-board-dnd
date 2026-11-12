@@ -1,0 +1,5 @@
+/* Puts the self-hosted EasyMDE stylesheet into the vendor layer, next to Bootstrap and Font Awesome.
+   Linked on its own, that file is unlayered and would outrank every layered rule on the page, which is
+   why the editor sheet used to need important flags and tripled selectors. In the lowest layer it loses to
+   markdown-editor.css without a specificity fight. The path is versioned, so a new release is a new path. */
+@import url("../lib/easymde-2.21.0/easymde.min.css") layer(vendor);

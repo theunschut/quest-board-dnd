@@ -1,0 +1,25 @@
+/*
+ * The group picker is served to phones as well as desktops, from the one layout and with the desktop stylesheets
+ * (it has no phone twin), so its own small-screen rules live here and not in a phone sheet.
+ */
+@layer pages {
+  @media (max-width: 767.98px) {
+    /* Every control on the page, the Logout button in the bar included, is a full-size touch target. */
+    .group-picker .btn {
+      min-height: var(--qb-hit-min);
+      min-width: var(--qb-hit-min);
+    }
+
+    /* Group cards are tappable as a whole; keep each at least a touch target tall and inside the screen. */
+    .group-picker .modern-card {
+      min-height: var(--qb-hit-min);
+      max-width: 100%;
+    }
+
+    /* A long group name wraps inside its card instead of widening the page. */
+    .group-picker .card-title,
+    .group-picker .card-text {
+      overflow-wrap: anywhere;
+    }
+  }
+}

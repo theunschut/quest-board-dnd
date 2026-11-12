@@ -1,0 +1,141 @@
+/*
+ * Quest Manage, desktop. The main column is one card; its sections are headings with the content under them, not
+ * cards of their own, because a card inside a card stacks two glass layers and the text on it then falls short of
+ * 4.5:1. The date options keep the hooks the page script binds (date-option, manage-date-option) and take their look
+ * from this sheet only.
+ */
+@layer pages {
+  /*
+   * Status words on this page sit on glass. The light status variants the page maps for glass are darker than the
+   * card's own parchment and fall under 4.5:1 over the brightest part of the board, so a status written as text
+   * takes the card colour here; the badge, the icon and the words carry the status. Tables and alerts set their own
+   * mapping closer to their text and are not affected.
+   */
+  .quest-manage-page {
+    --bs-secondary-color: var(--qb-fg);
+    --bs-success-rgb: var(--qb-fg-rgb);
+    --bs-warning-rgb: var(--qb-fg-rgb);
+    --bs-danger-rgb: var(--qb-fg-rgb);
+  }
+
+  /* The challenge rating beside the title: the commit-action wood fill with its paired label. */
+  .quest-manage-cr {
+    background-color: var(--qb-action);
+    color: var(--qb-action-fg);
+  }
+
+  /* A section of the main card: a heading and what belongs to it, set apart from the next one. */
+  .quest-manage-section {
+    margin-block: var(--qb-space-lg);
+  }
+
+  .quest-manage-section > h2:first-child {
+    margin-block: 0 var(--qb-space-sm);
+  }
+
+  /*
+   * The sidebar card titles are h2 so the outline has no skipped level, but they keep the body-step look the sidebar
+   * always had: the card header would otherwise set an h2 in the display face at 28px.
+   */
+  .quest-manage-page .modern-card-header h2.h5 {
+    font-family: inherit;
+    font-size: var(--qb-text-base);
+    letter-spacing: normal;
+  }
+
+  :where(.quest-manage-page .modern-card-body) h3 {
+    margin-block: var(--qb-space-md) var(--qb-space-sm);
+  }
+
+  .quest-manage-page .alert > h2:first-child {
+    margin-block-start: 0;
+  }
+
+  /*
+   * Description and Rewards: a heading whose only content is a full-width button. The label is the card's colour with
+   * the section icon, and the chevron turns by transform while the section is open.
+   */
+  .quest-manage-disclosure + .quest-manage-disclosure {
+    margin-block-start: var(--qb-space-sm);
+  }
+
+  .quest-manage-disclosure h2 {
+    margin: 0;
+  }
+
+  .quest-manage-disclosure-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    width: 100%;
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border: 1px solid var(--qb-border);
+    border-radius: var(--qb-radius-md);
+    background: transparent;
+    color: var(--qb-fg);
+    font: inherit;
+    font-weight: var(--qb-weight-strong);
+    text-align: start;
+  }
+
+  /* Hover darkens the band instead of lightening it: a lighter band under the label would cost it contrast. */
+  .quest-manage-disclosure-btn:hover {
+    background-color: var(--qb-surface-scrim);
+    border-color: var(--qb-border-strong);
+  }
+
+  .quest-manage-disclosure-btn .fa-chevron-down {
+    flex-shrink: 0;
+  }
+
+  .quest-manage-disclosure-btn[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .quest-manage-disclosure-btn .fa-chevron-down {
+      transition: transform var(--qb-dur-base) var(--qb-ease);
+    }
+  }
+
+  .quest-manage-disclosure-body {
+    padding: var(--qb-space-md) var(--qb-space-sm) 0;
+  }
+
+  /*
+   * Date options: a dark band under the date so it holds contrast on its own, a gold border and inset ring while its
+   * radio is picked (the filled radio is the other marker), and a stronger border on hover. Nothing moves.
+   */
+  .quest-manage-page .date-option {
+    margin-block-end: var(--qb-space-sm);
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-border);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-scrim);
+  }
+
+  .quest-manage-page .manage-date-option {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .quest-manage-page .manage-date-option {
+      transition: background-color var(--qb-dur-fast) var(--qb-ease);
+    }
+  }
+
+  .quest-manage-page .manage-date-option:hover {
+    border-color: var(--qb-border-strong);
+  }
+
+  .quest-manage-page .manage-date-option:has(.date-selector:checked) {
+    border-color: var(--qb-accent);
+    box-shadow: inset 0 0 0 1px var(--qb-accent);
+  }
+
+  /* Player rows: the label takes the free width and the admin remove control sits at the end. */
+  .quest-manage-page .player-item {
+    padding-block: var(--qb-space-xs);
+  }
+}

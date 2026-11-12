@@ -1,0 +1,263 @@
+/*
+ * Page shell shared by the desktop-side layouts: the fixed wood navigation bar, its brand, links, menus and
+ * toggler, the skip link, the offset that keeps content clear of a fixed bar, and the footer. Every rule is keyed
+ * on a class the shell markup carries (chrome, chrome-footer, shell-fixed-nav, skip-link, user-menu), so the phone
+ * layouts, which link this file too, are untouched until they opt in. Colours come from tokens.css; none are
+ * written here.
+ */
+@layer components {
+  /*
+   * The board photo for the desktop shell: the 1600px derivative of the artwork. The backdrop rule in base.css reads
+   * it through --qb-board-image, which a theme may replace; the photo sits one step behind that name so a theme
+   * set on the html element still wins over it.
+   */
+  :root {
+    --qb-board-photo: url("../images/notice-board-1600.webp");
+  }
+
+  /*
+   * A fixed bar covers whatever scrolls under it, so the body leaves room for it and a focused element that the
+   * browser scrolls into view stops below it. The bar is exactly --qb-nav-h tall (see .chrome), which is what
+   * makes both numbers right.
+   */
+  .shell-fixed-nav {
+    padding-top: var(--qb-nav-h);
+  }
+
+  html:has(.shell-fixed-nav) {
+    scroll-padding-top: calc(var(--qb-nav-h) + var(--qb-space-sm));
+  }
+
+  /*
+   * First thing a keyboard user reaches. It is hidden until it takes focus (the visually-hidden-focusable helper),
+   * then sits top-left above the bar.
+   */
+  .skip-link {
+    position: fixed;
+    top: var(--qb-space-sm);
+    left: var(--qb-space-sm);
+    z-index: 1100;
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+    font-weight: var(--qb-weight-strong);
+    text-decoration: none;
+  }
+
+  /* The target of the skip link takes focus without being a control, so it shows no ring of its own. */
+  main[tabindex="-1"]:focus,
+  main[tabindex="-1"]:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /*
+   * The navigation bar: wood gradient, parchment text, a hairline wood edge and a shadow. It is always
+   * --qb-nav-h tall, whether or not the toggler (a full 44px target) is on show, so the padding around the tallest
+   * item is what is left of the height and the bar never grows by a pixel when the menu collapses.
+   */
+  .chrome {
+    --bs-navbar-color: var(--qb-fg);
+    --bs-navbar-hover-color: var(--qb-accent-strong);
+    --bs-navbar-active-color: var(--qb-accent-strong);
+    --bs-navbar-disabled-color: var(--qb-fg-muted);
+    --bs-navbar-brand-color: var(--qb-fg);
+    --bs-navbar-brand-hover-color: var(--qb-accent-strong);
+    --bs-navbar-brand-active-color: var(--qb-accent-strong);
+    --bs-navbar-toggler-border-color: var(--qb-fg);
+    --bs-navbar-padding-y: calc((var(--qb-nav-h) - var(--qb-hit-min) - 1px) / 2);
+    min-height: var(--qb-nav-h);
+    background: var(--qb-surface-chrome);
+    border-bottom: 1px solid var(--qb-wood-dark);
+    box-shadow: var(--qb-shadow-chrome), var(--qb-chrome-highlight);
+    backdrop-filter: blur(var(--qb-glass-blur));
+  }
+
+  /* Brand: the display face at the heading step; the die is a gold ornament beside the words. */
+  .chrome .navbar-brand {
+    font-family: var(--qb-font-display);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    text-shadow: var(--qb-text-halo);
+    transition: color var(--qb-dur-fast) var(--qb-ease);
+  }
+
+  .chrome .navbar-brand .fa-dice-d20 {
+    color: var(--qb-accent);
+  }
+
+  /*
+   * Link text carries the dark halo and not the light one the page sheets put on every list item, which would glow
+   * around parchment text on wood.
+   */
+  .chrome .nav-link,
+  .chrome .dropdown-item {
+    text-shadow: var(--qb-text-halo);
+  }
+
+  .chrome .nav-link {
+    font-weight: var(--qb-weight-regular);
+    transition: color var(--qb-dur-fast) var(--qb-ease);
+  }
+
+  /* The signed-in name on the Platform bar is cut with an ellipsis like the user menu's, never wrapped. */
+  .chrome .navbar-text {
+    max-width: min(20rem, 100%);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * The item holding that name may be squeezed below the width of its text (the name inside is clipped), so a long
+   * name makes room for the rest of the row instead of pushing it out of the window.
+   */
+  .chrome .navbar-nav > .nav-item:has(> .navbar-text) {
+    min-width: 0;
+  }
+
+  .chrome .btn {
+    white-space: nowrap;
+  }
+
+  /* Links never wrap: a bar that wraps grows taller than the offset reserved for it and covers the page. */
+  .chrome .nav-link {
+    white-space: nowrap;
+  }
+
+  /*
+   * A long display name is cut with an ellipsis rather than pushing the bar wider than the window.
+   * In the wide bar the name is the one item allowed to give way when the row is full.
+   */
+  .chrome .nav-link.dropdown-toggle {
+    max-width: min(20rem, 100%);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (min-width: 992px) {
+    .chrome .navbar-collapse,
+    .chrome .navbar-nav {
+      min-width: 0;
+    }
+
+    .chrome .navbar-nav > .nav-item.dropdown:last-child {
+      min-width: 0;
+      flex-shrink: 1;
+    }
+
+    .chrome .nav-link.dropdown-toggle {
+      min-width: 6rem;
+    }
+  }
+
+  /*
+   * Between the collapse point and a full-size laptop the whole menu does not fit one row at body size, so the
+   * links go to the small step with tighter spacing and the bar stays one row.
+   */
+  @media (min-width: 1200px) and (max-width: 1399.98px) {
+    .chrome .navbar-nav {
+      --bs-navbar-nav-link-padding-x: var(--qb-space-xs);
+      --bs-nav-link-font-size: var(--qb-text-sm);
+    }
+
+    .chrome .navbar-brand {
+      margin-right: var(--qb-space-sm);
+    }
+  }
+
+  /*
+   * The menu button: parchment border and bars, at least 44px square. The three bars are a mask over a parchment
+   * fill, so their colour is a token and not one baked into an image.
+   */
+  .chrome .navbar-toggler {
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
+    border-width: 2px;
+  }
+
+  .chrome .navbar-toggler-icon {
+    background-color: var(--qb-fg);
+    background-image: none;
+    -webkit-mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='black' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") center / 100% no-repeat;
+    mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='black' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") center / 100% no-repeat;
+  }
+
+  /*
+   * Menus open from the bar on the opaque overlay surface, so their text never depends on what is under them and
+   * the gold ornament icons read on them.
+   */
+  .chrome .dropdown-menu {
+    --bs-dropdown-bg: var(--qb-surface-overlay);
+    --bs-dropdown-color: var(--qb-fg);
+    --bs-dropdown-border-color: var(--qb-border);
+    --bs-dropdown-divider-bg: var(--qb-border);
+    --bs-dropdown-link-color: var(--qb-fg);
+    --bs-dropdown-link-hover-color: var(--qb-accent-strong);
+    --bs-dropdown-link-hover-bg: var(--qb-surface-glass);
+    --bs-dropdown-link-active-color: var(--qb-accent-strong);
+    --bs-dropdown-link-active-bg: var(--qb-surface-glass);
+    box-shadow: var(--qb-shadow-overlay);
+  }
+
+  /* The user menu is as wide as its longest entry, within the window. */
+  .user-menu {
+    width: max-content;
+    max-width: 90vw;
+  }
+
+  /*
+   * Below the bar's breakpoint (1200px on the main bar, 992px on the Platform bar) the menu collapses under the
+   * bar. Open, it is an overlay on the opaque surface, not text laid straight on the board.
+   */
+  @media (max-width: 1199.98px) {
+    .chrome.navbar-expand-xl .navbar-collapse.show,
+    .chrome.navbar-expand-xl .navbar-collapse.collapsing {
+      background-color: var(--qb-surface-overlay);
+      margin-top: var(--qb-space-sm);
+      padding: var(--qb-space-sm) var(--qb-space-md);
+      border-radius: var(--qb-radius-md);
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .chrome.navbar-expand-lg .navbar-collapse.show,
+    .chrome.navbar-expand-lg .navbar-collapse.collapsing {
+      background-color: var(--qb-surface-overlay);
+      margin-top: var(--qb-space-sm);
+      padding: var(--qb-space-sm) var(--qb-space-md);
+      border-radius: var(--qb-radius-md);
+    }
+  }
+
+  /*
+   * The footer wears the same wood as the bar. It is not fixed: it follows the content, clear of it by a step.
+   */
+  .chrome-footer {
+    --bs-navbar-color: var(--qb-fg);
+    margin-top: var(--qb-space-xl);
+    padding: var(--qb-space-sm) 0;
+    min-height: var(--qb-nav-h);
+    background: var(--qb-surface-chrome);
+    border-top: 1px solid var(--qb-wood-dark);
+    box-shadow: var(--qb-shadow-chrome), var(--qb-chrome-highlight);
+    font-size: var(--qb-text-sm);
+  }
+
+  .chrome-footer-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
+    color: var(--qb-fg);
+    font-size: var(--qb-text-lg);
+    transition: color var(--qb-dur-fast) var(--qb-ease);
+  }
+
+  .chrome-footer-link:hover {
+    color: var(--qb-accent-strong);
+  }
+}

@@ -12,32 +12,34 @@
     <link rel="icon" type="image/png" sizes="32x32" href="~/favicon-32x32.png" asp-append-version="true" />
     <link rel="icon" type="image/png" sizes="16x16" href="~/favicon-16x16.png" asp-append-version="true" />
     <link rel="apple-touch-icon" sizes="180x180" href="~/apple-touch-icon.png" asp-append-version="true" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/v4-shims.min.css" rel="stylesheet" integrity="sha384-TjXU13dTMPo+5ZlOUI1IGXvpmajjoetPqbUJqTx+uZ1bGwylKHNEItuVe/mg/H6l" crossorigin="anonymous">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/modern-card.css" asp-append-version="true" />
+    <link rel="preload" href="~/lib/bootstrap-5.3.8/css/bootstrap.min.css" as="style" />
+    <link rel="preload" href="~/lib/fontawesome-6.7.2/css/all.min.css" as="style" />
+    <link rel="preload" href="~/lib/cinzel/cinzel-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shell.css" asp-append-version="true" />
+    <link href="~/lib/fontawesome-6.7.2/css/v4-shims.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/legacy-pages.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/events-overview.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/agenda.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/quests.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/characters.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/contacts.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/dm-profile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/markdown-editor.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/move-entry.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
-<body class="d-flex flex-column min-vh-100 @ViewData["BodyClass"]">
+<body class="d-flex flex-column min-vh-100 shell-fixed-nav @ViewData["BodyClass"]">
+    <a class="visually-hidden-focusable skip-link" href="#main-content">Skip to main content</a>
     @{
         var pages = await BoardPages.GetAsync();
         var homeRoute = BoardPageRoutes.HomeRoute(pages);
     }
     <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-2">
+        <nav class="navbar navbar-expand-xl navbar-dark chrome fixed-top" aria-label="Main">
             <div class="container-fluid px-3">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
@@ -47,7 +49,7 @@
                 {
                     <a class="navbar-brand" asp-controller="Home" asp-action="Index"><i class="fas fa-dice-d20"></i> D&D Quest Board</a>
                 }
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbar">
@@ -58,7 +60,7 @@
                             @if ((await AuthorizationService.AuthorizeAsync(User, "AdminOnly")).Succeeded)
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-danger" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-shield-alt me-1"></i>Admin
                                     </a>
                                     <ul class="dropdown-menu">
@@ -109,7 +111,7 @@
                                 if (showCreateQuest || showCreateEvent || showBoardAvailability || showManageShop || showEditProfile)
                                 {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-danger" href="#" id="dungeonMasterDropdown" role="button" data-bs-toggle="dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="dungeonMasterDropdown" role="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-crown me-1"></i>Dungeon Master
                                     </a>
                                     <ul class="dropdown-menu">
@@ -233,7 +235,7 @@
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-user me-1"></i>@currentUser.Name
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end text-wrap" style="width: max-content; max-width: 90vw;">
+                                <ul class="dropdown-menu dropdown-menu-end text-wrap user-menu">
                                     <li>
                                         <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
                                             <i class="fas fa-user-cog me-2"></i>Profile
@@ -282,7 +284,7 @@
         </nav>
     </header>
     <div class="container mt-3 flex-grow-1">
-        <main role="main">
+        <main id="main-content" tabindex="-1" role="main">
             @RenderBody()
         </main>
     </div>
@@ -290,8 +292,7 @@
 
     <partial name="_Footer" />
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/bootstrap-5.3.8/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

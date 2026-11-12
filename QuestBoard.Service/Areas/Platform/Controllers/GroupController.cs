@@ -9,9 +9,11 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Models.BoardDeletion;
 using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Jobs;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
+using System.Security.Claims;
 using System.Text;
 
 namespace QuestBoard.Service.Areas.Platform.Controllers;
@@ -27,6 +29,15 @@ public class GroupController(
     ILogger<GroupController> logger) : Controller
 {
     private const string ConcurrencyMessage = "Someone else changed this board while you were editing. Reload the page and try again.";
+
+    // A board name is saved without edge whitespace, so the name a delete asks the admin to type is
+    // exactly the name the board list shows. A name that was nothing but whitespace is refused.
+    private const string NameRequiredMessage = "Group name is required.";
+
+    // Required already refuses a name that .NET counts as blank; this catches one made only of the
+    // other edge whitespace (a zero-width no-break space), which would otherwise be saved empty.
+    private static bool IsOnlyEdgeWhitespace(string trimmed, string? posted)
+        => trimmed.Length == 0 && !string.IsNullOrWhiteSpace(posted);
 
     // Groups index
     [HttpGet]
@@ -44,10 +55,12 @@ public class GroupController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(GroupCreateViewModel model)
     {
+        var name = BoardNameText.TrimEdges(model.Name);
+        if (IsOnlyEdgeWhitespace(name, model.Name)) ModelState.AddModelError(nameof(model.Name), NameRequiredMessage);
         if (!ModelState.IsValid) return View(model);
         try
         {
-            await groupService.AddAsync(new Group { Name = model.Name, BoardType = model.BoardType!.Value });
+            await groupService.AddAsync(new Group { Name = name, BoardType = model.BoardType!.Value });
             TempData["Success"] = "Group created successfully.";
             return RedirectToAction(nameof(Index));
         }
@@ -109,6 +122,9 @@ public class GroupController(
             ModelState.AddModelError(string.Empty, error);
         }
 
+        var name = BoardNameText.TrimEdges(model.Name);
+        if (IsOnlyEdgeWhitespace(name, model.Name)) ModelState.AddModelError(nameof(model.Name), NameRequiredMessage);
+
         if (!ModelState.IsValid)
         {
             PopulatePageSection(model, group, outcome.Disabled);
@@ -118,7 +134,7 @@ public class GroupController(
 
         try
         {
-            group.Name = model.Name;
+            group.Name = name;
             group.DisabledPages = outcome.Disabled;
             group.HomePage = outcome.HomePage;
             await groupService.UpdateAsync(group);
@@ -182,39 +198,97 @@ public class GroupController(
         model.HomePage ??= group.HomePage;
     }
 
-    // Delete group (only empty groups)
+    private const string BoardGoneMessage = "That board no longer exists, so there was nothing to delete.";
+
+    private static string HasMembersMessage(string boardName)
+        => $"\"{boardName}\" still has members, so it was not deleted. Remove them first.";
+
+    // Delete board: the page previews what a delete removes and asks for the board's name to confirm
     [HttpGet]
     public async Task<IActionResult> Delete(int id)
     {
         var group = await groupService.GetByIdAsync(id);
-        if (group == null) return RedirectToAction(nameof(Index));
+        if (group == null)
+        {
+            TempData["Info"] = BoardGoneMessage;
+            return RedirectToAction(nameof(Index));
+        }
         var hasMembers = await groupService.HasMembersAsync(id);
         if (hasMembers)
         {
-            TempData["Error"] = "Cannot delete a group that has members.";
+            TempData["Error"] = HasMembersMessage(group.Name);
             return RedirectToAction(nameof(Index));
         }
-        return View(group);
+        var preview = await groupService.GetDeletionPreviewAsync(id);
+        return View(BoardDeletePageViewModel.Create(group, preview));
     }
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int id)
+    public async Task<IActionResult> DeleteConfirmed(int id, string? confirmName)
+    {
+        BoardDeletionResult result;
+        try
+        {
+            result = await groupService.DeleteBoardAsync(id, confirmName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Deleting board {BoardId} failed; nothing was changed", id);
+            TempData["Error"] = "The board could not be deleted and nothing was changed. Try again.";
+            return RedirectToAction(nameof(Delete), new { id });
+        }
+
+        switch (result.Status)
+        {
+            case BoardDeleteStatus.NotFound:
+                TempData["Info"] = BoardGoneMessage;
+                return RedirectToAction(nameof(Index));
+            case BoardDeleteStatus.HasMembers:
+                TempData["Error"] = HasMembersMessage(result.BoardName);
+                return RedirectToAction(nameof(Index));
+            case BoardDeleteStatus.NameMismatch:
+                return await RenderNameMismatchAsync(id);
+            default:
+                TempData["Success"] = $"Board \"{result.BoardName}\" was deleted.";
+                await ForgetDeletedBoardInOwnSessionAsync(id);
+                logger.LogInformation(
+                    "Board {BoardId} \"{BoardName}\" deleted by user {UserId}; removed {RemovedCounts}",
+                    id, result.BoardName, User.FindFirstValue(ClaimTypes.NameIdentifier), DescribeRemovedCounts(result));
+                return RedirectToAction(nameof(Index));
+        }
+    }
+
+    // The typed name did not match: show the page again, with fresh counts, rather than bouncing through a redirect.
+    private async Task<IActionResult> RenderNameMismatchAsync(int id)
     {
         var group = await groupService.GetByIdAsync(id);
-        var hasMembers = await groupService.HasMembersAsync(id);
-        if (hasMembers)
+        if (group == null)
         {
-            TempData["Error"] = "Cannot delete a group that has members.";
+            TempData["Info"] = BoardGoneMessage;
             return RedirectToAction(nameof(Index));
         }
-        if (group != null)
-        {
-            await groupService.RemoveAsync(group);
-            TempData["Success"] = "Group deleted.";
-        }
-        return RedirectToAction(nameof(Index));
+        var preview = await groupService.GetDeletionPreviewAsync(id);
+        return View(nameof(Delete), BoardDeletePageViewModel.Create(group, preview, nameMismatch: true));
     }
+
+    // The delete has already committed, so a session problem here must never surface as an error.
+    private async Task ForgetDeletedBoardInOwnSessionAsync(int id)
+    {
+        try
+        {
+            await HttpContext.Session.ClearActiveBoardIfAsync(id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Board {BoardId} was deleted but the session that named it could not be cleared", id);
+        }
+    }
+
+    private static string DescribeRemovedCounts(BoardDeletionResult result)
+        => string.Join(", ", result.RemovedCounts
+            .Where(pair => pair.Value > 0)
+            .Select(pair => $"{pair.Key}={pair.Value}"));
 
     // Members page
     [HttpGet]

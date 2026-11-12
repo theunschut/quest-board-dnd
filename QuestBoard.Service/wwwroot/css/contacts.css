@@ -2,7 +2,8 @@
    CONTACTS - CONTACT CARDS
    ======================================== */
 
-.contacts-page h1 {
+/* The Markdown editor's live preview is left out (the :where() keeps the specificity unchanged): it draws ink text on its own paper surface. */
+.contacts-page h1:not(:where(.EasyMDEContainer *)) {
     color: #F4E4BC;
     font-family: 'Cinzel', serif;
     text-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
@@ -280,8 +281,8 @@
     color: #ffc107;
 }
 
-/* Ungrouped heading: same element and size, muted via opacity so it does not fight the
-   shared card stylesheet's forced heading color with an !important of its own. */
+/* Ungrouped heading: same element and size, muted via opacity so it keeps the colour the
+   grouped headings take from the card instead of declaring a second one. */
 .contacts-page .category-heading-ungrouped {
     font-style: italic;
     opacity: 0.75;
@@ -312,11 +313,9 @@
     --tags-focus-border-color: #ffc107;
 }
 
-/* Tagify's contenteditable typing area is a bare <span>, which the shared modern-card.css
-   `.modern-card span` rule repaints pale-gold with a heavy drop shadow meant for text over
-   the card's dark background. That input sits on its own light surface, not the card
-   background, so both the placeholder and whatever the DM is currently typing come out
-   as near-illegible smeared text. Reset it back to plain readable text like every other
+/* Tagify's typing area is a bare span sitting on its own light input surface rather than the
+   card background, so it keeps plain dark text with no shadow whatever colour the surrounding
+   card gives its text. The placeholder is the same: dark and unshadowed, like every other
    input on the form. */
 .contacts-page .contact-tags-input .tagify__input {
     color: #1a1a1a !important;

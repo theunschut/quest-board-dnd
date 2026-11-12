@@ -6,11 +6,18 @@
     ViewData["Title"] = "Quest Log";
     var boardType = (BoardType)ViewBag.BoardType;
 }
+@section Styles {
+    <link rel="stylesheet" href="~/css/quest-log.css" asp-append-version="true" />
+}
 
-<div class="quest-log-container">
-    <div class="quest-log-header">
-        <h1><i class="fas fa-book-open me-3"></i>Quest Log</h1>
-        <p class="mb-0">"A chronicle of legendary adventures and heroic deeds..."</p>
+<div class="quest-log-wrap">
+    <div class="card modern-card quest-log-intro">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">
+                <i class="fas fa-book-open me-2" aria-hidden="true"></i>Quest Log
+            </h1>
+            <span class="header-subtitle">"A chronicle of legendary adventures and heroic deeds..."</span>
+        </div>
     </div>
 
     @if (Model.CompletedQuests?.Any() == true)
@@ -18,92 +25,79 @@
         <div class="quest-log-grid">
             @foreach (var quest in Model.CompletedQuests)
             {
-                // Calculate some stats for the quest
-                var selectedPlayers = quest.PlayerSignups.Where(ps => ps.IsSelected).ToList();
+                var selectedCount = quest.PlayerSignups.Count(ps => ps.IsSelected);
+                var plainDescription = MarkdownService.ExtractPlainText(quest.Description);
+                // Cut before a high surrogate that would be left without its pair, so an emoji is never split.
+                var excerptLength = plainDescription.Length > 200 && char.IsHighSurrogate(plainDescription[199]) ? 199 : 200;
+                var shortDescription = plainDescription.Length > 200
+                    ? plainDescription.Substring(0, excerptLength) + "..."
+                    : plainDescription;
 
-                <div class="quest-log-card" onclick="window.location.href='@Url.Action("Details", "QuestLog", new { id = quest.Id })'">
-
-                    <!-- Quest Header -->
-                    <div class="quest-log-card-header">
-                        <h3 class="quest-log-card-title"><a class="row-nav-link" href="@Url.Action("Details", "QuestLog", new { id = quest.Id })">@quest.Title</a></h3>
-                        @if (boardType != BoardType.Campaign)
-                        {
-                            <span class="cr-badge">
-                                <i class="fas fa-dice-d20 me-1"></i>
-                                CR @quest.ChallengeRating
-                            </span>
-                        }
-                    </div>
-
-                    <!-- Quest Body -->
-                    <div class="quest-log-card-body">
-                        <!-- Quest Info -->
-                        <div class="quest-log-meta">
-                            <div class="meta-item">
-                                <i class="fas fa-crown me-2"></i>
-                                <span><strong>DM:</strong> @quest.DungeonMaster?.Name</span>
-                            </div>
-                            <div class="meta-item">
-                                <i class="fas fa-calendar-check me-2"></i>
-                                <span>
-                                    <strong>Completed:</strong>
-                                    @if (quest.FinalizedDate.HasValue)
-                                    {
-                                        @Html.WallClock(quest.FinalizedDate.Value, "date")
-                                    }
-                                    else if (quest.ClosedDate.HasValue)
-                                    {
-                                        @Html.LocalTime(quest.ClosedDate.Value, "date")
-                                    }
-                                    else
-                                    {
-                                        @:Unknown Date
-                                    }
-                                </span>
-                            </div>
+                <article class="card modern-card modern-card--interactive quest-log-card">
+                    <div class="card-body modern-card-body">
+                        <div class="quest-log-card-top">
+                            <h2 class="quest-log-card-title"><a class="row-nav-link" href="@Url.Action("Details", "QuestLog", new { id = quest.Id })">@quest.Title</a></h2>
                             @if (boardType != BoardType.Campaign)
                             {
-                                <div class="meta-item">
-                                    <i class="fas fa-users me-2"></i>
-                                    <span><strong>Adventurers:</strong> @selectedPlayers.Count</span>
-                                </div>
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>CR @quest.ChallengeRating
+                                </span>
                             }
                         </div>
 
-                        <!-- Quest Description Preview -->
-                        <div class="quest-log-card-description">
-                            @{
-                                var plainDescription = MarkdownService.ExtractPlainText(quest.Description);
-                                var shortDescription = plainDescription.Length > 200
-                                    ? plainDescription.Substring(0, 200) + "..."
-                                    : plainDescription;
+                        <div class="quest-log-meta">
+                            <p class="quest-log-meta-line">
+                                <i class="fas fa-crown me-2" aria-hidden="true"></i><strong>DM:</strong> @(quest.DungeonMaster?.Name ?? "Unknown DM")
+                            </p>
+                            <p class="quest-log-meta-line">
+                                <i class="fas fa-calendar-check me-2" aria-hidden="true"></i><strong>Completed:</strong>
+                                @if (quest.FinalizedDate.HasValue)
+                                {
+                                    @Html.WallClock(quest.FinalizedDate.Value, "date")
+                                }
+                                else if (quest.ClosedDate.HasValue)
+                                {
+                                    @Html.LocalTime(quest.ClosedDate.Value, "date")
+                                }
+                                else
+                                {
+                                    @:Unknown Date
+                                }
+                            </p>
+                            @if (boardType != BoardType.Campaign)
+                            {
+                                <p class="quest-log-meta-line">
+                                    <i class="fas fa-users me-2" aria-hidden="true"></i><strong>Adventurers:</strong> @selectedCount
+                                </p>
                             }
-                            @shortDescription
                         </div>
+
+                        <p class="quest-log-card-description">@shortDescription</p>
                     </div>
 
-                    <!-- Quest Footer -->
-                    <div class="quest-log-card-footer">
+                    <div class="card-footer modern-card-footer quest-log-card-footer">
                         @if (!string.IsNullOrWhiteSpace(quest.Recap))
                         {
-                            <span class="recap-badge">
-                                <i class="fas fa-scroll me-1"></i>Session Recap Available
+                            <span class="badge bg-info">
+                                <i class="fas fa-scroll me-1" aria-hidden="true"></i>Session Recap Available
                             </span>
                         }
-                        <span class="view-details-text">
-                            Click to view details <i class="fas fa-arrow-right ms-1"></i>
+                        <span class="quest-log-card-cue">
+                            Click to view details <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i>
                         </span>
                     </div>
-                </div>
+                </article>
             }
         </div>
     }
     else
     {
-        <div class="empty-quest-log">
-            <i class="fas fa-book-open fa-3x mb-3"></i>
-            <h3>No Completed Quests Yet</h3>
-            <p>Completed quests will appear here once they have been undertaken and finished.</p>
+        <div class="card modern-card">
+            <div class="empty-state">
+                <i class="fas fa-book-open empty-state-icon" aria-hidden="true"></i>
+                <h2 class="empty-state-heading">No Completed Quests Yet</h2>
+                <p class="empty-state-text">Completed quests will appear here once they have been undertaken and finished.</p>
+            </div>
         </div>
     }
 </div>

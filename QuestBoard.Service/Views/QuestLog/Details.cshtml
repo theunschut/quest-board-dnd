@@ -4,212 +4,192 @@
 @model QuestLogDetailsViewModel
 @{
     ViewData["Title"] = $"Quest Log: {Model.Quest.Title}";
-    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
+    var selectedPlayers = Model.Quest.PlayerSignups.Where(ps => ps.IsSelected).OrderBy(ps => ps.SignupTime).ToList();
+    var hasRecap = !string.IsNullOrWhiteSpace(Model.Quest.Recap);
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/quest-log.css" asp-append-version="true" />
 }
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card modern-card">
-            <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                <h2 class="mb-0">@Model.Quest.Title</h2>
-                @if (boardType != BoardType.Campaign)
-                {
-                    <span class="badge cr-badge fs-6">
-                        <i class="fas fa-dice-d20 me-1"></i>
-                        CR @Model.Quest.ChallengeRating
-                    </span>
-                }
-            </div>
-            <div class="card-body modern-card-body">
-                <!-- Quest Basic Info -->
-                <div class="mb-4">
-                    <h5 class="text-white"><i class="fas fa-info-circle me-2"></i>Quest Information</h5>
-                    <div class="row text-white">
-                        <div class="col-md-6">
-                            <p class="text-white"><strong>Dungeon Master:</strong> @Model.Quest.DungeonMaster?.Name</p>
-                            @if (boardType != BoardType.Campaign)
+@section Scripts {
+    <script type="module" src="~/js/avatar-fallback.js" asp-append-version="true"></script>
+}
+
+<div class="quest-log-detail-page">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card modern-card quest-log-detail-main">
+                <div class="card-header modern-card-header d-flex justify-content-between align-items-start gap-3">
+                    <h1 class="mb-0">@Model.Quest.Title</h1>
+                    @if (boardType != BoardType.Campaign)
+                    {
+                        <span class="badge bg-secondary flex-shrink-0">
+                            <i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>CR @Model.Quest.ChallengeRating
+                        </span>
+                    }
+                </div>
+                <div class="card-body modern-card-body">
+                    <section class="quest-log-section">
+                        <h2><i class="fas fa-info-circle me-2" aria-hidden="true"></i>Quest Information</h2>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <p><strong>Dungeon Master:</strong> @Model.Quest.DungeonMaster?.Name</p>
+                                @if (boardType != BoardType.Campaign)
+                                {
+                                    <p><strong>Challenge Rating:</strong> @Model.Quest.ChallengeRating</p>
+                                }
+                            </div>
+                            <div class="col-sm-6">
+                                <p>
+                                    <strong>Completed On:</strong>
+                                    @if (Model.Quest.FinalizedDate.HasValue)
+                                    {
+                                        @Html.WallClock(Model.Quest.FinalizedDate.Value, "date-time")
+                                    }
+                                    else if (Model.Quest.ClosedDate.HasValue)
+                                    {
+                                        @Html.LocalTime(Model.Quest.ClosedDate.Value, "date-time")
+                                    }
+                                </p>
+                                <p><strong>Created:</strong> @Html.LocalTime(Model.Quest.CreatedAt, "date")</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <hr />
+
+                    <section class="quest-log-section">
+                        <h2><i class="fas fa-scroll me-2" aria-hidden="true"></i>Original Quest Description</h2>
+                        <div class="quest-log-text-box">@Html.Markdown(Model.Quest.Description)</div>
+                    </section>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Quest.Rewards))
+                    {
+                        <hr />
+
+                        <section class="quest-log-section">
+                            <h2><i class="fas fa-coins me-2" aria-hidden="true"></i>Rewards</h2>
+                            <div class="quest-log-text-box">@Html.Markdown(Model.Quest.Rewards)</div>
+                        </section>
+                    }
+
+                    @if (boardType != BoardType.Campaign)
+                    {
+                        <hr />
+
+                        <section class="quest-log-section">
+                            <h2><i class="fas fa-users me-2" aria-hidden="true"></i>Adventurers</h2>
+                            @if (selectedPlayers.Any())
                             {
-                                <p class="text-white"><strong>Challenge Rating:</strong> @Model.Quest.ChallengeRating</p>
-                            }
-                        </div>
-                        <div class="col-md-6">
-                            <p class="text-white">
-                                <strong>Completed On:</strong>
-                                @if (Model.Quest.FinalizedDate.HasValue)
-                                {
-                                    @Html.WallClock(Model.Quest.FinalizedDate.Value, "date-time")
-                                }
-                                else if (Model.Quest.ClosedDate.HasValue)
-                                {
-                                    @Html.LocalTime(Model.Quest.ClosedDate.Value, "date-time")
-                                }
-                            </p>
-                            <p class="text-white"><strong>Created:</strong> @Html.LocalTime(Model.Quest.CreatedAt, "date")</p>
-                        </div>
-                    </div>
-                </div>
-
-                <hr />
-
-                <!-- Original Quest Description -->
-                <div class="mb-4">
-                    <h5 class="text-white"><i class="fas fa-scroll me-2"></i>Original Quest Description</h5>
-                    <div class="quest-description-box">@Html.Markdown(Model.Quest.Description)</div>
-                </div>
-
-                @if (!string.IsNullOrWhiteSpace(Model.Quest.Rewards))
-                {
-                    <hr />
-
-                    <!-- Rewards -->
-                    <div class="mb-4">
-                        <h5 class="text-white"><i class="fas fa-coins text-warning me-2"></i>Rewards</h5>
-                        <div class="quest-description-box">@Html.Markdown(Model.Quest.Rewards)</div>
-                    </div>
-                }
-
-                @{
-                    var selectedPlayers = Model.Quest.PlayerSignups.Where(ps => ps.IsSelected).OrderBy(ps => ps.SignupTime).ToList();
-                }
-                @if (boardType != BoardType.Campaign)
-                {
-                    <hr />
-
-                    <!-- Adventurers Who Participated -->
-                    <div class="mb-4">
-                        <h5 class="text-white"><i class="fas fa-users me-2"></i>Adventurers</h5>
-                        @if (selectedPlayers.Any())
-                        {
-                            <ul class="quest-signup-list list-unstyled">
-                                @foreach (var player in selectedPlayers)
-                                {
-                                    <li class="quest-signup-item">
-                                        <span class="player-name">@player.Player.Name</span>
-                                        @if (player.Character != null)
-                                        {
-                                            <span class="character-info">
-                                                <span class="character-divider">(</span>
-                                                <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
-                                                     alt="@player.Character.Name"
-                                                     class="character-mini-avatar"
-                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                                                <span class="character-name">@player.Character.Name</span>
-                                                <span class="character-divider">)</span>
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="character-info">
-                                                <span class="character-divider">(</span>
-                                                <span class="character-mini-avatar-placeholder" style="display: none;">
-                                                    <i class="fas fa-user"></i>
+                                <ul class="quest-log-adventurers list-unstyled">
+                                    @foreach (var player in selectedPlayers)
+                                    {
+                                        <li class="quest-log-adventurer">
+                                            <strong>@player.Player.Name</strong>
+                                            @if (player.Character != null)
+                                            {
+                                                <span class="quest-log-adventurer-character">
+                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
+                                                         alt=""
+                                                         class="avatar-32" />
+                                                    <span class="avatar-32 avatar-32--placeholder" hidden aria-hidden="true">
+                                                        <i class="fas fa-user" aria-hidden="true"></i>
+                                                    </span>
+                                                    <span>@player.Character.Name</span>
                                                 </span>
-                                                <span class="character-divider">)</span>
-                                            </span>
-                                        }
-                                    </li>
-                                }
-                            </ul>
-                        }
-                        else
-                        {
-                            <p class="text-muted">No adventurers participated in this quest.</p>
-                        }
-                    </div>
-                }
-
-                <hr />
-
-                <!-- Session Recap -->
-                <div class="mb-4">
-                    <h5 class="text-white"><i class="fas fa-book me-2"></i>Session Recap</h5>
-
-                    @if (!string.IsNullOrWhiteSpace(Model.Quest.Recap))
-                    {
-                        <div class="recap-display-box">
-                            @Html.Markdown(Model.Quest.Recap)
-                        </div>
-                    }
-                    else
-                    {
-                        <p class="text-muted">No recap has been written for this quest yet.</p>
-                    }
-
-                    @if ((bool)ViewBag.CanEditRecap)
-                    {
-                        <a href="@Url.Action("EditRecap", "QuestLog", new { id = Model.Quest.Id })" class="btn btn-primary mt-3">
-                            @if (!string.IsNullOrWhiteSpace(Model.Quest.Recap))
-                            {
-                                <i class="fas fa-edit me-2"></i>@:Edit Recap
+                                            }
+                                        </li>
+                                    }
+                                </ul>
                             }
                             else
                             {
-                                <i class="fas fa-plus me-2"></i>@:Add Recap
+                                <p>No adventurers participated in this quest.</p>
+                            }
+                        </section>
+                    }
+
+                    <hr />
+
+                    <section class="quest-log-section">
+                        <h2><i class="fas fa-book me-2" aria-hidden="true"></i>Session Recap</h2>
+                        @if (hasRecap)
+                        {
+                            <div class="quest-log-text-box">@Html.Markdown(Model.Quest.Recap)</div>
+                        }
+                        else
+                        {
+                            <p>No recap has been written for this quest yet.</p>
+                        }
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card modern-card quest-log-side-card">
+                <div class="card-body modern-card-body">
+                    <h2><i class="fas fa-bolt me-2" aria-hidden="true"></i>Quick Actions</h2>
+                    <a href="@Url.Action("Index", "QuestLog")" class="btn btn-secondary w-100">
+                        <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Quest Log
+                    </a>
+                    @if ((bool)ViewBag.CanManageQuest)
+                    {
+                        <a href="@Url.Action("Manage", "Quest", new { id = Model.Quest.Id })" class="btn btn-info w-100">
+                            <i class="fas fa-cog me-2" aria-hidden="true"></i>Manage Quest
+                        </a>
+                    }
+                    @if ((bool)ViewBag.CanEditRecap)
+                    {
+                        <a href="@Url.Action("EditRecap", "QuestLog", new { id = Model.Quest.Id })" class="btn btn-primary w-100">
+                            @if (hasRecap)
+                            {
+                                <i class="fas fa-edit me-2" aria-hidden="true"></i>@:Edit Recap
+                            }
+                            else
+                            {
+                                <i class="fas fa-plus me-2" aria-hidden="true"></i>@:Add Recap
                             }
                         </a>
                     }
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="col-md-4">
-        <div class="card modern-card mb-3">
-            <div class="card-header modern-card-header">
-                <h5 class="text-white mb-0">Quick Actions</h5>
-            </div>
-            <div class="card-body modern-card-body">
-                <a href="@Url.Action("Index", "QuestLog")" class="btn btn-secondary w-100 mb-2">
-                    <i class="fas fa-arrow-left me-2"></i>
-                    Back to Quest Log
-                </a>
-                @if ((bool)ViewBag.CanManageQuest)
-                {
-                    <a href="@Url.Action("Manage", "Quest", new { id = Model.Quest.Id })" class="btn btn-info w-100">
-                        <i class="fas fa-cog me-2"></i>
-                        Manage Quest
-                    </a>
-                }
-            </div>
-        </div>
+            @if (boardType != BoardType.Campaign)
+            {
+                var dmHasKey = Model.Quest.DungeonMaster?.HasKey == true;
+                var playersHaveKey = Model.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
+                var anyoneHasKey = dmHasKey || playersHaveKey;
 
-        @if (boardType != BoardType.Campaign)
-        {
-            <div class="card modern-card">
-                <div class="card-header modern-card-header">
-                    <h5 class="text-white mb-0">Quest Statistics</h5>
+                <div class="card modern-card quest-log-side-card">
+                    <div class="card-body modern-card-body">
+                        <h2><i class="fas fa-chart-bar me-2" aria-hidden="true"></i>Quest Statistics</h2>
+                        <p><strong>Total Signups:</strong> @Model.Quest.PlayerSignups.Count</p>
+                        <p><strong>Participants:</strong> @selectedPlayers.Count / @Model.Quest.TotalPlayerCount</p>
+                        <p>
+                            <strong>Building Access:</strong>
+                            <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
+                                @if (anyoneHasKey)
+                                {
+                                    <i class="fas fa-key me-1" aria-hidden="true"></i>@:Available
+                                }
+                                else
+                                {
+                                    <i class="fas fa-lock me-1" aria-hidden="true"></i>@:No Key
+                                }
+                            </span>
+                        </p>
+                        <p>
+                            <strong>Status:</strong>
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-flag-checkered me-1" aria-hidden="true"></i>Completed
+                            </span>
+                        </p>
+                    </div>
                 </div>
-                <div class="card-body modern-card-body">
-                    <p class="text-white"><strong>Total Signups:</strong> @Model.Quest.PlayerSignups.Count</p>
-                    <p class="text-white"><strong>Participants:</strong> @selectedPlayers.Count / @Model.Quest.TotalPlayerCount</p>
-                    <p class="text-white">
-                        <strong>Building Access:</strong>
-                        @{
-                            var dmHasKey = Model.Quest.DungeonMaster?.HasKey == true;
-                            var playersHaveKey = Model.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
-                            var anyoneHasKey = dmHasKey || playersHaveKey;
-                        }
-                        <span class="badge @(anyoneHasKey ? "bg-success" : "bg-danger")">
-                            @if (anyoneHasKey)
-                            {
-                                <i class="fas fa-key me-1"></i>@:Available
-                            }
-                            else
-                            {
-                                <i class="fas fa-lock me-1"></i>@:No Key
-                            }
-                        </span>
-                    </p>
-                    <p class="text-white">
-                        <strong>Status:</strong>
-                        <span class="badge bg-dark">
-                            <i class="fas fa-flag-checkered me-1"></i>
-                            Completed
-                        </span>
-                    </p>
-                </div>
-            </div>
-        }
+            }
+        </div>
     </div>
 </div>

@@ -1,0 +1,115 @@
+@model BoardDeletePageViewModel
+@{
+    void RenderRows(IReadOnlyList<BoardDeleteRowViewModel> rows, string modifier)
+    {
+        <ul class="board-delete-rows list-unstyled">
+            @foreach (var row in rows)
+            {
+                <li class="board-delete-row board-delete-row--@modifier">
+                    <div class="board-delete-row-icon">
+                        <i class="fas fa-fw @row.Icon" aria-hidden="true"></i>
+                    </div>
+                    <div class="board-delete-row-body">
+                        <p class="mb-0"><strong>@row.Text</strong></p>
+                        @if (!string.IsNullOrEmpty(row.Hint))
+                        {
+                            <p class="board-delete-hint mb-0">@row.Hint</p>
+                        }
+                        @if (row.Names.Count > 0)
+                        {
+                            <details class="board-delete-names">
+                                <summary>@row.SummaryText</summary>
+                                <ul class="board-delete-name-list">
+                                    @foreach (var name in row.Names)
+                                    {
+                                        <li>@name</li>
+                                    }
+                                </ul>
+                            </details>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+}
+
+<p>You are about to delete <strong>"@Model.Name"</strong>.</p>
+
+<p>
+    @if (Model.BoardType == BoardType.Campaign)
+    {
+        <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1" aria-hidden="true"></i>Campaign</span>
+    }
+    else
+    {
+        <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>One-Shot</span>
+    }
+    &middot; Created @Html.LocalTime(Model.CreatedAt, "date") &middot; No members
+</p>
+
+<div class="alert alert-danger">
+    <i class="fas fa-triangle-exclamation me-2" aria-hidden="true"></i>This cannot be undone. Nothing on this list can be recovered once you confirm.
+</div>
+
+<h3 class="board-delete-heading">What will be deleted</h3>
+@if (Model.HasNothingStored)
+{
+    <p><i class="fas fa-circle-info me-2" aria-hidden="true"></i>Nothing is stored on this board. Only the board itself will be deleted.</p>
+}
+else
+{
+    RenderRows(Model.DeletedRows, "deleted");
+}
+
+@if (Model.UnlinkedRows.Count > 0)
+{
+    <h3 class="board-delete-heading">Kept, but unlinked</h3>
+    <p>These rows live on other boards. They stay, and only their link to "@Model.Name" is removed.</p>
+    RenderRows(Model.UnlinkedRows, "unlinked");
+}
+
+<h3 class="board-delete-heading">Not affected</h3>
+<ul class="board-delete-rows list-unstyled">
+    <li class="board-delete-row board-delete-row--kept">
+        <div class="board-delete-row-icon">
+            <i class="fas fa-fw fa-shield-halved" aria-hidden="true"></i>
+        </div>
+        <div class="board-delete-row-body">
+            <p class="mb-0">User accounts, Dungeon Master profiles, trade items and calendar subscriptions are not touched. If this board is in a linked board set, it leaves the set and the set stays.</p>
+        </div>
+    </li>
+</ul>
+
+<form method="post" asp-action="Delete" asp-route-id="@Model.Id" data-disable-on-submit>
+    <hr>
+
+    <div class="mb-3">
+        <label for="confirmName" class="form-label">Type the board name to confirm</label>
+        @if (Model.NameMismatch)
+        {
+            <div id="board-delete-refusal" role="alert" class="refusal-line">
+                <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                <span>The name you typed does not match "@Model.ConfirmationName". Check it and try again.</span>
+            </div>
+        }
+        <input id="confirmName" name="confirmName" class="form-control @(Model.NameMismatch ? "is-invalid" : null)" type="text"
+               autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+               aria-invalid="@(Model.NameMismatch ? "true" : null)"
+               autofocus="@(Model.NameMismatch ? "autofocus" : null)"
+               aria-describedby="@(Model.NameMismatch ? "board-delete-refusal " : "")board-delete-help board-delete-status" data-board-delete-name="@Model.ConfirmationName" />
+        <div id="board-delete-help" class="form-text">Type "@Model.ConfirmationName" exactly, including capitals and spaces. The delete button unlocks when it matches.</div>
+        <div id="board-delete-status" role="status" class="board-delete-status"></div>
+    </div>
+
+    <hr>
+
+    <div class="d-flex justify-content-between gap-2">
+        <a asp-area="Platform" asp-controller="Group" asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Keep board
+        </a>
+        <button type="submit" class="btn btn-danger" data-board-delete-submit disabled>
+            <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete board
+        </button>
+    </div>
+</form>

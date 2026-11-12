@@ -52,6 +52,12 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyDictionary<int, IReadOnlyList<string>>> GetBoardNamesByUserAsync(CancellationToken token = default)
+    {
+        return await repository.GetBoardNamesByUserAsync(token);
+    }
+
+    /// <inheritdoc/>
     public async Task<IList<User>> GetAvailableUsersAsync(int groupId, string? search, CancellationToken token = default)
     {
         return await repository.GetAvailableUsers(groupId, search, token);

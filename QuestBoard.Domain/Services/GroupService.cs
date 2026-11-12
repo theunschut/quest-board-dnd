@@ -1,7 +1,9 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Models.BoardDeletion;
 
 namespace QuestBoard.Domain.Services;
 
@@ -41,6 +43,26 @@ internal class GroupService(IGroupRepository repository, IMapper mapper)
     /// <inheritdoc/>
     public async Task<IList<UserGroup>> GetMembersAsync(int groupId, string? search = null, CancellationToken token = default)
         => await repository.GetMembersAsync(groupId, search, token);
+
+    /// <inheritdoc/>
+    public async Task<BoardDeletionResult> DeleteBoardAsync(int groupId, string? confirmName, CancellationToken token = default)
+    {
+        var group = await repository.GetByIdAsync(groupId, token);
+        if (group == null)
+            return BoardDeletionResult.Refused(BoardDeleteStatus.NotFound);
+
+        // Both sides lose the same edge whitespace, so a stored name that kept a stray space from a
+        // paste can still be confirmed. Everything between the edges is compared exactly, so a board
+        // whose name differs in case or spelling is never deleted by a near miss.
+        if (!string.Equals(BoardNameText.TrimEdges(confirmName), BoardNameText.TrimEdges(group.Name), StringComparison.Ordinal))
+            return BoardDeletionResult.Refused(BoardDeleteStatus.NameMismatch, group.Name);
+
+        return await repository.DeleteBoardAsync(groupId, token);
+    }
+
+    /// <inheritdoc/>
+    public async Task<BoardDeletionPreview> GetDeletionPreviewAsync(int groupId, CancellationToken token = default)
+        => await repository.GetDeletionPreviewAsync(groupId, token);
 
     /// <inheritdoc/>
     public override async Task AddAsync(Group model, CancellationToken token = default)

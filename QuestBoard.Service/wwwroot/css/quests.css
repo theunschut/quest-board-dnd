@@ -1,929 +1,289 @@
-/* ========================================
-   QUEST BOARD & QUEST CARDS STYLES
-   ======================================== */
-
-/* Quest Card Styles */
-.quest-card {
-    transition: transform 0.2s;
-}
-
-.quest-card:hover {
-    transform: translateY(-2px);
-}
-
-.quest-status-open {
-    border-left: 4px solid #198754;
-}
-
-.quest-status-finalized {
-    border-left: 4px solid #0d6efd;
-}
-
-.quest-status-done {
-    border-left: 4px solid #212529;
-}
-
-/* Date and Vote Styles */
-.date-option {
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    padding: 0.75rem;
-    margin-bottom: 0.5rem;
-}
-
-.date-option:hover {
-    background-color: #f8f9fa;
-}
-
-.vote-summary {
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-
-.player-list {
-    /* Removed max-height and overflow-y to eliminate scrollbar */
-    /* List is never too large to fit naturally */
-}
-
-/* Fantasy Quest Board Container */
-.quest-board-container {
-    padding: 1rem;
-    margin: 0 auto;
-    position: relative;
-    width: 100%;
+@layer pages {
+  /*
+   * Quest board posters (desktop). A poster is a parchment artwork with a measured text box. The box insets, the seal
+   * slots and the seal size travel with the artwork as custom properties on its modifier class, and the box is kept
+   * in step with the catalog the server picks from. The text is plain dark ink at weight 600 straight on the artwork:
+   * no tinted zone, halo or shadow sits behind it.
+   */
+  /*
+   * The board. Without a script the posters flow in CSS columns; the board module then switches the container to
+   * absolute positions (is-masonry), taking each poster's height from its aspect ratio.
+   */
+  body:has(.quest-board-container) .container.mt-3 {
     max-width: none;
-}
+    padding-inline: var(--qb-space-sm);
+  }
 
-/* Fantasy Quest Cards */
-:root {
-    --card-width: 350px;
-    --card-width-tablet: calc(var(--card-width) * 0.89);
-    --card-width-mobile: calc(var(--card-width) * 0.79);
-    --card-width-small: calc(var(--card-width) * 0.71);
-}
+  .quest-board-container {
+    column-width: var(--card-width);
+    column-gap: var(--qb-space-md);
+    padding-block: var(--qb-space-md);
+    margin-inline: auto;
+    max-width: calc(3 * var(--card-width) + 2 * var(--qb-space-md) + 2 * var(--qb-space-md));
+  }
 
-.fantasy-quest-card {
+  .quest-board-container.is-masonry {
     position: relative;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    width: var(--card-width);
-    margin-bottom: 1rem;
-    cursor: pointer;
-    transition: transform 0.3s ease, filter 0.3s ease;
-    filter: drop-shadow(5px 5px 10px rgba(0, 0, 0, 0.3));
-    break-inside: avoid;
+    column-width: auto;
+    height: var(--board-height);
+  }
+
+  .quest-board-container.is-masonry > .quest-poster {
+    position: absolute;
+    left: var(--poster-x);
+    top: var(--poster-y);
+    width: var(--poster-w);
+    margin-block-end: 0;
+  }
+
+  @media (min-width: 640px) {
+    body:has(.quest-board-container) .container.mt-3 {
+      padding-inline: var(--qb-space-lg);
+    }
+
+    .quest-board-container {
+      padding-inline: var(--qb-space-md);
+    }
+  }
+
+  .quest-poster {
+    --paper-slab: linear-gradient(var(--qb-surface-paper), var(--qb-surface-paper));
+    --seal-size: var(--seal-size-base);
+    position: relative;
     display: inline-block;
-}
+    width: clamp(var(--card-width-floor), 100%, var(--card-width));
+    margin-block-end: var(--qb-space-md);
+    break-inside: avoid;
+    background-repeat: no-repeat;
+    /* The second layer is a paper slab under the text box: it shows only if the artwork does not load. */
+    background-size:
+      100% 100%,
+      calc((100 - var(--box-l) - var(--box-r)) * 1%) calc((100 - var(--box-t) - var(--box-b)) * 1%);
+    background-position:
+      0 0,
+      calc(var(--box-l) / (var(--box-l) + var(--box-r)) * 100%) calc(var(--box-t) / (var(--box-t) + var(--box-b)) * 100%);
+  }
 
-.fantasy-quest-card:hover {
-    transform: scale(1.05) rotate(1deg);
-    filter: drop-shadow(8px 8px 15px rgba(0, 0, 0, 0.4));
-}
-
-.quest-content {
+  .quest-poster-text {
     position: absolute;
-    top: 10%;
-    left: 12%;
-    right: 12%;
-    bottom: 12%;
+    inset: calc(var(--box-t) * 1%) calc(var(--box-r) * 1%) calc(var(--box-b) * 1%) calc(var(--box-l) * 1%);
     display: flex;
     flex-direction: column;
-    padding: 1rem;
-    color: #2c1810;
-    text-align: center;
-    justify-content: space-between;
-}
-
-.quest-header {
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-    margin-bottom: 0.5rem;
-}
-
-.challenge-rating {
-    position: absolute;
-    top: 5%;
-    left: 8%;
-    z-index: 10;
-    transform: rotate(-5deg);
-    pointer-events: none;
-}
-
-.cr-badge {
-    background: linear-gradient(135deg, #8B4513, #A0522D) !important;
-    color: #FFD700 !important;
-    font-weight: bold !important;
-    font-size: 1.1rem !important;
-    padding: 0.5rem 0.75rem !important;
-    border-radius: 0.5rem !important;
-    border: 2px solid #FFD700 !important;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7) !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 0.25rem !important;
-}
-
-.cr-icon {
-    font-size: 1.2rem;
-    color: #FFD700;
-    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
-}
-
-.quest-top {
-    flex-shrink: 0;
-    margin-bottom: 1rem;
-}
-
-.quest-middle {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    margin: 0.5rem 0;
-    min-height: 0;
-}
-
-.quest-bottom {
-    flex-shrink: 0;
-    margin-top: 1rem;
-}
-
-.quest-title {
-    font-family: 'Cinzel', serif !important;
-    font-size: 1.6rem !important;
-    font-weight: bold !important;
-    margin-top: 0.5rem !important;
-    margin-bottom: 0.75rem !important;
-    color: #1a0f08 !important;
-    text-shadow: 3px 3px 6px rgba(255,255,255,0.95), 
-                 -1px -1px 3px rgba(255,255,255,0.95),
-                 2px 2px 8px rgba(0,0,0,0.8) !important;
-    line-height: 1.2 !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    white-space: normal !important;
-    max-height: 3.84rem !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    min-height: 1.92rem !important;
-    width: 100% !important;
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-}
-
-.quest-description {
-    font-size: 0.9rem;
-    line-height: 1.4;
-    color: #1a0f08;
-    font-style: italic;
-    font-weight: 600;
-    text-shadow: 2px 2px 4px rgba(255,255,255,0.95),
-                 -1px -1px 2px rgba(255,255,255,0.95),
-                 1px 1px 6px rgba(0,0,0,0.7);
-    flex-grow: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: #8B4513 rgba(255, 255, 255, 0.3);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    text-align: center;
-}
-
-.quest-description::-webkit-scrollbar {
-    width: 6px;
-}
-
-.quest-description::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
-}
-
-.quest-description::-webkit-scrollbar-thumb {
-    background: #8B4513;
-    border-radius: 3px;
-}
-
-.quest-dm, .quest-date, .quest-players, .quest-signups {
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-    color: #1a0f08;
-    font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(255,255,255,0.95),
-                 -1px -1px 2px rgba(255,255,255,0.95),
-                 1px 1px 5px rgba(0,0,0,0.6);
-}
-
-/* Wax Seal Styling */
-.wax-seal {
-    position: absolute;
-    z-index: 10;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-
-.seal-image {
-    width: 80px;
-    height: 80px;
-    transition: all 0.3s ease;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.7));
-}
-
-.open-seal {
-    display: none;
-}
-
-.finalized-seal {
-    opacity: 1;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.8)) 
-            saturate(1.4) brightness(1.2) contrast(1.1);
-}
-
-.user-signup-seal {
-    transform: translate(50%, 50%);
-}
-
-.signup-seal-image {
-    opacity: 1;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.8)) 
-            hue-rotate(180deg) saturate(1.5) brightness(1.1);
-}
-
-.fantasy-quest-card:hover .seal-image {
-    transform: scale(1.15) rotate(8deg);
-    filter: drop-shadow(4px 4px 10px rgba(0, 0, 0, 0.8)) 
-            brightness(1.3) saturate(1.3);
-}
-
-.fantasy-quest-card:hover .signup-seal-image {
-    transform: scale(1.15) rotate(-8deg);
-    filter: drop-shadow(4px 4px 10px rgba(0, 0, 0, 0.8)) 
-            hue-rotate(180deg) saturate(1.6) brightness(1.3);
-}
-
-/* Quest Signup List - Character Display */
-.quest-signup-list {
-    margin: 0.75rem 0 1.5rem 0;
-    padding: 0;
-}
-
-.quest-signup-item {
-    display: flex;
     align-items: center;
-    padding: 0.5rem 0;
-    line-height: 1.6;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.2s ease;
-}
-
-.quest-signup-item:last-child {
-    border-bottom: none;
-}
-
-.quest-signup-item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    padding-left: 0.5rem;
-    border-radius: 4px;
-}
-
-.quest-signup-item .player-name {
-    font-weight: 600;
-    color: #F4E4BC;
-    margin-right: 0.35rem;
-}
-
-.quest-signup-item .character-info {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 0.35rem !important;
-    font-size: 0.95em;
-    visibility: visible !important;
-}
-
-.quest-signup-item .character-divider {
-    color: rgba(244, 228, 188, 0.5);
-    font-weight: 400;
-    display: inline !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.quest-signup-item .character-mini-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid rgba(255, 193, 7, 0.6);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    vertical-align: middle;
-    transition: all 0.2s ease;
-    display: inline-flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.quest-signup-item:hover .character-mini-avatar {
-    border-color: #ffc107;
-    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.5);
-    transform: scale(1.1);
-}
-
-.quest-signup-item .character-mini-avatar-placeholder {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.5), rgba(160, 82, 45, 0.5));
-    border: 2px solid rgba(255, 193, 7, 0.6);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    color: rgba(255, 193, 7, 0.8);
-    font-size: 0.65rem;
-    vertical-align: middle;
-    transition: all 0.2s ease;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.quest-signup-item:hover .character-mini-avatar-placeholder {
-    border-color: #ffc107;
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.7), rgba(160, 82, 45, 0.7));
-    color: #ffc107;
-    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.5);
-    transform: scale(1.1);
-}
-
-.quest-signup-item .character-name {
-    color: rgba(244, 228, 188, 0.85);
-    font-weight: 500;
-    font-style: italic;
-    display: inline !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.quest-signup-item:hover .character-name {
-    color: rgba(255, 193, 7, 0.9);
-}
-
-/* Responsive Design for Quest Signup List */
-@media (max-width: 576px) {
-    .quest-signup-item {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 0.75rem 0;
-    }
-    
-    .quest-signup-item .character-info {
-        margin-top: 0.25rem;
-        margin-left: 0;
-    }
-}
-
-/* Responsive Design for Quest Cards */
-@media (max-width: 580px) {
-    .quest-board-container {
-        column-count: 1;
-        padding: 0.5rem;
-        max-width: var(--card-width-tablet);
-        margin: 0 auto;
-    }
-    
-    .fantasy-quest-card {
-        width: var(--card-width-tablet);
-    }
-}
-
-@media (max-width: 480px) {
-    .quest-board-container {
-        column-count: 1;
-        padding: 0.5rem;
-        max-width: var(--card-width-mobile);
-        margin: 0 auto;
-    }
-    
-    .fantasy-quest-card {
-        width: var(--card-width-mobile);
-    }
-    
-    .quest-description {
-        font-size: 0.8rem;
-    }
-    
-    .seal-image {
-        width: 65px;
-        height: 65px;
-    }
-    
-    .signup-seal-image {
-        width: 65px;
-        height: 65px;
-    }
-}
-
-@media (max-width: 320px) {
-    .fantasy-quest-card {
-        width: var(--card-width-small);
-    }
-    
-    .quest-title {
-        font-size: 1rem;
-    }
-    
-    .quest-description {
-        font-size: 0.75rem;
-    }
-    
-    .seal-image {
-        width: 55px;
-        height: 55px;
-    }
-    
-    .signup-seal-image {
-        width: 55px;
-        height: 55px;
-    }
-}
-
-/* Quest Details - Disable Card Hover Lift */
-.quest-details-page .modern-card:hover {
-    transform: none !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
-}
-
-.quest-details-page .modern-card {
-    transition: background 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Quest Log Container */
-.quest-log-container {
-    padding: 2rem 1rem;
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-.quest-log-header {
-    background: rgba(0, 0, 0, 0.85) !important;
-    border: 2px solid rgba(255, 193, 7, 0.6);
-    border-radius: 12px;
-    padding: 2rem;
-    margin-bottom: 2rem;
+    gap: var(--qb-space-sm);
     text-align: center;
-    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.2);
-    backdrop-filter: blur(10px);
-}
+    color: var(--qb-ink);
+  }
 
-.quest-log-header h1 {
-    font-family: 'Cinzel', serif;
-    color: #ffc107;
-    font-weight: 600;
-    margin: 0 0 0.5rem 0;
-    text-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
-}
-
-.quest-log-header p {
-    color: rgba(244, 228, 188, 0.9);
-    font-style: italic;
+  .quest-poster-title {
     margin: 0;
-    font-size: 1.1rem;
-}
+    color: var(--qb-ink);
+    font-family: var(--qb-font-display);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: break-word;
+    max-width: 100%;
+  }
 
-/* Quest Log Grid Layout */
-.quest-log-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
+  .quest-poster-title--tier2 {
+    font-size: var(--qb-text-base);
+  }
 
-/* Quest Log Card - Modern Sleek Style */
-.quest-log-card {
-    background: rgba(15, 15, 20, 0.98) !important;
-    border: 2px solid rgba(255, 193, 7, 0.4);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 193, 7, 0.1);
-    cursor: pointer;
+  .quest-poster-title .row-nav-link {
+    color: var(--qb-ink);
+  }
+
+  .quest-poster-meta {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    position: relative;
-}
+    align-items: center;
+    gap: var(--qb-space-sm);
+    width: 100%;
+    font-size: var(--qb-text-sm);
+    line-height: var(--qb-leading-body);
+  }
 
-.quest-log-card:active {
-    transform: translateY(-6px) scale(1.01);
-}
+  .quest-poster-meta p {
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
 
-/* Make entire card clickable */
-.quest-log-card a {
-    text-decoration: none;
-    color: inherit;
+  .quest-poster-meta p,
+  .quest-poster-meta strong,
+  .quest-poster-label {
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .quest-poster-cr {
+    background-color: var(--qb-action);
+    color: var(--qb-action-fg);
+  }
+
+  /* One link per poster, stretched over the whole card; the ring is drawn on the card, not on the link text alone. */
+  .quest-poster .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .quest-poster:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .quest-poster .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* Wax seals sit at slots measured per poster; the signed-up seal is the same design shifted in hue. */
+  .quest-poster-seal {
+    position: absolute;
+    left: calc(var(--seal-x) * 1%);
+    top: calc(var(--seal-y) * 1%);
+    z-index: 2;
+    width: var(--seal-size);
+    height: var(--seal-size);
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  .quest-poster-seal--signed-up {
+    left: calc(var(--seal-signed-x) * 1%);
+    top: calc(var(--seal-signed-y) * 1%);
+  }
+
+  .quest-poster-seal img {
     display: block;
     width: 100%;
     height: 100%;
-}
+  }
 
-.quest-log-card > a {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    position: relative;
-    z-index: 1;
-}
+  .quest-poster-seal--signed-up img {
+    filter: hue-rotate(180deg);
+  }
 
-/* Ensure card content is properly positioned */
-.quest-log-card-body {
-    position: relative;
-    z-index: 2;
-    padding: 1.25rem;
-    flex-grow: 1;
-    background: transparent !important;
-}
+  @media (max-width: 480px) {
+    .quest-poster {
+      --seal-size: min(var(--seal-size-base), 64px);
+    }
+  }
 
-.quest-log-card-body p,
-.quest-log-card-body strong,
-.quest-log-card-body span {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-}
+  @media (max-width: 320px) {
+    .quest-poster {
+      --seal-size: min(var(--seal-size-base), 56px);
+    }
+  }
 
-.quest-log-card-body strong {
-    color: #ffc107 !important;
-    font-weight: 700;
-}
+  @media (prefers-reduced-motion: no-preference) {
+    .quest-poster {
+      transition: transform var(--qb-dur-base) var(--qb-ease);
+    }
 
-.quest-log-card-body .badge {
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
+    .quest-poster-seal {
+      transition: transform var(--qb-dur-base) var(--qb-ease);
+    }
 
-/* Quest Log Card Description */
-.quest-log-card-description {
-    color: #F4E4BC !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
-    font-size: 0.95rem;
-    line-height: 1.5;
-    margin-bottom: 0.75rem;
-}
+    .quest-poster:hover {
+      transform: translateY(calc(-1 * var(--qb-space-xs)));
+    }
 
-/* Quest Log Card Meta Items */
-.quest-log-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
+    .quest-poster:hover .quest-poster-seal {
+      transform: translate(-50%, -50%) rotate(6deg);
+    }
+  }
 
-.quest-log-card-body .meta-item {
-    display: flex;
-    align-items: center;
-    color: #F4E4BC !important;
-}
+  .quest-poster--p1 {
+    --box-t: 7.5;
+    --box-r: 16.5;
+    --box-b: 9.6;
+    --box-l: 20.5;
+    --seal-x: 19.4;
+    --seal-y: 91.0;
+    --seal-signed-x: 79.3;
+    --seal-signed-y: 91.0;
+    --seal-size-base: 80px;
+    aspect-ratio: 1000 / 1400;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster1.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster1.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster1.png") type("image/png")), var(--paper-slab);
+  }
 
-.quest-log-card-body .meta-item i {
-    color: #ffc107 !important;
-    flex-shrink: 0;
-    width: 1.25rem;
-    text-align: center;
-}
+  .quest-poster--p2 {
+    --box-t: 7.9;
+    --box-r: 16.5;
+    --box-b: 46.4;
+    --box-l: 21.0;
+    --seal-x: 44.1;
+    --seal-y: 59.4;
+    --seal-signed-x: 71.1;
+    --seal-signed-y: 59.4;
+    --seal-size-base: 64px;
+    aspect-ratio: 1000 / 1400;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster2.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster2.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster2.png") type("image/png")), var(--paper-slab);
+  }
 
-.quest-log-card-body .meta-item span {
-    color: #F4E4BC !important;
-}
+  .quest-poster--p4 {
+    --box-t: 13.8;
+    --box-r: 23.5;
+    --box-b: 15.8;
+    --box-l: 24.5;
+    --seal-x: 22.4;
+    --seal-y: 87.1;
+    --seal-signed-x: 80.3;
+    --seal-signed-y: 86.1;
+    --seal-size-base: 80px;
+    aspect-ratio: 1000 / 980;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster4.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster4.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster4.png") type("image/png")), var(--paper-slab);
+  }
 
-.quest-log-card-body .meta-item strong {
-    color: #ffc107 !important;
-}
+  .quest-poster--p5 {
+    --box-t: 17.8;
+    --box-r: 23.3;
+    --box-b: 21.5;
+    --box-l: 18.3;
+    --seal-x: 17.3;
+    --seal-y: 87.4;
+    --seal-signed-x: 80.3;
+    --seal-signed-y: 87.4;
+    --seal-size-base: 80px;
+    aspect-ratio: 600 / 675;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster5.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster5.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster5.png") type("image/png")), var(--paper-slab);
+  }
 
-/* Shimmer Effect on Hover */
-.quest-log-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 193, 7, 0.15), transparent);
-    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1;
-    pointer-events: none;
-}
+  .quest-poster--p6 {
+    --box-t: 30.0;
+    --box-r: 21.7;
+    --box-b: 13.8;
+    --box-l: 20.0;
+    --seal-x: 22.3;
+    --seal-y: 19.8;
+    --seal-signed-x: 85.3;
+    --seal-signed-y: 10.8;
+    --seal-size-base: 80px;
+    aspect-ratio: 600 / 800;
+    background-image: url("../images/Blanks/Blanks w Shadow/Poster6.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Blanks/Blanks w Shadow/Poster6.webp") type("image/webp"), url("../images/Blanks/Blanks w Shadow/Poster6.png") type("image/png")), var(--paper-slab);
+  }
 
-.quest-log-card:hover::before {
-    left: 100%;
-}
-
-/* Glowing Border on Hover */
-.quest-log-card::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    padding: 2px;
-    background: linear-gradient(135deg, transparent, rgba(255, 193, 7, 0.5), transparent);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 1;
-    pointer-events: none;
-}
-
-.quest-log-card:hover::after {
-    opacity: 1;
-}
-
-.quest-log-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    border-color: #ffc107;
-    box-shadow: 0 12px 35px rgba(255, 193, 7, 0.5),
-                0 0 40px rgba(255, 193, 7, 0.3),
-                inset 0 0 20px rgba(255, 193, 7, 0.1);
-}
-
-/* Quest Log Card Header */
-.quest-log-card-header {
-    background: rgba(10, 10, 15, 0.95) !important;
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid rgba(255, 193, 7, 0.3);
-    position: relative;
-    z-index: 3;
-}
-
-.quest-log-card-header h3.quest-log-card-title {
-    font-family: 'Cinzel', serif;
-    color: #ffffff !important;
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    text-shadow: none !important;
-}
-
-/* Super-specific selectors to override .modern-card h3 from site.css */
-.quest-log-card .quest-log-card-header h3,
-.quest-log-card .quest-log-card-header h3.quest-log-card-title,
-.quest-log-container .quest-log-card .quest-log-card-header h3 {
-    color: #ffffff !important;
-    text-shadow: none !important;
-    font-family: 'Cinzel', serif !important;
-    font-weight: 700 !important;
-    margin: 0 !important;
-}
-
-.quest-log-card .quest-log-card-header small,
-.modern-card.quest-log-card .quest-log-card-header small,
-.quest-log-card.modern-card .quest-log-card-header small {
-    color: #ffffff !important;
-    text-shadow: none !important;
-}
-
-/* Quest Log Card Body */
-.quest-log-card-body {
-    padding: 1.25rem;
-    flex-grow: 1;
-    position: relative;
-    z-index: 3;
-    background: transparent !important;
-}
-
-.quest-log-card-body p,
-.quest-log-card-body strong,
-.quest-log-card-body span {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-}
-
-.quest-log-card-body strong {
-    color: #ffc107 !important;
-    font-weight: 700;
-}
-
-.quest-log-card-body .badge {
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* Quest Log Card Description */
-.quest-log-card-description {
-    color: #F4E4BC !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
-    font-size: 0.95rem;
-    line-height: 1.5;
-    margin-bottom: 0.75rem;
-}
-
-/* Quest Log Card Meta Items */
-.quest-log-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.quest-log-card-body .meta-item {
-    display: flex;
-    align-items: center;
-    color: #F4E4BC !important;
-}
-
-.quest-log-card-body .meta-item i {
-    color: #ffc107 !important;
-    flex-shrink: 0;
-    width: 1.25rem;
-    text-align: center;
-}
-
-.quest-log-card-body .meta-item span {
-    color: #F4E4BC !important;
-}
-
-.quest-log-card-body .meta-item strong {
-    color: #ffc107 !important;
-}
-
-/* Empty Quest Log State */
-.empty-quest-log {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: rgba(0, 0, 0, 0.5) !important;
-    border-radius: 12px;
-    border: 2px dashed rgba(255, 193, 7, 0.3);
-}
-
-.empty-quest-log i {
-    color: rgba(255, 193, 7, 0.4);
-    font-size: 4rem;
-    margin-bottom: 1rem;
-}
-
-.empty-quest-log h3 {
-    color: #F4E4BC;
-    font-family: 'Cinzel', serif;
-    margin-bottom: 1rem;
-}
-
-.empty-quest-log p {
-    color: rgba(244, 228, 188, 0.7);
-    font-size: 1.1rem;
-}
-
-/* Quest Log Details Page */
-.quest-log-details {
-    background: linear-gradient(145deg, rgba(20, 20, 30, 0.95), rgba(30, 30, 40, 0.95)) !important;
-    border: 2px solid rgba(255, 193, 7, 0.5);
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 193, 7, 0.15);
-}
-
-.quest-log-details h1,
-.quest-log-details h2,
-.quest-log-details h3,
-.quest-log-details h4,
-.quest-log-details h5,
-.quest-log-details h6 {
-    color: #ffc107 !important;
-    font-family: 'Cinzel', serif;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-    margin-bottom: 1rem;
-}
-
-.quest-log-details p,
-.quest-log-details li,
-.quest-log-details span,
-.quest-log-details strong {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-}
-
-.quest-log-details .text-muted {
-    color: rgba(244, 228, 188, 0.7) !important;
-}
-
-.quest-log-details .text-white {
-    color: #F4E4BC !important;
-}
-
-/* Quest Description Box */
-.quest-description-box {
-    background: rgba(0, 0, 0, 0.4) !important;
-    border: 1px solid rgba(255, 193, 7, 0.3);
-    border-radius: 8px;
-    padding: 1.25rem;
-    color: #F4E4BC;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
-    line-height: 1.6;
-    white-space: pre-wrap;
-}
-
-/* Recap Display Box */
-.recap-display-box {
-    background: rgba(0, 0, 0, 0.4) !important;
-    border: 1px solid rgba(255, 193, 7, 0.3);
-    border-radius: 8px;
-    padding: 1.25rem;
-    color: #F4E4BC;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
-    line-height: 1.6;
-    white-space: pre-wrap;
-}
-
-/* Player Badge in Quest Log */
-.player-badge {
-    background: rgba(52, 152, 219, 0.2) !important;
-    border: 1px solid rgba(52, 152, 219, 0.5);
-    color: #F4E4BC;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.player-badge:hover {
-    background: rgba(52, 152, 219, 0.3) !important;
-    border-color: rgba(52, 152, 219, 0.7);
-    transform: translateX(4px);
-}
-
-.player-badge i {
-    color: #3498db;
-}
-
-/* Quest Log Card Footer */
-.quest-log-card-footer {
-    background: rgba(10, 10, 15, 0.95) !important;
-    padding: 1rem 1.25rem;
-    border-top: 1px solid rgba(255, 193, 7, 0.2);
-    position: relative;
-    z-index: 3;
-}
-
-.quest-log-card-footer .btn {
-    width: 100%;
-    font-weight: 600;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 10;
-    pointer-events: auto;
-}
-
-.quest-log-card-footer .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
-}
-
-/* Quest Log Card Footer Text */
-.quest-log-card-footer .recap-badge,
-.quest-log-card-footer .view-details-text,
-.quest-log-card-footer span {
-    color: #F4E4BC !important;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
-}
-
-.quest-log-card-footer .recap-badge {
-    background: rgba(255, 193, 7, 0.2);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 193, 7, 0.4);
-    font-size: 0.85rem;
-    display: inline-block;
-    margin-bottom: 0.5rem;
-}
-
-.quest-log-card-footer .view-details-text {
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-
-/* ========================================
-   OVERRIDE site.css .modern-card styling for Quest Log
-   MUST be at the end to have higher specificity
-   ======================================== */
-
-/* Super-specific selectors to override .modern-card h3 from site.css */
-.quest-log-card .quest-log-card-header h3,
-.quest-log-card .quest-log-card-header h3.quest-log-card-title,
-.quest-log-container .quest-log-card .quest-log-card-header h3 {
-    color: #ffffff !important;
-    text-shadow: none !important;
-    font-family: 'Cinzel', serif !important;
-    font-weight: 700 !important;
-    margin: 0 !important;
-}
-
-.quest-log-card .quest-log-card-header small,
-.modern-card.quest-log-card .quest-log-card-header small,
-.quest-log-card.modern-card .quest-log-card-header small {
-    color: #ffffff !important;
-    text-shadow: none !important;
+  .quest-poster--r1 {
+    --box-t: 14.4;
+    --box-r: 17.0;
+    --box-b: 28.9;
+    --box-l: 21.0;
+    --seal-x: 14.9;
+    --seal-y: 84.4;
+    --seal-signed-x: 31.9;
+    --seal-signed-y: 82.2;
+    --seal-size-base: 56px;
+    aspect-ratio: 1000 / 900;
+    background-image: url("../images/Ruined Posters/Ruined w Shadow/Ruined Poster 1.png"), var(--paper-slab);
+    background-image: image-set(url("../images/Ruined Posters/Ruined w Shadow/Ruined Poster 1.webp") type("image/webp"), url("../images/Ruined Posters/Ruined w Shadow/Ruined Poster 1.png") type("image/png")), var(--paper-slab);
+  }
 }

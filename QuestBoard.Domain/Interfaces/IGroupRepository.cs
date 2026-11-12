@@ -1,5 +1,6 @@
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Models.BoardDeletion;
 
 namespace QuestBoard.Domain.Interfaces;
 
@@ -36,4 +37,18 @@ public interface IGroupRepository : IBaseRepository<Group>
     /// filtered by a search term matching the member's Name or Email (case-insensitive).
     /// </summary>
     Task<IList<UserGroup>> GetMembersAsync(int groupId, string? search = null, CancellationToken token = default);
+
+    /// <summary>
+    /// Deletes the board named by the id and everything scoped to it in one save, unlinking rows on
+    /// other boards that point into it. Returns HasMembers and changes nothing while the board has
+    /// members, and NotFound when no such board exists. A failed save clears the change tracker and
+    /// rethrows.
+    /// </summary>
+    Task<BoardDeletionResult> DeleteBoardAsync(int groupId, CancellationToken token = default);
+
+    /// <summary>
+    /// What deleting the board would remove, per kind of content, and which rows on other boards
+    /// would only be unlinked. Changes nothing and does not depend on the caller's active board.
+    /// </summary>
+    Task<BoardDeletionPreview> GetDeletionPreviewAsync(int groupId, CancellationToken token = default);
 }

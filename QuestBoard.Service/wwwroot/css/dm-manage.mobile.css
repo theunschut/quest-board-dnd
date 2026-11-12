@@ -1,70 +1,256 @@
-/* dm-manage.mobile.css — Quest Manage mobile view only */
-/* No @media queries — this file is exclusively loaded by Manage.Mobile.cshtml via _Layout.Mobile.cshtml */
+/*
+ * Quest Manage on the phone: one card holds the whole page. Description and Rewards are headed disclosures that start
+ * collapsed; the other sections follow in today's order, each under its own heading and a hairline rule. Colours come
+ * from tokens only. This file is loaded only by the phone twin, so it carries no media query.
+ */
+@layer pages {
+  /*
+   * Status words on this page sit on glass. The light status variants the page maps for glass are darker than the
+   * card's own parchment and fall under 4.5:1 over the brightest part of the board, so a status written as text takes
+   * the card colour here; the badge, the icon and the words carry the status.
+   */
+  .manage-card {
+    --bs-secondary-color: var(--qb-fg);
+    --bs-success-rgb: var(--qb-fg-rgb);
+    --bs-warning-rgb: var(--qb-fg-rgb);
+    --bs-danger-rgb: var(--qb-fg-rgb);
+    margin-block-end: var(--qb-space-md);
+  }
 
-/* Glass card container for manage sections */
-.dm-manage-section-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
+  .manage-card .modern-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    padding: var(--qb-space-md);
+  }
 
-/* Quest title — parchment */
-.dm-manage-title {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
-}
+  .manage-card .modern-card-header h1 {
+    margin: 0;
+    min-width: 0;
+  }
 
-/* Section sub-headings — parchment uppercase */
-.dm-manage-subheading {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
-    text-transform: uppercase;
-    font-size: 0.875rem;
-    letter-spacing: 0.05em;
-}
+  .manage-card .modern-card-body {
+    padding: var(--qb-space-md);
+  }
 
-/* Date label (radio + date text) — parchment */
-.dm-manage-date-label,
-.dm-manage-date-label strong {
-    color: #F4E4BC !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
+  .manage-cr {
+    flex-shrink: 0;
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
 
-/* Player names — parchment */
-.dm-manage-player-label,
-.dm-manage-player-name {
-    color: #F4E4BC !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
+  /* Sections are told apart by a hairline, never by another card; the first thing in the body sits flush. */
+  .manage-section,
+  .manage-disclosure {
+    margin-block-start: var(--qb-space-md);
+    padding-block-start: var(--qb-space-md);
+    border-block-start: 1px solid var(--qb-border);
+  }
 
-/* Faded parchment for secondary meta */
-.dm-manage-section-card small,
-.dm-manage-section-card .text-muted {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
+  .manage-card .modern-card-body > :first-child {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
 
-/* Badges inside card — no text-shadow */
-.dm-manage-section-card .badge {
-    text-shadow: none !important;
-}
+  .manage-section > h2,
+  .manage-disclosure > h2 {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    color: var(--qb-fg-heading);
+  }
 
-/* Date option block — slight inner border when recommended */
-.manage-date-option.border-success {
-    border: 1px solid rgba(40, 167, 69, 0.6);
-    border-radius: 8px;
-}
+  .manage-section > h2 {
+    margin-block-end: var(--qb-space-sm);
+  }
 
-/* Divider border color between player rows */
-.dm-manage-section-card .participant-row.border-bottom,
-.dm-manage-section-card .player-item.border-bottom {
-    border-color: rgba(139, 69, 19, 0.3) !important;
-}
+  .manage-group-heading {
+    margin-block: var(--qb-space-md) 0;
+  }
 
-/* Vote summary badge row */
-.dm-vote-summary {
+  .manage-disclosure-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    width: 100%;
+    min-height: var(--qb-hit-min);
+    padding: var(--qb-space-sm) 0;
+    border: 0;
+    background: transparent;
+    color: var(--qb-fg-heading);
+    font: inherit;
+    font-weight: var(--qb-weight-strong);
+    text-align: start;
+  }
+
+  .manage-disclosure-btn .fa-chevron-down {
+    flex-shrink: 0;
+  }
+
+  .manage-disclosure-btn[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .manage-disclosure-btn .fa-chevron-down {
+      transition: transform var(--qb-dur-base) var(--qb-ease);
+    }
+  }
+
+  .manage-disclosure-body {
+    padding-block: var(--qb-space-sm) 0;
+  }
+
+  /*
+   * Date options and player rows: the whole row is at least finger-sized. The option whose radio is picked takes a
+   * gold border and an inset ring; the filled radio is the other marker.
+   */
+  .manage-date-option {
+    margin-block-end: var(--qb-space-sm);
+    padding: var(--qb-space-sm);
+    border: 1px solid var(--qb-border);
+    border-radius: var(--qb-radius-md);
+    cursor: pointer;
+  }
+
+  .manage-date-option:has(.date-selector:checked) {
+    border-color: var(--qb-accent);
+    box-shadow: inset 0 0 0 1px var(--qb-accent);
+  }
+
+  .manage-date-option .form-check {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-height: var(--qb-hit-min);
+    margin: 0;
+    padding: 0;
+  }
+
+  .manage-date-option .form-check-input {
+    flex-shrink: 0;
+    float: none;
+    margin: 0;
+  }
+
+  .manage-date-option .form-check-label {
+    flex: 1;
+    padding-block: var(--qb-space-sm);
+  }
+
+  .dm-vote-summary {
+    display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-xs) var(--qb-space-sm);
+  }
+
+  /* Under a radio the badges line up with the date text, past the radio and its gap. */
+  .manage-date-option .form-check + .dm-vote-summary {
+    padding-inline-start: calc(var(--qb-space-lg) + var(--qb-space-sm));
+  }
+
+  .manage-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    min-height: var(--qb-hit-min);
+    padding-block: var(--qb-space-sm);
+    border-block-end: 1px solid var(--qb-border);
+  }
+
+  /* The section's own hairline closes the list, so the last row needs no rule of its own. */
+  .manage-row:last-child {
+    border-block-end: 0;
+  }
+
+  .manage-row-who {
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+
+  .manage-row-who > strong,
+  .manage-row-who > small {
+    display: block;
+  }
+
+  .manage-row-end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .manage-row .form-check {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    flex: 1;
+    min-height: var(--qb-hit-min);
+    margin: 0;
+    padding: 0;
+  }
+
+  .manage-row .form-check-input {
+    float: none;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .manage-row .form-check-label {
+    flex: 1;
+    padding-block: var(--qb-space-sm);
+  }
+
+  .manage-row small {
+    display: block;
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+  }
+
+  .manage-stats p {
+    margin: 0;
+  }
+
+  .manage-stats p + p {
+    margin-block-start: var(--qb-space-xs);
+  }
+
+  .manage-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+    margin-block-start: var(--qb-space-md);
+    padding-block-start: var(--qb-space-md);
+    border-block-start: 1px solid var(--qb-border);
+  }
+
+  .manage-actions .btn {
+    flex: 1 1 auto;
+    min-height: var(--qb-hit-min);
+  }
+
+  /* A form that wraps one action button takes the share of the row that the button would. */
+  .manage-actions > form {
+    flex: 1 1 auto;
+    display: flex;
+  }
+
+  .manage-actions > form > .btn {
+    flex: 1 1 auto;
+  }
+
+  .manage-actions .btn-block-full {
+    flex-basis: 100%;
+  }
+
+  .manage-move {
+    margin-block-start: var(--qb-space-sm);
+  }
 }

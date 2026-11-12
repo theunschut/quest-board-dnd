@@ -1,31 +1,26 @@
-@model Group
+@model BoardDeletePageViewModel
 @{
-    ViewData["Title"] = "Delete Group";
+    ViewData["Title"] = "Delete Board";
 }
 
 @section Styles {
-    <link href="~/css/platform-group.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/platform-group-delete.mobile.css" asp-append-version="true" />
 }
 
-<div class="platform-group-card-mobile mb-3">
-    <div class="mb-3">
-        <h5 class="mb-0">
-            <i class="fas fa-trash text-danger me-2"></i>Delete Group
-        </h5>
-    </div>
-
-    <p>Are you sure you want to delete the group <strong>"@Model.Name"</strong>? This action cannot be undone.</p>
-
-    <form asp-action="Delete" method="post" asp-route-id="@Model.Id">
-        <hr>
-
-        <div class="d-flex justify-content-between">
-            <a asp-action="Index" asp-area="Platform" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Back to Groups
-            </a>
-            <button type="submit" class="btn btn-danger">
-                <i class="fas fa-trash me-2"></i>Delete Group
-            </button>
+<div class="container-fluid px-2 mt-2">
+    <div class="card modern-card">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">
+                <i class="fas fa-trash text-danger me-2" aria-hidden="true"></i>Delete board
+            </h1>
+            <span class="header-subtitle">This permanently removes the board and everything on it.</span>
         </div>
-    </form>
+        <div class="card-body modern-card-body">
+            <partial name="_BoardDeleteBody" model="Model" />
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script type="module" src="~/js/platform-board-delete.js" asp-append-version="true"></script>
+}

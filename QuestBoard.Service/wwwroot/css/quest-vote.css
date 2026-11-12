@@ -1,0 +1,72 @@
+/*
+ * The Yes / Maybe / No choice a player makes for each proposed date on a quest's page. Each choice is a
+ * filled button so it holds contrast on glass and on the calendar cell, and the checked choice is marked
+ * by a heavier border as well as its fill, so it never relies on colour alone. The size of the desktop
+ * cell (a 32px square inside the calendar day) is set in calendar.css, where the cell is drawn.
+ */
+@layer pages {
+  /* The desktop choices sit in a white box, so that box carries dark ink. The phone row sits on plain glass,
+     where the lighter heading colour is the one that holds contrast. Each sets its own text colour so the
+     hidden group name inside inherits something readable. */
+  .vote-buttons {
+    color: var(--qb-ink);
+  }
+
+  .calendar-vote-row {
+    color: var(--qb-fg-heading);
+  }
+
+  .vote-choice {
+    --vote-fill: var(--qb-neutral);
+    --vote-fg: var(--qb-neutral-fg);
+    --vote-edge: var(--qb-ink);
+
+    min-width: 32px;
+    min-height: 32px;
+    border: 2px solid transparent;
+    background-color: var(--vote-fill);
+    color: var(--vote-fg);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    line-height: 1;
+  }
+
+  .vote-choice:hover {
+    background-color: color-mix(in srgb, var(--vote-fill) 85%, var(--qb-ink));
+    color: var(--vote-fg);
+  }
+
+  .btn-check:checked + .vote-choice--yes {
+    --vote-fill: var(--qb-success);
+    --vote-fg: var(--qb-success-fg);
+  }
+
+  .btn-check:checked + .vote-choice--maybe {
+    --vote-fill: var(--qb-warning);
+    --vote-fg: var(--qb-warning-fg);
+  }
+
+  .btn-check:checked + .vote-choice--no {
+    --vote-fill: var(--qb-danger);
+    --vote-fg: var(--qb-danger-fg);
+  }
+
+  .btn-check:checked + .vote-choice {
+    border-color: var(--vote-edge);
+    background-color: var(--vote-fill);
+    color: var(--vote-fg);
+  }
+
+  .btn-check:focus-visible + .vote-choice {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  /* On the phone the choices sit on glass, where the light edge is the one that shows. */
+  .mobile-layout .vote-choice {
+    --vote-edge: var(--qb-fg);
+
+    min-height: var(--qb-hit-min);
+  }
+}

@@ -1,0 +1,80 @@
+/*
+ * Platform board delete confirmation, phone layout. Independent of the desktop sheet and carrying no media
+ * query: the phone layout is chosen by the device, not the viewport width. The foundation's tap-size rule does
+ * not cover a summary, so each one is sized here and the whole row is the tap target. Long names wrap instead
+ * of widening the page at 390px.
+ */
+@layer pages {
+  .board-delete-heading {
+    margin-top: var(--qb-space-lg);
+  }
+
+  .board-delete-rows {
+    padding: 0;
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .board-delete-row {
+    display: flex;
+    gap: var(--qb-space-sm);
+    padding: var(--qb-space-sm) var(--qb-space-sm) var(--qb-space-sm) var(--qb-space-md);
+    margin-bottom: var(--qb-space-sm);
+    border-left: var(--qb-space-xs) solid var(--board-delete-stripe);
+  }
+
+  .board-delete-row--deleted {
+    --board-delete-stripe: var(--qb-danger-text);
+  }
+
+  .board-delete-row--unlinked {
+    --board-delete-stripe: var(--qb-info-text);
+  }
+
+  .board-delete-row--kept {
+    --board-delete-stripe: var(--qb-neutral-text);
+  }
+
+  .board-delete-row-icon {
+    flex: none;
+    width: var(--qb-space-lg);
+    text-align: center;
+  }
+
+  .board-delete-row-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .board-delete-hint {
+    font-size: var(--qb-text-sm);
+  }
+
+  /*
+   * A summary only draws its disclosure triangle while it is a list item, so it stays one (a flex summary
+   * loses the triangle and no longer looks expandable). align-content centres the line in the taller row.
+   */
+  .board-delete-names > summary {
+    display: list-item;
+    align-content: center;
+    min-height: var(--qb-hit-min);
+    cursor: pointer;
+  }
+
+  .board-delete-name-list {
+    margin-top: var(--qb-space-xs);
+    padding-left: var(--qb-space-lg);
+    overflow-wrap: anywhere;
+  }
+
+  .form-text,
+  .board-delete-status {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .board-delete-status {
+    font-size: var(--qb-text-sm);
+    color: var(--qb-success-text);
+  }
+}

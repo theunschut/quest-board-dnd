@@ -1,73 +1,106 @@
-/* Quest Log Mobile — quest-log.mobile.css */
+/*
+ * Quest Log index, phone layout. A log entry is a glass card that is itself one link: the title anchor is stretched
+ * over the whole card, so the card is the tap target and keyboard focus rings the card rather than the title text.
+ * The glass, text colour and badge fills come from the shared foundation; the rules here only place the lines.
+ */
+@layer pages {
+  .quest-log-intro {
+    margin-bottom: var(--qb-space-sm);
+  }
 
-/* Individual log entry — glass card matching desktop modern-card */
-.quest-log-item {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
+  /* The tagline and the empty-state sentence sit on one glass card, where the muted tone measures under 4.5:1. */
+  .quest-log-page :is(.header-subtitle, .empty-state-text) {
+    color: var(--qb-fg);
+  }
 
-/* Entry title — parchment matching desktop modern-card headings */
-.quest-log-item-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
-                 -1px -1px 2px rgba(0, 0, 0, 0.9),
-                 1px 1px 6px rgba(0, 0, 0, 0.8);
-}
+  /* The title card has no body under its header, so the header's divider would sit on the card edge. */
+  .quest-log-intro .modern-card-header {
+    border-bottom: 0;
+    border-radius: var(--qb-radius-lg);
+  }
 
-/* Headings inside card — parchment */
-.quest-log-item h6 {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
-}
+  .quest-log-list-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+  }
 
-/* Meta text (date, DM) inside card — faded parchment matching modern-card .text-muted */
-.quest-log-item small,
-.quest-log-item .text-muted {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
+  /* The card is the positioning context for the stretched link and is never shorter than a tap target. */
+  .quest-log-item {
+    position: relative;
+    min-height: var(--qb-hit-min);
+    padding: var(--qb-space-md);
+  }
 
-/* Badges inside card */
-.quest-log-item .badge {
-    text-shadow: none !important;
-}
+  .quest-log-item-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
 
-/* Session recap badge — highlights completed quests that have a written recap available */
-.quest-log-item .recap-badge {
-    background: rgba(255, 193, 7, 0.2);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 193, 7, 0.4);
-    font-size: 0.85rem;
-    display: inline-block;
-    margin-bottom: 0.5rem;
-    color: #F4E4BC !important;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9) !important;
-}
+  /* The heading step is the phone card title; the card sets its own colour, so the title inherits it. */
+  .quest-log-item-title {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
 
-/* Hover/active feedback — matches modern-card:hover */
-.quest-log-item:hover {
-    background: rgba(255, 255, 255, 0.25);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    transform: translateY(-2px);
-}
+  /*
+   * The anchor is itself a full-size tap target, not a line of text: a stretched pseudo-element is not part of the
+   * anchor's own box, so a tool that measures the link would otherwise see a one-line target.
+   */
+  .quest-log-item-title .row-nav-link {
+    display: flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
+  }
 
-.quest-log-item:active {
-    background: rgba(255, 255, 255, 0.35);
-    transform: translateY(0);
-}
+  .quest-log-item-top .badge {
+    flex-shrink: 0;
+  }
 
-/* Page heading uses Cinzel font (loaded by _Layout.Mobile.cshtml via Google Fonts CDN) */
-.cinzel-heading {
-    font-family: 'Cinzel', serif;
-    font-weight: 700;
+  .quest-log-item-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    font-size: var(--qb-text-sm);
+  }
+
+  .quest-log-item-line {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* The recap badge sits on its own line at its natural width rather than stretching across the card. */
+  .quest-log-item-recap {
+    align-self: flex-start;
+    margin-top: var(--qb-space-sm);
+  }
+
+  .quest-log-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* One link per card, stretched over the whole card so the whole card is the target. */
+  .quest-log-item .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  /* The ring is drawn on the card, not on the link text alone; the link itself shows none. */
+  .quest-log-item:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .quest-log-item .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
 }

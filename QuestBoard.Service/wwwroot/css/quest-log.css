@@ -1,0 +1,210 @@
+/*
+ * Quest Log, desktop and the pages the phone layout shares. The index is a grid of glass cards that are each one
+ * link: the title anchor is stretched over the whole card, so the card is the target and keyboard focus rings the
+ * card rather than the title text. Glass, text colour and badge fills come from the shared foundation; the rules
+ * here only place the lines of a card.
+ */
+@layer pages {
+  .quest-log-intro {
+    margin-bottom: var(--qb-space-lg);
+  }
+
+  /* The tagline and the empty-state sentence sit on one glass card, where the muted tone measures under 4.5:1. */
+  .quest-log-wrap :is(.header-subtitle, .empty-state-text) {
+    color: var(--qb-fg);
+  }
+
+  /* The title card has no body under its header, so the header's divider would sit on the card edge. */
+  .quest-log-intro .modern-card-header {
+    border-bottom: 0;
+    border-radius: var(--qb-radius-lg);
+  }
+
+  /* The minimum is capped by the container so one column never overflows a narrow window. */
+  .quest-log-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: var(--qb-space-lg);
+    margin-bottom: var(--qb-space-lg);
+  }
+
+  /* The card is the positioning context for the stretched link; the footer sits at the bottom of a tall row. */
+  .quest-log-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .quest-log-card .modern-card-body {
+    flex-grow: 1;
+  }
+
+  .quest-log-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-card-title {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .quest-log-card-top .badge {
+    flex-shrink: 0;
+  }
+
+  .quest-log-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-meta-line {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* The icons keep one width so the labels line up down the card. */
+  .quest-log-meta-line .fas {
+    width: 1.25em;
+    text-align: center;
+  }
+
+  .quest-log-card-description {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .quest-log-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  /* The cue is text, not a second link: the stretched title link is the one destination. */
+  .quest-log-card-cue {
+    margin-left: auto;
+    font-size: var(--qb-text-sm);
+  }
+
+  /* One link per card, stretched over the whole card so the whole card is the target. */
+  .quest-log-card .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  /* The ring is drawn on the card, not on the link text alone; the link itself shows none. */
+  .quest-log-card:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .quest-log-card .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /*
+   * Quest Log Details. One view serves both layouts: the main card and the side cards sit in a Bootstrap grid that
+   * stacks on its own below the medium breakpoint, so the page needs no media query of its own.
+   */
+  .quest-log-detail-main {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-section > h2 {
+    margin: 0 0 var(--qb-space-sm);
+  }
+
+  .quest-log-section p {
+    margin: 0 0 var(--qb-space-sm);
+  }
+
+  .quest-log-section > p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Written text (description, rewards, recap) on a scrim, so its colour never depends on the glass under it. */
+  .quest-log-text-box {
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-border);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-scrim);
+    overflow-wrap: anywhere;
+  }
+
+  .quest-log-adventurers {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    margin: 0;
+    padding: 0;
+  }
+
+  .quest-log-adventurer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--qb-space-sm);
+    row-gap: var(--qb-space-xs);
+  }
+
+  .quest-log-adventurer-character {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .quest-log-side-card {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .quest-log-side-card .modern-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+  }
+
+  .quest-log-side-card h2,
+  .quest-log-side-card p {
+    margin: 0;
+  }
+
+  /* The phone layout's own container already pads the page, so the grid adds no gutter that would push past it. */
+  .mobile-layout :is(.quest-log-detail-page, .quest-log-edit-page) .row {
+    --bs-gutter-x: 0;
+  }
+
+  /* The phone has tighter cards: less padding inside, the same order. */
+  .mobile-layout .quest-log-detail-page .modern-card-body {
+    padding: var(--qb-space-md);
+  }
+
+  /*
+   * Recap editor. Help lines sit on the card's own glass, where the muted tone measures under 4.5:1, so here they
+   * take the card colour. On the phone the two actions share the row at tap size.
+   */
+  .quest-log-edit-page .form-text {
+    color: var(--qb-fg);
+  }
+
+  .mobile-layout .quest-log-edit-actions {
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .quest-log-edit-actions > .btn {
+    flex: 1 1 auto;
+    min-height: var(--qb-hit-min);
+  }
+}

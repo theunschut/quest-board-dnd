@@ -16,7 +16,7 @@
 .account-card-mobile h6,
 .account-card-mobile .form-label,
 .account-card-mobile .form-check-label {
-    color: #F4E4BC !important;
+    color: var(--qb-fg-heading) !important;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
 }
 

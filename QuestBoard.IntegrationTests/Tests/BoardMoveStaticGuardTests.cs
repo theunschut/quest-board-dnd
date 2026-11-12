@@ -88,7 +88,6 @@ public class BoardMoveStaticGuardTests
         "QuestBoard.Service/ViewModels/MoveViewModels/MovePageViewModel.cs",
         "QuestBoard.Service/Views/Events/Details.cshtml",
         "QuestBoard.Service/Views/Move/Index.cshtml",
-        "QuestBoard.Service/Views/Move/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Details.cshtml",
         "QuestBoard.Service/Views/Quest/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Quest/Manage.cshtml",
@@ -97,7 +96,6 @@ public class BoardMoveStaticGuardTests
         "QuestBoard.Service/Views/Shared/_Toasts.cshtml",
         "QuestBoard.Service/wwwroot/css/mobile.css",
         "QuestBoard.Service/wwwroot/css/move-entry.css",
-        "QuestBoard.Service/wwwroot/css/move-entry.mobile.css",
     ];
 
     private static IEnumerable<string> PresentFiles() =>
@@ -117,7 +115,7 @@ public class BoardMoveStaticGuardTests
         present.Should().Contain("QuestBoard.Service/Controllers/MoveController.cs",
             because: "the scan must actually reach the files it claims to guard");
         present.Should().Contain("QuestBoard.Domain/Services/QuestMoveService.cs");
-        present.Should().Contain("QuestBoard.Service/Views/Move/Index.Mobile.cshtml");
+        present.Should().Contain("QuestBoard.Service/Views/Move/Index.cshtml");
     }
 
     [Theory]

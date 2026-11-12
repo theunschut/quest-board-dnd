@@ -1,62 +1,20 @@
 @using QuestBoard.Domain.Interfaces
 @*
-    Shared JavaScript for quest forms
-    Requires: site.js (contains addProposedDate and removeProposedDate functions)
+    Shared scripts for every form that authors Markdown or manages quest dates.
+    Loads the quest form module (proposed-date rows and the submit guard) and the Markdown editor with its
+    stylesheets: the wrapper that imports EasyMDE's own sheet into the vendor layer, then the editor theme, so
+    every page that renders an editor gets the theme and no other page loads it. No inline script is rendered
+    here: the antiforgery token the editor's preview request needs travels in a meta element that
+    markdown-editor.js reads, so the content security policy stays strict.
+    The date rows are driven by data-action="add-proposed-date" and "remove-proposed-date" in quest-form.js.
 *@
 @{
     var markdownTokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
 }
 
-<script>
-    // Form validation for quest forms
-    document.addEventListener('DOMContentLoaded', function() {
-        // Scoped to the quest form specifically — document.querySelector('form') would
-        // instead match the navbar's Logout form, which renders earlier in the DOM on
-        // every authenticated page (see _Layout.cshtml / _Layout.Mobile.cshtml).
-        const form = document.querySelector('form[action*="/Quest/"]');
-        if (!form) return;
-
-        form.addEventListener('submit', function(e) {
-            // No #proposed-dates container means this form doesn't manage dates at all
-            // (a finalized-quest Edit, or a Campaign-board Create/Edit) — nothing to require.
-            const container = document.getElementById('proposed-dates');
-            if (container) {
-                // Existing dates render as hidden inputs (Edit.cshtml), newly-added ones as
-                // datetime-local (site.js addProposedDate) — both count toward "has a date".
-                const dateInputs = container.querySelectorAll('input[type="datetime-local"], input[type="hidden"][name*="ProposedDates"]');
-                let hasValidDate = false;
-
-                dateInputs.forEach(function(input) {
-                    if (input.value) {
-                        hasValidDate = true;
-                    }
-                });
-
-                if (!hasValidDate) {
-                    e.preventDefault();
-                    alert('Please provide at least one proposed date and time.');
-                    return false;
-                }
-            }
-
-            const submitButton = form.querySelector('button[type="submit"]');
-            if (submitButton) {
-                submitButton.disabled = true;
-                const originalText = submitButton.textContent;
-                const isEdit = originalText.includes('Update');
-                submitButton.textContent = isEdit ? 'Updating Quest...' : 'Creating Quest...';
-            }
-        });
-    });
-</script>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.css"
-      integrity="sha384-ZoLYv3S+AsZX+zhbN1D1+WPpc8f+DmLfxfgw+qn0Nq8wJPOYQQXEW5ZrRhcGozlG"
-      crossorigin="anonymous">
-<script src="https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.js"
-        integrity="sha384-mTM6vzy+/UiHrMBClNGViM9qEv0/26iCGqpJKhSzdnjrxbKjO3vkT62ujXQ8B5iv"
-        crossorigin="anonymous"></script>
-<script>
-    window.markdownAntiforgeryToken = '@markdownTokens.RequestToken';
-</script>
+<meta name="request-verification-token" content="@markdownTokens.RequestToken" />
+<link rel="stylesheet" href="~/css/easymde-vendor.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/markdown-editor.css" asp-append-version="true" />
+<script src="~/lib/easymde-2.21.0/easymde.min.js"></script>
 <script src="~/js/markdown-editor.js" asp-append-version="true"></script>
+<script type="module" src="~/js/quest-form.js" asp-append-version="true"></script>
