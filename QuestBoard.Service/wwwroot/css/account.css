@@ -1,0 +1,67 @@
+/*
+ * Account pages: the Profile page's read-only fields and its calendar subscription list. Both Profile layouts link this
+ * one sheet and stay twins; the list reflows by itself, so neither carries a breakpoint of its own. Every value is a
+ * token from tokens.css, and the rules sit in the pages layer so they outrank Bootstrap without an important flag.
+ */
+@layer pages {
+  /* One subscription: the name and dates on the left, the five controls on the right, or beneath when they do not fit. */
+  .subscription-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm) var(--qb-space-md);
+  }
+
+  .subscription-summary {
+    flex: 1 1 16rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .calendar-subscription-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+  }
+
+  /* A label stays on one line: wrapping inside a button is worse than wrapping the group of buttons. */
+  .calendar-subscription-actions .btn {
+    white-space: nowrap;
+  }
+
+  /*
+   * One class serves the note under the list (on glass) and the dates line inside the paper cell: the variable
+   * resolves to the muted text step on glass and to the muted ink step inside a table.
+   */
+  .calendar-subscription-meta {
+    color: var(--bs-secondary-color);
+    font-size: var(--qb-text-sm);
+  }
+
+  /*
+   * The address is a bearer credential and stays hidden until a copy is refused. Revealed, it reads as a read-only field
+   * (the control fill and border, so it is a visible boundary on paper and on glass alike), takes a full-width line of its
+   * own, scrolls sideways inside itself and never widens the page.
+   */
+  .calendar-subscription-address {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-inline: var(--qb-space-sm);
+    border: 1px solid var(--qb-control-border);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-control-bg);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-sm);
+  }
+
+  .calendar-subscription-qr svg {
+    width: 100%;
+    height: auto;
+    max-width: 240px;
+    display: block;
+    margin: 0 auto;
+  }
+}

@@ -5,6 +5,10 @@
     ViewData["Title"] = "Profile";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
+}
+
 <div class="row justify-content-center">
     <!-- Widened from col-md-6: the Calendar Subscription section below is a per-row list
          with an address field and four controls per row, which does not fit a half-width
@@ -95,7 +99,6 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Subscription</th>
-                                    <th scope="col" class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -103,44 +106,46 @@
                                 {
                                     <tr>
                                         <td>
-                                            <div>@subscription.Name</div>
-                                            <div class="calendar-subscription-meta">
-                                                Created @Html.LocalTime(subscription.CreatedAt, "date")
-                                                @if (subscription.LastFetchedAt.HasValue)
-                                                {
-                                                    @:&middot; Last fetched @Html.LocalTime(subscription.LastFetchedAt.Value, "date-time")
-                                                }
-                                                else
-                                                {
-                                                    @:&middot; Never fetched yet
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="text-end">
-                                            <div class="calendar-subscription-actions">
-                                                @* Present and selectable but not shown: the address is a bearer credential,
-                                                   and the only path that needs it on screen is the clipboard-denied
-                                                   fallback, which reveals it. *@
-                                                <input type="text" readonly id="subscriptionAddress-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address visually-hidden" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
-                                                <button type="button" class="btn btn-primary btn-sm calendar-subscription-copy-btn" data-address-target="#subscriptionAddress-@subscription.Id">
-                                                    <i class="fas fa-copy me-2"></i>Copy
-                                                </button>
-                                                <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
-                                                    <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
-                                                </a>
-                                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id">
-                                                    <i class="fas fa-qrcode me-2"></i>Show QR Code
-                                                </button>
-                                                <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
-                                                    <i class="fas fa-pen me-2"></i>Rename
-                                                </button>
-                                                <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="id" value="@subscription.Id" />
-                                                    <button type="submit" class="btn btn-danger btn-sm">
-                                                        <i class="fas fa-trash me-2"></i>Delete
+                                            <div class="subscription-item">
+                                                <div class="subscription-summary">
+                                                    <div>@subscription.Name</div>
+                                                    <div class="calendar-subscription-meta">
+                                                        Created @Html.LocalTime(subscription.CreatedAt, "date")
+                                                        @if (subscription.LastFetchedAt.HasValue)
+                                                        {
+                                                            @:&middot; Last fetched @Html.LocalTime(subscription.LastFetchedAt.Value, "date-time")
+                                                        }
+                                                        else
+                                                        {
+                                                            @:&middot; Never fetched yet
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="calendar-subscription-actions">
+                                                    @* Present and selectable but not shown: the address is a bearer credential,
+                                                       and the only path that needs it on screen is the clipboard-denied
+                                                       fallback, which reveals it. *@
+                                                    <input type="text" readonly id="subscriptionAddress-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address visually-hidden" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
+                                                    <button type="button" class="btn btn-primary btn-sm calendar-subscription-copy-btn" data-address-target="#subscriptionAddress-@subscription.Id">
+                                                        <i class="fas fa-copy me-2"></i>Copy
                                                     </button>
-                                                </form>
+                                                    <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
+                                                        <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
+                                                    </a>
+                                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id">
+                                                        <i class="fas fa-qrcode me-2"></i>Show QR Code
+                                                    </button>
+                                                    <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
+                                                        <i class="fas fa-pen me-2"></i>Rename
+                                                    </button>
+                                                    <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@subscription.Id" />
+                                                        <button type="submit" class="btn btn-danger btn-sm">
+                                                            <i class="fas fa-trash me-2"></i>Delete
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
