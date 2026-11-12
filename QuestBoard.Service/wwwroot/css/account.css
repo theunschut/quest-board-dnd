@@ -1,0 +1,167 @@
+/*
+ * Account pages: the credential forms (log in, forgot and set password, change password), the Profile page's read-only
+ * fields and its calendar subscription list. The credential pages are one view each for every device; both Profile
+ * layouts link this one sheet and stay twins; the list reflows by itself, so neither carries a breakpoint of its own. Every value is a
+ * token from tokens.css, and the rules sit in the pages layer so they outrank Bootstrap without an important flag.
+ */
+@layer pages {
+  /* One subscription: the name and dates on the left, the five controls on the right, or beneath when they do not fit. */
+  .subscription-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm) var(--qb-space-md);
+  }
+
+  .subscription-summary {
+    flex: 1 1 16rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .calendar-subscription-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+  }
+
+  /* A label stays on one line: wrapping inside a button is worse than wrapping the group of buttons. */
+  .calendar-subscription-actions .btn {
+    white-space: nowrap;
+  }
+
+  /*
+   * One class serves the note under the list (on glass) and the dates line inside the paper cell: the variable
+   * resolves to the muted text step on glass and to the muted ink step inside a table.
+   */
+  .calendar-subscription-meta {
+    color: var(--bs-secondary-color);
+    font-size: var(--qb-text-sm);
+  }
+
+  /*
+   * The address is a bearer credential and stays hidden until a copy is refused. Revealed, it reads as a read-only field
+   * (the control fill and border, so it is a visible boundary on paper and on glass alike), takes a full-width line of its
+   * own, scrolls sideways inside itself and never widens the page.
+   */
+  .calendar-subscription-address {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-inline: var(--qb-space-sm);
+    border: 1px solid var(--qb-control-border);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-control-bg);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-sm);
+  }
+
+  .calendar-subscription-qr svg {
+    width: 100%;
+    height: auto;
+    max-width: 240px;
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* The sentence that leads into the password button on the desktop Edit page: the muted text step, not a Bootstrap utility. */
+  .account-prompt {
+    color: var(--qb-fg-muted);
+  }
+
+  /* The read-only fields: a label step in the muted text colour above or beside a body-step value. */
+  .profile-fields dt {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .profile-fields dd {
+    margin: 0 0 var(--qb-space-md);
+    overflow-wrap: anywhere;
+    color: var(--qb-fg);
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  /*
+   * Phone rows. Copy and Show QR Code are icon-only there, so they take the full finger-sized hit area, and a long name
+   * is cut with an ellipsis instead of wrapping the row.
+   */
+  .calendar-subscription-icon-btn {
+    min-height: var(--qb-hit-min);
+    min-width: var(--qb-hit-min);
+  }
+
+  .calendar-subscription-row {
+    padding-block: var(--qb-space-md);
+    border-bottom: 1px solid var(--qb-border);
+  }
+
+  .calendar-subscription-row:first-child {
+    padding-top: 0;
+  }
+
+  .calendar-subscription-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .calendar-subscription-row .calendar-subscription-name {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* The section title sits one step under the page title on the phone. */
+  .mobile-layout .section-heading {
+    font-size: var(--qb-text-base);
+  }
+
+  /*
+   * The server's sentences inside a refusal line come as a list; the line already carries the icon, so the list shows
+   * no bullets or indent and the sentences line up beside the icon.
+   */
+  .refusal-line ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* The link to the recovery page keeps its underline; on the phone it is a full-height tap target. */
+  .mobile-layout .account-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
+  }
+
+  /*
+   * A link that sits inside a sentence stays an inline box so the words around it wrap as they always did. Its tap
+   * target on the phone grows through padding, which adds hit area without adding line height; the sideways growth is
+   * cancelled by an equal negative margin so the sentence does not shift.
+   */
+  .mobile-layout .account-link-inline {
+    padding: calc((var(--qb-hit-min) - 1em) / 2) var(--qb-space-sm);
+    margin-inline: calc(-1 * var(--qb-space-sm));
+  }
+
+  /*
+   * The signed-out landing card sits a step below the bar and never lifts, because it is a statement and not a control.
+   * On a phone the log in button spans the card's content width; the phone class is on the body, so the one view serves
+   * both layouts.
+   */
+  .landing-card {
+    margin-top: var(--qb-space-xl);
+  }
+
+  .mobile-layout .landing-action .btn {
+    display: block;
+    width: 100%;
+  }
+}

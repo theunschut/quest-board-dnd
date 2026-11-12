@@ -50,7 +50,7 @@ public class HomeControllerIntegrationTests : IClassFixture<WebApplicationFactor
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        content.Should().Contain("Log In");
+        content.Should().Contain("Log in");
         content.Should().Contain("/Account/Login");
     }
 
@@ -73,7 +73,26 @@ public class HomeControllerIntegrationTests : IClassFixture<WebApplicationFactor
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         content.Should().NotContain("Home Quest 1");
         content.Should().NotContain("Home Quest 2");
-        content.Should().Contain("Log In");
+        content.Should().Contain("Log in");
+    }
+
+    [Fact]
+    public async Task Index_PhoneUserAgent_ServesTheLandingInThePhoneShell()
+    {
+        // Arrange
+        var request = new HttpRequestMessage(HttpMethod.Get, "/");
+        request.Headers.TryAddWithoutValidation("User-Agent",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1");
+
+        // Act
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("mobile-layout");
+        content.Should().Contain("/Account/Login");
+        System.Text.RegularExpressions.Regex.Matches(content, "<h1").Count.Should().Be(1);
     }
 
     // REMOVED: Privacy and Error tests - these routes don't exist in HomeController

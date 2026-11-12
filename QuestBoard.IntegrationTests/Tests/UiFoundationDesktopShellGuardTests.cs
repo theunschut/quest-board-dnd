@@ -148,16 +148,21 @@ public class UiFoundationDesktopShellGuardTests
     }
 
     [Fact]
-    public void GroupPickerLayout_LinksItsOwnSheetAfterTheLegacyOnes()
+    public void GroupPickerPage_LinksItsOwnSheetAfterTheLegacyOnes()
     {
         var markup = Markup("QuestBoard.Service/Views/Shared/_Layout.GroupPicker.cshtml");
         OpeningTags(markup, "body").Single().Should().Contain("group-picker");
 
-        var sheet = markup.IndexOf("~/css/group-picker.css", StringComparison.Ordinal);
-        sheet.Should().BeGreaterThan(markup.IndexOf("~/css/legacy-pages.css", StringComparison.Ordinal),
-            "the picker sheet follows the legacy sheets");
-        sheet.Should().BeLessThan(markup.IndexOf("RenderSectionAsync(\"Styles\"", StringComparison.Ordinal),
-            "the picker sheet precedes the page Styles section");
+        markup.Should().NotContain("~/css/group-picker.css",
+            "the picker sheet reaches the page through its view's Styles section, never the layout's global list");
+        markup.IndexOf("RenderSectionAsync(\"Styles\"", StringComparison.Ordinal).Should().BeGreaterThan(
+            markup.IndexOf("~/css/legacy-pages.css", StringComparison.Ordinal),
+            "the page's own sheet follows the legacy sheets");
+
+        var view = Markup("QuestBoard.Service/Views/GroupPicker/Index.cshtml");
+        view.Should().Contain("Layout = \"~/Views/Shared/_Layout.GroupPicker.cshtml\"");
+        Regex.Match(view, @"@section\s+Styles\s*\{(?<body>[^}]*)\}").Groups["body"].Value
+            .Should().Contain("~/css/group-picker.css", "the picker view links its own sheet through its Styles section");
     }
 
     [Fact]

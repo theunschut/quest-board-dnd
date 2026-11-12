@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
@@ -496,7 +497,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         html.Should().Contain("<h2>Selected Participants</h2>");
         html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{firstSignup.Id}\"");
         html.Should().Contain($"data-action=\"remove-player\" data-signup-id=\"{secondSignup.Id}\"");
-        System.Text.RegularExpressions.Regex.Matches(html, "data-action=\"remove-player\"").Count.Should().Be(2);
+        Regex.Matches(html, "data-action=\"remove-player\"").Count.Should().Be(2);
     }
 
     /// <summary>
@@ -674,28 +675,89 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Account/Login renders account-card-mobile glass card form and
-    /// links account.mobile.css. Test starts RED — Login.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Account/Login is served the one shared Login view inside the phone shell: the
+    /// phone layout, the shared account sheet, the autofill tokens, one heading, the document title the
+    /// desktop page has, and no separate phone account sheet.
     /// </summary>
     [Fact]
     public async Task MobileAccountLogin_MobileUserAgent_RendersGlassCardForm()
     {
         var (response, html) = await GetWithUserAgentAsync("/Account/Login", MobileUserAgent);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
-        html.Should().Contain("account.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("autocomplete=\"username\"");
+        html.Should().Contain("autocomplete=\"current-password\"");
+        html.Should().Contain("<title>Log in - ");
+        Regex.Matches(html, "<h1\\b").Count.Should().Be(1);
     }
 
     /// <summary>
-    /// Regression guard: Desktop UA on /Account/Login must NOT render the mobile glass card.
-    /// Proves the desktop view is unchanged after the mobile view is added.
+    /// Regression guard: Desktop UA on /Account/Login is served the same view inside the desktop layout:
+    /// the shared account sheet, the same title, and none of the phone shell.
     /// </summary>
     [Fact]
     public async Task MobileAccountLogin_DesktopUserAgent_DoesNotRenderGlassCard()
     {
         var (response, html) = await GetWithUserAgentAsync("/Account/Login", DesktopUserAgent);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().NotContain("account-card-mobile");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("mobile-layout");
+        html.Should().Contain("<title>Log in - ");
+    }
+
+    /// <summary>
+    /// Mobile UA on /Account/ForgotPassword is served the shared view in the phone shell with the
+    /// document title the desktop page has and the email autofill token.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountForgotPassword_MobileUserAgent_RendersTheSharedViewWithItsTitle()
+    {
+        var (response, html) = await GetWithUserAgentAsync("/Account/ForgotPassword", MobileUserAgent);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("<title>Forgot Password - ");
+        html.Should().Contain("autocomplete=\"email\"");
+    }
+
+    /// <summary>
+    /// Mobile UA on /Account/SetPassword is served the shared view in the phone shell with the
+    /// document title the desktop page has and both fields marked as a new password.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountSetPassword_MobileUserAgent_RendersTheSharedViewWithItsTitle()
+    {
+        var (response, html) = await GetWithUserAgentAsync("/Account/SetPassword?userId=1&token=not-a-token", MobileUserAgent);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("<title>Set Your Password - ");
+        Regex.Matches(html, "autocomplete=\"new-password\"").Count.Should().Be(2);
+    }
+
+    /// <summary>
+    /// Mobile UA on /Account/ChangePassword (signed in) is served the shared view in the phone shell
+    /// with the document title the desktop page has and the Back to Profile link.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountChangePassword_MobileUserAgent_RendersTheSharedViewWithItsTitle()
+    {
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "acct_chgpw17", "acct_chgpw17@test.com");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/Account/ChangePassword");
+        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
+        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("<title>Change Password - ");
+        html.Should().Contain("Back to Profile");
     }
 
     // -----------------------------------------------------------------------
@@ -720,9 +782,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// (Edit) Mobile UA on /Account/Edit renders account-card-mobile glass card form.
-    /// Uses authenticated request — AccountController.Edit carries [Authorize].
-    /// Test starts RED — Edit.Mobile.cshtml does not exist yet.
+    /// (Edit) The phone User-Agent on /Account/Edit gets the phone shell with the shared card, the shared
+    /// account sheet, its own document title and the name autofill token, and no password sentence (the
+    /// phone shows the button alone). Authenticated, because AccountController.Edit carries [Authorize].
     /// </summary>
     [Fact]
     public async Task MobileAccountEdit_MobileUserAgent_RendersGlassCardForm()
@@ -730,68 +792,224 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "acct_edit16", "acct_edit16@test.com");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/Account/Edit");
-        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
-        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
-        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
-        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var (response, html) = await GetWithUserAgentAsync("/Account/Edit", MobileUserAgent, authClient.DefaultRequestHeaders.Authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("modern-card");
+        html.Should().Contain("/css/account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().Contain("<title>Edit Profile - ");
+        html.Should().Contain("autocomplete=\"name\"");
+        html.Should().NotContain("Want to change your password?");
     }
 
     /// <summary>
-    /// Mobile UA on /GroupPicker/Index renders the group-selection cards and links
-    /// account.mobile.css. Guards against the unrendered-Styles-section white-page regression:
-    /// Index.Mobile.cshtml defines a Styles section that _Layout.GroupPicker.cshtml must render.
-    /// The test user is seeded into two groups so the controller returns the card-picker view
-    /// instead of auto-redirecting (which happens when a user belongs to exactly one group).
+    /// (Edit) The desktop twin keeps the sentence that asks whether the member wants to change the password,
+    /// and is served in the desktop layout.
+    /// </summary>
+    [Fact]
+    public async Task MobileAccountEdit_DesktopUserAgent_KeepsThePasswordPrompt()
+    {
+        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "acct_edit16d", "acct_edit16d@test.com");
+
+        var (response, html) = await GetWithUserAgentAsync("/Account/Edit", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("Want to change your password?");
+        html.Should().NotContain("mobile-layout");
+    }
+
+    /// <summary>
+    /// Seeds a user who belongs to two boards, so the picker renders its list instead of redirecting
+    /// (a user in exactly one board is sent straight in), and returns that user's authorization header
+    /// with the number of boards the picker is expected to list.
+    /// </summary>
+    private async Task<(AuthenticationHeaderValue? Authorization, int BoardCount)> SeedPickerMemberAsync(string username)
+    {
+        var (authClient, pickerUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, username, $"{username}@test.com");
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+
+        // AuthenticationHelper seeds a UserGroups row referencing GroupId=1, but does not
+        // guarantee a matching GroupEntity row exists (this test class does not call
+        // TestDataHelper.SeedDefaultGroupAsync). Ensure it exists so GroupId=1 is a real,
+        // queryable group rather than a dangling FK reference the InMemory provider silently allows.
+        if (!await context.Groups.AnyAsync(g => g.Id == 1, TestContext.Current.CancellationToken))
+        {
+            context.Groups.Add(new GroupEntity { Id = 1, Name = "EuphoriaInn", CreatedAt = DateTime.UtcNow });
+        }
+
+        // Use a random large Id for the second group so it cannot collide with Id=1 or with
+        // groups created by other tests sharing this class fixture's database.
+        var secondGroupId = Random.Shared.Next(100_000, 999_999);
+        context.Groups.Add(new GroupEntity { Id = secondGroupId, Name = $"GroupPickerTest_{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow });
+
+        context.UserGroups.Add(new UserGroupEntity { UserId = pickerUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+        context.UserGroups.Add(new UserGroupEntity { UserId = pickerUser.Id, GroupId = secondGroupId, GroupRole = (int)GroupRole.Player });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        return (authClient.DefaultRequestHeaders.Authorization, 2);
+    }
+
+    /// <summary>
+    /// Asserts the picker body: one submit-button row per board inside a SelectGroup form, the page
+    /// sheet linked exactly once and after the legacy sheets, and no phone layout class (the picker
+    /// layout serves both User-Agents).
+    /// </summary>
+    private static void AssertPickerRows(string html, int boardCount)
+    {
+        var rows = Regex.Matches(html, "<button type=\"submit\" class=\"group-picker-row\"");
+        rows.Count.Should().Be(boardCount, "every board the user belongs to is one submit button row");
+        html.Should().Contain("SelectGroup");
+
+        var sheet = html.IndexOf("/css/group-picker.css", StringComparison.Ordinal);
+        sheet.Should().BeGreaterThan(-1, "the picker's own sheet reaches the page through the view's Styles section");
+        html.LastIndexOf("/css/group-picker.css", StringComparison.Ordinal)
+            .Should().Be(sheet, "the picker sheet is linked exactly once");
+        sheet.Should().BeGreaterThan(
+            html.IndexOf("/css/legacy-pages.css", StringComparison.Ordinal),
+            "the picker sheet follows the legacy sheets, where it sat when the layout linked it");
+
+        html.Should().NotContain("mobile-layout", "the picker layout serves phones and desktops alike");
+        html.Should().NotContain("account.mobile.css", "the merged picker view needs no account phone sheet");
+    }
+
+    /// <summary>
+    /// Mobile UA on /GroupPicker/Index renders one native submit button per board and links the
+    /// picker sheet. Guards against the unrendered-Styles-section white-page regression: the picker's
+    /// sheet now reaches the page only through the view's Styles section, so a picker layout that
+    /// stopped rendering that section would drop the sheet and fail here. The test user is seeded
+    /// into two groups so the controller returns the list instead of auto-redirecting (which happens
+    /// when a user belongs to exactly one group).
     /// </summary>
     [Fact]
     public async Task MobileGroupPicker_MobileUserAgent_RendersGroupCardsAndStylesSection()
     {
-        var (authClient, gpUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            _factory, "gp_mobile01", "gp_mobile01@test.com");
+        var (authorization, boardCount) = await SeedPickerMemberAsync("gp_mobile01");
 
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
-
-            // AuthenticationHelper seeds a UserGroups row referencing GroupId=1, but does not
-            // guarantee a matching GroupEntity row exists (this test class does not call
-            // TestDataHelper.SeedDefaultGroupAsync). Ensure it exists so GroupId=1 is a real,
-            // queryable group rather than a dangling FK reference the InMemory provider silently allows.
-            if (!await context.Groups.AnyAsync(g => g.Id == 1, TestContext.Current.CancellationToken))
-            {
-                context.Groups.Add(new GroupEntity { Id = 1, Name = "EuphoriaInn", CreatedAt = DateTime.UtcNow });
-            }
-
-            // Use a random large Id for the second group so it cannot collide with Id=1 or with
-            // groups created by other tests sharing this class fixture's database.
-            var secondGroupId = Random.Shared.Next(100_000, 999_999);
-            var secondGroup = new GroupEntity { Id = secondGroupId, Name = $"GroupPickerTest_{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow };
-            context.Groups.Add(secondGroup);
-
-            context.UserGroups.Add(new UserGroupEntity { UserId = gpUser.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
-            context.UserGroups.Add(new UserGroupEntity { UserId = gpUser.Id, GroupId = secondGroupId, GroupRole = (int)GroupRole.Player });
-            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
-        }
-
-        var request = new HttpRequestMessage(HttpMethod.Get, "/GroupPicker/Index");
-        request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
-        request.Headers.Authorization = authClient.DefaultRequestHeaders.Authorization;
-        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
-        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var (response, html) = await GetWithUserAgentAsync("/GroupPicker/Index", MobileUserAgent, authorization);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
-        html.Should().Contain("account.mobile.css");
+        AssertPickerRows(html, boardCount);
     }
 
     /// <summary>
-    /// (Profile) Mobile UA on /Account/Profile renders account-card-mobile glass card layout.
-    /// Uses authenticated request — AccountController.Profile carries [Authorize].
-    /// Test starts RED — Profile.Mobile.cshtml does not exist yet.
+    /// Desktop UA on /GroupPicker/Index is served the same view with the same submit rows.
+    /// </summary>
+    [Fact]
+    public async Task MobileGroupPicker_DesktopUserAgent_RendersTheSameSubmitRows()
+    {
+        var (authorization, boardCount) = await SeedPickerMemberAsync("gp_desktop01");
+
+        var (response, html) = await GetWithUserAgentAsync("/GroupPicker/Index", DesktopUserAgent, authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        AssertPickerRows(html, boardCount);
+    }
+
+    /// <summary>
+    /// The member count on a picker row reads "1 member" for exactly one member and "N members"
+    /// otherwise, and never the old "member(s)" placeholder.
+    /// </summary>
+    [Fact]
+    public async Task GroupPicker_MemberCount_ReadsSingularForOneAndPluralOtherwise()
+    {
+        var (authClient, firstUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "gp_count01", "gp_count01@test.com");
+        var (_, secondUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "gp_count02", "gp_count02@test.com");
+
+        var soloName = $"SoloBoard{Guid.NewGuid():N}";
+        var pairName = $"PairBoard{Guid.NewGuid():N}";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var soloId = Random.Shared.Next(100_000, 499_999);
+            var pairId = Random.Shared.Next(500_000, 999_999);
+            context.Groups.Add(new GroupEntity { Id = soloId, Name = soloName, CreatedAt = DateTime.UtcNow });
+            context.Groups.Add(new GroupEntity { Id = pairId, Name = pairName, CreatedAt = DateTime.UtcNow });
+            context.UserGroups.Add(new UserGroupEntity { UserId = firstUser.Id, GroupId = soloId, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = firstUser.Id, GroupId = pairId, GroupRole = (int)GroupRole.Player });
+            context.UserGroups.Add(new UserGroupEntity { UserId = secondUser.Id, GroupId = pairId, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var (response, html) = await GetWithUserAgentAsync("/GroupPicker/Index", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().NotContain("member(s)");
+        var countOf = (string name) => Regex.Match(
+            html,
+            Regex.Escape(name) + "</span>\\s*<span class=\"group-picker-meta\">.*?</i>([^<]+)</span>",
+            RegexOptions.Singleline).Groups[1].Value.Trim();
+        countOf(soloName).Should().Be("1 member");
+        countOf(pairName).Should().Be("2 members");
+    }
+
+    /// <summary>
+    /// The picker layout's landmarks under both User-Agents: one skip link to the main region, one
+    /// labelled navigation, one main element carrying the skip target, and no redundant main role.
+    /// </summary>
+    [Theory]
+    [InlineData("mobile")]
+    [InlineData("desktop")]
+    public async Task GroupPicker_BothUserAgents_RenderTheirLandmarks(string agent)
+    {
+        var (authorization, _) = await SeedPickerMemberAsync($"gp_land_{agent}");
+
+        var (response, html) = await GetWithUserAgentAsync(
+            "/GroupPicker/Index", agent == "mobile" ? MobileUserAgent : DesktopUserAgent, authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        Regex.Matches(html, "<a\\b[^>]*\\bclass=\"[^\"]*\\bskip-link\\b[^\"]*\"[^>]*\\bhref=\"#main-content\"")
+            .Count.Should().Be(1, $"{agent}: one skip link to the main region");
+        Regex.Matches(html, "<nav\\b[^>]*\\baria-label=\"[^\"]+\"")
+            .Count.Should().Be(1, $"{agent}: one navigation landmark with a name");
+        Regex.Matches(html, "<nav\\b").Count.Should().Be(1, $"{agent}: only one navigation element");
+        Regex.Matches(html, "<main\\b[^>]*\\bid=\"main-content\"")
+            .Count.Should().Be(1, $"{agent}: one main element carrying the skip target");
+        Regex.Matches(html, "<main\\b").Count.Should().Be(1, $"{agent}: only one main element");
+        html.Should().NotContain("role=\"main\"", "a main element already carries that role");
+    }
+
+    /// <summary>
+    /// The picker page requests no third-party host under either User-Agent: every asset reference
+    /// on its link, script and img elements is a same-origin path.
+    /// </summary>
+    [Theory]
+    [InlineData("mobile")]
+    [InlineData("desktop")]
+    public async Task GroupPicker_BothUserAgents_RequestNoThirdPartyHost(string agent)
+    {
+        var (authorization, _) = await SeedPickerMemberAsync($"gp_host_{agent}");
+
+        var (response, html) = await GetWithUserAgentAsync(
+            "/GroupPicker/Index", agent == "mobile" ? MobileUserAgent : DesktopUserAgent, authorization);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var references = Regex
+            .Matches(html, "<(?:link|script|img)\\b[^>]*?\\b(?:src|href)=\"([^\"]*)\"")
+            .Select(m => m.Groups[1].Value)
+            .ToList();
+
+        references.Count.Should().BeGreaterThanOrEqualTo(5, $"{agent}: the page's asset references must be found, not an empty parse");
+        foreach (var reference in references)
+        {
+            var offsite = reference.StartsWith("http:", StringComparison.OrdinalIgnoreCase)
+                || reference.StartsWith("https:", StringComparison.OrdinalIgnoreCase)
+                || reference.StartsWith("//", StringComparison.Ordinal);
+            offsite.Should().BeFalse($"{agent}: '{reference}' is not a same-origin path");
+        }
+    }
+
+    /// <summary>
+    /// (Profile) Mobile UA on /Account/Profile renders the phone layout on the shared card, with its document
+    /// title, the building-access wording the desktop uses and the area sheet, and no longer links the phone
+    /// account sheet. Uses authenticated request — AccountController.Profile carries [Authorize].
     /// </summary>
     [Fact]
     public async Task MobileAccountProfile_MobileUserAgent_RendersGlassCardLayout()
@@ -806,7 +1024,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("modern-card");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().MatchRegex("<title>\\s*Profile - ");
+        (html.Contains("Has Building Key") || html.Contains("No Building Key")).Should().BeTrue(
+            because: "the phone reads the building-access state with the desktop's wording");
     }
 
     // -----------------------------------------------------------------------

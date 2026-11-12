@@ -5,43 +5,53 @@
     ViewData["Title"] = "Log in";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
+}
+
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
         <div class="card modern-card">
             <div class="card-header modern-card-header">
-                <h2 class="mb-0">
-                    <i class="fas fa-sign-in-alt me-2"></i>
+                <h1 class="mb-0">
+                    <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i>
                     @ViewData["Title"]
-                </h2>
+                </h1>
             </div>
             <div class="card-body modern-card-body">
                 <form asp-action="Login" asp-route-returnurl="@ViewData["ReturnUrl"]" method="post">
-                    <div asp-validation-summary="All" class="text-danger"></div>
-                    
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div role="alert" class="refusal-line mb-3">
+                            <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                            <div asp-validation-summary="All"></div>
+                        </div>
+                    }
+
                     <div class="mb-3">
                         <label asp-for="Email" class="form-label"></label>
-                        <input asp-for="Email" class="form-control" />
-                        <span asp-validation-for="Email" class="text-danger"></span>
+                        <input asp-for="Email" class="form-control" autocomplete="username" />
+                        <span asp-validation-for="Email"></span>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label asp-for="Password" class="form-label"></label>
-                        <input asp-for="Password" class="form-control" />
-                        <span asp-validation-for="Password" class="text-danger"></span>
+                        <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Password"></span>
                     </div>
-                    
+
                     <div class="mb-3 form-check">
                         <input asp-for="RememberMe" class="form-check-input" />
                         <label asp-for="RememberMe" class="form-check-label"></label>
                     </div>
 
                     <div class="mb-3">
-                        <a asp-action="ForgotPassword" class="text-decoration-none">Forgot password?</a>
+                        <a asp-action="ForgotPassword" class="account-link">Forgot password?</a>
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-warning btn-lg">
-                            <i class="fas fa-sign-in-alt me-2"></i>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i>
                             Log in
                         </button>
                     </div>

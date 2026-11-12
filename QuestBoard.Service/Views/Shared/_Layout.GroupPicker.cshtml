@@ -13,7 +13,6 @@
     <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shell.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/legacy-pages.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/group-picker.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100 shell-fixed-nav group-picker">
@@ -33,7 +32,7 @@
 </header>
 
 <div class="container mt-4 flex-grow-1">
-    <main id="main-content" tabindex="-1" role="main">
+    <main id="main-content" tabindex="-1">
         @RenderBody()
     </main>
 </div>

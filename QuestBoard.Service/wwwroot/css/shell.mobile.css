@@ -33,6 +33,15 @@
   }
 
   /*
+   * The phone main pads its content by less than a Bootstrap row pulls out, so a row placed directly in the main would
+   * make the page a few pixels wider than the screen. A root row takes a gutter equal to the padding instead; the row
+   * declares the variable on itself, so the override has to name the row.
+   */
+  .mobile-layout main > .row {
+    --bs-gutter-x: var(--qb-space-md);
+  }
+
+  /*
    * Touch targets: every control is at least 44px tall and wide on the phone layout. The selector list is wrapped
    * in :where() so it adds no specificity and a page sheet can still size a control it knows better. Checkboxes and
    * radios are left out on purpose: their row and label are the target (see the form-check rows below).

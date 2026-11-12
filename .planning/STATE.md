@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 102
-status: completed
-stopped_at: Phase 102 complete; Phase 95 UAT 11/11 local passed, 2 real-device items deferred to post-deploy (phase stays open)
-last_updated: "2026-11-12T09:27:45.734Z"
+current_phase: 96
+current_phase_name: account-and-pickers-ui-conversion
+status: verifying
+stopped_at: Completed 96-12-PLAN.md (Gate 2 approved)
+last_updated: "2026-11-12T15:39:06.782Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
 progress:
   total_phases: 31
-  completed_phases: 22
-  total_plans: 230
-  completed_plans: 209
-  percent: 71
-current_phase_name: board-deletion
+  completed_phases: 23
+  total_plans: 247
+  completed_plans: 221
+  percent: 74
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
@@ -25,25 +25,19 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 102 — board-deletion
+**Current focus:** Phase 96 — account-and-pickers-ui-conversion
 
 ## Current Position
 
-Phase: 102 (board-deletion) — COMPLETE
-Plan: 10 of 10
-Status: Phase 102 complete (manual UAT 6/6 passed locally 2026-11-12, verification passed). Not all phases are
-complete: Phase 95 is still open (see below), and Phases 78, 79 and 90 are not done.
-Last activity: 2026-11-12 — Phase 102 UAT passed and phase marked complete
+Phase: 96 (account-and-pickers-ui-conversion) — EXECUTING
+Plan: 12 of 12
+Status: Phase complete — ready for verification
+Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
+Last activity: 2026-11-12 — Phase 96 execution started
 
-**Phase 95 UAT run locally 2026-11-12 (`95-UAT.md`): 11 of 11 local checks passed, 2 real-device items deferred to after
-the production deploy by the user's decision (real-phone checklist incl. WINDOWS #32, and WINDOWS #3).** `phase uat-passed 95`
-therefore still refuses: it counts the two deferred (skipped) items as blockers and needs `95-VERIFICATION.md` at `passed`.
-Left open on purpose; not forced.
-
-**Phase 95 (quests-and-quest-log-ui-conversion) is parked, not complete.** All 18 of 18 plans are
-executed (stopped at: Completed 95-18-PLAN.md), but the phase stays open until the operator's
-real-phone UAT passes (`/gsd-verify-work 95`). Phases 94, 95 and 102 ship together as v6.0.0 via a
-PR from `milestone/v9-rolling-improvements` to `main`, after that UAT and Phase 102 are done.
+**Phase 95 complete 2026-11-12.** Local UAT 11/11 passed; the two real-device items (real-phone checklist incl.
+WINDOWS #32, and the WINDOWS #3 calendar subscription) were confirmed by the operator against production after the
+v6.0.0 deploy.
 
 `phase.complete` reported Phase 89 as the milestone's last phase only because it is the highest
 phase number. It is not: Phase 78 — Link Preview Foundation and Quest Cards (9 plans written,
@@ -104,6 +98,17 @@ introduced by Phase 87.
 | Phase 95 P16 | 2.5h | 2 tasks | 31 files |
 | Phase 95 P17 | 2.5h | 2 tasks | 10 files |
 | Phase 95 P18 | about 5 h | 3 tasks | 0 files |
+| Phase 96 P01 | 20min | 3 tasks | 0 files |
+| Phase 96 P02 | 1.5h | 3 tasks | 0 files |
+| Phase 96 P03 | 2.5 h | 3 tasks | 0 files |
+| Phase 96 P05 | 1.2h | 2 tasks | 7 files |
+| Phase 96 P06 | 2h | 3 tasks | 10 files |
+| Phase 96 P07 | 1.7h | 2 tasks | 6 files |
+| Phase 96 P08 | 1.5 h | 3 tasks | 12 files |
+| Phase 96 P09 | 1h | 2 tasks | 7 files |
+| Phase 96 P10 | 25min | 2 tasks | 5 files |
+| Phase 96 P11 | 30min | 3 tasks | 0 files |
+| Phase 96 P12 | 4h | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -164,6 +169,17 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 95]: 95-08: DM line estimate widened to 0.57 em so no poster overflows at the 304px card floor; p5 breaches its poster-glyph floor at 304px and awaits an operator decision
 - [Phase ?]: 95-16: Markdown headings take --qb-fg-heading on every surface; the dark-ink heading rule for card bodies was removed because every card is glass with light text
 - [Phase ?]: 95-16: toolbar of the Markdown editor keeps 44px buttons and wraps to two rows at 320 (container is 236px); one row would need sub-44px buttons
+- [Phase ?]: 96-01: review environment on Linux ports 8000/8001, bundled Chromium, reused phase-95 Audit accounts; nine roles incl. multi and noboard
+- [Phase 96]: 96-02: rate-limited error rows (forgot and set password) split over 127.0.0.1 and [::1]; restart the app before each sweep of them
+- [Phase 96]: 96-02: event.single reuses the Phase 94 event, so phase 96 writes no Events or Quests row
+- [Phase ?]: 96-03: picker/Home mockups link a copy of the frozen baseline foundation sheets (file:// pages cannot load app fonts); contrast probe gains opt-in stack mode and color-mix parsing; AFTER sweeps must use stack mode or panel muted text reads 4.25 instead of 6.09
+- [Phase 96]: Gate 1 approved by operator: all 16 recommendations, Home merge yes
+- [Phase 96]: 96-05: picker sheet linked through the view's Styles section (out of the picker layout's global list); landmark and third-party-host facts are theories over both User-Agents
+- [Phase ?]: 96-06: Profile address field keeps the approved control-fill look; phone rows share one wrapper so the last row drops its hairline
+- [Phase 96]: 96-07: Profile Delete stays a real submit button in its own form; only the shared module opens the dialog, in the submit listener that cancels the post
+- [Phase 96]: 96-08: Gate 1 gutter answer shell applied; four credential pages merged into one view each; refusal line summary stays All
+- [Phase 96]: 96-11: SetPassword verified with a real token via a local SMTP sink; no mail left the machine
+- [Phase 96]: 96-12: Gate 2 approved by the operator (relayed by the orchestrating session); G2-11 changed to 1 member / N members, every other item at its recommendation, no contrast exceptions
 
 ### Roadmap Evolution
 
@@ -266,8 +282,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-11T14:16:06.687Z
-Stopped at: Phase 102 — 102-10 human-verify checkpoint (manual browser UAT); Phase 95 parked on its real-phone UAT
+Last session: 2026-11-12T15:39:06.746Z
+Stopped at: Completed 96-12-PLAN.md (Gate 2 approved)
 Resume file: None
 
 ## Operator Next Steps

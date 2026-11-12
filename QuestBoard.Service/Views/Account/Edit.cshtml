@@ -5,31 +5,41 @@
     ViewData["Title"] = "Edit Profile";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
+}
+
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card modern-card">
             <div class="card-header modern-card-header">
-                <h2 class="mb-0">
-                    <i class="fas fa-user-edit text-warning me-2"></i>
+                <h1 class="mb-0">
+                    <i class="fas fa-user-edit me-2" aria-hidden="true"></i>
                     @ViewData["Title"]
-                </h2>
+                </h1>
             </div>
             <div class="card-body modern-card-body">
                 <form asp-action="Edit" method="post">
-                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-                    
+                    @if (ViewData.ModelState.TryGetValue(string.Empty, out var modelEntry) && modelEntry.Errors.Count > 0)
+                    {
+                        <div role="alert" class="refusal-line mb-3">
+                            <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                            <div asp-validation-summary="ModelOnly"></div>
+                        </div>
+                    }
+
                     <input asp-for="Id" type="hidden" />
-                    
+
                     <div class="mb-3">
                         <label asp-for="Name" class="form-label"></label>
-                        <input asp-for="Name" class="form-control" />
-                        <span asp-validation-for="Name" class="text-danger"></span>
+                        <input asp-for="Name" class="form-control" autocomplete="name" />
+                        <span asp-validation-for="Name"></span>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="Email" class="form-label"></label>
-                        <input asp-for="Email" class="form-control" type="email" />
-                        <span asp-validation-for="Email" class="text-danger"></span>
+                        <input asp-for="Email" class="form-control" type="email" autocomplete="email" />
+                        <span asp-validation-for="Email"></span>
                     </div>
 
                     <div class="mb-3 form-check">
@@ -40,23 +50,23 @@
                     <hr>
 
                     <div class="mb-3">
-                        <h5>Password Management</h5>
-                        <p class="text-muted">Want to change your password?</p>
-                        <a asp-action="ChangePassword" class="btn btn-outline-primary">
-                            <i class="fas fa-key me-2"></i>
+                        <h2 class="section-heading mb-2">Password Management</h2>
+                        <p class="account-prompt">Want to change your password?</p>
+                        <a asp-action="ChangePassword" class="btn btn-secondary">
+                            <i class="fas fa-key me-2" aria-hidden="true"></i>
                             Change Password
                         </a>
                     </div>
 
                     <hr>
 
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between gap-2">
                         <a asp-action="Profile" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>
-                            Cancel
+                            <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>
+                            Back to Profile
                         </a>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-save me-2"></i>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2" aria-hidden="true"></i>
                             Save Changes
                         </button>
                     </div>
@@ -65,4 +75,3 @@
         </div>
     </div>
 </div>
-

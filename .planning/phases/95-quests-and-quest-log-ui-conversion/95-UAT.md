@@ -3,7 +3,7 @@ status: complete
 phase: 95-quests-and-quest-log-ui-conversion
 source: [95-VERIFICATION.md, 95-18-SUMMARY.md, WINDOWS.md entries 3 and 32]
 started: 2026-11-12T10:05:00Z
-updated: 2026-11-12T10:50:00Z
+updated: 2026-11-12T11:00:00Z
 ---
 
 ## Current Test
@@ -90,21 +90,21 @@ evidence: |
 
 ### 12. The phone checklist on a real phone (95-18 checklist, WINDOWS #32 on a device)
 expected: On a real phone - /quests, a voting Quest Details page, Spectator and back, the character modal, Quest Create tabbing through the editor, Manage with Description and Rewards expanded, Quest Log and a log entry, Move as SuperAdmin - all serve the phone layout with 44px controls, no sideways scroll at 390, and disclosures announce their state.
-result: skipped
-reason: "Deferred follow-up: real-device check deferred by the user until after the production deploy (\"Let's skip the phone tests until it's deployed on production. Easier that way. We can always run a hotfix phase later.\"). Every item was checked under phone User-Agents with touch locally (items 1-11); only real-device behaviour remains."
+result: pass
+evidence: "User confirmed on 2026-11-12 after the v6.0.0 production deploy: "phone works, just tested", and confirmed both the real-phone checklist and the calendar subscription on a real device passed ("yes")."
 
 ### 13. Calendar subscription on a real device (WINDOWS #3)
 expected: A real phone subscribes via iOS Calendar, Google Calendar or Outlook; calendar naming, refresh latency, stale-entry check and camera QR scan behave.
-result: skipped
-reason: "Deferred follow-up: needs a real phone and calendar client; deferred by the user until after the production deploy (same decision as item 12). Phase 84 ledger entry, carried in this UAT at the phase 95 close-out."
+result: pass
+evidence: "User confirmed on 2026-11-12 after the v6.0.0 production deploy: "phone works, just tested", and confirmed both the real-phone checklist and the calendar subscription on a real device passed ("yes")."
 
 ## Summary
 
 total: 13
-passed: 11
+passed: 13
 issues: 0
 pending: 0
-skipped: 2
+skipped: 0
 blocked: 0
 
 ## Gaps

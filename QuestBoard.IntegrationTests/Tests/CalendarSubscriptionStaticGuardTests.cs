@@ -51,6 +51,9 @@ public class CalendarSubscriptionStaticGuardTests
     private static string ReadMobileView() => File.ReadAllText(
         ResolveRepoFile("QuestBoard.Service", "Views", "Account", "Profile.Mobile.cshtml"));
 
+    private static string ReadScript() => File.ReadAllText(
+        ResolveRepoFile("QuestBoard.Service", "wwwroot", "js", "profile-subscriptions.js"));
+
     private static string ExtractCssRule(string css, string selectorWithOpenBrace)
     {
         var start = css.IndexOf(selectorWithOpenBrace, StringComparison.Ordinal);
@@ -63,6 +66,10 @@ public class CalendarSubscriptionStaticGuardTests
 
     // ---- Copy parity between the layouts ----
 
+    // The empty-state sentence up to and including the clause that says what the address is like; one place to change it.
+    private const string EmptyStateSentence =
+        "Get this board's schedule onto your phone's own calendar app. The address you create acts like a password";
+
     // Every non-interpolated string from the Copywriting Contract, as data rather than as a
     // hand-copied fact per string -- adding a string to the contract means adding one entry here.
     public static IEnumerable<object[]> CopyContractStrings()
@@ -72,13 +79,11 @@ public class CalendarSubscriptionStaticGuardTests
             "Calendar Subscription",
             "Add Subscription",
             "No calendar subscriptions yet",
-            "Get this board's schedule onto your phone's own calendar app. The address below acts like a password",
+            EmptyStateSentence,
             "Created ",
             "Never fetched yet",
             "Last fetched",
             "Copy",
-            "Copied!",
-            "Press Ctrl+C",
             "Open in Calendar App",
             "If nothing happens, copy the address and add it in your calendar app manually.",
             "Show QR Code",
@@ -111,23 +116,51 @@ public class CalendarSubscriptionStaticGuardTests
                      "this codebase has shipped a control on one Profile layout and not the other more than once");
     }
 
-    // ---- The destructive confirm text is byte-identical ----
+    // ---- The strings the script owns ----
+
+    // The two Copy results are written by the shared script rather than by either view, so they are held where they live.
+    [Fact]
+    public void ScriptContractStrings_LiveInTheSharedScript()
+    {
+        var script = ReadScript();
+
+        script.Should().Contain("Copied!", because: "the script writes the Copy success label");
+        script.Should().Contain("Press Ctrl+C", because: "the script writes the clipboard-denied label");
+
+        ReadDesktopView().Should().Contain("~/js/profile-subscriptions.js",
+            because: "the desktop Profile loads the shared script that holds those strings");
+        ReadMobileView().Should().Contain("~/js/profile-subscriptions.js",
+            because: "the phone Profile loads the shared script that holds those strings");
+    }
+
+    // ---- The destructive confirmation text is byte-identical ----
 
     [Fact]
     public void DeleteConfirmText_IsByteIdenticalBetweenLayouts()
     {
-        var desktopConfirm = ExtractConfirmMessage(ReadDesktopView());
-        var mobileConfirm = ExtractConfirmMessage(ReadMobileView());
+        var desktop = ReadDesktopView();
+        var mobile = ReadMobileView();
+        var desktopMessage = ExtractDeleteMessage(desktop);
+        var mobileMessage = ExtractDeleteMessage(mobile);
 
-        desktopConfirm.Should().NotBeNullOrEmpty("the desktop layout must define the delete confirm() message");
-        mobileConfirm.Should().NotBeNullOrEmpty("the mobile layout must define the delete confirm() message");
-        mobileConfirm.Should().Be(desktopConfirm,
+        desktopMessage.Should().NotBeNullOrEmpty("the desktop layout must carry the delete dialog's message");
+        mobileMessage.Should().NotBeNullOrEmpty("the phone layout must carry the delete dialog's message");
+        mobileMessage.Should().Be(desktopMessage,
             because: "two hand-maintained copies of a destructive confirmation sentence drift; this is what stops it");
+
+        foreach (var message in new[] { desktopMessage, mobileMessage })
+        {
+            message.Should().Contain("? Any device using this address will silently stop receiving updates the next time it checks");
+            message.Should().Contain("this cannot be undone. You can always create a new subscription afterward.");
+        }
+
+        desktop.Should().NotContain("confirm(", because: "the browser prompt is replaced by the dialog");
+        mobile.Should().NotContain("confirm(", because: "the browser prompt is replaced by the dialog");
     }
 
-    private static string ExtractConfirmMessage(string source)
+    private static string ExtractDeleteMessage(string source)
     {
-        var match = Regex.Match(source, @"var message = 'Delete ""' \+ name \+ '(.*?)';");
+        var match = Regex.Match(source, @"<p[^>]*\bid=""deleteSubscriptionMessage""[^>]*>(.*?)</p>", RegexOptions.Singleline);
         return match.Success ? match.Groups[1].Value : string.Empty;
     }
 
@@ -176,11 +209,14 @@ public class CalendarSubscriptionStaticGuardTests
     {
         var desktop = ReadDesktopView();
         var mobile = ReadMobileView();
+        var script = ReadScript();
 
         desktop.Should().NotContainEquivalentOf(forbiddenPhrase,
             because: $"the desktop layout must never claim '{forbiddenPhrase}'");
         mobile.Should().NotContainEquivalentOf(forbiddenPhrase,
             because: $"the mobile layout must never claim '{forbiddenPhrase}'");
+        script.Should().NotContainEquivalentOf(forbiddenPhrase,
+            because: $"the shared script writes copy for both layouts and must never claim '{forbiddenPhrase}'");
     }
 
     // ---- The mobile touch-target floor exists and reaches its element ----
@@ -188,14 +224,14 @@ public class CalendarSubscriptionStaticGuardTests
     [Fact]
     public void MobileTouchTargetFloor_ExistsAndReachesTheIconButtons()
     {
-        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.mobile.css");
+        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.css");
         var css = File.ReadAllText(cssPath);
         var rule = ExtractCssRule(css, ".calendar-subscription-icon-btn {");
 
         rule.Should().NotBeEmpty(
-            because: $"account.mobile.css at '{cssPath}' must contain the .calendar-subscription-icon-btn rule");
-        rule.Should().Contain("min-height: 44px");
-        rule.Should().Contain("min-width: 44px");
+            because: $"account.css at '{cssPath}' must contain the .calendar-subscription-icon-btn rule");
+        rule.Should().Contain("min-height: var(--qb-hit-min)");
+        rule.Should().Contain("min-width: var(--qb-hit-min)");
 
         // A rule nothing selects is not a mitigation: confirm the mobile view actually applies
         // the class to its icon-only Copy and Show QR Code controls.
@@ -209,12 +245,12 @@ public class CalendarSubscriptionStaticGuardTests
     [Fact]
     public void RowLabelTruncationRule_ExistsAndReachesTheNameElement()
     {
-        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.mobile.css");
+        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.css");
         var css = File.ReadAllText(cssPath);
         var rule = ExtractCssRule(css, ".calendar-subscription-row .calendar-subscription-name {");
 
         rule.Should().NotBeEmpty(
-            because: $"account.mobile.css at '{cssPath}' must contain the scoped .calendar-subscription-row .calendar-subscription-name rule");
+            because: $"account.css at '{cssPath}' must contain the scoped .calendar-subscription-row .calendar-subscription-name rule");
         rule.Should().Contain("text-overflow: ellipsis");
 
         var mobile = ReadMobileView();
@@ -226,24 +262,23 @@ public class CalendarSubscriptionStaticGuardTests
             because: "the truncating class must actually reach the row's own name element, not just exist in the stylesheet");
     }
 
-    // ---- The code sizing rule exists in both stylesheets ----
+    // ---- The code sizing rule reaches both layouts ----
 
     [Fact]
-    public void QrCodeSizingRule_ExistsInBothStylesheets()
+    public void QrCodeSizingRule_ReachesBothLayouts()
     {
-        var desktopCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "legacy-pages.css"));
-        var mobileCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.mobile.css"));
+        var css = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.css"));
+        var rule = ExtractCssRule(css, ".calendar-subscription-qr svg {");
 
-        var desktopRule = ExtractCssRule(desktopCss, ".calendar-subscription-qr svg {");
-        var mobileRule = ExtractCssRule(mobileCss, ".calendar-subscription-qr svg {");
+        rule.Should().NotBeEmpty(because: "account.css must size the QR SVG");
+        rule.Should().Contain("max-width: 240px");
 
-        desktopRule.Should().NotBeEmpty(because: "legacy-pages.css must size the QR SVG for the desktop layout");
-        desktopRule.Should().Contain("max-width: 240px");
-
-        mobileRule.Should().NotBeEmpty(
-            because: "account.mobile.css must independently size the QR SVG -- the two layouts load different stylesheets, " +
-                     "so a rule present in only one would leave one layout's QR code unsized");
-        mobileRule.Should().Contain("max-width: 240px");
+        // Both layouts load the one sheet, so one rule sizes the code on either; a layout that stopped linking it
+        // would leave its QR code unsized.
+        ReadDesktopView().Should().Contain("~/css/account.css",
+            because: "the desktop Profile must link the sheet that sizes its QR SVG");
+        ReadMobileView().Should().Contain("~/css/account.css",
+            because: "the phone Profile must link the sheet that sizes its QR SVG");
     }
 
     // ---- No planning or tracking reference reached the source ----

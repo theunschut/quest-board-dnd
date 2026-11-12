@@ -1525,7 +1525,7 @@ Wave note: plans that edit tracked source, build or run the working tree, or com
 **Goal:** Convert the core loop (quest board, quest details, create and edit forms, DM manage, quest log, move) to the foundation, carrying the shared pieces the loop depends on, so a DM can post a quest and a player can sign up on converted pages. Convert the quest board, quest details, quest forms, DM manage, quest log and move pages, with the shared editor, signup modal and vote UI, to the foundation: scrimmed card surfaces, no inline styles or scripts, the approved poster relayout, and every page readable at 4.5:1 on phone and desktop.
 **Requirements**: TBD
 **Depends on:** Phase 94
-**Plans:** 18/18 plans executed
+**Plans:** 18/18 plans complete
 
 **Scope:**
 
@@ -1655,7 +1655,7 @@ Plans:
 **Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
-**Plans:** 12 plans
+**Plans:** 12/12 plans executed
 
 **Scope:**
 
@@ -1710,58 +1710,58 @@ Plus, specific to this phase: the foundation delivers `.modern-card--interactive
 Plans:
 **Wave 1**
 
-- [ ] 96-01-PLAN.md — Review environment: operator checkpoint (scratch tooling, database, privileged accounts, no other phase executing), capture-harness tracer, review accounts
+- [x] 96-01-PLAN.md — Review environment: operator checkpoint (scratch tooling, database, privileged accounts, no other phase executing), capture-harness tracer, review accounts
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 96-02-PLAN.md — Fixtures through the app forms, tools, frozen baseline on port 8097, fresh BEFORE capture of every page including the populated Profile
+- [x] 96-02-PLAN.md — Fixtures through the app forms, tools, frozen baseline on port 8097, fresh BEFORE capture of every page including the populated Profile
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 96-03-PLAN.md — Gate 1 package A: picker flat-row mockup, Home look and merge proposal, measured AccessDenied overflow fix
+- [x] 96-03-PLAN.md — Gate 1 package A: picker flat-row mockup, Home look and merge proposal, measured AccessDenied overflow fix
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 96-04-PLAN.md — Gate 1 package B: Profile mockups for both twins, item list, Gate 1 (operator, redraw loop)
+- [x] 96-04-PLAN.md — Gate 1 package B: Profile mockups for both twins, item list, Gate 1 (operator, redraw loop)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 96-05-PLAN.md — Picker first: merge, flat rows and keyboard fix in one change; account conversion guard test
+- [x] 96-05-PLAN.md — Picker first: merge, flat rows and keyboard fix in one change; account conversion guard test
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 96-06-PLAN.md — Profile onto the foundation: account sheet from the legacy Profile block, row-action relayout, meta-text contrast
+- [x] 96-06-PLAN.md — Profile onto the foundation: account sheet from the legacy Profile block, row-action relayout, meta-text contrast
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 96-07-PLAN.md — Profile script module, Delete dialog (still posts without script), empty-state wording, named row actions
+- [x] 96-07-PLAN.md — Profile script module, Delete dialog (still posts without script), empty-state wording, named row actions
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 96-08-PLAN.md — The four credential pages merged as one change; phone overflow fix
+- [x] 96-08-PLAN.md — The four credential pages merged as one change; phone overflow fix
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 96-09-PLAN.md — Edit twins, AccessDenied, phone account sheet retired
+- [x] 96-09-PLAN.md — Edit twins, AccessDenied, phone account sheet retired
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 96-10-PLAN.md — Home landing page (merged only on an explicit Gate 1 yes), area-wide guard and counts
+- [x] 96-10-PLAN.md — Home landing page (merged only on an explicit Gate 1 yes), area-wide guard and counts
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 96-11-PLAN.md — SetPassword verified with a freshly mailed link (operator)
+- [x] 96-11-PLAN.md — SetPassword verified with a freshly mailed link (operator)
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
-- [ ] 96-12-PLAN.md — AFTER sweep, accessibility-bar table, Gate 2 review sheet and gate (operator, gap-closure loop), release handoff
+- [x] 96-12-PLAN.md — AFTER sweep, accessibility-bar table, Gate 2 review sheet and gate (operator, gap-closure loop), release handoff
 
 ### Phase 97: Events, Series, Calendar and Agenda UI conversion
 
 **Goal:** Convert the calendar, agenda and events overview with their shared partials, keeping the date helpers and the linked-board entries intact. Convert the calendar, agenda, events overview, event details and series pages and their shared partials to the foundation, with a desktop month that fits without scrolling and every date still rendered through the wall-clock and local-time helpers.
 **Requirements**: TBD
 **Depends on:** Phase 94 and Phase 95 (Phase 95 patches the calendar vote UI this phase inherits)
-**Plans:** 0 plans
+**Plans:** 17 plans
 
 **Scope:**
 
@@ -1812,7 +1812,67 @@ Plus, specific to this phase: linked-entry dashed border, the inert `--static` r
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase to break down)
+**Wave 1**
+
+- [ ] 97-01-PLAN.md — Opening operator checkpoint (Phase 96 finished, SQL Server, Audit Board, review-ref pushes), Linux scratch setup, capture tracer
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 97-02-PLAN.md — Fixtures through the app forms, frozen baseline, BEFORE capture and BEFORE date-line text
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 97-03-PLAN.md — Gate 1 package A: calendar port mockups with real data, truncation strips, narrow header, legend, fit and behaviour checks
+- [ ] 97-04-PLAN.md — Tracer: today highlight from the board clock, behaviour test, ambient-clock guard additions
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 97-05-PLAN.md — Gate 1 package B: phone agenda and Events/Details reorder mockups, Agenda merge note, orphan review branch, Gate 1 (operator, redraw loop)
+- [ ] 97-06-PLAN.md — Date lines to Html.WallClock with byte-identical text (new server-only styles, nl-NL proof), area conversion guard
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 97-07-PLAN.md — Availability partials and Events/Index on both layouts
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 97-08-PLAN.md — Events/Details: approved reorder, script module, phone overflow fix
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 97-09-PLAN.md — Events/Create and Edit, series form module, recurrence label fix
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 97-10-PLAN.md — Series/Details
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 97-11-PLAN.md — Agenda on both layouts
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 97-12-PLAN.md — Phone calendar with the approved additions, Quest Details phone partial hidden words
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 97-13-PLAN.md — calendar.css into the pages layer, 4.5:1 weekday header, Quest Details re-verified, Phase 95 exceptions retired
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 97-14-PLAN.md — Server-rendered compact month, header, legend, linked-board guards, no-script sweep
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 97-15-PLAN.md — calendar-month.js: slots, "+N more" day panel, detail card; fit and behaviour checks
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [ ] 97-16-PLAN.md — Closing guards, zero counts, untouched-paths diff, recorded exceptions, full AFTER, accessibility table
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [ ] 97-17-PLAN.md — Gate 2 review sheet and orphan review branch, Gate 2 (operator, redraw loop), release handoff
 
 ### Phase 98: Characters, Contacts, DM profile and Players UI conversion
 
@@ -2041,35 +2101,6 @@ Plans:
 
 - [ ] TBD (run /gsd-plan-phase to break down)
 
-## Backlog
-
-Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
-
-### Phase 999.1: Voting from a Phone Calendar Entry (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-**Origin:** raised by the operator on 2026-09-18, after Phases 84 and 85 shipped and were tested on production — "would it be possible to vote in the calendar item on my phone, and will it then update my vote in the quest board?" Parked the same day, once the feasibility question was answered.
-
-**Feasibility verdict — the reason this is parked rather than planned.** It cannot be done through the subscription Phase 84 shipped, and no amount of design work changes that. A subscribed `.ics` URL is a one-way HTTP GET: the client polls, the server answers, and there is no return channel in the transport. Apple Calendar, Google Calendar's *From URL* calendars and Outlook's Internet Calendar Subscriptions all render a subscribed calendar read-only and run no scheduling against it, so emitting `ORGANIZER`, `ATTENDEE` and `RSVP=TRUE` would add bytes and produce no buttons. This confirms rather than contradicts Phase 84's own scope note ("a one-way subscription feed, not two-way sync … nothing a reader does in their calendar app ever writes back") and the writer's standing comment on why it emits no `METHOD` (`QuestBoard.Domain/Services/CalendarFeedWriter.cs`).
-
-**The two routes that could work, and what each costs:**
-
-- **iMIP — real email invitations.** The only mechanism that puts genuine Accept / Maybe / Decline buttons on a phone. The server mails a `METHOD:REQUEST` VEVENT from an `ORGANIZER` address it controls, with the reader as `ATTENDEE;RSVP=TRUE`; the client mails back a `METHOD:REPLY` carrying `PARTSTAT`. The data model fits unusually well — `ACCEPTED` / `TENTATIVE` / `DECLINED` is exactly `VoteType.Yes` / `Maybe` / `No`. The cost is not the outbound half. It is that **this codebase has no inbound mail of any kind**: `EmailService` is outbound `System.Net.Mail` SMTP only, and there is no MimeKit, no IMAP, no provider webhook anywhere in the solution. A real phase would have to add a mailbox plus polling or an inbound webhook, MIME parsing, iCalendar `REPLY` parsing, and `UID`-to-entity plus attendee-to-user matching. It would also have to answer two things that are not details: an inbound `From` header is forgeable, so a reply must carry its own secret (reply-address sub-addressing) or pass DKIM/SPF before it is allowed to change anyone's answer; and Gmail and Outlook auto-add invitations to the primary calendar, which would sit beside the identical session already arriving through the Phase 84 feed, because clients do not merge entries across calendars.
-- **Deep-link tap-through.** Reinstate `DESCRIPTION` (the reliable carrier; the `URL:` property is surfaced inconsistently, Google especially) with a token-authenticated link to a small Yes/Maybe/No page. Three taps — entry, link, answer — and it works in every client today with no inbound mail. Rejected for now on two grounds the operator weighed: it is not actually voting *in* the calendar item, only a shortcut back to the board; and it escalates what a leaked feed address costs, turning a read-only schedule disclosure into the ability to change someone's answers. Note it also reverses Phase 84 D-10, which dropped `DESCRIPTION` deliberately.
-
-**Scope correction that survives the parking:** quest *date* voting is out of reach on any route. The feed carries finalized quests only — Phase 85 locked candidate dates out on the grounds that a phone should not fill with dates that will mostly not happen — so there is nothing in the feed for a date vote to attach to. Event availability is the only thing a voting story can reach, and it is a natural fit: the feed already renders the answer outbound as the `(maybe)` / `(declined)` title suffix, so this would close a loop that is currently half-built.
-
-**Left open deliberately:** whether a decline should release a finalized quest seat and promote the waitlist. The operator chose to settle that in a discuss pass rather than now, so it is not decided here.
-
-**Revive this if:** manually opening the board to answer proves annoying enough in production use to justify the build, or inbound mail arrives in the project for some other reason — the iMIP route is a far smaller phase once a parsed inbound mailbox already exists.
-
-Plans:
-
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
 ### Phase 102: Board deletion
 
 **Goal:** A super admin can delete a board that no longer has any members, without a server error. Everything that belongs only to that board goes with it, and anything that must outlive the board (users, and whatever they own across boards) is unlinked instead of deleted.
@@ -2115,3 +2146,32 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 102-10-PLAN.md — Full suite, required SQL Server run, and manual check on the real database (checkpoint)
+
+## Backlog
+
+Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-backlog`.
+
+### Phase 999.1: Voting from a Phone Calendar Entry (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Origin:** raised by the operator on 2026-09-18, after Phases 84 and 85 shipped and were tested on production — "would it be possible to vote in the calendar item on my phone, and will it then update my vote in the quest board?" Parked the same day, once the feasibility question was answered.
+
+**Feasibility verdict — the reason this is parked rather than planned.** It cannot be done through the subscription Phase 84 shipped, and no amount of design work changes that. A subscribed `.ics` URL is a one-way HTTP GET: the client polls, the server answers, and there is no return channel in the transport. Apple Calendar, Google Calendar's *From URL* calendars and Outlook's Internet Calendar Subscriptions all render a subscribed calendar read-only and run no scheduling against it, so emitting `ORGANIZER`, `ATTENDEE` and `RSVP=TRUE` would add bytes and produce no buttons. This confirms rather than contradicts Phase 84's own scope note ("a one-way subscription feed, not two-way sync … nothing a reader does in their calendar app ever writes back") and the writer's standing comment on why it emits no `METHOD` (`QuestBoard.Domain/Services/CalendarFeedWriter.cs`).
+
+**The two routes that could work, and what each costs:**
+
+- **iMIP — real email invitations.** The only mechanism that puts genuine Accept / Maybe / Decline buttons on a phone. The server mails a `METHOD:REQUEST` VEVENT from an `ORGANIZER` address it controls, with the reader as `ATTENDEE;RSVP=TRUE`; the client mails back a `METHOD:REPLY` carrying `PARTSTAT`. The data model fits unusually well — `ACCEPTED` / `TENTATIVE` / `DECLINED` is exactly `VoteType.Yes` / `Maybe` / `No`. The cost is not the outbound half. It is that **this codebase has no inbound mail of any kind**: `EmailService` is outbound `System.Net.Mail` SMTP only, and there is no MimeKit, no IMAP, no provider webhook anywhere in the solution. A real phase would have to add a mailbox plus polling or an inbound webhook, MIME parsing, iCalendar `REPLY` parsing, and `UID`-to-entity plus attendee-to-user matching. It would also have to answer two things that are not details: an inbound `From` header is forgeable, so a reply must carry its own secret (reply-address sub-addressing) or pass DKIM/SPF before it is allowed to change anyone's answer; and Gmail and Outlook auto-add invitations to the primary calendar, which would sit beside the identical session already arriving through the Phase 84 feed, because clients do not merge entries across calendars.
+- **Deep-link tap-through.** Reinstate `DESCRIPTION` (the reliable carrier; the `URL:` property is surfaced inconsistently, Google especially) with a token-authenticated link to a small Yes/Maybe/No page. Three taps — entry, link, answer — and it works in every client today with no inbound mail. Rejected for now on two grounds the operator weighed: it is not actually voting *in* the calendar item, only a shortcut back to the board; and it escalates what a leaked feed address costs, turning a read-only schedule disclosure into the ability to change someone's answers. Note it also reverses Phase 84 D-10, which dropped `DESCRIPTION` deliberately.
+
+**Scope correction that survives the parking:** quest *date* voting is out of reach on any route. The feed carries finalized quests only — Phase 85 locked candidate dates out on the grounds that a phone should not fill with dates that will mostly not happen — so there is nothing in the feed for a date vote to attach to. Event availability is the only thing a voting story can reach, and it is a natural fit: the feed already renders the answer outbound as the `(maybe)` / `(declined)` title suffix, so this would close a loop that is currently half-built.
+
+**Left open deliberately:** whether a decline should release a finalized quest seat and promote the waitlist. The operator chose to settle that in a discuss pass rather than now, so it is not decided here.
+
+**Revive this if:** manually opening the board to answer proves annoying enough in production use to justify the build, or inbound mail arrives in the project for some other reason — the iMIP route is a far smaller phase once a parsed inbound mailbox already exists.
+
+Plans:
+
+- [ ] TBD (promote with /gsd-review-backlog when ready)

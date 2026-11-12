@@ -113,6 +113,10 @@ public class ProfileCalendarSubscriptionTests(WebApplicationFactoryBase factory)
 
     // ---- Empty state ----
 
+    // The empty-state sentence up to and including the clause that says what the address is like; one place to change it.
+    private const string EmptyStateSentence =
+        "Get this board's schedule onto your phone's own calendar app. The address you create acts like a password";
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -126,8 +130,7 @@ public class ProfileCalendarSubscriptionTests(WebApplicationFactoryBase factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("No calendar subscriptions yet");
-        html.Should().Contain(
-            "Get this board's schedule onto your phone's own calendar app. The address below acts like a password");
+        html.Should().Contain(EmptyStateSentence);
         html.Should().Contain("Add Subscription");
     }
 
@@ -277,7 +280,7 @@ public class ProfileCalendarSubscriptionTests(WebApplicationFactoryBase factory)
         if (mobile)
         {
             html.Should().Contain("calendar-subscription-name",
-                because: "the mobile row label element must carry the class the ellipsis rule in account.mobile.css targets");
+                because: "the mobile row label element must carry the class the ellipsis rule in account.css targets");
         }
     }
 
