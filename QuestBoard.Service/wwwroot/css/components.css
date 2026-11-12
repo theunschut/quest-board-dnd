@@ -98,7 +98,6 @@
    * Card: clear glass over a brown scrim, so what is underneath never decides whether the text reads. The surface
    * sets the text colour and everything inside inherits it; a descendant only names a colour when it genuinely
    * differs (a status, a link, a control). The glass is the top background layer and the scrim sits beneath it.
-   * There is no backdrop blur: the card repeats on a page, and blur on every item is what makes scrolling stutter.
    */
   .modern-card {
     --bs-card-bg: transparent;
@@ -120,11 +119,28 @@
    * The title row. The page title is the one Display-step line on a screen: the display face at 28px. Only the title
    * takes the display face; buttons and badges in the header keep the body face.
    */
+  /*
+   * A page panel softens the board behind it, so the glass reads as one warm surface instead of showing every plank
+   * edge and nail. Only the few large panels of a page blur: a card that repeats in a list is interactive and stays
+   * unblurred, because blur on every item is what makes scrolling stutter, and a card nested in a panel already sits
+   * on a blurred surface.
+   */
+  .modern-card:not(.modern-card--interactive) {
+    -webkit-backdrop-filter: blur(var(--qb-glass-blur));
+    backdrop-filter: blur(var(--qb-glass-blur));
+  }
+
+  .modern-card .modern-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* The title row is a darker band over the card: a second scrim layer under the title. */
   .modern-card-header {
     padding: var(--qb-space-md) var(--qb-space-lg);
     border-bottom: 1px solid var(--qb-surface-glass-border);
     border-radius: var(--qb-radius-lg) var(--qb-radius-lg) 0 0;
-    background-color: transparent;
+    background-color: var(--qb-surface-scrim);
     color: var(--qb-fg);
   }
 
@@ -137,9 +153,30 @@
     overflow-wrap: anywhere;
   }
 
+  /*
+   * The desktop page title is gold: at the 28px display step it is large text, and on the title band it measures well
+   * over 4.5:1. The Quest form keeps a parchment title so the gold stays with its one commit button, and the phone
+   * title is 20px, which is not large text, so it stays parchment too.
+   */
+  .modern-card-header h1 {
+    color: var(--qb-accent);
+  }
+
+  .quest-form-page .modern-card-header h1,
+  .mobile-layout .modern-card-header h1 {
+    color: var(--qb-fg);
+  }
+
   /* The phone has no display step: a card title there is the heading step, 20px. */
   .mobile-layout .modern-card-header :is(h1, h2) {
     font-size: var(--qb-text-lg);
+  }
+
+  /* A sidebar card is not a second page title: its title is the heading step in the body face. */
+  .modern-card--aside .modern-card-header :is(h1, h2) {
+    font-family: var(--qb-font-body);
+    font-size: var(--qb-text-lg);
+    letter-spacing: normal;
   }
 
   /* The line under a page title, in the card's own colour family at the label step. */
