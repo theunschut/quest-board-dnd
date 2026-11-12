@@ -14,6 +14,10 @@
     <link rel="stylesheet" href="~/css/calendar.css" asp-append-version="true" />
 }
 
+@section Scripts {
+    <script type="module" src="~/js/calendar-month.js" asp-append-version="true"></script>
+}
+
 @* Board Availability and My Agenda are not repeated here: both stay one click away in the navigation bar. *@
 <div class="calendar-page">
     <div class="card modern-card calendar-card@(monthIsEmpty ? " calendar-card--empty" : "")">
@@ -95,4 +99,17 @@
             @await Html.PartialAsync("_Calendar", Model)
         </div>
     </div>
+</div>
+
+@* The detail card and the day panel are empty here and the script fills them. They sit outside the month wrapper
+   because the script moves both to the body: the month card is a blurred panel, and a fixed-position child of a
+   blurred element is placed against that element instead of the window. *@
+<div class="cal-card" aria-hidden="true" hidden></div>
+<div class="cal-panel" id="cal-panel" role="dialog" aria-modal="false" aria-labelledby="cal-panel-title" tabindex="-1" hidden>
+    <div class="cal-panel__head">
+        <h2 class="cal-panel__title" id="cal-panel-title"></h2>
+        <p class="cal-panel__count"></p>
+        <button type="button" class="cal-panel__close" aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button>
+    </div>
+    <ul class="cal-panel__rows"></ul>
 </div>

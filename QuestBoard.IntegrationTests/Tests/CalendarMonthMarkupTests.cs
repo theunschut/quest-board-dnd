@@ -317,6 +317,53 @@ public class CalendarMonthMarkupTests(WebApplicationFactoryBase factory)
         html.Should().NotContain("calendar-day__top");
     }
 
+    // ---- Overlay shells and the month script ----
+
+    [Fact]
+    public async Task Shells_RenderOnlyOnTheCalendarPage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await CreateViewerAsync("monthmarkup_shells", (BoardA, GroupRole.Player));
+        var questId = await SeedQuestAsync(BoardA, "Shell Quest", "Dungeon Master Dana", [10, 17]);
+
+        var month = await GetAsync(client);
+
+        // The detail card is one empty, hidden shell the script fills.
+        Regex.Matches(month, "<div class=\"cal-card\"[^>]*>").Should().ContainSingle()
+            .Which.Value.Should().Contain("aria-hidden=\"true\"").And.Contain("hidden");
+
+        // The day panel is one hidden, non-modal dialog named by its own heading, with a Close button.
+        var panelStart = month.IndexOf("<div class=\"cal-panel\"", StringComparison.Ordinal);
+        panelStart.Should().BeGreaterThan(-1);
+        Regex.Matches(month, "class=\"cal-panel\"").Should().HaveCount(1);
+        var panel = month[panelStart..month.IndexOf("</ul>", panelStart, StringComparison.Ordinal)];
+        panel.Should().Contain("id=\"cal-panel\"");
+        panel.Should().Contain("role=\"dialog\"");
+        panel.Should().Contain("aria-modal=\"false\"");
+        panel.Should().Contain("aria-labelledby=\"cal-panel-title\"");
+        panel.Should().Contain("hidden");
+        Regex.IsMatch(panel, "<h2 class=\"cal-panel__title\" id=\"cal-panel-title\"></h2>").Should().BeTrue();
+        panel.Should().Contain("class=\"cal-panel__count\"");
+        Regex.IsMatch(panel, "<button type=\"button\" class=\"cal-panel__close\" aria-label=\"Close\"><i class=\"fas fa-times\" aria-hidden=\"true\"></i></button>")
+            .Should().BeTrue("the Close button is a real button with an accessible name and a hidden icon");
+        panel.Should().Contain("<ul class=\"cal-panel__rows\">");
+
+        // Both shells sit outside the month wrapper, so a blurred ancestor never holds them, even before
+        // the script moves them to the body.
+        var shellsStart = month.IndexOf("<div class=\"cal-card\"", StringComparison.Ordinal);
+        var wrapperStart = month.IndexOf("<div class=\"calendar-page\"", StringComparison.Ordinal);
+        shellsStart.Should().BeGreaterThan(wrapperStart);
+        var before = month[wrapperStart..shellsStart];
+        Regex.Matches(before, "<div\\b").Count.Should().Be(Regex.Matches(before, "</div>").Count,
+            "the month wrapper has already closed when the shells begin");
+        month.Should().MatchRegex("<script type=\"module\" src=\"/js/calendar-month\\.js");
+
+        var details = await GetAsync(client, $"/Quest/Details/{questId}");
+        details.Should().NotContain("cal-card");
+        details.Should().NotContain("cal-panel");
+        details.Should().NotContain("calendar-month.js");
+    }
+
     // ---- Header, legend, empty month ----
 
     [Fact]

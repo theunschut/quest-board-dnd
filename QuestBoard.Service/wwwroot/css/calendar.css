@@ -436,9 +436,14 @@
     .calendar-page .cal-entries > li {
         min-width: 0;
     }
+    .calendar-page .cal-entries > li[hidden] {
+        display: none;
+    }
 
     /* ---------- Status marker: a glyph on a status fill; the shape of the glyph carries the status ---------- */
-    .calendar-page .cal-mark {
+    .calendar-page .cal-mark,
+    .cal-card .cal-mark,
+    .cal-panel .cal-mark {
         /* A thin ring gives the marker its own edge on parchment (ink) and on the dark surfaces (parchment). */
         --mark-ring: var(--qb-ink-muted);
         display: inline-flex;
@@ -454,19 +459,26 @@
         font-size: 0.625rem;
         line-height: 1;
     }
-    .calendar-page .calendar-legend .cal-mark {
+    .calendar-page .calendar-legend .cal-mark,
+    .cal-card .cal-mark {
         --mark-ring: var(--qb-fg);
     }
     .calendar-page .cal-mark--finalized,
+    .cal-card .cal-mark--finalized,
+    .cal-panel .cal-mark--finalized,
     .calendar-page .cal-mark--vote-yes {
         background: var(--qb-success);
         color: var(--qb-success-fg);
     }
-    .calendar-page .cal-mark--event {
+    .calendar-page .cal-mark--event,
+    .cal-card .cal-mark--event,
+    .cal-panel .cal-mark--event {
         background: var(--qb-event);
         color: var(--qb-event-fg);
     }
-    .calendar-page .cal-mark--cancelled {
+    .calendar-page .cal-mark--cancelled,
+    .cal-card .cal-mark--cancelled,
+    .cal-panel .cal-mark--cancelled {
         background: var(--qb-neutral);
         color: var(--qb-neutral-fg);
     }
@@ -558,6 +570,270 @@
         display: none;
     }
 
+    /* ---------- "+N more": a real button, the full width of the row ---------- */
+    .calendar-page .cal-more {
+        --qb-focus-offset: 0px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: var(--qb-space-xs);
+        width: 100%;
+        min-width: 0;
+        height: var(--cal-row);
+        padding: 0 var(--qb-space-sm);
+        border: 1px solid var(--qb-border-strong);
+        border-radius: var(--qb-radius-sm);
+        background: transparent;
+        color: var(--qb-fg);
+        font-family: inherit;
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+        line-height: 18px;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color var(--qb-dur-fast) var(--qb-ease), border-color var(--qb-dur-fast) var(--qb-ease);
+    }
+    .calendar-page .cal-more:hover,
+    .calendar-page .cal-more[aria-expanded='true'] {
+        border-color: var(--qb-fg);
+        background: var(--qb-surface-glass-hover);
+    }
+    .calendar-page .cal-more:focus-visible {
+        z-index: 2;
+    }
+
+    /*
+     * Floating surfaces. The detail card and the day panel share one opaque look and are mounted on the body by the
+     * script, so their rules cannot sit under the page wrapper; they belong to the month alone and no other page
+     * renders them.
+     */
+    .cal-card,
+    .cal-panel {
+        --cal-mark: 16px;
+        position: fixed;
+        top: var(--pop-y, 0);
+        left: var(--pop-x, 0);
+        z-index: 1050;
+        border: 1px solid var(--qb-border-strong);
+        border-radius: var(--qb-radius-md);
+        background: var(--qb-surface-overlay);
+        box-shadow: var(--qb-shadow-overlay);
+        color: var(--qb-fg);
+        animation: cal-pop-in var(--qb-dur-fast) var(--qb-ease);
+    }
+    .cal-card[hidden],
+    .cal-panel[hidden] {
+        display: none;
+    }
+    @keyframes cal-pop-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .cal-card {
+        z-index: 1060;
+        width: 352px;
+        max-width: calc(100vw - 2 * var(--qb-space-sm));
+        padding: var(--qb-space-sm);
+        font-size: var(--qb-text-sm);
+        line-height: 1.4;
+    }
+    /* An invisible margin so the pointer can cross the gap between the entry and the card without losing it. */
+    .cal-card::before {
+        content: '';
+        position: absolute;
+        inset: calc(-1 * var(--qb-space-sm));
+        z-index: -1;
+    }
+    .cal-card .cal-detail__status {
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-sm);
+        margin: 0;
+        color: var(--qb-fg-muted);
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .cal-card .cal-detail__title {
+        margin: var(--qb-space-xs) 0 var(--qb-space-sm);
+        color: var(--qb-fg);
+        font-size: var(--qb-text-base);
+        font-weight: var(--qb-weight-strong);
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+    .cal-card .cal-detail__facts {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 2px var(--qb-space-sm);
+        margin: 0;
+    }
+    .cal-card .cal-detail__facts dt {
+        color: var(--qb-fg-muted);
+        font-weight: var(--qb-weight-regular);
+    }
+    .cal-card .cal-detail__facts dd {
+        margin: 0;
+        color: var(--qb-fg);
+        font-weight: var(--qb-weight-strong);
+        overflow-wrap: anywhere;
+    }
+    .cal-card .cal-detail__note {
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-xs);
+        margin: var(--qb-space-sm) 0 0;
+        color: var(--qb-fg-muted);
+    }
+
+    /* ---------- Day panel: a non-modal dialog anchored to the cell ---------- */
+    .cal-panel {
+        display: flex;
+        flex-direction: column;
+        width: 420px;
+        max-width: calc(100vw - 2 * var(--qb-space-sm));
+        max-height: calc(100dvh - var(--qb-nav-h) - 2 * var(--qb-space-sm));
+    }
+    .cal-panel .cal-panel__head {
+        display: flex;
+        flex: none;
+        align-items: baseline;
+        gap: var(--qb-space-sm);
+        padding: var(--qb-space-sm) var(--qb-space-sm) var(--qb-space-sm) var(--qb-space-md);
+        border-bottom: 1px solid var(--qb-border);
+    }
+    .cal-panel .cal-panel__title {
+        margin: 0;
+        color: var(--qb-fg);
+        font-size: var(--qb-text-lg);
+        font-weight: var(--qb-weight-strong);
+        line-height: var(--qb-leading-heading);
+    }
+    .cal-panel .cal-panel__count {
+        flex: 1 1 auto;
+        margin: 0;
+        color: var(--qb-fg-muted);
+        font-size: var(--qb-text-sm);
+        white-space: nowrap;
+    }
+    .cal-panel .cal-panel__close {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        align-self: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--qb-border-strong);
+        border-radius: var(--qb-radius-md);
+        background: transparent;
+        color: var(--qb-fg);
+        font-size: var(--qb-text-base);
+        cursor: pointer;
+    }
+    .cal-panel .cal-panel__close:hover {
+        border-color: var(--qb-fg);
+        background: var(--qb-surface-glass-hover);
+    }
+    .cal-panel .cal-panel__rows {
+        display: flex;
+        flex-direction: column;
+        gap: var(--qb-space-sm);
+        min-height: 0;
+        margin: 0;
+        padding: var(--qb-space-sm);
+        overflow-y: auto;
+        list-style: none;
+    }
+    .cal-panel .cal-panel__row {
+        --qb-focus-offset: 1px;
+        --cal-mark: 24px;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0 var(--qb-space-sm);
+        min-height: 48px;
+        padding: var(--qb-space-xs) var(--qb-space-sm);
+        border: 1px solid transparent;
+        border-radius: var(--qb-radius-md);
+        background: var(--qb-surface-paper);
+        color: var(--qb-ink);
+        text-decoration: none;
+    }
+    .cal-panel a.cal-panel__row:hover,
+    .cal-panel a.cal-panel__row:focus-visible {
+        color: var(--qb-ink);
+    }
+    .cal-panel a.cal-panel__row:hover .cal-panel__row-title {
+        text-decoration: underline;
+    }
+    .cal-panel .cal-panel__row .cal-mark {
+        font-size: 0.75rem;
+    }
+    .cal-panel .cal-panel__row--linked {
+        border: 1px dashed var(--qb-ink-muted);
+        background: var(--qb-surface-paper-alt);
+    }
+    .cal-panel .cal-panel__row--cancelled {
+        background: var(--qb-surface-paper-alt);
+    }
+    .cal-panel .cal-panel__row--cancelled .cal-panel__row-title {
+        color: var(--qb-ink-muted);
+        text-decoration: line-through;
+    }
+    .cal-panel .cal-panel__row-text {
+        display: block;
+        min-width: 0;
+    }
+    .cal-panel .cal-panel__row-line1 {
+        display: flex;
+        align-items: baseline;
+        gap: var(--qb-space-sm);
+        min-width: 0;
+    }
+    .cal-panel .cal-panel__row-time {
+        flex: none;
+        color: var(--qb-ink-muted);
+        font-size: var(--qb-text-sm);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .cal-panel .cal-panel__row-title {
+        display: -webkit-box;
+        min-width: 0;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        font-size: var(--qb-text-base);
+        font-weight: var(--qb-weight-strong);
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+    .cal-panel .cal-panel__row-line2 {
+        display: flex;
+        flex-wrap: wrap;
+        color: var(--qb-ink-muted);
+        font-size: var(--qb-text-sm);
+        line-height: 1.4;
+    }
+    .cal-panel .cal-panel__row-line2 > span + span::before {
+        margin-inline: var(--qb-space-sm);
+        content: '\00b7';
+        content: '\00b7' / '';
+    }
+    .cal-panel .cal-panel__row-line2 .fas {
+        margin-inline-end: 2px;
+    }
+
     /*
       * Between 768px and the fit rule the cells are about 100px wide but grow with their entries, so an entry may take
       * a second line instead of squeezing its time, title and markers into one: the markers move up beside the time and
@@ -638,6 +914,16 @@
         }
         .calendar-page .calendar-day {
             --cal-cell-pad-x: 2px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .cal-card,
+        .cal-panel {
+            animation: none;
+        }
+        .calendar-page .cal-more {
+            transition: none;
         }
     }
 

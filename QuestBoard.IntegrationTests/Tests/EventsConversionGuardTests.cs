@@ -141,6 +141,7 @@ public class EventsConversionGuardTests
         "QuestBoard.Service/wwwroot/js/event-details.js",
         "QuestBoard.Service/wwwroot/js/event-series-form.js",
         "QuestBoard.Service/wwwroot/js/agenda.js",
+        "QuestBoard.Service/wwwroot/js/calendar-month.js",
         "QuestBoard.Service/wwwroot/css/events-overview.css",
         "QuestBoard.Service/wwwroot/css/events-overview.mobile.css",
         "QuestBoard.Service/wwwroot/css/event-forms.css",
@@ -380,16 +381,22 @@ public class EventsConversionGuardTests
     public void CalendarSheet_KeepsMonthAndQuestDetailsRulesApart()
     {
         // Every rule is either the shared weekday header, the month's own wrapper (the page root that holds
-        // its sizing variables) or sits under one of the two page scopes, so a rule written for the month can
-        // never reach Quest Details and the other way round.
+        // its sizing variables), sits under one of the two page scopes, or belongs to the month's floating card
+        // or day panel, which the script mounts on the body (so they cannot sit under the page wrapper) and
+        // which no other page renders. A rule written for the month can therefore never reach Quest Details
+        // and the other way round. The steps of the fade keyframes are not selectors.
         var allowedStarts = new[] { ".calendar-page ", ".details-page ", ".calendar-grid.details-page", ".quest-details-page " };
+        var overlayRoots = new[] { ".cal-card", ".cal-panel" };
+        var keyframeSteps = new[] { "from", "to" };
         var shared = new[] { ".calendar-header", ".calendar-day-header", ".calendar-day-header:last-child" };
 
         var unscoped = CssRuleSelectors(StripCssComments(ReadRepoFile(SheetPath("calendar.css"))))
-            .Where(sel => !shared.Contains(sel) && sel != ".calendar-page" && !allowedStarts.Any(start => sel.StartsWith(start, StringComparison.Ordinal)))
+            .Where(sel => !shared.Contains(sel) && sel != ".calendar-page" && !keyframeSteps.Contains(sel)
+                          && !allowedStarts.Any(start => sel.StartsWith(start, StringComparison.Ordinal))
+                          && !overlayRoots.Any(root => sel.StartsWith(root, StringComparison.Ordinal)))
             .ToList();
 
-        unscoped.Should().BeEmpty("only the weekday header may be shared between the month and Quest Details");
+        unscoped.Should().BeEmpty("only the weekday header and the month's own floating card and panel may sit outside the two page scopes");
     }
 
     [Fact]
@@ -488,6 +495,94 @@ public class EventsConversionGuardTests
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/agenda.js");
         Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\b|insertAdjacentHTML|document\.write")
             .Select(m => m.Value).Should().BeEmpty("agenda.js must build no markup from strings");
+    }
+
+    private const string CalendarMonthScript = "QuestBoard.Service/wwwroot/js/calendar-month.js";
+
+    // The text of the braces that open at the first '{' at or after the given index, counted to the matching close.
+    private static string BracedBlockFrom(string text, int index)
+    {
+        var open = text.IndexOf('{', index);
+        open.Should().BeGreaterThan(-1);
+        var depth = 0;
+        for (var i = open; i < text.Length; i++)
+        {
+            if (text[i] == '{') depth++;
+            else if (text[i] == '}' && --depth == 0) return text[open..(i + 1)];
+        }
+
+        throw new InvalidOperationException("Unbalanced braces in the scanned script.");
+    }
+
+    // The text of the call whose opening parenthesis is the first one at or after the given index.
+    private static string CallArgumentsFrom(string text, int index)
+    {
+        var open = text.IndexOf('(', index);
+        open.Should().BeGreaterThan(-1);
+        var depth = 0;
+        for (var i = open; i < text.Length; i++)
+        {
+            if (text[i] == '(') depth++;
+            else if (text[i] == ')' && --depth == 0) return text[open..(i + 1)];
+        }
+
+        throw new InvalidOperationException("Unbalanced parentheses in the scanned script.");
+    }
+
+    private static string FunctionBody(string script, string name)
+    {
+        var start = script.IndexOf("function " + name + "(", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, $"the script defines {name}");
+        return BracedBlockFrom(script, script.IndexOf(')', start));
+    }
+
+    [Fact]
+    public void CalendarMonthModule_WritesNoMarkupFromStrings()
+    {
+        // The month script copies server-encoded nodes and sets text, so it builds every node with
+        // createElement, cloneNode and textContent, and the only style it writes is a custom property.
+        var script = ReadRepoFile(CalendarMonthScript);
+        Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\b|insertAdjacentHTML|document\.write|cssText")
+            .Select(m => m.Value).Should().BeEmpty("calendar-month.js must build no markup from strings");
+        Regex.Matches(script, @"\.style\.(?!setProperty\b|removeProperty\b)\w+")
+            .Select(m => m.Value).Should().BeEmpty("the only style the month script writes is a custom property");
+        Regex.Matches(script, @"\.style\.setProperty\(\s*'(?!--pop-[xy]')[^']*'")
+            .Select(m => m.Value).Should().BeEmpty("the card and panel are positioned only through --pop-x and --pop-y");
+    }
+
+    [Fact]
+    public void CalendarMonthModule_ReadsTheSlotCountAndHasNoHoverOpen()
+    {
+        var script = ReadRepoFile(CalendarMonthScript);
+        script.Should().Contain("getPropertyValue('--cal-slots')", "the slot count comes from the stylesheet's height bands");
+
+        // The day panel opens from a click, a tap, Enter or Space on "+N more" and from nothing else: no hover
+        // listener reaches the opener, and neither the opener nor the closer waits on a timer.
+        foreach (Match listener in Regex.Matches(script, @"addEventListener\(\s*'(?:mouseenter|mouseover|mousemove|pointerenter|pointerover|pointermove)'"))
+        {
+            CallArgumentsFrom(script, listener.Index).Should().NotContain("openPanel",
+                "a hover must never open the day panel");
+        }
+
+        foreach (var name in new[] { "openPanel", "closePanel" })
+        {
+            FunctionBody(script, name).Should().NotMatchRegex(@"setTimeout|setInterval|requestAnimationFrame",
+                $"{name} must not wait on a timer");
+        }
+
+        script.Should().NotMatchRegex(@"data-open-mode|cal-mode", "there is no hover or click mode switch");
+    }
+
+    [Fact]
+    public void CalendarMonthModule_MountsOverlaysOnBody()
+    {
+        // The month card is a blurred panel, and a fixed-position child of a blurred element is positioned
+        // against that element and not the window, so the card and the panel move to the body at start-up and
+        // are placed from viewport rectangles.
+        var script = ReadRepoFile(CalendarMonthScript);
+        script.Should().MatchRegex(@"document\.body\.(?:append|appendChild)\(", "the overlays are mounted on the body");
+        script.Should().Contain("getBoundingClientRect()", "the overlays are placed from viewport rectangles");
+        script.Should().Contain("cloneNode(true)", "the card shows a copy of the entry's server-rendered detail");
     }
 
     [Fact]
