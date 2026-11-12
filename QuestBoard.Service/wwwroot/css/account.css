@@ -46,6 +46,7 @@
    */
   .calendar-subscription-address {
     flex: 1 1 100%;
+    width: 100%;
     min-width: 0;
     overflow-x: auto;
     white-space: nowrap;
@@ -63,5 +64,52 @@
     max-width: 240px;
     display: block;
     margin: 0 auto;
+  }
+
+  /* The read-only fields: a label step in the muted text colour above or beside a body-step value. */
+  .profile-fields dt {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .profile-fields dd {
+    margin: 0 0 var(--qb-space-md);
+    overflow-wrap: anywhere;
+    color: var(--qb-fg);
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  /*
+   * Phone rows. Copy and Show QR Code are icon-only there, so they take the full finger-sized hit area, and a long name
+   * is cut with an ellipsis instead of wrapping the row.
+   */
+  .calendar-subscription-icon-btn {
+    min-height: var(--qb-hit-min);
+    min-width: var(--qb-hit-min);
+  }
+
+  .calendar-subscription-row {
+    padding-block: var(--qb-space-md);
+    border-bottom: 1px solid var(--qb-border);
+  }
+
+  .calendar-subscription-row:first-child {
+    padding-top: 0;
+  }
+
+  .calendar-subscription-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .calendar-subscription-row .calendar-subscription-name {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }

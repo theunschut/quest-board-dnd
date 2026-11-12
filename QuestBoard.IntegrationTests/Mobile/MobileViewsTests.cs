@@ -888,9 +888,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// (Profile) Mobile UA on /Account/Profile renders account-card-mobile glass card layout.
-    /// Uses authenticated request — AccountController.Profile carries [Authorize].
-    /// Test starts RED — Profile.Mobile.cshtml does not exist yet.
+    /// (Profile) Mobile UA on /Account/Profile renders the phone layout on the shared card, with its document
+    /// title, the building-access wording the desktop uses and the area sheet, and no longer links the phone
+    /// account sheet. Uses authenticated request — AccountController.Profile carries [Authorize].
     /// </summary>
     [Fact]
     public async Task MobileAccountProfile_MobileUserAgent_RendersGlassCardLayout()
@@ -905,7 +905,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("account-card-mobile");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("modern-card");
+        html.Should().Contain("account.css");
+        html.Should().NotContain("account.mobile.css");
+        html.Should().MatchRegex("<title>\\s*Profile - ");
+        (html.Contains("Has Building Key") || html.Contains("No Building Key")).Should().BeTrue(
+            because: "the phone reads the building-access state with the desktop's wording");
     }
 
     // -----------------------------------------------------------------------

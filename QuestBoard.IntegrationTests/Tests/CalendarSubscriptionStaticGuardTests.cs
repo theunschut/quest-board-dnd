@@ -188,14 +188,14 @@ public class CalendarSubscriptionStaticGuardTests
     [Fact]
     public void MobileTouchTargetFloor_ExistsAndReachesTheIconButtons()
     {
-        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.mobile.css");
+        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.css");
         var css = File.ReadAllText(cssPath);
         var rule = ExtractCssRule(css, ".calendar-subscription-icon-btn {");
 
         rule.Should().NotBeEmpty(
-            because: $"account.mobile.css at '{cssPath}' must contain the .calendar-subscription-icon-btn rule");
-        rule.Should().Contain("min-height: 44px");
-        rule.Should().Contain("min-width: 44px");
+            because: $"account.css at '{cssPath}' must contain the .calendar-subscription-icon-btn rule");
+        rule.Should().Contain("min-height: var(--qb-hit-min)");
+        rule.Should().Contain("min-width: var(--qb-hit-min)");
 
         // A rule nothing selects is not a mitigation: confirm the mobile view actually applies
         // the class to its icon-only Copy and Show QR Code controls.
@@ -209,12 +209,12 @@ public class CalendarSubscriptionStaticGuardTests
     [Fact]
     public void RowLabelTruncationRule_ExistsAndReachesTheNameElement()
     {
-        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.mobile.css");
+        var cssPath = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.css");
         var css = File.ReadAllText(cssPath);
         var rule = ExtractCssRule(css, ".calendar-subscription-row .calendar-subscription-name {");
 
         rule.Should().NotBeEmpty(
-            because: $"account.mobile.css at '{cssPath}' must contain the scoped .calendar-subscription-row .calendar-subscription-name rule");
+            because: $"account.css at '{cssPath}' must contain the scoped .calendar-subscription-row .calendar-subscription-name rule");
         rule.Should().Contain("text-overflow: ellipsis");
 
         var mobile = ReadMobileView();
@@ -226,26 +226,23 @@ public class CalendarSubscriptionStaticGuardTests
             because: "the truncating class must actually reach the row's own name element, not just exist in the stylesheet");
     }
 
-    // ---- The code sizing rule exists in both stylesheets ----
+    // ---- The code sizing rule reaches both layouts ----
 
     [Fact]
-    public void QrCodeSizingRule_ExistsInBothStylesheets()
+    public void QrCodeSizingRule_ReachesBothLayouts()
     {
-        var desktopCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.css"));
-        var mobileCss = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.mobile.css"));
+        var css = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "account.css"));
+        var rule = ExtractCssRule(css, ".calendar-subscription-qr svg {");
 
-        var desktopRule = ExtractCssRule(desktopCss, ".calendar-subscription-qr svg {");
-        var mobileRule = ExtractCssRule(mobileCss, ".calendar-subscription-qr svg {");
+        rule.Should().NotBeEmpty(because: "account.css must size the QR SVG");
+        rule.Should().Contain("max-width: 240px");
 
-        desktopRule.Should().NotBeEmpty(because: "account.css must size the QR SVG for the desktop layout");
-        desktopRule.Should().Contain("max-width: 240px");
+        // Both layouts load the one sheet, so one rule sizes the code on either; a layout that stopped linking it
+        // would leave its QR code unsized.
         ReadDesktopView().Should().Contain("~/css/account.css",
             because: "the desktop Profile must link the sheet that sizes its QR SVG");
-
-        mobileRule.Should().NotBeEmpty(
-            because: "account.mobile.css must independently size the QR SVG -- the two layouts load different stylesheets, " +
-                     "so a rule present in only one would leave one layout's QR code unsized");
-        mobileRule.Should().Contain("max-width: 240px");
+        ReadMobileView().Should().Contain("~/css/account.css",
+            because: "the phone Profile must link the sheet that sizes its QR SVG");
     }
 
     // ---- No planning or tracking reference reached the source ----

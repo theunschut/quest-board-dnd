@@ -2,124 +2,125 @@
 @using QuestBoard.Service.ViewModels.AccountViewModels
 @model ProfileViewModel
 
-@section Styles {
-    <link href="~/css/account.mobile.css" asp-append-version="true" rel="stylesheet" />
+@{
+    ViewData["Title"] = "Profile";
 }
 
-<div class="account-card-mobile mb-3">
-    <h5 class="mb-3"><i class="fas fa-user-cog text-success me-2"></i>Profile</h5>
+@section Styles {
+    <link href="~/css/account.css" asp-append-version="true" rel="stylesheet" />
+}
 
-    <div class="mb-3">
-        <div class="account-field-label">Name</div>
-        <div class="account-field-value">@Model.User?.Name</div>
+<div class="card modern-card mb-3">
+    <div class="card-header modern-card-header">
+        <h1 class="mb-0"><i class="fas fa-user-cog me-2" aria-hidden="true"></i>Profile</h1>
     </div>
+    <div class="card-body modern-card-body">
+        <dl class="profile-fields">
+            <dt>Name</dt>
+            <dd>@Model.User?.Name</dd>
 
-    <div class="mb-3">
-        <div class="account-field-label">Email</div>
-        <div class="account-field-value">@Model.User?.Email</div>
-    </div>
+            <dt>Email</dt>
+            <dd>@Model.User?.Email</dd>
 
-    <div class="mb-3">
-        <div class="account-field-label">Account Type</div>
-        @if ((bool?)ViewData["IsAdmin"] == true)
-        {
-            <span class="account-field-value"><i class="fas fa-shield-alt text-danger me-2"></i>Admin</span>
-        }
-        else if ((bool?)ViewData["IsDungeonMaster"] == true)
-        {
-            <span class="account-field-value"><i class="fas fa-crown text-warning me-2"></i>Dungeon Master &amp; Player</span>
-        }
-        else
-        {
-            <span class="account-field-value">Player</span>
-        }
-    </div>
-
-    <div class="mb-3">
-        <div class="account-field-label">Building Access</div>
-        @if (Model.User?.HasKey == true)
-        {
-            <span class="account-field-value"><i class="fas fa-key text-success me-2"></i>Has building key</span>
-        }
-        else
-        {
-            <span class="account-field-value"><i class="fas fa-times text-muted me-2"></i>No building key</span>
-        }
-    </div>
-
-    <div class="calendar-subscription-section mb-3">
-        <h6 class="mb-3"><i class="fas fa-rss text-purple me-2"></i>Calendar Subscription</h6>
-
-        @if (!Model.CalendarSubscriptions.Any())
-        {
-            <div class="text-center py-4">
-                <i class="fas fa-rss fa-2x text-muted mb-2"></i>
-                <h5>No calendar subscriptions yet</h5>
-                <p class="text-muted">Get this board's schedule onto your phone's own calendar app. The address below acts like a password — anyone who has it can see your events, dates, and times, and it never expires on its own. Press Add Subscription to create one; nothing is generated until you do.</p>
-            </div>
-        }
-        else
-        {
-            @foreach (var subscription in Model.CalendarSubscriptions)
+            <dt>Account Type</dt>
+            @if ((bool?)ViewData["IsAdmin"] == true)
             {
-                <div class="calendar-subscription-row">
-                    <div class="account-field-value calendar-subscription-name">@subscription.Name</div>
-                    <div class="account-field-label calendar-subscription-meta">
-                        Created @Html.LocalTime(subscription.CreatedAt, "date")<br />
-                        @if (subscription.LastFetchedAt.HasValue)
-                        {
-                            @:Last fetched @Html.LocalTime(subscription.LastFetchedAt.Value, "date-time")
-                        }
-                        else
-                        {
-                            @:Never fetched yet
-                        }
-                    </div>
-                    <input type="text" readonly id="subscriptionAddressMobile-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address mt-2 visually-hidden" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
-                    <div class="d-flex gap-2 mt-2 flex-wrap">
-                        <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn calendar-subscription-copy-btn" data-address-target="#subscriptionAddressMobile-@subscription.Id" aria-label="Copy address">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                        <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
-                            <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
-                        </a>
-                        <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id" aria-label="Show QR Code">
-                            <i class="fas fa-qrcode"></i>
-                        </button>
-                        <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
-                            <i class="fas fa-pen me-2"></i>Rename
-                        </button>
-                        <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@subscription.Id" />
-                            <button type="submit" class="btn btn-danger btn-sm">
-                                <i class="fas fa-trash me-2"></i>Delete
-                            </button>
-                        </form>
-                    </div>
-                    <p class="account-field-label calendar-subscription-meta mt-1 mb-0">If nothing happens, copy the address and add it in your calendar app manually.</p>
+                <dd><i class="fas fa-shield-alt text-danger me-2" aria-hidden="true"></i>Admin</dd>
+            }
+            else if ((bool?)ViewData["IsDungeonMaster"] == true)
+            {
+                <dd><i class="fas fa-crown text-warning me-2" aria-hidden="true"></i>Dungeon Master &amp; Player</dd>
+            }
+            else
+            {
+                <dd>Player</dd>
+            }
+
+            <dt>Building Access</dt>
+            @if (Model.User?.HasKey == true)
+            {
+                <dd><i class="fas fa-key text-success me-2" aria-hidden="true"></i>Has Building Key</dd>
+            }
+            else
+            {
+                <dd><i class="fas fa-times text-muted me-2" aria-hidden="true"></i>No Building Key</dd>
+            }
+        </dl>
+
+        <div class="calendar-subscription-section mb-3">
+            <h6 class="mb-3"><i class="fas fa-rss text-purple me-2"></i>Calendar Subscription</h6>
+
+            @if (!Model.CalendarSubscriptions.Any())
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-rss fa-2x text-muted mb-2"></i>
+                    <h5>No calendar subscriptions yet</h5>
+                    <p class="text-muted">Get this board's schedule onto your phone's own calendar app. The address below acts like a password — anyone who has it can see your events, dates, and times, and it never expires on its own. Press Add Subscription to create one; nothing is generated until you do.</p>
                 </div>
             }
-        }
+            else
+            {
+                @foreach (var subscription in Model.CalendarSubscriptions)
+                {
+                    <div class="calendar-subscription-row">
+                        <div class="calendar-subscription-name">@subscription.Name</div>
+                        <div class="calendar-subscription-meta">
+                            Created @Html.LocalTime(subscription.CreatedAt, "date")<br />
+                            @if (subscription.LastFetchedAt.HasValue)
+                            {
+                                @:Last fetched @Html.LocalTime(subscription.LastFetchedAt.Value, "date-time")
+                            }
+                            else
+                            {
+                                @:Never fetched yet
+                            }
+                        </div>
+                        <input type="text" readonly id="subscriptionAddressMobile-@subscription.Id" class="form-control-plaintext font-monospace calendar-subscription-address mt-2 visually-hidden" value="@subscription.HttpsAddress" aria-label="Subscription address for @subscription.Name" />
+                        <div class="d-flex gap-2 mt-2 flex-wrap">
+                            <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn calendar-subscription-copy-btn" data-address-target="#subscriptionAddressMobile-@subscription.Id" aria-label="Copy address">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <a class="btn btn-primary btn-sm" href="@subscription.WebcalAddress">
+                                <i class="fas fa-mobile-screen-button me-2"></i>Open in Calendar App
+                            </a>
+                            <button type="button" class="btn btn-primary btn-sm calendar-subscription-icon-btn" data-bs-toggle="modal" data-bs-target="#qrSubscriptionModal-@subscription.Id" aria-label="Show QR Code">
+                                <i class="fas fa-qrcode"></i>
+                            </button>
+                            <button type="button" class="btn btn-warning btn-sm calendar-subscription-rename-trigger" data-bs-toggle="modal" data-bs-target="#renameSubscriptionModal" data-subscription-id="@subscription.Id" data-subscription-name="@subscription.Name">
+                                <i class="fas fa-pen me-2"></i>Rename
+                            </button>
+                            <form asp-action="RevokeCalendarSubscription" method="post" class="d-inline calendar-subscription-delete-form" data-subscription-name="@subscription.Name">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@subscription.Id" />
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash me-2"></i>Delete
+                                </button>
+                            </form>
+                        </div>
+                        <p class="calendar-subscription-meta mt-1 mb-0">If nothing happens, copy the address and add it in your calendar app manually.</p>
+                    </div>
+                }
+            }
 
-        <form asp-action="AddCalendarSubscription" method="post" class="calendar-subscription-add-form mt-3">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-warning w-100">
-                <i class="fas fa-plus me-2"></i>Add Subscription
-            </button>
-        </form>
+            <form asp-action="AddCalendarSubscription" method="post" class="calendar-subscription-add-form mt-3">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-warning w-100">
+                    <i class="fas fa-plus me-2"></i>Add Subscription
+                </button>
+            </form>
 
-    </div>
+        </div>
 
-    <hr>
+        <hr>
 
-    <div class="d-flex justify-content-between">
-        <a asp-controller="Home" asp-action="Index" class="btn btn-warning">
-            <i class="fas fa-home me-2"></i>Back to Quest Board
-        </a>
-        <a asp-action="Edit" class="btn btn-primary">
-            <i class="fas fa-user-edit me-2"></i>Edit Profile
-        </a>
+        <div class="d-flex justify-content-between">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-warning">
+                <i class="fas fa-home me-2"></i>Back to Quest Board
+            </a>
+            <a asp-action="Edit" class="btn btn-primary">
+                <i class="fas fa-user-edit me-2"></i>Edit Profile
+            </a>
+        </div>
     </div>
 </div>
 
