@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 96
-current_phase_name: Account and pickers UI conversion
-status: planning
-stopped_at: v6.0.0 released and deployed (phases 94, 95, 102); phase 95 real-phone UAT passed in production; next is phase 96 (already planned)
-last_updated: "2026-11-12T10:48:18.631Z"
+current_phase_name: account-and-pickers-ui-conversion
+status: executing
+stopped_at: Completed 96-01-PLAN.md
+last_updated: "2026-11-12T10:56:44.693Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 102 complete
 progress:
   total_phases: 31
   completed_phases: 22
   total_plans: 230
-  completed_plans: 209
+  completed_plans: 210
   percent: 71
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -25,15 +25,15 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 96 — Account and pickers UI conversion
+**Current focus:** Phase 96 — account-and-pickers-ui-conversion
 
 ## Current Position
 
-Phase: 96 — Account and pickers UI conversion
-Plan: Not started (12 plans already written)
+Phase: 96 (account-and-pickers-ui-conversion) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
-Last activity: 2026-11-12 — v6.0.0 (phases 94, 95, 102) released and deployed; phase 95 real-phone UAT passed in production, phase complete
+Last activity: 2026-11-12 — Phase 96 execution started
 
 **Phase 95 complete 2026-11-12.** Local UAT 11/11 passed; the two real-device items (real-phone checklist incl.
 WINDOWS #32, and the WINDOWS #3 calendar subscription) were confirmed by the operator against production after the
@@ -54,6 +54,7 @@ phase counters understate progress. Pre-existing and consistent across every pha
 introduced by Phase 87.
 
 ## Performance Metrics
+
 **Velocity:**
 
 - Total plans completed (v8.0): 26/26 across 7 phases (65–71)
@@ -97,6 +98,7 @@ introduced by Phase 87.
 | Phase 95 P16 | 2.5h | 2 tasks | 31 files |
 | Phase 95 P17 | 2.5h | 2 tasks | 10 files |
 | Phase 95 P18 | about 5 h | 3 tasks | 0 files |
+| Phase 96 P01 | 20min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -157,6 +159,7 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 95]: 95-08: DM line estimate widened to 0.57 em so no poster overflows at the 304px card floor; p5 breaches its poster-glyph floor at 304px and awaits an operator decision
 - [Phase ?]: 95-16: Markdown headings take --qb-fg-heading on every surface; the dark-ink heading rule for card bodies was removed because every card is glass with light text
 - [Phase ?]: 95-16: toolbar of the Markdown editor keeps 44px buttons and wraps to two rows at 320 (container is 236px); one row would need sub-44px buttons
+- [Phase ?]: 96-01: review environment on Linux ports 8000/8001, bundled Chromium, reused phase-95 Audit accounts; nine roles incl. multi and noboard
 
 ### Roadmap Evolution
 
@@ -259,8 +262,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-11T14:16:06.687Z
-Stopped at: Phase 102 — 102-10 human-verify checkpoint (manual browser UAT); Phase 95 parked on its real-phone UAT
+Last session: 2026-11-12T10:56:44.658Z
+Stopped at: Completed 96-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -1655,7 +1655,7 @@ Plans:
 **Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
-**Plans:** 12 plans
+**Plans:** 1/12 plans executed
 
 **Scope:**
 
@@ -1710,7 +1710,7 @@ Plus, specific to this phase: the foundation delivers `.modern-card--interactive
 Plans:
 **Wave 1**
 
-- [ ] 96-01-PLAN.md — Review environment: operator checkpoint (scratch tooling, database, privileged accounts, no other phase executing), capture-harness tracer, review accounts
+- [x] 96-01-PLAN.md — Review environment: operator checkpoint (scratch tooling, database, privileged accounts, no other phase executing), capture-harness tracer, review accounts
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
