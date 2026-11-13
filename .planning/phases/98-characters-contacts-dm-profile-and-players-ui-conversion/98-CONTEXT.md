@@ -75,8 +75,7 @@ notes, tags, categories, the DM profile and the players list keep working exactl
   without end.
 
 ### Relayout sign-off and gates
-- **D-07: Two operator gates, both reviewed from a local package. No review branch or ref is
-  created or pushed.** Gate 1, early, under `~/qb-ui-review/phase-98/gate1/` (index.html, README.md,
+- **D-07: Two operator gates, both reviewed from a local package. No review branch or ref is created or pushed.** Gate 1, early, under `~/qb-ui-review/phase-98/gate1/` (index.html, README.md,
   img/), drawn as scratch mockups and approved before any of it is built:
   - the Q-117 Manage Categories table in its responsive container, including desktop at 320px;
   - the Q-118 form button row on every form page of the area, desktop and phone;
@@ -138,8 +137,7 @@ notes, tags, categories, the DM profile and the players list keep working exactl
   Fixtures are kept after the phase, as in Phase 97.
 - **D-12: Any email the phase triggers goes to the Mailpit sink only** (`qb-mailpit`; starting it
   is pre-approved), never the real relay. The local database holds real addresses.
-- **D-13: Work lands in slices on `milestone/v9-rolling-improvements` in this checkout, with one
-  release at the end** (v6.3.0 through a PR into `main`) once both gates have passed. Each slice
+- **D-13: Work lands in slices on `milestone/v9-rolling-improvements` in this checkout, with one release at the end** (v6.3.0 through a PR into `main`) once both gates have passed. Each slice
   leaves every page usable and the suite green (Phase 94 D-08). The real-phone and screen-reader
   checks, including the crop dialog's controls under touch and with a screen reader, are listed in
   the phase UAT and may run after deploy, as in Phases 96 and 97.

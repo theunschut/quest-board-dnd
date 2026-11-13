@@ -337,7 +337,7 @@ This is a UI conversion with file deletions and sheet moves, not a rename or mig
 | Live service config | None | none |
 | OS-registered state | None | none |
 | Secrets/env vars | `~/qb-ui-review/phase-98/credentials.json` (mode 600) holds the p98 passwords; never in the repository, never printed | create at 98-02 |
-| Build artifacts | Browsers cache `characters.css`, `contacts.css`, `dm-profile.css` and `image-crop.css` by `asp-append-version`; removing the four global links needs no action. The frozen baseline app is built from a copy of the starting commit under `~/qb-ui-review/phase-98/baseline-src` | rebuild baseline at 98-02 |
+| Build artifacts | Browsers cache `characters.css`, `contacts.css`, `dm-profile.css` and `image-crop.css` by `asp-append-version`; removing the four global links needs no action. The frozen baseline app is built from a copy of the starting commit under `~/qb-ui-review/phase-98/baseline-src` | rebuild baseline at 98-03 |
 
 ## 1. Inventory: views, stylesheets, guard tests, findings by slice
 
@@ -444,6 +444,8 @@ Result: 13 sheets become about 9 to 10 (merged-view page sheets are new names; f
 | Contacts/Index (98-14) | 014, 015, 021 (Q-52), 022 (Q-53 deliberate; 036 recolour only), 028, 035, 039, 041, 042 |
 | Players + DM Profile (98-15) | 013, 025 (Q-55), 028, 029, 033, 043 (date helper), 044, 048, 053 |
 | Cross-cutting, verify in the sweep (98-16) | 008, 009, 026 (one h1 per page), 042, 006 (editor trap, X-3) |
+
+The plan numbers in this table are the research proposal of Section 9. The final plan set renumbered and split the slices; the binding finding-to-plan trace is the "Audit finding trace" section of the closing plan (98-22), and each owning plan cites its findings by id.
 
 ## 2. D-09: Characters Create and Edit against the Phase 94 D-13 criteria
 
@@ -624,6 +626,8 @@ Phases 95 to 97 ran almost one plan per wave because plans share `UiFoundationLa
 
 Why this order: behaviour-only work first while Gate 1 is held; shared pieces before their consumers (05 before 07 to 15); the crop partial before the form merges so each form is touched for its dialog once; Contacts Create and Edit together so their sheet moves once (Q-97 to Q-102 note); the four plain twins last because their risk is lowest and they share the card sheet. Each slice moves a sheet link out of the global list when its last consumer links it itself (Section 5), so every intermediate state is usable (D-13).
 
+This table is the research proposal. The final plan set has 23 plans in 22 waves (fixtures split from the frozen baseline and BEFORE capture, Gate 1 split into two drawing packages and a sheet, and the crop, Contacts form and Characters list work split into more slices); the binding plan list and waves are in ROADMAP.md § Phase 98.
+
 ## Common Pitfalls
 
 ### Pitfall 1: Learning "has a picture" by including the image
@@ -786,15 +790,22 @@ Pattern: `event-details.js:72-74`. Wording comes from the view, byte-identical t
 | A10 | The visible change "Nov 05" to "Nov 5" on the DM quest history is acceptable (A-characters-043 says "confirm at sign-off") | Section 6 item 9 | Reject at Gate 1; then the date stays a raw format and DoC-9 needs an exception |
 | A11 | Hold-to-repeat on the pointer buttons is not required for 2.5.7 (one click per step satisfies a single-pointer alternative) | Section 3 | Add press-and-hold repeat if Gate 1 finds the steps too slow |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Characters Create and Edit merge?** What we know: both pairs qualify after Q-51 with one non-CSS delta (two placeholders). What is unclear: the operator's preference (the default is "no merge unless explicit yes"). Recommendation: propose both at Gate 1 (Section 2); plan 98-12 carries both outcomes.
+   RESOLVED: decided at Gate 1 item 7 (98-07) with default no merge; a merge happens only on the operator's explicit yes (`charactersFormMerge.merge`), and the Characters Create and Edit plan (98-17) carries both outcomes.
 2. **Which wording and which DOM order for the merged detail pages?** (Section 6 item 8, Pitfall 10.) Recommendation: form-label wording; DOM = phone order for Characters/Details, one order for Contacts/Details.
+   RESOLVED: decided at Gate 1 item 8 (98-07) with default the form-label wording (`Character Sheet`, `Classes`, `Actions`) and the phone DOM order; applied by the Characters/Details plan (98-11) and the Contacts/Details plan (98-14).
 3. **Phone form button row: one row (Phase 95 Quest-form shape) or a stack?** Recommendation: the one-row shape; stack only if it does not fit at 320.
+   RESOLVED: decided at Gate 1 item 3 (98-07) with default one row on both layouts, the stack only if a label does not fit at 360px (`formActions.phone`); implemented once in `components.css` by 98-08.
 4. **Where are the p98 accounts first created?** D-11 says through Admin with the Audit Board admin login, which puts them on the Audit Board, and the P98 boards then get them through Platform > Group > Members. Recommendation: do exactly that (the Phase 97 split) and record that the p98 accounts are also Audit Board members.
+   RESOLVED: settled in 98-01 (the operator approves the accounts and boards at the opening checkpoint) and 98-02 (created through Admin with the Audit Board admin login, then added to the P98 boards through Platform > Group > Members); the Audit Board membership is planner assumption P1, shown at Gate 1 for the operator to confirm or correct.
 5. **No `98-UI-SPEC.md` exists.** Phase 97 had one (the design contract with the Gate 1 items, the Copywriting Contract and planner assumptions); `workflow.ui_phase` is true in `.planning/config.json`. Recommendation: run `/gsd-ui-phase 98` before planning or fold the Section 6 list into 98-03; the research already supplies the item list and the copy rule (no copy change without the operator).
+   RESOLVED: superseded by `98-UI-SPEC.md`, which now exists and holds the design contract, the Gate 1 items (1 to 15) with their defaults, the Copywriting Contract and the planner assumptions.
 6. **Players/Index has no page title today (A-characters-033).** Adding one is not covered by Q-50..Q-55. Recommendation: add the card-header title using the existing page word "Players", listed at Gate 1 item 10 so it is an explicit yes.
+   RESOLVED: decided at Gate 1 item 10 (98-07) with default not added: the Players `h1` is added only on the operator's explicit yes (`headings.playersH1`); without it the page keeps its `h2` section titles and the missing heading becomes a Gate 2 decision item. Implemented by the Players plan (98-21).
 7. **Should `avatar-fallback.js` stay?** Recommendation: yes (Section 4), a one-line decision for the planner.
+   RESOLVED: keep `avatar-fallback.js` loaded on the three Quest views as the safety net for a picture that fails after render; decided in the tracer plan (98-05) and shown at Gate 1 as planner assumption P4.
 
 ## Environment Availability
 
@@ -828,7 +839,7 @@ Pattern: `event-details.js:72-74`. Wording comes from the view, byte-identical t
 | Config file | `QuestBoard.IntegrationTests/xunit.runner.json` (`parallelizeAssembly: false`, `parallelizeTestCollections: false`) [VERIFIED] |
 | Quick run command (integration) | `dotnet test QuestBoard.IntegrationTests --filter "FullyQualifiedName~CharactersConversionGuardTests\|FullyQualifiedName~CharacterAvatarRenderTests\|FullyQualifiedName~MobileViewsTests\|FullyQualifiedName~ContactCategory\|FullyQualifiedName~ContactsTags\|FullyQualifiedName~ContactDetailsCategoryTests\|FullyQualifiedName~CharactersControllerIntegrationTests\|FullyQualifiedName~ContactsControllerIntegrationTests\|FullyQualifiedName~DungeonMasterControllerIntegrationTests\|FullyQualifiedName~PlayersControllerIntegrationTests\|FullyQualifiedName~MarkdownEditorMarkupTests\|FullyQualifiedName~BoardPageCharacterLinksTests\|FullyQualifiedName~UiFoundation\|FullyQualifiedName~BoardPageStaticGuardTests\|FullyQualifiedName~QuestsConversionGuardTests"` (filter syntax cited from the Phase 97 validation file; not run here, a build would write `bin/obj`) |
 | Quick run command (unit) | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~QuestRepository\|FullyQualifiedName~CharacterRepository\|FullyQualifiedName~AmbientClockSeamTests\|FullyQualifiedName~WallClock"` |
-| Full suite command | `dotnet test QuestBoard.UnitTests` then `dotnet test QuestBoard.IntegrationTests` (per project avoids the CLR flake); counts at the end of Phase 97: unit 1412, integration 2029 (`97-VALIDATION.md`); re-recorded in `tests-before.txt` at 98-02 |
+| Full suite command | `dotnet test QuestBoard.UnitTests` then `dotnet test QuestBoard.IntegrationTests` (per project avoids the CLR flake); counts at the end of Phase 97: unit 1412, integration 2029 (`97-VALIDATION.md`); re-recorded in `tests-before.txt` at 98-03 |
 | Browser checks | scratch Playwright under `~/qb-ui-review/phase-98/` (bundled Chromium), phone checks under `devices['Pixel 7']` with touch; evidence stored, not in the suite (the repo has no JS test runner) |
 | Estimated runtime | about 20 s quick after build, 2 to 3 min full (Phase 97 figures) |
 
