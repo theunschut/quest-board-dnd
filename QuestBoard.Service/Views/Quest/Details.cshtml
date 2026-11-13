@@ -294,12 +294,13 @@
                                                             @if (player.Character != null)
                                                             {
                                                                 <div class="d-flex align-items-center">
-                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
-                                                                         alt="@player.Character.Name"
-                                                                         class="avatar-32 me-2" />
-                                                                    <span class="avatar-32 avatar-32--placeholder me-2" hidden aria-hidden="true">
-                                                                        <i class="fas fa-user" aria-hidden="true"></i>
-                                                                    </span>
+                                                                    @await Html.PartialAsync("_CharacterAvatar", new CharacterAvatarViewModel
+                                                                    {
+                                                                        Id = player.Character.Id,
+                                                                        Name = player.Character.Name,
+                                                                        HasPicture = player.Character.HasProfilePicture,
+                                                                        CssClass = "me-2"
+                                                                    })
                                                                     <span>@player.Character.Name</span>
                                                                     @if (isCurrentUser && charactersOn)
                                                                     {
@@ -399,12 +400,13 @@
                                                             @if (signup.Character != null)
                                                             {
                                                                 <div class="d-flex align-items-center">
-                                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = signup.Character.Id })"
-                                                                         alt="@signup.Character.Name"
-                                                                         class="avatar-32 me-2" />
-                                                                    <span class="avatar-32 avatar-32--placeholder me-2" hidden aria-hidden="true">
-                                                                        <i class="fas fa-user" aria-hidden="true"></i>
-                                                                    </span>
+                                                                    @await Html.PartialAsync("_CharacterAvatar", new CharacterAvatarViewModel
+                                                                    {
+                                                                        Id = signup.Character.Id,
+                                                                        Name = signup.Character.Name,
+                                                                        HasPicture = signup.Character.HasProfilePicture,
+                                                                        CssClass = "me-2"
+                                                                    })
                                                                     <span>@signup.Character.Name</span>
                                                                     @if (isCurrentUser && charactersOn)
                                                                     {

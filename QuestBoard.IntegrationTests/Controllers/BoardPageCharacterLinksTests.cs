@@ -49,6 +49,21 @@ public class BoardPageCharacterLinksTests : IClassFixture<WebApplicationFactoryB
             .ToListAsync(TestContext.Current.CancellationToken);
     }
 
+    // A character without a stored picture renders the placeholder and no portrait URL, so the
+    // portrait assertions below need a picture to look for.
+    private async Task SeedPictureAsync(int characterId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.Set<CharacterImageEntity>().Add(new CharacterImageEntity
+        {
+            Id = characterId,
+            OriginalImageData = [1, 2, 3, 4],
+            CroppedImageData = [9, 9, 9, 9, 9]
+        });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     private async Task<string> FollowRedirectAsync(HttpClient client, HttpResponseMessage response)
     {
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Found, HttpStatusCode.Redirect);
@@ -345,7 +360,8 @@ public class BoardPageCharacterLinksTests : IClassFixture<WebApplicationFactoryB
     public async Task CharactersOff_ExistingSignupWithCharacter_KeepsNameAndPortraitButOffersNoChange(string userAgent)
     {
         // Arrange
-        var (client, _, quest, _) = await SeedFinalizedQuestAsync("5", playerHasSignup: true, signupHasCharacter: true, "Veteran Hero");
+        var (client, _, quest, character) = await SeedFinalizedQuestAsync("5", playerHasSignup: true, signupHasCharacter: true, "Veteran Hero");
+        await SeedPictureAsync(character.Id);
         await SwitchCharactersOffAsync();
 
         // Act

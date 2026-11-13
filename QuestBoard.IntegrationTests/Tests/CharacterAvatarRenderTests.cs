@@ -134,4 +134,84 @@ public class CharacterAvatarRenderTests : IClassFixture<WebApplicationFactoryBas
         AssertPlaceholderOnly(html, RowOf(html, withoutPicture.Name, "tr"), withoutPicture);
         AssertPictureWithHiddenPlaceholder(RowOf(html, withPicture.Name, "tr"), withPicture);
     }
+
+    [Fact]
+    public async Task QuestDetails_WaitlistRows_PlaceholderWithoutPicture_ImageWithPicture()
+    {
+        // Arrange
+        var quest = await SeedFinalizedQuestAsync("wl", DateTime.UtcNow.AddDays(7));
+        var withPicture = await SeedSignupAsync(quest.Id, "wlpic", withPicture: true, isSelected: false, SignupRole.Player);
+        var withoutPicture = await SeedSignupAsync(quest.Id, "wlnone", withPicture: false, isSelected: false, SignupRole.Player);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "avatarviewerwl", "avatarviewerwl@example.com");
+
+        // Act
+        var html = await GetHtmlAsync(client, $"/Quest/Details/{quest.Id}");
+
+        // Assert
+        AssertPlaceholderOnly(html, RowOf(html, withoutPicture.Name, "tr"), withoutPicture);
+        AssertPictureWithHiddenPlaceholder(RowOf(html, withPicture.Name, "tr"), withPicture);
+    }
+
+    [Fact]
+    public async Task QuestDetails_NotSelectedRows_PlaceholderWithoutPicture_ImageWithPicture()
+    {
+        // Arrange
+        var quest = await SeedFinalizedQuestAsync("ns", DateTime.UtcNow.AddDays(7));
+        var withPicture = await SeedSignupAsync(quest.Id, "nspic", withPicture: true, isSelected: false, SignupRole.AssistantDM);
+        var withoutPicture = await SeedSignupAsync(quest.Id, "nsnone", withPicture: false, isSelected: false, SignupRole.AssistantDM);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "avatarviewerns", "avatarviewerns@example.com");
+
+        // Act
+        var html = await GetHtmlAsync(client, $"/Quest/Details/{quest.Id}");
+
+        // Assert
+        AssertPlaceholderOnly(html, RowOf(html, withoutPicture.Name, "tr"), withoutPicture);
+        AssertPictureWithHiddenPlaceholder(RowOf(html, withPicture.Name, "tr"), withPicture);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task QuestManage_ParticipantAndWaitlistRows_PlaceholderWithoutPicture_ImageWithPicture(bool selected)
+    {
+        // Arrange
+        var key = selected ? "mgsel" : "mgwait";
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"avatardm{key}", $"avatardm{key}@example.com", roles: ["DungeonMaster"]);
+        var finalizedDate = DateTime.UtcNow.AddDays(7);
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            _factory.Services, dm.Id, $"Avatar Quest {key}", isFinalized: true, finalizedDate: finalizedDate);
+        await TestDataHelper.CreateProposedDateAsync(_factory.Services, quest.Id, finalizedDate);
+        var withPicture = await SeedSignupAsync(quest.Id, $"{key}pic", withPicture: true, isSelected: selected, SignupRole.Player);
+        var withoutPicture = await SeedSignupAsync(quest.Id, $"{key}none", withPicture: false, isSelected: selected, SignupRole.Player);
+
+        // Act
+        var html = await GetHtmlAsync(client, $"/Quest/Manage/{quest.Id}");
+
+        // Assert
+        AssertPlaceholderOnly(html, RowOf(html, withoutPicture.Name, "tr"), withoutPicture);
+        AssertPictureWithHiddenPlaceholder(RowOf(html, withPicture.Name, "tr"), withPicture);
+    }
+
+    [Fact]
+    public async Task QuestLogDetails_AdventurerRows_PlaceholderWithoutPicture_ImageWithEmptyAlt()
+    {
+        // Arrange
+        var quest = await SeedFinalizedQuestAsync("ql", DateTime.UtcNow.AddDays(-30));
+        var withPicture = await SeedSignupAsync(quest.Id, "qlpic", withPicture: true, isSelected: true, SignupRole.Player);
+        var withoutPicture = await SeedSignupAsync(quest.Id, "qlnone", withPicture: false, isSelected: true, SignupRole.Player);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "avatarviewerql", "avatarviewerql@example.com");
+
+        // Act
+        var html = await GetHtmlAsync(client, $"/QuestLog/Details/{quest.Id}");
+
+        // Assert
+        AssertPlaceholderOnly(html, RowOf(html, withoutPicture.Name, "li"), withoutPicture);
+        var pictured = RowOf(html, withPicture.Name, "li");
+        AssertPictureWithHiddenPlaceholder(pictured, withPicture);
+        pictured.Should().Contain("alt=\"\"", "the name is printed beside the portrait, so the image is decorative");
+    }
 }
