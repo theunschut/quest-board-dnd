@@ -1,0 +1,25 @@
+@using QuestBoard.Service.ViewModels.Shared
+@model CharacterAvatarViewModel
+@*
+    The 32px character avatar. With a stored picture it is the image followed by a hidden placeholder that
+    avatar-fallback.js reveals if the image later fails to load. Without one it is the placeholder alone, shown
+    straight away, so the browser never requests a picture that does not exist.
+*@
+@{
+    var extraClass = string.IsNullOrWhiteSpace(Model.CssClass) ? string.Empty : " " + Model.CssClass;
+}
+@if (Model.HasPicture)
+{
+    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = Model.Id })"
+         alt="@(Model.Decorative ? string.Empty : Model.Name)"
+         class="avatar-32@(extraClass)" />
+    <span class="avatar-32 avatar-32--placeholder@(extraClass)" hidden aria-hidden="true">
+        <i class="fas fa-user" aria-hidden="true"></i>
+    </span>
+}
+else
+{
+    <span class="avatar-32 avatar-32--placeholder@(extraClass)" aria-hidden="true">
+        <i class="fas fa-user" aria-hidden="true"></i>
+    </span>
+}

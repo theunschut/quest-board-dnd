@@ -85,7 +85,11 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     {
         var entity = await ProjectWithoutCharacterImages(DbContext.Quests)
             .FirstOrDefaultAsync(q => q.Id == id, cancellationToken: token);
-        return entity == null ? null : Mapper.Map<Quest>(entity);
+        if (entity == null) return null;
+
+        var quest = Mapper.Map<Quest>(entity);
+        await ApplyCharacterPictureFlagsAsync(quest, token);
+        return quest;
     }
 
     /// <inheritdoc/>
@@ -115,7 +119,11 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     {
         var entity = await ProjectWithoutCharacterImages(DbContext.Quests)
             .FirstOrDefaultAsync(q => q.Id == id, cancellationToken: token);
-        return entity == null ? null : Mapper.Map<Quest>(entity);
+        if (entity == null) return null;
+
+        var quest = Mapper.Map<Quest>(entity);
+        await ApplyCharacterPictureFlagsAsync(quest, token);
+        return quest;
     }
 
     /// <inheritdoc/>
@@ -399,6 +407,29 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
                 .ThenInclude(pd => pd.PlayerVotes)
                     .ThenInclude(pv => pv.PlayerSignup)
                         .ThenInclude(ps => ps!.Player);
+    }
+
+    // The quest queries leave the portrait image out so a page does not load portrait bytes. This
+    // asks only whether each signup character has one stored, so the page can show a placeholder
+    // straight away instead of requesting a picture that does not exist.
+    private async Task ApplyCharacterPictureFlagsAsync(Quest quest, CancellationToken token)
+    {
+        var characters = quest.PlayerSignups
+            .Where(s => s.Character != null)
+            .Select(s => s.Character!)
+            .ToList();
+        if (characters.Count == 0) return;
+
+        var ids = characters.Select(c => c.Id).Distinct().ToList();
+        var imageFlags = await DbContext.Characters
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new { c.Id, HasImage = c.ProfileImage != null })
+            .ToDictionaryAsync(x => x.Id, x => x.HasImage, token);
+
+        foreach (var character in characters)
+        {
+            character.HasProfilePicture = imageFlags.GetValueOrDefault(character.Id);
+        }
     }
 
     private static IQueryable<QuestEntity> ProjectWithoutCharacterImages(IQueryable<QuestEntity> query)
