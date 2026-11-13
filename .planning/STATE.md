@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 96
-current_phase_name: account-and-pickers-ui-conversion
-status: verifying
-stopped_at: Completed 96-12-PLAN.md (Gate 2 approved)
-last_updated: "2026-11-12T15:39:06.782Z"
-last_activity: 2026-11-12
-last_activity_desc: Phase 102 complete
+current_phase: 98
+current_phase_name: Characters, Contacts, DM profile and Players UI conversion
+status: planning
+stopped_at: Phases 96 and 97 complete (v6.1.0 and v6.2.0 shipped)
+last_updated: "2026-11-13T15:38:26.106Z"
+last_activity: 2026-11-13
+last_activity_desc: Phase 96 complete, transitioned to Phase 97
 progress:
   total_phases: 31
-  completed_phases: 23
+  completed_phases: 24
   total_plans: 247
-  completed_plans: 221
-  percent: 74
+  completed_plans: 238
+  percent: 77
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
@@ -29,11 +29,13 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 ## Current Position
 
-Phase: 96 (account-and-pickers-ui-conversion) — EXECUTING
-Plan: 12 of 12
-Status: Phase complete — ready for verification
-Not complete in this milestone: Phases 78, 79 and 90, and 96 onward.
-Last activity: 2026-11-12 — Phase 96 execution started
+Phase: 98 — Characters, Contacts, DM profile and Players UI conversion
+Plan: Not started
+Status: Ready to plan
+Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
+Last activity: 2026-11-13 — Phase 97 complete, transitioned to Phase 98
+
+**Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
 **Phase 95 complete 2026-11-12.** Local UAT 11/11 passed; the two real-device items (real-phone checklist incl.
 WINDOWS #32, and the WINDOWS #3 calendar subscription) were confirmed by the operator against production after the
