@@ -1,337 +1,1408 @@
-/* ========================================
-   CALENDAR STYLES
-   ======================================== */
+/*
+ * The month calendar: the Calendar page's month grid, and the same grid on Quest Details, where it
+ * also holds the vote choices for the date being decided.
+ *
+ * The weekday header is the one rule both pages share. Everything else is written twice on purpose:
+ * once under .calendar-page for the month, once under .details-page for Quest Details, so a change
+ * to the month can never reach the vote layout. Every colour is a design token or a mix of one.
+ */
+@layer pages {
+    /* Shared weekday header: a wood band with parchment text (5.6:1) on both pages. */
+    .calendar-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        background-color: var(--qb-wood);
+        color: var(--qb-fg);
+        flex-shrink: 0;
+    }
 
-/* Calendar Grid Layout */
-.calendar-grid {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid rgba(244, 228, 188, 0.3);
-    border-radius: 8px;
-    overflow: hidden;
-    height: auto;
-}
-
-.calendar-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    background-color: rgba(255, 255, 255, 0.1);
-    flex-shrink: 0;
-}
-
-.calendar-day-header {
-    padding: 12px 8px;
-    text-align: center;
-    font-weight: 600;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-    border-right: 1px solid rgba(244, 228, 188, 0.2);
-}
+    .calendar-day-header {
+        padding: var(--qb-space-xs) var(--qb-space-sm);
+        text-align: center;
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+        line-height: 16px;
+        color: var(--qb-fg);
+        border-right: 1px solid color-mix(in srgb, var(--qb-fg) 20%, transparent);
+    }
 
     .calendar-day-header:last-child {
         border-right: none;
     }
 
-.calendar-body {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    /* The row height stays fixed even though a day can stack an events block above the
-       quest list, because the developer does not want desktop cells to grow. The day's
-       items scroll inside the cell instead — see .day-cell-items below. */
-    grid-auto-rows: 120px;
-}
+    @media (max-width: 768px) {
+        .calendar-day-header {
+            padding: var(--qb-space-xs) 2px;
+            font-size: 12px;
+        }
+    }
 
-.calendar-day {
-    padding: 8px;
-    border-right: 1px solid rgba(244, 228, 188, 0.2);
-    border-bottom: 1px solid rgba(244, 228, 188, 0.2);
-    position: relative;
-    background-color: transparent;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
+    @media (max-width: 480px) {
+        .calendar-day-header {
+            font-size: 11px;
+        }
+    }
 
-    .calendar-day:nth-child(7n) {
+    .calendar-page {
+        --cal-row: 20px;
+        --cal-mark: 16px;
+        --cal-top-h: 20px;
+        --cal-row-gap: 2px;
+        --cal-cell-pad-y: 2px;
+        --cal-cell-pad-x: var(--qb-space-xs);
+
+        /* One slot is one entry or the "+N more" row. Zero means no fit rule: every entry shows. */
+        --cal-slots: 0;
+
+        /* Height one day cell needs for its slots: number row, gap, the rows with their gaps, top and bottom padding. */
+        --cal-cell-min: calc(var(--cal-top-h) + var(--cal-row-gap) + var(--cal-slots) * var(--cal-row) + (var(--cal-slots) - 1) * var(--cal-row-gap) + 2 * var(--cal-cell-pad-y));
+
+        /* What sits above the page block: the fixed navbar and the top margin of the layout's content container. */
+        --cal-above: calc(var(--qb-nav-h) + var(--qb-space-md));
+        --cal-weeks: 6;
+
+        padding-block: var(--qb-space-sm) 0;
+    }
+    .calendar-page .calendar-grid--weeks-4 {
+        --cal-weeks: 4;
+    }
+    .calendar-page .calendar-grid--weeks-5 {
+        --cal-weeks: 5;
+    }
+    .calendar-page .calendar-grid--weeks-6 {
+        --cal-weeks: 6;
+    }
+
+    /* ---------- The month card: the title band is slimmer than the foundation's so the grid keeps its height ---------- */
+    .calendar-page .calendar-card {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        /* The legend popover hangs below the header, so nothing on the card may clip it. */
+        overflow: visible;
+    }
+    .calendar-page .modern-card-header {
+        padding-block: var(--qb-space-xs);
+        padding-inline: var(--qb-space-md);
+    }
+    /* The Calendar title stays parchment instead of the foundation's gold, which would sit beside the today pill and the legend. */
+    .calendar-page .modern-card-header h1 {
+        color: var(--qb-fg);
+    }
+    .calendar-page .calendar-card .modern-card-body {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        padding: 0;
+    }
+
+    /* ---------- Header: title, legend strip, month navigation ---------- */
+    .calendar-page .calendar-head {
+        display: grid;
+        grid-template-areas:
+            'title'
+            'nav'
+            'legend';
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--qb-space-sm);
+        align-items: center;
+    }
+    .calendar-page .calendar-head h1 {
+        grid-area: title;
+        margin: 0;
+    }
+    .calendar-page .calendar-nav {
+        display: flex;
+        grid-area: nav;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--qb-space-sm);
+    }
+    .calendar-page .calendar-nav__btn {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+    }
+    .calendar-page .calendar-month-name {
+        min-width: 10ch;
+        color: var(--qb-fg);
+        font-size: var(--qb-text-lg);
+        font-weight: var(--qb-weight-strong);
+        line-height: var(--qb-leading-heading);
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .calendar-page .calendar-legend-area {
+        display: flex;
+        flex-wrap: wrap;
+        grid-area: legend;
+        align-items: center;
+        justify-content: center;
+        gap: var(--qb-space-xs) var(--qb-space-md);
+        min-width: 0;
+    }
+    .calendar-page .calendar-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--qb-space-xs) var(--qb-space-md);
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        color: var(--qb-fg);
+        font-size: var(--qb-text-sm);
+        line-height: var(--qb-leading-body);
+        list-style: none;
+    }
+    .calendar-page .calendar-legend li {
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-xs);
+        white-space: nowrap;
+    }
+    .calendar-page .calendar-legend__swatch {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: var(--cal-mark);
+        border: 1px dashed var(--qb-ink-muted);
+        border-radius: var(--qb-radius-sm);
+        background: var(--qb-surface-paper-alt);
+        color: var(--qb-ink-muted);
+        font-size: 0.625rem;
+    }
+    .calendar-page .calendar-legend__more {
+        position: relative;
+        display: flex;
+        flex: none;
+        align-items: center;
+    }
+    .calendar-page .calendar-legend__more .btn {
+        padding-block: 0;
+        line-height: 22px;
+        white-space: nowrap;
+    }
+    .calendar-page .calendar-legend__menu {
+        width: 320px;
+        max-width: calc(100vw - 2 * var(--qb-space-sm));
+        padding: var(--qb-space-md);
+        border: 1px solid var(--qb-border-strong);
+        border-radius: var(--qb-radius-md);
+        background: var(--qb-surface-overlay);
+        box-shadow: var(--qb-shadow-overlay);
+        color: var(--qb-fg);
+        font-size: var(--qb-text-sm);
+        line-height: var(--qb-leading-body);
+    }
+    .calendar-page .calendar-legend__menu h2 {
+        margin: 0 0 var(--qb-space-xs);
+        font-family: var(--qb-font-body);
+        letter-spacing: normal;
+        color: var(--qb-fg);
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+    }
+    .calendar-page .calendar-legend__menu ul {
+        display: flex;
+        flex-direction: column;
+        gap: var(--qb-space-xs);
+        margin: 0 0 var(--qb-space-sm);
+        padding: 0;
+        list-style: none;
+    }
+    .calendar-page .calendar-legend__menu li {
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-sm);
+    }
+    .calendar-page .calendar-legend__menu p {
+        margin: 0 0 var(--qb-space-sm);
+        color: var(--qb-fg-muted);
+    }
+    .calendar-page .calendar-legend__menu p:last-child {
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-xs);
+        margin-bottom: 0;
+    }
+
+    /*
+      * From 992px up the header is two rows: the title and the month navigation share the first, and the legend
+      * strip takes the second, wrapping onto more lines only in the narrowest of these windows. The legend never fits beside
+      * the rest: in the widest page container it needs about 1380px and the card is 1294px.
+      */
+    @media (min-width: 992px) {
+        .calendar-page .calendar-head {
+            grid-template-areas:
+                'title nav'
+                'legend legend';
+            grid-template-columns: minmax(0, 1fr) auto;
+            column-gap: var(--qb-space-md);
+            row-gap: 0;
+        }
+        .calendar-page .calendar-head h1 {
+            white-space: nowrap;
+        }
+        .calendar-page .calendar-nav {
+            justify-content: flex-end;
+        }
+        .calendar-page .calendar-legend-area {
+            padding-block: var(--qb-space-xs) 0;
+        }
+
+    }
+
+    /* An empty month says so in one line, so the grid is never pushed below the fold. */
+    .calendar-page .calendar-empty-note {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: var(--qb-space-sm);
+        margin: 0;
+        padding: var(--qb-space-xs) var(--qb-space-md);
+        border-bottom: 1px solid var(--qb-surface-glass-border);
+        color: var(--qb-fg);
+        font-size: var(--qb-text-sm);
+        line-height: var(--cal-row);
+    }
+    .calendar-page .calendar-empty-note strong {
+        font-weight: var(--qb-weight-strong);
+    }
+    .calendar-page .alert {
+        flex: none;
+    }
+
+    /* ---------- Month grid: the weekday row, then rows that share the height that is left ---------- */
+    .calendar-page .calendar-grid {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+    }
+    .calendar-page .calendar-header {
+        display: grid;
+        flex: none;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        background: var(--qb-wood);
+        color: var(--qb-fg);
+    }
+    .calendar-page .calendar-day-header {
+        padding: var(--qb-space-xs);
+        color: var(--qb-fg);
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+        line-height: 16px;
+        text-align: center;
+    }
+    .calendar-page .calendar-day-header__short {
+        display: none;
+    }
+    .calendar-page .calendar-body {
+        display: grid;
+        flex: 1 1 auto;
+        grid-auto-rows: minmax(96px, auto);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        min-height: 0;
+    }
+    .calendar-page .calendar-body > .calendar-day:last-child {
+        border-bottom-right-radius: calc(var(--qb-radius-lg) - 1px);
+    }
+    .calendar-page .calendar-body > .calendar-day:nth-last-child(7) {
+        border-bottom-left-radius: calc(var(--qb-radius-lg) - 1px);
+    }
+
+    @media (min-width: 992px) {
+        .calendar-page {
+            --cal-slots: 2;
+            display: flex;
+            flex-direction: column;
+            height: calc(100dvh - var(--cal-above));
+            min-height: min-content;
+        }
+        .calendar-page .calendar-card {
+            flex: 1 1 auto;
+        }
+        .calendar-page .calendar-body {
+            grid-auto-rows: auto;
+            grid-template-rows: repeat(var(--cal-weeks), minmax(var(--cal-cell-min), 1fr));
+        }
+    }
+    @media (min-width: 992px) and (min-height: 712px) {
+        .calendar-page {
+            --cal-slots: 3;
+        }
+    }
+    @media (min-width: 992px) and (min-height: 850px) {
+        .calendar-page {
+            --cal-slots: 4;
+        }
+    }
+    @media (min-width: 992px) and (min-height: 980px) {
+        .calendar-page {
+            --cal-slots: 5;
+        }
+    }
+
+    /*
+     * An empty month has no entry to hold a slot for, so its rows share the height with no slot minimum and the
+     * one-line note above the grid never pushes a six-week month past the window.
+     */
+    @media (min-width: 992px) {
+        .calendar-page .calendar-card--empty .calendar-body {
+            grid-template-rows: repeat(var(--cal-weeks), minmax(calc(var(--cal-top-h) + 2 * var(--cal-cell-pad-y)), 1fr));
+        }
+    }
+
+    /* ---------- Day cell ---------- */
+    .calendar-page .calendar-day {
+        display: flex;
+        flex-direction: column;
+        gap: var(--cal-row-gap);
+        min-width: 0;
+        min-height: 0;
+        padding: var(--cal-cell-pad-y) var(--cal-cell-pad-x);
+        background-color: var(--qb-surface-scrim);
+        box-shadow: inset 1px 1px 0 var(--qb-surface-glass-border);
+    }
+    .calendar-page .calendar-day.empty {
+        background-color: transparent;
+        box-shadow: none;
+    }
+    /*
+      * Without the script a crowded day scrolls inside its own row rather than growing it: the cell takes its height from
+      * the row (size containment keeps its entries out of the row's sizing) and scrolls what does not fit.
+      */
+    @media (min-width: 992px) {
+        .calendar-page .calendar-day {
+            contain: size;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+    }
+    .calendar-page .calendar-day.today {
+        box-shadow: inset 0 0 0 2px var(--qb-fg);
+    }
+    .calendar-page .calendar-day__top {
+        display: flex;
+        flex: none;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0 var(--qb-space-xs);
+        min-height: var(--cal-top-h);
+    }
+    .calendar-page .day-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: var(--cal-top-h);
+        height: var(--cal-top-h);
+        padding: 0 var(--qb-space-xs);
+        border-radius: var(--qb-radius-pill);
+        color: var(--qb-fg);
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+        line-height: 1;
+    }
+    .calendar-page .calendar-day.today .day-number {
+        background: var(--qb-fg);
+        color: var(--qb-ink);
+    }
+    .calendar-page .linked-day-count {
+        margin-inline-start: auto;
+        color: var(--qb-fg-muted);
+        font-size: var(--qb-text-sm);
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .calendar-page .cal-entries {
+        display: flex;
+        flex-direction: column;
+        gap: var(--cal-row-gap);
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .calendar-page .cal-entries > li {
+        min-width: 0;
+    }
+    .calendar-page .cal-entries > li[hidden] {
+        display: none;
+    }
+
+    /* ---------- Status marker: a glyph on a status fill; the shape of the glyph carries the status ---------- */
+    .calendar-page .cal-mark,
+    .cal-card .cal-mark,
+    .cal-panel .cal-mark {
+        /* A thin ring gives the marker its own edge on parchment (ink) and on the dark surfaces (parchment). */
+        --mark-ring: var(--qb-ink-muted);
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: var(--cal-mark);
+        height: var(--cal-mark);
+        border-radius: var(--qb-radius-sm);
+        background: var(--qb-warning);
+        box-shadow: 0 0 0 1px var(--mark-ring);
+        color: var(--qb-warning-fg);
+        font-size: 0.625rem;
+        line-height: 1;
+    }
+    .calendar-page .calendar-legend .cal-mark,
+    .cal-card .cal-mark {
+        --mark-ring: var(--qb-fg);
+    }
+    .calendar-page .cal-mark--finalized,
+    .cal-card .cal-mark--finalized,
+    .cal-panel .cal-mark--finalized,
+    .calendar-page .cal-mark--vote-yes {
+        background: var(--qb-success);
+        color: var(--qb-success-fg);
+    }
+    .calendar-page .cal-mark--event,
+    .cal-card .cal-mark--event,
+    .cal-panel .cal-mark--event {
+        background: var(--qb-event);
+        color: var(--qb-event-fg);
+    }
+    .calendar-page .cal-mark--cancelled,
+    .cal-card .cal-mark--cancelled,
+    .cal-panel .cal-mark--cancelled {
+        background: var(--qb-neutral);
+        color: var(--qb-neutral-fg);
+    }
+    .calendar-page .cal-mark--vote-no {
+        background: var(--qb-danger);
+        color: var(--qb-danger-fg);
+    }
+
+    /* ---------- Compact entry: one line, status marker, time, title with an ellipsis, trailing markers ---------- */
+    .calendar-page .cal-entry {
+        --qb-focus-offset: 0px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-xs);
+        height: var(--cal-row);
+        padding: 0 var(--qb-space-xs) 0 2px;
+        border: 1px solid transparent;
+        border-radius: var(--qb-radius-sm);
+        background: var(--qb-surface-paper);
+        color: var(--qb-ink);
+        font-size: var(--qb-text-sm);
+        line-height: 18px;
+    }
+    .calendar-page .cal-entry:focus-within {
+        z-index: 2;
+    }
+    .calendar-page .cal-entry__body {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        gap: var(--qb-space-xs);
+        min-width: 0;
+        height: 100%;
+        color: inherit;
+        text-decoration: none;
+    }
+    .calendar-page .cal-entry__body:hover,
+    .calendar-page .cal-entry__body:focus-visible {
+        color: inherit;
+    }
+    .calendar-page a.cal-entry__body:hover .cal-entry__title {
+        text-decoration: underline;
+    }
+    .calendar-page .cal-entry__time {
+        flex: none;
+        color: var(--qb-ink-muted);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--qb-weight-regular);
+    }
+    .calendar-page .cal-entry__title {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        font-weight: var(--qb-weight-strong);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .calendar-page .cal-entry__flags {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        gap: var(--cal-row-gap);
+    }
+    .calendar-page .cal-entry__link-glyph {
+        color: var(--qb-ink-muted);
+        font-size: 0.6875rem;
+    }
+    .calendar-page .linked-entry {
+        border: 1px dashed var(--qb-ink-muted);
+        background: var(--qb-surface-paper-alt);
+    }
+    .calendar-page .calendar-event.cancelled,
+    .calendar-page .linked-entry--cancelled {
+        background: var(--qb-surface-paper-alt);
+        color: var(--qb-ink-muted);
+    }
+    .calendar-page .calendar-event.cancelled .cal-entry__title,
+    .calendar-page .linked-entry--cancelled .cal-entry__title {
+        text-decoration: line-through;
+    }
+    .calendar-page .calendar-event.cancelled a.cal-entry__body:hover .cal-entry__title,
+    .calendar-page .linked-entry--cancelled a.cal-entry__body:hover .cal-entry__title {
+        text-decoration: line-through underline;
+    }
+
+    /* The full detail of every entry is written here for a card or panel to show; it never shows in the row itself. */
+    .calendar-page .cal-entry-detail {
+        display: none;
+    }
+
+    /* ---------- "+N more": a real button, the full width of the row ---------- */
+    .calendar-page .cal-more {
+        --qb-focus-offset: 0px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: var(--qb-space-xs);
+        width: 100%;
+        min-width: 0;
+        height: var(--cal-row);
+        padding: 0 var(--qb-space-sm);
+        border: 1px solid var(--qb-border-strong);
+        border-radius: var(--qb-radius-sm);
+        background: transparent;
+        color: var(--qb-fg);
+        font-family: inherit;
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+        line-height: 18px;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color var(--qb-dur-fast) var(--qb-ease), border-color var(--qb-dur-fast) var(--qb-ease);
+    }
+    .calendar-page .cal-more:hover,
+    .calendar-page .cal-more[aria-expanded='true'] {
+        border-color: var(--qb-fg);
+        background: var(--qb-surface-glass-hover);
+    }
+    .calendar-page .cal-more:focus-visible {
+        z-index: 2;
+    }
+
+    /*
+     * Floating surfaces. The detail card and the day panel share one opaque look and are mounted on the body by the
+     * script, so their rules cannot sit under the page wrapper; they belong to the month alone and no other page
+     * renders them.
+     */
+    .cal-card,
+    .cal-panel {
+        --cal-mark: 16px;
+        position: fixed;
+        top: var(--pop-y, 0);
+        left: var(--pop-x, 0);
+        z-index: 1050;
+        border: 1px solid var(--qb-border-strong);
+        border-radius: var(--qb-radius-md);
+        background: var(--qb-surface-overlay);
+        box-shadow: var(--qb-shadow-overlay);
+        color: var(--qb-fg);
+        animation: cal-pop-in var(--qb-dur-fast) var(--qb-ease);
+    }
+    .cal-card[hidden],
+    .cal-panel[hidden] {
+        display: none;
+    }
+    @keyframes cal-pop-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .cal-card {
+        z-index: 1060;
+        width: 352px;
+        max-width: calc(100vw - 2 * var(--qb-space-sm));
+        padding: var(--qb-space-sm);
+        font-size: var(--qb-text-sm);
+        line-height: 1.4;
+    }
+    /* An invisible margin so the pointer can cross the gap between the entry and the card without losing it. */
+    .cal-card::before {
+        content: '';
+        position: absolute;
+        inset: calc(-1 * var(--qb-space-sm));
+        z-index: -1;
+    }
+    .cal-card .cal-detail__status {
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-sm);
+        margin: 0;
+        color: var(--qb-fg-muted);
+        font-size: var(--qb-text-sm);
+        font-weight: var(--qb-weight-strong);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .cal-card .cal-detail__title {
+        margin: var(--qb-space-xs) 0 var(--qb-space-sm);
+        color: var(--qb-fg);
+        font-size: var(--qb-text-base);
+        font-weight: var(--qb-weight-strong);
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+    .cal-card .cal-detail__facts {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 2px var(--qb-space-sm);
+        margin: 0;
+    }
+    .cal-card .cal-detail__facts dt {
+        color: var(--qb-fg-muted);
+        font-weight: var(--qb-weight-regular);
+    }
+    .cal-card .cal-detail__facts dd {
+        margin: 0;
+        color: var(--qb-fg);
+        font-weight: var(--qb-weight-strong);
+        overflow-wrap: anywhere;
+    }
+    .cal-card .cal-detail__note {
+        display: flex;
+        align-items: center;
+        gap: var(--qb-space-xs);
+        margin: var(--qb-space-sm) 0 0;
+        color: var(--qb-fg-muted);
+    }
+
+    /* ---------- Day panel: a non-modal dialog anchored to the cell ---------- */
+    .cal-panel {
+        display: flex;
+        flex-direction: column;
+        width: 420px;
+        max-width: calc(100vw - 2 * var(--qb-space-sm));
+        max-height: calc(100dvh - var(--qb-nav-h) - 2 * var(--qb-space-sm));
+    }
+    .cal-panel .cal-panel__head {
+        display: flex;
+        flex: none;
+        align-items: baseline;
+        gap: var(--qb-space-sm);
+        padding: var(--qb-space-sm) var(--qb-space-sm) var(--qb-space-sm) var(--qb-space-md);
+        border-bottom: 1px solid var(--qb-border);
+    }
+    .cal-panel .cal-panel__title {
+        margin: 0;
+        color: var(--qb-fg);
+        font-size: var(--qb-text-lg);
+        font-weight: var(--qb-weight-strong);
+        line-height: var(--qb-leading-heading);
+    }
+    .cal-panel .cal-panel__count {
+        flex: 1 1 auto;
+        margin: 0;
+        color: var(--qb-fg-muted);
+        font-size: var(--qb-text-sm);
+        white-space: nowrap;
+    }
+    .cal-panel .cal-panel__close {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        align-self: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--qb-border-strong);
+        border-radius: var(--qb-radius-md);
+        background: transparent;
+        color: var(--qb-fg);
+        font-size: var(--qb-text-base);
+        cursor: pointer;
+    }
+    .cal-panel .cal-panel__close:hover {
+        border-color: var(--qb-fg);
+        background: var(--qb-surface-glass-hover);
+    }
+    .cal-panel .cal-panel__rows {
+        display: flex;
+        flex-direction: column;
+        gap: var(--qb-space-sm);
+        min-height: 0;
+        margin: 0;
+        padding: var(--qb-space-sm);
+        overflow-y: auto;
+        list-style: none;
+    }
+    .cal-panel .cal-panel__row {
+        --qb-focus-offset: 1px;
+        --cal-mark: 24px;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0 var(--qb-space-sm);
+        min-height: 48px;
+        padding: var(--qb-space-xs) var(--qb-space-sm);
+        border: 1px solid transparent;
+        border-radius: var(--qb-radius-md);
+        background: var(--qb-surface-paper);
+        color: var(--qb-ink);
+        text-decoration: none;
+    }
+    .cal-panel a.cal-panel__row:hover,
+    .cal-panel a.cal-panel__row:focus-visible {
+        color: var(--qb-ink);
+    }
+    .cal-panel a.cal-panel__row:hover .cal-panel__row-title {
+        text-decoration: underline;
+    }
+    .cal-panel .cal-panel__row .cal-mark {
+        font-size: 0.75rem;
+    }
+    .cal-panel .cal-panel__row--linked {
+        border: 1px dashed var(--qb-ink-muted);
+        background: var(--qb-surface-paper-alt);
+    }
+    .cal-panel .cal-panel__row--cancelled {
+        background: var(--qb-surface-paper-alt);
+    }
+    .cal-panel .cal-panel__row--cancelled .cal-panel__row-title {
+        color: var(--qb-ink-muted);
+        text-decoration: line-through;
+    }
+    .cal-panel .cal-panel__row-text {
+        display: block;
+        min-width: 0;
+    }
+    .cal-panel .cal-panel__row-line1 {
+        display: flex;
+        align-items: baseline;
+        gap: var(--qb-space-sm);
+        min-width: 0;
+    }
+    .cal-panel .cal-panel__row-time {
+        flex: none;
+        color: var(--qb-ink-muted);
+        font-size: var(--qb-text-sm);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .cal-panel .cal-panel__row-title {
+        display: -webkit-box;
+        min-width: 0;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        font-size: var(--qb-text-base);
+        font-weight: var(--qb-weight-strong);
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+    .cal-panel .cal-panel__row-line2 {
+        display: flex;
+        flex-wrap: wrap;
+        color: var(--qb-ink-muted);
+        font-size: var(--qb-text-sm);
+        line-height: 1.4;
+    }
+    .cal-panel .cal-panel__row-line2 > span + span::before {
+        margin-inline: var(--qb-space-sm);
+        content: '\00b7';
+        content: '\00b7' / '';
+    }
+    .cal-panel .cal-panel__row-line2 .fas {
+        margin-inline-end: 2px;
+    }
+
+    /*
+      * Between 768px and the fit rule the cells are about 100px wide but grow with their entries, so an entry may take
+      * a second line instead of squeezing its time, title and markers into one: the markers move up beside the time and
+      * the title wraps underneath.
+      */
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .calendar-page .cal-entry {
+            height: auto;
+            min-height: var(--cal-row);
+        }
+        .calendar-page .cal-entry__body {
+            flex-wrap: wrap;
+            height: auto;
+            padding-block: 1px;
+            row-gap: 0;
+        }
+        .calendar-page .cal-entry__flags {
+            order: 1;
+            margin-inline-start: auto;
+        }
+        .calendar-page .cal-entry__title {
+            order: 2;
+            flex: 1 1 8ch;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+    }
+
+    /* ---------- Narrow windows: the entries shrink to marker-only tiles and the cells grow ---------- */
+    @media (max-width: 767.98px) {
+        .calendar-page .calendar-day-header__full {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            border: 0;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+        }
+        .calendar-page .calendar-day-header__short {
+            display: inline;
+        }
+        .calendar-page .cal-entries {
+            flex-flow: row wrap;
+            gap: var(--cal-row-gap);
+        }
+        .calendar-page .cal-entries > li {
+            flex: none;
+        }
+        .calendar-page .cal-entry {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            justify-content: center;
+        }
+        .calendar-page .cal-entry__body {
+            flex: 1 1 auto;
+            justify-content: center;
+        }
+        .calendar-page .cal-entry__time,
+    .calendar-page .cal-entry__title,
+    .calendar-page .cal-entry__flags {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            border: 0;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+        }
+        .calendar-page .calendar-empty-note {
+            align-items: flex-start;
+            line-height: var(--qb-leading-body);
+        }
+        .calendar-page .calendar-day {
+            --cal-cell-pad-x: 2px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .cal-card,
+        .cal-panel {
+            animation: none;
+        }
+        .calendar-page .cal-more {
+            transition: none;
+        }
+    }
+
+
+    /* ========================================
+       QUEST DETAILS CALENDAR
+       ======================================== */
+
+    .calendar-grid.details-page {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid color-mix(in srgb, var(--qb-fg) 30%, transparent);
+        border-radius: var(--qb-radius-md);
+        overflow: hidden;
+        height: auto;
+    }
+
+    .details-page .calendar-body {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        /* The row height stays fixed even though a day can stack an events block above the
+           quest list, because desktop cells must not grow. The day's items scroll inside the
+           cell instead (see .day-cell-items below). */
+        grid-auto-rows: 120px;
+    }
+
+    .details-page .calendar-day {
+        padding: var(--qb-space-sm);
+        border-right: 1px solid color-mix(in srgb, var(--qb-fg) 20%, transparent);
+        border-bottom: 1px solid color-mix(in srgb, var(--qb-fg) 20%, transparent);
+        position: relative;
+        background-color: transparent;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 80px;
+    }
+
+    .details-page .calendar-day:nth-child(7n) {
         border-right: none;
     }
 
-    .calendar-day.empty {
-        background-color: rgba(0, 0, 0, 0.1);
+    .details-page .calendar-day.empty {
+        background-color: color-mix(in srgb, var(--qb-ink) 10%, transparent);
     }
 
-    .calendar-day.today {
-        background-color: rgba(52, 152, 219, 0.1);
-        border: 2px solid rgba(52, 152, 219, 0.5);
+    .details-page .calendar-day.today {
+        background-color: color-mix(in srgb, var(--qb-info) 10%, transparent);
+        border: 2px solid color-mix(in srgb, var(--qb-info) 50%, transparent);
     }
 
-.day-number {
-    font-weight: 600;
-    font-size: 14px;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-    margin-bottom: 4px;
-    /* Stays outside the scrolling item region below so the date never scrolls out of view. */
-    flex-shrink: 0;
-}
+    .details-page .day-number {
+        font-weight: var(--qb-weight-strong);
+        font-size: var(--qb-text-sm);
+        color: var(--qb-fg);
+        text-shadow: 2px 2px 4px color-mix(in srgb, var(--qb-ink) 90%, transparent);
+        margin-bottom: var(--qb-space-xs);
+        /* Stays outside the scrolling item region below so the date never scrolls out of view. */
+        flex-shrink: 0;
+    }
 
-/* Holds both the events block and the quest list as one scrolling region, so a day cell
-   with more items than fit in the fixed row height stays reachable through a single
-   scrollbar instead of growing the cell or clipping content. Applies at every breakpoint,
-   including the fixed-height mobile rows, so nothing is silently dropped on a small screen. */
-.day-cell-items {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(244, 228, 188, 0.5) transparent;
-}
+    /* Holds both the events block and the quest list as one scrolling region, so a day cell
+       with more items than fit in the fixed row height stays reachable through a single
+       scrollbar instead of growing the cell or clipping content. Applies at every breakpoint,
+       so nothing is silently dropped on a small screen. */
+    .details-page .day-cell-items {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--qb-fg) 50%, transparent) transparent;
+    }
 
-    .day-cell-items::-webkit-scrollbar {
+    .details-page .day-cell-items::-webkit-scrollbar {
         width: 4px;
     }
 
-    .day-cell-items::-webkit-scrollbar-track {
+    .details-page .day-cell-items::-webkit-scrollbar-track {
         background: transparent;
     }
 
-    .day-cell-items::-webkit-scrollbar-thumb {
-        background-color: rgba(244, 228, 188, 0.5);
+    .details-page .day-cell-items::-webkit-scrollbar-thumb {
+        background-color: color-mix(in srgb, var(--qb-fg) 50%, transparent);
         border-radius: 2px;
     }
 
-        .day-cell-items::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(244, 228, 188, 0.8);
-        }
-
-/* Quest Events in Calendar */
-.quest-events {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    overflow: hidden;
-}
-
-.quest-event {
-    background-color: rgba(255, 255, 255, 0.9);
-    border-radius: 3px;
-    padding: 2px 4px;
-    font-size: 9px;
-    line-height: 1.2;
-    position: relative;
-    overflow: visible;
-    border-left: 3px solid;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    height: auto;
-    min-height: 24px;
-    display: flex;
-    align-items: flex-start;
-    flex-shrink: 0;
-    padding-right: 30px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-    .quest-event.proposed {
-        border-left-color: #ffc107;
+    .details-page .day-cell-items::-webkit-scrollbar-thumb:hover {
+        background-color: color-mix(in srgb, var(--qb-fg) 80%, transparent);
     }
 
-    .quest-event.finalized {
-        border-left-color: #28a745;
+    /* Quest chips */
+    .details-page .quest-events {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        overflow: hidden;
     }
 
-.quest-link {
-    text-decoration: none;
-    color: #1a1a1a;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    padding: 4px 0;
-    overflow: hidden;
-    box-sizing: border-box;
-    position: relative;
-}
+    .details-page .quest-event {
+        background-color: color-mix(in srgb, var(--qb-on-fill) 90%, transparent);
+        border-radius: 3px;
+        padding: 2px 4px;
+        font-size: 9px;
+        line-height: 1.2;
+        position: relative;
+        overflow: visible;
+        border-left: 3px solid;
+        transition: background-color var(--qb-dur-base) ease, box-shadow var(--qb-dur-base) ease, min-height var(--qb-dur-base) ease;
+        cursor: pointer;
+        height: auto;
+        min-height: 24px;
+        display: flex;
+        align-items: flex-start;
+        flex-shrink: 0;
+        padding-right: 30px;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
-    .quest-link:hover {
-        color: #1a1a1a;
+    .details-page .quest-event.proposed {
+        border-left-color: var(--qb-accent);
+    }
+
+    .details-page .quest-event.finalized {
+        border-left-color: var(--qb-success);
+    }
+
+    .details-page .quest-link {
+        text-decoration: none;
+        color: var(--qb-ink);
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        padding: 4px 0;
+        overflow: hidden;
+        box-sizing: border-box;
+        position: relative;
+    }
+
+    .details-page .quest-link:hover {
+        color: var(--qb-ink);
         text-decoration: none;
     }
 
-.quest-event:hover {
-    background-color: rgba(255, 255, 255, 1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 10;
-}
-
-.calendar-quest-title {
-    font-weight: 600;
-    font-size: 10px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 0;
-    margin-bottom: 2px;
-    line-height: 1.2;
-    width: 100%;
-    max-width: 100%;
-}
-
-.calendar-quest-dm {
-    font-size: 8px;
-    color: #666;
-    font-style: italic;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: none;
-    margin-bottom: 2px;
-    flex-shrink: 0;
-}
-
-.quest-time {
-    font-size: 8px;
-    color: #666;
-    display: none;
-    flex-shrink: 0;
-}
-
-/* Quest Event Hover Details */
-.quest-event:hover {
-    min-height: 48px;
-}
-
-    .quest-event:hover .calendar-quest-title {
-        font-size: 10px !important;
+    .details-page .calendar-quest-title {
+        font-weight: var(--qb-weight-strong);
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-shrink: 0;
+        margin-bottom: 2px;
+        line-height: 1.2;
+        width: 100%;
+        max-width: 100%;
     }
 
-    .quest-event:hover .calendar-quest-dm {
-        display: block !important;
-        font-size: 8px !important;
+    .details-page .calendar-quest-dm {
+        font-size: 8px;
+        color: var(--qb-ink-muted);
+        font-style: italic;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: none;
+        margin-bottom: 2px;
+        flex-shrink: 0;
     }
 
-    .quest-event:hover .quest-time {
-        display: block !important;
-        font-size: 8px !important;
+    .details-page .quest-time {
+        font-size: 8px;
+        color: var(--qb-ink-muted);
+        display: none;
+        flex-shrink: 0;
     }
 
-/* Board Event Chip System - mirrors the quest chip system above, distinguished by an
-   unclaimed accent color and its own icon rather than by position alone. */
-.calendar-events {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    overflow: hidden;
-    margin-bottom: 1px;
-}
+    /* Hovering a chip opens it up to show the DM and the time. */
+    .details-page .quest-event:hover {
+        background-color: color-mix(in srgb, var(--qb-on-fill) 100%, transparent);
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--qb-ink) 30%, transparent);
+        z-index: 10;
+        min-height: 50px;
+        width: 100%;
+        max-width: 100%;
+    }
 
-.calendar-event {
-    background-color: rgba(255, 255, 255, 0.9);
-    border-radius: 3px;
-    padding: 2px 4px;
-    font-size: 9px;
-    line-height: 1.2;
-    border-left: 3px solid #6f42c1;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    min-height: 24px;
-    display: flex;
-    align-items: flex-start;
-    flex-shrink: 0;
-    width: 100%;
-    box-sizing: border-box;
-}
+    .details-page .quest-event:hover .calendar-quest-title {
+        font-size: 10px;
+    }
 
-.calendar-event.cancelled {
-    opacity: 0.55;
-    text-decoration: line-through;
-}
+    .details-page .quest-event:hover .calendar-quest-dm {
+        display: block;
+        font-size: 8px;
+    }
 
-    .calendar-event:hover {
-        background-color: rgba(255, 255, 255, 1);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    .details-page .quest-event:hover .quest-time {
+        display: block;
+        font-size: 8px;
+    }
+
+    /* Board event chips mirror the quest chips, told apart by the event colour and their own icon
+       rather than by position alone. */
+    .details-page .calendar-events {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        overflow: hidden;
+        margin-bottom: 1px;
+    }
+
+    .details-page .calendar-event {
+        background-color: color-mix(in srgb, var(--qb-on-fill) 90%, transparent);
+        border-radius: 3px;
+        padding: 2px 4px;
+        font-size: 9px;
+        line-height: 1.2;
+        border-left: 3px solid var(--qb-event);
+        transition: background-color var(--qb-dur-base) ease, box-shadow var(--qb-dur-base) ease, min-height var(--qb-dur-base) ease;
+        cursor: pointer;
+        min-height: 24px;
+        display: flex;
+        align-items: flex-start;
+        flex-shrink: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .details-page .calendar-event.cancelled {
+        opacity: 0.55;
+        text-decoration: line-through;
+    }
+
+    .details-page .calendar-event:hover {
+        background-color: color-mix(in srgb, var(--qb-on-fill) 100%, transparent);
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--qb-ink) 30%, transparent);
         z-index: 10;
         min-height: 48px;
     }
 
-.calendar-event-title {
-    font-weight: 600;
-    font-size: 10px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 0;
-    margin-bottom: 2px;
-    line-height: 1.2;
-    width: 100%;
-    max-width: 100%;
-}
-
-.calendar-event-time {
-    font-size: 8px;
-    color: #666;
-    display: none;
-    flex-shrink: 0;
-    font-style: italic;
-}
-
-    .calendar-event:hover .calendar-event-time {
-        display: block !important;
+    .details-page .calendar-event-title {
+        font-weight: var(--qb-weight-strong);
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-shrink: 0;
+        margin-bottom: 2px;
+        line-height: 1.2;
+        width: 100%;
+        max-width: 100%;
     }
 
-/* Status Icon Displays (Finalized & Warning) - Fixed positioning at top */
-.finalized-icon-display,
-.warning-icon-display {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    z-index: 5;
-}
+    .details-page .calendar-event-time {
+        font-size: 8px;
+        color: var(--qb-ink-muted);
+        display: none;
+        flex-shrink: 0;
+        font-style: italic;
+    }
 
-.status-indicator {
-    background: transparent;
-    border-radius: 50%;
-    width: auto;
-    height: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: none;
-}
+    .details-page .calendar-event:hover .calendar-event-time {
+        display: block;
+    }
 
-    .status-indicator i {
+    /* Status icons (finalized and no building key) sit at the top right of a chip. */
+    .details-page .finalized-icon-display,
+    .details-page .warning-icon-display {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        z-index: 5;
+    }
+
+    .details-page .status-indicator {
+        background: transparent;
+        border-radius: 50%;
+        width: auto;
+        height: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: none;
+    }
+
+    .details-page .status-indicator i {
         font-size: 0.9rem;
     }
 
-/* Vote Buttons - Fixed positioning at top */
-.vote-buttons {
-    position: absolute;
-    right: 4px;
-    top: 4px;
-    z-index: 11;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 4px;
-    padding: 2px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
+    /* The viewer's own vote on a chip, top right. */
+    .details-page .user-vote-display {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        z-index: 5;
+    }
 
-    .vote-buttons .btn-group-vertical {
+    .details-page .vote-indicator {
+        background: transparent;
+        border-radius: 50%;
+        width: auto;
+        height: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .details-page .vote-indicator i {
+        font-size: 0.9rem;
+    }
+
+    /* ========================================
+       LINKED BOARD ENTRIES
+       ========================================
+       Entries that belong to another board in the linked set. They read as someone else's
+       booking pinned to this board: the same footprint as an own chip at rest, but a quieter
+       surface and a dashed edge in the status colour. At rest only the title shows; hovering or
+       focusing a chip you can open reveals the board, DM and time line. These chips have their
+       own selectors on purpose, so none of the vote-control spacing or cursor rules of the
+       board's own chips can leak into them. */
+    .details-page .linked-day-entries {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        overflow: hidden;
+        margin-top: 1px;
+    }
+
+    .details-page .linked-entry {
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        width: 100%;
+        flex-shrink: 0;
+        min-height: 24px;
+        padding: 2px 4px 2px 3px;
+        border-radius: 3px;
+        background-color: color-mix(in srgb, var(--qb-on-fill) 60%, transparent);
+        border-left: 4px dashed;
+        font-size: 10px;
+        line-height: 1.2;
+        color: var(--qb-ink);
+        text-decoration: none;
+        transition: background-color var(--qb-dur-base) ease, box-shadow var(--qb-dur-base) ease, min-height var(--qb-dur-base) ease;
+        position: relative;
+        cursor: default;
+    }
+
+    .details-page .linked-entry--proposed {
+        border-left-color: var(--qb-accent);
+    }
+
+    .details-page .linked-entry--finalized {
+        border-left-color: var(--qb-success);
+    }
+
+    .details-page .linked-entry--event {
+        border-left-color: var(--qb-event);
+    }
+
+    .details-page .linked-entry-title {
+        display: block;
+        font-weight: var(--qb-weight-strong);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 2px;
+    }
+
+    .details-page .linked-entry-detail {
+        display: none;
+        font-weight: var(--qb-weight-regular);
+        color: var(--qb-ink);
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-style: normal;
+    }
+
+    .details-page .linked-entry:hover,
+    .details-page .linked-entry--open:focus-visible {
+        min-height: 48px;
+        background-color: color-mix(in srgb, var(--qb-on-fill) 80%, transparent);
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--qb-ink) 30%, transparent);
+        z-index: 10;
+    }
+
+    .details-page .linked-entry:hover .linked-entry-detail,
+    .details-page .linked-entry--open:focus-visible .linked-entry-detail {
+        display: block;
+    }
+
+    .details-page .linked-entry--open {
+        cursor: pointer;
+        color: var(--qb-ink);
+    }
+
+    .details-page .linked-entry--open:hover {
+        color: var(--qb-ink);
+        text-decoration: none;
+    }
+
+    .details-page .linked-entry--open:focus-visible {
+        outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+        outline-offset: -2px;
+    }
+
+    .details-page .linked-entry--static {
+        cursor: default;
+    }
+
+    /* A called-off linked chip sits on the quieter paper with the muted ink, which holds 4.5:1; fading the whole chip did not. */
+    .details-page .linked-entry--cancelled {
+        background-color: var(--qb-surface-paper-alt);
+        color: var(--qb-ink-muted);
+        text-decoration: line-through;
+    }
+
+    .details-page .linked-entry--cancelled .linked-entry-title,
+    .details-page .linked-entry--cancelled .linked-entry-detail {
+        color: var(--qb-ink-muted);
+        text-decoration: line-through;
+    }
+
+    /* Words only a screen reader hears take the ink colour of the chip they sit on, so a contrast check reads them against paper. */
+    .details-page .warning-icon-display .visually-hidden,
+    .details-page .finalized-icon-display .visually-hidden,
+    .details-page .vote-indicator .visually-hidden {
+        color: var(--qb-ink);
+    }
+
+    /* Sits in the top-right corner of the day cell, outside the scrolling item region, so linked
+       entries pushed below the fold are still noticed. */
+    .details-page .linked-day-count {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        font-size: 10px;
+        font-weight: var(--qb-weight-strong);
+        color: var(--qb-fg);
+        text-shadow: 2px 2px 4px color-mix(in srgb, var(--qb-ink) 90%, transparent);
+        line-height: 1;
+    }
+
+    /* The choices for the date being decided: a white box over the cell with three 32px buttons. */
+    .details-page .vote-buttons {
+        position: absolute;
+        right: 4px;
+        top: 4px;
+        z-index: 11;
+        background: color-mix(in srgb, var(--qb-on-fill) 95%, transparent);
+        border-radius: 4px;
+        padding: 2px;
+        box-shadow: 0 2px 4px color-mix(in srgb, var(--qb-ink) 10%, transparent);
+    }
+
+    .details-page .vote-buttons .btn-group-vertical {
         gap: 2px;
         display: flex;
         flex-direction: column;
+        box-shadow: 0 2px 8px color-mix(in srgb, var(--qb-ink) 30%, transparent);
+        border-radius: 4px;
+        font-weight: var(--qb-weight-strong);
+        text-shadow: none;
+        border: 1px solid color-mix(in srgb, var(--qb-ink) 20%, transparent);
+        transition: box-shadow var(--qb-dur-base) ease;
     }
 
     /* Hide the actual radio input */
-    .vote-buttons .btn-check {
+    .details-page .vote-buttons .btn-check {
         position: absolute;
         clip: rect(0, 0, 0, 0);
         pointer-events: none;
     }
 
     /* Style the label as the button */
-    .vote-buttons .btn {
+    .details-page .vote-buttons .btn {
         width: 32px;
         height: 32px;
         padding: 0;
@@ -342,520 +1413,189 @@
         font-size: var(--qb-text-sm);
         line-height: 1;
         cursor: pointer;
-        transition: all 0.15s ease;
+        transition: background-color var(--qb-dur-fast) ease, border-color var(--qb-dur-fast) ease, color var(--qb-dur-fast) ease;
         min-width: 32px;
         border: 2px solid transparent;
     }
 
-        .vote-buttons .btn:first-child {
-            border-top-left-radius: 3px;
-            border-top-right-radius: 3px;
-        }
-
-        .vote-buttons .btn:last-child {
-            border-bottom-left-radius: 3px;
-            border-bottom-right-radius: 3px;
-        }
-
-    /* Checked state styling */
-    .vote-buttons .btn-check:checked + .btn-outline-success {
-        background-color: #28a745;
-        border-color: #28a745;
-        color: white;
+    .details-page .vote-buttons .btn:first-child {
+        border-top-left-radius: 3px;
+        border-top-right-radius: 3px;
     }
 
-    .vote-buttons .btn-check:checked + .btn-outline-warning {
-        background-color: #ffc107;
-        border-color: #ffc107;
-        color: white;
+    .details-page .vote-buttons .btn:last-child {
+        border-bottom-left-radius: 3px;
+        border-bottom-right-radius: 3px;
     }
 
-    .vote-buttons .btn-check:checked + .btn-outline-danger {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        color: white;
+    /* The checked choice is told apart by its fill; its edge stays clear because the white box already frames the group. */
+    .details-page .vote-buttons .btn-check:checked + .btn {
+        border-color: transparent;
     }
 
-.quest-event:hover .vote-buttons {
-    display: block !important;
-    opacity: 1;
-    visibility: visible;
-}
-
-/* Always show vote buttons for current quest on details page */
-.details-page .quest-event.current-quest .vote-buttons {
-    display: block !important;
-}
-
-.vote-buttons .btn-group-vertical {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    font-weight: 600;
-    text-shadow: none;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    transition: all 0.2s ease;
-}
-
-/* User Vote Display - Fixed positioning at top */
-.user-vote-display {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    z-index: 5;
-}
-
-.vote-indicator {
-    background: transparent;
-    border-radius: 50%;
-    width: auto;
-    height: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: none;
-    padding: 0;
-}
-
-    .vote-indicator i {
-        font-size: 0.9rem;
-    }
-
-/* Always show vote indicators for current quest */
-.details-page .quest-event.current-quest .user-vote-display {
-    display: block !important;
-}
-
-/* Quest Date Indicator (for non-signed-up users) */
-.quest-date-indicator {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    z-index: 5;
-}
-
-    .quest-date-indicator .badge {
-        font-size: 7px;
-        padding: 2px 4px;
-        white-space: nowrap;
-    }
-
-/* Calendar Navigation */
-.calendar-navigation {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Legend */
-.legend-item {
-    width: 20px;
-    height: 12px;
-    border-radius: 2px;
-    border-left: 3px solid;
-    background-color: rgba(255, 255, 255, 0.9);
-}
-
-    .legend-item.proposed {
-        border-left-color: #ffc107;
-    }
-
-    .legend-item.finalized {
-        border-left-color: #28a745;
-    }
-
-    .legend-item.event {
-        border-left-color: #6f42c1;
-    }
-
-    .legend-item.cancelled {
-        border-left-color: #6f42c1;
-        opacity: 0.55;
-    }
-
-    .legend-item.linked {
-        background-color: rgba(255, 255, 255, 0.6);
-        border-left: 4px dashed #6c757d;
-    }
-
-/* Long board names wrap inside the narrow legend column instead of being cut off. */
-.legend-board-name {
-    overflow-wrap: anywhere;
-    min-width: 0;
-}
-
-.legend-card {
-    height: fit-content;
-}
-
-    .legend-card .card-body {
-        padding: 0.75rem !important;
-    }
-
-    .legend-card small {
-        font-size: 0.75rem;
-        line-height: 1.2;
-    }
-
-/* ========================================
-   LINKED BOARD ENTRIES
-   ========================================
-   Entries that belong to another board in the linked set. They are meant to read as someone
-   else's booking pinned to this board: the same footprint as an own chip at rest, but a
-   quieter surface and a dashed edge in the status colour. At rest only the title shows;
-   hovering or focusing a chip you can open reveals the board, DM and time line. These chips
-   have their own selectors on purpose, so none of the vote-control spacing or cursor rules
-   of the board's own chips can leak into them. */
-.linked-day-entries {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    overflow: hidden;
-    margin-top: 1px;
-}
-
-.linked-entry {
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-    width: 100%;
-    flex-shrink: 0;
-    min-height: 24px;
-    padding: 2px 4px 2px 3px;
-    border-radius: 3px;
-    background-color: rgba(255, 255, 255, 0.6);
-    border-left: 4px dashed;
-    font-size: 10px;
-    line-height: 1.2;
-    color: #1a1a1a;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    position: relative;
-    cursor: default;
-}
-
-    .linked-entry--proposed {
-        border-left-color: #ffc107;
-    }
-
-    .linked-entry--finalized {
-        border-left-color: #28a745;
-    }
-
-    .linked-entry--event {
-        border-left-color: #6f42c1;
-    }
-
-.linked-entry-title {
-    display: block;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 2px;
-}
-
-.linked-entry-detail {
-    display: none;
-    font-weight: 400;
-    color: #262626;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    font-style: normal;
-}
-
-.linked-entry:hover,
-.linked-entry--open:focus-visible {
-    min-height: 48px;
-    background-color: rgba(255, 255, 255, 0.8);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 10;
-}
-
-    .linked-entry:hover .linked-entry-detail,
-    .linked-entry--open:focus-visible .linked-entry-detail {
+    .details-page .quest-event:hover .vote-buttons {
         display: block;
+        opacity: 1;
+        visibility: visible;
     }
 
-.linked-entry--open {
-    cursor: pointer;
-    color: #1a1a1a;
-}
+    @media (max-width: 768px) {
+        .calendar-grid.details-page {
+            height: auto;
+        }
 
-    .linked-entry--open:hover {
-        color: #1a1a1a;
-        text-decoration: none;
-    }
+        .details-page .calendar-body {
+            grid-auto-rows: 100px;
+        }
 
-    .linked-entry--open:focus-visible {
-        outline: 2px solid #0d6efd;
-        outline-offset: -2px;
-    }
+        .details-page .calendar-day {
+            padding: 4px;
+        }
 
-.linked-entry--static {
-    cursor: default;
-}
+        .details-page .quest-event {
+            font-size: 8px;
+            padding: 1px 3px;
+            height: 14px;
+        }
 
-.linked-entry--cancelled {
-    opacity: 0.55;
-    text-decoration: line-through;
-}
-
-    .linked-entry--cancelled .linked-entry-title,
-    .linked-entry--cancelled .linked-entry-detail {
-        text-decoration: line-through;
-    }
-
-/* Sits in the top-right corner of the day cell, outside the scrolling item region, so linked
-   entries pushed below the fold are still noticed. */
-.linked-day-count {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-    line-height: 1;
-}
-
-/* The line above the Quest Details calendar naming the boards whose entries it also shows. */
-.calendar-linked-note {
-    padding: 4px 16px;
-    font-size: 12px;
-    font-weight: 400;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-}
-
-/* ========================================
-   DETAILS PAGE CALENDAR STYLING
-   ========================================
-   Architecture:
-   - Base .quest-event styles (lines 81-143) serve as the default
-   - These base styles work correctly for both Calendar page and Details page
-   - Only .current-quest gets specific overrides to stand out
-   - Non-current quests automatically inherit base styles
-   ======================================== */
-
-.details-page .calendar-grid {
-    height: 90px;
-    min-height: 350px;
-}
-
-.details-page .calendar-body {
-    grid-auto-rows: 160px;
-}
-
-.quest-details-page .calendar-grid {
-    max-width: none;
-}
-
-/* A week with a vote cell needs room for three 32px buttons under the day number. */
-.quest-details-page .calendar-body {
-    grid-auto-rows: 160px;
-}
-
-/* Calendar container styling for details page */
-.details-calendar-container .calendar-grid {
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.details-calendar-container .calendar-day {
-    min-height: 80px;
-}
-
-.details-calendar-container .quest-event:hover {
-    min-height: 50px;
-    width: 100%;
-    max-width: 100%;
-}
-
-/* Current Quest Styling - always expanded on details page */
-.quest-event.current-quest {
-    background-color: rgba(255, 255, 255, 1) !important;
-    border-left-color: #3498db;
-    border-width: 3px;
-    font-size: var(--qb-text-sm) !important;
-    min-height: 48px !important;
-    height: auto !important;
-    padding: 2px 4px !important;
-    padding-right: 44px !important;
-    border-radius: 3px !important;
-    position: relative !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-    z-index: 10 !important;
-    overflow: visible !important;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* Fixed height when vote buttons are present (to prevent cutoff) */
-.quest-event.current-quest:has(.vote-buttons) {
-    height: 116px !important;
-}
-
-    .quest-event.current-quest .quest-link {
-        width: 100%;
-        box-sizing: border-box;
-        position: relative;
-    }
-
-.quest-event:hover.current-quest {
-    width: 100%;
-    max-width: 100%;
-}
-
-/* Keep current quest entries always expanded */
-.details-page .quest-event.current-quest .quest-link {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-}
-
-.details-page .quest-event.current-quest .calendar-quest-title {
-    white-space: nowrap !important;
-    text-overflow: ellipsis !important;
-    overflow: hidden !important;
-    font-size: var(--qb-text-sm) !important;
-    flex-shrink: 0 !important;
-    margin-bottom: 2px !important;
-    width: 100%;
-    max-width: 100%;
-}
-
-.details-page .quest-event.current-quest .calendar-quest-dm {
-    display: block !important;
-    font-size: var(--qb-text-sm) !important;
-    margin-bottom: 2px !important;
-}
-
-.details-page .quest-event.current-quest .quest-time {
-    display: block !important;
-    font-size: var(--qb-text-sm) !important;
-}
-
-.details-page .quest-event.current-quest .finalized-icon {
-    font-size: var(--qb-text-sm) !important;
-    opacity: 1 !important;
-}
-
-/* Completely disable hover effects for current quest entries */
-.details-page .quest-event.current-quest:hover {
-    background-color: rgba(255, 255, 255, 1) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-    z-index: 10 !important;
-    border-radius: 3px !important;
-    font-size: var(--qb-text-sm) !important;
-    position: relative !important;
-    left: auto !important;
-    right: auto !important;
-    height: auto !important;
-    min-height: 48px !important;
-    padding: 2px 4px !important;
-    padding-right: 44px !important;
-    overflow: visible !important;
-    transform: none !important;
-}
-
-/* Fixed height on hover when vote buttons are present */
-.details-page .quest-event.current-quest:hover:has(.vote-buttons) {
-    height: 116px !important;
-}
-
-/* Non-current quest events on details page automatically inherit base styles */
-/* No overrides needed - the base .quest-event styles work correctly */
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .calendar-grid {
-        height: auto;
-    }
-
-    .calendar-body {
-        grid-auto-rows: 100px;
-    }
-
-    .calendar-day {
-        padding: 4px;
-    }
-
-    .calendar-day-header {
-        padding: 8px 4px;
-        font-size: 12px;
-    }
-
-    .quest-event {
-        font-size: 8px;
-        padding: 1px 3px;
-        height: 14px;
-    }
-
-        .quest-event:hover {
+        .details-page .quest-event:hover {
             font-size: 9px;
-            min-height: 35px;
             padding: 4px 6px;
         }
 
-    .quest-title {
-        font-size: 8px;
+        .details-page .calendar-quest-title {
+            font-size: inherit;
+        }
+
     }
 
-    .calendar-quest-title {
-        font-size: inherit;
-    }
+    @media (max-width: 480px) {
+        .details-page .calendar-body {
+            grid-auto-rows: 90px;
+        }
 
-    .quest-event:hover .calendar-quest-title {
-        font-size: 9px;
-    }
+        .details-page .calendar-day {
+            padding: 2px;
+        }
 
-    .quest-event:hover .calendar-quest-dm {
-        font-size: 7px;
-    }
+        .details-page .quest-event {
+            font-size: 7px;
+            height: 12px;
+            padding: 1px 2px;
+        }
 
-    .quest-event:hover .quest-time {
-        font-size: 7px;
-    }
-}
-
-@media (max-width: 480px) {
-    .calendar-grid {
-        height: auto;
-    }
-
-    .calendar-body {
-        grid-auto-rows: 90px;
-    }
-
-    .calendar-day {
-        padding: 2px;
-    }
-
-    .calendar-day-header {
-        padding: 6px 2px;
-        font-size: 11px;
-    }
-
-    .quest-event {
-        font-size: 7px;
-        height: 12px;
-        padding: 1px 2px;
-    }
-
-        .quest-event:hover {
+        .details-page .quest-event:hover {
             font-size: 8px;
-            min-height: 30px;
             padding: 3px 4px;
         }
 
-            .quest-event:hover .calendar-quest-title {
-                font-size: 8px;
-            }
+    }
 
-            .quest-event:hover .calendar-quest-dm {
-                font-size: 6px;
-            }
+    /* The quest being decided stays open on this page: always expanded, with no hover change. Placed last
+       so it wins over the chip, hover and small-window rules above at equal weight. */
+    .details-page .quest-event.current-quest {
+        background-color: color-mix(in srgb, var(--qb-on-fill) 100%, transparent);
+        border-left-color: var(--qb-info);
+        border-width: 3px;
+        font-size: var(--qb-text-sm);
+        min-height: 48px;
+        height: auto;
+        padding: 2px 4px;
+        padding-right: 44px;
+        border-radius: 3px;
+        position: relative;
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--qb-ink) 30%, transparent);
+        z-index: 10;
+        overflow: visible;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
-            .quest-event:hover .quest-time {
-                font-size: 6px;
-            }
+    /* Fixed height when the vote choices are present, so they are not cut off. */
+    .details-page .quest-event.current-quest:has(.vote-buttons) {
+        height: 116px;
+    }
+
+    .details-page .quest-event.current-quest .quest-link {
+        width: 100%;
+        box-sizing: border-box;
+        position: relative;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .details-page .quest-event.current-quest:hover {
+        background-color: color-mix(in srgb, var(--qb-on-fill) 100%, transparent);
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--qb-ink) 30%, transparent);
+        z-index: 10;
+        border-radius: 3px;
+        font-size: var(--qb-text-sm);
+        position: relative;
+        left: auto;
+        right: auto;
+        height: auto;
+        min-height: 48px;
+        padding: 2px 4px;
+        padding-right: 44px;
+        overflow: visible;
+        transform: none;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .details-page .quest-event.current-quest:hover:has(.vote-buttons) {
+        height: 116px;
+    }
+
+    .details-page .quest-event.current-quest .calendar-quest-title,
+    .details-page .quest-event.current-quest:hover .calendar-quest-title {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        font-size: var(--qb-text-sm);
+        flex-shrink: 0;
+        margin-bottom: 2px;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .details-page .quest-event.current-quest .calendar-quest-dm,
+    .details-page .quest-event.current-quest:hover .calendar-quest-dm {
+        display: block;
+        font-size: var(--qb-text-sm);
+        margin-bottom: 2px;
+    }
+
+    .details-page .quest-event.current-quest .quest-time,
+    .details-page .quest-event.current-quest:hover .quest-time {
+        display: block;
+        font-size: var(--qb-text-sm);
+    }
+
+    .details-page .quest-event.current-quest .vote-buttons {
+        display: block;
+    }
+
+    .details-page .quest-event.current-quest .user-vote-display {
+        display: block;
+    }
+
+    /* Quest Details calendar frame */
+    .quest-details-page .calendar-grid {
+        max-width: none;
+    }
+
+    /* A week with a vote cell needs room for three 32px buttons under the day number. */
+    .details-page .calendar-body {
+        grid-auto-rows: 160px;
+    }
+
+    /* The line above the calendar naming the boards whose entries it also shows. */
+    .quest-details-page .calendar-linked-note {
+        padding: 4px 16px;
+        font-size: 12px;
+        font-weight: var(--qb-weight-regular);
+        color: var(--qb-fg);
+        text-shadow: 2px 2px 4px color-mix(in srgb, var(--qb-ink) 90%, transparent);
+    }
 }

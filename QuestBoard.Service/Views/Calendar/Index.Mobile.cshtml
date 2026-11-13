@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Html
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Service.ViewModels.CalendarViewModels
 @model CalendarViewModel
@@ -8,6 +9,8 @@
     var pages = await BoardPages.GetAsync();
     var prevMonth = Model.FirstDayOfMonth.AddMonths(-1);
     var nextMonth = Model.FirstDayOfMonth.AddMonths(1);
+    var boardToday = (DateOnly)ViewBag.BoardToday;
+    var viewerId = ViewBag.CurrentUserId as int?;
     var agendaDays = Model.GetCalendarDays().Where(d => !d.IsEmpty && (d.QuestsOnDay.Any() || d.EventsOnDay.Any() || d.Linked.HasEntries)).ToList();
 }
 @section Styles {
@@ -15,51 +18,75 @@
 }
 
 <div class="container-fluid px-2 mt-2">
-<div class="agenda-card-mobile">
+<div class="card modern-card agenda-page agenda-card-mobile">
+    <div class="card-header modern-card-header">
+        <h1><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>@ViewData["Title"]</h1>
+    </div>
+    <div class="card-body modern-card-body">
 
     @* Month navigation bar *@
-    <div class="d-flex justify-content-between align-items-center mb-3 calendar-month-nav">
+    <nav class="agenda-month-nav" aria-label="Month">
         <a href="@Url.Action("Index", new { year = prevMonth.Year, month = prevMonth.Month })"
-           class="btn btn-primary calendar-nav-btn" aria-label="Previous month">
-            <i class="fas fa-chevron-left"></i>
+           class="btn btn-secondary calendar-nav-btn" aria-label="Previous month">
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
         </a>
-        <span class="fw-bold cinzel-heading calendar-month-title">
-            @Model.MonthName
-        </span>
+        <span class="agenda-month-name">@Model.MonthName</span>
         <a href="@Url.Action("Index", new { year = nextMonth.Year, month = nextMonth.Month })"
-           class="btn btn-primary calendar-nav-btn" aria-label="Next month">
-            <i class="fas fa-chevron-right"></i>
+           class="btn btn-secondary calendar-nav-btn" aria-label="Next month">
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
         </a>
-    </div>
+    </nav>
 
     @* Names the other boards whose entries share this agenda. Board names only, never the
        name of the set, and nothing renders for a board with no linked boards. *@
     @if (Model.LinkedBoards.Count > 0)
     {
-        <div class="agenda-linked-note mb-3"><i class="fas fa-link me-2" aria-hidden="true"></i>Also showing: @string.Join(", ", Model.LinkedBoards.Select(b => b.Name))</div>
+        <p class="agenda-linked-note"><i class="fas fa-link me-2" aria-hidden="true"></i>Also showing: @string.Join(", ", Model.LinkedBoards.Select(b => b.Name))</p>
     }
 
-    <div class="d-grid gap-2 mb-3">
-        @if ((await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded && pages.Serves(BoardPage.Events))
-        {
-            <a asp-controller="Events" asp-action="Index" class="btn btn-secondary btn-sm">
-                <i class="fas fa-calendar-check me-2"></i>Board Availability
-            </a>
-        }
-        <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
-            <i class="fas fa-calendar-days me-2"></i>My Agenda
-        </a>
+    @* The legend stays closed until asked for, so the agenda is the first thing on the page. It holds
+       every string the desktop legend shows. *@
+    <button type="button" class="btn btn-secondary calendar-legend-toggle" data-bs-toggle="collapse"
+            data-bs-target="#agenda-legend" aria-expanded="false" aria-controls="agenda-legend">What do these mean?</button>
+    <div class="collapse" id="agenda-legend">
+        <div class="card modern-card agenda-legend">
+            <div class="card-body modern-card-body p-0">
+                <ul aria-label="Legend">
+                    <li><span class="agenda-mark" aria-hidden="true"><i class="fas fa-hourglass-half"></i></span><span>Proposed</span></li>
+                    <li><span class="agenda-mark agenda-mark--finalized" aria-hidden="true"><i class="fas fa-circle-check"></i></span><span>Finalized</span></li>
+                    <li><span class="agenda-mark agenda-mark--event" aria-hidden="true"><i class="fas fa-calendar-day"></i></span><span>Event</span></li>
+                    <li><span class="agenda-mark agenda-mark--cancelled" aria-hidden="true"><i class="fas fa-ban"></i></span><span>Cancelled</span></li>
+                    <li><span class="agenda-flag agenda-flag--nokey"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i>No building key</span></li>
+                    @if (Model.LinkedBoards.Count > 0)
+                    {
+                        <li><span class="agenda-legend__swatch" aria-hidden="true"><i class="fas fa-link"></i></span><span>Dashed = from a linked board</span></li>
+                    }
+                </ul>
+                @if (Model.LinkedBoards.Count > 0)
+                {
+                    <h2>Linked boards</h2>
+                    <ul>
+                        @foreach (var linkedBoard in Model.LinkedBoards)
+                        {
+                            <li><span class="agenda-legend__swatch" aria-hidden="true"><i class="fas fa-link"></i></span><span>@linkedBoard.Name</span></li>
+                        }
+                    </ul>
+                    <p>Dashed entries belong to a linked board. You can open them only if you are a member of that board.</p>
+                }
+                <p><i class="fas fa-lightbulb" aria-hidden="true"></i><span>Click quests or events for details</span></p>
+            </div>
+        </div>
     </div>
 
-    @* Low-runway warning — a player has no action to take on a scheduling warning, so this
+    @* Low-runway warning: a player has no action to take on a scheduling warning, so this
        block is gated to managers only, matching the desktop calendar's banner. *@
     @if (Model.CanManage && Model.SeriesBelowRunway.Any())
     {
-        <div class="alert alert-warning mb-3" role="alert">
+        <div class="alert alert-warning mb-0" role="alert">
             @if (Model.SeriesBelowRunway.Count == 1)
             {
                 var series = Model.SeriesBelowRunway[0];
-                <text>The '</text><a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a><text>' series is running low — only @series.UpcomingCount upcoming session(s) left. Visit its series page to check the cadence.</text>
+                <text>The '</text><a class="alert-link" href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a><text>' series is running low — only @series.UpcomingCount upcoming session(s) left. Visit its series page to check the cadence.</text>
             }
             else
             {
@@ -67,7 +94,7 @@
                 @for (var i = 0; i < Model.SeriesBelowRunway.Count; i++)
                 {
                     var series = Model.SeriesBelowRunway[i];
-                    <a href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a>
+                    <a class="alert-link" href="@Url.Action("Details", "Series", new { id = series.SeriesId })">@series.Title</a>
                     if (i < Model.SeriesBelowRunway.Count - 1)
                     {
                         <text>, </text>
@@ -78,107 +105,118 @@
         </div>
     }
 
-    @* Agenda list — one section per day that has at least one quest or event *@
+    @* Agenda list: one section per day that has at least one quest or event *@
     @if (!agendaDays.Any())
     {
         @* Empty state stays month-neutral because this block now covers both quests and events *@
-        <div class="text-center text-muted py-5">
-            <i class="fas fa-calendar-alt fa-3x mb-3"></i>
-            <h5>Nothing This Month</h5>
-            <p>No quests or events are planned for @Model.MonthName. Check another month.</p>
+        <div class="empty-state">
+            <i class="fas fa-calendar-alt empty-state-icon" aria-hidden="true"></i>
+            <h2 class="empty-state-heading">Nothing This Month</h2>
+            <p class="empty-state-text">No quests or events are planned for @Model.MonthName. Check another month.</p>
         </div>
     }
     else
     {
+        <div class="agenda-days">
         @foreach (var day in agendaDays)
         {
-            <div class="agenda-day-section mb-2">
-                @* Day label: SATURDAY, JUNE 14 *@
-                <div class="agenda-day-label text-uppercase fw-bold small mb-1">
-                    @day.Date.ToString("dddd, MMMM d").ToUpper()
+            var isBoardToday = DateOnly.FromDateTime(day.Date) == boardToday;
+            <section class="agenda-day-section@(isBoardToday ? " agenda-day-section--today" : "")" aria-current="@(isBoardToday ? "date" : null)">
+                @* Day label: Saturday, June 14 (the sheet sets it in capitals) *@
+                <div class="agenda-day-head">
+                    <h2 class="agenda-day-label">@Html.WallClock(day.Date, "weekday-long")</h2>
+                    @if (isBoardToday)
+                    {
+                        <span class="agenda-today-pill">Today</span>
+                    }
                 </div>
-                @* Event entries render first so the mobile agenda groups a day the same way the
-                   desktop day cell does; the time slot always prints something because a blank
-                   slot is indistinguishable from a loading failure. *@
+                @* Every entry is a slip with one stretched link, so the whole slip is the tap target and
+                   no handler is needed. Events render first so the agenda groups a day the same way the
+                   desktop day cell does; the time slot always prints something because a blank slot is
+                   indistinguishable from a loading failure. *@
+                <ul class="agenda-list">
                 @foreach (var eventOnDay in day.EventsOnDay)
                 {
-                    <div class="agenda-event-entry @(eventOnDay.Event.IsCancelled ? "cancelled" : "")"
-                         onclick="window.location.href='@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })'">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="agenda-event-title fw-bold"><i class="fas fa-calendar-day me-2"></i><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })">@eventOnDay.Event.Title</a></span>
-                            <small class="text-muted ms-2 flex-shrink-0">@eventOnDay.TimeLabel</small>
+                    var cancelledEvent = eventOnDay.Event.IsCancelled;
+                    <li class="agenda-slip agenda-event-entry@(cancelledEvent ? " cancelled" : "")">
+                        <div class="agenda-slip__head">
+                            <span class="agenda-mark @(cancelledEvent ? "agenda-mark--cancelled" : "agenda-mark--event")" aria-hidden="true"><i class="fas @(cancelledEvent ? "fa-ban" : "fa-calendar-day")"></i></span>
+                            <span class="visually-hidden">@(cancelledEvent ? "Cancelled." : "Event.")</span>
+                            <span class="agenda-slip__title"><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })">@eventOnDay.Event.Title</a></span>
                         </div>
-                    </div>
+                        <p class="agenda-slip__meta"><span class="agenda-time">@eventOnDay.TimeLabel</span></p>
+                    </li>
                 }
-                @* Quest entries for this day — all quests, no Take(3) cap *@
+                @* Quest entries for this day: all quests, no cap *@
                 @foreach (var questOnDay in day.QuestsOnDay)
                 {
-                    <div class="agenda-quest-entry @(questOnDay.IsFinalized ? "agenda-quest-finalized" : "agenda-quest-proposed")"
-                         onclick="window.location.href='@Url.Action("Details", "Quest", new { id = questOnDay.Quest.Id })'">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="agenda-quest-title fw-bold"><a class="row-nav-link" href="@Url.Action("Details", "Quest", new { id = questOnDay.Quest.Id })">@questOnDay.Quest.Title</a></span>
-                            <small class="text-muted ms-2 flex-shrink-0">
-                                @questOnDay.ProposedDate.Date.ToString("HH:mm")
-                            </small>
+                    // Same rule as the desktop month: a quest is flagged when neither its Dungeon Master
+                    // nor any signed-up player holds a building key.
+                    var anyoneHasKey = questOnDay.Quest.DungeonMaster?.HasKey == true
+                        || questOnDay.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
+                    var viewerVote = viewerId is int currentUser
+                        ? questOnDay.ProposedDate.PlayerVotes?.FirstOrDefault(v => v.PlayerSignup?.Player?.Id == currentUser)?.Vote
+                        : null;
+                    <li class="agenda-slip agenda-quest-entry @(questOnDay.IsFinalized ? "agenda-quest-finalized" : "agenda-quest-proposed")">
+                        <div class="agenda-slip__head">
+                            <span class="agenda-mark@(questOnDay.IsFinalized ? " agenda-mark--finalized" : "")" aria-hidden="true"><i class="fas @(questOnDay.IsFinalized ? "fa-circle-check" : "fa-hourglass-half")"></i></span>
+                            <span class="visually-hidden">@(questOnDay.IsFinalized ? "Finalized." : "Proposed.")</span>
+                            <span class="agenda-slip__title"><a class="row-nav-link" href="@Url.Action("Details", "Quest", new { id = questOnDay.Quest.Id })">@questOnDay.Quest.Title</a></span>
                         </div>
-                    </div>
+                        <p class="agenda-slip__meta">
+                            <span class="agenda-time">@Html.WallClock(questOnDay.ProposedDate.Date, "time-24h")</span>
+                            @if (!anyoneHasKey)
+                            {
+                                <span class="agenda-flag agenda-flag--nokey"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i>No building key</span>
+                            }
+                            @if (viewerVote is { } vote)
+                            {
+                                <span class="agenda-flag agenda-flag--vote agenda-flag--vote-@(vote.ToString().ToLowerInvariant())"><i class="fas @(vote switch { VoteType.Yes => "fa-check", VoteType.Maybe => "fa-question", _ => "fa-times" })" aria-hidden="true"></i>Your vote: @vote</span>
+                            }
+                        </p>
+                    </li>
                 }
                 @* Linked entries come after the board's own: events first, then quests. They are
-                   read-only rows from other boards in the set, and keep the board name visible
-                   as text because there is room for it on a phone. *@
+                   read-only slips from other boards in the set, and keep the board name visible
+                   as text because there is room for it on a phone. A slip links like the board's
+                   own only when the viewer can open the details page. Otherwise it is a plain slip
+                   with no link, no tab stop and no data attribute: either they are not a member of
+                   the owning board, where the page would not open, or that board no longer offers
+                   the page. *@
                 @foreach (var eventOnDay in day.Linked.Events)
                 {
                     var linkedEvent = eventOnDay.Entry;
                     var eventUrl = Url.Action("Details", "Events", new { id = linkedEvent.EventId });
-                    var eventModifiers = "agenda-linked-entry agenda-linked-entry--event" + (linkedEvent.IsCancelled ? " agenda-linked-entry--cancelled" : "");
-                    Func<LinkedEventOnDay, IHtmlContent> eventBody = @<text>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="agenda-linked-title"><i class="fas fa-calendar-day me-2" aria-hidden="true"></i>@if (item.Entry.CanOpen) {<a class="row-nav-link" href="@eventUrl">@item.Entry.Title</a>} else {@item.Entry.Title}</span>
-                            <small class="agenda-linked-time flex-shrink-0 ms-2">@item.TimeLabel@if (item.Entry.IsCancelled) {<span class="visually-hidden"> Cancelled.</span>}</small>
+                    <li class="agenda-slip agenda-linked-entry agenda-linked-entry--event@(linkedEvent.IsCancelled ? " agenda-linked-entry--cancelled" : "") @(linkedEvent.CanOpen ? "agenda-linked-entry--open" : "agenda-linked-entry--static")">
+                        <div class="agenda-slip__head">
+                            <span class="agenda-mark @(linkedEvent.IsCancelled ? "agenda-mark--cancelled" : "agenda-mark--event")" aria-hidden="true"><i class="fas @(linkedEvent.IsCancelled ? "fa-ban" : "fa-calendar-day")"></i></span>
+                            <span class="visually-hidden">@(linkedEvent.IsCancelled ? "Cancelled." : "Event.")</span>
+                            <span class="agenda-slip__title">@if (linkedEvent.CanOpen) {<a class="row-nav-link" href="@eventUrl">@linkedEvent.Title</a>} else {@linkedEvent.Title}</span>
                         </div>
-                        <div class="agenda-linked-board"><i class="fas fa-link me-1" aria-hidden="true"></i><span class="fw-semibold">@item.Entry.BoardName</span></div>
-                    </text>;
-
-                    @* A row navigates like the board's own rows only when the viewer can open the
-                       details page. Otherwise it is a plain row with no click handler and no link:
-                       either they are not a member of the owning board, where the page would 404, or
-                       that board no longer offers the page. *@
-                    if (linkedEvent.CanOpen)
-                    {
-                        <div class="@eventModifiers agenda-linked-entry--open"
-                             onclick="window.location.href='@eventUrl'">@eventBody(eventOnDay)</div>
-                    }
-                    else
-                    {
-                        <div class="@eventModifiers agenda-linked-entry--static">@eventBody(eventOnDay)</div>
-                    }
+                        <p class="agenda-slip__meta"><span class="agenda-time">@eventOnDay.TimeLabel</span></p>
+                        <p class="agenda-slip__meta"><span class="agenda-linked-board"><i class="fas fa-link" aria-hidden="true"></i><strong>@linkedEvent.BoardName</strong></span></p>
+                    </li>
                 }
                 @foreach (var questOnDay in day.Linked.Quests)
                 {
                     var linkedQuest = questOnDay.Entry;
                     var questUrl = Url.Action("Details", "Quest", new { id = linkedQuest.QuestId });
-                    var questModifiers = "agenda-linked-entry agenda-linked-entry--quest " + (questOnDay.IsFinalized ? "agenda-linked-entry--finalized" : "agenda-linked-entry--proposed");
-                    Func<LinkedQuestOnDay, IHtmlContent> questBody = @<text>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="agenda-linked-title">@if (item.Entry.CanOpen) {<a class="row-nav-link" href="@questUrl">@item.Entry.Title</a>} else {@item.Entry.Title}</span>
-                            <small class="agenda-linked-time flex-shrink-0 ms-2">@item.TimeLabel<span class="visually-hidden">@(item.IsFinalized ? "Finalized." : "Proposed.")</span></small>
+                    <li class="agenda-slip agenda-linked-entry agenda-linked-entry--quest @(questOnDay.IsFinalized ? "agenda-linked-entry--finalized" : "agenda-linked-entry--proposed") @(linkedQuest.CanOpen ? "agenda-linked-entry--open" : "agenda-linked-entry--static")">
+                        <div class="agenda-slip__head">
+                            <span class="agenda-mark@(questOnDay.IsFinalized ? " agenda-mark--finalized" : "")" aria-hidden="true"><i class="fas @(questOnDay.IsFinalized ? "fa-circle-check" : "fa-hourglass-half")"></i></span>
+                            <span class="visually-hidden">@(questOnDay.IsFinalized ? "Finalized." : "Proposed.")</span>
+                            <span class="agenda-slip__title">@if (linkedQuest.CanOpen) {<a class="row-nav-link" href="@questUrl">@linkedQuest.Title</a>} else {@linkedQuest.Title}</span>
                         </div>
-                        <div class="agenda-linked-board"><i class="fas fa-link me-1" aria-hidden="true"></i><span class="fw-semibold">@item.Entry.BoardName</span> · @item.Entry.DungeonMasterName</div>
-                    </text>;
-
-                    if (linkedQuest.CanOpen)
-                    {
-                        <div class="@questModifiers agenda-linked-entry--open"
-                             onclick="window.location.href='@questUrl'">@questBody(questOnDay)</div>
-                    }
-                    else
-                    {
-                        <div class="@questModifiers agenda-linked-entry--static">@questBody(questOnDay)</div>
-                    }
+                        <p class="agenda-slip__meta"><span class="agenda-time">@questOnDay.TimeLabel</span></p>
+                        <p class="agenda-slip__meta"><span class="agenda-linked-board"><i class="fas fa-link" aria-hidden="true"></i><strong>@linkedQuest.BoardName</strong> · @linkedQuest.DungeonMasterName</span></p>
+                    </li>
                 }
-            </div>
+                </ul>
+            </section>
         }
+        </div>
     }
 
+    </div>
 </div>
 </div>

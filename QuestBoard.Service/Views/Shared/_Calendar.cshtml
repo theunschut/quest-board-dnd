@@ -1,10 +1,19 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Interfaces
+@using QuestBoard.Service.Constants
 @using QuestBoard.Service.ViewModels.CalendarViewModels
 @model CalendarViewModel
 @{
     var isDetailsPage = ViewBag.IsDetailsPage == true;
     var currentQuestId = ViewBag.CurrentQuestId as int?;
+    var boardToday = (DateOnly)ViewBag.BoardToday;
+    // The month page has already built the day list to tell whether the month is empty, so it hands it over.
+    var calendarDays = ViewData["CalendarDays"] as List<CalendarDay> ?? Model.GetCalendarDays();
+    var weekCount = calendarDays.Count / 7;
+
+    // The month shows the board's own name in each entry's detail block; the name lives in the session
+    // beside the active board, so an entry with no name to show simply leaves the row out.
+    var ownBoardName = isDetailsPage ? null : Context.Session?.GetString(SessionKeys.ActiveGroupName);
 }
 
 @if (isDetailsPage && Model.LinkedBoards.Count > 0)
@@ -14,179 +23,219 @@
     </div>
 }
 
-<div class="calendar-grid @(isDetailsPage ? "details-page" : "") details-calendar-container">
+<div class="calendar-grid @(isDetailsPage ? "details-page" : $"calendar-grid--weeks-{weekCount}") details-calendar-container">
     <!-- Calendar Header -->
     <div class="calendar-header">
-        <div class="calendar-day-header">Monday</div>
-        <div class="calendar-day-header">Tuesday</div>
-        <div class="calendar-day-header">Wednesday</div>
-        <div class="calendar-day-header">Thursday</div>
-        <div class="calendar-day-header">Friday</div>
-        <div class="calendar-day-header">Saturday</div>
-        <div class="calendar-day-header">Sunday</div>
+        @if (isDetailsPage)
+        {
+            <div class="calendar-day-header">Monday</div>
+            <div class="calendar-day-header">Tuesday</div>
+            <div class="calendar-day-header">Wednesday</div>
+            <div class="calendar-day-header">Thursday</div>
+            <div class="calendar-day-header">Friday</div>
+            <div class="calendar-day-header">Saturday</div>
+            <div class="calendar-day-header">Sunday</div>
+        }
+        else
+        {
+            @* Below 768px the full name gives way to three letters; the full name stays for assistive technology. *@
+            foreach (var weekday in new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" })
+            {
+                <div class="calendar-day-header"><span class="calendar-day-header__full">@weekday</span><span class="calendar-day-header__short" aria-hidden="true">@weekday[..3]</span></div>
+            }
+        }
     </div>
     
     <!-- Calendar Days -->
     <div class="calendar-body">
-        @foreach (var day in Model.GetCalendarDays())
+        @foreach (var day in calendarDays)
         {
-            <div class="calendar-day @(day.IsEmpty ? "empty" : "") @(day.Date.Date == DateTime.Today ? "today" : "")">
+            var isBoardToday = !day.IsEmpty && DateOnly.FromDateTime(day.Date) == boardToday;
+            <div class="calendar-day @(day.IsEmpty ? "empty" : "") @(isBoardToday ? "today" : "")" aria-current="@(isBoardToday ? "date" : null)">
                 @if (!day.IsEmpty)
                 {
-                    <div class="day-number">@day.Day</div>
-
-                    @if (day.Linked.HasEntries)
+                    @if (isDetailsPage)
                     {
-                        var linkedNoun = day.Linked.Count == 1 ? "entry" : "entries";
-                        @* A div, not a span, so the count keeps the colour calendar.css gives it whatever colour the card gives its text. *@
-                        <div class="linked-day-count" title="@day.Linked.Count @linkedNoun from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count<span class="visually-hidden"> @linkedNoun from linked boards</span></div>
-                    }
+                        <div class="day-number">@day.Day</div>
 
-                    @* The day number stays outside this wrapper so it never scrolls out of *@
-                    @* view. Both the events block and the quest list share one scrollbar *@
-                    @* here instead of each getting its own, since the cell height is fixed *@
-                    @* and no longer grows to fit its contents. *@
-                    <div class="day-cell-items">
-                    @* Renders only when the day actually has events, and the collection is *@
-                    @* empty by default, so the callers of this partial that build their own *@
-                    @* model and never populate events render nothing here without any flag *@
-                    @* to set. *@
-                    @if (day.EventsOnDay.Any())
-                    {
-                        <div class="calendar-events">
-                            @foreach (var eventOnDay in day.EventsOnDay)
-                            {
-                                <div class="calendar-event @(eventOnDay.Event.IsCancelled ? "cancelled" : "")" title="@eventOnDay.Event.Title - @eventOnDay.TimeLabel">
-                                    <a href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })"
-                                       class="quest-link">
-                                        <div class="calendar-event-title"><i class="fas fa-calendar-day me-1"></i>@eventOnDay.Event.Title</div>
-                                        <div class="calendar-event-time">@eventOnDay.TimeLabel</div>
-                                    </a>
-                                </div>
-                            }
-                        </div>
-                    }
+                        @if (day.Linked.HasEntries)
+                        {
+                            var linkedNoun = day.Linked.Count == 1 ? "entry" : "entries";
+                            @* A div, not a span, so the count keeps the colour calendar.css gives it whatever colour the card gives its text. *@
+                            <div class="linked-day-count" title="@day.Linked.Count @linkedNoun from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count<span class="visually-hidden"> @linkedNoun from linked boards</span></div>
+                        }
 
-                    @if (day.QuestsOnDay.Any())
-                    {
-                        <div class="quest-events">
-                            @foreach (var questOnDay in day.QuestsOnDay)
-                            {
-                                <div class="quest-event @(questOnDay.IsFinalized ? "finalized" : "proposed") @(isDetailsPage && questOnDay.Quest.Id == currentQuestId ? "current-quest" : "")" 
-                                     title="@questOnDay.Quest.Title - @questOnDay.ProposedDate.Date.ToString("HH:mm")"
-                                     data-quest-id="@questOnDay.Quest.Id"
-                                     data-proposed-date-id="@questOnDay.ProposedDate.Id"
-                                     data-is-details-page="@isDetailsPage.ToString().ToLower()">
-                                    <a href="@Url.Action("Details", "Quest", new { id = questOnDay.Quest.Id })"
-                                       class="quest-link">
-                                        <div class="calendar-quest-title">@questOnDay.Quest.Title</div>
-                                        <div class="calendar-quest-dm">@questOnDay.Quest.DungeonMaster?.Name</div>
-                                        <div class="quest-time">@questOnDay.ProposedDate.Date.ToString("HH:mm")</div>
-                                    </a>
+                        @* The day number stays outside this wrapper so it never scrolls out of *@
+                        @* view. Both the events block and the quest list share one scrollbar *@
+                        @* here instead of each getting its own, since the cell height is fixed *@
+                        @* and no longer grows to fit its contents. *@
+                        <div class="day-cell-items">
+                        @* Renders only when the day actually has events, and the collection is *@
+                        @* empty by default, so the callers of this partial that build their own *@
+                        @* model and never populate events render nothing here without any flag *@
+                        @* to set. *@
+                        @if (day.EventsOnDay.Any())
+                        {
+                            <div class="calendar-events">
+                                @foreach (var eventOnDay in day.EventsOnDay)
+                                {
+                                    <div class="calendar-event @(eventOnDay.Event.IsCancelled ? "cancelled" : "")" title="@eventOnDay.Event.Title - @eventOnDay.TimeLabel">
+                                        <a href="@Url.Action("Details", "Events", new { id = eventOnDay.Event.Id })"
+                                           class="quest-link">
+                                            <div class="calendar-event-title"><i class="fas fa-calendar-day me-1" aria-hidden="true"></i>@eventOnDay.Event.Title</div>
+                                            <div class="calendar-event-time">@eventOnDay.TimeLabel</div>
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                        }
 
-                                    @* Status icons (finalized/warning) - positioned outside the link *@
-                                    @{
-                                        var dmHasKey = questOnDay.Quest.DungeonMaster?.HasKey == true;
-                                        var playersHaveKey = questOnDay.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
-                                        var anyoneHasKey = dmHasKey || playersHaveKey;
-                                    }
-                                    @if (!anyoneHasKey)
-                                    {
-                                        <div class="warning-icon-display">
-                                            <div class="status-indicator">
-                                                <i class="fas fa-exclamation-triangle text-warning" title="No building key available"></i>
-                                            </div>
-                                        </div>
-                                    }
-                                    else if (questOnDay.IsFinalized)
-                                    {
-                                        <div class="finalized-icon-display">
-                                            <div class="status-indicator">
-                                                <i class="fas fa-check-circle text-success"></i>
-                                            </div>
-                                        </div>
-                                    }
+                        @if (day.QuestsOnDay.Any())
+                        {
+                            <div class="quest-events">
+                                @foreach (var questOnDay in day.QuestsOnDay)
+                                {
+                                    <div class="quest-event @(questOnDay.IsFinalized ? "finalized" : "proposed") @(isDetailsPage && questOnDay.Quest.Id == currentQuestId ? "current-quest" : "")" 
+                                         title="@questOnDay.Quest.Title - @questOnDay.TimeLabel"
+                                         data-quest-id="@questOnDay.Quest.Id"
+                                         data-proposed-date-id="@questOnDay.ProposedDate.Id"
+                                         data-is-details-page="@isDetailsPage.ToString().ToLower()">
+                                        <a href="@Url.Action("Details", "Quest", new { id = questOnDay.Quest.Id })"
+                                           class="quest-link">
+                                            <div class="calendar-quest-title">@questOnDay.Quest.Title</div>
+                                            <div class="calendar-quest-dm">@questOnDay.Quest.DungeonMaster?.Name</div>
+                                            <div class="quest-time">@Html.WallClock(questOnDay.ProposedDate.Date, "time-24h")</div>
+                                        </a>
 
-                                    @* Vote buttons and vote display *@
-                                    @{
-                                        var currentUserId = ViewBag.CurrentUserId;
-                                        var userVote = questOnDay.ProposedDate.PlayerVotes?.FirstOrDefault(v => v.PlayerSignup?.Player?.Id == currentUserId)?.Vote;
-                                    }
-
-                                    @if (isDetailsPage && questOnDay.Quest.Id == currentQuestId)
-                                    {
-                                        var isPlayerSignedUp = ViewBag.IsPlayerSignedUp;
-                                        var updateVoteIndexLookup = ViewData["UpdateVoteIndexLookup"] as Dictionary<int, int>;
-                                        var isUpdateMode = updateVoteIndexLookup != null;
-
-                                        @if (!questOnDay.IsFinalized && !(bool)isPlayerSignedUp)
+                                        @* Status icons (finalized/warning) - positioned outside the link *@
+                                        @{
+                                            var dmHasKey = questOnDay.Quest.DungeonMaster?.HasKey == true;
+                                            var playersHaveKey = questOnDay.Quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
+                                            var anyoneHasKey = dmHasKey || playersHaveKey;
+                                        }
+                                        @if (!anyoneHasKey)
                                         {
-                                            @* Vote buttons for non-signed up users using proper form binding *@
-                                            var voteIndexLookup = ViewBag.VoteIndexLookup as Dictionary<int, int>;
-                                            var voteIndex = voteIndexLookup?.ContainsKey(questOnDay.ProposedDate.Id) == true
-                                                ? voteIndexLookup[questOnDay.ProposedDate.Id]
-                                                : -1;
+                                            <div class="warning-icon-display">
+                                                <div class="status-indicator">
+                                                    <i class="fas fa-exclamation-triangle text-warning" title="No building key available" aria-hidden="true"></i><span class="visually-hidden">No building key available</span>
+                                                </div>
+                                            </div>
+                                        }
+                                        else if (questOnDay.IsFinalized)
+                                        {
+                                            <div class="finalized-icon-display">
+                                                <div class="status-indicator">
+                                                    <i class="fas fa-check-circle text-success" aria-hidden="true"></i><span class="visually-hidden">Finalized</span>
+                                                </div>
+                                            </div>
+                                        }
 
-                                            @if (voteIndex >= 0)
+                                        @* Vote buttons and vote display *@
+                                        @{
+                                            var currentUserId = ViewBag.CurrentUserId;
+                                            var userVote = questOnDay.ProposedDate.PlayerVotes?.FirstOrDefault(v => v.PlayerSignup?.Player?.Id == currentUserId)?.Vote;
+                                        }
+
+                                        @if (isDetailsPage && questOnDay.Quest.Id == currentQuestId)
+                                        {
+                                            var isPlayerSignedUp = ViewBag.IsPlayerSignedUp;
+                                            var updateVoteIndexLookup = ViewData["UpdateVoteIndexLookup"] as Dictionary<int, int>;
+                                            var isUpdateMode = updateVoteIndexLookup != null;
+
+                                            @if (!questOnDay.IsFinalized && !(bool)isPlayerSignedUp)
                                             {
-                                                <div class="vote-buttons">
-                                                    <span class="visually-hidden" id="vote-for-@voteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
-                                                    <div class="btn-group-vertical" role="group" aria-labelledby="vote-for-@voteIndex">
-                                                        <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_yes" value="2" autocomplete="off">
-                                                        <label class="btn vote-choice vote-choice--yes" for="vote_@(voteIndex)_yes">
-                                                            <i class="fas fa-check" aria-hidden="true"></i><span class="visually-hidden">Yes</span>
-                                                        </label>
+                                                @* Vote buttons for non-signed up users using proper form binding *@
+                                                var voteIndexLookup = ViewBag.VoteIndexLookup as Dictionary<int, int>;
+                                                var voteIndex = voteIndexLookup?.ContainsKey(questOnDay.ProposedDate.Id) == true
+                                                    ? voteIndexLookup[questOnDay.ProposedDate.Id]
+                                                    : -1;
 
-                                                        <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_maybe" value="1" autocomplete="off">
-                                                        <label class="btn vote-choice vote-choice--maybe" for="vote_@(voteIndex)_maybe">
-                                                            <i class="fas fa-question" aria-hidden="true"></i><span class="visually-hidden">Maybe</span>
-                                                        </label>
+                                                @if (voteIndex >= 0)
+                                                {
+                                                    <div class="vote-buttons">
+                                                        <span class="visually-hidden" id="vote-for-@voteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
+                                                        <div class="btn-group-vertical" role="group" aria-labelledby="vote-for-@voteIndex">
+                                                            <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_yes" value="2" autocomplete="off">
+                                                            <label class="btn vote-choice vote-choice--yes" for="vote_@(voteIndex)_yes">
+                                                                <i class="fas fa-check" aria-hidden="true"></i><span class="visually-hidden">Yes</span>
+                                                            </label>
 
-                                                        <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_no" value="0" autocomplete="off">
-                                                        <label class="btn vote-choice vote-choice--no" for="vote_@(voteIndex)_no">
-                                                            <i class="fas fa-times" aria-hidden="true"></i><span class="visually-hidden">No</span>
-                                                        </label>
+                                                            <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_maybe" value="1" autocomplete="off">
+                                                            <label class="btn vote-choice vote-choice--maybe" for="vote_@(voteIndex)_maybe">
+                                                                <i class="fas fa-question" aria-hidden="true"></i><span class="visually-hidden">Maybe</span>
+                                                            </label>
+
+                                                            <input type="radio" class="btn-check" name="DateVotes[@voteIndex].Vote" id="vote_@(voteIndex)_no" value="0" autocomplete="off">
+                                                            <label class="btn vote-choice vote-choice--no" for="vote_@(voteIndex)_no">
+                                                                <i class="fas fa-times" aria-hidden="true"></i><span class="visually-hidden">No</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            }
+                                            else if ((bool)isPlayerSignedUp && isUpdateMode)
+                                            {
+                                                @* Vote buttons for updating votes *@
+                                                var updateVoteIndex = updateVoteIndexLookup?.ContainsKey(questOnDay.ProposedDate.Id) == true
+                                                    ? updateVoteIndexLookup[questOnDay.ProposedDate.Id]
+                                                    : -1;
+
+                                                @if (updateVoteIndex >= 0)
+                                                {
+                                                    var isCheckedYes = userVote.HasValue && userVote == VoteType.Yes;
+                                                    var isCheckedMaybe = userVote.HasValue && userVote == VoteType.Maybe;
+                                                    var isCheckedNo = userVote.HasValue && userVote == VoteType.No;
+
+                                                    <div class="vote-buttons">
+                                                        <span class="visually-hidden" id="update-vote-for-@updateVoteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
+                                                        <div class="btn-group-vertical" role="group" aria-labelledby="update-vote-for-@updateVoteIndex">
+                                                            <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_yes" value="2" autocomplete="off" @(isCheckedYes ? "checked" : "")>
+                                                            <label class="btn vote-choice vote-choice--yes" for="update_vote_@(updateVoteIndex)_yes">
+                                                                <i class="fas fa-check" aria-hidden="true"></i><span class="visually-hidden">Yes</span>
+                                                            </label>
+
+                                                            <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_maybe" value="1" autocomplete="off" @(isCheckedMaybe ? "checked" : "")>
+                                                            <label class="btn vote-choice vote-choice--maybe" for="update_vote_@(updateVoteIndex)_maybe">
+                                                                <i class="fas fa-question" aria-hidden="true"></i><span class="visually-hidden">Maybe</span>
+                                                            </label>
+
+                                                            <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_no" value="0" autocomplete="off" @(isCheckedNo ? "checked" : "")>
+                                                            <label class="btn vote-choice vote-choice--no" for="update_vote_@(updateVoteIndex)_no">
+                                                                <i class="fas fa-times" aria-hidden="true"></i><span class="visually-hidden">No</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            }
+                                            else if ((bool)isPlayerSignedUp)
+                                            {
+                                                @* Show user's vote for signed up users on details page *@
+                                                <div class="user-vote-display">
+                                                    @{
+                                                        var voteIcon = userVote switch
+                                                        {
+                                                            VoteType.Yes => "fas fa-check-circle text-success",
+                                                            VoteType.Maybe => "fas fa-question-circle text-warning",
+                                                            VoteType.No => "fas fa-times-circle text-danger",
+                                                            _ => "fas fa-circle text-muted"
+                                                        };
+                                                        var voteText = userVote switch
+                                                        {
+                                                            VoteType.Yes => "Yes",
+                                                            VoteType.Maybe => "Maybe",
+                                                            VoteType.No => "No",
+                                                            _ => "No Vote"
+                                                        };
+                                                    }
+                                                    <div class="vote-indicator" title="Your vote: @voteText">
+                                                        <i class="@voteIcon" aria-hidden="true"></i><span class="visually-hidden">Your vote: @voteText</span>
                                                     </div>
                                                 </div>
                                             }
                                         }
-                                        else if ((bool)isPlayerSignedUp && isUpdateMode)
+                                        else if (!isDetailsPage && userVote.HasValue)
                                         {
-                                            @* Vote buttons for updating votes *@
-                                            var updateVoteIndex = updateVoteIndexLookup?.ContainsKey(questOnDay.ProposedDate.Id) == true
-                                                ? updateVoteIndexLookup[questOnDay.ProposedDate.Id]
-                                                : -1;
-
-                                            @if (updateVoteIndex >= 0)
-                                            {
-                                                var isCheckedYes = userVote.HasValue && userVote == VoteType.Yes;
-                                                var isCheckedMaybe = userVote.HasValue && userVote == VoteType.Maybe;
-                                                var isCheckedNo = userVote.HasValue && userVote == VoteType.No;
-
-                                                <div class="vote-buttons">
-                                                    <span class="visually-hidden" id="update-vote-for-@updateVoteIndex">Your vote for @Html.WallClock(questOnDay.ProposedDate.Date, "date-compact")</span>
-                                                    <div class="btn-group-vertical" role="group" aria-labelledby="update-vote-for-@updateVoteIndex">
-                                                        <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_yes" value="2" autocomplete="off" @(isCheckedYes ? "checked" : "")>
-                                                        <label class="btn vote-choice vote-choice--yes" for="update_vote_@(updateVoteIndex)_yes">
-                                                            <i class="fas fa-check" aria-hidden="true"></i><span class="visually-hidden">Yes</span>
-                                                        </label>
-
-                                                        <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_maybe" value="1" autocomplete="off" @(isCheckedMaybe ? "checked" : "")>
-                                                        <label class="btn vote-choice vote-choice--maybe" for="update_vote_@(updateVoteIndex)_maybe">
-                                                            <i class="fas fa-question" aria-hidden="true"></i><span class="visually-hidden">Maybe</span>
-                                                        </label>
-
-                                                        <input type="radio" class="btn-check" name="DateVotes[@updateVoteIndex].Vote" id="update_vote_@(updateVoteIndex)_no" value="0" autocomplete="off" @(isCheckedNo ? "checked" : "")>
-                                                        <label class="btn vote-choice vote-choice--no" for="update_vote_@(updateVoteIndex)_no">
-                                                            <i class="fas fa-times" aria-hidden="true"></i><span class="visually-hidden">No</span>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            }
-                                        }
-                                        else if ((bool)isPlayerSignedUp)
-                                        {
-                                            @* Show user's vote for signed up users on details page *@
+                                            @* Show user's vote for all signed up quests on main calendar page *@
                                             <div class="user-vote-display">
                                                 @{
                                                     var voteIcon = userVote switch
@@ -205,48 +254,152 @@
                                                     };
                                                 }
                                                 <div class="vote-indicator" title="Your vote: @voteText">
-                                                    <i class="@voteIcon"></i>
+                                                    <i class="@voteIcon" aria-hidden="true"></i><span class="visually-hidden">Your vote: @voteText</span>
                                                 </div>
                                             </div>
                                         }
-                                    }
-                                    else if (!isDetailsPage && userVote.HasValue)
-                                    {
-                                        @* Show user's vote for all signed up quests on main calendar page *@
-                                        <div class="user-vote-display">
-                                            @{
-                                                var voteIcon = userVote switch
-                                                {
-                                                    VoteType.Yes => "fas fa-check-circle text-success",
-                                                    VoteType.Maybe => "fas fa-question-circle text-warning",
-                                                    VoteType.No => "fas fa-times-circle text-danger",
-                                                    _ => "fas fa-circle text-muted"
-                                                };
-                                                var voteText = userVote switch
-                                                {
-                                                    VoteType.Yes => "Yes",
-                                                    VoteType.Maybe => "Maybe",
-                                                    VoteType.No => "No",
-                                                    _ => "No Vote"
-                                                };
-                                            }
-                                            <div class="vote-indicator" title="Your vote: @voteText">
-                                                <i class="@voteIcon"></i>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @* Entries from the other boards in the linked set come last, after the *@
+                        @* board's own entries, through their own partial and model. *@
+                        @if (day.Linked.HasEntries)
+                        {
+                            @await Html.PartialAsync("_LinkedDayEntries", day.Linked)
+                        }
                         </div>
                     }
-
-                    @* Entries from the other boards in the linked set come last, after the *@
-                    @* board's own entries, through their own partial and model. *@
-                    @if (day.Linked.HasEntries)
+                    else
                     {
-                        @await Html.PartialAsync("_LinkedDayEntries", day.Linked)
+                        var viewerId = ViewBag.CurrentUserId as int?;
+                        <div class="calendar-day__top">
+                            <span class="day-number">@day.Day</span>
+                            <span class="visually-hidden">@(isBoardToday ? "Today. " : "")@Html.WallClock(day.Date, "weekday-long")</span>
+                            @if (day.Linked.HasEntries)
+                            {
+                                var linkedNoun = day.Linked.Count == 1 ? "entry" : "entries";
+                                @* A div, not a span, so the count keeps the colour calendar.css gives it whatever colour the card gives its text. *@
+                                <div class="linked-day-count" title="@day.Linked.Count @linkedNoun from linked boards"><i class="fas fa-link me-1" aria-hidden="true"></i>@day.Linked.Count<span class="visually-hidden"> @linkedNoun from linked boards</span></div>
+                            }
+                        </div>
+
+                        @if (day.EventsOnDay.Any() || day.QuestsOnDay.Any() || day.Linked.HasEntries)
+                        {
+                            @* Events first, then quests, then the entries of linked boards: each is one row with its own hidden detail block. *@
+                            <ul class="cal-entries">
+                                @foreach (var eventOnDay in day.EventsOnDay)
+                                {
+                                    var calendarEvent = eventOnDay.Event;
+                                    var eventCancelled = calendarEvent.IsCancelled;
+                                    var eventMark = eventCancelled ? "cancelled" : "event";
+                                    var eventIcon = eventCancelled ? "fa-ban" : "fa-calendar-day";
+                                    <li class="cal-entry calendar-event@(eventCancelled ? " cancelled" : "")" title="@calendarEvent.Title - @eventOnDay.TimeLabel@(eventCancelled ? " - Cancelled" : "")">
+                                        <a class="cal-entry__body" href="@Url.Action("Details", "Events", new { id = calendarEvent.Id })">
+                                            <span class="cal-mark cal-mark--@(eventMark)" aria-hidden="true"><i class="fas @(eventIcon)" aria-hidden="true"></i></span>
+                                            @if (!eventOnDay.IsAllDay)
+                                            {
+                                                <span class="cal-entry__time">@eventOnDay.TimeLabel</span>
+                                            }
+                                            <span class="cal-entry__title">@calendarEvent.Title</span>
+                                            <span class="visually-hidden">, Event, @eventOnDay.TimeLabel@(eventCancelled ? ", Cancelled" : "")</span>
+                                        </a>
+                                        <div class="cal-entry-detail" hidden>
+                                            <p class="cal-detail__status"><span class="cal-mark cal-mark--@(eventMark)" aria-hidden="true"><i class="fas @(eventIcon)" aria-hidden="true"></i></span><span>@(eventCancelled ? "Cancelled" : "Event")</span></p>
+                                            <p class="cal-detail__title">@calendarEvent.Title</p>
+                                            <dl class="cal-detail__facts">
+                                                <dt>Date</dt>
+                                                <dd>@Html.WallClock(day.Date, "weekday-long-year")</dd>
+                                                <dt>Time</dt>
+                                                <dd>@eventOnDay.TimeLabel</dd>
+                                                @if (!string.IsNullOrEmpty(ownBoardName))
+                                                {
+                                                    <dt>Board</dt>
+                                                    <dd>@ownBoardName</dd>
+                                                }
+                                            </dl>
+                                        </div>
+                                    </li>
+                                }
+
+                                @foreach (var questOnDay in day.QuestsOnDay)
+                                {
+                                    var quest = questOnDay.Quest;
+                                    var statusClass = questOnDay.IsFinalized ? "finalized" : "proposed";
+                                    var statusWord = questOnDay.IsFinalized ? "Finalized" : "Proposed";
+                                    var statusIcon = questOnDay.IsFinalized ? "fa-circle-check" : "fa-hourglass-half";
+                                    var questDmName = quest.DungeonMaster?.Name;
+                                    var dmKey = quest.DungeonMaster?.HasKey == true;
+                                    var playerKey = quest.PlayerSignups?.Any(ps => ps.Player.HasKey == true) == true;
+                                    var noKey = !(dmKey || playerKey);
+                                    var ownVote = viewerId == null
+                                        ? null
+                                        : questOnDay.ProposedDate.PlayerVotes?.FirstOrDefault(v => v.PlayerSignup?.Player?.Id == viewerId)?.Vote;
+                                    var voteWord = ownVote switch
+                                    {
+                                        VoteType.Yes => "Yes",
+                                        VoteType.Maybe => "Maybe",
+                                        VoteType.No => "No",
+                                        _ => null
+                                    };
+                                    var voteIcon = ownVote switch
+                                    {
+                                        VoteType.Yes => "fa-check",
+                                        VoteType.Maybe => "fa-question",
+                                        _ => "fa-times"
+                                    };
+                                    <li class="cal-entry quest-event @(statusClass)" title="@quest.Title - @questOnDay.TimeLabel">
+                                        <a class="cal-entry__body" href="@Url.Action("Details", "Quest", new { id = quest.Id })">
+                                            <span class="cal-mark cal-mark--@(statusClass)" aria-hidden="true"><i class="fas @(statusIcon)" aria-hidden="true"></i></span>
+                                            <span class="cal-entry__time">@Html.WallClock(questOnDay.ProposedDate.Date, "time-24h")</span>
+                                            <span class="cal-entry__title">@quest.Title</span>
+                                            <span class="visually-hidden">, @statusWord, @questOnDay.TimeLabel@(string.IsNullOrEmpty(questDmName) ? "" : $", DM {questDmName}")@(noKey ? ", No building key available" : "")@(voteWord == null ? "" : $", Your vote: {voteWord}")</span>
+                                            @if (noKey)
+                                            {
+                                                <span class="cal-entry__flags"><span class="cal-mark cal-mark--nokey" aria-hidden="true"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></span></span>
+                                            }
+                                        </a>
+                                        <div class="cal-entry-detail" hidden>
+                                            <p class="cal-detail__status"><span class="cal-mark cal-mark--@(statusClass)" aria-hidden="true"><i class="fas @(statusIcon)" aria-hidden="true"></i></span><span>@statusWord</span></p>
+                                            <p class="cal-detail__title">@quest.Title</p>
+                                            <dl class="cal-detail__facts">
+                                                <dt>Date</dt>
+                                                <dd>@Html.WallClock(day.Date, "weekday-long-year")</dd>
+                                                <dt>Time</dt>
+                                                <dd>@Html.WallClock(questOnDay.ProposedDate.Date, "time-24h")</dd>
+                                                @if (!string.IsNullOrEmpty(questDmName))
+                                                {
+                                                    <dt>DM</dt>
+                                                    <dd>@questDmName</dd>
+                                                }
+                                                @if (!string.IsNullOrEmpty(ownBoardName))
+                                                {
+                                                    <dt>Board</dt>
+                                                    <dd>@ownBoardName</dd>
+                                                }
+                                            </dl>
+                                            @if (noKey)
+                                            {
+                                                <p class="cal-detail__note"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i>No building key available</p>
+                                            }
+                                            @if (voteWord != null)
+                                            {
+                                                <p class="cal-detail__note"><i class="fas @(voteIcon)" aria-hidden="true"></i>Your vote: @voteWord</p>
+                                            }
+                                        </div>
+                                    </li>
+                                }
+
+                                @* Entries from the other boards in the linked set come last, after the *@
+                                @* board's own entries, through their own partial and model. *@
+                                @if (day.Linked.HasEntries)
+                                {
+                                    @await Html.PartialAsync("_LinkedDayEntries", day.Linked)
+                                }
+                            </ul>
+                        }
                     }
-                    </div>
                 }
             </div>
         }

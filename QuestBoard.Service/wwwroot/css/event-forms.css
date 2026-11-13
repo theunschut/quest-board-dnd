@@ -1,0 +1,53 @@
+/*
+ * The event forms (Create and Edit). Cards, labels, controls, buttons, alerts and the modal come from the
+ * foundation; what is here is only what these two forms add on top. They have no phone twin, so phone sizing
+ * is a .mobile-layout selector.
+ */
+@layer pages {
+  /* Help lines sit on the card's own glass; the muted tone is for text on paper, so here they take the card colour. */
+  .event-form .form-text {
+    color: var(--qb-fg);
+  }
+
+  /*
+   * Danger text is a light red that falls to about 3.6:1 on the card's glass at its lightest. The required marker,
+   * the validation messages and the summary therefore sit on the opaque overlay surface, where the same colour
+   * clears 4.5:1. The message keeps its words and the field keeps its 2px danger border, so colour is never the
+   * only signal.
+   */
+  .event-form :is(label, .form-label) .text-danger {
+    display: inline-block;
+    padding-inline: var(--qb-space-xs);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-surface-overlay);
+    line-height: 1.25;
+  }
+
+  .event-form .field-validation-error {
+    display: inline-block;
+    margin-top: var(--qb-space-xs);
+    padding: var(--qb-space-xs) var(--qb-space-sm);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  .event-form .validation-summary-errors {
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border-left: 4px solid var(--qb-danger-text);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  .event-form .validation-summary-errors ul {
+    margin: 0;
+    padding-left: var(--qb-space-md);
+  }
+
+  /*
+   * An empty description is one short line inside a much taller editor; on the phone the editable line itself is a
+   * touch target, so it keeps the full target height instead of the height of its single empty line.
+   */
+  .mobile-layout .event-form .CodeMirror-code {
+    min-height: var(--qb-hit-min);
+  }
+}

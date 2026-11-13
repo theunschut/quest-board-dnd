@@ -105,10 +105,10 @@ public class LinkedBoardDeepLinkTests(CrossBoardWebApplicationFactory factory)
         return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     }
 
-    // The linked entries markup of the calendar, from the first linked wrapper to the end.
+    // The linked entries markup of the calendar, from the first linked row to the end.
     private static string LinkedEntries(string html)
     {
-        var start = html.IndexOf("linked-day-entries", StringComparison.Ordinal);
+        var start = html.IndexOf("cal-entry linked-entry", StringComparison.Ordinal);
         start.Should().BeGreaterThan(-1);
         return html[start..];
     }

@@ -306,36 +306,82 @@ public class BoardPageEventsCalendarTests(WebApplicationFactoryBase factory)
         response.Headers.Location!.OriginalString.Should().Be("/Calendar");
     }
 
-    [Theory]
-    [InlineData(DesktopUserAgent)]
-    [InlineData(MobileUserAgent)]
-    public async Task Calendar_EventsOff_HidesTheBoardAvailabilityButton(string userAgent)
+    [Fact]
+    public async Task DesktopCalendar_EventsOff_NavigationBarHasNoBoardAvailabilityLink()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         await BoardPageSeed.SetAsync(factory, 1, EventsOff, BoardPage.Quests);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
 
-        var (response, html) = await GetAsync(client, "/Calendar", userAgent);
+        var (response, html) = await GetAsync(client, "/Calendar", DesktopUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        // The adjacent My Agenda button anchors the assertion on the right button row, so the
-        // absence cannot pass because the whole row went missing.
-        html.Should().Contain("My Agenda");
-        html.Should().NotContain("Board Availability");
+        // The page carries neither button; the bar's My Agenda link anchors the assertion on the
+        // right bar, so the absence cannot pass because the bar went missing.
+        var page = DesktopPageRegions.PageContent(html);
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("My Agenda");
+        var bar = DesktopPageRegions.NavigationBar(html);
+        bar.Should().Contain("My Agenda");
+        bar.Should().NotContain("Board Availability");
+        bar.Should().NotContain("href=\"/Events\"");
     }
 
-    [Theory]
-    [InlineData(DesktopUserAgent)]
-    [InlineData(MobileUserAgent)]
-    public async Task Calendar_EventsOn_ShowsTheBoardAvailabilityButton(string userAgent)
+    [Fact]
+    public async Task DesktopCalendar_EventsOn_NavigationBarLinksBoardAvailabilityAndThePageDoesNot()
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
 
-        var (response, html) = await GetAsync(client, "/Calendar", userAgent);
+        var (response, html) = await GetAsync(client, "/Calendar", DesktopUserAgent);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("Board Availability");
+        var page = DesktopPageRegions.PageContent(html);
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("href=\"/Events\"");
+        var bar = DesktopPageRegions.NavigationBar(html);
+        bar.Should().Contain("href=\"/Events\"");
+        bar.Should().Contain("Board Availability");
+        bar.Should().Contain("href=\"/Agenda\"");
+    }
+
+    [Fact]
+    public async Task MobileCalendar_EventsOff_NavigationMenuHasNoBoardAvailabilityLink()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        await BoardPageSeed.SetAsync(factory, 1, EventsOff, BoardPage.Quests);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, "/Calendar", MobileUserAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The page carries neither button; the menu's My Agenda link anchors the assertion on the
+        // right menu, so the absence cannot pass because the menu went missing.
+        var page = PhonePageRegions.PageContent(html);
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("My Agenda");
+        var menu = PhonePageRegions.NavigationMenu(html);
+        menu.Should().Contain("My Agenda");
+        menu.Should().NotContain("Board Availability");
+        menu.Should().NotContain("href=\"/Events\"");
+    }
+
+    [Fact]
+    public async Task MobileCalendar_EventsOn_NavigationMenuLinksBoardAvailabilityAndThePageDoesNot()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory);
+
+        var (response, html) = await GetAsync(client, "/Calendar", MobileUserAgent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var page = PhonePageRegions.PageContent(html);
+        page.Should().NotContain("Board Availability");
+        page.Should().NotContain("href=\"/Events\"");
+        var menu = PhonePageRegions.NavigationMenu(html);
+        menu.Should().Contain("href=\"/Events\"");
+        menu.Should().Contain("Board Availability");
+        menu.Should().Contain("href=\"/Agenda\"");
     }
 
     // The navigation bar carries its own calendar link, so the form's Cancel link is picked out
@@ -343,7 +389,7 @@ public class BoardPageEventsCalendarTests(WebApplicationFactoryBase factory)
     private static string CancelHref(string html)
     {
         var match = Regex.Match(
-            html, @"<a href=""([^""]*)""\s+class=""btn btn-secondary"">\s*<i class=""fas fa-times me-2""></i>Cancel");
+            html, @"<a href=""([^""]*)""\s+class=""btn btn-secondary"">\s*<i class=""fas fa-times me-2"" aria-hidden=""true""></i>Cancel");
         match.Success.Should().BeTrue("the form has a Cancel link");
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }

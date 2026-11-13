@@ -14,6 +14,11 @@
         : $"End this series after {Model.TodayLabel}? {Model.FutureCount} upcoming session(s) will no longer be generated, and {Model.AnsweredCount} availability answer(s) already given for them will be cleared. Sessions that already happened are always kept. This cannot be undone.";
     var removalBodyMessage = $"{Model.TotalCount} session(s) will be affected — {Model.PastCount} already held, {Model.FutureCount} upcoming — along with {Model.AnsweredCount} availability answer(s) people actually gave. What should happen to them?";
 
+    var activePositions = string.Join(", ", Model.CyclePositions
+        .Select((on, index) => (on, position: index + 1))
+        .Where(cell => cell.on)
+        .Select(cell => cell.position));
+
     var today = Model.Today;
     var todayDividerRendered = false;
 }
@@ -24,56 +29,60 @@
 
 <div class="card modern-card mb-3">
     <div class="card-header modern-card-header">
-        <h2 class="mb-0">
-            <i class="fas fa-repeat text-purple me-2"></i>
+        <h1 class="mb-0">
+            <i class="fas fa-repeat me-2" aria-hidden="true"></i>
             @Model.Title — Recurring Series
-        </h2>
+        </h1>
     </div>
 </div>
 
-<div class="card modern-card mb-3">
+<div class="card modern-card modern-card--aside mb-3">
     <div class="card-header modern-card-header">
-        <h4 class="mb-0">Recurrence Rule</h4>
+        <h2 class="mb-0">Recurrence Rule</h2>
     </div>
     <div class="card-body modern-card-body">
         <p class="mb-1">
-            <i class="fas fa-calendar-day me-2"></i>Anchor date: @Model.AnchorDate.ToString("dddd, MMMM d, yyyy")
+            <i class="fas fa-calendar-day me-2" aria-hidden="true"></i>Anchor date: @Html.WallClock(Model.AnchorDate.ToDateTime(TimeOnly.MinValue), "weekday-long-year")
         </p>
         <p class="mb-3">
-            <i class="fas fa-repeat me-2"></i>@Model.CadenceLabel
+            <i class="fas fa-repeat me-2" aria-hidden="true"></i>@Model.CadenceLabel
         </p>
 
         @* Read-only variant of the toggle strip: identical cells, no click handlers, no
-           +/- controls. pointer-events and aria-disabled make the "you cannot edit this here"
-           fact visible rather than merely silently swallowing clicks. *@
-        <div class="cycle-mask-strip mb-3" aria-disabled="true">
-            @foreach (var on in Model.CyclePositions)
-            {
-                <span class="cycle-mask-cell @(on ? "on" : "")" style="pointer-events: none;" aria-disabled="true">
-                    @if (on)
-                    {
-                        <i class="fas fa-check"></i>
-                    }
-                </span>
-            }
+           +/- controls. The cells ignore the pointer so the "you cannot edit this here" fact is
+           visible rather than a silently swallowed click, and the strip is hidden from assistive
+           technology in favour of the sentence after it, which names the positions that are on. *@
+        <div class="mb-3">
+            <div class="cycle-mask-strip" aria-hidden="true">
+                @foreach (var on in Model.CyclePositions)
+                {
+                    <span class="cycle-mask-cell cycle-mask-cell--readonly @(on ? "on" : "")">
+                        @if (on)
+                        {
+                            <i class="fas fa-check"></i>
+                        }
+                    </span>
+                }
+            </div>
+            <span class="visually-hidden">Sessions on cycle positions @activePositions.</span>
         </div>
 
         <p class="mb-3">
             @if (Model.EndDate.HasValue)
             {
-                <text><i class="fas fa-flag-checkered me-2"></i>Ends: @Model.EndDate.Value.ToString("dddd, MMMM d, yyyy")</text>
+                <text><i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Ends: @Html.WallClock(Model.EndDate.Value.ToDateTime(TimeOnly.MinValue), "weekday-long-year")</text>
             }
             else
             {
-                <text><i class="fas fa-infinity me-2"></i>No end date — runs indefinitely.</text>
+                <text><i class="fas fa-infinity me-2" aria-hidden="true"></i>No end date — runs indefinitely.</text>
             }
         </p>
 
         <hr />
 
-        <h5 class="mb-2">@Model.Title</h5>
+        <h3 class="h5 mb-2">@Model.Title</h3>
         <p class="mb-1">
-            <i class="fas fa-clock me-2"></i>@Model.TimeLabel
+            <i class="fas fa-clock me-2" aria-hidden="true"></i>@Model.TimeLabel
         </p>
         @if (!string.IsNullOrEmpty(Model.Description))
         {
@@ -81,14 +90,14 @@
         }
         else
         {
-            <p class="text-muted mb-0">No description provided.</p>
+            <p class="mb-0">No description provided.</p>
         }
     </div>
 </div>
 
-<div class="card modern-card mb-3">
+<div class="card modern-card modern-card--aside mb-3">
     <div class="card-header modern-card-header">
-        <h4 class="mb-0">Occurrences</h4>
+        <h2 class="mb-0">Occurrences</h2>
     </div>
     <div class="card-body modern-card-body">
         @if (Model.Occurrences.Any())
@@ -99,7 +108,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Status</th>
-                            <th></th>
+                            <th><span class="visually-hidden">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -108,12 +117,12 @@
                             @if (!todayDividerRendered && occurrence.Date >= today)
                             {
                                 todayDividerRendered = true;
-                                <tr class="today">
+                                <tr>
                                     <td colspan="3" class="text-center small text-muted">Today</td>
                                 </tr>
                             }
                             <tr class="@(occurrence.IsCancelled ? "text-decoration-line-through" : "")">
-                                <td>@occurrence.Date.ToString("dddd, MMMM d, yyyy") &middot; @occurrence.TimeLabel</td>
+                                <td>@Html.WallClock(occurrence.Date.ToDateTime(TimeOnly.MinValue), "weekday-long-year") &middot; @occurrence.TimeLabel</td>
                                 <td>
                                     @if (occurrence.IsCancelled)
                                     {
@@ -121,7 +130,7 @@
                                     }
                                 </td>
                                 <td>
-                                    <a href="@Url.Action("Details", "Events", new { id = occurrence.Id })">View</a>
+                                    <a class="table-cell-link" href="@Url.Action("Details", "Events", new { id = occurrence.Id })">View<span class="visually-hidden"> occurrence on @Html.WallClock(occurrence.Date.ToDateTime(TimeOnly.MinValue), "weekday-long-year")</span></a>
                                 </td>
                             </tr>
                         }
@@ -131,41 +140,41 @@
         }
         else
         {
-            <p class="text-muted mb-0">No occurrences have been generated yet.</p>
+            <p class="mb-0">No occurrences have been generated yet.</p>
         }
     </div>
 </div>
 
 @if (Model.CanManage)
 {
-    <div class="card modern-card mb-3">
+    <div class="card modern-card modern-card--aside mb-3">
         <div class="card-header modern-card-header">
-            <h4 class="mb-0">Actions</h4>
+            <h2 class="mb-0">Actions</h2>
         </div>
         <div class="card-body modern-card-body">
-            <form asp-action="End" method="post" onsubmit="return confirm('@endConfirmMessage');" class="mb-2">
+            <form asp-action="End" method="post" data-confirm-message="@endConfirmMessage" class="mb-2">
                 <input type="hidden" name="id" value="@Model.Id" />
                 <button type="submit" class="btn btn-warning w-100">
-                    <i class="fas fa-flag-checkered me-2"></i>End Series
+                    <i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>End Series
                 </button>
             </form>
             <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#removeSeriesModal">
-                <i class="fas fa-trash me-2"></i>Delete Series
+                <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete Series
             </button>
         </div>
     </div>
 
-    <div class="modal fade" id="removeSeriesModal" tabindex="-1">
+    <div class="modal fade" id="removeSeriesModal" tabindex="-1" aria-labelledby="removeSeriesTitle" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content bg-dark text-light">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title">Remove this series</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="removeSeriesTitle">Remove this series</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-0">@removalBodyMessage</p>
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer">
                     <form asp-action="Detach" method="post" class="mb-0">
                         <input type="hidden" name="id" value="@Model.Id" />
                         <button type="submit" class="btn btn-warning">Detach sessions</button>
@@ -179,4 +188,8 @@
             </div>
         </div>
     </div>
+}
+
+@section Scripts {
+    <script type="module" src="~/js/event-details.js" asp-append-version="true"></script>
 }

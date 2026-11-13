@@ -74,11 +74,17 @@ public class UiFoundationLayerGuardTests
         ("markdown-content.css", "pages"),
         ("markdown-editor.css", "pages"),
         ("account.css", "pages"),
+        ("events-overview.css", "pages"),
+        ("events-overview.mobile.css", "pages"),
+        ("agenda.css", "pages"),
+        ("agenda.mobile.css", "pages"),
+        ("calendar.mobile.css", "pages"),
+        ("calendar.css", "pages"),
     ];
 
     // The layered files that may hold no colour literal: every one except the token file.
     private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css", "group-picker.css",
-        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css"];
+        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css", "events-overview.css", "events-overview.mobile.css", "agenda.css", "agenda.mobile.css", "calendar.mobile.css", "calendar.css"];
 
     private static readonly Regex LocalStylesheetHref = new(
         @"<link\b[^>]*\brel=""stylesheet""[^>]*\bhref=""~/css/(?<name>[\w.\-]+)\.css""[^>]*>",
@@ -157,14 +163,35 @@ public class UiFoundationLayerGuardTests
         return offenders;
     }
 
+    // Every CSS named colour, so a colour written as a word is caught like one written as digits. The name must stand
+    // alone: a word character, dot, hash or hyphen right before it, or a word character or hyphen right after it, means
+    // it is part of a longer word, a class, an id or a property such as white-space, and is left alone.
+    private const string NamedColours =
+        "aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|" +
+        "burlywood|cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|" +
+        "darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|" +
+        "darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise|darkviolet|deeppink|" +
+        "deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|" +
+        "goldenrod|gray|green|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|" +
+        "lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightgrey|" +
+        "lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightslategrey|lightsteelblue|lightyellow|" +
+        "lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|" +
+        "mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|" +
+        "navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|" +
+        "palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|rebeccapurple|red|rosybrown|royalblue|" +
+        "saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silver|skyblue|slateblue|slategray|slategrey|snow|" +
+        "springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen";
+
     // Written as regex data so this file never holds a literal it forbids elsewhere: a hex colour
-    // of 3, 4, 6 or 8 digits (not an id selector with a longer name), and the colour functions.
+    // of 3, 4, 6 or 8 digits (not an id selector with a longer name), the colour functions and the named colours.
     private static readonly (string Label, Regex Pattern)[] ColourLiteralPatterns =
     [
         ("a hex colour", new Regex(
             @"#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![\w-])", RegexOptions.Compiled)),
         ("an rgb() colour", new Regex(@"\brgba?\(", RegexOptions.Compiled | RegexOptions.IgnoreCase)),
         ("an hsl() colour", new Regex(@"\bhsla?\(", RegexOptions.Compiled | RegexOptions.IgnoreCase)),
+        ("a named colour", new Regex(@"(?<![\w.#-])(?:" + NamedColours + @")(?![\w-])",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase)),
     ];
 
     // Written as regex data, with each forbidden literal built from fragments, so this file never
@@ -350,8 +377,13 @@ public class UiFoundationLayerGuardTests
 
         var sample = StripUrls(StripComments(
             ".a { color: #abc; background: rgba(0,0,0,.5); border-color: hsl(1,2%,3%); " +
-            "background-image: url(\"x#fff.png\"); } /* #123456 */ #main-content { top: 0 }"));
-        ColourLiteralPatterns.Select(p => p.Pattern.Matches(sample).Count).Should().Equal(1, 1, 1);
+            "background-image: url(\"x#fff.png\"); box-shadow: 0 1px 2px color-mix(in srgb, black 30%, transparent); " +
+            "white-space: nowrap; border-color: transparent; } /* #123456 and white */ " +
+            "#main-content, .btn-red, .white, #gold-box { top: 0 }"));
+        ColourLiteralPatterns.Select(p => p.Pattern.Matches(sample).Count).Should().Equal(1, 1, 1, 1);
+        ColourLiteralPatterns[3].Pattern.IsMatch("color: WHITE;").Should().BeTrue("a named colour is caught in any case");
+        ColourLiteralPatterns[3].Pattern.IsMatch("background: var(--qb-fg); --qb-white-ish: 1; .grey { top: 0 }")
+            .Should().BeFalse("a token name, a class name and a property are not colour values");
 
         var planning = "// " + "D-" + "06 and " + "Pha" + "se 9" + "5 and 9" + "5-18 and " + "WR" + "-03 and " + "TENA" + "NT-03";
         PlanningReferencePatterns.Count(p => p.Pattern.IsMatch(planning)).Should().Be(5,
@@ -394,7 +426,7 @@ public class UiFoundationLayerGuardTests
         new("Text on glass, at rest and nested",           GlassText,                     ["glass", "glass-nested"],                                TextBar),
         new("Text on hovered glass",                       GlassText,                     ["glass-hover"],                                          TextBar),
         new("Page title on the card's title band",         ["--qb-accent", "--qb-fg"],   ["glass-nested"],                                         TextBar),
-        new("Parchment on the wood chrome and in overlays", ["--qb-fg"],                  ["chrome", "--qb-surface-overlay"],                       TextBar),
+        new("Parchment on the wood chrome and in overlays", ["--qb-fg"],                  ["chrome", "--qb-surface-overlay", "--qb-wood"],          TextBar),
         new("Status text and alert stripes on the overlay", [.. StatusNames.Select(n => $"--qb-{n}-text"), "--qb-accent-text"], ["--qb-surface-overlay"], TextBar),
         new("Light text on the bare board and its fallback", ["--qb-fg-on-board"],        ["board", "fallback"],                                    TextBar),
         new("Ink on paper",                                ["--qb-ink", "--qb-ink-muted"], ["--qb-surface-paper", "--qb-surface-paper-alt"],        TextBar),

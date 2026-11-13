@@ -2,6 +2,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace QuestBoard.IntegrationTests.Tests;
 
@@ -121,12 +122,13 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     }
 
-    // The markup of one day cell, found by splitting on the day cell class and picking the
-    // segment that holds that day's number.
+    // The markup of one day cell, found by splitting on the day cell's own class (never the
+    // "calendar-day__top" row inside it) and picking the segment whose day-number element, of
+    // whatever tag, holds that day's number.
     private static string DayCell(string html, int day)
     {
-        var marker = $"<div class=\"day-number\">{day}</div>";
-        return html.Split("class=\"calendar-day").Single(segment => segment.Contains(marker));
+        var number = new Regex($"class=\"day-number\"[^>]*>\\s*{day}\\s*<");
+        return Regex.Split(html, "class=\"calendar-day(?=[\" ])").Single(segment => number.IsMatch(segment));
     }
 
     // Three boards, A and B linked, C outside. Board A's own event and one event on each of B
@@ -156,7 +158,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         html.Should().NotContain("Charlie Secret Night NoSet");
         html.Should().NotContain(BoardBName);
         html.Should().NotContain(BoardCName);
-        html.Should().NotContain("linked-day-entries");
+        html.Should().NotContain("linked-entry");
         html.Should().NotContain("linked-day-count");
         html.Should().NotContain("calendar-linked-note");
     }
@@ -172,7 +174,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
 
         html.Should().Contain("Own Harbor Night Alone");
         html.Should().NotContain("Bravo Lantern Night Alone");
-        html.Should().NotContain("linked-day-entries");
+        html.Should().NotContain("linked-entry");
         html.Should().NotContain("linked-day-count");
         html.Should().NotContain("calendar-linked-note");
     }
@@ -229,7 +231,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         after.Should().Contain("Own Harbor Night Removed");
         after.Should().NotContain("Bravo Lantern Night Removed");
         after.Should().NotContain(BoardBName);
-        after.Should().NotContain("linked-day-entries");
+        after.Should().NotContain("linked-entry");
     }
 
     [Fact]
@@ -483,7 +485,10 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
 
         var cell = DayCell(html, 10);
         cell.Should().Contain("Bravo Detail Crypt Run - Linked Board Bravo - Dungeon Master Dana - 19:00");
-        cell.Should().Contain("Linked Board Bravo · Dungeon Master Dana · 19:00");
+        // The detail block holds only the title, the board, the DM, the time and the status words.
+        cell.Should().Contain("<dd>Linked Board Bravo</dd>");
+        cell.Should().Contain("<dd>Dungeon Master Dana</dd>");
+        cell.Should().Contain("<dd>19:00</dd>");
         cell.Should().Contain("Proposed.");
         html.Should().NotContain($"data-quest-id=\"{questId}\"");
         var block = LinkedBlock(cell);
@@ -665,10 +670,10 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         chip.Should().MatchRegex($"title=\"[^\"]*{BoardBName}[^\"]*Dungeon Master Dana[^\"]*\"");
     }
 
-    // The Legend card's markup, from its wrapper to the end of the page.
+    // The legend's markup (the strip and the popover), from its wrapper to the end of the page.
     private static string LegendCard(string html)
     {
-        var start = html.IndexOf("legend-card", StringComparison.Ordinal);
+        var start = html.IndexOf("calendar-legend-area", StringComparison.Ordinal);
         start.Should().BeGreaterThan(-1);
         return html[start..];
     }
@@ -686,7 +691,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         legend.Should().Contain("Dashed = from a linked board");
         legend.Should().Contain(BoardBName);
         legend.Should().Contain("You can open them only if you are a member of that board.");
-        legend.Should().Contain("legend-item linked");
+        legend.Should().Contain("calendar-legend__swatch");
         legend.Should().NotContain(BoardCName);
     }
 
@@ -700,7 +705,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
 
         html.Should().Contain("Legend");
         html.Should().NotContain("Linked boards");
-        html.Should().NotContain("legend-item linked");
+        html.Should().NotContain("calendar-legend__swatch");
     }
 
     [Fact]
@@ -714,7 +719,7 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
 
         html.Should().Contain("Legend");
         html.Should().NotContain("Linked boards");
-        html.Should().NotContain("legend-item linked");
+        html.Should().NotContain("calendar-legend__swatch");
     }
 
     [Fact]
@@ -745,10 +750,10 @@ public class LinkedBoardCalendarTenantIsolationTests(WebApplicationFactoryBase f
         html.Should().NotContain("Isolation Set");
     }
 
-    // The linked entries block of one day cell, from its wrapper to the end of the cell.
+    // The linked entries of one day cell, from the first linked row to the end of the cell.
     private static string LinkedBlock(string cell)
     {
-        var start = cell.IndexOf("linked-day-entries", StringComparison.Ordinal);
+        var start = cell.IndexOf("cal-entry linked-entry", StringComparison.Ordinal);
         start.Should().BeGreaterThan(-1);
         return cell[start..];
     }

@@ -85,7 +85,7 @@ public class RowNavigationAccessibilityTests(WebApplicationFactoryBase factory)
         // anchor is removed, renamed, or pointed somewhere else, and they survive a routing
         // change because the id assertion does not pin down the whole href.
         html.Should().MatchRegex($"""<a class="row-nav-link" href="[^"]*Events/Details/{eventId}[^"]*">""");
-        // The row's own click handler survives alongside the new anchor.
+        // The row stays a whole-row mouse target alongside the anchor.
         html.Should().Contain("avail-row-clickable");
     }
 

@@ -1,177 +1,348 @@
-/* Calendar Mobile — calendar.mobile.css */
+/*
+ * Calendar, phone layout. The month is an agenda: one section per day that has something on it, and each entry is a paper
+ * slip pinned on the page panel. A slip is a single stretched link (the title), so the whole slip is the tap target and
+ * keyboard focus rings the slip rather than the title text. Status is carried by a marker (a glyph on a status fill, with a
+ * hidden word) and by flags that print their own words, so no status depends on colour alone.
+ *
+ * The page panel is the one blurred surface here; the repeated slips are plain paper and never blur. This sheet belongs to
+ * the phone twin only, so it holds no media query: the layout is chosen by the device, not the window width.
+ */
+@layer pages {
+  /* The panel's body is tighter than the foundation's desktop padding, so the slips get the width of the phone. */
+  .agenda-page > .modern-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-md);
+    padding: var(--qb-space-md);
+  }
 
-/* Outer wrapper card — glass matching quest-header/section cards */
-.agenda-card-mobile {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
+  /* ---------- Month navigation: previous, month name, next ---------- */
+  .agenda-month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
 
-/* Empty state text — parchment on glass */
-.agenda-card-mobile .text-muted {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
-
-/* Month nav bar — chevron buttons */
-.calendar-nav-btn {
-    min-width: 44px;
-    width: 44px;
+  .agenda-month-nav .calendar-nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-}
+    flex: none;
+    width: var(--qb-hit-min);
+    min-width: var(--qb-hit-min);
+  }
 
-/* Month name centered in nav bar */
-.calendar-month-title {
-    font-family: 'Cinzel', serif;
-    font-size: 1.25rem; /* 20px */
-    font-weight: 700;
-    color: #F4E4BC;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9);
-}
-
-/* Day label section header */
-.agenda-day-label {
-    color: #F4E4BC;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
-    letter-spacing: 0.08em;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* Remove top border on the very first day section */
-.agenda-day-section:first-child .agenda-day-label {
-    border-top: none;
-    padding-top: 0;
-}
-
-/* Quest entry card — dark surface, left border colored by status */
-.agenda-quest-entry {
-    background-color: #343a40;
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    border-left: 3px solid #343a40; /* overridden by status class */
-}
-
-.agenda-quest-entry:active {
-    background-color: #495057;
-}
-
-/* Status dot via left border — values from calendar.css lines 102-108 */
-.agenda-quest-proposed {
-    border-left-color: #ffc107;
-}
-
-.agenda-quest-finalized {
-    border-left-color: #28a745;
-}
-
-/* Quest title inside card — parchment color on dark surface */
-.agenda-quest-title {
-    font-size: 1rem; /* 16px body */
-    color: #F4E4BC;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* Board-event agenda entry — mirrors the quest entry's surface and geometry,
-   distinguished by a fixed accent colour since an event has no status variants */
-.agenda-event-entry {
-    background-color: #343a40;
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    border-left: 3px solid #6f42c1;
-}
-
-.agenda-event-entry.cancelled {
-    opacity: 0.55;
-    text-decoration: line-through;
-}
-
-.agenda-event-entry:active {
-    background-color: #495057;
-}
-
-.agenda-event-title {
-    font-size: 1rem;
-    color: #F4E4BC;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* "Also showing" line under the month navigation, naming the boards whose entries share
-   this agenda. Long names wrap instead of truncating. */
-.agenda-linked-note {
-    font-size: 14px;
-    color: #F4E4BC;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
-    overflow-wrap: anywhere;
-}
-
-/* Linked entry — a quieter surface than the board's own rows, with a dashed left border so
-   it reads as someone else's entry; the dash colour still carries the status. */
-.agenda-linked-entry {
-    background-color: #454c53;
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    border-left: 4px dashed #6f42c1;
-    cursor: default;
-}
-
-.agenda-linked-entry--proposed {
-    border-left-color: #ffc107;
-}
-
-.agenda-linked-entry--finalized {
-    border-left-color: #28a745;
-}
-
-.agenda-linked-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #F4E4BC;
-    overflow-wrap: anywhere;
+  /* A date is not display text, so the month name takes the body face at the heading step. */
+  .agenda-month-name {
     min-width: 0;
-}
+    color: var(--qb-fg);
+    font-family: var(--qb-font-body);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    text-align: center;
+  }
 
-.agenda-linked-time,
-.agenda-linked-board {
-    font-size: 14px;
-    color: #D9CDA8;
-}
-
-.agenda-linked-board {
+  /* ---------- Also showing and the legend disclosure ---------- */
+  .agenda-linked-note {
+    margin: 0;
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
     overflow-wrap: anywhere;
-    margin-top: 2px;
-}
+  }
 
-/* A member's linked row navigates like the board's own rows; everyone else's stays inert. */
-.agenda-linked-entry--open {
-    cursor: pointer;
-}
+  .calendar-legend-toggle {
+    align-self: flex-start;
+  }
 
-.agenda-linked-entry--open:active {
-    background-color: #5a6169;
-}
+  /*
+   * The legend sits in a nested card with no header, so it carries no blur of its own. A second sheet of glass over the
+   * panel would lighten it under the text, so it takes the darker band the slips of the agenda page use instead.
+   */
+  .agenda-legend {
+    margin: 0;
+    padding: var(--qb-space-md);
+    background-color: var(--qb-surface-scrim);
+    background-image: none;
+  }
 
-.agenda-linked-entry--static {
-    cursor: default;
-}
+  .agenda-legend h2 {
+    margin: 0 0 var(--qb-space-xs);
+    color: var(--qb-fg);
+    font-family: var(--qb-font-body);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    letter-spacing: normal;
+  }
 
-/* A cancelled linked event stays listed but reads as called off, like the board's own. */
-.agenda-linked-entry--cancelled {
-    opacity: 0.55;
+  .agenda-legend ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    margin: 0 0 var(--qb-space-md);
+    padding: 0;
+    list-style: none;
+  }
+
+  .agenda-legend li {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    font-size: var(--qb-text-sm);
+  }
+
+  .agenda-legend p {
+    margin: 0 0 var(--qb-space-sm);
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+  }
+
+  .agenda-legend p:last-child {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    margin-bottom: 0;
+  }
+
+  .agenda-legend__swatch {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 24px;
+    border: 1px dashed var(--qb-ink-muted);
+    border-radius: var(--qb-radius-sm);
+    background: var(--qb-surface-paper-alt);
+    color: var(--qb-ink-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  /* The empty month sentence takes the full parchment tone: the muted one measures under the bar on the panel. */
+  .agenda-page .empty-state-text {
+    color: var(--qb-fg);
+  }
+
+  /* ---------- Day sections ---------- */
+  .agenda-days {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-md);
+  }
+
+  .agenda-day-section {
+    padding-top: var(--qb-space-sm);
+    border-top: 1px solid var(--qb-border);
+  }
+
+  .agenda-day-section:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .agenda-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    margin-bottom: var(--qb-space-xs);
+  }
+
+  .agenda-day-label {
+    margin: 0;
+    color: var(--qb-fg);
+    font-family: var(--qb-font-body);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    letter-spacing: 0.08em;
+    line-height: var(--qb-leading-body);
+    text-transform: uppercase;
+  }
+
+  /* Today: a filled parchment pill beside the label; the section also says so to assistive technology. */
+  .agenda-today-pill {
+    flex: none;
+    padding: 0 var(--qb-space-sm);
+    border-radius: var(--qb-radius-pill);
+    background: var(--qb-fg);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    line-height: 22px;
+  }
+
+  .agenda-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* ---------- The slip ---------- */
+  .agenda-slip {
+    position: relative;
+    min-height: var(--qb-hit-min);
+    padding: 0 var(--qb-space-md) var(--qb-space-xs);
+    border: 1px solid transparent;
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-paper);
+    box-shadow: var(--qb-shadow-rest);
+    color: var(--qb-ink);
+  }
+
+  /* The ring is drawn on the slip, not on the title text alone. */
+  .agenda-slip:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .agenda-slip .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .agenda-slip__head {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-height: var(--qb-hit-min);
+  }
+
+  /* A title wraps and is never cut off. */
+  .agenda-slip__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
+
+  /* The anchor is itself a full-size target; its stretched pseudo-element is not part of its own box. */
+  .agenda-slip__title .row-nav-link {
+    display: flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
+  }
+
+  .agenda-slip .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .agenda-slip__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-xs) var(--qb-space-sm);
+    margin: 0;
+    padding-inline-start: calc(24px + var(--qb-space-sm));
+    color: var(--qb-ink-muted);
+    font-size: var(--qb-text-sm);
+    line-height: var(--qb-leading-body);
+  }
+
+  .agenda-slip__meta + .agenda-slip__meta {
+    margin-top: var(--qb-space-xs);
+  }
+
+  .agenda-time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Cancelled: quieter paper, the ban marker, and a struck-through title. */
+  .agenda-slip.cancelled,
+  .agenda-linked-entry--cancelled {
+    background: var(--qb-surface-paper-alt);
+  }
+
+  .agenda-slip.cancelled .agenda-slip__title,
+  .agenda-linked-entry--cancelled .agenda-slip__title {
+    color: var(--qb-ink-muted);
     text-decoration: line-through;
-}
+  }
 
-.agenda-linked-entry--cancelled .agenda-linked-board,
-.agenda-linked-entry--cancelled .agenda-linked-title {
-    text-decoration: line-through;
+  /* Another board's entry: dashed edge on the quieter paper. The link glyph and the board name say so in words as well. */
+  .agenda-linked-entry {
+    border: 1px dashed var(--qb-ink-muted);
+    background: var(--qb-surface-paper-alt);
+  }
+
+  /* The board name and the Dungeon Master read as one sentence that wraps, not as separate items. */
+  .agenda-linked-board {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .agenda-linked-board .fa-link {
+    margin-inline-end: var(--qb-space-xs);
+  }
+
+  .agenda-linked-board strong {
+    font-weight: var(--qb-weight-strong);
+  }
+
+  /* ---------- Marker: a glyph on a status fill; the shape of the glyph carries the status ---------- */
+  .agenda-mark {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--qb-radius-sm);
+    background: var(--qb-warning);
+    box-shadow: 0 0 0 1px var(--qb-ink-muted);
+    color: var(--qb-warning-fg);
+    font-size: var(--qb-text-sm);
+    line-height: 1;
+  }
+
+  .agenda-legend .agenda-mark {
+    box-shadow: 0 0 0 1px var(--qb-fg);
+  }
+
+  .agenda-mark--finalized {
+    background: var(--qb-success);
+    color: var(--qb-success-fg);
+  }
+
+  .agenda-mark--event {
+    background: var(--qb-event);
+    color: var(--qb-event-fg);
+  }
+
+  .agenda-mark--cancelled {
+    background: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
+
+  /* ---------- Flags: a word and an icon on a status pair, so none is colour alone ---------- */
+  .agenda-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-xs);
+    padding: 0 var(--qb-space-sm);
+    border-radius: var(--qb-radius-pill);
+    background: var(--qb-warning);
+    color: var(--qb-warning-fg);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    line-height: 22px;
+  }
+
+  .agenda-flag--vote-yes {
+    background: var(--qb-success);
+    color: var(--qb-success-fg);
+  }
+
+  .agenda-flag--vote-no {
+    background: var(--qb-danger);
+    color: var(--qb-danger-fg);
+  }
 }

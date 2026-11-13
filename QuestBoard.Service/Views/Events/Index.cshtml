@@ -8,31 +8,34 @@
     var subtitleBoardName = string.IsNullOrEmpty(activeGroupName) ? "this board" : activeGroupName;
     var isDm = (await AuthorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;
 }
+@section Styles {
+    <link rel="stylesheet" href="~/css/events-overview.css" asp-append-version="true" />
+}
 
 <div class="row">
     <div class="col-lg-9 col-md-8">
         <div class="card modern-card">
             <div class="card-header modern-card-header d-flex justify-content-between align-items-start">
                 <div>
-                    <h2 class="mb-0">
-                        <i class="fas fa-calendar-check text-purple me-2"></i>@ViewData["Title"]
-                    </h2>
+                    <h1 class="mb-0">
+                        <i class="fas fa-calendar-check text-purple me-2" aria-hidden="true"></i>@ViewData["Title"]
+                    </h1>
                     <p class="header-subtitle mb-0">Events on @subtitleBoardName</p>
                 </div>
                 @if (isDm)
                 {
                     <a asp-controller="Agenda" asp-action="Index" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-calendar-days me-2"></i>My Agenda
+                        <i class="fas fa-calendar-days me-2" aria-hidden="true"></i>My Agenda
                     </a>
                 }
             </div>
             <div class="card-body modern-card-body p-0">
                 @if (!Model.Rows.Any())
                 {
-                    <div class="text-center text-muted py-5">
-                        <i class="fas fa-calendar-alt fa-3x mb-3"></i>
-                        <h5>No Upcoming Events</h5>
-                        <p class="mb-0">This board has no upcoming events yet. Once a DM schedules one, it will appear here.</p>
+                    <div class="empty-state avail-empty-state">
+                        <i class="fas fa-calendar-alt empty-state-icon" aria-hidden="true"></i>
+                        <h2 class="empty-state-heading">No Upcoming Events</h2>
+                        <p class="empty-state-text">This board has no upcoming events yet. Once a DM schedules one, it will appear here.</p>
                     </div>
                 }
                 else
@@ -59,14 +62,14 @@
                             <tbody>
                                 @foreach (var row in Model.Rows)
                                 {
-                                    <tr class="avail-row-clickable" onclick="window.location.href='@Url.Action("Details", "Events", new { id = row.EventId })'">
+                                    <tr class="avail-row-clickable" data-row-href="@Url.Action("Details", "Events", new { id = row.EventId })">
                                         <td class="avail-sticky-col avail-col-event">
                                             <strong><a class="row-nav-link" href="@Url.Action("Details", "Events", new { id = row.EventId })">@row.Title</a></strong><br />
                                             <small class="text-muted">
-                                                @row.Date.ToString("ddd, MMM d")
+                                                @Html.WallClock(row.Date.ToDateTime(TimeOnly.MinValue), "weekday-short")
                                                 @if (row.StartTime.HasValue)
                                                 {
-                                                    @:&middot; @row.StartTime.Value.ToString("HH:mm")
+                                                    @:&middot; @Html.WallClock(row.Date.ToDateTime(row.StartTime.Value), "time-24h")
                                                 }
                                             </small>
                                         </td>
@@ -96,7 +99,7 @@
                         <hr />
                         <div class="text-center mb-3">
                             <a href="@Url.Action("Index", new { take = Model.NextTake })" class="btn btn-primary">
-                                <i class="fas fa-chevron-down me-2"></i>Show More Events
+                                <i class="fas fa-chevron-down me-2" aria-hidden="true"></i>Show More Events
                             </a>
                         </div>
                     }
@@ -105,15 +108,15 @@
         </div>
     </div>
 
-    <!-- Legend -->
+    @* The legend is always visible beside the grid on desktop; the phone keeps it behind a toggle. *@
     <div class="col-lg-3 col-md-4">
-        <div class="card modern-card legend-card">
+        <div class="card modern-card modern-card--aside">
             <div class="card-header modern-card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-info-circle me-1"></i>Legend
-                </h6>
+                <h2 class="mb-0">
+                    <i class="fas fa-info-circle me-2" aria-hidden="true"></i>Legend
+                </h2>
             </div>
-            <div class="card-body modern-card-body p-2">
+            <div class="card-body modern-card-body">
                 <div class="d-flex align-items-center mb-2">
                     @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.ConfirmedYes)
                     <small class="ms-2">Confirmed available</small>
@@ -130,7 +133,7 @@
                     @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.UnconfirmedYes)
                     <small class="ms-2">Counted by default — not yet confirmed</small>
                 </div>
-                <div class="d-flex align-items-center mb-2">
+                <div class="d-flex align-items-center">
                     @await Html.PartialAsync("_AvailabilityCell", AvailabilityCellState.Empty)
                     <small class="ms-2">No signup for this event</small>
                 </div>
@@ -138,3 +141,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script type="module" src="~/js/row-link.js" asp-append-version="true"></script>
+}

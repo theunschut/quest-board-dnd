@@ -84,11 +84,6 @@
     --bs-link-hover-color-rgb: var(--qb-ink-rgb);
   }
 
-  /* The availability card states white for its own muted lines, directly on the board. */
-  .avail-card {
-    --bs-secondary-color: var(--qb-on-fill);
-  }
-
   /* Light labels in the item name are parchment, not Bootstrap's near-white. */
   .item-name {
     --bs-light-rgb: var(--qb-fg-rgb);
@@ -536,6 +531,58 @@
   }
 
   /*
+   * Availability vocabulary, shared by the events overview, the agenda and the event details page. Each state is
+   * told apart by three cues that survive greyscale: the shape (a badge or a bare dash), the icon and the words.
+   * The unconfirmed yes keeps the confirmed fill but draws a dashed edge and an italic label: the fill stops at the
+   * padding box, so the dashes read against the surface behind the chip instead of against the green. The rules
+   * below are written for glass first (parchment text) and then for paper, the surface of a table cell or an agenda
+   * row (ink tones). The muted parchment tone measures under 4.5:1 on a card body over the brightest board pixel,
+   * so on glass the empty dash and the count detail take the full parchment colour; only the dashed edge, which is
+   * not text, takes the muted one.
+   */
+  .avail-cell-yes-muted {
+    background-color: var(--qb-success);
+    background-clip: padding-box;
+    border: 1px dashed var(--qb-fg-muted);
+    color: var(--qb-success-fg);
+  }
+
+  .avail-cell-yes-muted em {
+    font-style: italic;
+  }
+
+  .avail-cell-empty {
+    color: var(--qb-fg);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  .avail-count-summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+  }
+
+  .avail-count-headline {
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+  }
+
+  .avail-count-detail {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  :is(.table, .agenda-row) .avail-cell-yes-muted {
+    border-color: var(--qb-ink-muted);
+  }
+
+  :is(.table, .agenda-row) :is(.avail-cell-empty, .avail-count-detail) {
+    color: var(--qb-ink-muted);
+  }
+
+  /*
    * Modal and offcanvas: an opaque overlay surface, so the text never depends on what is underneath, with parchment
    * text on it. The close button is drawn light on that dark surface.
    */
@@ -665,9 +712,9 @@
     width: 32px;
     height: 32px;
     padding: 0;
-    border: 1px solid var(--qb-border-strong);
+    border: 1px solid var(--qb-control-border);
     border-radius: var(--qb-radius-sm);
-    background-color: transparent;
+    background-color: var(--qb-control-bg);
     cursor: pointer;
   }
 
@@ -676,6 +723,25 @@
     border-color: var(--qb-event);
     background-color: var(--qb-event);
     color: var(--qb-event-fg);
+  }
+
+  /* The read-only strip on the series page: the cells show the rule but take no clicks. */
+  .cycle-mask-cell--readonly {
+    pointer-events: none;
+  }
+
+  /* A link that stands alone in a table cell: on the phone it is a full touch target, vertically centred in the row. */
+  .mobile-layout .table-cell-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
+  }
+
+  /* On the phone each cell is a full touch target; the strip wraps, so a longer cycle takes another line. */
+  .mobile-layout .cycle-mask-cell {
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
   }
 
   /*

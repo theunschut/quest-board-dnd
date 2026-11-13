@@ -3,38 +3,41 @@
 @model EventViewModel
 @{
     ViewData["Title"] = "Create Event";
-    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var pages = await BoardPages.GetAsync();
 }
 
-<div class="card modern-card">
+@section Styles {
+    <link rel="stylesheet" href="~/css/event-forms.css" asp-append-version="true" />
+}
+
+<div class="card modern-card event-form">
     <div class="card-header modern-card-header">
-        <h2 class="mb-0">
-            <i class="fas fa-calendar-plus me-2"></i>
+        <h1 class="mb-0">
+            <i class="fas fa-calendar-plus me-2" aria-hidden="true"></i>
             Create Event
-        </h2>
+        </h1>
     </div>
     <div class="card-body modern-card-body">
         <form asp-action="Create" method="post">
-            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+            <div asp-validation-summary="All" class="mb-3"></div>
 
             <div class="mb-3">
-                <label asp-for="Title" class="form-label">Title <span class="text-danger">*</span></label>
+                <label asp-for="Title" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
                 <input asp-for="Title" class="form-control" placeholder="Enter event title" />
-                <span asp-validation-for="Title" class="text-danger"></span>
+                <span asp-validation-for="Title"></span>
             </div>
 
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label asp-for="Date" class="form-label">Date <span class="text-danger">*</span></label>
+                    <label asp-for="Date" class="form-label">Date <span class="text-danger" aria-hidden="true">*</span></label>
                     <input asp-for="Date" type="date" class="form-control" />
-                    <span asp-validation-for="Date" class="text-danger"></span>
+                    <span asp-validation-for="Date"></span>
                 </div>
 
                 <div class="col-md-6 mb-3">
                     <label asp-for="StartTime" class="form-label">Start Time (optional)</label>
                     <input asp-for="StartTime" type="time" class="form-control" />
-                    <span asp-validation-for="StartTime" class="text-danger"></span>
+                    <span asp-validation-for="StartTime"></span>
                 </div>
             </div>
 
@@ -49,7 +52,7 @@
 
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" asp-for="IsRecurring" id="enableRecurrence" />
-                <label class="form-check-label" asp-for="IsRecurring">Make this a recurring series</label>
+                <label class="form-check-label" for="enableRecurrence">Make this a recurring series</label>
                 <div class="form-text">Generates future occurrences automatically on a repeating schedule.</div>
             </div>
 
@@ -61,7 +64,7 @@
                             <input asp-for="IntervalWeeks" type="number" min="1" class="form-control" />
                             <span class="input-group-text">week(s)</span>
                         </div>
-                        <span asp-validation-for="IntervalWeeks" class="text-danger"></span>
+                        <span asp-validation-for="IntervalWeeks"></span>
                     </div>
                     <div class="col-md-6 mb-3 d-flex align-items-end">
                         @* Presentation only -- the actual dates always come from the server preview below. *@
@@ -74,29 +77,29 @@
                     <div class="d-flex align-items-center gap-2">
                         <div class="cycle-mask-strip" id="seriesCycleMaskStrip"></div>
                         <div class="d-flex gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="seriesCycleAddBtn" title="Add a cycle position">
-                                <i class="fas fa-plus"></i>
+                            <button type="button" class="btn btn-secondary btn-sm" id="seriesCycleAddBtn" title="Add a cycle position" aria-label="Add a cycle position">
+                                <i class="fas fa-plus" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="seriesCycleRemoveBtn" title="Remove a cycle position">
-                                <i class="fas fa-minus"></i>
+                            <button type="button" class="btn btn-secondary btn-sm" id="seriesCycleRemoveBtn" title="Remove a cycle position" aria-label="Remove a cycle position">
+                                <i class="fas fa-minus" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
                     <input type="hidden" asp-for="CycleMask" />
-                    <span asp-validation-for="CycleMask" class="text-danger"></span>
+                    <span asp-validation-for="CycleMask"></span>
                 </div>
 
                 <div class="mb-3">
                     <label asp-for="SeriesEndDate" class="form-label">End after (optional)</label>
                     <input asp-for="SeriesEndDate" type="date" class="form-control" />
-                    <span asp-validation-for="SeriesEndDate" class="text-danger"></span>
+                    <span asp-validation-for="SeriesEndDate"></span>
                     <div class="form-text">Leave blank for an open-ended series. You can end it later from the series page.</div>
                 </div>
 
                 <div class="mb-3">
                     <h5 class="mb-2">Next occurrences</h5>
                     <ul id="seriesPreviewList" class="mb-0">
-                        <li class="text-muted">Enter a start date and cadence to see the dates this series will generate.</li>
+                        <li>Enter a start date and cadence to see the dates this series will generate.</li>
                     </ul>
                 </div>
             </div>
@@ -105,10 +108,10 @@
 
             <div class="d-flex justify-content-between">
                 <a href="@(pages.Serves(BoardPage.Calendar) ? Url.Action("Index", "Calendar") : Url.Action("Index", "Events"))" class="btn btn-secondary">
-                    <i class="fas fa-times me-2"></i>Cancel
+                    <i class="fas fa-times me-2" aria-hidden="true"></i>Cancel
                 </a>
-                <button type="submit" class="btn btn-warning">
-                    <i class="fas fa-plus me-2"></i>Create Event
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus me-2" aria-hidden="true"></i>Create Event
                 </button>
             </div>
         </form>
@@ -117,8 +120,5 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
-    <script>
-        window.seriesAntiforgeryToken = '@tokens.RequestToken';
-    </script>
-    @{ await Html.RenderPartialAsync("_SeriesFormScripts"); }
+    <script type="module" src="~/js/event-series-form.js" asp-append-version="true"></script>
 }

@@ -11,53 +11,144 @@
     The visible lines are divs, not spans: the calendar sits inside a card, and a visible span here
     would take the card's light text colour, which turns a dark chip title into cream on a pale
     chip. Only the visually hidden text may be a span.
+
+    On the month page each entry is one list item of the day's list, a single compact row with its
+    own hidden detail block; on the quest details page the entries keep their chip layout.
 *@
-<div class="linked-day-entries">
-    @foreach (var eventOnDay in Model.Events)
+@{
+    var compact = ViewBag.IsDetailsPage != true;
+}
+@if (!compact)
+{
+    <div class="linked-day-entries">
+        @foreach (var eventOnDay in Model.Events)
+        {
+            var entry = eventOnDay.Entry;
+            var cancelled = entry.IsCancelled ? " linked-entry--cancelled" : "";
+            var tooltip = $"{entry.Title} - {entry.BoardName} - {eventOnDay.TimeLabel}" + (entry.IsCancelled ? " - Cancelled" : "");
+            Func<LinkedEventOnDay, IHtmlContent> body = @<text>
+                <div class="linked-entry-title">@item.Entry.Title</div>
+                <div class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.TimeLabel</div>
+                <span class="visually-hidden">@(item.Entry.BoardName). @(item.TimeLabel).@(item.Entry.IsCancelled ? " Cancelled." : "")</span>
+            </text>;
+
+            if (entry.CanOpen)
+            {
+                <a class="linked-entry linked-entry--event@(cancelled) linked-entry--open"
+                   href="@Url.Action("Details", "Events", new { id = entry.EventId })"
+                   title="@tooltip">@body(eventOnDay)</a>
+            }
+            else
+            {
+                <div class="linked-entry linked-entry--event@(cancelled) linked-entry--static"
+                     title="@tooltip">@body(eventOnDay)</div>
+            }
+        }
+
+        @foreach (var questOnDay in Model.Quests)
+        {
+            var entry = questOnDay.Entry;
+            var status = questOnDay.IsFinalized ? "finalized" : "proposed";
+            var tooltip = $"{entry.Title} - {entry.BoardName} - {entry.DungeonMasterName} - {questOnDay.TimeLabel}";
+            Func<LinkedQuestOnDay, IHtmlContent> body = @<text>
+                <div class="linked-entry-title">@item.Entry.Title</div>
+                <div class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.Entry.DungeonMasterName · @item.TimeLabel</div>
+                <span class="visually-hidden">@(item.Entry.BoardName). DM @(item.Entry.DungeonMasterName). @(item.TimeLabel). @(item.IsFinalized ? "Finalized." : "Proposed.")</span>
+            </text>;
+
+            if (entry.CanOpen)
+            {
+                <a class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--open"
+                   href="@Url.Action("Details", "Quest", new { id = entry.QuestId })"
+                   title="@tooltip">@body(questOnDay)</a>
+            }
+            else
+            {
+                <div class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--static"
+                     title="@tooltip">@body(questOnDay)</div>
+            }
+        }
+    </div>
+}
+else
+{
+    foreach (var eventOnDay in Model.Events)
     {
         var entry = eventOnDay.Entry;
         var cancelled = entry.IsCancelled ? " linked-entry--cancelled" : "";
         var tooltip = $"{entry.Title} - {entry.BoardName} - {eventOnDay.TimeLabel}" + (entry.IsCancelled ? " - Cancelled" : "");
-        Func<LinkedEventOnDay, IHtmlContent> body = @<text>
-            <div class="linked-entry-title">@item.Entry.Title</div>
-            <div class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.TimeLabel</div>
+        var markClass = entry.IsCancelled ? "cancelled" : "event";
+        var markIcon = entry.IsCancelled ? "fa-ban" : "fa-calendar-day";
+        var statusWord = entry.IsCancelled ? "Cancelled, linked board" : "Event, linked board";
+        Func<LinkedEventOnDay, IHtmlContent> row = @<text>
+            <div class="cal-mark cal-mark--@(markClass)" aria-hidden="true"><i class="fas @(markIcon)" aria-hidden="true"></i></div>
+            @if (!item.IsAllDay)
+            {
+                <div class="cal-entry__time">@item.TimeLabel</div>
+            }
+            <div class="cal-entry__title">@item.Entry.Title</div>
             <span class="visually-hidden">@(item.Entry.BoardName). @(item.TimeLabel).@(item.Entry.IsCancelled ? " Cancelled." : "")</span>
+            <div class="cal-entry__flags"><i class="fas fa-link cal-entry__link-glyph" aria-hidden="true"></i></div>
         </text>;
 
-        if (entry.CanOpen)
-        {
-            <a class="linked-entry linked-entry--event@(cancelled) linked-entry--open"
-               href="@Url.Action("Details", "Events", new { id = entry.EventId })"
-               title="@tooltip">@body(eventOnDay)</a>
-        }
-        else
-        {
-            <div class="linked-entry linked-entry--event@(cancelled) linked-entry--static"
-                 title="@tooltip">@body(eventOnDay)</div>
-        }
+        <li class="cal-entry linked-entry linked-entry--event@(cancelled) @(entry.CanOpen ? "linked-entry--open" : "linked-entry--static")" title="@tooltip">
+            @if (entry.CanOpen)
+            {
+                <a class="cal-entry__body" href="@Url.Action("Details", "Events", new { id = entry.EventId })">@row(eventOnDay)</a>
+            }
+            else
+            {
+                <div class="cal-entry__body">@row(eventOnDay)</div>
+            }
+            <div class="linked-entry-detail cal-entry-detail" hidden>
+                <div class="cal-detail__status"><div class="cal-mark cal-mark--@(markClass)" aria-hidden="true"><i class="fas @(markIcon)" aria-hidden="true"></i></div>@statusWord</div>
+                <div class="cal-detail__title">@entry.Title</div>
+                <dl class="cal-detail__facts">
+                    <dt>Time</dt>
+                    <dd>@eventOnDay.TimeLabel</dd>
+                    <dt>Board</dt>
+                    <dd>@entry.BoardName</dd>
+                </dl>
+            </div>
+        </li>
     }
 
-    @foreach (var questOnDay in Model.Quests)
+    foreach (var questOnDay in Model.Quests)
     {
         var entry = questOnDay.Entry;
         var status = questOnDay.IsFinalized ? "finalized" : "proposed";
+        var statusWord = questOnDay.IsFinalized ? "Finalized, linked board" : "Proposed, linked board";
+        var markIcon = questOnDay.IsFinalized ? "fa-circle-check" : "fa-hourglass-half";
         var tooltip = $"{entry.Title} - {entry.BoardName} - {entry.DungeonMasterName} - {questOnDay.TimeLabel}";
-        Func<LinkedQuestOnDay, IHtmlContent> body = @<text>
-            <div class="linked-entry-title">@item.Entry.Title</div>
-            <div class="linked-entry-detail" aria-hidden="true">@item.Entry.BoardName · @item.Entry.DungeonMasterName · @item.TimeLabel</div>
+        Func<LinkedQuestOnDay, IHtmlContent> row = @<text>
+            <div class="cal-mark cal-mark--@(status)" aria-hidden="true"><i class="fas @(markIcon)" aria-hidden="true"></i></div>
+            <div class="cal-entry__time">@item.TimeLabel</div>
+            <div class="cal-entry__title">@item.Entry.Title</div>
             <span class="visually-hidden">@(item.Entry.BoardName). DM @(item.Entry.DungeonMasterName). @(item.TimeLabel). @(item.IsFinalized ? "Finalized." : "Proposed.")</span>
+            <div class="cal-entry__flags"><i class="fas fa-link cal-entry__link-glyph" aria-hidden="true"></i></div>
         </text>;
 
-        if (entry.CanOpen)
-        {
-            <a class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--open"
-               href="@Url.Action("Details", "Quest", new { id = entry.QuestId })"
-               title="@tooltip">@body(questOnDay)</a>
-        }
-        else
-        {
-            <div class="linked-entry linked-entry--quest linked-entry--@(status) linked-entry--static"
-                 title="@tooltip">@body(questOnDay)</div>
-        }
+        <li class="cal-entry linked-entry linked-entry--quest linked-entry--@(status) @(entry.CanOpen ? "linked-entry--open" : "linked-entry--static")" title="@tooltip">
+            @if (entry.CanOpen)
+            {
+                <a class="cal-entry__body" href="@Url.Action("Details", "Quest", new { id = entry.QuestId })">@row(questOnDay)</a>
+            }
+            else
+            {
+                <div class="cal-entry__body">@row(questOnDay)</div>
+            }
+            <div class="linked-entry-detail cal-entry-detail" hidden>
+                <div class="cal-detail__status"><div class="cal-mark cal-mark--@(status)" aria-hidden="true"><i class="fas @(markIcon)" aria-hidden="true"></i></div>@statusWord</div>
+                <div class="cal-detail__title">@entry.Title</div>
+                <dl class="cal-detail__facts">
+                    <dt>Time</dt>
+                    <dd>@questOnDay.TimeLabel</dd>
+                    <dt>DM</dt>
+                    <dd>@entry.DungeonMasterName</dd>
+                    <dt>Board</dt>
+                    <dd>@entry.BoardName</dd>
+                </dl>
+            </div>
+        </li>
     }
-</div>
+}

@@ -88,6 +88,10 @@ public class CalendarController(
         // A viewer who cannot be resolved gets no overlay rather than a guessed one.
         var viewer = await userService.GetUserAsync(User);
         int? viewerId = viewer.Id == 0 ? null : viewer.Id;
+
+        // The phone agenda shows the viewer's own vote on each date, so the view needs to know who
+        // is looking; the shared calendar partial reads the same value on the quest details page.
+        ViewBag.CurrentUserId = viewerId;
         var monthStart = new DateTime(selectedYear, selectedMonth, 1);
         var linked = await linkedCalendarService.GetForViewerAsync(
             activeGroupContext.ActiveGroupId,
@@ -106,6 +110,10 @@ public class CalendarController(
         {
             calendarModel.SeriesBelowRunway = [.. await eventSeriesService.GetSeriesBelowRunwayAsync(token)];
         }
+
+        // The container clock is UTC, so near midnight it names a different day than the board
+        // does; the views mark today from the board's own date.
+        ViewBag.BoardToday = boardClock.Today;
 
         return View(calendarModel);
     }
