@@ -81,6 +81,27 @@ public class CharactersTwinAnswersTests(WebApplicationFactoryBase factory)
             "the phone page carries the same title words as the desktop page");
     }
 
+    [Theory]
+    [InlineData(false)]
+    public async Task Players_HasThePageHeading(bool phone)
+    {
+        var tag = phone ? "phone" : "desktop";
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"twinanswers_players_{tag}", $"twinanswers_players_{tag}@example.com");
+
+        var html = phone
+            ? await GetPhoneAsync(client, "/Players")
+            : await client.GetStringAsync("/Players", TestContext.Current.CancellationToken);
+
+        if (phone)
+            html.Should().Contain("mobile-layout");
+        Regex.Matches(html, @"<h1\b").Should().HaveCount(1, "the page has one page title");
+        Regex.IsMatch(html, @"<h1\b[^>]*>\s*Players\s*</h1>").Should().BeTrue(
+            "both layouts carry the page heading the operator approved");
+        Regex.Matches(html, @"<h2\b[^>]*>\s*<i\b[^>]*></i>(?:Dungeon Masters|Registered Players)\s*</h2>").Should().HaveCount(2,
+            "the two list titles stay section titles under the page heading");
+    }
+
     [Fact]
     public async Task ContactsFilter_KeepsItsDeliberateTwinDifference()
     {
