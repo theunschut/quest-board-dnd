@@ -112,6 +112,8 @@ public class BoardPageStaticGuardTests
         "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_LinkedDayEntries.cshtml",
         "QuestBoard.Service/Views/Shared/_LinkedAlsoThatDay.cshtml",
+        "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml",
+        "QuestBoard.Service/Views/Shared/_CharacterAvatar.cshtml",
         "QuestBoard.Service/Views/Calendar/Index.cshtml",
         "QuestBoard.Service/Views/Calendar/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Agenda/Index.cshtml",
@@ -131,6 +133,13 @@ public class BoardPageStaticGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml",
+
+        // Service: scripts
+        "QuestBoard.Service/wwwroot/js/image-crop.js",
+        "QuestBoard.Service/wwwroot/js/confirm-submit.js",
+        "QuestBoard.Service/wwwroot/js/contact-notes.js",
+        "QuestBoard.Service/wwwroot/js/contact-tags.js",
+        "QuestBoard.Service/wwwroot/js/character-form.js",
 
         // Service: styles
         "QuestBoard.Service/wwwroot/css/platform-group.mobile.css",
