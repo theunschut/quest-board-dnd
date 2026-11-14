@@ -1145,12 +1145,12 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // Character Create renders glass card form on mobile UA
+    // Character Create is one view for both layouts
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters/Create renders character-form-card glass card form
-    /// and links character-form.mobile.css.
+    /// Mobile UA on /Characters/Create answers 200 with the phone layout, the form's action row and its page sheet:
+    /// Create is one view that serves both layouts, so the old phone card wrapper and phone sheet are gone.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterCreate_ReturnsSuccessAndMobileLayout()
@@ -1165,17 +1165,20 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("character-form-card");
-        html.Should().Contain("character-form.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("form-actions");
+        html.Should().Contain("character-form.css");
+        html.Should().NotContain("character-form-card");
+        html.Should().NotContain("character-form.mobile.css");
     }
 
     // -----------------------------------------------------------------------
-    // Character Edit renders glass card form on mobile UA
+    // Character Edit is one view for both layouts
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters/Edit/{id} renders character-form-card glass card form
-    /// and links character-form.mobile.css.
+    /// Mobile UA on /Characters/Edit/{id} answers 200 with the phone layout, the form's action row and its page sheet:
+    /// Edit is one view that serves both layouts, so the old phone card wrapper and phone sheet are gone.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterEdit_ReturnsSuccessAndMobileLayout()
@@ -1191,8 +1194,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("character-form-card");
-        html.Should().Contain("character-form.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("form-actions");
+        html.Should().Contain("character-form.css");
+        html.Should().NotContain("character-form-card");
+        html.Should().NotContain("character-form.mobile.css");
     }
 
     // -----------------------------------------------------------------------

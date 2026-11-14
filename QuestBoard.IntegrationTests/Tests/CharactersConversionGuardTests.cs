@@ -45,6 +45,9 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml",
         "QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
+        "QuestBoard.Service/Views/Characters/Create.cshtml",
+        "QuestBoard.Service/Views/Characters/Edit.cshtml",
+        "QuestBoard.Service/Views/Characters/_CharacterClassRows.cshtml",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.cshtml",
         "QuestBoard.Service/Views/Contacts/Details.cshtml",
@@ -52,7 +55,7 @@ public class CharactersConversionGuardTests
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -62,6 +65,9 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml"] = ["contact-categories.css"],
         ["QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml"] = ["contact-categories.mobile.css"],
         ["QuestBoard.Service/Views/Characters/Details.cshtml"] = ["markdown-content.css", "character-detail.css"],
+        ["QuestBoard.Service/Views/Characters/Create.cshtml"] = ["character-form.css", "image-crop.css"],
+        ["QuestBoard.Service/Views/Characters/Edit.cshtml"] = ["character-form.css", "image-crop.css"],
+        ["QuestBoard.Service/Views/Characters/_CharacterClassRows.cshtml"] = [],
         ["QuestBoard.Service/Views/Contacts/Create.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/Contacts/Edit.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/Contacts/Details.cshtml"] = ["markdown-content.css", "contact-detail.css"],
@@ -82,6 +88,9 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/wwwroot/css/contact-detail.mobile.css",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/dm-editprofile.mobile.css",
+        "QuestBoard.Service/Views/Characters/Create.Mobile.cshtml",
+        "QuestBoard.Service/Views/Characters/Edit.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/character-form.mobile.css",
     ];
 
     private const string CropDialogPartial = "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml";
@@ -89,7 +98,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -120,9 +129,11 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/wwwroot/css/image-crop.css",
         "QuestBoard.IntegrationTests/Tests/ImageCropDialogRenderTests.cs",
         "QuestBoard.Service/Views/Characters/Create.cshtml",
-        "QuestBoard.Service/Views/Characters/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/Characters/Edit.cshtml",
-        "QuestBoard.Service/Views/Characters/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Views/Characters/_CharacterClassRows.cshtml",
+        "QuestBoard.Service/wwwroot/css/character-form.css",
+        "QuestBoard.Service/wwwroot/js/character-form.js",
+        "QuestBoard.IntegrationTests/Tests/CharacterFormRenderTests.cs",
         "QuestBoard.Service/wwwroot/js/contact-tags.js",
         "QuestBoard.Service/wwwroot/css/tagify-vendor.css",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
@@ -160,6 +171,8 @@ public class CharactersConversionGuardTests
     private static readonly string[] CharacterPictureViews =
     [
         "QuestBoard.Service/Views/Characters/Details.cshtml",
+        "QuestBoard.Service/Views/Characters/Create.cshtml",
+        "QuestBoard.Service/Views/Characters/Edit.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds

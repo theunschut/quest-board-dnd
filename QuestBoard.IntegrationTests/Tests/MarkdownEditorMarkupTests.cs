@@ -100,6 +100,42 @@ public class MarkdownEditorMarkupTests : IClassFixture<WebApplicationFactoryBase
     [InlineData("create", MobileUserAgent)]
     [InlineData("edit", DesktopUserAgent)]
     [InlineData("edit", MobileUserAgent)]
+    public async Task CharacterForms_RenderBothEditorsWithHintsAndLabelsUnderBothUserAgents(string form, string userAgent)
+    {
+        var tag = $"{form}_{(userAgent == MobileUserAgent ? "phone" : "desktop")}";
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_character_{tag}", $"editor_markup_character_{tag}@test.com",
+            name: $"Editor Markup Character {tag}");
+
+        var url = "/Characters/Create";
+        if (form == "edit")
+        {
+            var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, user.Id, $"Editor Character {tag}");
+            url = $"/Characters/Edit/{character.Id}";
+        }
+
+        var html = await GetHtmlAsync(client, url, userAgent);
+
+        AssertEditorMarkup(html);
+
+        // The Description and the Backstory each render an editor with its own hint, and every editor textarea
+        // is described by a hint that exists.
+        EditorTextarea.Matches(html).Should().HaveCount(2, "the form has two editors, the description and the backstory");
+        html.Should().Contain("data-editor-label=\"Description\"");
+        html.Should().Contain("data-editor-label=\"Backstory\"");
+        HintElement.Matches(html).Select(m => m.Groups["id"].Value).Should().OnlyHaveUniqueItems();
+        foreach (Match textarea in EditorTextarea.Matches(html))
+        {
+            var describedBy = Regex.Match(textarea.Value, @"aria-describedby=""(?<id>[^""]+)""").Groups["id"].Value;
+            html.Should().Contain($"id=\"{describedBy}\"");
+        }
+    }
+
+    [Theory]
+    [InlineData("create", DesktopUserAgent)]
+    [InlineData("create", MobileUserAgent)]
+    [InlineData("edit", DesktopUserAgent)]
+    [InlineData("edit", MobileUserAgent)]
     public async Task ContactForms_RenderEditorHintAndLabelUnderBothUserAgents(string form, string userAgent)
     {
         var tag = $"{form}_{(userAgent == MobileUserAgent ? "phone" : "desktop")}";

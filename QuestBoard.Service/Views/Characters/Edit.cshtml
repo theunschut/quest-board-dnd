@@ -6,55 +6,54 @@
     ViewData["Title"] = $"Edit {Model.Name}";
 }
 
-<!-- Use the same form as Create, just with different title and action -->
-<div class="character-form-page">
+<div class="character-form-page form-page">
     <div class="card modern-card">
         <div class="card-header modern-card-header">
-            <h2 class="mb-0">
-                <i class="fas fa-edit me-2"></i>
+            <h1 class="mb-0">
+                <i class="fas fa-edit me-2" aria-hidden="true"></i>
                 Edit @Model.Name
-            </h2>
+            </h1>
         </div>
         <div class="card-body modern-card-body">
             <form asp-action="Edit" method="post" enctype="multipart/form-data">
                 <input type="hidden" asp-for="Id" />
                 <input type="hidden" asp-for="OwnerId" />
 
-                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div asp-validation-summary="All" class="mb-3"></div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label asp-for="ProfilePictureFile" class="form-label">Profile Picture</label>
+                        <input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
+                        <input type="file" name="CroppedPictureFile" hidden />
+                        <small class="form-text">Upload a new character portrait (JPG, PNG, GIF - Max 5 MB)</small>
+                        <span asp-validation-for="ProfilePictureFile"></span>
+                        <div id="fileSizeError" class="crop-error" role="alert" hidden><i class="fas fa-exclamation-circle" aria-hidden="true"></i><span data-crop-error-text></span></div>
                         @if (Model.HasProfilePicture)
                         {
-                            <div class="mb-2">
-                                <img src="@Url.Action("GetCroppedPicture", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />
+                            <div class="form-picture-current">
+                                <img src="@Url.Action("GetCroppedPicture", new { id = Model.Id })" alt="Current" class="img-thumbnail form-picture-thumb" />
                                 <div>
                                     <button type="button" class="btn btn-sm btn-warning mt-2" id="recropPhotoBtn" data-crop-original-url="@Url.Action("GetProfilePicture", new { id = Model.Id })">
-                                        <i class="fas fa-crop-alt me-1"></i>Re-crop Photo
+                                        <i class="fas fa-crop-alt me-1" aria-hidden="true"></i>Re-crop Photo
                                     </button>
                                 </div>
                             </div>
                         }
-                        <input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
-                        <input type="file" name="CroppedPictureFile" hidden />
-                        <small class="form-text text-muted">Upload a new character portrait (JPG, PNG, GIF - Max 5 MB)</small>
-                        <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
-                        <div id="fileSizeError" class="crop-error" role="alert" hidden><i class="fas fa-exclamation-circle" aria-hidden="true"></i><span data-crop-error-text></span></div>
                     </div>
 
                     <div class="col-md-8">
                         <div class="mb-3">
                             <label asp-for="Name" class="form-label">Character Name <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
-                            <input asp-for="Name" class="form-control" />
-                            <span asp-validation-for="Name" class="text-danger"></span>
+                            <input asp-for="Name" class="form-control" placeholder="Enter character name" />
+                            <span asp-validation-for="Name"></span>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label asp-for="Level" class="form-label">Level <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
                                 <input asp-for="Level" type="number" class="form-control" min="1" max="20" />
-                                <span asp-validation-for="Level" class="text-danger"></span>
+                                <span asp-validation-for="Level"></span>
                             </div>
 
                             <div class="col-md-6 mb-3">
@@ -66,14 +65,14 @@
                         <div class="mb-3">
                             <label asp-for="Role" class="form-label">Role</label>
                             <select asp-for="Role" asp-items="Html.GetEnumSelectList<CharacterRole>()" class="form-select"></select>
-                            <small class="form-text text-muted">Setting as Main will change your other characters to Backup</small>
+                            <small class="form-text">Setting as Main will change your other characters to Backup</small>
                         </div>
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Classes <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
-                    <small class="form-text text-muted d-block mb-2">
+                    <small class="form-text d-block mb-2">
                         Total class levels must equal character level (@Model.Level).
                     </small>
                     @{ await Html.RenderPartialAsync("_CharacterClassRows", Model); }
@@ -81,8 +80,8 @@
 
                 <div class="mb-3">
                     <label asp-for="SheetLink" class="form-label">Character Sheet Link</label>
-                    <input asp-for="SheetLink" type="url" class="form-control" />
-                    <span asp-validation-for="SheetLink" class="text-danger"></span>
+                    <input asp-for="SheetLink" type="url" class="form-control" placeholder="https://..." />
+                    <span asp-validation-for="SheetLink"></span>
                 </div>
 
                 @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
@@ -103,13 +102,15 @@
                        Placeholder = "Character backstory..."
                    }); }
 
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-save me-2"></i>Save Changes
-                    </button>
+                <hr />
+
+                <div class="form-actions">
                     <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-secondary">
-                        <i class="fas fa-times me-2"></i>Cancel
+                        <i class="fas fa-times me-2" aria-hidden="true"></i>Cancel
                     </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2" aria-hidden="true"></i>Save Changes
+                    </button>
                 </div>
             </form>
         </div>
@@ -119,6 +120,7 @@
 <partial name="_ImageCropDialog" />
 
 @section Styles {
+    <link rel="stylesheet" href="~/css/character-form.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
 }
 
