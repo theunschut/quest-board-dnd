@@ -44,6 +44,7 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
         "QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml",
         "QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml",
+        "QuestBoard.Service/Views/Characters/Index.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
         "QuestBoard.Service/Views/Characters/Create.cshtml",
         "QuestBoard.Service/Views/Characters/Edit.cshtml",
@@ -55,7 +56,7 @@ public class CharactersConversionGuardTests
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -64,6 +65,7 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml"] = [],
         ["QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml"] = ["contact-categories.css"],
         ["QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml"] = ["contact-categories.mobile.css"],
+        ["QuestBoard.Service/Views/Characters/Index.cshtml"] = ["member-cards.css", "characters.css"],
         ["QuestBoard.Service/Views/Characters/Details.cshtml"] = ["markdown-content.css", "character-detail.css"],
         ["QuestBoard.Service/Views/Characters/Create.cshtml"] = ["character-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/Characters/Edit.cshtml"] = ["character-form.css", "image-crop.css"],
@@ -98,7 +100,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -164,12 +166,18 @@ public class CharactersConversionGuardTests
         "QuestBoard.IntegrationTests/Tests/ContactCategoryContrastGuardTests.cs",
         "QuestBoard.IntegrationTests/Controllers/ContactsTagsDesktopMarkupTests.cs",
         "QuestBoard.IntegrationTests/Tests/MarkdownEditorMarkupTests.cs",
+        "QuestBoard.Service/Views/Characters/Index.cshtml",
+        "QuestBoard.Service/wwwroot/css/member-cards.css",
+        "QuestBoard.Service/wwwroot/css/characters.css",
+        "QuestBoard.IntegrationTests/Tests/CharactersIndexRenderTests.cs",
+        "QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs",
     ];
 
     // Character views that show a picture, repository-relative. Each asks for the picture only when one is stored.
     // The form and list views join this list as they are converted; a file not yet on disk is skipped.
     private static readonly string[] CharacterPictureViews =
     [
+        "QuestBoard.Service/Views/Characters/Index.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
         "QuestBoard.Service/Views/Characters/Create.cshtml",
         "QuestBoard.Service/Views/Characters/Edit.cshtml",
@@ -580,6 +588,50 @@ public class CharactersConversionGuardTests
         PictureUrlsOutsideHasPictureBlocks(outside).Should().HaveCount(1);
         PictureUrlsOutsideHasPictureBlocks(wrongBlock).Should().HaveCount(1);
         PictureUrlsOutsideHasPictureBlocks("@await Html.PartialAsync(\"_CharacterAvatar\", m)").Should().BeEmpty();
+    }
+
+    // Every page sheet of the characters, contacts, Dungeon Master profile and players areas, by file name; one that is
+    // not on disk is skipped.
+    private static readonly string[] AreaSheets =
+    [
+        "characters.css", "characters.mobile.css", "member-cards.css", "contacts.css", "contacts.mobile.css",
+        "dm-profile.css", "dm-profile.mobile.css", "players.mobile.css",
+    ];
+
+    [Fact]
+    public void AreaSheets_HaveNoInfiniteAnimation()
+    {
+        // Nothing in the area may animate without end. Every area sheet, converted or not, is scanned for an endless
+        // iteration; a converted sheet also holds no keyframes block at all.
+        var converted = ConvertedSheets.ToHashSet();
+        var names = AreaSheets.Concat(ConvertedSheets).Distinct().ToList();
+        var scanned = 0;
+        foreach (var name in names)
+        {
+            var path = ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", name);
+            if (!File.Exists(path))
+                continue;
+
+            scanned++;
+            var css = StripCssCommentsFor(File.ReadAllText(path));
+            Regex.Matches(css, @"\binfinite\b").Select(m => m.Value).Should().BeEmpty(
+                $"{name} must not repeat an animation without end, by iteration count or in the shorthand");
+            if (converted.Contains(name))
+                Regex.Matches(css, @"@(?:-webkit-)?keyframes").Select(m => m.Value).Should().BeEmpty(
+                    $"{name} is converted and holds no keyframes block");
+        }
+
+        scanned.Should().BeGreaterThan(5, "the guard must cover the area's sheets");
+    }
+
+    [Fact]
+    public void AnimationScanner_FlagsWhatItForbidsAndAllowsWhatItPermits()
+    {
+        Regex.IsMatch("animation: pulse 2s ease-in-out infinite;", @"\binfinite\b").Should().BeTrue();
+        Regex.IsMatch("animation-iteration-count: infinite;", @"\binfinite\b").Should().BeTrue();
+        Regex.IsMatch("@keyframes pulse { to { opacity: 1; } }", @"@(?:-webkit-)?keyframes").Should().BeTrue();
+        Regex.IsMatch("transition: transform var(--qb-dur-base) var(--qb-ease);", @"\binfinite\b|@(?:-webkit-)?keyframes")
+            .Should().BeFalse();
     }
 
     [Fact]
