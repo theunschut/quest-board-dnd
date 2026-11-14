@@ -44,17 +44,29 @@
     }
   }
 
+  /*
+   * The details page shows the whole uploaded picture at its own proportions; only the list cards use the square
+   * crop. A phone caps the height so the name and badges stay near the top of the screen.
+   */
   .character-detail-page .character-detail-portrait {
     display: block;
-    width: 100%;
-    max-width: 248px;
-    aspect-ratio: 1 / 1;
+    width: auto;
+    max-width: 100%;
+    height: auto;
     margin: 0 auto var(--qb-space-md);
     border-radius: var(--qb-radius-md);
-    object-fit: cover;
+  }
+
+  @media (max-width: 575.98px) {
+    .character-detail-page .character-detail-portrait {
+      max-height: 220px;
+    }
   }
 
   .character-detail-page .character-detail-portrait--placeholder {
+    width: 100%;
+    max-width: 248px;
+    aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
