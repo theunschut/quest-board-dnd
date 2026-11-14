@@ -180,8 +180,8 @@ public class ImageCropDialogRenderTests(WebApplicationFactoryBase factory)
 
         var html = await GetHtmlAsync(seeded.Client, UrlFor(host, seeded), mobile);
 
-        Regex.IsMatch(html, "<link\\b[^>]*href=\"/css/image-crop\\.css[^\"]*\"").Should().BeTrue(
-            "the page links the crop sheet itself");
+        Regex.Matches(html, "<link\\b[^>]*href=\"/css/image-crop\\.css[^\"]*\"").Should().HaveCount(1,
+            "the page links the crop sheet itself, once, from its own Styles section");
         Regex.IsMatch(html, "<script\\b[^>]*type=\"module\"[^>]*src=\"/js/image-crop\\.js[^\"]*\"").Should().BeTrue(
             "the module drives the dialog");
         var cropper = Regex.Match(html, "<script\\b[^>]*src=\"/lib/cropperjs-2\\.1\\.1/cropper\\.min\\.js\"[^>]*>");

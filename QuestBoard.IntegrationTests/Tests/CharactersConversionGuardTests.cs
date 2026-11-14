@@ -61,6 +61,13 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.Mobile.cshtml",
     ];
 
+    private const string CropDialogPartial = "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml";
+    private const string CropModule = "QuestBoard.Service/wwwroot/js/image-crop.js";
+
+    // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
+    // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
+    private static readonly string[] PageOnlySheets = ["image-crop.css"];
+
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
         ("a style attribute", new Regex(@"\sstyle\s*=", RegexOptions.IgnoreCase)),
@@ -84,6 +91,21 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/wwwroot/css/components.css",
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
         "QuestBoard.IntegrationTests/Controllers/ContactCategoryManagementControllerIntegrationTests.cs",
+        "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml",
+        "QuestBoard.Service/Views/Shared/_Layout.cshtml",
+        "QuestBoard.Service/wwwroot/js/image-crop.js",
+        "QuestBoard.Service/wwwroot/css/image-crop.css",
+        "QuestBoard.IntegrationTests/Tests/ImageCropDialogRenderTests.cs",
+        "QuestBoard.Service/Views/Characters/Create.cshtml",
+        "QuestBoard.Service/Views/Characters/Create.Mobile.cshtml",
+        "QuestBoard.Service/Views/Characters/Edit.cshtml",
+        "QuestBoard.Service/Views/Characters/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Views/Contacts/Create.cshtml",
+        "QuestBoard.Service/Views/Contacts/Create.Mobile.cshtml",
+        "QuestBoard.Service/Views/Contacts/Edit.cshtml",
+        "QuestBoard.Service/Views/Contacts/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml",
+        "QuestBoard.Service/Views/DungeonMaster/EditProfile.Mobile.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds
@@ -236,6 +258,74 @@ public class CharactersConversionGuardTests
         foreach (var name in ConvertedSheets)
             StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/" + name)).Should().Contain("@layer pages",
                 $"{name} must open the pages layer so the foundation's cascade order applies to it");
+    }
+
+    [Fact]
+    public void CropDialogPartial_UsesTheOverlaySurface()
+    {
+        // The dialog sits on the shared opaque overlay surface, so it names no colour of its own: no dark
+        // background or light text utility, no white close-button variant and no style attribute.
+        var partial = StripRazorAndHtmlComments(ReadRepoFile(CropDialogPartial));
+        foreach (var forbidden in new[] { "bg-dark", "text-light", "btn-close-white" })
+            partial.Should().NotContain(forbidden, $"the crop dialog must not use {forbidden}");
+        Regex.Matches(partial, @"\sstyle\s*=", RegexOptions.IgnoreCase).Select(m => m.Value).Should().BeEmpty(
+            "the crop dialog carries no style attribute");
+    }
+
+    [Fact]
+    public void ImageCropModule_DrivesTheSelectionThroughItsPublicApi()
+    {
+        var script = ReadRepoFile(CropModule);
+
+        // The selection is moved and resized only through Cropper's own methods.
+        foreach (var method in new[] { "$moveTo", "$change", "$initSelection" })
+            script.Should().Contain(method + "(", $"the module drives the selection through {method}");
+
+        // Keys are heard on the selection element only, and Cropper's document-wide keyboard handling stays off
+        // (it would let Delete remove the selection).
+        Regex.Matches(script, @"\b(?:document|window|globalThis)\s*\.\s*addEventListener\(\s*['""`]key")
+            .Select(m => m.Value).Should().BeEmpty("the module holds no document-level key listener");
+        Regex.Matches(script, @"\bkeyboard\s*[:=]|setAttribute\(\s*['""]keyboard['""]|\.keyboard\b")
+            .Select(m => m.Value).Should().BeEmpty("the module never switches on Cropper's keyboard option");
+
+        // Text goes in through textContent; no markup is built from strings.
+        Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\b|insertAdjacentHTML|document\.write")
+            .Select(m => m.Value).Should().BeEmpty("the module must build no markup from strings");
+
+        // Nothing is exposed globally.
+        Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
+            .Select(m => m.Value).Should().BeEmpty("the module defines no global");
+    }
+
+    [Fact]
+    public void CropModuleScanners_FlagWhatTheyForbid()
+    {
+        // A known-bad sample shows each pattern above fires, so the module facts cannot pass on a dead regex.
+        var bad = "document.addEventListener('keydown', f); cropper.keyboard = true; el.innerHTML = x; window.initCrop = f;";
+        Regex.IsMatch(bad, @"\b(?:document|window|globalThis)\s*\.\s*addEventListener\(\s*['""`]key").Should().BeTrue();
+        Regex.IsMatch(bad, @"\bkeyboard\s*[:=]|\.keyboard\b").Should().BeTrue();
+        Regex.IsMatch(bad, @"\.(?:innerHTML|outerHTML)\b").Should().BeTrue();
+        Regex.IsMatch(bad, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)").Should().BeTrue();
+        Regex.IsMatch("selection.addEventListener('keydown', f); window.setTimeout(write, 5);",
+            @"\b(?:document|window|globalThis)\s*\.\s*addEventListener\(\s*['""`]key|\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void Layouts_LinkNoAreaSheet()
+    {
+        // These sheets load from the Styles section of the pages that use them, never for every page.
+        foreach (var layout in new[]
+                 {
+                     "QuestBoard.Service/Views/Shared/_Layout.cshtml",
+                     "QuestBoard.Service/Views/Shared/_Layout.Mobile.cshtml",
+                 })
+        {
+            var text = StripRazorAndHtmlComments(ReadRepoFile(layout));
+            foreach (var sheet in PageOnlySheets)
+                text.Should().NotContain("css/" + sheet,
+                    $"{layout} must not link {sheet}: it is page-specific and belongs in the Styles section of its pages");
+        }
     }
 
     [Fact]
