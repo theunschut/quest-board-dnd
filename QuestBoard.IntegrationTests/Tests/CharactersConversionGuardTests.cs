@@ -848,11 +848,13 @@ public class CharactersConversionGuardTests
         RawDateFormats(StripRazorAndHtmlComments("@* @d.ToString(\"dddd\") *@")).Should().BeEmpty();
     }
 
-    [Fact]
-    public void DetailsPortrait_ShowsTheWholePictureNotASquareCrop()
+    [Theory]
+    [InlineData("QuestBoard.Service/wwwroot/css/character-detail.css", "character-detail-portrait")]
+    [InlineData("QuestBoard.Service/wwwroot/css/contact-detail.css", "contact-detail-portrait")]
+    public void DetailsPortrait_ShowsTheWholePictureNotASquareCrop(string sheet, string portraitClass)
     {
-        var css = StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/character-detail.css"));
-        var portraitRules = Regex.Matches(css, @"\.character-detail-portrait\s*\{([^}]*)\}")
+        var css = StripCssCommentsFor(ReadRepoFile(sheet));
+        var portraitRules = Regex.Matches(css, @"\." + portraitClass + @"\s*\{([^}]*)\}")
             .Select(match => match.Groups[1].Value)
             .ToList();
 
