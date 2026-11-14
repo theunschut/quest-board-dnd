@@ -1,0 +1,89 @@
+/*
+ * The contact detail page, one markup for both layouts: the portrait and the lines under it, the full-width action
+ * buttons, and the Notes card. A note is a slip on the card's scrim, not a card of its own, so it takes no blur
+ * however many repeat; its text and its meta line keep the card's text colours.
+ */
+@layer pages {
+  /* The phone main pads its content by less than a Bootstrap row pulls out; the row takes a gutter equal to that padding. */
+  .mobile-layout .contact-detail-page .row {
+    --bs-gutter-x: var(--qb-space-md);
+  }
+
+  .contact-detail-page .contact-detail-portrait {
+    display: block;
+    width: 100%;
+    max-width: 248px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto var(--qb-space-md);
+    border-radius: var(--qb-radius-md);
+    object-fit: cover;
+  }
+
+  .contact-detail-page .contact-detail-portrait--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
+
+  .contact-detail-page .contact-info-value {
+    margin: 0 0 var(--qb-space-xs);
+    overflow-wrap: anywhere;
+  }
+
+  .contact-detail-page .contact-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--qb-space-xs);
+  }
+
+  .contact-detail-page .notes-form {
+    margin-bottom: var(--qb-space-lg);
+  }
+
+  .contact-detail-page .notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .contact-detail-page .notes-slip {
+    padding: var(--qb-space-md);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-scrim);
+    color: var(--qb-fg);
+    overflow-wrap: anywhere;
+  }
+
+  .contact-detail-page .notes-meta {
+    margin-bottom: var(--qb-space-sm);
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  .contact-detail-page .notes-meta > span {
+    white-space: nowrap;
+  }
+
+  /* A heading a member writes in a note is the slip's own text colour, not the pale heading colour made for plain glass. */
+  .contact-detail-page .notes-slip .markdown-content :is(h1, h2, h3, h4, h5, h6) {
+    color: inherit;
+  }
+
+  .contact-detail-page .notes-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--qb-space-sm);
+    margin-top: var(--qb-space-sm);
+  }
+
+  .contact-detail-page .notes-edit-form[hidden] {
+    display: none;
+  }
+}
