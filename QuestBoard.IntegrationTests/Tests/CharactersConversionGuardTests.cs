@@ -848,5 +848,21 @@ public class CharactersConversionGuardTests
         RawDateFormats(StripRazorAndHtmlComments("@* @d.ToString(\"dddd\") *@")).Should().BeEmpty();
     }
 
+    [Fact]
+    public void DetailsPortrait_ShowsTheWholePictureNotASquareCrop()
+    {
+        var css = StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/character-detail.css"));
+        var portraitRules = Regex.Matches(css, @"\.character-detail-portrait\s*\{([^}]*)\}")
+            .Select(match => match.Groups[1].Value)
+            .ToList();
+
+        portraitRules.Should().NotBeEmpty();
+        foreach (var rule in portraitRules)
+        {
+            rule.Should().NotContain("aspect-ratio", "the details page shows the uploaded picture at its own proportions");
+            rule.Should().NotContain("object-fit", "cropping the picture to a box hides part of it");
+        }
+    }
+
     private static string StripCssCommentsFor(string css) => Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
 }
