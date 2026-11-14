@@ -60,10 +60,12 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/DungeonMaster/Profile.Mobile.cshtml",
         "QuestBoard.Service/Views/Players/Index.cshtml",
         "QuestBoard.Service/Views/Players/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml",
+        "QuestBoard.Service/Views/Shared/_CharacterAvatar.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css"];
+    private static readonly string[] ConvertedSheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -88,6 +90,8 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/DungeonMaster/Profile.Mobile.cshtml"] = ["markdown-content.css", "member-cards.css", "dm-profile.mobile.css"],
         ["QuestBoard.Service/Views/Players/Index.cshtml"] = ["players.css"],
         ["QuestBoard.Service/Views/Players/Index.Mobile.cshtml"] = ["member-cards.css", "players.mobile.css"],
+        ["QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml"] = [],
+        ["QuestBoard.Service/Views/Shared/_CharacterAvatar.cshtml"] = [],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
@@ -621,13 +625,99 @@ public class CharactersConversionGuardTests
         PictureUrlsOutsideHasPictureBlocks("@await Html.PartialAsync(\"_CharacterAvatar\", m)").Should().BeEmpty();
     }
 
-    // Every page sheet of the characters, contacts, Dungeon Master profile and players areas, by file name; one that is
-    // not on disk is skipped.
+    // Every page sheet of the characters, contacts, Dungeon Master profile and players areas, by file name.
     private static readonly string[] AreaSheets =
     [
-        "characters.css", "characters.mobile.css", "member-cards.css", "contacts.css", "contacts.mobile.css",
-        "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css",
+        "image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css",
+        "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css",
+        "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css",
+        "dm-profile.mobile.css", "players.css", "players.mobile.css",
     ];
+
+    // The area's own folders under the views folder: a view added to one of them has to join the guard lists.
+    private static readonly string[] AreaViewFolders = ["Characters", "Contacts", "ContactCategoryManagement", "Players"];
+
+    // The Dungeon Master profile pair and its form sit in a folder shared with other pages, so they are named by prefix.
+    private static readonly string[] AreaViewPrefixes = ["Profile", "EditProfile"];
+
+    // The two shared partials the area owns.
+    private static readonly string[] AreaSharedPartials = ["_ImageCropDialog.cshtml", "_CharacterAvatar.cshtml"];
+
+    // A view or sheet deliberately kept out of the conversion, mapped to the reason. The area is converted in full, so
+    // this stays empty.
+    private static readonly Dictionary<string, string> UnconvertedByDecision = new();
+
+    [Fact]
+    public void PhaseScope_IsFullyConverted()
+    {
+        var viewsRoot = ResolveRepoFile(ViewsRoot.Split('/'));
+        string Relative(string full) => ViewsRoot + "/" + Path.GetRelativePath(viewsRoot, full).Replace('\\', '/');
+
+        var onDisk = AreaViewFolders
+            .SelectMany(folder => Directory.EnumerateFiles(Path.Combine(viewsRoot, folder), "*.cshtml"))
+            .Concat(Directory.EnumerateFiles(Path.Combine(viewsRoot, "DungeonMaster"), "*.cshtml")
+                .Where(f => AreaViewPrefixes.Any(p => Path.GetFileName(f).StartsWith(p, StringComparison.Ordinal))))
+            .Concat(AreaSharedPartials.Select(n => Path.Combine(viewsRoot, "Shared", n)))
+            .Select(Relative)
+            .Where(f => !UnconvertedByDecision.ContainsKey(f))
+            .ToList();
+        var sheets = AreaSheets
+            .Where(n => File.Exists(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", n)))
+            .Where(n => !UnconvertedByDecision.ContainsKey(n))
+            .ToList();
+
+        onDisk.Should().NotBeEmpty("the scan must find the area's views, or it guards nothing");
+        onDisk.Should().OnlyContain(f => File.Exists(ResolveRepoFile(f.Split('/'))),
+            "every area view named by the scan exists, including the two shared partials");
+        sheets.Should().HaveCount(AreaSheets.Length, "every area sheet is present and none was dropped from the area");
+        onDisk.Except(ConvertedViews).Should().BeEmpty(
+            "every area view on disk must be guarded as converted, or listed with the reason it is not");
+        ConvertedViews.Except(onDisk).Should().BeEmpty(
+            "a view listed as converted must still exist in the area, or leave the list in the commit that deletes it");
+        sheets.Except(ConvertedSheets).Should().BeEmpty(
+            "every area sheet that exists must be guarded as converted, or listed with the reason it is not");
+        ConvertedSheets.Except(AreaSheets).Should().BeEmpty("every converted sheet belongs to the area's sheet list");
+
+        UnconvertedByDecision.Should().BeEmpty("the area is converted in full, with no view or sheet kept back");
+    }
+
+    // A rule is a selector and the declarations between the innermost braces; a layer or media wrapper holds braces
+    // itself, so it never matches and only the rules inside it do.
+    private static readonly Regex CssRule = new(@"(?<selector>[^{}]+)\{(?<body>[^{}]*)\}", RegexOptions.Compiled);
+
+    private static readonly Regex TitleTypography = new(
+        @"(?:^|[;\s])(?:font-size|font-family|letter-spacing)\s*:", RegexOptions.Compiled);
+
+    // A selector that styles a card title: the card header itself, or a first or second level heading inside a card.
+    private static bool NamesCardTitle(string selector) =>
+        selector.Contains("modern-card-header", StringComparison.Ordinal)
+        || (selector.Contains("modern-card", StringComparison.Ordinal) && Regex.IsMatch(selector, @"\bh[12]\b"));
+
+    private static List<string> CardTitleTypographyRules(string strippedCss) =>
+        CssRule.Matches(strippedCss)
+            .Where(m => NamesCardTitle(m.Groups["selector"].Value) && TitleTypography.IsMatch(m.Groups["body"].Value))
+            .Select(m => m.Groups["selector"].Value.Trim())
+            .ToList();
+
+    [Fact]
+    public void AreaSheets_DoNotRestyleCardTitles()
+    {
+        // The card title step belongs to the foundation: a page title is the display step, a sidebar card title the
+        // heading step. An area sheet may recolour a title but never resize it or change its face or spacing.
+        foreach (var name in AreaSheets)
+            CardTitleTypographyRules(StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/" + name)))
+                .Should().BeEmpty($"{name} must not set the size, face or letter spacing of a card title");
+    }
+
+    [Fact]
+    public void CardTitleScanner_FlagsWhatItForbidsAndAllowsWhatItPermits()
+    {
+        CardTitleTypographyRules("@layer pages { .x .modern-card-header h1 { font-size: 1rem; } }").Should().HaveCount(1);
+        CardTitleTypographyRules(".modern-card--aside .modern-card-header h2 { letter-spacing: normal; }").Should().HaveCount(1);
+        CardTitleTypographyRules(".modern-card h2 { font-family: serif; }").Should().HaveCount(1);
+        CardTitleTypographyRules(".players-page .modern-card-header h1 { color: var(--qb-fg); }").Should().BeEmpty();
+        CardTitleTypographyRules(".member-name { font-size: 1rem; }").Should().BeEmpty();
+    }
 
     [Fact]
     public void AreaSheets_HaveNoInfiniteAnimation()
