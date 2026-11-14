@@ -62,9 +62,12 @@
     color: var(--qb-neutral-fg);
   }
 
+  /*
+   * The owner line and the facts' labels keep the card's own colour: the muted tone measures 4.25:1 over the lightest
+   * board pixel, under the 4.5:1 these small lines need. Size and weight carry the difference instead.
+   */
   .character-detail-page .character-detail-owner {
     margin: 0 0 var(--qb-space-sm);
-    color: var(--qb-fg-muted);
     overflow-wrap: anywhere;
   }
 
@@ -80,7 +83,6 @@
   }
 
   .character-detail-page .character-facts dt {
-    color: var(--qb-fg-muted);
     font-size: var(--qb-text-sm);
     font-weight: var(--qb-weight-strong);
   }
