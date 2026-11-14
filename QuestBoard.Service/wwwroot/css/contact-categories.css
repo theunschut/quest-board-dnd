@@ -23,4 +23,9 @@
   .contact-categories-page .category-add-form {
     margin-bottom: var(--qb-space-lg);
   }
+
+  /* The sentence sits on a glass card, where the muted tone measures under 4.5:1 over the brightest board pixel. */
+  .contact-categories-page .empty-state-text {
+    color: var(--qb-fg);
+  }
 }

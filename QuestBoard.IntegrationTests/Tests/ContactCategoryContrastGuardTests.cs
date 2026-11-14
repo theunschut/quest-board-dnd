@@ -151,6 +151,23 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
     }
 
     [Fact]
+    public void ContactCategoryContrastGuard_ManageEmptySentence_TakesTheCardColourOnBothSheets()
+    {
+        // The shared empty-state sentence is muted, which measures under 4.5:1 on a glass card over the lightest board
+        // pixel, so the category sheets set it to the card's own text colour on each layout.
+        var tokens = File.ReadAllText(ResolveCssPath("tokens.css"));
+        foreach (var sheet in new[] { "contact-categories.css", "contact-categories.mobile.css" })
+        {
+            var css = File.ReadAllText(ResolveCssPath(sheet));
+            var rule = ExtractCssRule(css, ".contact-categories-page .empty-state-text {");
+            rule.Should().Contain("color: var(--qb-fg);", because: $"{sheet} must lift the empty sentence to the card colour");
+        }
+
+        RatioOnCardSurface(tokens, "--qb-fg").Should().BeGreaterThanOrEqualTo(4.5,
+            because: "the sentence is body-size text on the card surface, so it needs the 4.5:1 text bar");
+    }
+
+    [Fact]
     public void ContactCategoryContrastGuard_ModernCardFormTextLinkRule_SetsParchmentColourWithUnderlineIntact()
     {
         var cssPath = ResolveCssPath("components.css");
