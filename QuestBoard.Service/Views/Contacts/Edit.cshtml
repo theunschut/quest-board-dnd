@@ -65,7 +65,8 @@
 
                 <div class="mb-3 contact-tags-input">
                     <label asp-for="TagsInput" class="form-label">Tags</label>
-                    <input asp-for="TagsInput" class="form-control" id="TagsInput" placeholder="Add a tag and press Enter…" />
+                    <input asp-for="TagsInput" class="form-control" id="TagsInput" placeholder="Add a tag and press Enter…"
+                       data-whitelist="@System.Text.Json.JsonSerializer.Serialize(Model.AvailableTagNames)" />
                     <span asp-validation-for="TagsInput" class="text-danger"></span>
                     <small class="form-text text-muted">Optional — e.g. shopkeeper, quest giver</small>
                 </div>
@@ -120,16 +121,13 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/tagify-vendor.css" asp-append-version="true" />
 }
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
     <script src="~/lib/cropperjs-2.1.1/cropper.min.js"></script>
     <script type="module" src="~/js/image-crop.js" asp-append-version="true"></script>
-    <link href="~/lib/tagify-4.38.0/tagify.css" rel="stylesheet" />
     <script src="~/lib/tagify-4.38.0/tagify.min.js"></script>
-    <script src="~/js/contact-tags.js" asp-append-version="true"></script>
-    <script>
-        initContactTags({ inputId: 'TagsInput', whitelist: @Html.Raw(Json.Serialize(Model.AvailableTagNames)) });
-    </script>
+    <script type="module" src="~/js/contact-tags.js" asp-append-version="true"></script>
 }

@@ -4,7 +4,7 @@ using QuestBoard.IntegrationTests.Helpers;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
-// Proves the tag entry field and its pinned library reach a DM's contact create/edit forms on
+// Proves the tag entry field, its module and its pinned library reach a DM's contact create/edit forms on
 // both a desktop and a real mobile User-Agent, that the edit form pre-fills a contact's existing
 // tags as a comma-separated value, that a player reaches neither form, and that the suggestion
 // list emitted for a DM never carries another board's tag names. The mobile split is driven
@@ -37,40 +37,39 @@ public class ContactsTagsFormMarkupTests(WebApplicationFactoryBase factory) : IC
         return (response.StatusCode, html);
     }
 
-    [Fact]
-    public async Task CreateForm_DesktopUserAgent_RendersTagInputAndPinnedLibrary()
+    // The page hands the module its suggestion list through an attribute on the tag input and the
+    // module switches itself on; nothing initialises Tagify inline and the library sheet reaches the
+    // page through the wrapper that imports it into the vendor layer.
+    private static void AssertTagModuleWiring(string html)
     {
-        await TestDataHelper.ClearDatabaseAsync(factory.Services);
-        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "tagform_desktop_create", "tagform_desktop_create@example.com", roles: ["DungeonMaster"]);
-
-        var (statusCode, html) = await GetAsync(
-            dmClient, "/Contacts/Create", DesktopUserAgent, dmClient.DefaultRequestHeaders.Authorization);
-
-        statusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("id=\"TagsInput\"");
+        html.Should().MatchRegex("<input[^>]*id=\"TagsInput\"[^>]*data-whitelist=\"|<input[^>]*data-whitelist=\"[^>]*id=\"TagsInput\"");
+        html.Should().MatchRegex("<script[^>]*type=\"module\"[^>]*src=\"/js/contact-tags\\.js");
+        html.Should().MatchRegex("<link[^>]*href=\"/css/tagify-vendor\\.css");
         html.Should().Contain("/lib/tagify-4.38.0/tagify.min.js");
-        html.Should().Contain("/lib/tagify-4.38.0/tagify.css");
+        html.Should().NotContain("/lib/tagify-4.38.0/tagify.css");
         html.Should().NotContain("@yaireo/tagify@");
-        html.Should().Contain("initContactTags(");
+        html.Should().NotContain("initContactTags");
     }
 
-    [Fact]
-    public async Task CreateForm_MobileUserAgent_RendersTagInputAndPinnedLibrary()
+    [Theory]
+    [InlineData(DesktopUserAgent, false)]
+    [InlineData(MobileUserAgent, true)]
+    public async Task CreateForm_RendersTagInputModuleAndPinnedLibrary(string userAgent, bool expectMobileLayout)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "tagform_mobile_create", "tagform_mobile_create@example.com", roles: ["DungeonMaster"]);
+            factory, "tagform_create_" + expectMobileLayout, $"tagform_create_{expectMobileLayout}@example.com", roles: ["DungeonMaster"]);
 
         var (statusCode, html) = await GetAsync(
-            dmClient, "/Contacts/Create", MobileUserAgent, dmClient.DefaultRequestHeaders.Authorization);
+            dmClient, "/Contacts/Create", userAgent, dmClient.DefaultRequestHeaders.Authorization);
 
         statusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("id=\"TagsInput\"");
-        html.Should().Contain("/lib/tagify-4.38.0/tagify.min.js");
-        html.Should().Contain("/lib/tagify-4.38.0/tagify.css");
-        html.Should().NotContain("@yaireo/tagify@");
-        html.Should().Contain("initContactTags(");
+        AssertTagModuleWiring(html);
+        if (expectMobileLayout)
+            html.Should().Contain("mobile-layout");
+        else
+            html.Should().NotContain("mobile-layout");
     }
 
     [Fact]
@@ -93,6 +92,10 @@ public class ContactsTagsFormMarkupTests(WebApplicationFactoryBase factory) : IC
         // TagsInput pre-fills in the contact's own already-alphabetical tag order.
         desktopHtml.Should().Contain("value=\"quest giver, shopkeeper\"");
         mobileHtml.Should().Contain("value=\"quest giver, shopkeeper\"");
+        AssertTagModuleWiring(desktopHtml);
+        AssertTagModuleWiring(mobileHtml);
+        mobileHtml.Should().Contain("mobile-layout");
+        desktopHtml.Should().NotContain("mobile-layout");
     }
 
     [Fact]
@@ -155,7 +158,7 @@ public class ContactsTagsFormMarkupTests(WebApplicationFactoryBase factory) : IC
             dmClient, "/Contacts/Create", DesktopUserAgent, dmClient.DefaultRequestHeaders.Authorization);
 
         statusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("shopkeeper");
+        html.Should().MatchRegex("data-whitelist=\"[^\"]*shopkeeper");
         html.Should().NotContain("another-board-tag");
     }
 }

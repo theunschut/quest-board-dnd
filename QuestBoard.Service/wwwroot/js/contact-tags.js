@@ -1,21 +1,21 @@
-// Shared client-side enhancement for the contact tag entry field. Loaded per-view via a plain
-// <script> include (matching site.js's no-module, no-bundler convention) and initialized per-view
-// by calling initContactTags({...}) with that view's element id and suggestion list.
+// Tag entry for the contact create and edit forms. The module switches itself on when the page has
+// a tag input carrying a suggestion list, so the four contact forms share it without any call from
+// the view.
+//
+// The page supplies the board's own tag names as a JSON array in the data-whitelist attribute of
+// the #TagsInput element (Razor encodes the attribute) and loads the self-hosted Tagify script
+// before this file. A missing or unreadable list falls back to no suggestions, and a page without
+// the input is left untouched. Nothing is exposed globally and no markup is built from strings.
+//
+// Tagify reads an attribute of this very name itself, splitting it on commas, which would cut the
+// JSON array into fragments and replace the list handed to it below. So the module takes the
+// attribute off the input before it builds Tagify.
 
-// One reusable initializer any contact create/edit view can call with its own element id and
-// whitelist. The underlying <input> is expected to already exist in the view -- this file only
-// wires behavior to it.
-function initContactTags(config) {
-    config = config || {};
-    const inputId = config.inputId;
-    const whitelist = config.whitelist || [];
+const input = document.querySelector('#TagsInput[data-whitelist]');
 
-    const input = inputId ? document.getElementById(inputId) : null;
-    if (!input) {
-        // Nothing to wire on this page -- safe no-op so the same script can be included
-        // defensively without checking which view is currently rendered.
-        return;
-    }
+if (input && typeof Tagify === 'function') {
+    const whitelist = readWhitelist(input.getAttribute('data-whitelist'));
+    input.removeAttribute('data-whitelist');
 
     new Tagify(input, {
         whitelist: whitelist,
@@ -24,6 +24,15 @@ function initContactTags(config) {
         // Keeps the underlying input holding a plain comma-and-space-joined string on every
         // change, so the enhanced and unenhanced (no-JS) submission paths post the exact same
         // value shape and the server only ever has to parse one format.
-        originalInputValueFormat: values => values.map(function (v) { return v.value; }).join(', ')
+        originalInputValueFormat: values => values.map(v => v.value).join(', ')
     });
+}
+
+function readWhitelist(raw) {
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter(name => typeof name === 'string') : [];
+    } catch {
+        return [];
+    }
 }

@@ -90,6 +90,28 @@ public class UiFoundationViewLibraryGuardTests
     }
 
     [Fact]
+    public void TagifyVendorWrapper_ImportsTheVendoredSheetIntoTheVendorLayer()
+    {
+        var wrapper = File.ReadAllText(
+            ResolveRepoFile("QuestBoard.Service", "wwwroot", "css", "tagify-vendor.css"));
+        wrapper.Should().Contain("../lib/tagify-4.38.0/tagify.css\") layer(vendor)",
+            because: "the wrapper must import the versioned wwwroot/lib stylesheet into the vendor layer");
+        wrapper.Should().NotContain(JsDelivrHost,
+            because: "the tag stylesheet must not be requested from a CDN");
+        File.Exists(ResolveRepoFile("QuestBoard.Service", "wwwroot", "lib", "tagify-4.38.0", "tagify.css"))
+            .Should().BeTrue(because: "the wrapper imports a committed file");
+
+        foreach (var view in new[] { "Create.cshtml", "Create.Mobile.cshtml", "Edit.cshtml", "Edit.Mobile.cshtml" })
+        {
+            var text = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "Views", "Contacts", view));
+            text.Should().Contain("~/css/tagify-vendor.css",
+                because: $"{view} must load the tag stylesheet through the wrapper");
+            text.Should().NotContain("~/lib/tagify-4.38.0/tagify.css",
+                because: $"{view} linking the library stylesheet directly would leave it unlayered");
+        }
+    }
+
+    [Fact]
     public void Views_LoadNoLibraryFromJsDelivr()
     {
         foreach (var file in NonLayoutViews())

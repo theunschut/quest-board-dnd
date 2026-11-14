@@ -104,6 +104,8 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Characters/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/Characters/Edit.cshtml",
         "QuestBoard.Service/Views/Characters/Edit.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/js/contact-tags.js",
+        "QuestBoard.Service/wwwroot/css/tagify-vendor.css",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
         "QuestBoard.Service/Views/Contacts/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.cshtml",
@@ -352,6 +354,29 @@ public class CharactersConversionGuardTests
             .Select(m => m.Value).Should().BeEmpty("confirm-submit.js must build no markup from strings");
         Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
             .Select(m => m.Value).Should().BeEmpty("confirm-submit.js defines no global");
+    }
+
+    [Fact]
+    public void ContactTagsModule_ReadsItsDataFromTheInput()
+    {
+        // The suggestion list reaches the module as an encoded attribute on the tag input, parsed as
+        // JSON; the module builds no markup from strings and defines no global.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/contact-tags.js");
+        script.Should().Contain("data-whitelist", "the module reads the suggestion list from the input's attribute");
+        script.Should().Contain("JSON.parse", "the attribute holds JSON");
+        script.Should().Contain("removeAttribute('data-whitelist')",
+            "the library reads an attribute of that name itself and would split the JSON on its commas");
+        Regex.Matches(script, @"innerHTML|outerHTML|insertAdjacentHTML|document\.write")
+            .Select(m => m.Value).Should().BeEmpty("contact-tags.js must build no markup from strings");
+        Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
+            .Select(m => m.Value).Should().BeEmpty("contact-tags.js defines no global");
+
+        foreach (var view in new[] { "Create", "Create.Mobile", "Edit", "Edit.Mobile" })
+        {
+            var text = ReadRepoFile($"QuestBoard.Service/Views/Contacts/{view}.cshtml");
+            text.Should().NotContain("Html.Raw", $"{view} must not print the suggestion list as raw output");
+            text.Should().NotContain("initContactTags", $"{view} must not call a global initialiser");
+        }
     }
 
     [Fact]

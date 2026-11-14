@@ -1849,7 +1849,8 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         content.Should().Contain(OverBoundMessage);
         content.Should().NotContain("30-character limit");
-        content.Should().Contain("initContactTags(");
+        content.Should().Contain("data-whitelist=");
+        content.Should().Contain("/js/contact-tags.js");
         content.Should().Contain("wharfmaster");
 
         using var scope = factory.Services.CreateScope();
@@ -1887,7 +1888,8 @@ public class ContactsControllerIntegrationTests(WebApplicationFactoryBase factor
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         content.Should().Contain(OverBoundMessage);
         content.Should().NotContain("30-character limit");
-        content.Should().Contain("initContactTags(");
+        content.Should().Contain("data-whitelist=");
+        content.Should().Contain("/js/contact-tags.js");
         content.Should().Contain("wharfmaster");
 
         using var scope = factory.Services.CreateScope();
