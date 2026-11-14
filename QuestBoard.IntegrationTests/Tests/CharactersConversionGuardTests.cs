@@ -42,16 +42,18 @@ public class CharactersConversionGuardTests
     private static readonly string[] ConvertedViews =
     [
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
+        "QuestBoard.Service/Views/Characters/Details.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = [];
+    private static readonly string[] ConvertedSheets = ["character-detail.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
     {
         ["QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml"] = [],
+        ["QuestBoard.Service/Views/Characters/Details.cshtml"] = ["markdown-content.css", "character-detail.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
@@ -59,6 +61,8 @@ public class CharactersConversionGuardTests
     private static readonly string[] RetiredFiles =
     [
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Views/Characters/Details.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/character-detail.mobile.css",
     ];
 
     private const string CropDialogPartial = "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml";
@@ -66,7 +70,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -106,6 +110,17 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Contacts/Edit.Mobile.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.Mobile.cshtml",
+        "QuestBoard.Service/Views/Characters/Details.cshtml",
+        "QuestBoard.Service/wwwroot/css/character-detail.css",
+        "QuestBoard.Service/wwwroot/js/confirm-submit.js",
+        "QuestBoard.IntegrationTests/Tests/CharacterDetailsRenderTests.cs",
+    ];
+
+    // Character views that show a picture, repository-relative. Each asks for the picture only when one is stored.
+    // The form and list views join this list as they are converted; a file not yet on disk is skipped.
+    private static readonly string[] CharacterPictureViews =
+    [
+        "QuestBoard.Service/Views/Characters/Details.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds
@@ -326,6 +341,104 @@ public class CharactersConversionGuardTests
                 text.Should().NotContain("css/" + sheet,
                     $"{layout} must not link {sheet}: it is page-specific and belongs in the Styles section of its pages");
         }
+    }
+
+    [Fact]
+    public void ConfirmSubmitModule_WritesNoMarkupFromStrings()
+    {
+        // The module hands a server-rendered sentence to confirm() as plain text and builds no markup.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/confirm-submit.js");
+        Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML|document\.write")
+            .Select(m => m.Value).Should().BeEmpty("confirm-submit.js must build no markup from strings");
+        Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
+            .Select(m => m.Value).Should().BeEmpty("confirm-submit.js defines no global");
+    }
+
+    [Fact]
+    public void CharacterDetailSheet_HasNoAnimation()
+    {
+        // The Main badge is a still ornament and nothing on the page moves.
+        var css = StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/character-detail.css"));
+        Regex.Matches(css, @"@keyframes|\banimation(?:-[a-z]+)?\s*:|\btransition(?:-[a-z]+)?\s*:")
+            .Select(m => m.Value).Should().BeEmpty("character-detail.css holds no animation, keyframes or transition");
+    }
+
+    // The matching closing position of the bracket opened at the given index, or -1.
+    private static int MatchingClose(string text, int open, char openChar, char closeChar)
+    {
+        var depth = 0;
+        for (var i = open; i < text.Length; i++)
+        {
+            if (text[i] == openChar)
+                depth++;
+            else if (text[i] == closeChar && --depth == 0)
+                return i;
+        }
+
+        return -1;
+    }
+
+    // The body spans of every @if block whose condition names HasProfilePicture.
+    private static List<(int Start, int End)> HasPictureBlocks(string view)
+    {
+        var blocks = new List<(int, int)>();
+        foreach (Match start in Regex.Matches(view, @"@if\s*\("))
+        {
+            var openParen = start.Index + start.Length - 1;
+            var closeParen = MatchingClose(view, openParen, '(', ')');
+            if (closeParen < 0 || !view[openParen..closeParen].Contains("HasProfilePicture", StringComparison.Ordinal))
+                continue;
+
+            var openBrace = view.IndexOf('{', closeParen);
+            if (openBrace < 0)
+                continue;
+
+            var closeBrace = MatchingClose(view, openBrace, '{', '}');
+            if (closeBrace > openBrace)
+                blocks.Add((openBrace, closeBrace));
+        }
+
+        return blocks;
+    }
+
+    // Picture addresses a view builds outside every block that is conditioned on the has-picture value.
+    private static List<string> PictureUrlsOutsideHasPictureBlocks(string view)
+    {
+        if (view.Contains("_CharacterAvatar", StringComparison.Ordinal))
+            return [];
+
+        var blocks = HasPictureBlocks(view);
+        return Regex.Matches(view, @"""(?:GetProfilePicture|GetCroppedPicture)""")
+            .Where(m => !blocks.Any(b => m.Index > b.Start && m.Index < b.End))
+            .Select(m => m.Value)
+            .ToList();
+    }
+
+    [Fact]
+    public void CharacterViews_RequestPicturesOnlyBehindTheHasPictureValue()
+    {
+        CharacterPictureViews.Should().NotBeEmpty();
+        foreach (var path in CharacterPictureViews.Where(p => File.Exists(ResolveRepoFile(p.Split('/')))))
+        {
+            var view = StripRazorAndHtmlComments(ReadRepoFile(path));
+            Regex.Matches(view, @"\sonerror\s*=", RegexOptions.IgnoreCase).Select(m => m.Value).Should().BeEmpty(
+                $"{path} must not hide a failed picture with an error handler; it renders the placeholder when none is stored");
+            PictureUrlsOutsideHasPictureBlocks(view).Should().BeEmpty(
+                $"{path} builds a picture address only inside a block conditioned on HasProfilePicture");
+        }
+    }
+
+    [Fact]
+    public void PictureScanner_FlagsAnAddressOutsideTheBlockAndAllowsOneInside()
+    {
+        // A known-bad sample shows the scanner fires, so the fact above cannot pass on a dead pattern.
+        var inside = "@if (Model.HasProfilePicture) { <img src=\"@Url.Action(\"GetProfilePicture\", new { id = 1 })\" /> } else { <i></i> }";
+        var outside = "<img src=\"@Url.Action(\"GetProfilePicture\", new { id = 1 })\" />";
+        var wrongBlock = "@if (Model.CanEdit) { <img src=\"@Url.Action(\"GetCroppedPicture\")\" /> }";
+        PictureUrlsOutsideHasPictureBlocks(inside).Should().BeEmpty();
+        PictureUrlsOutsideHasPictureBlocks(outside).Should().HaveCount(1);
+        PictureUrlsOutsideHasPictureBlocks(wrongBlock).Should().HaveCount(1);
+        PictureUrlsOutsideHasPictureBlocks("@await Html.PartialAsync(\"_CharacterAvatar\", m)").Should().BeEmpty();
     }
 
     [Fact]

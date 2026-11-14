@@ -206,4 +206,159 @@ public class CharacterDetailsRenderTests : IClassFixture<WebApplicationFactoryBa
         page.Should().NotContain("character-detail-portrait--placeholder");
         page.Should().NotContain("onerror");
     }
+
+    // The title card, the badge row and the actions card, cut from the page so a word elsewhere cannot satisfy a check.
+    private static string Between(string html, string startMarker, string endMarker)
+    {
+        var start = html.IndexOf(startMarker, StringComparison.Ordinal);
+        start.Should().BeGreaterThanOrEqualTo(0, $"the page holds {startMarker}");
+        var end = html.IndexOf(endMarker, start, StringComparison.Ordinal);
+        end.Should().BeGreaterThan(start, $"{endMarker} follows {startMarker}");
+        return html[start..end];
+    }
+
+    private async Task<(Seeded Character, HttpClient Viewer)> SeedForViewerAsync(string key, bool admin)
+    {
+        var owner = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, $"chardetowner{key}", $"chardetowner{key}@example.com", "Test123!", "Character Owner");
+        var name = $"Viewed {key} Hero";
+        var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, owner.Id, name, groupId: 1);
+        var (viewer, _) = admin
+            ? await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(
+                _factory, $"chardetadmin{key}", $"chardetadmin{key}@example.com")
+            : await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+                _factory, $"chardetdm{key}", $"chardetdm{key}@example.com");
+        return (new Seeded(viewer, character.Id, name), viewer);
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_AdminViewingAnotherPlayersCharacter_SeesTheActionsOnBothLayouts(string userAgent, bool isPhone)
+    {
+        var (character, viewer) = await SeedForViewerAsync($"adm{(isPhone ? "p" : "d")}", admin: true);
+
+        var (_, html) = await GetDetailsAsync(viewer, character.CharacterId, userAgent);
+
+        html.Should().Contain("id=\"actions-title\"");
+        html.Should().Contain("Edit Character");
+        html.Should().Contain("Retire Character");
+        html.Should().Contain("Delete Character");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_DungeonMasterViewingAnotherPlayersCharacter_SeesNoActionsOnBothLayouts(string userAgent, bool isPhone)
+    {
+        var (character, viewer) = await SeedForViewerAsync($"dm{(isPhone ? "p" : "d")}", admin: false);
+
+        var (status, html) = await GetDetailsAsync(viewer, character.CharacterId, userAgent);
+
+        status.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain(character.Name);
+        html.Should().NotContain("id=\"actions-title\"");
+        html.Should().NotContain("Edit Character");
+        html.Should().NotContain("data-confirm-message");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_DeadCharacter_ShowsTheDeadBadgeWithIconAndWordAndOffersNoRetirement(string userAgent, bool isPhone)
+    {
+        var character = await SeedOwnedAsync($"dead{(isPhone ? "p" : "d")}", picture: true, status: CharacterStatus.Dead);
+
+        var (_, html) = await GetDetailsAsync(character.Client, character.CharacterId, userAgent);
+
+        var badges = Between(html, "character-detail-badges", "character-detail-main");
+        badges.Should().Contain("fa-skull");
+        badges.Should().Contain("Dead");
+        badges.Should().NotContain("fa-check-circle");
+        html.Should().Contain("character-detail-portrait--dead", "only the picture is desaturated");
+        html.Should().NotContain("Retire Character");
+        html.Should().NotContain("Reactivate Character");
+        html.Should().Contain("Delete Character");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_RetiredCharacter_ShowsTheRetiredBadgeAndOffersReactivation(string userAgent, bool isPhone)
+    {
+        var character = await SeedOwnedAsync($"ret{(isPhone ? "p" : "d")}", picture: true, status: CharacterStatus.Retired);
+
+        var (_, html) = await GetDetailsAsync(character.Client, character.CharacterId, userAgent);
+
+        var badges = Between(html, "character-detail-badges", "character-detail-main");
+        badges.Should().Contain("fa-moon");
+        badges.Should().Contain("Retired");
+        html.Should().Contain("character-detail-portrait--retired");
+        html.Should().Contain("Reactivate Character");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_MainCharacter_ShowsTheStaticMainBadgeWithIconAndWord(string userAgent, bool isPhone)
+    {
+        var character = await SeedOwnedAsync($"main{(isPhone ? "p" : "d")}", role: CharacterRole.Main);
+
+        var (_, html) = await GetDetailsAsync(character.Client, character.CharacterId, userAgent);
+
+        var badges = Between(html, "character-detail-badges", "character-detail-main");
+        badges.Should().Contain("badge-main");
+        badges.Should().Contain("fa-star");
+        badges.Should().Contain("Main Character");
+        badges.Should().Contain("Active");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_BareCharacter_ShowsTheVerbatimEmptiesAndThePlaceholder(string userAgent, bool isPhone)
+    {
+        var character = await SeedOwnedAsync($"bare{(isPhone ? "p" : "d")}", noClasses: true);
+
+        var (_, html) = await GetDetailsAsync(character.Client, character.CharacterId, userAgent);
+
+        html.Should().Contain("<dd>Not provided</dd>");
+        html.Should().Contain("<dd>No classes defined</dd>");
+        html.Should().Contain("character-detail-portrait--placeholder");
+        html.Should().NotContain("/Characters/GetProfilePicture/");
+        html.Should().NotContain("id=\"description-title\"", "a character with no description has no description card");
+        html.Should().NotContain("id=\"backstory-title\"", "a character with no backstory has no backstory card");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_SheetLink_OpensANewTabSafelyAndSaysSo(string userAgent, bool isPhone)
+    {
+        var character = await SeedOwnedAsync($"sheet{(isPhone ? "p" : "d")}", sheetLink: true);
+
+        var (_, html) = await GetDetailsAsync(character.Client, character.CharacterId, userAgent);
+
+        var link = Regex.Match(html, @"<a\b[^>]*href=""https://example\.invalid/sheets/thessaly""[^>]*>[\s\S]*?</a>");
+        link.Success.Should().BeTrue("the sheet link renders");
+        link.Value.Should().Contain("target=\"_blank\"");
+        link.Value.Should().Contain("rel=\"noopener noreferrer\"");
+        link.Value.Should().Contain("<span class=\"visually-hidden\"> (opens in a new tab)</span>");
+    }
+
+    [Theory]
+    [MemberData(nameof(UserAgents))]
+    public async Task Details_ReadOnlyValues_AreADefinitionListAndNoLabelWrapsOne(string userAgent, bool isPhone)
+    {
+        var character = await SeedOwnedAsync(
+            $"dl{(isPhone ? "p" : "d")}", sheetLink: true, extraClass: true, description: "Described.", backstory: "Storied.");
+
+        var (_, html) = await GetDetailsAsync(character.Client, character.CharacterId, userAgent);
+        var page = WithoutComments(html);
+
+        var list = Regex.Match(page, @"<dl\b[^>]*>[\s\S]*?</dl>");
+        list.Success.Should().BeTrue("the information is a definition list");
+        Regex.Matches(list.Value, @"<dt>").Count.Should().Be(3);
+        Regex.Matches(list.Value, @"<dd>").Count.Should().Be(3);
+        list.Value.Should().Contain("<dt>Level</dt>");
+        list.Value.Should().Contain("<dt>Character Sheet</dt>");
+        list.Value.Should().Contain("<dt>Classes</dt>");
+
+        var content = Between(page, "character-detail-page", "character-detail-back");
+        content.Should().NotContain("<label", "a read-only value is not a form field");
+        content.Should().NotContain("form-control-plaintext");
+    }
 }
