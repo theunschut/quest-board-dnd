@@ -53,11 +53,12 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.cshtml",
         "QuestBoard.Service/Views/Contacts/Details.cshtml",
+        "QuestBoard.Service/Views/Contacts/Index.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -75,6 +76,7 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/Contacts/Create.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/Contacts/Edit.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/Contacts/Details.cshtml"] = ["markdown-content.css", "contact-detail.css"],
+        ["QuestBoard.Service/Views/Contacts/Index.cshtml"] = ["member-cards.css", "contacts.css"],
         ["QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml"] = ["dm-profile-form.css", "image-crop.css"],
     };
 
@@ -102,7 +104,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -175,6 +177,8 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Characters/Index.Mobile.cshtml",
         "QuestBoard.IntegrationTests/Tests/CharactersIndexRenderTests.cs",
         "QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs",
+        "QuestBoard.Service/Views/Contacts/Index.cshtml",
+        "QuestBoard.IntegrationTests/Tests/ContactsIndexRenderTests.cs",
     ];
 
     // Character views that show a picture, repository-relative. Each asks for the picture only when one is stored.
