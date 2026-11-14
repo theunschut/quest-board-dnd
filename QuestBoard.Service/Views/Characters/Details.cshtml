@@ -6,172 +6,180 @@
     ViewData["Title"] = Model.Name;
     var canEdit = Model.CanEdit;
     var isRetired = Model.Status == CharacterStatus.Retired;
+    var isDead = Model.Status == CharacterStatus.Dead;
+    var portraitClass = isDead
+        ? "character-detail-portrait character-detail-portrait--dead"
+        : isRetired
+            ? "character-detail-portrait character-detail-portrait--retired"
+            : "character-detail-portrait";
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/character-detail.css" asp-append-version="true" />
 }
 
-<div class="character-details-page">
-    <div class="row">
-        <div class="col-lg-4">
-            <!-- Character Portrait -->
-            <div class="card modern-card mb-3">
-                <div class="card-body modern-card-body text-center">
-                    @if (Model.HasProfilePicture)
+@section Scripts {
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
+}
+
+@* One view for both layouts. The title card, the information and the Actions card come in the order a phone reads
+   them; from the large breakpoint the sheet's grid puts the title and Actions on the left and the information on
+   the right. *@
+<div class="character-detail-page">
+    <div class="card modern-card character-detail-title">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">@Model.Name</h1>
+        </div>
+        <div class="card-body modern-card-body text-center">
+            @if (Model.HasProfilePicture)
+            {
+                <img src="@Url.Action("GetProfilePicture", new { id = Model.Id })" alt="" class="@portraitClass" />
+            }
+            else
+            {
+                <div class="character-detail-portrait character-detail-portrait--placeholder" aria-hidden="true">
+                    <i class="fas fa-user fa-5x"></i>
+                </div>
+            }
+            <p class="character-detail-owner">
+                <i class="fas fa-user me-1" aria-hidden="true"></i>Owned by @Model.OwnerName
+            </p>
+            <div class="character-detail-badges">
+                @if (isDead)
+                {
+                    <span class="badge bg-secondary">
+                        <i class="fas fa-skull me-1" aria-hidden="true"></i>Dead
+                    </span>
+                }
+                else if (isRetired)
+                {
+                    <span class="badge bg-info">
+                        <i class="fas fa-moon me-1" aria-hidden="true"></i>Retired
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-success">
+                        <i class="fas fa-check-circle me-1" aria-hidden="true"></i>Active
+                    </span>
+                }
+                @if (Model.Role == CharacterRole.Main)
+                {
+                    <span class="badge badge-main">
+                        <i class="fas fa-star me-1" aria-hidden="true"></i>Main Character
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="character-detail-main">
+        <section class="card modern-card modern-card--aside mb-0" aria-labelledby="info-title">
+            <div class="card-header modern-card-header">
+                <h2 class="mb-0" id="info-title"><i class="fas fa-scroll me-2" aria-hidden="true"></i>Character Information</h2>
+            </div>
+            <div class="card-body modern-card-body">
+                <dl class="character-facts">
+                    <dt>Level</dt>
+                    <dd>@Model.Level</dd>
+                    <dt>Character Sheet</dt>
+                    @if (!string.IsNullOrEmpty(Model.SheetLink))
                     {
-                        <img src="@Url.Action("GetProfilePicture", new { id = Model.Id })" alt="@Model.Name" class="character-portrait img-fluid mb-3" />
+                        <dd>
+                            <a href="@Model.SheetLink" class="text-break" target="_blank" rel="noopener noreferrer">@Model.SheetLink<i class="fas fa-external-link-alt ms-1" aria-hidden="true"></i><span class="visually-hidden"> (opens in a new tab)</span></a>
+                        </dd>
                     }
                     else
                     {
-                        <div class="character-portrait-placeholder mb-3">
-                            <i class="fas fa-user fa-5x text-muted"></i>
-                        </div>
+                        <dd>Not provided</dd>
                     }
-                    <h2>@Model.Name</h2>
-                    <p class="text-muted">
-                        <i class="fas fa-user me-1"></i>@Model.OwnerName
-                    </p>
-                    <div class="mb-2">
-                        @if (Model.Status == CharacterStatus.Dead)
-                        {
-                            <span class="badge bg-dark fs-6">
-                                <i class="fas fa-skull me-1"></i>Dead
-                            </span>
-                        }
-                        else if (Model.Status == CharacterStatus.Retired)
-                        {
-                            <span class="badge bg-secondary fs-6">
-                                <i class="fas fa-moon me-1"></i>Retired
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success fs-6">
-                                <i class="fas fa-check-circle me-1"></i>Active
-                            </span>
-                        }
-                        @if (Model.Role == CharacterRole.Main)
-                        {
-                            <span class="badge bg-warning fs-6">
-                                <i class="fas fa-star me-1"></i>Main Character
-                            </span>
-                        }
-                    </div>
-                </div>
-            </div>
-
-            @if (canEdit)
-            {
-                <!-- Actions -->
-                <div class="card modern-card">
-                    <div class="card-header modern-card-header">
-                        <h5 class="mb-0">Actions</h5>
-                    </div>
-                    <div class="card-body modern-card-body">
-                        <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning w-100 mb-2">
-                            <i class="fas fa-edit me-2"></i>Edit Character
-                        </a>
-                        @if (Model.Status != CharacterStatus.Dead)
-                        {
-                            <form asp-action="ToggleRetirement" method="post" class="mb-2">
-                                <input type="hidden" name="id" value="@Model.Id" />
-                                @if (isRetired)
-                                {
-                                    <button type="submit" class="btn btn-success w-100">
-                                        <i class="fas fa-undo me-2"></i>Reactivate Character
-                                    </button>
-                                }
-                                else
-                                {
-                                    <button type="submit" class="btn btn-secondary w-100">
-                                        <i class="fas fa-moon me-2"></i>Retire Character
-                                    </button>
-                                }
-                            </form>
-                        }
-                        <form asp-action="Delete" method="post" onsubmit="return confirm('Are you sure you want to delete this character? This action cannot be undone.');">
-                            <input type="hidden" name="id" value="@Model.Id" />
-                            <button type="submit" class="btn btn-danger w-100">
-                                <i class="fas fa-trash me-2"></i>Delete Character
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            }
-        </div>
-
-        <div class="col-lg-8">
-            <!-- Character Stats -->
-            <div class="card modern-card mb-3">
-                <div class="card-header modern-card-header">
-                    <h4 class="mb-0">Character Information</h4>
-                </div>
-                <div class="card-body modern-card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Level</label>
-                            <p class="form-control-plaintext">@Model.Level</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Sheet Link</label>
-                            @if (!string.IsNullOrEmpty(Model.SheetLink))
-                            {
-                                <p class="form-control-plaintext">
-                                    <a href="@Model.SheetLink" target="_blank" class="text-break">
-                                        @Model.SheetLink <i class="fas fa-external-link-alt ms-1"></i>
-                                    </a>
-                                </p>
-                            }
-                            else
-                            {
-                                <p class="form-control-plaintext text-muted">Not provided</p>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Class(es)</label>
-                        @if (Model.Classes.Any())
-                        {
-                            <div class="class-list">
+                    <dt>Classes</dt>
+                    @if (Model.Classes.Any())
+                    {
+                        <dd>
+                            <div class="character-class-list">
                                 @foreach (var charClass in Model.Classes)
                                 {
-                                    <span class="badge bg-primary fs-6 me-2 mb-2">
-                                        @charClass.Class Level @charClass.ClassLevel
-                                    </span>
+                                    <span class="badge bg-primary">@charClass.Class Level @charClass.ClassLevel</span>
                                 }
                             </div>
+                        </dd>
+                    }
+                    else
+                    {
+                        <dd>No classes defined</dd>
+                    }
+                </dl>
+            </div>
+        </section>
+
+        @if (!string.IsNullOrEmpty(Model.Description))
+        {
+            <section class="card modern-card modern-card--aside mb-0" aria-labelledby="description-title">
+                <div class="card-header modern-card-header">
+                    <h2 class="mb-0" id="description-title"><i class="fas fa-book-open me-2" aria-hidden="true"></i>Description</h2>
+                </div>
+                <div class="card-body modern-card-body">
+                    @Html.Markdown(Model.Description)
+                </div>
+            </section>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.Backstory))
+        {
+            <section class="card modern-card modern-card--aside mb-0" aria-labelledby="backstory-title">
+                <div class="card-header modern-card-header">
+                    <h2 class="mb-0" id="backstory-title"><i class="fas fa-feather me-2" aria-hidden="true"></i>Backstory</h2>
+                </div>
+                <div class="card-body modern-card-body">
+                    @Html.Markdown(Model.Backstory)
+                </div>
+            </section>
+        }
+    </div>
+
+    @if (canEdit)
+    {
+        <section class="card modern-card modern-card--aside mb-0 character-detail-actions" aria-labelledby="actions-title">
+            <div class="card-header modern-card-header">
+                <h2 class="mb-0" id="actions-title"><i class="fas fa-cog me-2" aria-hidden="true"></i>Actions</h2>
+            </div>
+            <div class="card-body modern-card-body">
+                <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning w-100 mb-2">
+                    <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit Character
+                </a>
+                @if (!isDead)
+                {
+                    <form asp-action="ToggleRetirement" method="post" class="mb-2">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        @if (isRetired)
+                        {
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-undo me-2" aria-hidden="true"></i>Reactivate Character
+                            </button>
                         }
                         else
                         {
-                            <p class="form-control-plaintext text-muted">No classes defined</p>
+                            <button type="submit" class="btn btn-secondary w-100">
+                                <i class="fas fa-moon me-2" aria-hidden="true"></i>Retire Character
+                            </button>
                         }
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(Model.Description))
-                    {
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Description</label>
-                            @Html.Markdown(Model.Description)
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(Model.Backstory))
-                    {
-                        <div>
-                            <label class="form-label fw-bold">Backstory</label>
-                            @Html.Markdown(Model.Backstory)
-                        </div>
-                    }
-                </div>
+                    </form>
+                }
+                <form asp-action="Delete" method="post" data-confirm-message="Are you sure you want to delete this character? This action cannot be undone.">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete Character
+                    </button>
+                </form>
             </div>
+        </section>
+    }
 
-            <div class="mb-3">
-                <a href="@Url.Action("Index")" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Characters
-                </a>
-            </div>
-        </div>
+    <div class="character-detail-back">
+        <a href="@Url.Action("Index")" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Characters
+        </a>
     </div>
 </div>

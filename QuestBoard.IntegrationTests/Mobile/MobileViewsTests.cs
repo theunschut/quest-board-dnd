@@ -1113,8 +1113,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters/Details/{id} renders character-detail-card glass card
-    /// and links character-detail.mobile.css.
+    /// Characters/Details is one view serving both layouts: the phone User-Agent answers 200 with the
+    /// mobile-layout body class and the character's name, and links character-detail.css; the
+    /// desktop User-Agent gets the same page without the phone layout.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterDetails_ReturnsSuccessAndMobileLayout()
@@ -1130,8 +1131,17 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("character-detail-card");
-        html.Should().Contain("character-detail.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("Aria Swiftblade");
+        html.Should().Contain("Character Information");
+        html.Should().Contain("character-detail.css");
+
+        var (desktopResponse, desktopHtml) = await GetWithUserAgentAsync(
+            $"/Characters/Details/{character.Id}", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+        desktopResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        desktopHtml.Should().NotContain("mobile-layout");
+        desktopHtml.Should().Contain("Aria Swiftblade");
+        desktopHtml.Should().Contain("character-detail.css");
     }
 
     // -----------------------------------------------------------------------

@@ -1,0 +1,121 @@
+/*
+ * The character detail page, one markup for both layouts. Below the large breakpoint everything stacks in document
+ * order. From the large breakpoint the grid puts the title card and the Actions card in the left column and the
+ * information cards in the right one, whichever order they come in the document.
+ */
+@layer pages {
+  .character-detail-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--qb-space-lg);
+  }
+
+  .character-detail-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-lg);
+  }
+
+  @media (min-width: 992px) {
+    .character-detail-page {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      grid-template-rows: auto 1fr auto;
+      grid-template-areas:
+        "title main"
+        "actions main"
+        "back back";
+      align-items: start;
+    }
+
+    .character-detail-title {
+      grid-area: title;
+    }
+
+    .character-detail-main {
+      grid-area: main;
+    }
+
+    .character-detail-actions {
+      grid-area: actions;
+    }
+
+    .character-detail-back {
+      grid-area: back;
+    }
+  }
+
+  .character-detail-page .character-detail-portrait {
+    display: block;
+    width: 100%;
+    max-width: 248px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto var(--qb-space-md);
+    border-radius: var(--qb-radius-md);
+    object-fit: cover;
+  }
+
+  .character-detail-page .character-detail-portrait--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
+
+  .character-detail-page .character-detail-owner {
+    margin: 0 0 var(--qb-space-sm);
+    color: var(--qb-fg-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .character-detail-page .character-detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--qb-space-xs);
+  }
+
+  .character-detail-page .character-facts {
+    margin: 0;
+  }
+
+  .character-detail-page .character-facts dt {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .character-detail-page .character-facts dd {
+    margin: 0 0 var(--qb-space-md);
+    overflow-wrap: anywhere;
+  }
+
+  .character-detail-page .character-facts dd:last-child {
+    margin-bottom: 0;
+  }
+
+  .character-detail-page .character-class-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-xs);
+  }
+
+  /* Main is a still gold ornament with a glow of the same gold under it; it never animates and hover leaves it alone. */
+  .character-detail-page .badge-main {
+    background-color: var(--qb-accent);
+    color: var(--qb-accent-ink);
+    box-shadow: 0 2px var(--qb-space-sm) color-mix(in srgb, var(--qb-accent) 50%, transparent);
+  }
+
+  /*
+   * A Dead or Retired character is told by its badge, icon and word, never by dimming: the text stays at full
+   * contrast and only the picture is desaturated.
+   */
+  .character-detail-page .character-detail-portrait--dead {
+    filter: grayscale(1);
+  }
+
+  .character-detail-page .character-detail-portrait--retired {
+    filter: grayscale(0.5);
+  }
+}
