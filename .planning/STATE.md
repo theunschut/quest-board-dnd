@@ -5,10 +5,10 @@ milestone_name: Rolling Improvements
 current_phase: 98
 current_phase_name: Characters, Contacts, DM profile and Players UI conversion
 status: verifying
-stopped_at: Completed 98-22-PLAN.md
+stopped_at: "Phase 98: all 23 plans complete, Gate 2 approved (v2); verify, code-review, validate and secure on hold"
 last_updated: "2026-11-14T14:39:51.007Z"
 last_activity: 2026-11-14
-last_activity_desc: "Phase 98: plans 98-01 to 98-12 complete, next 98-13"
+last_activity_desc: "Phase 98: 23/23 plans complete, Gate 2 approved, awaiting verification"
 progress:
   total_phases: 31
   completed_phases: 25
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 ## Current Position
 
-Phase: 98 (Characters, Contacts, DM profile and Players UI conversion) — EXECUTING
+Phase: 98 (Characters, Contacts, DM profile and Players UI conversion) — VERIFYING
 Plan: 23 of 23
 Status: Phase complete — ready for verification
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
-Last activity: 2026-11-14 — Phase 98 plans 98-01 to 98-12 complete (Gate 1 approved), next 98-13
+Last activity: 2026-11-14 — Phase 98: all 23 plans complete, Gate 2 approved on sheet v2; verification steps on hold
 
 **Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
