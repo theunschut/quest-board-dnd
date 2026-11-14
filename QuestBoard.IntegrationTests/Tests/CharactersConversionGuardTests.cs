@@ -446,6 +446,29 @@ public class CharactersConversionGuardTests
     }
 
     [Fact]
+    public void CharacterFormModule_WritesNoMarkupFromStrings()
+    {
+        // A class row is a clone of the row template the server rendered, with only its name, id and for values
+        // rewritten; the module builds no markup from strings and defines no global.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/character-form.js");
+        script.Should().Contain("cloneNode", "a new row is a clone of the server-rendered template");
+        script.Should().Contain("class-row-template", "the module finds the template by its id");
+        Regex.Matches(script, @"innerHTML|outerHTML|insertAdjacentHTML|document\.write|createContextualFragment|\beval\s*\(|new\s+Function\b")
+            .Select(m => m.Value).Should().BeEmpty("character-form.js must build no markup from strings");
+        Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
+            .Select(m => m.Value).Should().BeEmpty("character-form.js defines no global");
+        Regex.Matches(script, @"\.style\b|setAttribute\(\s*['""]style['""]").Select(m => m.Value).Should().BeEmpty(
+            "the module sets no inline style");
+
+        foreach (var view in new[] { "Create", "Edit" })
+        {
+            var text = StripRazorAndHtmlComments(ReadRepoFile($"QuestBoard.Service/Views/Characters/{view}.cshtml"));
+            Regex.Matches(text, @"<script\b(?![^>]*\bsrc\s*=)[^>]*>").Select(m => m.Value).Should().BeEmpty(
+                $"{view} carries no inline class-row script");
+        }
+    }
+
+    [Fact]
     public void ContactNotesModule_WritesNoMarkupFromStrings()
     {
         // The note edit toggle only changes the hidden attribute and moves focus; it reads no text into markup,

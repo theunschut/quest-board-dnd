@@ -42,13 +42,13 @@
             </div>
 
             <div class="mb-3">
-                <label asp-for="Name" class="form-label">Character Name <span class="text-danger">*</span></label>
+                <label asp-for="Name" class="form-label">Character Name <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
                 <input asp-for="Name" class="form-control" placeholder="Enter character name" />
                 <span asp-validation-for="Name" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
-                <label asp-for="Level" class="form-label">Level <span class="text-danger">*</span></label>
+                <label asp-for="Level" class="form-label">Level <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
                 <input asp-for="Level" type="number" class="form-control" min="1" max="20" />
                 <span asp-validation-for="Level" class="text-danger"></span>
             </div>
@@ -65,42 +65,9 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Classes</label>
+                <label class="form-label">Classes <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
                 <small class="form-text d-block mb-2">Total class levels must equal character level (@Model.Level).</small>
-                <div id="class-list">
-                    @for (var i = 0; i < (Model.Classes.Any() ? Model.Classes.Count : 1); i++)
-                    {
-                        var classData = Model.Classes.Count > i ? Model.Classes[i] : new CharacterClassViewModel { ClassLevel = 1 };
-                        <div class="class-entry mb-2" data-index="@i">
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <select name="Classes[@i].Class" class="form-select" required>
-                                        <option value="">Select Class</option>
-                                        @foreach (DndClass dndClass in Enum.GetValues(typeof(DndClass)))
-                                        {
-                                            <option value="@((int)dndClass)" selected="@(classData.Class == dndClass)">@dndClass</option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <input type="number" name="Classes[@i].ClassLevel" class="form-control"
-                                           value="@classData.ClassLevel" placeholder="Level" min="1" max="20" required />
-                                </div>
-                                @if (i > 0)
-                                {
-                                    <div class="col-12">
-                                        <button type="button" class="btn btn-danger w-100 remove-class">
-                                            <i class="fas fa-trash"></i> Remove
-                                        </button>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-                <button type="button" id="add-class" class="btn btn-sm btn-secondary mt-2">
-                    <i class="fas fa-plus me-1"></i>Add Another Class
-                </button>
+                @{ await Html.RenderPartialAsync("_CharacterClassRows", Model); }
             </div>
 
             <div class="mb-3">
@@ -144,47 +111,7 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
-    <script>
-        let classIndex = @(Model.Classes.Any() ? Model.Classes.Count : 1);
-
-        document.getElementById('add-class').addEventListener('click', function() {
-            const classListDiv = document.getElementById('class-list');
-            const newEntry = document.createElement('div');
-            newEntry.className = 'class-entry mb-2';
-            newEntry.setAttribute('data-index', classIndex);
-            newEntry.innerHTML = `
-                <div class="row g-2">
-                    <div class="col-12">
-                        <select name="Classes[${classIndex}].Class" class="form-select" required>
-                            <option value="">Select Class</option>
-                            @foreach (DndClass dndClass in Enum.GetValues(typeof(DndClass)))
-                            {
-                                <text><option value="@((int)dndClass)">@dndClass</option></text>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <input type="number" name="Classes[${classIndex}].ClassLevel" class="form-control"
-                               value="1" placeholder="Level" min="1" max="20" required />
-                    </div>
-                    <div class="col-12">
-                        <button type="button" class="btn btn-danger w-100 remove-class">
-                            <i class="fas fa-trash"></i> Remove
-                        </button>
-                    </div>
-                </div>
-            `;
-            classListDiv.appendChild(newEntry);
-            classIndex++;
-        });
-
-        document.getElementById('class-list').addEventListener('click', function(e) {
-            if (e.target.classList.contains('remove-class') || e.target.closest('.remove-class')) {
-                const entry = e.target.closest('.class-entry');
-                entry.remove();
-            }
-        });
-    </script>
+    <script type="module" src="~/js/character-form.js" asp-append-version="true"></script>
     <script src="~/lib/cropperjs-2.1.1/cropper.min.js"></script>
     <script type="module" src="~/js/image-crop.js" asp-append-version="true"></script>
 }

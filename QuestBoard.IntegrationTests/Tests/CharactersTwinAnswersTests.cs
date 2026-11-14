@@ -42,4 +42,28 @@ public class CharactersTwinAnswersTests(WebApplicationFactoryBase factory)
         Regex.IsMatch(html, @"<h1\b[^>]*>\s*Manage Categories\s*</h1>").Should().BeTrue(
             "the phone page carries the same title words as the desktop page");
     }
+
+    [Theory]
+    [InlineData("create")]
+    [InlineData("edit")]
+    public async Task PhoneCharacterForms_MarkClassesRequired(string form)
+    {
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"twinanswers_classes_{form}", $"twinanswers_classes_{form}@example.com");
+
+        var url = "/Characters/Create";
+        if (form == "edit")
+        {
+            var character = await TestDataHelper.CreateTestCharacterAsync(factory.Services, user.Id, "Required Marker Hero");
+            url = $"/Characters/Edit/{character.Id}";
+        }
+
+        var html = await GetPhoneAsync(client, url);
+
+        html.Should().Contain("mobile-layout");
+        Regex.IsMatch(
+            html,
+            @"<label[^>]*>\s*Classes <span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>")
+            .Should().BeTrue("the phone form marks Classes as required, as the desktop form does");
+    }
 }
