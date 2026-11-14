@@ -1879,7 +1879,7 @@ Plans:
 **Goal:** Convert characters, contacts, categories, the DM profile and the players list, and the image crop dialog. Convert characters, contacts, contact categories, the DM profile and the players list, with the image crop dialog and the six approved twin merges, to the foundation, keeping every field and action and fixing the editor keyboard trap and the dialog findings.
 **Requirements**: TBD
 **Depends on:** Phase 94 and Phase 95 (Phase 95 fixes the Markdown editor keyboard trap this phase verifies on six pages)
-**Plans:** 20/23 plans executed
+**Plans:** 21/23 plans executed
 
 **Scope:**
 
@@ -2022,7 +2022,7 @@ Plans:
 
 **Wave 20** *(blocked on Wave 19 completion)*
 
-- [ ] 98-21-PLAN.md — Players twins, both empty states, page heading only on an explicit Gate 1 yes
+- [x] 98-21-PLAN.md — Players twins, both empty states, page heading only on an explicit Gate 1 yes
 
 **Wave 21** *(blocked on Wave 20 completion)*
 
