@@ -407,6 +407,40 @@ public class CharactersConversionGuardTests
             .Select(m => m.Value).Should().BeEmpty("the module defines no global");
     }
 
+    // The blocks of the file-input change handler that leave the visible input empty or refuse the pick: a cancelled or
+    // cleared chooser, and every branch that resets the input to nothing.
+    private static IEnumerable<string> RejectingBlocks(string script) =>
+        Regex.Matches(script, @"if \(!file\) \{[^{}]*\}|\{[^{}]*\binput\.value\s*=\s*'';[^{}]*\}")
+            .Select(m => m.Value);
+
+    [Fact]
+    public void ImageCropModule_DiscardsThePendingCropWhenAPickIsRefusedOrCleared()
+    {
+        // A crop left in the hidden output by an earlier pick would otherwise be uploaded after the visible input was
+        // emptied, so every exit that empties or refuses the pick clears the hidden output first.
+        var script = ReadRepoFile(CropModule);
+
+        var blocks = RejectingBlocks(script).ToList();
+        blocks.Should().HaveCountGreaterThanOrEqualTo(4,
+            "the handler has a cancelled chooser, an oversized file, a disallowed type and a decode failure to cover");
+        foreach (var block in blocks)
+            block.Should().Contain("discardPendingCrop(input)",
+                "a refused or cleared pick must not leave the previous crop in the hidden output");
+
+        script.Should().Contain("function discardPendingCrop(",
+            "the helper that looks up the hidden output and clears it is what the exits call");
+    }
+
+    [Fact]
+    public void RejectingBlockScanner_FlagsAnExitThatKeepsTheCrop()
+    {
+        var kept = "if (!file) { return; } if (big) { showError('x'); input.value = ''; return; }";
+        var cleared = "if (!file) { discardPendingCrop(input); return; } if (big) { discardPendingCrop(input); input.value = ''; return; }";
+
+        RejectingBlocks(kept).Should().HaveCount(2).And.OnlyContain(b => !b.Contains("discardPendingCrop"));
+        RejectingBlocks(cleared).Should().HaveCount(2).And.OnlyContain(b => b.Contains("discardPendingCrop(input)"));
+    }
+
     [Fact]
     public void CropModuleScanners_FlagWhatTheyForbid()
     {

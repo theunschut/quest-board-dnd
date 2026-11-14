@@ -293,15 +293,25 @@ function initCropDialog() {
         };
     }
 
+    // Drops any crop an earlier pick left in the hidden output. The output is looked up first so the clear also works
+    // when the dialog was never opened in this page view.
+    function discardPendingCrop(input) {
+        hiddenInput = document.querySelector('input[type="file"][name="' + CSS.escape(configOf(input).outputName) + '"]');
+        resetCropState();
+    }
+
     function wireFileInput(input) {
         input.addEventListener('change', async () => {
             const file = input.files && input.files[0];
             if (!file) {
+                // The chooser was cancelled or the selection cleared, so the earlier crop must not be uploaded.
+                discardPendingCrop(input);
                 return;
             }
             clearError();
 
             if (file.size > MAX_FILE_BYTES) {
+                discardPendingCrop(input);
                 const sizeMb = (file.size / 1024 / 1024).toFixed(2);
                 const maxMb = (MAX_FILE_BYTES / 1024 / 1024).toFixed(0);
                 showError('File size (' + sizeMb + ' MB) exceeds the maximum allowed size of ' + maxMb + ' MB. Please choose a smaller image.');
@@ -309,6 +319,7 @@ function initCropDialog() {
                 return;
             }
             if (!ALLOWED_TYPES.includes(file.type)) {
+                discardPendingCrop(input);
                 showError('Only image files (JPG, PNG, GIF) are allowed.');
                 input.value = '';
                 return;
@@ -316,8 +327,7 @@ function initCropDialog() {
             if (file.type === 'image/gif') {
                 // The crop is always saved as a still JPEG, which would flatten an animated GIF. The original goes up as
                 // it is and the server shows it unchanged.
-                hiddenInput = document.querySelector('input[type="file"][name="' + CSS.escape(configOf(input).outputName) + '"]');
-                resetCropState();
+                discardPendingCrop(input);
                 return;
             }
 
@@ -326,6 +336,7 @@ function initCropDialog() {
             try {
                 prepared = await prepareImageForCropper(file);
             } catch (error) {
+                discardPendingCrop(input);
                 showReadError();
                 input.value = '';
                 return;
