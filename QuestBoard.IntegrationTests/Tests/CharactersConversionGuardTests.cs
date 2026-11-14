@@ -38,6 +38,37 @@ public class CharactersConversionGuardTests
     private const string ViewsRoot = "QuestBoard.Service/Views";
     private const string AvatarPartial = "QuestBoard.Service/Views/Shared/_CharacterAvatar.cshtml";
 
+    // Views that carry no inline code, repository-relative. Grows as each view is converted.
+    private static readonly string[] ConvertedViews =
+    [
+        "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
+    ];
+
+    // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
+    private static readonly string[] ConvertedSheets = [];
+
+    // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
+    // is styled by the shared components alone.
+    private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
+    {
+        ["QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml"] = [],
+    };
+
+    // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
+    // twin that serves both layouts.
+    private static readonly string[] RetiredFiles =
+    [
+        "QuestBoard.Service/Views/ContactCategoryManagement/Edit.Mobile.cshtml",
+    ];
+
+    private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
+    [
+        ("a style attribute", new Regex(@"\sstyle\s*=", RegexOptions.IgnoreCase)),
+        ("a style element", new Regex(@"<style\b", RegexOptions.IgnoreCase)),
+        ("an inline script element", new Regex(@"<script\b(?![^>]*\bsrc\s*=)[^>]*>", RegexOptions.IgnoreCase)),
+        ("an inline event handler", new Regex(@"\son[a-z]+\s*=", RegexOptions.IgnoreCase)),
+    ];
+
     // Every source file this work creates or edits, repository-relative, scanned for planning
     // references. This test file is left out because it has to name the shapes it forbids.
     private static readonly string[] PhaseSourceFiles =
@@ -50,6 +81,9 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/QuestLog/Details.cshtml",
         "QuestBoard.IntegrationTests/Tests/CharacterAvatarRenderTests.cs",
         "QuestBoard.UnitTests/Repository/QuestRepositoryPictureFlagTests.cs",
+        "QuestBoard.Service/wwwroot/css/components.css",
+        "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
+        "QuestBoard.IntegrationTests/Controllers/ContactCategoryManagementControllerIntegrationTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds
@@ -80,6 +114,40 @@ public class CharactersConversionGuardTests
     // A view builds a character picture address by asking the characters controller for the cropped picture.
     private static int PictureUrlBuilds(string view) =>
         Regex.Matches(view, @"""GetCroppedPicture""").Count;
+
+    private static string StripRazorAndHtmlComments(string view)
+    {
+        var withoutRazor = Regex.Replace(view, @"@\*[\s\S]*?\*@", " ");
+        return Regex.Replace(withoutRazor, @"<!--[\s\S]*?-->", " ");
+    }
+
+    // The text of a view's Styles section, from its opening brace to the matching closing brace.
+    private static string StylesSection(string view)
+    {
+        var start = view.IndexOf("@section Styles", StringComparison.Ordinal);
+        if (start < 0)
+            return string.Empty;
+
+        var open = view.IndexOf('{', start);
+        if (open < 0)
+            return string.Empty;
+
+        var depth = 0;
+        for (var i = open; i < view.Length; i++)
+        {
+            if (view[i] == '{')
+                depth++;
+            else if (view[i] == '}' && --depth == 0)
+                return view[open..(i + 1)];
+        }
+
+        return view[open..];
+    }
+
+    private static bool LinksSheet(string view, string sheetName) =>
+        Regex.IsMatch(
+            StylesSection(view),
+            @"<link\b[^>]*\bhref=""~/css/" + Regex.Escape(sheetName) + @"""[^>]*>");
 
     private static IEnumerable<string> ViewsUnder(string folder) =>
         Directory.EnumerateFiles(ResolveRepoFile(ViewsRoot, folder), "*.cshtml", SearchOption.AllDirectories);
@@ -129,4 +197,55 @@ public class CharactersConversionGuardTests
         PictureUrlBuilds(ReadRepoFile(AvatarPartial)).Should().Be(1,
             "the avatar partial builds the picture address in exactly one place");
     }
+
+    [Fact]
+    public void ConvertedViews_CarryNoInlineStyleScriptOrHandler()
+    {
+        ConvertedViews.Should().NotBeEmpty("the guard must cover at least one converted view");
+        foreach (var path in ConvertedViews)
+        {
+            var view = StripRazorAndHtmlComments(ReadRepoFile(path));
+            foreach (var (label, pattern) in InlineCodePatterns)
+                pattern.Matches(view).Select(m => m.Value).Should().BeEmpty(
+                    $"{path} must carry no inline code; {label} belongs in a stylesheet or a script file");
+        }
+    }
+
+    [Fact]
+    public void ConvertedViews_LinkTheirSheets()
+    {
+        ViewSheetLinks.Keys.Should().BeEquivalentTo(ConvertedViews,
+            "every converted view states which sheets it links, an empty set meaning the shared components only");
+
+        foreach (var (path, sheets) in ViewSheetLinks)
+        {
+            var view = StripRazorAndHtmlComments(ReadRepoFile(path));
+            foreach (var sheet in sheets)
+                LinksSheet(view, sheet).Should().BeTrue(
+                    $"{path} must link {sheet} from its Styles section so the sheet loads only where it is used");
+
+            Regex.Matches(StylesSection(view), @"href=""~/css/([^""]+)""").Select(m => m.Groups[1].Value)
+                .Should().BeEquivalentTo(sheets, $"{path} links exactly the sheets listed for it");
+        }
+    }
+
+    [Fact]
+    public void ConvertedSheets_AreNamedInThePagesLayer()
+    {
+        // The list starts empty and grows with the page sheets this work converts; each one opens the pages layer.
+        foreach (var name in ConvertedSheets)
+            StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/" + name)).Should().Contain("@layer pages",
+                $"{name} must open the pages layer so the foundation's cascade order applies to it");
+    }
+
+    [Fact]
+    public void RetiredFiles_AreGone()
+    {
+        RetiredFiles.Should().NotBeEmpty();
+        foreach (var path in RetiredFiles)
+            File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse(
+                $"{path} was merged into the view that serves both layouts and must not come back");
+    }
+
+    private static string StripCssCommentsFor(string css) => Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
 }

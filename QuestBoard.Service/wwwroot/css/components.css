@@ -812,6 +812,80 @@
     flex: none;
     margin-top: var(--qb-space-xs);
   }
+
+  /*
+   * What every form page shares. A page wraps its form in .form-page; nothing here names a page, and a page that
+   * needs its own layout adds it in its own sheet.
+   *
+   * Help lines sit on the card's own glass; the muted tone is for text on paper, so here they take the card colour.
+   */
+  .form-page .form-text {
+    color: var(--qb-fg);
+  }
+
+  /*
+   * Danger text is a light red that falls to about 3.6:1 on the card's glass at its lightest. The required marker and
+   * the validation messages therefore sit on the opaque overlay surface, where the same colour clears 4.5:1. The
+   * message keeps its words, and the field keeps its 2px danger border, so colour is never the only signal.
+   */
+  .form-page :is(label, .form-label) .text-danger {
+    display: inline-block;
+    padding-inline: var(--qb-space-xs);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-surface-overlay);
+    line-height: 1.25;
+  }
+
+  .form-page .field-validation-error {
+    display: inline-block;
+    margin-top: var(--qb-space-xs);
+    padding: var(--qb-space-xs) var(--qb-space-sm);
+    border-radius: var(--qb-radius-sm);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  .form-page .validation-summary-errors {
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border-left: 4px solid var(--qb-danger-text);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  .form-page .validation-summary-errors ul {
+    margin: 0;
+    padding-left: var(--qb-space-md);
+  }
+
+  /* The action row: the exit on the left, the one commit on the right. */
+  .form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
+
+  /* On a phone it is still one row: the exit at its natural width, the commit filling the rest. */
+  .mobile-layout .form-actions > .btn-primary {
+    flex: 1 1 auto;
+  }
+
+  .mobile-layout .form-actions > .btn-secondary {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /*
+   * The fallback for a commit label too long to share a row with its exit: the same two buttons stacked, the commit
+   * first on screen. The markup order does not change, so the exit still comes first for a screen reader.
+   */
+  .form-actions--stack {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .mobile-layout .form-actions--stack > .btn {
+    flex: none;
+  }
 }
 
 /*
