@@ -45,10 +45,11 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Characters/Details.cshtml",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.cshtml",
+        "QuestBoard.Service/Views/Contacts/Details.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "contact-form.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "contact-form.css", "contact-detail.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -58,6 +59,7 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/Characters/Details.cshtml"] = ["markdown-content.css", "character-detail.css"],
         ["QuestBoard.Service/Views/Contacts/Create.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/Contacts/Edit.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
+        ["QuestBoard.Service/Views/Contacts/Details.cshtml"] = ["markdown-content.css", "contact-detail.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
@@ -70,6 +72,8 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Contacts/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/contact-form.mobile.css",
+        "QuestBoard.Service/Views/Contacts/Details.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/contact-detail.mobile.css",
     ];
 
     private const string CropDialogPartial = "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml";
@@ -77,7 +81,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "contact-form.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "contact-form.css", "contact-detail.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -124,6 +128,13 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/wwwroot/css/character-detail.css",
         "QuestBoard.Service/wwwroot/js/confirm-submit.js",
         "QuestBoard.IntegrationTests/Tests/CharacterDetailsRenderTests.cs",
+        "QuestBoard.Service/Views/Contacts/Details.cshtml",
+        "QuestBoard.Service/wwwroot/css/contact-detail.css",
+        "QuestBoard.Service/wwwroot/js/contact-notes.js",
+        "QuestBoard.IntegrationTests/Tests/ContactDetailsRenderTests.cs",
+        "QuestBoard.IntegrationTests/Tests/ContactCategoryMobileRenderTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/ContactsTagsDesktopMarkupTests.cs",
+        "QuestBoard.IntegrationTests/Tests/MarkdownEditorMarkupTests.cs",
     ];
 
     // Character views that show a picture, repository-relative. Each asks for the picture only when one is stored.
@@ -401,6 +412,33 @@ public class CharactersConversionGuardTests
         var list = StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/contacts.css"));
         list.Should().NotContain("tagify", "contacts.css no longer carries rules for the tag entry library");
         Regex.Matches(list, @"!important").Should().BeEmpty("the tag overrides were the only important flags in contacts.css");
+    }
+
+    [Fact]
+    public void ContactDetailSheet_HasNoBlurOnSlips()
+    {
+        // A note is a slip on the Notes card's scrim, not a card of its own, so it takes no backdrop blur however
+        // many repeat; the sheet holds no blur at all outside a value of none.
+        var css = StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/contact-detail.css"));
+        Regex.Matches(css, @"backdrop-filter\s*:\s*(?!none\b)[^;]+")
+            .Select(m => m.Value).Should().BeEmpty("contact-detail.css blurs nothing behind a note slip");
+        Regex.Matches(css, @"\bfilter\s*:\s*[^;]*blur").Select(m => m.Value).Should().BeEmpty("no slip is blurred");
+        Regex.Matches(css, @"!important").Should().BeEmpty("contact-detail.css holds no important flag");
+        css.Should().Contain("--qb-surface-scrim", "a slip sits on the shared scrim token");
+    }
+
+    [Fact]
+    public void ContactNotesModule_WritesNoMarkupFromStrings()
+    {
+        // The note edit toggle only changes the hidden attribute and moves focus; it reads no text into markup,
+        // builds none from strings and defines no global of its own.
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/contact-notes.js");
+        Regex.Matches(script, @"innerHTML|outerHTML|insertAdjacentHTML|document\.write|createContextualFragment|\beval\s*\(|new\s+Function\b")
+            .Select(m => m.Value).Should().BeEmpty("contact-notes.js must build no markup from strings");
+        Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
+            .Select(m => m.Value).Should().BeEmpty("contact-notes.js defines no global");
+        script.Should().Contain(".hidden", "the toggle works through the hidden attribute");
+        Regex.Matches(script, @"\.style\b|style\.display").Select(m => m.Value).Should().BeEmpty("the toggle sets no inline style");
     }
 
     [Fact]

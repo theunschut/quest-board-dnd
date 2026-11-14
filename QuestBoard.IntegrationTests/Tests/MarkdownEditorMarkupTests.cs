@@ -119,6 +119,32 @@ public class MarkdownEditorMarkupTests : IClassFixture<WebApplicationFactoryBase
         AssertEditorMarkup(html);
     }
 
+    [Theory]
+    [InlineData(DesktopUserAgent, "desktop")]
+    [InlineData(MobileUserAgent, "phone")]
+    public async Task ContactDetails_NoteEditors_RenderEditorHintAndLabelUnderBothUserAgents(string userAgent, string layout)
+    {
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_notes_{layout}", $"editor_markup_notes_{layout}@test.com",
+            name: $"Editor Markup Notes {layout}", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(_factory.Services, user.Id, $"Notes Contact {layout}", groupId: 1);
+        await TestDataHelper.CreateTestContactNoteAsync(_factory.Services, contact.Id, user.Id, "A saved note");
+
+        var html = await GetHtmlAsync(client, $"/Contacts/Details/{contact.Id}", userAgent);
+
+        AssertEditorMarkup(html);
+
+        // The add-note editor and the saved note's edit editor each carry their own hint, and every editor
+        // textarea is described by a hint that exists.
+        EditorTextarea.Matches(html).Should().HaveCount(2, "the add form and the one saved note each render an editor");
+        HintElement.Matches(html).Select(m => m.Groups["id"].Value).Should().OnlyHaveUniqueItems();
+        foreach (Match textarea in EditorTextarea.Matches(html))
+        {
+            var describedBy = Regex.Match(textarea.Value, @"aria-describedby=""(?<id>[^""]+)""").Groups["id"].Value;
+            html.Should().Contain($"id=\"{describedBy}\"");
+        }
+    }
+
     [Fact]
     public async Task QuestCreate_EditorToken_ReachesTheScriptThroughAMetaElement()
     {

@@ -71,8 +71,7 @@
    */
   .modern-card .table,
   .table,
-  .agenda-row,
-  .contact-detail-card .note-item {
+  .agenda-row {
     --bs-secondary-color: var(--qb-ink-muted);
     --bs-success-rgb: var(--qb-ink-rgb);
     --bs-danger-rgb: var(--qb-ink-rgb);

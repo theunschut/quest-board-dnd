@@ -56,20 +56,36 @@ public class ContactsTagsDesktopMarkupTests(WebApplicationFactoryBase factory) :
         html.Should().NotContain("shopkeeper");
     }
 
-    [Fact]
-    public async Task Details_Player_ReceivesNoTagMarkupAtAll()
+    private const string PhoneUserAgent =
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+
+    // The details page is one view for both layouts, so its tag facts hold under the default (desktop) client and
+    // under a phone user agent alike.
+    private static async Task<HttpResponseMessage> GetDetailsAsync(HttpClient client, int contactId, bool phone)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/Contacts/Details/{contactId}");
+        if (phone)
+            request.Headers.TryAddWithoutValidation("User-Agent", PhoneUserAgent);
+        request.Headers.Authorization = client.DefaultRequestHeaders.Authorization;
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Details_Player_ReceivesNoTagMarkupAtAll(bool phone)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "tagmark_player_details_dm", "tagmark_player_details_dm@example.com", roles: ["DungeonMaster"]);
+            factory, $"tagmark_player_details_dm{phone}", $"tagmark_player_details_dm{phone}@example.com", roles: ["DungeonMaster"]);
         var contact = await TestDataHelper.CreateTestContactAsync(
             factory.Services, dmUser.Id, "Tagged Contact", groupId: 1, isRevealed: true);
         await TestDataHelper.CreateTestContactTagAsync(factory.Services, "shopkeeper", groupId: 1, contact.Id);
 
         var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "tagmark_player_details", "tagmark_player_details@example.com", roles: ["Player"]);
+            factory, $"tagmark_player_details{phone}", $"tagmark_player_details{phone}@example.com", roles: ["Player"]);
 
-        var response = await playerClient.GetAsync($"/Contacts/Details/{contact.Id}", TestContext.Current.CancellationToken);
+        var response = await GetDetailsAsync(playerClient, contact.Id, phone);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
@@ -77,18 +93,20 @@ public class ContactsTagsDesktopMarkupTests(WebApplicationFactoryBase factory) :
         html.Should().NotContain("shopkeeper");
     }
 
-    [Fact]
-    public async Task Details_DungeonMaster_RendersChipsAndBothTagNames()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Details_DungeonMaster_RendersChipsAndBothTagNames(bool phone)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         var (dmClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
-            factory, "tagmark_dm_details_dm", "tagmark_dm_details_dm@example.com", roles: ["DungeonMaster"]);
+            factory, $"tagmark_dm_details_dm{phone}", $"tagmark_dm_details_dm{phone}@example.com", roles: ["DungeonMaster"]);
         var contact = await TestDataHelper.CreateTestContactAsync(
             factory.Services, dmUser.Id, "Doubly Tagged Contact", groupId: 1, isRevealed: true);
         await TestDataHelper.CreateTestContactTagAsync(factory.Services, "shopkeeper", groupId: 1, contact.Id);
         await TestDataHelper.CreateTestContactTagAsync(factory.Services, "quest giver", groupId: 1, contact.Id);
 
-        var response = await dmClient.GetAsync($"/Contacts/Details/{contact.Id}", TestContext.Current.CancellationToken);
+        var response = await GetDetailsAsync(dmClient, contact.Id, phone);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
