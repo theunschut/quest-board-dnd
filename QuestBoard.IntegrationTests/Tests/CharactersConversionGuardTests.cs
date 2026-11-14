@@ -56,10 +56,11 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Contacts/Index.cshtml",
         "QuestBoard.Service/Views/Contacts/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml",
+        "QuestBoard.Service/Views/DungeonMaster/Profile.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -80,6 +81,7 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/Contacts/Index.cshtml"] = ["member-cards.css", "contacts.css"],
         ["QuestBoard.Service/Views/Contacts/Index.Mobile.cshtml"] = ["member-cards.css", "contacts.mobile.css"],
         ["QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml"] = ["dm-profile-form.css", "image-crop.css"],
+        ["QuestBoard.Service/Views/DungeonMaster/Profile.cshtml"] = ["markdown-content.css", "dm-profile.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
@@ -106,7 +108,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -183,6 +185,9 @@ public class CharactersConversionGuardTests
         "QuestBoard.IntegrationTests/Tests/ContactsIndexRenderTests.cs",
         "QuestBoard.Service/Views/Contacts/Index.Mobile.cshtml",
         "QuestBoard.IntegrationTests/Mobile/ContactsTagsMobileTests.cs",
+        "QuestBoard.Service/Views/DungeonMaster/Profile.cshtml",
+        "QuestBoard.Service/wwwroot/css/dm-profile.css",
+        "QuestBoard.IntegrationTests/Tests/DmProfileRenderTests.cs",
     ];
 
     // Character views that show a picture, repository-relative. Each asks for the picture only when one is stored.
@@ -654,6 +659,55 @@ public class CharactersConversionGuardTests
         foreach (var path in RetiredFiles)
             File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse(
                 $"{path} was merged into the view that serves both layouts and must not come back");
+    }
+
+    // A date written through a format string in a view bypasses the date helpers; the two machine value formats
+    // that fill a date input or a time element's datetime attribute are the only strings allowed.
+    private static readonly Regex DateFormatCall = new(
+        @"\.ToString\(\s*""(?<format>[^""]*(?:yy|MM|dd|HH|hh|mm|ss|tt)[^""]*|[dDfFgGmMoOrRsStTuUyY])""",
+        RegexOptions.Compiled);
+
+    private static readonly string[] MachineValueFormats = ["yyyy-MM-dd", "yyyy-MM-ddTHH:mm"];
+
+    private static List<string> RawDateFormats(string view) =>
+        DateFormatCall.Matches(view)
+            .Select(m => m.Groups["format"].Value)
+            .Where(f => !MachineValueFormats.Contains(f))
+            .ToList();
+
+    // The area's views that show a date, relative to the views folder; one that is not on disk is skipped.
+    private static readonly string[] DateCheckedViews =
+    [
+        "/DungeonMaster/Profile.cshtml",
+        "/Characters/Index.cshtml", "/Characters/Index.Mobile.cshtml", "/Characters/Details.cshtml",
+        "/Contacts/Index.cshtml", "/Contacts/Index.Mobile.cshtml", "/Contacts/Details.cshtml",
+    ];
+
+    [Fact]
+    public void AreaViews_RenderNoRawDateFormatting()
+    {
+        var scanned = 0;
+        foreach (var relative in DateCheckedViews)
+        {
+            var path = ResolveRepoFile((ViewsRoot + relative).Split('/'));
+            if (!File.Exists(path))
+                continue;
+
+            scanned++;
+            RawDateFormats(StripRazorAndHtmlComments(File.ReadAllText(path))).Should().BeEmpty(
+                $"{relative} must render dates through the date helpers, not a format string");
+        }
+
+        scanned.Should().BeGreaterThan(0, "the scan must find the area's views, or it guards nothing");
+    }
+
+    [Fact]
+    public void DateScanner_FlagsAFormatStringAndAllowsTheMachineFormats()
+    {
+        RawDateFormats("@quest.Date?.ToString(\"MMM dd, yyyy\")").Should().HaveCount(1);
+        RawDateFormats("@Model.Date.ToString(\"yyyy-MM-dd\")").Should().BeEmpty();
+        RawDateFormats("@Model.Count.ToString(\"N0\")").Should().BeEmpty();
+        RawDateFormats(StripRazorAndHtmlComments("@* @d.ToString(\"dddd\") *@")).Should().BeEmpty();
     }
 
     private static string StripCssCommentsFor(string css) => Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");

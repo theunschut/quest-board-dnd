@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text.RegularExpressions;
 using QuestBoard.IntegrationTests.Helpers;
@@ -122,5 +123,41 @@ public class CharactersTwinAnswersTests(WebApplicationFactoryBase factory)
             html,
             @"<label[^>]*>\s*Classes <span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>")
             .Should().BeTrue("the phone form marks Classes as required, as the desktop form does");
+    }
+
+    // A Dungeon Master with one finalized quest and one quest that has no date, seen by that Dungeon Master.
+    private async Task<(HttpClient Client, int DmId)> SeedDmProfileWithDatesAsync(string tag, DateTime finalized)
+    {
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"twinanswers_dmdates_{tag}", $"twinanswers_dmdates_{tag}@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, dm.Id, "The Lantern Gate Vigil", isFinalized: true, finalizedDate: finalized);
+        await TestDataHelper.CreateTestQuestAsync(factory.Services, dm.Id, "The Unscheduled Embermarch");
+        return (client, dm.Id);
+    }
+
+    // The visible text of each wall-clock time element on the page.
+    private static List<string> WallClockTexts(string html) =>
+        Regex.Matches(html, @"<time class=""wall-clock""[^>]*>(?<text>[^<]*)</time>")
+            .Select(m => m.Groups["text"].Value).ToList();
+
+    [Fact]
+    public async Task DesktopDmProfile_ShowsDateTbdForAnUndatedQuest()
+    {
+        var finalized = new DateTime(2026, 11, 5, 19, 0, 0);
+        var (client, id) = await SeedDmProfileWithDatesAsync("desktop", finalized);
+
+        var html = await client.GetStringAsync($"/DungeonMaster/Profile/{id}", TestContext.Current.CancellationToken);
+
+        html.Should().NotContain("mobile-layout");
+        var rows = Regex.Matches(html, @"<tr>\s*<td>(?<body>[\s\S]*?)</tr>").Select(m => m.Groups["body"].Value).ToList();
+        rows.Should().HaveCount(2);
+        var undated = rows.Single(r => r.Contains("The Unscheduled Embermarch", StringComparison.Ordinal));
+        undated.Should().Contain("Date TBD", "the desktop table no longer leaves the cell empty for an undated quest");
+        var dated = rows.Single(r => r.Contains("The Lantern Gate Vigil", StringComparison.Ordinal));
+        dated.Should().NotContain("Date TBD");
+        WallClockTexts(html).Should().Equal(
+            [finalized.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)],
+            "the visible date text is the helper's date format, with no leading zero on the day");
     }
 }
