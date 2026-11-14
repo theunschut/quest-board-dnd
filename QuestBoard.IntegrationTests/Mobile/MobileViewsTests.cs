@@ -532,14 +532,16 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// DM Profile on mobile renders glass card layout (dm-profile-header-card).
-    /// Also checks that dm-profile.mobile.css is linked.
+    /// The Dungeon Master profile on the phone renders the phone layout with the profile card, the shared card sheet
+    /// and the phone profile sheet, each quest as a slip reached through one stretched link with no click handler,
+    /// and never the desktop sheet.
     /// </summary>
     [Fact]
     public async Task MobileDmProfile_MobileUserAgent_RendersGlassCardLayout()
     {
         var (authClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "dm_dmview03", "dm_dmview03@test.com", roles: new[] { "DungeonMaster" });
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dmUser.Id, "Slip Quest");
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"/DungeonMaster/Profile/{dmUser.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
@@ -548,8 +550,14 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("dm-profile-header-card");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("dm-profile-card");
+        html.Should().Contain("member-cards.css");
         html.Should().Contain("dm-profile.mobile.css");
+        html.Should().NotMatchRegex(@"/css/dm-profile\.css");
+        html.Should().NotContain("dm-profile-header-card", "the old glass card wrapper is gone");
+        html.Should().Contain($"class=\"row-nav-link\" href=\"/Quest/Details/{quest.Id}\"");
+        html.Should().NotContain("window.location");
     }
 
     // -----------------------------------------------------------------------

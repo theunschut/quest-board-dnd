@@ -4,109 +4,108 @@
 @{
     ViewData["Title"] = $"{Model.Name} — DM Profile";
     var questsOn = (await BoardPages.GetAsync()).Serves(BoardPage.Quests);
+
+    void RenderQuestDate(QuestSummaryViewModel quest)
+    {
+        <div class="member-row-line">
+            <i class="fas fa-calendar-check me-1" aria-hidden="true"></i>
+            @if (quest.Date.HasValue)
+            {
+                @Html.WallClock(quest.Date.Value, "date")
+            }
+            else
+            {
+                @:Date TBD
+            }
+        </div>
+    }
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
-    <link href="~/css/dm-profile.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/member-cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dm-profile.mobile.css" asp-append-version="true" />
 }
 
-<div class="container-fluid px-2 mt-2">
-
-    @* Header card: photo + name + edit button *@
-    <div class="dm-profile-header-card mb-3 text-center">
-        @if (Model.HasProfilePicture)
-        {
-            <img src="@Url.Action("GetDMProfilePicture", new { id = Model.UserId })"
-                 alt="@Model.Name"
-                 class="rounded-circle dm-profile-photo-mobile mb-3" />
-        }
-        else
-        {
-            <div class="dm-profile-placeholder-mobile mx-auto mb-3">
-                <i class="fas fa-user fa-4x" style="color: rgba(244,228,188,0.5);"></i>
-            </div>
-        }
-        <h5 class="dm-profile-name mb-1">@Model.Name</h5>
-        <p class="dm-profile-role-label">
-            <i class="fas fa-crown me-1"></i>Dungeon Master
-        </p>
-        @if (Model.CanEdit)
-        {
-            <a asp-action="EditProfile" asp-route-id="@Model.UserId"
-               class="btn btn-warning w-100 mt-2">
-                <i class="fas fa-edit me-2"></i>Edit Profile
-            </a>
-        }
-    </div>
-
-    @* Bio card *@
-    <div class="dm-profile-bio-card mb-3">
-        <h6 class="dm-profile-section-heading mb-2">
-            <i class="fas fa-scroll me-2"></i>About
-        </h6>
-        @if (!string.IsNullOrWhiteSpace(Model.Bio))
-        {
-            <div class="dm-profile-bio-text">
-                @Html.Markdown(Model.Bio)
-            </div>
-        }
-        else
-        {
-            <p class="dm-profile-bio-empty">No bio provided yet.</p>
-        }
-    </div>
-
-    @* Quest history card *@
-    <div class="dm-profile-history-card mb-3">
-        <h6 class="dm-profile-section-heading mb-2">
-            <i class="fas fa-list me-2"></i>Quest History
-        </h6>
-        @if (Model.Quests.Any())
-        {
-            @foreach (var quest in Model.Quests)
+<div class="dm-profile-page">
+    <div class="card modern-card dm-profile-card mb-3">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">@Model.Name</h1>
+        </div>
+        <div class="card-body modern-card-body dm-profile-summary">
+            @if (Model.HasProfilePicture)
             {
-                if (questsOn)
+                <img class="dm-profile-photo" src="@Url.Action("GetDMProfilePicture", new { id = Model.UserId })" alt="" />
+            }
+            else
+            {
+                <div class="dm-profile-placeholder" aria-hidden="true"><i class="fas fa-user fa-4x"></i></div>
+            }
+            <p class="dm-profile-role"><i class="fas fa-crown me-1" aria-hidden="true"></i>Dungeon Master</p>
+            @if (Model.CanEdit)
+            {
+                <a asp-action="EditProfile" asp-route-id="@Model.UserId" class="btn btn-warning dm-profile-edit">
+                    <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit Profile
+                </a>
+            }
+        </div>
+    </div>
+
+    <section class="card modern-card modern-card--aside mb-3" aria-labelledby="dm-about-title">
+        <div class="card-header modern-card-header">
+            <h2 class="mb-0" id="dm-about-title"><i class="fas fa-scroll me-2" aria-hidden="true"></i>About</h2>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (!string.IsNullOrWhiteSpace(Model.Bio))
+            {
+                @Html.Markdown(Model.Bio)
+            }
+            else
+            {
+                <p class="mb-0 text-muted">No bio provided yet.</p>
+            }
+        </div>
+    </section>
+
+    <section class="card modern-card modern-card--aside mb-3" aria-labelledby="dm-history-title">
+        <div class="card-header modern-card-header">
+            <h2 class="mb-0" id="dm-history-title"><i class="fas fa-list me-2" aria-hidden="true"></i>Quest History</h2>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (Model.Quests.Any())
+            {
+                @foreach (var quest in Model.Quests)
                 {
-                    <div class="dm-quest-history-item"
-                         onclick="window.location.href='@Url.Action("Details", "Quest", new { id = quest.Id })'">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <span class="dm-quest-history-title fw-bold"><a class="row-nav-link" href="@Url.Action("Details", "Quest", new { id = quest.Id })">@quest.Title</a></span>
-                            <span class="badge bg-secondary ms-2 flex-shrink-0">
-                                CR @quest.ChallengeRating
-                            </span>
+                    if (questsOn)
+                    {
+                        <div class="dm-quest-row member-row modern-card modern-card--interactive">
+                            <div class="member-row-body">
+                                <h3 class="member-row-name"><a class="row-nav-link" href="@Url.Action("Details", "Quest", new { id = quest.Id })">@quest.Title</a></h3>
+                                @{ RenderQuestDate(quest); }
+                            </div>
+                            <span class="badge bg-secondary">CR @quest.ChallengeRating</span>
                         </div>
-                        <small class="dm-quest-history-date d-block mt-1">
-                            <i class="fas fa-calendar-check me-1"></i>
-                            @(quest.Date?.ToString("MMM dd, yyyy") ?? "Date TBD")
-                        </small>
-                    </div>
-                }
-                else
-                {
-                    <div class="dm-quest-history-item dm-quest-history-item--static">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <span class="dm-quest-history-title fw-bold">@quest.Title</span>
-                            <span class="badge bg-secondary ms-2 flex-shrink-0">
-                                CR @quest.ChallengeRating
-                            </span>
+                    }
+                    else
+                    {
+                        <div class="dm-quest-row member-row modern-card">
+                            <div class="member-row-body">
+                                <h3 class="member-row-name">@quest.Title</h3>
+                                @{ RenderQuestDate(quest); }
+                            </div>
+                            <span class="badge bg-secondary">CR @quest.ChallengeRating</span>
                         </div>
-                        <small class="dm-quest-history-date d-block mt-1">
-                            <i class="fas fa-calendar-check me-1"></i>
-                            @(quest.Date?.ToString("MMM dd, yyyy") ?? "Date TBD")
-                        </small>
-                    </div>
+                    }
                 }
             }
-        }
-        else
-        {
-            <div class="text-center py-4">
-                <i class="fas fa-dragon fa-3x text-warning mb-3"></i>
-                <h5 class="dm-profile-name">No Quests Yet</h5>
-                <p class="dm-profile-bio-empty">This Dungeon Master hasn't run any quests yet.</p>
-            </div>
-        }
-    </div>
-
+            else
+            {
+                <div class="empty-state">
+                    <i class="fas fa-dragon empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Quests Yet</h2>
+                    <p class="empty-state-text">This Dungeon Master hasn't run any quests yet.</p>
+                </div>
+            }
+        </div>
+    </section>
 </div>

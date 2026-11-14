@@ -1,139 +1,46 @@
-/* dm-profile.mobile.css — DM Profile mobile view only */
-/* No @media queries — this file is exclusively loaded by Profile.Mobile.cshtml via _Layout.Mobile.cshtml */
+/*
+ * The Dungeon Master profile on the phone layout: the profile card is centred, and each quest in the history is a row
+ * with a stretched link on its title, its date under it and its challenge rating on the right.
+ */
+@layer pages {
+  .mobile-layout .dm-profile-page .dm-profile-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-md);
+    text-align: center;
+  }
 
-/* Glass card: header (photo + name + edit button) */
-.dm-profile-header-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 16px;
-}
-
-/* Glass card: bio */
-.dm-profile-bio-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
-
-/* Glass card: quest history */
-.dm-profile-history-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-}
-
-/* DM name — parchment, Cinzel */
-.dm-profile-name {
-    font-family: 'Cinzel', serif;
-    color: var(--qb-fg-heading) !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
-}
-
-/* Role label — faded parchment */
-.dm-profile-role-label {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-    font-size: 0.875rem;
-    margin-bottom: 0;
-}
-
-/* Section headings (About, Quest History) — parchment uppercase */
-.dm-profile-section-heading {
-    color: #F4E4BC !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
-    text-transform: uppercase;
-    font-size: 0.875rem;
-    letter-spacing: 0.05em;
-}
-
-/* Bio text — parchment, preserve line breaks */
-.dm-profile-bio-text {
-    color: #F4E4BC;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
-    white-space: pre-wrap;
-    font-size: 1rem;
-    line-height: 1.5;
-    margin-bottom: 0;
-}
-
-/* Bio empty state — faded parchment italic */
-.dm-profile-bio-empty {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-    font-style: italic;
-    margin-bottom: 0;
-}
-
-/* Profile photo */
-.dm-profile-photo-mobile {
-    width: 100px;
-    height: 100px;
-    object-fit: cover;
-}
-
-/* Placeholder avatar */
-.dm-profile-placeholder-mobile {
-    width: 80px;
-    height: 80px;
-    background: rgba(255, 255, 255, 0.1);
+  .mobile-layout .dm-profile-page .dm-profile-photo,
+  .mobile-layout .dm-profile-page .dm-profile-placeholder {
+    width: 128px;
+    height: 128px;
+    border: 3px solid var(--qb-surface-glass-border);
     border-radius: 50%;
+  }
+
+  .mobile-layout .dm-profile-page .dm-profile-photo {
+    object-fit: cover;
+  }
+
+  .mobile-layout .dm-profile-page .dm-profile-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
-}
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
 
-/* Quest history row — tappable */
-.dm-quest-history-item {
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(139, 69, 19, 0.3);
-    cursor: pointer;
-}
+  .mobile-layout .dm-profile-page .dm-profile-role {
+    margin: 0;
+    color: var(--qb-fg-muted);
+  }
 
-.dm-quest-history-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
+  .mobile-layout .dm-profile-page .dm-profile-edit {
+    width: 100%;
+  }
 
-.dm-quest-history-item:active {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-}
-
-/* A history row with nothing to open: not tappable, so no pointer and no pressed tint */
-.dm-quest-history-item--static {
-    cursor: default;
-}
-
-.dm-quest-history-item--static:active {
-    background-color: transparent;
-}
-
-/* Quest title in history — parchment */
-.dm-quest-history-title {
-    color: #F4E4BC !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-    font-size: 0.875rem;
-    line-height: 1.3;
-}
-
-/* Date label in history — faded parchment */
-.dm-quest-history-date {
-    color: rgba(244, 228, 188, 0.7) !important;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
-}
-
-/* Badges inside profile cards — no text-shadow */
-.dm-profile-header-card .badge,
-.dm-profile-bio-card .badge,
-.dm-profile-history-card .badge {
-    text-shadow: none !important;
+  .mobile-layout .dm-profile-page .dm-quest-row .badge {
+    flex: none;
+  }
 }

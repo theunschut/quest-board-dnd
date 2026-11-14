@@ -29,7 +29,7 @@ public class DmProfileRenderTests(WebApplicationFactoryBase factory)
         return ValueTask.CompletedTask;
     }
 
-    public static TheoryData<bool> BothLayouts => new() { false };
+    public static TheoryData<bool> BothLayouts => new() { false, true };
 
     private static string Tag(bool phone) => phone ? "phone" : "desktop";
 
@@ -208,6 +208,26 @@ public class DmProfileRenderTests(WebApplicationFactoryBase factory)
         main.Should().Contain(">The Lantern Gate Vigil</a>", "the quest title is a link in the table");
         main.Should().Contain(LongQuestTitle, "a long quest name is shown whole, never truncated");
         main.Should().NotMatchRegex(@"text-truncate|text-overflow", "nothing truncates a name");
+    }
+
+    [Fact]
+    public async Task PhoneProfile_HoldsEachQuestAsASlipWithOneStretchedLink()
+    {
+        var seeded = await SeedFullProfileAsync(phone: true);
+
+        var main = MainOf(await GetHtmlAsync(seeded.Owner, $"/DungeonMaster/Profile/{seeded.DmId}", phone: true));
+
+        var slips = Regex.Split(main, @"(?=<div class=""dm-quest-row[ ""])").Skip(1).ToList();
+        slips.Should().HaveCount(3, "each quest is one slip");
+        foreach (var slip in slips)
+        {
+            Regex.Matches(slip, @"<a class=""row-nav-link""").Should().HaveCount(1, "a slip is one stretched link");
+            slip.Should().Contain("href=\"/Quest/Details/");
+            slip.Should().Contain("badge bg-secondary");
+        }
+
+        main.Should().Contain(LongQuestTitle, "a long quest name is shown whole, never truncated");
+        main.Should().NotContain("<table", "the phone holds slips, not a table");
     }
 
     [Theory]

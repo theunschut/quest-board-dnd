@@ -160,4 +160,23 @@ public class CharactersTwinAnswersTests(WebApplicationFactoryBase factory)
             [finalized.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)],
             "the visible date text is the helper's date format, with no leading zero on the day");
     }
+
+    [Fact]
+    public async Task PhoneDmProfile_RendersTheSameDates()
+    {
+        var finalized = new DateTime(2026, 9, 30, 19, 0, 0);
+        var (client, id) = await SeedDmProfileWithDatesAsync("phone", finalized);
+
+        var html = await GetPhoneAsync(client, $"/DungeonMaster/Profile/{id}");
+
+        html.Should().Contain("mobile-layout");
+        var slips = Regex.Split(html, @"(?=<div class=""dm-quest-row[ ""])").Skip(1).ToList();
+        slips.Should().HaveCount(2);
+        slips.Single(s => s.Contains("The Unscheduled Embermarch", StringComparison.Ordinal))
+            .Should().Contain("Date TBD");
+        WallClockTexts(html).Should().Equal(
+            [finalized.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)],
+            "the phone words the date exactly as the desktop does, so Sept becomes Sep and the day has no leading zero");
+        html.Should().NotContain("Sept 30");
+    }
 }
