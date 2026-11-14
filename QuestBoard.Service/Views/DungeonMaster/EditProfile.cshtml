@@ -5,77 +5,71 @@
     ViewData["Title"] = "Edit DM Profile";
 }
 
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <div class="card modern-card">
-                <div class="card-header modern-card-header">
-                    <h2 class="mb-0">
-                        <i class="fas fa-user-edit me-2"></i>Edit DM Profile
-                    </h2>
-                </div>
-                <div class="card-body modern-card-body">
-                    <form asp-action="EditProfile" asp-route-id="@Model.DungeonMasterId"
-                          method="post" enctype="multipart/form-data">
-                        <input type="hidden" asp-for="DungeonMasterId" />
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<div class="dm-profile-form-page form-page">
+    <div class="card modern-card">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">
+                <i class="fas fa-user-edit me-2" aria-hidden="true"></i>Edit DM Profile
+            </h1>
+        </div>
+        <div class="card-body modern-card-body">
+            <form asp-action="EditProfile" asp-route-id="@Model.DungeonMasterId"
+                  method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="DungeonMasterId" />
+                <div asp-validation-summary="All" class="mb-3"></div>
 
-                        <div class="row">
-                            <!-- Photo column -->
-                            <div class="col-md-4 mb-3">
-                                <label asp-for="ProfilePictureFile" class="form-label">Profile Photo</label>
-                                @if (Model.HasProfilePicture)
-                                {
-                                    <div class="mb-2 text-center">
-                                        <img src="@Url.Action("GetDMProfilePicture", new { id = Model.DungeonMasterId })"
-                                             alt="Current profile photo"
-                                             class="rounded-circle dm-profile-photo" />
-                                        <div>
-                                            <button type="button" class="btn btn-sm btn-warning mt-2" id="recropPhotoBtn" data-crop-original-url="@Url.Action("GetOriginalDMProfilePicture", new { id = Model.DungeonMasterId })">
-                                                <i class="fas fa-crop-alt me-1"></i>Re-crop Photo
-                                            </button>
-                                        </div>
-                                    </div>
-                                }
-                                <input type="file" asp-for="ProfilePictureFile"
-                                       class="form-control" accept="image/*"
-                                       id="dmProfilePictureInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
-                                <input type="file" name="CroppedPictureFile" hidden />
-                                <small class="form-text text-muted">JPG, PNG or GIF — max 5 MB</small>
-                                <span asp-validation-for="ProfilePictureFile" class="text-danger"></span>
-                                <div id="fileSizeError" class="crop-error" role="alert" hidden><i class="fas fa-exclamation-circle" aria-hidden="true"></i><span data-crop-error-text></span></div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="ProfilePictureFile" class="form-label">Profile Photo</label>
+                        @if (Model.HasProfilePicture)
+                        {
+                            <div class="mb-2 text-center">
+                                <img src="@Url.Action("GetDMProfilePicture", new { id = Model.DungeonMasterId })"
+                                     alt="Current profile photo"
+                                     class="rounded-circle form-photo-round" />
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-warning mt-2" id="recropPhotoBtn" data-crop-original-url="@Url.Action("GetOriginalDMProfilePicture", new { id = Model.DungeonMasterId })">
+                                        <i class="fas fa-crop-alt me-1" aria-hidden="true"></i>Re-crop Photo
+                                    </button>
+                                </div>
                             </div>
+                        }
+                        <input type="file" asp-for="ProfilePictureFile"
+                               class="form-control" accept="image/*"
+                               id="dmProfilePictureInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
+                        <input type="file" name="CroppedPictureFile" hidden />
+                        <small class="form-text">JPG, PNG or GIF — max 5 MB</small>
+                        <span asp-validation-for="ProfilePictureFile"></span>
+                        <div id="fileSizeError" class="crop-error" role="alert" hidden><i class="fas fa-exclamation-circle" aria-hidden="true"></i><span data-crop-error-text></span></div>
+                    </div>
 
-                            <!-- Bio column -->
-                            <div class="col-md-8">
-                                @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
-                                   {
-                                       FieldName = "Bio",
-                                       Value = Model.Bio,
-                                       Label = "Bio",
-                                       Required = false,
-                                       Placeholder = null,
-                                       MaxLength = 2000
-                                   }); }
-                                <small class="form-text text-muted">
-                                    Introduce yourself to the players (max 2000 characters).
-                                </small>
-                            </div>
-                        </div>
-
-                        <hr />
-                        <div class="d-flex justify-content-between">
-                            <a asp-action="Profile" asp-route-id="@Model.DungeonMasterId"
-                               class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Back to Profile
-                            </a>
-                            <button type="submit" class="btn btn-warning">
-                                <i class="fas fa-save me-2"></i>Save Profile
-                            </button>
-                        </div>
-                    </form>
+                    <div class="col-md-8">
+                        @{ await Html.RenderPartialAsync("_MarkdownEditor", new MarkdownEditorViewModel
+                           {
+                               FieldName = "Bio",
+                               Value = Model.Bio,
+                               Label = "Bio",
+                               Required = false,
+                               Placeholder = null,
+                               MaxLength = 2000
+                           }); }
+                        <small class="form-text">
+                            Introduce yourself to the players (max 2000 characters).
+                        </small>
+                    </div>
                 </div>
-            </div>
+
+                <hr />
+
+                <div class="form-actions form-actions--stack">
+                    <a asp-action="Profile" asp-route-id="@Model.DungeonMasterId" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Profile
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2" aria-hidden="true"></i>Save Profile
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -83,6 +77,7 @@
 <partial name="_ImageCropDialog" />
 
 @section Styles {
+    <link rel="stylesheet" href="~/css/dm-profile-form.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
 }
 

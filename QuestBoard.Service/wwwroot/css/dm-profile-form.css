@@ -1,0 +1,14 @@
+/*
+ * The Dungeon Master profile form (both layouts). The card, labels, controls, help text, validation messages and
+ * the action row all come from the shared form rules; what is here is only the round photo, which is this form's
+ * own class so the still-global profile sheet never restyles it.
+ */
+@layer pages {
+  /* The current photo is a 128px circle with the glass border, on desktop and on the phone alike. */
+  .dm-profile-form-page .form-photo-round {
+    width: 128px;
+    height: 128px;
+    object-fit: cover;
+    border: 3px solid var(--qb-surface-glass-border);
+  }
+}

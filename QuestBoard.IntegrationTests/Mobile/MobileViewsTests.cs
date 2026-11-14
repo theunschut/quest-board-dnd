@@ -1291,12 +1291,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // DM EditProfile renders glass card form on mobile UA
+    // DM EditProfile is one view that serves both layouts
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /DungeonMaster/EditProfile/{id} renders dm-editprofile-card-mobile
-    /// glass card form and links dm-editprofile.mobile.css.
+    /// Mobile UA on /DungeonMaster/EditProfile/{id} answers 200 with the phone layout (the mobile-layout body
+    /// class), the profile form and its page sheet: EditProfile is one view that serves both layouts, so the
+    /// old phone card wrapper and phone sheet are gone.
     /// Requires DM authentication — EditProfile enforces DM ownership or Admin role.
     /// </summary>
     [Fact]
@@ -1312,8 +1313,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("dm-editprofile-card-mobile");
-        html.Should().Contain("dm-editprofile.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("form-actions");
+        html.Should().Contain("dm-profile-form.css");
+        html.Should().NotContain("dm-editprofile-card-mobile");
+        html.Should().NotContain("dm-editprofile.mobile.css");
     }
 
     // -----------------------------------------------------------------------

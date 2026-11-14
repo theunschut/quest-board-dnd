@@ -874,10 +874,11 @@
   }
 
   /*
-   * The fallback for a commit label too long to share a row with its exit: the same two buttons stacked, the commit
-   * first on screen. The markup order does not change, so the exit still comes first for a screen reader.
+   * The fallback for a commit label too long to share a row with its exit on a phone: the same two buttons stacked,
+   * the commit first on screen. It is a phone-layout rule only; on desktop the row stays one line. The markup order
+   * does not change, so the exit still comes first for a screen reader.
    */
-  .form-actions--stack {
+  .mobile-layout .form-actions--stack {
     flex-direction: column-reverse;
     align-items: stretch;
   }
