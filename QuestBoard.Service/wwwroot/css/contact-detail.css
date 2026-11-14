@@ -76,6 +76,11 @@
     color: inherit;
   }
 
+  /* The sentence sits on a glass card, where the muted tone measures under 4.5:1 over the brightest board pixel. */
+  .contact-detail-page .empty-state-text {
+    color: var(--qb-fg);
+  }
+
   .contact-detail-page .notes-actions {
     display: flex;
     justify-content: flex-end;
