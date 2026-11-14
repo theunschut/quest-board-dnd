@@ -122,6 +122,22 @@ public class MarkdownEditorMarkupTests : IClassFixture<WebApplicationFactoryBase
     [Theory]
     [InlineData(DesktopUserAgent, "desktop")]
     [InlineData(MobileUserAgent, "phone")]
+    public async Task DungeonMasterProfileForm_BioEditor_RendersEditorHintAndLabelUnderBothUserAgents(string userAgent, string layout)
+    {
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_dmprofile_{layout}", $"editor_markup_dmprofile_{layout}@test.com",
+            name: $"Editor Markup Profile {layout}", roles: ["DungeonMaster"]);
+
+        var html = await GetHtmlAsync(client, $"/DungeonMaster/EditProfile/{user.Id}", userAgent);
+
+        AssertEditorMarkup(html);
+        EditorTextarea.Matches(html).Should().HaveCount(1, "the profile form has one editor, the bio");
+        html.Should().Contain("data-editor-label=\"Bio\"");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent, "desktop")]
+    [InlineData(MobileUserAgent, "phone")]
     public async Task ContactDetails_NoteEditors_RenderEditorHintAndLabelUnderBothUserAgents(string userAgent, string layout)
     {
         var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
