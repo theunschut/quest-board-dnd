@@ -1,0 +1,26 @@
+/*
+ * Manage Categories on the desktop layout. The table sits in a responsive container inside its card, so below its
+ * natural width it scrolls inside the card and never widens the page. Column widths are classes, not inline values;
+ * the actions column keeps its buttons on one line.
+ */
+@layer pages {
+  .contact-categories-page .category-col-order {
+    width: 100px;
+  }
+
+  .contact-categories-page .category-col-contacts {
+    width: 112px;
+  }
+
+  .contact-categories-page .category-col-name {
+    min-width: 192px;
+  }
+
+  .contact-categories-page .category-col-actions {
+    white-space: nowrap;
+  }
+
+  .contact-categories-page .category-add-form {
+    margin-bottom: var(--qb-space-lg);
+  }
+}
