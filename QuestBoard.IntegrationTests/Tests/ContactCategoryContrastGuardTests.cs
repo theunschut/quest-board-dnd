@@ -167,21 +167,28 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
     [Fact]
     public void ContactCategoryContrastGuard_MobileFormTextLinkRule_SetsParchmentColourWithUnderlineIntact()
     {
-        var cssPath = ResolveCssPath("contact-form.mobile.css");
+        // The phone form no longer has a sheet of its own: the one .form-text a rule in components.css serves
+        // both layouts, so this fact reads it and shows the retired phone sheet is gone.
+        var cssPath = ResolveCssPath("components.css");
         var css = File.ReadAllText(cssPath);
-        var rule = ExtractCssRule(css, ".contact-form-card .form-text a {");
+        var rule = ExtractCssRule(css, ".form-text a {");
 
         rule.Should().NotBeEmpty(
-            because: $"contact-form.mobile.css at '{cssPath}' must contain the mirrored .contact-form-card .form-text a rule -- " +
-                     "fixing only the desktop rule would leave the mobile half of the gap rendering Bootstrap link blue");
+            because: $"components.css at '{cssPath}' must contain the .form-text a rule that serves the desktop and the phone layout -- " +
+                     "without it the phone 'Manage Categories' helper link would render Bootstrap link blue");
 
         var lowerRule = rule.ToLowerInvariant();
-        lowerRule.Should().Contain("#f4e4bc",
-            because: "the mobile 'Manage Categories' helper link must resolve to the parchment token, not Bootstrap's default link blue rgb(13,110,253)");
+        lowerRule.Should().Contain("color: var(--qb-link)",
+            because: "the helper link on both layouts must resolve to the link token, not Bootstrap's default link blue rgb(13,110,253)");
         lowerRule.Should().NotContain("#0d6efd",
             because: "the rule body must not merely restate Bootstrap's default link colour under a more specific selector");
         lowerRule.Should().NotContain("text-decoration: none",
             because: "the underline is the link's non-colour affordance now that it shares a hue with its surrounding text; suppressing it would violate WCAG 1.4.1");
+
+        var tokens = File.ReadAllText(ResolveCssPath("tokens.css"));
+        RatioOnCardSurface(tokens, "--qb-link").Should().BeGreaterThanOrEqualTo(4.5,
+            because: "the helper link is body-size text on the card surface, so it needs the 4.5:1 text bar over the lightest board pixel");
+
     }
 
     [Fact]
@@ -230,12 +237,16 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
         AssertHelperLinkPresentInsideFormText(desktopHtml, "desktop");
         AssertHelperLinkPresentInsideFormText(mobileHtml, "mobile");
 
+        // One view serves both layouts, so both render the hint inside the same card surface the shared
+        // .form-text a rule targets.
         desktopHtml.Should().Contain("modern-card",
-            because: "the desktop Contacts Create view must wrap its form in .modern-card, the surface the desktop card rules target -- " +
-                     "proving the two-stylesheet fix is necessary and not duplicated");
-        mobileHtml.Should().Contain("contact-form-card",
-            because: "the mobile Contacts Create view must wrap its form in .contact-form-card, the surface the contact-form.mobile.css rule targets -- " +
-                     "proving the two-stylesheet fix is necessary and not duplicated");
+            because: "the desktop Contacts Create view must wrap its form in .modern-card, the surface the shared card rules target");
+        mobileHtml.Should().Contain("modern-card",
+            because: "the phone Contacts Create view is the same view and must wrap its form in .modern-card too");
+        mobileHtml.Should().NotContain("contact-form-card",
+            because: "the phone-only card wrapper was retired with the phone view");
+        mobileHtml.Should().Contain("mobile-layout");
+        desktopHtml.Should().NotContain("mobile-layout");
     }
 
     // Locates the "Manage Categories" link and confirms it sits inside a form-text <small>

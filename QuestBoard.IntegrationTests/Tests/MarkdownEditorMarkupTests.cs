@@ -95,6 +95,30 @@ public class MarkdownEditorMarkupTests : IClassFixture<WebApplicationFactoryBase
         AssertEditorMarkup(html);
     }
 
+    [Theory]
+    [InlineData("create", DesktopUserAgent)]
+    [InlineData("create", MobileUserAgent)]
+    [InlineData("edit", DesktopUserAgent)]
+    [InlineData("edit", MobileUserAgent)]
+    public async Task ContactForms_RenderEditorHintAndLabelUnderBothUserAgents(string form, string userAgent)
+    {
+        var tag = $"{form}_{(userAgent == MobileUserAgent ? "phone" : "desktop")}";
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_contact_{tag}", $"editor_markup_contact_{tag}@test.com",
+            name: $"Editor Markup Contact {tag}", roles: ["DungeonMaster"]);
+
+        var url = "/Contacts/Create";
+        if (form == "edit")
+        {
+            var contact = await TestDataHelper.CreateTestContactAsync(_factory.Services, user.Id, $"Editor Contact {tag}", groupId: 1);
+            url = $"/Contacts/Edit/{contact.Id}";
+        }
+
+        var html = await GetHtmlAsync(client, url, userAgent);
+
+        AssertEditorMarkup(html);
+    }
+
     [Fact]
     public async Task QuestCreate_EditorToken_ReachesTheScriptThroughAMetaElement()
     {

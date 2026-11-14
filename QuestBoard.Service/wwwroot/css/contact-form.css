@@ -1,0 +1,65 @@
+/*
+ * The contact forms (Create and Edit, both layouts). Everything the foundation already styles (cards, labels,
+ * controls, help text, validation, buttons and the action row) is left to it; what is here is the picture block and
+ * the tag box, which only these forms have.
+ */
+@layer pages {
+  /*
+   * The picture block shares the top edge of the field stack: the file input sits level with the Name field and the
+   * current picture, on the edit form, goes under the input and its hint so it never pushes the input down.
+   */
+  .contact-form-page .form-picture-current {
+    margin-top: var(--qb-space-sm);
+  }
+
+  /* The current picture is square, never wider than 200px and never wider than its column. */
+  .contact-form-page .form-picture-thumb {
+    width: 100%;
+    max-width: 200px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+  }
+
+  /*
+   * The tag box. Tagify copies the input's form-control class onto its wrapper, so the box already has the shared
+   * field border, fill and radius; what is set here is only the library's own custom properties, so the chips are
+   * the wood action colour, the typing area is ink on the paper field, and the suggestions sit on the same paper.
+   * The wrapper is a column of chips and a bare typing span, not an input, so the focus ring is drawn on the
+   * wrapper while any part of it holds focus.
+   */
+  .contact-form-page .tagify {
+    --tag-bg: var(--qb-action);
+    --tag-hover: var(--qb-action-hover);
+    --tag-text-color: var(--qb-action-fg);
+    --tag-text-color--edit: var(--qb-action-fg);
+    --tag-remove-btn-color: var(--qb-action-fg);
+    --tag-remove-btn-bg--hover: var(--qb-danger);
+    --tag-invalid-color: var(--qb-danger);
+    --tag-invalid-bg: color-mix(in srgb, var(--qb-danger) 55%, transparent);
+    --tag-remove-bg: color-mix(in srgb, var(--qb-danger) 55%, transparent);
+    --tags-border-color: var(--qb-control-border);
+    --tags-hover-border-color: var(--qb-control-border);
+    --tags-focus-border-color: var(--qb-control-border);
+    --input-color: var(--qb-ink);
+    --placeholder-color: var(--qb-ink-muted);
+    --placeholder-color-focus: var(--qb-ink-muted);
+  }
+
+  .contact-form-page .tagify:focus-within {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  /* The suggestion list is appended to the page body, outside the form, so it is themed by its own class. */
+  .tagify__dropdown {
+    --tagify-dd-color-primary: var(--qb-action);
+    --tagify-dd-text-color: var(--qb-ink);
+    --tagify-dd-bg-color: var(--qb-control-bg);
+  }
+
+  /* On the phone layout the tag box keeps a tap-sized target. */
+  .mobile-layout .contact-form-page .tagify {
+    min-height: var(--qb-hit-min);
+  }
+}

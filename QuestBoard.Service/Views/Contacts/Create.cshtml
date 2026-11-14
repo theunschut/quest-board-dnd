@@ -5,46 +5,46 @@
     ViewData["Title"] = "Create New Contact";
 }
 
-<div class="contacts-page">
+<div class="contact-form-page form-page">
     <div class="card modern-card">
         <div class="card-header modern-card-header">
-            <h4 class="mb-0">
-                <i class="fas fa-plus me-2"></i>
+            <h1 class="mb-0">
+                <i class="fas fa-plus me-2" aria-hidden="true"></i>
                 Create New Contact
-            </h4>
+            </h1>
         </div>
         <div class="card-body modern-card-body">
             <form asp-action="Create" method="post" enctype="multipart/form-data">
-                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div asp-validation-summary="All" class="mb-3"></div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
                         <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
                         <input type="file" name="CroppedPictureFile" hidden />
-                        <small class="form-text text-muted">Upload a contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
-                        <span asp-validation-for="ContactImageFile" class="text-danger"></span>
+                        <small class="form-text">Upload a contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
+                        <span asp-validation-for="ContactImageFile"></span>
                         <div id="fileSizeError" class="crop-error" role="alert" hidden><i class="fas fa-exclamation-circle" aria-hidden="true"></i><span data-crop-error-text></span></div>
                     </div>
 
                     <div class="col-md-8">
                         <div class="mb-3">
-                            <label asp-for="Name" class="form-label">Name <span class="text-danger">*</span></label>
+                            <label asp-for="Name" class="form-label">Name <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
                             <input asp-for="Name" class="form-control" placeholder="Enter contact name" />
-                            <span asp-validation-for="Name" class="text-danger"></span>
+                            <span asp-validation-for="Name"></span>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label asp-for="TownCity" class="form-label">Town/City</label>
                                 <input asp-for="TownCity" class="form-control" placeholder="e.g. Waterdeep" />
-                                <span asp-validation-for="TownCity" class="text-danger"></span>
+                                <span asp-validation-for="TownCity"></span>
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label asp-for="SubLocation" class="form-label">Sub-location</label>
                                 <input asp-for="SubLocation" class="form-control" placeholder="e.g. The Guilded Rose Smithy" />
-                                <span asp-validation-for="SubLocation" class="text-danger"></span>
+                                <span asp-validation-for="SubLocation"></span>
                             </div>
                         </div>
                     </div>
@@ -53,9 +53,9 @@
                 <div class="mb-3 contact-tags-input">
                     <label asp-for="TagsInput" class="form-label">Tags</label>
                     <input asp-for="TagsInput" class="form-control" id="TagsInput" placeholder="Add a tag and press Enter…"
-                       data-whitelist="@System.Text.Json.JsonSerializer.Serialize(Model.AvailableTagNames)" />
-                    <span asp-validation-for="TagsInput" class="text-danger"></span>
-                    <small class="form-text text-muted">Optional — e.g. shopkeeper, quest giver</small>
+                           data-whitelist="@System.Text.Json.JsonSerializer.Serialize(Model.AvailableTagNames)" />
+                    <span asp-validation-for="TagsInput"></span>
+                    <small class="form-text">Optional — e.g. shopkeeper, quest giver</small>
                 </div>
 
                 <div class="mb-3">
@@ -65,14 +65,14 @@
                         <select asp-for="CategoryId" asp-items="Model.CategoryOptions" class="form-select">
                             <option value="">— None —</option>
                         </select>
-                        <span asp-validation-for="CategoryId" class="text-danger"></span>
+                        <span asp-validation-for="CategoryId"></span>
                     }
                     else
                     {
                         <select class="form-select" disabled>
                             <option>— None —</option>
                         </select>
-                        <small class="form-text text-muted">
+                        <small class="form-text">
                             No categories yet.
                             <a asp-controller="ContactCategoryManagement" asp-action="Index">Manage Categories</a>
                             to create one.
@@ -91,12 +91,12 @@
 
                 <hr />
 
-                <div class="d-flex justify-content-between">
+                <div class="form-actions">
                     <a href="@Url.Action("Index")" class="btn btn-secondary">
-                        <i class="fas fa-times me-2"></i>Cancel
+                        <i class="fas fa-times me-2" aria-hidden="true"></i>Cancel
                     </a>
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-plus me-2"></i>Create Contact
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-2" aria-hidden="true"></i>Create Contact
                     </button>
                 </div>
             </form>
@@ -107,8 +107,9 @@
 <partial name="_ImageCropDialog" />
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/tagify-vendor.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/contact-form.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
 }
 
 @section Scripts {

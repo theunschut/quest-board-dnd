@@ -43,10 +43,11 @@ public class CharactersConversionGuardTests
     [
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
+        "QuestBoard.Service/Views/Contacts/Create.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "contact-form.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -54,6 +55,7 @@ public class CharactersConversionGuardTests
     {
         ["QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml"] = [],
         ["QuestBoard.Service/Views/Characters/Details.cshtml"] = ["markdown-content.css", "character-detail.css"],
+        ["QuestBoard.Service/Views/Contacts/Create.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
@@ -63,6 +65,7 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.Mobile.cshtml",
         "QuestBoard.Service/Views/Characters/Details.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/character-detail.mobile.css",
+        "QuestBoard.Service/Views/Contacts/Create.Mobile.cshtml",
     ];
 
     private const string CropDialogPartial = "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml";
@@ -70,7 +73,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "contact-form.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -107,9 +110,9 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/wwwroot/js/contact-tags.js",
         "QuestBoard.Service/wwwroot/css/tagify-vendor.css",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
-        "QuestBoard.Service/Views/Contacts/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/contact-form.css",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.Mobile.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
@@ -371,7 +374,7 @@ public class CharactersConversionGuardTests
         Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
             .Select(m => m.Value).Should().BeEmpty("contact-tags.js defines no global");
 
-        foreach (var view in new[] { "Create", "Create.Mobile", "Edit", "Edit.Mobile" })
+        foreach (var view in new[] { "Create", "Edit", "Edit.Mobile" })
         {
             var text = ReadRepoFile($"QuestBoard.Service/Views/Contacts/{view}.cshtml");
             text.Should().NotContain("Html.Raw", $"{view} must not print the suggestion list as raw output");
