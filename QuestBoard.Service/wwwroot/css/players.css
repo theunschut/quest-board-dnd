@@ -1,0 +1,10 @@
+/*
+ * The Players tables: a name link that is a real target. The link is underlined in wood by the table's own link colour;
+ * here it only gets the height a pointer target needs.
+ */
+@layer pages {
+  .players-page .players-name-link {
+    display: inline-block;
+    min-height: var(--qb-space-lg);
+  }
+}

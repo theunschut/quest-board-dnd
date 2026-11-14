@@ -1,0 +1,5 @@
+/* Puts the self-hosted Tagify stylesheet into the vendor layer, next to Bootstrap and Font Awesome.
+   Linked on its own, that file is unlayered and would outrank every layered rule on the page. In the
+   lowest layer it loses to the contact form sheets without a specificity fight. The path is
+   versioned, so a new release is a new path. */
+@import url("../lib/tagify-4.38.0/tagify.css") layer(vendor);

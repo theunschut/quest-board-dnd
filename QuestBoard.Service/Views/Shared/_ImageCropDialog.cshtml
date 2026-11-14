@@ -1,0 +1,70 @@
+@*
+    The shared photo crop dialog. It renders the same under both layouts; only the stage height follows the layout, from
+    image-crop.css. A host form supplies the file input (data-crop-input, data-crop-output-name, data-crop-aspect-ratio),
+    the hidden file input the cropped picture is written to, an optional Re-crop button (data-crop-original-url) and the
+    #fileSizeError chip beside the file input, because a refused file never opens this dialog.
+*@
+<div class="modal fade" id="cropPhotoModal" tabindex="-1" aria-labelledby="cropPhotoModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="cropPhotoModalLabel">
+                    <i class="fas fa-crop-alt me-2" aria-hidden="true"></i>Crop Your Photo
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="crop-instruction">
+                    Drag to reposition, use the corner handles to resize, or use the buttons below. With the square selected,
+                    arrow keys move it and Shift plus an arrow key resizes it. We'll use a square crop — if you skip this,
+                    we'll center one automatically.
+                </p>
+                <div class="crop-stage">
+                    <cropper-canvas background>
+                        <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
+                        <cropper-shade hidden></cropper-shade>
+                        <cropper-handle action="move" plain></cropper-handle>
+                        <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1"
+                                           tabindex="0" role="group" aria-roledescription="crop selection"
+                                           aria-label="Crop selection. Arrow keys move it, Shift plus arrow keys resize it">
+                            <cropper-grid bordered covered aria-hidden="true"></cropper-grid>
+                            <cropper-crosshair centered aria-hidden="true"></cropper-crosshair>
+                            <cropper-handle action="move"></cropper-handle>
+                            <cropper-handle action="n-resize"></cropper-handle>
+                            <cropper-handle action="e-resize"></cropper-handle>
+                            <cropper-handle action="s-resize"></cropper-handle>
+                            <cropper-handle action="w-resize"></cropper-handle>
+                            <cropper-handle action="ne-resize"></cropper-handle>
+                            <cropper-handle action="nw-resize"></cropper-handle>
+                            <cropper-handle action="se-resize"></cropper-handle>
+                            <cropper-handle action="sw-resize"></cropper-handle>
+                        </cropper-selection>
+                    </cropper-canvas>
+                </div>
+                <div class="crop-controls" role="group" aria-label="Adjust crop">
+                    <div class="crop-controls-group crop-controls-group--move">
+                        <button type="button" class="btn btn-secondary" data-crop-action="up" aria-label="Move up"><i class="fas fa-arrow-up" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-secondary" data-crop-action="down" aria-label="Move down"><i class="fas fa-arrow-down" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-secondary" data-crop-action="left" aria-label="Move left"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-secondary" data-crop-action="right" aria-label="Move right"><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                    </div>
+                    <div class="crop-controls-group crop-controls-group--size">
+                        <button type="button" class="btn btn-secondary" data-crop-action="grow"><i class="fas fa-plus me-2" aria-hidden="true"></i>Larger</button>
+                        <button type="button" class="btn btn-secondary" data-crop-action="shrink"><i class="fas fa-minus me-2" aria-hidden="true"></i>Smaller</button>
+                        <button type="button" class="btn btn-secondary" data-crop-action="reset"><i class="fas fa-rotate-left me-2" aria-hidden="true"></i>Reset</button>
+                    </div>
+                </div>
+                <p class="crop-status visually-hidden" role="status" aria-live="polite"></p>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
+                    <i class="fas fa-times me-2" aria-hidden="true"></i>Discard Photo
+                </button>
+                <button type="button" class="btn btn-primary" id="cropConfirmBtn">
+                    <i class="fas fa-check me-2" aria-hidden="true"></i>Use This Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

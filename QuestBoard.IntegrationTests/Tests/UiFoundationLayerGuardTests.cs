@@ -80,11 +80,28 @@ public class UiFoundationLayerGuardTests
         ("agenda.mobile.css", "pages"),
         ("calendar.mobile.css", "pages"),
         ("calendar.css", "pages"),
+        ("image-crop.css", "pages"),
+        ("character-detail.css", "pages"),
+        ("character-form.css", "pages"),
+        ("contact-form.css", "pages"),
+        ("contact-detail.css", "pages"),
+        ("dm-profile-form.css", "pages"),
+        ("contact-categories.css", "pages"),
+        ("contact-categories.mobile.css", "pages"),
+        ("member-cards.css", "pages"),
+        ("characters.css", "pages"),
+        ("characters.mobile.css", "pages"),
+        ("contacts.css", "pages"),
+        ("contacts.mobile.css", "pages"),
+        ("dm-profile.css", "pages"),
+        ("dm-profile.mobile.css", "pages"),
+        ("players.css", "pages"),
+        ("players.mobile.css", "pages"),
     ];
 
     // The layered files that may hold no colour literal: every one except the token file.
     private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css", "group-picker.css",
-        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css", "events-overview.css", "events-overview.mobile.css", "agenda.css", "agenda.mobile.css", "calendar.mobile.css", "calendar.css"];
+        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css", "events-overview.css", "events-overview.mobile.css", "agenda.css", "agenda.mobile.css", "calendar.mobile.css", "calendar.css", "image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css"];
 
     private static readonly Regex LocalStylesheetHref = new(
         @"<link\b[^>]*\brel=""stylesheet""[^>]*\bhref=""~/css/(?<name>[\w.\-]+)\.css""[^>]*>",

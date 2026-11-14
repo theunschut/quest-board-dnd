@@ -1,6 +1,7 @@
 @using QuestBoard.Service.ViewModels.QuestLogViewModels
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Extensions
+@using QuestBoard.Service.ViewModels.Shared
 @model QuestLogDetailsViewModel
 @{
     ViewData["Title"] = $"Quest Log: {Model.Quest.Title}";
@@ -91,12 +92,13 @@
                                             @if (player.Character != null)
                                             {
                                                 <span class="quest-log-adventurer-character">
-                                                    <img src="@Url.Action("GetCroppedPicture", "Characters", new { id = player.Character.Id })"
-                                                         alt=""
-                                                         class="avatar-32" />
-                                                    <span class="avatar-32 avatar-32--placeholder" hidden aria-hidden="true">
-                                                        <i class="fas fa-user" aria-hidden="true"></i>
-                                                    </span>
+                                                    @await Html.PartialAsync("_CharacterAvatar", new CharacterAvatarViewModel
+                                                    {
+                                                        Id = player.Character.Id,
+                                                        Name = player.Character.Name,
+                                                        HasPicture = player.Character.HasProfilePicture,
+                                                        Decorative = true
+                                                    })
                                                     <span>@player.Character.Name</span>
                                                 </span>
                                             }

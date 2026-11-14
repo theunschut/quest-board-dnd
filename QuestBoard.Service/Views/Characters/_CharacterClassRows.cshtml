@@ -1,0 +1,73 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.CharacterViewModels
+@model CharacterViewModel
+@*
+    The class rows of the character forms: the rows the character already has (one empty row when it has none),
+    the template a new row is cloned from, and the button that adds one. The template is the only copy of the row
+    markup that a script uses, so the script builds nothing from strings; its index token is replaced as the row
+    is added. The first row has no Remove, so a character always keeps at least one class.
+*@
+@{
+    var rowCount = Math.Max(Model.Classes.Count, 1);
+}
+
+<div id="class-list">
+    @for (var i = 0; i < rowCount; i++)
+    {
+        var item = i < Model.Classes.Count ? Model.Classes[i] : null;
+        <div class="class-entry mb-2" data-class-row>
+            <div class="row g-2">
+                <div class="col-12 col-md-5">
+                    <select name="Classes[@i].Class" class="form-select" aria-label="Class" required>
+                        <option value="">Select Class</option>
+                        @foreach (var dndClass in Enum.GetValues<DndClass>())
+                        {
+                            <option value="@((int)dndClass)" selected="@(item is not null && item.Class == dndClass)">@dndClass</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <input type="number" name="Classes[@i].ClassLevel" class="form-control" aria-label="Class level"
+                           value="@(item?.ClassLevel ?? 1)" placeholder="Level" min="1" max="20" required />
+                </div>
+                @if (i > 0)
+                {
+                    <div class="col-12 col-md-3">
+                        <button type="button" class="btn btn-danger class-remove remove-class">
+                            <i class="fas fa-trash me-2" aria-hidden="true"></i>Remove
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<template id="class-row-template">
+    <div class="class-entry mb-2" data-class-row>
+        <div class="row g-2">
+            <div class="col-12 col-md-5">
+                <select name="Classes[__index__].Class" class="form-select" aria-label="Class" required>
+                    <option value="">Select Class</option>
+                    @foreach (var dndClass in Enum.GetValues<DndClass>())
+                    {
+                        <option value="@((int)dndClass)">@dndClass</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <input type="number" name="Classes[__index__].ClassLevel" class="form-control" aria-label="Class level"
+                       value="1" placeholder="Level" min="1" max="20" required />
+            </div>
+            <div class="col-12 col-md-3">
+                <button type="button" class="btn btn-danger class-remove remove-class">
+                    <i class="fas fa-trash me-2" aria-hidden="true"></i>Remove
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<button type="button" class="btn btn-sm btn-secondary" id="add-class">
+    <i class="fas fa-plus me-1" aria-hidden="true"></i>Add Another Class
+</button>

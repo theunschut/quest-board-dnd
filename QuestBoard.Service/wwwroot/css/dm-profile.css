@@ -1,25 +1,43 @@
-/* DM Profile Photo */
-.dm-profile-photo {
-    width: 128px;
-    height: 128px;
-    object-fit: cover;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-}
+/*
+ * The Dungeon Master profile on the desktop layout: the 128px photo or its placeholder beside the role line and the
+ * edit action, and the quest history table. The profile card is the page-title card; About and Quest History are
+ * section cards.
+ */
+@layer pages {
+  .dm-profile-page .dm-profile-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-lg);
+  }
 
-/* DM Profile Placeholder (no photo uploaded yet) */
-.dm-profile-placeholder {
+  .dm-profile-page .dm-profile-photo,
+  .dm-profile-page .dm-profile-placeholder {
+    flex: none;
     width: 128px;
     height: 128px;
+    border: 3px solid var(--qb-surface-glass-border);
+    border-radius: 50%;
+  }
+
+  .dm-profile-page .dm-profile-photo {
+    object-fit: cover;
+  }
+
+  .dm-profile-page .dm-profile-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 3px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.05);
-}
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
 
-/* Deadly difficulty badge — Bootstrap does not include purple */
-.badge.bg-purple {
-    background-color: #6f42c1;
-    color: white;
+  .dm-profile-page .dm-profile-role {
+    margin: 0 0 var(--qb-space-md);
+    color: var(--qb-fg-muted);
+  }
+
+  .dm-profile-page .dm-quest-date {
+    white-space: nowrap;
+  }
 }

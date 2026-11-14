@@ -1655,7 +1655,7 @@ Plans:
 **Goal:** Convert the sign-in, profile and board-picker pages; the picker first because it is the one S1 that stops a keyboard user entering the app at all. Convert the sign-in, profile and board-picker pages to the foundation and merge the five approved twins, so a keyboard user can enter the app and every account page reads at 4.5:1.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the order puts it after Phase 95 but it has no dependency on it)
-**Plans:** 12/12 plans executed
+**Plans:** 12/12 plans complete
 
 **Scope:**
 
@@ -1761,7 +1761,7 @@ Plans:
 **Goal:** Convert the calendar, agenda and events overview with their shared partials, keeping the date helpers and the linked-board entries intact. Convert the calendar, agenda, events overview, event details and series pages and their shared partials to the foundation, with a desktop month that fits without scrolling and every date still rendered through the wall-clock and local-time helpers.
 **Requirements**: TBD
 **Depends on:** Phase 94 and Phase 95 (Phase 95 patches the calendar vote UI this phase inherits)
-**Plans:** 17 plans
+**Plans:** 17/17 plans complete
 
 **Scope:**
 
@@ -1814,72 +1814,72 @@ Plans:
 
 **Wave 1**
 
-- [ ] 97-01-PLAN.md — Opening operator checkpoint (Phase 96 finished, SQL Server, Audit Board, review-ref pushes), Linux scratch setup, capture tracer
+- [x] 97-01-PLAN.md — Opening operator checkpoint (Phase 96 finished, SQL Server, Audit Board, review-ref pushes), Linux scratch setup, capture tracer
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 97-02-PLAN.md — Fixtures through the app forms, frozen baseline, BEFORE capture and BEFORE date-line text
+- [x] 97-02-PLAN.md — Fixtures through the app forms, frozen baseline, BEFORE capture and BEFORE date-line text
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 97-03-PLAN.md — Gate 1 package A: calendar port mockups with real data, truncation strips, narrow header, legend, fit and behaviour checks
-- [ ] 97-04-PLAN.md — Tracer: today highlight from the board clock, behaviour test, ambient-clock guard additions
+- [x] 97-03-PLAN.md — Gate 1 package A: calendar port mockups with real data, truncation strips, narrow header, legend, fit and behaviour checks
+- [x] 97-04-PLAN.md — Tracer: today highlight from the board clock, behaviour test, ambient-clock guard additions
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 97-05-PLAN.md — Gate 1 package B: phone agenda and Events/Details reorder mockups, Agenda merge note, orphan review branch, Gate 1 (operator, redraw loop)
-- [ ] 97-06-PLAN.md — Date lines to Html.WallClock with byte-identical text (new server-only styles, nl-NL proof), area conversion guard
+- [x] 97-05-PLAN.md — Gate 1 package B: phone agenda and Events/Details reorder mockups, Agenda merge note, orphan review branch, Gate 1 (operator, redraw loop)
+- [x] 97-06-PLAN.md — Date lines to Html.WallClock with byte-identical text (new server-only styles, nl-NL proof), area conversion guard
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 97-07-PLAN.md — Availability partials and Events/Index on both layouts
+- [x] 97-07-PLAN.md — Availability partials and Events/Index on both layouts
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 97-08-PLAN.md — Events/Details: approved reorder, script module, phone overflow fix
+- [x] 97-08-PLAN.md — Events/Details: approved reorder, script module, phone overflow fix
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 97-09-PLAN.md — Events/Create and Edit, series form module, recurrence label fix
+- [x] 97-09-PLAN.md — Events/Create and Edit, series form module, recurrence label fix
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 97-10-PLAN.md — Series/Details
+- [x] 97-10-PLAN.md — Series/Details
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 97-11-PLAN.md — Agenda on both layouts
+- [x] 97-11-PLAN.md — Agenda on both layouts
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 97-12-PLAN.md — Phone calendar with the approved additions, Quest Details phone partial hidden words
+- [x] 97-12-PLAN.md — Phone calendar with the approved additions, Quest Details phone partial hidden words
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 97-13-PLAN.md — calendar.css into the pages layer, 4.5:1 weekday header, Quest Details re-verified, Phase 95 exceptions retired
+- [x] 97-13-PLAN.md — calendar.css into the pages layer, 4.5:1 weekday header, Quest Details re-verified, Phase 95 exceptions retired
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
-- [ ] 97-14-PLAN.md — Server-rendered compact month, header, legend, linked-board guards, no-script sweep
+- [x] 97-14-PLAN.md — Server-rendered compact month, header, legend, linked-board guards, no-script sweep
 
 **Wave 13** *(blocked on Wave 12 completion)*
 
-- [ ] 97-15-PLAN.md — calendar-month.js: slots, "+N more" day panel, detail card; fit and behaviour checks
+- [x] 97-15-PLAN.md — calendar-month.js: slots, "+N more" day panel, detail card; fit and behaviour checks
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
-- [ ] 97-16-PLAN.md — Closing guards, zero counts, untouched-paths diff, recorded exceptions, full AFTER, accessibility table
+- [x] 97-16-PLAN.md — Closing guards, zero counts, untouched-paths diff, recorded exceptions, full AFTER, accessibility table
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
-- [ ] 97-17-PLAN.md — Gate 2 review sheet and orphan review branch, Gate 2 (operator, redraw loop), release handoff
+- [x] 97-17-PLAN.md — Gate 2 review sheet and orphan review branch, Gate 2 (operator, redraw loop), release handoff
 
 ### Phase 98: Characters, Contacts, DM profile and Players UI conversion
 
 **Goal:** Convert characters, contacts, categories, the DM profile and the players list, and the image crop dialog. Convert characters, contacts, contact categories, the DM profile and the players list, with the image crop dialog and the six approved twin merges, to the foundation, keeping every field and action and fixing the editor keyboard trap and the dialog findings.
 **Requirements**: TBD
 **Depends on:** Phase 94 and Phase 95 (Phase 95 fixes the Markdown editor keyboard trap this phase verifies on six pages)
-**Plans:** 0 plans
+**Plans:** 23/23 plans executed
 
 **Scope:**
 
@@ -1943,7 +1943,94 @@ Plus, specific to this phase: the crop dialog meets 2.5.7 per the answer to Q-13
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase to break down)
+**Wave 1**
+
+- [x] 98-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433, ports 8310/8311, p98 fixtures approved, email suppression forced, migrator suite yes or no), Linux scratch setup, capture tracer
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 98-02-PLAN.md — p98 accounts and the five P98 boards, every D-11 fixture through the app forms (every empty state on a named route), fixtures.json, credentials, each key checked on its page under both User-Agents
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 98-03-PLAN.md — Frozen baseline on 8311, route manifest, starting test inventory, BEFORE capture with crop-dialog, editor-keyboard and date records and a BEFORE value per owned audit finding
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 98-04-PLAN.md — Gate 1 package A: crop dialog mockups with the control row and behaviour check, form action row, image block, Characters Create/Edit merge proposal
+- [x] 98-05-PLAN.md — Tracer: character picture placeholder rendered server-side (repository flag, avatar partial, Quest pages), area guard
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 98-06-PLAN.md — Gate 1 package B: look check against Direction A per page type, notes panel, Main badge, Manage table, merged Characters/Details options
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 98-07-PLAN.md — Gate 1 local sheet, items 1 to 15 and assumptions, Gate 1 (operator, redraw loop)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 98-08-PLAN.md — Form contract in components.css, ContactCategoryManagement/Edit merged, Quest and Events forms on the shared rules only on an explicit Gate 1 yes
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [x] 98-09-PLAN.md — Crop dialog core: shared partial, module with controls and keys, layered sheet, all ten hosts swapped together
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [x] 98-10-PLAN.md — Crop dialog guards, image-crop.css out of the global list, live probe, 5 MB check and sweep on every host
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [x] 98-11-PLAN.md — Characters/Details merged, confirm module, picture only behind the has-picture value
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [x] 98-12-PLAN.md — Contacts forms: Tagify in the vendor layer, tag module from a data attribute
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [x] 98-13-PLAN.md — Contacts Create and Edit merged on the form contract and one shared sheet
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [x] 98-14-PLAN.md — Contacts/Details merged with the glass notes panel
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [x] 98-15-PLAN.md — DungeonMaster/EditProfile merged
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [x] 98-16-PLAN.md — Manage Categories twins: responsive table, phone heading, server-built confirmation
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [x] 98-17-PLAN.md — Characters Create and Edit: class-row template module, picture only behind the has-picture value, merged on an explicit Gate 1 yes or converted as twins
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [x] 98-18-PLAN.md — Characters list twins, shared card sheet, static Main badge, picture only behind the has-picture value
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [x] 98-19-PLAN.md — Contacts list twins
+
+**Wave 19** *(blocked on Wave 18 completion)*
+
+- [x] 98-20-PLAN.md — Dungeon Master profile twins, wall-clock dates, last global area sheet removed
+
+**Wave 20** *(blocked on Wave 19 completion)*
+
+- [x] 98-21-PLAN.md — Players twins, both empty states, page heading only on an explicit Gate 1 yes
+
+**Wave 21** *(blocked on Wave 20 completion)*
+
+- [x] 98-22-PLAN.md — Closing guards, zero counts, untouched-paths diff, exceptions, full AFTER with crop, editor and look checks, migrator suite if approved, finding-to-plan trace of the owned audit findings
+
+**Wave 22** *(blocked on Wave 21 completion)*
+
+- [x] 98-23-PLAN.md — Gate 2 local sheet with the owned findings and inherited questions, Gate 2 (operator, gap-closure loop), v6.3.0 release handoff
 
 ### Phase 99: Shop and Shop management UI conversion
 

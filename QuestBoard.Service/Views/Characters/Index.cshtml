@@ -5,160 +5,146 @@
     ViewData["Title"] = "Characters";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/member-cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/characters.css" asp-append-version="true" />
+}
+
 <div class="characters-page">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>
-            <i class="fas fa-people-group me-2 text-warning"></i>
-            Characters
-        </h1>
-        <a href="@Url.Action("Create")" class="btn btn-warning">
-            <i class="fas fa-plus me-2"></i>Create New Character
-        </a>
+    <div class="card modern-card mb-4">
+        <div class="card-header modern-card-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <h1 class="mb-0">
+                <i class="fas fa-people-group me-2" aria-hidden="true"></i>Characters
+            </h1>
+            <a href="@Url.Action("Create")" class="btn btn-primary">
+                <i class="fas fa-plus me-2" aria-hidden="true"></i>Create New Character
+            </a>
+        </div>
     </div>
 
-    <div class="card modern-card mb-4">
+    <section class="card modern-card modern-card--aside characters-section mb-4" aria-labelledby="my-characters-title">
         <div class="card-header modern-card-header">
-            <h3 class="mb-0">
-                <i class="fas fa-user-circle me-2 text-success"></i>
-                My Characters
-            </h3>
+            <h2 class="mb-0" id="my-characters-title">
+                <i class="fas fa-user-circle me-2" aria-hidden="true"></i>My Characters
+            </h2>
         </div>
         <div class="card-body modern-card-body">
             @if (Model.MyCharacters.Any())
             {
-                <div class="character-grid">
+                <div class="member-grid">
                     @foreach (var character in Model.MyCharacters)
                     {
-                        <div class="character-card @(character.Status == CharacterStatus.Dead ? "character-dead" : character.Status == CharacterStatus.Retired ? "character-retired" : "")">
-                            <a href="@Url.Action("Details", new { id = character.Id })" class="text-decoration-none">
-                                <div class="character-card-content">
-                                    <div class="character-image">
-                                        @if (character.HasProfilePicture)
+                        var statusClass = character.Status == CharacterStatus.Dead ? " member-card--dead" : character.Status == CharacterStatus.Retired ? " member-card--retired" : string.Empty;
+                        <div class="character-card member-card modern-card modern-card--interactive@(statusClass)">
+                            <div class="member-card-media">
+                                @if (character.HasProfilePicture)
+                                {
+                                    <img class="member-card-image" src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="" />
+                                }
+                                else
+                                {
+                                    <div class="member-card-placeholder" aria-hidden="true">
+                                        <i class="fas fa-user fa-3x"></i>
+                                    </div>
+                                }
+                                @if (character.Role == CharacterRole.Main || character.Status != CharacterStatus.Active)
+                                {
+                                    <div class="member-card-badges">
+                                        @if (character.Role == CharacterRole.Main)
                                         {
-                                            <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="@character.Name" />
-                                        }
-                                        else
-                                        {
-                                            <div class="character-placeholder">
-                                                <i class="fas fa-user fa-3x"></i>
-                                            </div>
+                                            <span class="badge badge-main"><i class="fas fa-star me-1" aria-hidden="true"></i>Main</span>
                                         }
                                         @if (character.Status == CharacterStatus.Dead)
                                         {
-                                            <div class="dead-badge">
-                                                <i class="fas fa-skull"></i> Dead
-                                            </div>
+                                            <span class="badge bg-secondary"><i class="fas fa-skull me-1" aria-hidden="true"></i>Dead</span>
                                         }
                                         @if (character.Status == CharacterStatus.Retired)
                                         {
-                                            <div class="retired-badge">
-                                                <i class="fas fa-moon"></i> Retired
-                                            </div>
-                                        }
-                                        @if (character.Role == CharacterRole.Main)
-                                        {
-                                            <div class="main-badge">
-                                                <i class="fas fa-star"></i> Main
-                                            </div>
+                                            <span class="badge bg-info"><i class="fas fa-moon me-1" aria-hidden="true"></i>Retired</span>
                                         }
                                     </div>
-                                    <div class="character-info">
-                                        <h5 class="character-name">@character.Name</h5>
-                                        <p class="character-class mb-1">
-                                            @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))
-                                        </p>
-                                        <p class="character-level mb-0">
-                                            <i class="fas fa-shield-alt me-1"></i>Level @character.Level
-                                        </p>
-                                    </div>
-                                </div>
-                            </a>
+                                }
+                            </div>
+                            <div class="member-card-body">
+                                <h3 class="member-card-name"><a class="row-nav-link" href="@Url.Action("Details", new { id = character.Id })">@character.Name</a></h3>
+                                <p class="member-card-line member-card-line--strong">@string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</p>
+                                <p class="member-card-line"><i class="fas fa-shield-alt me-1" aria-hidden="true"></i>Level @character.Level</p>
+                            </div>
                         </div>
                     }
                 </div>
             }
             else
             {
-                <div class="text-center py-5">
-                    <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
-                    <h4>No Characters Yet</h4>
-                    <p class="text-muted">Create your first character to get started!</p>
-                    <a href="@Url.Action("Create")" class="btn btn-warning">
-                        <i class="fas fa-plus me-2"></i>Create Character
+                <div class="empty-state">
+                    <i class="fas fa-users-slash empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Characters Yet</h2>
+                    <p class="empty-state-text">Create your first character to get started!</p>
+                    <a href="@Url.Action("Create")" class="btn btn-secondary">
+                        <i class="fas fa-plus me-2" aria-hidden="true"></i>Create Character
                     </a>
                 </div>
             }
         </div>
-    </div>
+    </section>
 
-    <div class="card modern-card">
+    <section class="card modern-card modern-card--aside characters-section mb-4" aria-labelledby="roster-title">
         <div class="card-header modern-card-header">
-            <h3 class="mb-0">
-                <i class="fas fa-users me-2 text-primary"></i>
-                Character Roster
-            </h3>
+            <h2 class="mb-0" id="roster-title">
+                <i class="fas fa-users me-2" aria-hidden="true"></i>Character Roster
+            </h2>
         </div>
         <div class="card-body modern-card-body">
             @if (Model.OtherCharacters.Any())
             {
-                <div class="character-grid">
+                <div class="member-grid">
                     @foreach (var character in Model.OtherCharacters)
                     {
-                        <div class="character-card @(character.Status == CharacterStatus.Dead ? "character-dead" : character.Status == CharacterStatus.Retired ? "character-retired" : "")">
-                            <a href="@Url.Action("Details", new { id = character.Id })" class="text-decoration-none">
-                                <div class="character-card-content">
-                                    <div class="character-image">
-                                        @if (character.HasProfilePicture)
-                                        {
-                                            <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="@character.Name" />
-                                        }
-                                        else
-                                        {
-                                            <div class="character-placeholder">
-                                                <i class="fas fa-user fa-3x"></i>
-                                            </div>
-                                        }
+                        var statusClass = character.Status == CharacterStatus.Dead ? " member-card--dead" : character.Status == CharacterStatus.Retired ? " member-card--retired" : string.Empty;
+                        <div class="character-card member-card modern-card modern-card--interactive@(statusClass)">
+                            <div class="member-card-media">
+                                @if (character.HasProfilePicture)
+                                {
+                                    <img class="member-card-image" src="@Url.Action("GetCroppedPicture", new { id = character.Id })" alt="" />
+                                }
+                                else
+                                {
+                                    <div class="member-card-placeholder" aria-hidden="true">
+                                        <i class="fas fa-user fa-3x"></i>
+                                    </div>
+                                }
+                                @if (character.Status != CharacterStatus.Active)
+                                {
+                                    <div class="member-card-badges">
                                         @if (character.Status == CharacterStatus.Dead)
                                         {
-                                            <div class="dead-badge">
-                                                <i class="fas fa-skull"></i> Dead
-                                            </div>
+                                            <span class="badge bg-secondary"><i class="fas fa-skull me-1" aria-hidden="true"></i>Dead</span>
                                         }
                                         @if (character.Status == CharacterStatus.Retired)
                                         {
-                                            <div class="retired-badge">
-                                                <i class="fas fa-moon"></i> Retired
-                                            </div>
+                                            <span class="badge bg-info"><i class="fas fa-moon me-1" aria-hidden="true"></i>Retired</span>
                                         }
                                     </div>
-                                    <div class="character-info">
-                                        <h5 class="character-name">@character.Name</h5>
-                                        <p class="character-class mb-1">
-                                            @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))
-                                        </p>
-                                        <p class="character-level mb-1">
-                                            <i class="fas fa-shield-alt me-1"></i>Level @character.Level
-                                        </p>
-                                        <p class="character-owner mb-0">
-                                            <small class="text-muted">
-                                                <i class="fas fa-user me-1"></i>@character.OwnerName
-                                            </small>
-                                        </p>
-                                    </div>
-                                </div>
-                            </a>
+                                }
+                            </div>
+                            <div class="member-card-body">
+                                <h3 class="member-card-name"><a class="row-nav-link" href="@Url.Action("Details", new { id = character.Id })">@character.Name</a></h3>
+                                <p class="member-card-line member-card-line--strong">@string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</p>
+                                <p class="member-card-line"><i class="fas fa-shield-alt me-1" aria-hidden="true"></i>Level @character.Level</p>
+                                <p class="member-card-line"><i class="fas fa-user me-1" aria-hidden="true"></i>@character.OwnerName</p>
+                            </div>
                         </div>
                     }
                 </div>
             }
             else
             {
-                <div class="text-center py-5">
-                    <i class="fas fa-dungeon fa-3x text-muted mb-3"></i>
-                    <h4>No Other Characters</h4>
-                    <p class="text-muted">No other adventurers have created characters yet!</p>
+                <div class="empty-state">
+                    <i class="fas fa-dungeon empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Other Characters</h2>
+                    <p class="empty-state-text">No other adventurers have created characters yet!</p>
                 </div>
             }
         </div>
-    </div>
+    </section>
 </div>

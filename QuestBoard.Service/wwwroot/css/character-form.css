@@ -1,0 +1,33 @@
+/*
+ * The character create and edit forms (both layouts). Everything the foundation already styles (the card, labels,
+ * controls, help text, validation messages, buttons and the action row) is left to it; what is here is the current
+ * picture on the edit form and the class rows' Remove button, which only these forms have.
+ */
+@layer pages {
+  /*
+   * The picture block shares the top edge of the field stack: the file input sits level with the Name field and the
+   * current picture goes under the input and its hint, so it never pushes the input down.
+   */
+  .character-form-page .form-picture-current {
+    margin-top: var(--qb-space-sm);
+  }
+
+  /* The current picture is square, never wider than 200px and never wider than its column. */
+  .character-form-page .form-picture-thumb {
+    width: 100%;
+    max-width: 200px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+  }
+
+  .character-form-page .class-remove {
+    white-space: nowrap;
+  }
+
+  /* Where the class columns stack, a row's Remove button fills the row so it is an easy target. */
+  @media (max-width: 767.98px) {
+    .character-form-page .class-remove {
+      width: 100%;
+    }
+  }
+}

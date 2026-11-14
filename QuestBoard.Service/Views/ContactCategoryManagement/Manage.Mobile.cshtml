@@ -1,97 +1,96 @@
 @using QuestBoard.Service.ViewModels.ContactViewModels
 @model ContactCategoryManagementViewModel
-
-@section Styles {
-    <link href="~/css/contacts.mobile.css" asp-append-version="true" rel="stylesheet" />
+@{
+    ViewData["Title"] = "Manage Categories";
 }
 
-<form asp-action="Add" method="post" class="mb-3 category-mgmt-add-form">
-    @Html.AntiForgeryToken()
-    <label asp-for="NewCategory.Name" class="form-label">New Category Name</label>
-    <input asp-for="NewCategory.Name" class="form-control mb-2" maxlength="60" placeholder="e.g. Guild Members" />
-    <span asp-validation-for="NewCategory.Name" class="text-danger d-block mb-2"></span>
-    <button type="submit" class="btn btn-warning w-100">
-        <i class="fas fa-plus me-2"></i>Add Category
-    </button>
-</form>
+@section Styles {
+    <link href="~/css/contact-categories.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
 
-<div class="contact-section-card mb-4">
-    @if (Model.Categories.Any())
-    {
-        @foreach (var category in Model.Categories)
-        {
-            <div class="category-mgmt-row" id="category-@category.Id-row" tabindex="-1">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="contact-member-name">@category.Name</div>
-                        <small class="text-muted">@category.ContactCount contact@(category.ContactCount == 1 ? "" : "s")</small>
-                    </div>
-                    <div class="btn-group" role="group" aria-label="Reorder @category.Name">
-                        <form asp-action="MoveUp" asp-route-id="@category.Id" method="post" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-secondary category-mgmt-reorder-btn"
-                                    aria-label="Move @category.Name up" disabled="@category.IsFirst">
-                                <i class="fas fa-arrow-up"></i>
-                            </button>
-                        </form>
-                        <form asp-action="MoveDown" asp-route-id="@category.Id" method="post" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-secondary category-mgmt-reorder-btn"
-                                    aria-label="Move @category.Name down" disabled="@category.IsLast">
-                                <i class="fas fa-arrow-down"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                <div class="d-flex gap-2 mt-2">
-                    <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-warning btn-sm flex-grow-1">
-                        <i class="fas fa-pen me-1"></i>Rename
-                    </a>
-                    <form asp-action="Delete" asp-route-id="@category.Id" method="post" class="d-inline flex-grow-1 category-delete-form"
-                          data-category-name="@category.Name" data-contact-count="@category.ContactCount">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-danger btn-sm w-100">
-                            <i class="fas fa-trash me-1"></i>Delete
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
-    }
-    else
-    {
-        <div class="contact-empty-state">
-            <i class="fas fa-tags fa-2x mb-2"></i>
-            <h5>No Categories Yet</h5>
-            <p>Add your first category above to start grouping your contacts.</p>
+<div class="contact-categories-page">
+    <div class="card modern-card mb-3">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">Manage Categories</h1>
         </div>
-    }
+        <div class="card-body modern-card-body">
+            <form asp-action="Add" method="post" class="category-mgmt-add-form">
+                @Html.AntiForgeryToken()
+                <label asp-for="NewCategory.Name" class="form-label">New Category Name</label>
+                <input asp-for="NewCategory.Name" class="form-control mb-2" maxlength="60" placeholder="e.g. Guild Members" />
+                <span asp-validation-for="NewCategory.Name" class="text-danger d-block mb-2"></span>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus me-2" aria-hidden="true"></i>Add Category
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <section class="card modern-card modern-card--aside mb-3">
+        <div class="card-body modern-card-body">
+            @if (Model.Categories.Any())
+            {
+                <div class="category-mgmt-list">
+                    @foreach (var category in Model.Categories)
+                    {
+                        var confirmMessage = category.ContactCount > 0
+                            ? $"Delete \"{category.Name}\"? This will move {category.ContactCount} contact{(category.ContactCount == 1 ? "" : "s")} to Ungrouped."
+                            : $"Delete \"{category.Name}\"? It has no contacts to move.";
+                        <div class="category-mgmt-row" id="category-@category.Id-row" tabindex="-1">
+                            <div class="category-mgmt-top">
+                                <div>
+                                    <p class="category-mgmt-name">@category.Name</p>
+                                    <p class="category-mgmt-count">@category.ContactCount contact@(category.ContactCount == 1 ? "" : "s")</p>
+                                </div>
+                                <div class="btn-group" role="group" aria-label="Reorder @category.Name">
+                                    <form asp-action="MoveUp" asp-route-id="@category.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-secondary"
+                                                aria-label="Move @category.Name up" disabled="@category.IsFirst">
+                                            <i class="fas fa-arrow-up" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="MoveDown" asp-route-id="@category.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-secondary"
+                                                aria-label="Move @category.Name down" disabled="@category.IsLast">
+                                            <i class="fas fa-arrow-down" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="category-mgmt-actions">
+                                <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-warning">
+                                    <i class="fas fa-pen me-1" aria-hidden="true"></i>Rename
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@category.Id" method="post" class="category-delete-form"
+                                      data-confirm-message="@confirmMessage">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-trash me-1" aria-hidden="true"></i>Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="fas fa-tags empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Categories Yet</h2>
+                    <p class="empty-state-text">Add your first category above to start grouping your contacts.</p>
+                </div>
+            }
+        </div>
+    </section>
+
+    <a href="@Url.Action("Index", "Contacts")" class="btn btn-secondary w-100">
+        <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Contacts
+    </a>
 </div>
 
-<a href="@Url.Action("Index", "Contacts")" class="btn btn-secondary w-100">
-    <i class="fas fa-arrow-left me-2"></i>Back to Contacts
-</a>
-
 @section Scripts {
-    <script>
-        document.querySelectorAll('.category-delete-form').forEach(function (form) {
-            form.addEventListener('submit', function (e) {
-                var name = form.dataset.categoryName;
-                var count = parseInt(form.dataset.contactCount, 10);
-                var message = count > 0
-                    ? 'Delete "' + name + '"? This will move ' + count + ' contact' + (count === 1 ? '' : 's') + ' to Ungrouped.'
-                    : 'Delete "' + name + '"? It has no contacts to move.';
-                if (!confirm(message)) {
-                    e.preventDefault();
-                }
-            });
-        });
-
-        if (location.hash) {
-            var target = document.querySelector(location.hash);
-            if (target) {
-                target.focus({ preventScroll: false });
-            }
-        }
-    </script>
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
 }

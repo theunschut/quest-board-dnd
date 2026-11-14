@@ -5,59 +5,59 @@
     ViewData["Title"] = $"Edit {Model.Name}";
 }
 
-<div class="contacts-page">
+<div class="contact-form-page form-page">
     <div class="card modern-card">
         <div class="card-header modern-card-header">
-            <h4 class="mb-0">
-                <i class="fas fa-edit me-2"></i>
+            <h1 class="mb-0">
+                <i class="fas fa-edit me-2" aria-hidden="true"></i>
                 Edit @Model.Name
-            </h4>
+            </h1>
         </div>
         <div class="card-body modern-card-body">
             <form asp-action="Edit" method="post" enctype="multipart/form-data">
                 <input type="hidden" asp-for="Id" />
 
-                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div asp-validation-summary="All" class="mb-3"></div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
+                        <label asp-for="ContactImageFile" for="contactImageInput" class="form-label">Contact Image</label>
+                        <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
+                        <input type="file" name="CroppedPictureFile" hidden />
+                        <small class="form-text">Upload a new contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
+                        <span asp-validation-for="ContactImageFile"></span>
+                        <div id="fileSizeError" class="crop-error" role="alert" hidden><i class="fas fa-exclamation-circle" aria-hidden="true"></i><span data-crop-error-text></span></div>
                         @if (Model.HasContactImage)
                         {
-                            <div class="mb-2">
-                                <img src="@Url.Action("GetCroppedContactImage", new { id = Model.Id })" alt="Current" class="img-thumbnail" style="max-width: 200px;" />
+                            <div class="form-picture-current">
+                                <img src="@Url.Action("GetCroppedContactImage", new { id = Model.Id })" alt="Current" class="img-thumbnail form-picture-thumb" />
                                 <div>
-                                    <button type="button" class="btn btn-sm btn-warning mt-2" id="recropPhotoBtn">
-                                        <i class="fas fa-crop-alt me-1"></i>Re-crop Photo
+                                    <button type="button" class="btn btn-sm btn-warning mt-2" id="recropPhotoBtn" data-crop-original-url="@Url.Action("GetContactImage", new { id = Model.Id })">
+                                        <i class="fas fa-crop-alt me-1" aria-hidden="true"></i>Re-crop Photo
                                     </button>
                                 </div>
                             </div>
                         }
-                        <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" />
-                        <input type="file" name="CroppedPictureFile" style="display:none" />
-                        <small class="form-text text-muted">Upload a new contact portrait (JPG, PNG, GIF - Max 5 MB)</small>
-                        <span asp-validation-for="ContactImageFile" class="text-danger"></span>
-                        <div id="fileSizeError" class="text-danger" style="display: none;"></div>
                     </div>
 
                     <div class="col-md-8">
                         <div class="mb-3">
-                            <label asp-for="Name" class="form-label">Name <span class="text-danger">*</span></label>
+                            <label asp-for="Name" class="form-label">Name <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
                             <input asp-for="Name" class="form-control" />
-                            <span asp-validation-for="Name" class="text-danger"></span>
+                            <span asp-validation-for="Name"></span>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label asp-for="TownCity" class="form-label">Town/City</label>
                                 <input asp-for="TownCity" class="form-control" />
-                                <span asp-validation-for="TownCity" class="text-danger"></span>
+                                <span asp-validation-for="TownCity"></span>
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label asp-for="SubLocation" class="form-label">Sub-location</label>
                                 <input asp-for="SubLocation" class="form-control" />
-                                <span asp-validation-for="SubLocation" class="text-danger"></span>
+                                <span asp-validation-for="SubLocation"></span>
                             </div>
                         </div>
                     </div>
@@ -65,9 +65,10 @@
 
                 <div class="mb-3 contact-tags-input">
                     <label asp-for="TagsInput" class="form-label">Tags</label>
-                    <input asp-for="TagsInput" class="form-control" id="TagsInput" placeholder="Add a tag and press Enter…" />
-                    <span asp-validation-for="TagsInput" class="text-danger"></span>
-                    <small class="form-text text-muted">Optional — e.g. shopkeeper, quest giver</small>
+                    <input asp-for="TagsInput" class="form-control" id="TagsInput" placeholder="Add a tag and press Enter…"
+                           data-whitelist="@System.Text.Json.JsonSerializer.Serialize(Model.AvailableTagNames)" />
+                    <span asp-validation-for="TagsInput"></span>
+                    <small class="form-text">Optional — e.g. shopkeeper, quest giver</small>
                 </div>
 
                 <div class="mb-3">
@@ -77,14 +78,14 @@
                         <select asp-for="CategoryId" asp-items="Model.CategoryOptions" class="form-select">
                             <option value="">— None —</option>
                         </select>
-                        <span asp-validation-for="CategoryId" class="text-danger"></span>
+                        <span asp-validation-for="CategoryId"></span>
                     }
                     else
                     {
                         <select class="form-select" disabled>
                             <option>— None —</option>
                         </select>
-                        <small class="form-text text-muted">
+                        <small class="form-text">
                             No categories yet.
                             <a asp-controller="ContactCategoryManagement" asp-action="Index">Manage Categories</a>
                             to create one.
@@ -103,12 +104,12 @@
 
                 <hr />
 
-                <div class="d-flex justify-content-between">
+                <div class="form-actions">
                     <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-secondary">
-                        <i class="fas fa-times me-2"></i>Cancel
+                        <i class="fas fa-times me-2" aria-hidden="true"></i>Cancel
                     </a>
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-save me-2"></i>Save Changes
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2" aria-hidden="true"></i>Save Changes
                     </button>
                 </div>
             </form>
@@ -116,65 +117,18 @@
     </div>
 </div>
 
-<div class="modal fade" id="cropPhotoModal" tabindex="-1" aria-labelledby="cropPhotoModalLabel" aria-hidden="true"
-     data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content bg-dark text-light">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title" id="cropPhotoModalLabel">
-                    <i class="fas fa-crop-alt me-2"></i>Crop Your Photo
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="crop-stage">
-                    <cropper-canvas background style="width:100%;height:400px;">
-                        <cropper-image id="cropperImageEl" alt="Photo to crop" rotatable scalable translatable></cropper-image>
-                        <cropper-shade hidden></cropper-shade>
-                        <cropper-handle action="move" plain></cropper-handle>
-                        <cropper-selection id="cropperSelectionEl" initial-coverage="0.8" movable resizable aspect-ratio="1">
-                            <cropper-grid role="grid" bordered covered></cropper-grid>
-                            <cropper-crosshair centered></cropper-crosshair>
-                            <cropper-handle action="move" theme-color="rgba(255,193,7,0.35)"></cropper-handle>
-                            <cropper-handle action="n-resize"></cropper-handle>
-                            <cropper-handle action="e-resize"></cropper-handle>
-                            <cropper-handle action="s-resize"></cropper-handle>
-                            <cropper-handle action="w-resize"></cropper-handle>
-                            <cropper-handle action="ne-resize"></cropper-handle>
-                            <cropper-handle action="nw-resize"></cropper-handle>
-                            <cropper-handle action="se-resize"></cropper-handle>
-                            <cropper-handle action="sw-resize"></cropper-handle>
-                        </cropper-selection>
-                    </cropper-canvas>
-                </div>
-                <p class="text-muted small mt-2 mb-0">
-                    Drag to reposition, use the corner handles to resize. We'll use a square crop —
-                    if you skip this, we'll center one automatically.
-                </p>
-            </div>
-            <div class="modal-footer border-secondary d-flex justify-content-between">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cropCancelBtn">
-                    <i class="fas fa-times me-2"></i>Discard Photo
-                </button>
-                <button type="button" class="btn btn-warning" id="cropConfirmBtn">
-                    <i class="fas fa-check me-2"></i>Use This Crop
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<partial name="_ImageCropDialog" />
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/tagify-vendor.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/contact-form.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/image-crop.css" asp-append-version="true" />
+}
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("~/Views/Quest/_QuestFormScripts.cshtml"); }
     <script src="~/lib/cropperjs-2.1.1/cropper.min.js"></script>
-    <script src="~/js/image-crop.js" asp-append-version="true"></script>
-    <script>
-        initImageCrop({ fileInputId: 'contactImageInput', hiddenCroppedInputName: 'CroppedPictureFile', aspectRatio: 1, recropButtonId: 'recropPhotoBtn', originalImageUrl: '@Url.Action("GetContactImage", new { id = Model.Id })' });
-    </script>
-    <link href="~/lib/tagify-4.38.0/tagify.css" rel="stylesheet" />
+    <script type="module" src="~/js/image-crop.js" asp-append-version="true"></script>
     <script src="~/lib/tagify-4.38.0/tagify.min.js"></script>
-    <script src="~/js/contact-tags.js" asp-append-version="true"></script>
-    <script>
-        initContactTags({ inputId: 'TagsInput', whitelist: @Html.Raw(Json.Serialize(Model.AvailableTagNames)) });
-    </script>
+    <script type="module" src="~/js/contact-tags.js" asp-append-version="true"></script>
 }

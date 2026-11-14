@@ -532,14 +532,16 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     /// <summary>
-    /// DM Profile on mobile renders glass card layout (dm-profile-header-card).
-    /// Also checks that dm-profile.mobile.css is linked.
+    /// The Dungeon Master profile on the phone renders the phone layout with the profile card, the shared card sheet
+    /// and the phone profile sheet, each quest as a slip reached through one stretched link with no click handler,
+    /// and never the desktop sheet.
     /// </summary>
     [Fact]
     public async Task MobileDmProfile_MobileUserAgent_RendersGlassCardLayout()
     {
         var (authClient, dmUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "dm_dmview03", "dm_dmview03@test.com", roles: new[] { "DungeonMaster" });
+        var quest = await TestDataHelper.CreateTestQuestAsync(_factory.Services, dmUser.Id, "Slip Quest");
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"/DungeonMaster/Profile/{dmUser.Id}");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
@@ -548,8 +550,14 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("dm-profile-header-card");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("dm-profile-card");
+        html.Should().Contain("member-cards.css");
         html.Should().Contain("dm-profile.mobile.css");
+        html.Should().NotMatchRegex(@"/css/dm-profile\.css");
+        html.Should().NotContain("dm-profile-header-card", "the old glass card wrapper is gone");
+        html.Should().Contain($"class=\"row-nav-link\" href=\"/Quest/Details/{quest.Id}\"");
+        html.Should().NotContain("window.location");
     }
 
     // -----------------------------------------------------------------------
@@ -1087,16 +1095,15 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters links characters.mobile.css. The character-member-row
-    /// class only renders when characters exist; the CSS link renders unconditionally, so that is
-    /// the stable smoke-test assertion here.
-    /// Note: character-member-row presence with seeded characters is verified by Plan 04's own seeded test.
+    /// Mobile UA on /Characters answers 200 with the phone layout, links the shared card sheet and the phone list
+    /// sheet, and renders each character as a member row reached through one stretched link with no click handler.
     /// </summary>
     [Fact]
     public async Task MobileCharacters_MobileUserAgent_RendersListRows()
     {
-        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+        var (authClient, ownerUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "char_browse16", "char_browse16@test.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, ownerUser.Id, "Row Hero");
 
         var request = new HttpRequestMessage(HttpMethod.Get, "/Characters");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
@@ -1105,7 +1112,12 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("member-cards.css");
         html.Should().Contain("characters.mobile.css");
+        html.Should().Contain("character-member-row member-row");
+        html.Should().Contain($"class=\"row-nav-link\" href=\"/Characters/Details/{character.Id}\"");
+        html.Should().NotContain("window.location");
     }
 
     // -----------------------------------------------------------------------
@@ -1113,8 +1125,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters/Details/{id} renders character-detail-card glass card
-    /// and links character-detail.mobile.css.
+    /// Characters/Details is one view serving both layouts: the phone User-Agent answers 200 with the
+    /// mobile-layout body class and the character's name, and links character-detail.css; the
+    /// desktop User-Agent gets the same page without the phone layout.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterDetails_ReturnsSuccessAndMobileLayout()
@@ -1130,17 +1143,26 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("character-detail-card");
-        html.Should().Contain("character-detail.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("Aria Swiftblade");
+        html.Should().Contain("Character Information");
+        html.Should().Contain("character-detail.css");
+
+        var (desktopResponse, desktopHtml) = await GetWithUserAgentAsync(
+            $"/Characters/Details/{character.Id}", DesktopUserAgent, authClient.DefaultRequestHeaders.Authorization);
+        desktopResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        desktopHtml.Should().NotContain("mobile-layout");
+        desktopHtml.Should().Contain("Aria Swiftblade");
+        desktopHtml.Should().Contain("character-detail.css");
     }
 
     // -----------------------------------------------------------------------
-    // Character Create renders glass card form on mobile UA
+    // Character Create is one view for both layouts
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters/Create renders character-form-card glass card form
-    /// and links character-form.mobile.css.
+    /// Mobile UA on /Characters/Create answers 200 with the phone layout, the form's action row and its page sheet:
+    /// Create is one view that serves both layouts, so the old phone card wrapper and phone sheet are gone.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterCreate_ReturnsSuccessAndMobileLayout()
@@ -1155,17 +1177,20 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("character-form-card");
-        html.Should().Contain("character-form.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("form-actions");
+        html.Should().Contain("character-form.css");
+        html.Should().NotContain("character-form-card");
+        html.Should().NotContain("character-form.mobile.css");
     }
 
     // -----------------------------------------------------------------------
-    // Character Edit renders glass card form on mobile UA
+    // Character Edit is one view for both layouts
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters/Edit/{id} renders character-form-card glass card form
-    /// and links character-form.mobile.css.
+    /// Mobile UA on /Characters/Edit/{id} answers 200 with the phone layout, the form's action row and its page sheet:
+    /// Edit is one view that serves both layouts, so the old phone card wrapper and phone sheet are gone.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_CharacterEdit_ReturnsSuccessAndMobileLayout()
@@ -1181,8 +1206,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("character-form-card");
-        html.Should().Contain("character-form.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("form-actions");
+        html.Should().Contain("character-form.css");
+        html.Should().NotContain("character-form-card");
+        html.Should().NotContain("character-form.mobile.css");
     }
 
     // -----------------------------------------------------------------------
@@ -1190,12 +1218,15 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Players renders players-section-card glass card sections
-    /// and links players.mobile.css. Test starts RED — Players/Index.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Players renders the phone layout with the Dungeon Master as a stretched-link row, links the shared
+    /// card sheet and the phone list sheet and not the desktop sheet, and carries no click handler.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_PlayersIndex_ReturnsSuccessAndMobileLayout()
     {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dm_idx17", "dm_idx17@test.com", name: "Index Dungeon Master", roles: ["DungeonMaster"]);
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "player_idx17", "player_idx17@test.com");
 
@@ -1206,8 +1237,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("players-section-card");
-        html.Should().Contain("players.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("players-row member-row");
+        html.Should().Contain("css/member-cards.css").And.Contain("css/players.mobile.css");
+        html.Should().NotContain("css/players.css");
+        html.Should().NotContain("players-section-card");
+        Regex.Matches(html, @"class=""row-nav-link""").Should().HaveCount(1, "the Dungeon Master row has one stretched link");
+        html.Should().NotContain("window.location").And.NotMatchRegex(@"\sonclick\s*=");
     }
 
     // -----------------------------------------------------------------------
@@ -1281,12 +1317,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // -----------------------------------------------------------------------
-    // DM EditProfile renders glass card form on mobile UA
+    // DM EditProfile is one view that serves both layouts
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /DungeonMaster/EditProfile/{id} renders dm-editprofile-card-mobile
-    /// glass card form and links dm-editprofile.mobile.css.
+    /// Mobile UA on /DungeonMaster/EditProfile/{id} answers 200 with the phone layout (the mobile-layout body
+    /// class), the profile form and its page sheet: EditProfile is one view that serves both layouts, so the
+    /// old phone card wrapper and phone sheet are gone.
     /// Requires DM authentication — EditProfile enforces DM ownership or Admin role.
     /// </summary>
     [Fact]
@@ -1302,8 +1339,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("dm-editprofile-card-mobile");
-        html.Should().Contain("dm-editprofile.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("form-actions");
+        html.Should().Contain("dm-profile-form.css");
+        html.Should().NotContain("dm-editprofile-card-mobile");
+        html.Should().NotContain("dm-editprofile.mobile.css");
     }
 
     // -----------------------------------------------------------------------

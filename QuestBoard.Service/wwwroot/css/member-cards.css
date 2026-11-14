@@ -1,0 +1,159 @@
+/*
+ * The card grid, the card and the phone row that Characters and Contacts share. A card is interactive, so it takes no
+ * backdrop blur of its own; it sits on the section card's surface. One stretched link (the name) makes the whole card
+ * or row the target, and the focus ring is drawn on the card or row, not on the link inside it.
+ */
+@layer pages {
+  .member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+    gap: var(--qb-space-lg);
+  }
+
+  .member-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .member-card .row-nav-link::after,
+  .member-row .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .member-card:has(.row-nav-link:focus-visible),
+  .member-row:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .member-card .row-nav-link:focus-visible,
+  .member-row .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* The picture is square and as wide as the card, so cards in a row stay level with or without one. */
+  .member-card-media {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background-color: var(--qb-neutral);
+  }
+
+  .member-card-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .member-card-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
+
+  /* Badges are opaque fills laid over the picture's top left corner, one above the next. */
+  .member-card-badges {
+    position: absolute;
+    top: var(--qb-space-sm);
+    left: var(--qb-space-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--qb-space-xs);
+  }
+
+  /* A badge on the neutral placeholder tile has the tile's own colour, so each badge carries a light edge. */
+  .member-card-badges .badge {
+    border: 1px solid var(--qb-border-strong);
+  }
+
+  .member-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    padding: var(--qb-space-md);
+  }
+
+  .member-card-name,
+  .member-row-name {
+    margin: 0;
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .member-card-line,
+  .member-row-line {
+    margin: 0;
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .member-card-line--strong {
+    color: var(--qb-fg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .member-card-tags,
+  .member-row-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-xs);
+  }
+
+  /* The phone row: a slip at least as tall as a touch target, with the picture or the placeholder at its start. */
+  .mobile-layout .member-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-md);
+    min-height: var(--qb-hit-min);
+    padding: var(--qb-space-sm) var(--qb-space-md);
+  }
+
+  .mobile-layout .member-row + .member-row {
+    margin-top: var(--qb-space-sm);
+  }
+
+  .mobile-layout .member-row-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    min-width: 0;
+  }
+
+  /* Main is a still gold ornament. A glow of the same gold sits under it; it never pulses and hover leaves it alone. */
+  .badge-main {
+    background-color: var(--qb-accent);
+    color: var(--qb-accent-ink);
+    box-shadow: 0 2px var(--qb-space-sm) color-mix(in srgb, var(--qb-accent) 50%, transparent);
+  }
+
+  /*
+   * A Dead or Retired character is told by its badge, icon and word, never by dimming: the text stays at full
+   * contrast and only the picture is desaturated.
+   */
+  .member-card--dead .member-card-image,
+  .member-row--dead .avatar-32 {
+    filter: grayscale(1);
+  }
+
+  .member-card--retired .member-card-image,
+  .member-row--retired .avatar-32 {
+    filter: grayscale(0.5);
+  }
+}

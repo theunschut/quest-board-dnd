@@ -436,4 +436,44 @@ public class ContactCategoryManagementControllerIntegrationTests(WebApplicationF
         content.Should().NotContain("<script>alert('xss')</script>");
         content.Should().Contain("&lt;script&gt;");
     }
+
+    // (8) One Edit view serves both layouts: the phone gets the same form inside the phone layout, the
+    // desktop gets it without the phone body class.
+
+    private const string DesktopUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+    private const string MobileUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Edit_Get_DungeonMaster_RendersTheSameFormUnderBothUserAgents(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Allies", sortOrder: 0, groupId: 1);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"category_dm_edit_get_{(mobile ? "phone" : "desktop")}",
+            $"category_dm_edit_get_{(mobile ? "phone" : "desktop")}@example.com", roles: ["DungeonMaster"]);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/ContactCategoryManagement/Edit/{category.Id}");
+        request.Headers.TryAddWithoutValidation("User-Agent", mobile ? MobileUserAgent : DesktopUserAgent);
+        var response = await dmClient.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        if (mobile)
+            content.Should().Contain("mobile-layout");
+        else
+            content.Should().NotContain("mobile-layout");
+
+        content.Should().Contain("<h1");
+        content.Should().Contain("Rename Category");
+        content.Should().Contain("name=\"Name\"");
+        content.Should().Contain("form-actions");
+        content.Should().MatchRegex(@"Rename\s*</button>");
+        content.Should().MatchRegex(@"Cancel\s*</a>");
+    }
 }

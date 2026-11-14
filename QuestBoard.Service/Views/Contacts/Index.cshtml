@@ -9,164 +9,175 @@
 
     void RenderContactCard(ContactViewModel contact)
     {
-        <div class="contact-card">
-            <a href="@Url.Action("Details", new { id = contact.Id })" class="text-decoration-none">
-                <div class="contact-card-content">
-                    <div class="contact-image">
-                        @if (contact.HasContactImage)
+        <div class="contact-card member-card modern-card modern-card--interactive">
+            <div class="member-card-media">
+                @if (contact.HasContactImage)
+                {
+                    <img class="member-card-image" src="@Url.Action("GetCroppedContactImage", new { id = contact.Id })" alt="" />
+                }
+                else
+                {
+                    <div class="member-card-placeholder" aria-hidden="true">
+                        <i class="fas fa-user fa-3x"></i>
+                    </div>
+                }
+                @if (!contact.IsRevealed)
+                {
+                    <div class="member-card-badges">
+                        <span class="badge bg-secondary"><i class="fas fa-eye-slash me-1" aria-hidden="true"></i>Hidden</span>
+                    </div>
+                }
+            </div>
+            <div class="member-card-body">
+                <h3 class="member-card-name"><a class="row-nav-link" href="@Url.Action("Details", new { id = contact.Id })">@contact.Name</a></h3>
+                @if (!string.IsNullOrEmpty(contact.TownCity))
+                {
+                    <p class="member-card-line"><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>@contact.TownCity</p>
+                }
+                @if (!string.IsNullOrEmpty(contact.SubLocation))
+                {
+                    <p class="member-card-line">@contact.SubLocation</p>
+                }
+                @if (viewerIsDmTier && contact.Tags.Any())
+                {
+                    <div class="member-card-tags">
+                        @foreach (var tag in contact.Tags)
                         {
-                            <img src="@Url.Action("GetCroppedContactImage", new { id = contact.Id })" alt="@contact.Name" />
-                        }
-                        else
-                        {
-                            <div class="contact-placeholder">
-                                <i class="fas fa-user fa-3x"></i>
-                            </div>
-                        }
-                        @if (!contact.IsRevealed)
-                        {
-                            <span class="hidden-badge">
-                                <i class="fas fa-eye-slash me-1"></i>Hidden
-                            </span>
+                            <span class="contact-tag-chip badge bg-secondary">@tag.Name</span>
                         }
                     </div>
-                    <div class="contact-info">
-                        <h5 class="contact-name">@contact.Name</h5>
-                        @if (!string.IsNullOrEmpty(contact.TownCity))
-                        {
-                            <p class="contact-town-city mb-1">
-                                <i class="fas fa-map-marker-alt me-1"></i>@contact.TownCity
-                            </p>
-                        }
-                        @if (!string.IsNullOrEmpty(contact.SubLocation))
-                        {
-                            <p class="contact-sub-location mb-0">@contact.SubLocation</p>
-                        }
-                        @if (Model.ViewerIsDmTier && contact.Tags.Any())
-                        {
-                            <div class="contact-tag-list">
-                                @foreach (var tag in contact.Tags)
-                                {
-                                    <span class="contact-tag-chip">@tag.Name</span>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
-            </a>
+                }
+            </div>
         </div>
     }
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/member-cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/contacts.css" asp-append-version="true" />
+}
+
 <div class="contacts-page">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>
-            <i class="fas fa-address-book me-2 text-warning"></i>
-            Contacts
-        </h1>
-        @if (viewerIsDmTier)
+    <div class="card modern-card mb-4">
+        <div class="card-header modern-card-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <h1 class="mb-0">
+                <i class="fas fa-address-book me-2" aria-hidden="true"></i>Contacts
+            </h1>
+            @if (viewerIsDmTier)
+            {
+                <div class="d-flex flex-wrap gap-2">
+                    <form asp-action="ToggleShowHidden" method="post">
+                        @foreach (var selectedTagId in Model.SelectedTagIds)
+                        {
+                            <input type="hidden" name="tag" value="@selectedTagId" />
+                        }
+                        @if (Model.ShowHidden)
+                        {
+                            <button type="submit" class="btn btn-secondary" aria-pressed="true">
+                                <i class="fas fa-eye me-2" aria-hidden="true"></i>Hide Hidden
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-secondary" aria-pressed="false">
+                                <i class="fas fa-eye-slash me-2" aria-hidden="true"></i>Show Hidden
+                            </button>
+                        }
+                    </form>
+                    <a href="@Url.Action("Index", "ContactCategoryManagement")" class="btn btn-secondary">
+                        <i class="fas fa-tags me-2" aria-hidden="true"></i>Manage Categories
+                    </a>
+                    <a href="@Url.Action("Create")" class="btn btn-primary">
+                        <i class="fas fa-plus me-2" aria-hidden="true"></i>Contact
+                    </a>
+                </div>
+            }
+        </div>
+        @if (viewerIsDmTier && Model.AvailableTags.Any())
         {
-            <div class="d-flex gap-2">
-                <form asp-action="ToggleShowHidden" method="post">
-                    @foreach (var selectedTagId in Model.SelectedTagIds)
+            <div class="card-body modern-card-body">
+                <form method="get" action="@Url.Action("Index")" class="contact-filter-row">
+                    <span class="contact-filter-label">Tags:</span>
+                    <div class="contact-filter-tag-group">
+                        @foreach (var availableTag in Model.AvailableTags)
+                        {
+                            <label class="contact-filter-check-label">
+                                <input class="form-check-input m-0" type="checkbox" name="tag" value="@availableTag.Id" checked="@(Model.SelectedTagIds.Contains(availableTag.Id))" />
+                                @availableTag.Name
+                            </label>
+                        }
+                    </div>
+                    <button type="submit" class="btn btn-secondary btn-sm contact-filter-apply-btn">
+                        <i class="fas fa-filter me-2" aria-hidden="true"></i>Apply Filters
+                    </button>
+                    @if (Model.HasActiveFilters)
                     {
-                        <input type="hidden" name="tag" value="@selectedTagId" />
-                    }
-                    @if (Model.ShowHidden)
-                    {
-                        <button type="submit" class="btn btn-secondary" aria-pressed="true">
-                            <i class="fas fa-eye me-2"></i>Hide Hidden
-                        </button>
-                    }
-                    else
-                    {
-                        <button type="submit" class="btn btn-outline-secondary" aria-pressed="false">
-                            <i class="fas fa-eye-slash me-2"></i>Show Hidden
-                        </button>
+                        <a href="@Url.Action("Index")" class="btn btn-secondary btn-sm contact-filter-clear-btn">
+                            <i class="fas fa-times me-2" aria-hidden="true"></i>Clear Filters
+                        </a>
                     }
                 </form>
-                <a href="@Url.Action("Index", "ContactCategoryManagement")" class="btn btn-secondary">
-                    <i class="fas fa-tags me-2"></i>Manage Categories
-                </a>
-                <a href="@Url.Action("Create")" class="btn btn-warning">
-                    <i class="fas fa-plus me-2"></i>Contact
-                </a>
             </div>
         }
     </div>
 
-    @if (viewerIsDmTier && Model.AvailableTags.Any())
+    @if (Model.HasCategories && Model.Contacts.Any())
     {
-        <form method="get" action="@Url.Action("Index")" class="contact-filter-row">
-            <span class="contact-filter-label">Tags:</span>
-            <div class="contact-filter-tag-group">
-                @foreach (var availableTag in Model.AvailableTags)
-                {
-                    <label class="contact-filter-check-label">
-                        <input type="checkbox" name="tag" value="@availableTag.Id" checked="@(Model.SelectedTagIds.Contains(availableTag.Id))" />
-                        @availableTag.Name
-                    </label>
-                }
-            </div>
-            <button type="submit" class="btn btn-sm contact-filter-apply-btn">
-                <i class="fas fa-filter me-2"></i>Apply Filters
-            </button>
-            @if (Model.HasActiveFilters)
-            {
-                <a href="@Url.Action("Index")" class="btn btn-sm contact-filter-clear-btn">
-                    <i class="fas fa-times me-2"></i>Clear Filters
-                </a>
-            }
-        </form>
-    }
-
-    <div class="card modern-card">
-        <div class="card-body modern-card-body">
-            @if (Model.HasCategories && Model.Contacts.Any())
-            {
-                @foreach (var group in Model.CategoryGroups)
-                {
-                    <div class="category-block">
-                        <h2 class="category-heading@(group.IsUngrouped ? " category-heading-ungrouped" : "")">
-                            <i class="fas fa-tag me-2"></i>@group.Title
-                        </h2>
-                        <div class="contact-grid">
-                            @foreach (var contact in group.Contacts)
-                            {
-                                RenderContactCard(contact);
-                            }
-                        </div>
+        @foreach (var (group, index) in Model.CategoryGroups.Select((g, i) => (g, i)))
+        {
+            <section class="card modern-card modern-card--aside contacts-group" aria-labelledby="contact-group-@index">
+                <div class="card-header modern-card-header">
+                    <h2 class="mb-0" id="contact-group-@index"><i class="fas fa-tag me-2" aria-hidden="true"></i>@group.Title</h2>
+                </div>
+                <div class="card-body modern-card-body">
+                    <div class="member-grid">
+                        @foreach (var contact in group.Contacts)
+                        {
+                            RenderContactCard(contact);
+                        }
                     </div>
-                }
-            }
-            else if (Model.Contacts.Any())
-            {
-                <div class="contact-grid">
+                </div>
+            </section>
+        }
+    }
+    else if (Model.Contacts.Any())
+    {
+        <section class="card modern-card modern-card--aside contacts-group" aria-label="Contacts">
+            <div class="card-body modern-card-body">
+                <div class="member-grid">
                     @foreach (var contact in Model.Contacts)
                     {
                         RenderContactCard(contact);
                     }
                 </div>
-            }
-            else if (Model.HasActiveFilters)
-            {
-                <div class="text-center py-5">
-                    <i class="fas fa-filter fa-3x text-muted mb-3"></i>
-                    <h4>No contacts match your filters</h4>
-                    <p class="text-muted">Try selecting different tags.</p>
-                    <a href="@Url.Action("Index")" class="btn contact-filter-apply-btn">
-                        <i class="fas fa-times me-2"></i>Clear filters
+            </div>
+        </section>
+    }
+    else if (Model.HasActiveFilters)
+    {
+        <div class="card modern-card modern-card--aside">
+            <div class="card-body modern-card-body">
+                <div class="empty-state">
+                    <i class="fas fa-filter empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No contacts match your filters</h2>
+                    <p class="empty-state-text">Try selecting different tags.</p>
+                    <a href="@Url.Action("Index")" class="btn btn-secondary">
+                        <i class="fas fa-times me-2" aria-hidden="true"></i>Clear filters
                     </a>
                 </div>
-            }
-            else
-            {
-                <div class="text-center py-5">
-                    <i class="fas fa-address-book fa-3x text-muted mb-3"></i>
-                    <h4>No Contacts Yet</h4>
-                    <p class="text-muted">No one has added a contact yet. DMs can create the first one to start building out the world.</p>
-                </div>
-            }
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="card modern-card modern-card--aside">
+            <div class="card-body modern-card-body">
+                <div class="empty-state">
+                    <i class="fas fa-address-book empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Contacts Yet</h2>
+                    <p class="empty-state-text">No one has added a contact yet. DMs can create the first one to start building out the world.</p>
+                </div>
+            </div>
+        </div>
+    }
 </div>

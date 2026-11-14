@@ -114,13 +114,18 @@ public class ContactCategoryMobileRenderTests(WebApplicationFactoryBase factory)
         var (mobileResponse, mobileHtml) = await GetMobileAsync(dmClient, $"/Contacts/Details/{contact.Id}");
 
         mobileResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        mobileHtml.Should().Contain("mobile-layout");
         mobileHtml.Should().Contain("contact-info-value");
         mobileHtml.Should().Contain("Guild Members");
 
+        // The details page is one view for both layouts: the desktop user agent renders the same content, and only
+        // the phone user agent is served the phone layout.
         var desktopResponse = await dmClient.GetAsync($"/Contacts/Details/{contact.Id}", TestContext.Current.CancellationToken);
         var desktopHtml = await desktopResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         desktopResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        desktopHtml.Should().NotContain("contact-info-value");
+        desktopHtml.Should().NotContain("mobile-layout");
+        desktopHtml.Should().Contain("contact-info-value");
+        desktopHtml.Should().Contain("Guild Members");
     }
 }

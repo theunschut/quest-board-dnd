@@ -95,6 +95,108 @@ public class MarkdownEditorMarkupTests : IClassFixture<WebApplicationFactoryBase
         AssertEditorMarkup(html);
     }
 
+    [Theory]
+    [InlineData("create", DesktopUserAgent)]
+    [InlineData("create", MobileUserAgent)]
+    [InlineData("edit", DesktopUserAgent)]
+    [InlineData("edit", MobileUserAgent)]
+    public async Task CharacterForms_RenderBothEditorsWithHintsAndLabelsUnderBothUserAgents(string form, string userAgent)
+    {
+        var tag = $"{form}_{(userAgent == MobileUserAgent ? "phone" : "desktop")}";
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_character_{tag}", $"editor_markup_character_{tag}@test.com",
+            name: $"Editor Markup Character {tag}");
+
+        var url = "/Characters/Create";
+        if (form == "edit")
+        {
+            var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, user.Id, $"Editor Character {tag}");
+            url = $"/Characters/Edit/{character.Id}";
+        }
+
+        var html = await GetHtmlAsync(client, url, userAgent);
+
+        AssertEditorMarkup(html);
+
+        // The Description and the Backstory each render an editor with its own hint, and every editor textarea
+        // is described by a hint that exists.
+        EditorTextarea.Matches(html).Should().HaveCount(2, "the form has two editors, the description and the backstory");
+        html.Should().Contain("data-editor-label=\"Description\"");
+        html.Should().Contain("data-editor-label=\"Backstory\"");
+        HintElement.Matches(html).Select(m => m.Groups["id"].Value).Should().OnlyHaveUniqueItems();
+        foreach (Match textarea in EditorTextarea.Matches(html))
+        {
+            var describedBy = Regex.Match(textarea.Value, @"aria-describedby=""(?<id>[^""]+)""").Groups["id"].Value;
+            html.Should().Contain($"id=\"{describedBy}\"");
+        }
+    }
+
+    [Theory]
+    [InlineData("create", DesktopUserAgent)]
+    [InlineData("create", MobileUserAgent)]
+    [InlineData("edit", DesktopUserAgent)]
+    [InlineData("edit", MobileUserAgent)]
+    public async Task ContactForms_RenderEditorHintAndLabelUnderBothUserAgents(string form, string userAgent)
+    {
+        var tag = $"{form}_{(userAgent == MobileUserAgent ? "phone" : "desktop")}";
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_contact_{tag}", $"editor_markup_contact_{tag}@test.com",
+            name: $"Editor Markup Contact {tag}", roles: ["DungeonMaster"]);
+
+        var url = "/Contacts/Create";
+        if (form == "edit")
+        {
+            var contact = await TestDataHelper.CreateTestContactAsync(_factory.Services, user.Id, $"Editor Contact {tag}", groupId: 1);
+            url = $"/Contacts/Edit/{contact.Id}";
+        }
+
+        var html = await GetHtmlAsync(client, url, userAgent);
+
+        AssertEditorMarkup(html);
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent, "desktop")]
+    [InlineData(MobileUserAgent, "phone")]
+    public async Task DungeonMasterProfileForm_BioEditor_RendersEditorHintAndLabelUnderBothUserAgents(string userAgent, string layout)
+    {
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_dmprofile_{layout}", $"editor_markup_dmprofile_{layout}@test.com",
+            name: $"Editor Markup Profile {layout}", roles: ["DungeonMaster"]);
+
+        var html = await GetHtmlAsync(client, $"/DungeonMaster/EditProfile/{user.Id}", userAgent);
+
+        AssertEditorMarkup(html);
+        EditorTextarea.Matches(html).Should().HaveCount(1, "the profile form has one editor, the bio");
+        html.Should().Contain("data-editor-label=\"Bio\"");
+    }
+
+    [Theory]
+    [InlineData(DesktopUserAgent, "desktop")]
+    [InlineData(MobileUserAgent, "phone")]
+    public async Task ContactDetails_NoteEditors_RenderEditorHintAndLabelUnderBothUserAgents(string userAgent, string layout)
+    {
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"editor_markup_notes_{layout}", $"editor_markup_notes_{layout}@test.com",
+            name: $"Editor Markup Notes {layout}", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(_factory.Services, user.Id, $"Notes Contact {layout}", groupId: 1);
+        await TestDataHelper.CreateTestContactNoteAsync(_factory.Services, contact.Id, user.Id, "A saved note");
+
+        var html = await GetHtmlAsync(client, $"/Contacts/Details/{contact.Id}", userAgent);
+
+        AssertEditorMarkup(html);
+
+        // The add-note editor and the saved note's edit editor each carry their own hint, and every editor
+        // textarea is described by a hint that exists.
+        EditorTextarea.Matches(html).Should().HaveCount(2, "the add form and the one saved note each render an editor");
+        HintElement.Matches(html).Select(m => m.Groups["id"].Value).Should().OnlyHaveUniqueItems();
+        foreach (Match textarea in EditorTextarea.Matches(html))
+        {
+            var describedBy = Regex.Match(textarea.Value, @"aria-describedby=""(?<id>[^""]+)""").Groups["id"].Value;
+            html.Should().Contain($"id=\"{describedBy}\"");
+        }
+    }
+
     [Fact]
     public async Task QuestCreate_EditorToken_ReachesTheScriptThroughAMetaElement()
     {

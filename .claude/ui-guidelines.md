@@ -59,8 +59,8 @@ literal.
     `text-purple`).
 - **Re-theme Bootstrap through its own variables** (`--bs-*`), never by out-specifying it. Bootstrap sits
   in the lowest layer, so a variable set in `base.css` or `components.css` wins without a fight.
-- **Legacy page sheets are unlayered.** `legacy-pages.css` (the desktop remainder), `quests.css`,
-  `shop.css`, `calendar.css` and the other per-area sheets are not in a layer yet, so on their own
+- **Legacy page sheets are unlayered.** `legacy-pages.css` (the desktop remainder), `mobile.css`, the
+  shop sheets and the admin and platform phone sheets are not in a layer yet, so on their own
   selectors they beat every layered rule. A page converts to the layered system by moving its rules into
   `@layer pages` and its look onto tokens; until then, do not fight an unlayered rule from a layered one.
 - Text on the bare board takes its colour from `body`; a surface that is not the board sets its own colour

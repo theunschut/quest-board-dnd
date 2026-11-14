@@ -1,22 +1,122 @@
-/* Crop modal stage layout. Cropper.js v2's Web Components carry their own internal styling,
-   so this file only handles the stage wrapper's layout and a touch-drag fix -- it does not
-   restyle any Cropper.js internal component. */
+/*
+ * The photo crop dialog: the instruction line, the stage the picture sits in, the row of buttons that move and resize
+ * the selection without dragging, and the error chip a host form shows beside its file input. The dialog's surface,
+ * title and footer come from the shared modal rules; Cropper's own components keep their internal styling.
+ */
+@layer pages {
+  .crop-instruction {
+    margin-block: 0 var(--qb-space-md);
+    color: var(--qb-fg);
+  }
 
-.crop-stage {
+  /* The stage clips the picture to a rounded frame; the canvas inside it fills the width at a fixed height. */
+  .crop-stage {
     width: 100%;
     overflow: hidden;
-}
+    border-radius: var(--qb-radius-md);
+  }
 
-/* Prevent page/modal scroll from fighting the crop-frame drag/pinch gesture on touch devices --
-   without this, a finger-drag on the crop handles can also trigger the browser's own scroll. */
-.crop-stage cropper-canvas {
+  .crop-stage cropper-canvas {
+    width: 100%;
+    height: 400px;
+    /* A finger-drag on the selection must move it, not scroll the dialog behind it. */
     touch-action: none;
-}
+  }
 
-/* Reduce the crop stage's effective height on small viewports so the modal fits above the
-   on-screen keyboard/safe-area on a typical phone in portrait. */
-@media (max-width: 768px) {
-    .crop-stage cropper-canvas {
-        height: 320px !important;
+  /* On a phone the stage is shorter so the dialog fits above the on-screen keyboard. */
+  .mobile-layout .crop-stage cropper-canvas {
+    height: 320px;
+  }
+
+  /* The selection's body tint is a light parchment wash; the gold on this surface is kept for the focus ring. */
+  .crop-stage cropper-selection > cropper-handle[action="move"] {
+    --theme-color: color-mix(in srgb, var(--qb-fg) 20%, transparent);
+  }
+
+  /*
+   * The stage clips anything drawn outside the selection, so the focus ring is drawn inside it: the dark stroke on the
+   * selection's edge and the gold band just inside that.
+   */
+  .crop-stage cropper-selection:focus-visible {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: calc(var(--qb-focus-width) * -1);
+    box-shadow: inset 0 0 0 calc(var(--qb-focus-width) * 2) var(--qb-focus-inner);
+  }
+
+  /* Two groups on a wrapping row: the four moves, then Larger, Smaller and Reset. Nothing scrolls at 320px. */
+  .crop-controls {
+    --crop-control-min: 36px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm) var(--qb-space-lg);
+    margin-top: var(--qb-space-md);
+  }
+
+  .crop-controls-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+  }
+
+  .crop-controls .btn {
+    min-width: var(--crop-control-min);
+    min-height: var(--crop-control-min);
+    white-space: nowrap;
+  }
+
+  /* On a phone the moves share one row as four equal columns and the word buttons the next as three. */
+  .mobile-layout .crop-controls {
+    display: grid;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .crop-controls-group {
+    display: grid;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .crop-controls-group--move {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .mobile-layout .crop-controls-group--size {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobile-layout .crop-controls .btn {
+    min-width: var(--qb-hit-min);
+    min-height: var(--qb-hit-min);
+    padding-inline: var(--qb-space-sm);
+    /* A label wraps inside its column rather than spilling past the button when letters are spaced wide. */
+    white-space: normal;
+  }
+
+  /*
+   * The refusal for a file that is too large, the wrong type or unreadable. Danger text is a light red that is too faint
+   * on the card's glass, so it sits on the opaque overlay surface; the icon and the sentence carry the meaning.
+   */
+  .crop-error {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--qb-space-sm);
+    margin-top: var(--qb-space-sm);
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+    color: var(--qb-danger-text);
+  }
+
+  .crop-error[hidden] {
+    display: none;
+  }
+
+  .crop-error > .fas {
+    margin-top: var(--qb-space-xs);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .crop-controls .btn {
+      transition: none;
     }
+  }
 }
