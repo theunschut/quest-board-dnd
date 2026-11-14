@@ -21,7 +21,7 @@
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label asp-for="ContactImageFile" class="form-label">Contact Image</label>
+                        <label asp-for="ContactImageFile" for="contactImageInput" class="form-label">Contact Image</label>
                         <input type="file" asp-for="ContactImageFile" class="form-control" accept="image/*" id="contactImageInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
                         <input type="file" name="CroppedPictureFile" hidden />
                         <small class="form-text">Upload a new contact portrait (JPG, PNG, GIF - Max 5 MB)</small>

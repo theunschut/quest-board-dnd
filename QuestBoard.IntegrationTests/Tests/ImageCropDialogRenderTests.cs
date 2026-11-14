@@ -219,6 +219,29 @@ public class ImageCropDialogRenderTests(WebApplicationFactoryBase factory)
     }
 
     [Theory]
+    [MemberData(nameof(EveryHostUnderBothLayouts))]
+    public async Task Host_PictureInputHasAnAccessibleNameFromItsVisibleLabel(string host, bool mobile)
+    {
+        var seeded = await SeedHostsAsync();
+
+        var html = await GetHtmlAsync(seeded.Client, UrlFor(host, seeded), mobile);
+
+        var fileInput = Regex.Match(html, "<input\\b[^>]*data-crop-input[^>]*>", RegexOptions.Singleline);
+        fileInput.Success.Should().BeTrue("the picture input is marked for the module");
+        var id = Regex.Match(fileInput.Value, "\\sid=\"([^\"]+)\"");
+        id.Success.Should().BeTrue("the picture input carries the id the label points at");
+
+        var label = Regex.Match(html, $"<label\\b[^>]*\\sfor=\"{Regex.Escape(id.Groups[1].Value)}\"[^>]*>(?<text>[^<]+)</label>",
+            RegexOptions.Singleline);
+        label.Success.Should().BeTrue("the visible label names the picture input by its id, so the input has an accessible name");
+        label.Groups["text"].Value.Trim().Should().NotBeEmpty();
+        Regex.Matches(html, $"<label\\b[^>]*\\sfor=\"{Regex.Escape(id.Groups[1].Value)}\"").Should().HaveCount(1,
+            "exactly one label names the picture input");
+        Regex.IsMatch(html, "<label\\b[^>]*\\sfor=\"(ProfilePictureFile|ContactImageFile)\"").Should().BeFalse(
+            "no label points at the model property name, which no input carries as its id");
+    }
+
+    [Theory]
     [InlineData("character-edit", false)]
     [InlineData("character-edit", true)]
     [InlineData("contact-edit", false)]

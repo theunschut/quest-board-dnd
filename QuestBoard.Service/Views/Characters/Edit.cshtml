@@ -23,7 +23,7 @@
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label asp-for="ProfilePictureFile" class="form-label">Profile Picture</label>
+                        <label asp-for="ProfilePictureFile" for="profilePictureInput" class="form-label">Profile Picture</label>
                         <input type="file" asp-for="ProfilePictureFile" class="form-control" accept="image/*" id="profilePictureInput" data-crop-input data-crop-output-name="CroppedPictureFile" data-crop-aspect-ratio="1" />
                         <input type="file" name="CroppedPictureFile" hidden />
                         <small class="form-text">Upload a new character portrait (JPG, PNG, GIF - Max 5 MB)</small>
