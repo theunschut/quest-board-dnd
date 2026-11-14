@@ -293,41 +293,6 @@
 }
 
 /* ========================================
-   CONTACTS - TAG ENTRY WIDGET (Tagify theme override)
-   ======================================== */
-
-/* Targets the `.tagify` element itself (not just the wrapping `.contact-tags-input` div):
-   Tagify's own CSS redeclares these same custom properties directly on `.tagify`, and a
-   rule that matches an element directly always wins over a value inherited from an
-   ancestor -- so a declaration scoped only to the wrapper div never actually reached the
-   widget and every chip rendered in Tagify's stock light-grey theme regardless.
-   --tag-bg is more opaque than the read-only .contact-tag-chip's 0.35 alpha (matching the
-   table-header brown at .8-.85 instead): that chip sits on the dark glass card background,
-   but Tagify's input row has a solid white Bootstrap form-control background behind it, so
-   the same low alpha would wash out to a pale tan with too little contrast against the
-   pale-gold chip text. */
-.contacts-page .contact-tags-input .tagify {
-    --tag-bg: rgba(139, 69, 19, 0.85);
-    --tag-text-color: #F4E4BC;
-    --tags-border-color: rgba(0, 0, 0, 0.3);
-    --tags-focus-border-color: #ffc107;
-}
-
-/* Tagify's typing area is a bare span sitting on its own light input surface rather than the
-   card background, so it keeps plain dark text with no shadow whatever colour the surrounding
-   card gives its text. The placeholder is the same: dark and unshadowed, like every other
-   input on the form. */
-.contacts-page .contact-tags-input .tagify__input {
-    color: #1a1a1a !important;
-    text-shadow: none !important;
-}
-
-.contacts-page .contact-tags-input .tagify__input::before {
-    color: rgba(0, 0, 0, 0.5) !important;
-    text-shadow: none !important;
-}
-
-/* ========================================
    CONTACTS - TAG CHIPS AND FILTER ROW
    ======================================== */
 

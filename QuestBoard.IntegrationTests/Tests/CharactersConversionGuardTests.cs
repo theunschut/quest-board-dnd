@@ -44,6 +44,7 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
+        "QuestBoard.Service/Views/Contacts/Edit.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
@@ -56,6 +57,7 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml"] = [],
         ["QuestBoard.Service/Views/Characters/Details.cshtml"] = ["markdown-content.css", "character-detail.css"],
         ["QuestBoard.Service/Views/Contacts/Create.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
+        ["QuestBoard.Service/Views/Contacts/Edit.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
@@ -66,6 +68,8 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/Characters/Details.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/character-detail.mobile.css",
         "QuestBoard.Service/Views/Contacts/Create.Mobile.cshtml",
+        "QuestBoard.Service/Views/Contacts/Edit.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/contact-form.mobile.css",
     ];
 
     private const string CropDialogPartial = "QuestBoard.Service/Views/Shared/_ImageCropDialog.cshtml";
@@ -111,8 +115,9 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/wwwroot/css/tagify-vendor.css",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.cshtml",
-        "QuestBoard.Service/Views/Contacts/Edit.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/contact-form.css",
+        "QuestBoard.Service/wwwroot/css/contacts.css",
+        "QuestBoard.IntegrationTests/Controllers/ContactsFormMergedViewTests.cs",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.Mobile.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
@@ -374,12 +379,28 @@ public class CharactersConversionGuardTests
         Regex.Matches(script, @"\b(?:window|globalThis)\s*(?:\.\s*\w+|\[[^\]]*\])\s*=(?!=)")
             .Select(m => m.Value).Should().BeEmpty("contact-tags.js defines no global");
 
-        foreach (var view in new[] { "Create", "Edit", "Edit.Mobile" })
+        foreach (var view in new[] { "Create", "Edit" })
         {
             var text = ReadRepoFile($"QuestBoard.Service/Views/Contacts/{view}.cshtml");
             text.Should().NotContain("Html.Raw", $"{view} must not print the suggestion list as raw output");
             text.Should().NotContain("initContactTags", $"{view} must not call a global initialiser");
         }
+    }
+
+    [Fact]
+    public void TagifyTheme_LivesInTheContactFormSheetAsCustomProperties()
+    {
+        // The tag box is themed through the library's own custom properties from tokens, in the one contact form
+        // sheet; the list sheet no longer holds any rule for the library's elements.
+        var form = StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/contact-form.css"));
+        foreach (var property in new[] { "--tag-bg", "--tag-text-color", "--tags-border-color", "--tags-focus-border-color", "--input-color" })
+            form.Should().Contain(property + ":", $"contact-form.css sets the library's {property} from a token");
+        form.Should().Contain(":focus-within", "the tag box shows the shared two-tone focus ring while any part of it has focus");
+        Regex.Matches(form, @"!important").Should().BeEmpty("contact-form.css holds no important flag");
+
+        var list = StripCssCommentsFor(ReadRepoFile("QuestBoard.Service/wwwroot/css/contacts.css"));
+        list.Should().NotContain("tagify", "contacts.css no longer carries rules for the tag entry library");
+        Regex.Matches(list, @"!important").Should().BeEmpty("the tag overrides were the only important flags in contacts.css");
     }
 
     [Fact]

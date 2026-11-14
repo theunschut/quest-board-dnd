@@ -189,6 +189,8 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
         RatioOnCardSurface(tokens, "--qb-link").Should().BeGreaterThanOrEqualTo(4.5,
             because: "the helper link is body-size text on the card surface, so it needs the 4.5:1 text bar over the lightest board pixel");
 
+        File.Exists(Path.Combine(Path.GetDirectoryName(cssPath)!, "contact-form.mobile.css")).Should().BeFalse(
+            because: "the phone form sheet was merged into the one shared form sheet and must not come back");
     }
 
     [Fact]

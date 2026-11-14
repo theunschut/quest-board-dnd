@@ -101,7 +101,7 @@ public class UiFoundationViewLibraryGuardTests
         File.Exists(ResolveRepoFile("QuestBoard.Service", "wwwroot", "lib", "tagify-4.38.0", "tagify.css"))
             .Should().BeTrue(because: "the wrapper imports a committed file");
 
-        foreach (var view in new[] { "Create.cshtml", "Edit.cshtml", "Edit.Mobile.cshtml" })
+        foreach (var view in new[] { "Create.cshtml", "Edit.cshtml" })
         {
             var text = File.ReadAllText(ResolveRepoFile("QuestBoard.Service", "Views", "Contacts", view));
             text.Should().Contain("~/css/tagify-vendor.css",
