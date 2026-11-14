@@ -1087,16 +1087,15 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Characters links characters.mobile.css. The character-member-row
-    /// class only renders when characters exist; the CSS link renders unconditionally, so that is
-    /// the stable smoke-test assertion here.
-    /// Note: character-member-row presence with seeded characters is verified by Plan 04's own seeded test.
+    /// Mobile UA on /Characters answers 200 with the phone layout, links the shared card sheet and the phone list
+    /// sheet, and renders each character as a member row reached through one stretched link with no click handler.
     /// </summary>
     [Fact]
     public async Task MobileCharacters_MobileUserAgent_RendersListRows()
     {
-        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+        var (authClient, ownerUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "char_browse16", "char_browse16@test.com");
+        var character = await TestDataHelper.CreateTestCharacterAsync(_factory.Services, ownerUser.Id, "Row Hero");
 
         var request = new HttpRequestMessage(HttpMethod.Get, "/Characters");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
@@ -1105,7 +1104,12 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("member-cards.css");
         html.Should().Contain("characters.mobile.css");
+        html.Should().Contain("character-member-row member-row");
+        html.Should().Contain($"class=\"row-nav-link\" href=\"/Characters/Details/{character.Id}\"");
+        html.Should().NotContain("window.location");
     }
 
     // -----------------------------------------------------------------------

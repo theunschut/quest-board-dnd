@@ -1,105 +1,139 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Service.ViewModels.CharacterViewModels
+@using QuestBoard.Service.ViewModels.Shared
 @model CharactersIndexViewModel
-
-@section Styles {
-    <link href="~/css/characters.mobile.css" asp-append-version="true" rel="stylesheet" />
+@{
+    ViewData["Title"] = "Characters";
 }
 
-<a href="@Url.Action("Create")" class="btn btn-warning w-100 mb-3">
-    <i class="fas fa-plus me-2"></i>Create New Character
-</a>
+@section Styles {
+    <link rel="stylesheet" href="~/css/member-cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/characters.mobile.css" asp-append-version="true" />
+}
 
-<div class="character-section-card mb-4">
-    <div class="character-section-heading mb-2">
-        <i class="fas fa-user-circle text-success me-2"></i>My Characters
-    </div>
-    @if (Model.MyCharacters.Any())
-    {
-        @foreach (var character in Model.MyCharacters)
-        {
-            <div class="character-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
-                @if (character.HasProfilePicture)
-                {
-                    <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
-                }
-                else
-                {
-                    <div class="character-member-placeholder me-3"><i class="fas fa-user"></i></div>
-                }
-                <div class="flex-grow-1">
-                    <div class="character-member-name"><a class="row-nav-link" href="@Url.Action("Details", new { id = character.Id })">@character.Name</a></div>
-                    <div class="character-member-class">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
-                    <div>
-                        @if (character.Role == CharacterRole.Main)
-                        {
-                            <span class="badge bg-warning text-dark"><i class="fas fa-star me-1"></i>Main</span>
-                        }
-                        @if (character.Status == CharacterStatus.Dead)
-                        {
-                            <span class="badge bg-dark">Dead</span>
-                        }
-                        @if (character.Status == CharacterStatus.Retired)
-                        {
-                            <span class="badge bg-secondary">Retired</span>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
-    }
-    else
-    {
-        <div class="character-empty-state">
-            <i class="fas fa-users-slash fa-2x mb-2"></i>
-            <h5>No Characters Yet</h5>
-            <p>Create your first character to get started!</p>
-            <a href="@Url.Action("Create")" class="btn btn-warning"><i class="fas fa-plus me-2"></i>Create Character</a>
-        </div>
-    }
-</div>
+@section Scripts {
+    <script type="module" src="~/js/avatar-fallback.js" asp-append-version="true"></script>
+}
 
-<div class="character-section-card mb-4">
-    <div class="character-section-heading mb-2">
-        <i class="fas fa-users text-primary me-2"></i>Character Roster
-    </div>
-    @if (Model.OtherCharacters.Any())
-    {
-        @foreach (var character in Model.OtherCharacters)
-        {
-            <div class="character-member-row d-flex align-items-center@(character.Status == CharacterStatus.Dead ? " dead" : character.Status == CharacterStatus.Retired ? " retired" : "")" onclick="window.location.href='@Url.Action("Details", new { id = character.Id })'">
-                @if (character.HasProfilePicture)
-                {
-                    <img src="@Url.Action("GetCroppedPicture", new { id = character.Id })" class="character-member-thumbnail me-3" alt="@character.Name" />
-                }
-                else
-                {
-                    <div class="character-member-placeholder me-3"><i class="fas fa-user"></i></div>
-                }
-                <div class="flex-grow-1">
-                    <div class="character-member-name"><a class="row-nav-link" href="@Url.Action("Details", new { id = character.Id })">@character.Name</a></div>
-                    <div class="character-member-class">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
-                    <div class="character-member-owner"><i class="fas fa-user me-1"></i>@character.OwnerName</div>
-                    <div>
-                        @if (character.Status == CharacterStatus.Dead)
-                        {
-                            <span class="badge bg-dark">Dead</span>
-                        }
-                        @if (character.Status == CharacterStatus.Retired)
-                        {
-                            <span class="badge bg-secondary">Retired</span>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
-    }
-    else
-    {
-        <div class="character-empty-state">
-            <i class="fas fa-dungeon fa-2x mb-2"></i>
-            <h5>No Other Characters</h5>
-            <p>No other adventurers have created characters yet!</p>
+<div class="characters-page">
+    <div class="card modern-card mb-3">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">Characters</h1>
         </div>
-    }
+        <div class="card-body modern-card-body">
+            <a href="@Url.Action("Create")" class="btn btn-primary characters-create">
+                <i class="fas fa-plus me-2" aria-hidden="true"></i>Create New Character
+            </a>
+        </div>
+    </div>
+
+    <section class="card modern-card modern-card--aside characters-section mb-3" aria-labelledby="my-characters-title">
+        <div class="card-header modern-card-header">
+            <h2 class="mb-0" id="my-characters-title">
+                <i class="fas fa-user-circle me-2" aria-hidden="true"></i>My Characters
+            </h2>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (Model.MyCharacters.Any())
+            {
+                @foreach (var character in Model.MyCharacters)
+                {
+                    var statusClass = character.Status == CharacterStatus.Dead ? " member-row--dead" : character.Status == CharacterStatus.Retired ? " member-row--retired" : string.Empty;
+                    <div class="character-member-row member-row modern-card modern-card--interactive@(statusClass)">
+                        @await Html.PartialAsync("_CharacterAvatar", new CharacterAvatarViewModel
+                        {
+                            Id = character.Id,
+                            Name = character.Name,
+                            HasPicture = character.HasProfilePicture,
+                            Decorative = true
+                        })
+                        <div class="member-row-body">
+                            <h3 class="member-row-name"><a class="row-nav-link" href="@Url.Action("Details", new { id = character.Id })">@character.Name</a></h3>
+                            <div class="member-row-line">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
+                            @if (character.Role == CharacterRole.Main || character.Status != CharacterStatus.Active)
+                            {
+                                <div class="member-row-badges">
+                                    @if (character.Role == CharacterRole.Main)
+                                    {
+                                        <span class="badge badge-main"><i class="fas fa-star me-1" aria-hidden="true"></i>Main</span>
+                                    }
+                                    @if (character.Status == CharacterStatus.Dead)
+                                    {
+                                        <span class="badge bg-secondary"><i class="fas fa-skull me-1" aria-hidden="true"></i>Dead</span>
+                                    }
+                                    @if (character.Status == CharacterStatus.Retired)
+                                    {
+                                        <span class="badge bg-info"><i class="fas fa-moon me-1" aria-hidden="true"></i>Retired</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="fas fa-users-slash empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Characters Yet</h2>
+                    <p class="empty-state-text">Create your first character to get started!</p>
+                    <a href="@Url.Action("Create")" class="btn btn-secondary">
+                        <i class="fas fa-plus me-2" aria-hidden="true"></i>Create Character
+                    </a>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="card modern-card modern-card--aside characters-section mb-3" aria-labelledby="roster-title">
+        <div class="card-header modern-card-header">
+            <h2 class="mb-0" id="roster-title">
+                <i class="fas fa-users me-2" aria-hidden="true"></i>Character Roster
+            </h2>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (Model.OtherCharacters.Any())
+            {
+                @foreach (var character in Model.OtherCharacters)
+                {
+                    var statusClass = character.Status == CharacterStatus.Dead ? " member-row--dead" : character.Status == CharacterStatus.Retired ? " member-row--retired" : string.Empty;
+                    <div class="character-member-row member-row modern-card modern-card--interactive@(statusClass)">
+                        @await Html.PartialAsync("_CharacterAvatar", new CharacterAvatarViewModel
+                        {
+                            Id = character.Id,
+                            Name = character.Name,
+                            HasPicture = character.HasProfilePicture,
+                            Decorative = true
+                        })
+                        <div class="member-row-body">
+                            <h3 class="member-row-name"><a class="row-nav-link" href="@Url.Action("Details", new { id = character.Id })">@character.Name</a></h3>
+                            <div class="member-row-line">Level @character.Level — @string.Join(" / ", character.Classes.Select(c => $"{c.Class} {c.ClassLevel}"))</div>
+                            <div class="member-row-line"><i class="fas fa-user me-1" aria-hidden="true"></i>@character.OwnerName</div>
+                            @if (character.Status != CharacterStatus.Active)
+                            {
+                                <div class="member-row-badges">
+                                    @if (character.Status == CharacterStatus.Dead)
+                                    {
+                                        <span class="badge bg-secondary"><i class="fas fa-skull me-1" aria-hidden="true"></i>Dead</span>
+                                    }
+                                    @if (character.Status == CharacterStatus.Retired)
+                                    {
+                                        <span class="badge bg-info"><i class="fas fa-moon me-1" aria-hidden="true"></i>Retired</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="fas fa-dungeon empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Other Characters</h2>
+                    <p class="empty-state-text">No other adventurers have created characters yet!</p>
+                </div>
+            }
+        </div>
+    </section>
 </div>

@@ -34,7 +34,7 @@ public class CharactersIndexRenderTests(WebApplicationFactoryBase factory)
         return ValueTask.CompletedTask;
     }
 
-    public static TheoryData<bool> BothLayouts => new() { false };
+    public static TheoryData<bool> BothLayouts => new() { false, true };
 
     private static string AgentFor(bool phone) => phone ? PhoneUserAgent : DesktopUserAgent;
 
@@ -166,6 +166,21 @@ public class CharactersIndexRenderTests(WebApplicationFactoryBase factory)
         html.Should().NotContain("characters.mobile.css");
         Regex.Matches(html, @"/css/characters\.css").Should().HaveCount(1, "the sheet loads once, from the page");
         Regex.IsMatch(MainOf(html), @"<section\b[^>]*aria-labelledby=").Should().BeTrue("each section is named by its title");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_LinksTheSharedCardSheetThenTheOneForThePhone()
+    {
+        var seeded = await SeedAsync("sheetsphone", withCharacters: true);
+
+        var html = await GetHtmlAsync(seeded, phone: true);
+
+        var shared = html.IndexOf("/css/member-cards.css", StringComparison.Ordinal);
+        var own = html.IndexOf("/css/characters.mobile.css", StringComparison.Ordinal);
+        shared.Should().BeGreaterThan(-1);
+        own.Should().BeGreaterThan(shared);
+        html.Should().NotContain("/css/characters.css");
+        html.Should().Contain("characters-page");
     }
 
     [Theory]

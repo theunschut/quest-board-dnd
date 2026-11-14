@@ -43,6 +43,20 @@ public class CharactersTwinAnswersTests(WebApplicationFactoryBase factory)
             "the phone page carries the same title words as the desktop page");
     }
 
+    [Fact]
+    public async Task PhoneCharacters_HasThePageHeading()
+    {
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "twinanswers_characters", "twinanswers_characters@example.com");
+
+        var html = await GetPhoneAsync(client, "/Characters");
+
+        html.Should().Contain("mobile-layout");
+        Regex.Matches(html, @"<h1\b").Should().HaveCount(1, "the phone page has one page title");
+        Regex.IsMatch(html, @"<h1\b[^>]*>\s*Characters\s*</h1>").Should().BeTrue(
+            "the phone page carries the same title words as the desktop page");
+    }
+
     [Theory]
     [InlineData("create")]
     [InlineData("edit")]
