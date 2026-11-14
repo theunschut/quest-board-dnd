@@ -4,16 +4,16 @@ milestone: v9.0
 milestone_name: Rolling Improvements
 current_phase: 98
 current_phase_name: Characters, Contacts, DM profile and Players UI conversion
-status: planning
-stopped_at: Phases 96 and 97 complete (v6.1.0 and v6.2.0 shipped)
-last_updated: "2026-11-13T15:38:26.106Z"
-last_activity: 2026-11-13
-last_activity_desc: Phase 96 complete, transitioned to Phase 97
+status: executing
+stopped_at: "Phase 98 plan 98-12 complete; Gate 1 approved 2026-11-14"
+last_updated: "2026-11-14T10:30:12.421Z"
+last_activity: 2026-11-14
+last_activity_desc: "Phase 98: plans 98-01 to 98-12 complete, next 98-13"
 progress:
   total_phases: 31
   completed_phases: 24
-  total_plans: 247
-  completed_plans: 238
+  total_plans: 270
+  completed_plans: 250
   percent: 77
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -25,15 +25,15 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 96 — account-and-pickers-ui-conversion
+**Current focus:** Phase 98 — Characters, Contacts, DM profile and Players UI conversion
 
 ## Current Position
 
-Phase: 98 — Characters, Contacts, DM profile and Players UI conversion
-Plan: Not started
-Status: Ready to plan
+Phase: 98 (Characters, Contacts, DM profile and Players UI conversion) — EXECUTING
+Plan: 13 of 23
+Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
-Last activity: 2026-11-13 — Phase 97 complete, transitioned to Phase 98
+Last activity: 2026-11-14 — Phase 98 plans 98-01 to 98-12 complete (Gate 1 approved), next 98-13
 
 **Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
