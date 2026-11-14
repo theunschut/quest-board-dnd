@@ -16,6 +16,9 @@ public class CategoryManageRenderTests : IClassFixture<WebApplicationFactoryBase
     private const string DesktopUserAgent =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+    private const string PhoneUserAgent =
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+
     private readonly WebApplicationFactoryBase _factory;
 
     public CategoryManageRenderTests(WebApplicationFactoryBase factory)
@@ -187,5 +190,85 @@ public class CategoryManageRenderTests : IClassFixture<WebApplicationFactoryBase
         page.Should().Contain("Add your first category above to start grouping your contacts.");
         page.Should().Contain("empty-state");
         page.Should().NotContain("<table");
+    }
+
+    [Fact]
+    public async Task Manage_Phone_RendersTheHeadingRowsAndTheAddFormInsideThePhoneLayout()
+    {
+        var (client, userId) = await DungeonMasterAsync("phoneone");
+        await SeedCategoryWithContactsAsync("Allies of the Ember Weir", 0, 1, userId);
+        await SeedCategoryWithContactsAsync("Rivals", 1, 2, userId);
+
+        var html = await GetManageAsync(client, PhoneUserAgent);
+        var page = MainOf(html);
+
+        html.Should().Contain("mobile-layout");
+        Regex.Matches(page, @"<h1\b").Should().HaveCount(1);
+        Regex.IsMatch(page, @"<h1\b[^>]*>\s*Manage Categories\s*</h1>").Should().BeTrue(
+            "the phone page names itself with the same words as the desktop page");
+        Regex.Matches(page, @"class=""category-mgmt-row""").Should().HaveCount(2);
+        page.Should().Contain("category-mgmt-add-form");
+        page.Should().Contain("New Category Name");
+        page.Should().Contain("1 contact<").And.Contain("2 contacts<");
+        page.Should().NotContain("<table", "the phone shows slips, not a table");
+        page.Should().NotContain("contacts-page");
+
+        html.Should().Contain("contact-categories.mobile.css");
+        html.Should().NotContain("contacts.mobile.css");
+        Regex.Matches(page, @"\sstyle\s*=", RegexOptions.IgnoreCase).Should().BeEmpty();
+        Regex.Matches(page, @"<script\b(?![^>]*\bsrc\s*=)", RegexOptions.IgnoreCase).Should().BeEmpty();
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/confirm-submit\.js[^""]*""").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Manage_Phone_DeleteQuestionIsTheSameSentenceAsTheDesktopForEveryCount()
+    {
+        var (client, userId) = await DungeonMasterAsync("phoneconfirm");
+        await SeedCategoryWithContactsAsync("Empty Guild", 0, 0, userId);
+        await SeedCategoryWithContactsAsync("Lone Scout", 1, 1, userId);
+        await SeedCategoryWithContactsAsync("Wardens of the Lantern Gate", 2, 3, userId);
+
+        var phone = ConfirmMessages(MainOf(await GetManageAsync(client, PhoneUserAgent)));
+        var desktop = ConfirmMessages(MainOf(await GetManageAsync(client, DesktopUserAgent)));
+
+        phone.Should().Equal(
+            ExpectedSentence("Empty Guild", 0),
+            ExpectedSentence("Lone Scout", 1),
+            ExpectedSentence("Wardens of the Lantern Gate", 3));
+        phone.Should().Equal(desktop);
+    }
+
+    [Fact]
+    public async Task Manage_Phone_ButtonsKeepTheirRolesAndNames()
+    {
+        var (client, userId) = await DungeonMasterAsync("phonebuttons");
+        await SeedCategoryWithContactsAsync("First Hall", 0, 0, userId);
+        await SeedCategoryWithContactsAsync("Second Hall", 1, 0, userId);
+
+        var page = MainOf(await GetManageAsync(client, PhoneUserAgent));
+
+        foreach (var name in new[] { "First Hall", "Second Hall" })
+        {
+            page.Should().Contain($"role=\"group\" aria-label=\"Reorder {name}\"");
+            page.Should().Contain($"aria-label=\"Move {name} up\"");
+            page.Should().Contain($"aria-label=\"Move {name} down\"");
+        }
+        Regex.Matches(page, @"btn btn-secondary""\s+aria-label=""Move ").Should().HaveCount(4);
+        Regex.Matches(page, @"btn btn-warning""[^>]*>\s*<i class=""fas fa-pen me-1"" aria-hidden=""true""></i>Rename").Should().HaveCount(2);
+        Regex.Matches(page, @"btn btn-danger"">\s*<i class=""fas fa-trash me-1"" aria-hidden=""true""></i>Delete").Should().HaveCount(2);
+        Regex.IsMatch(page, @"btn btn-primary"">\s*<i class=""fas fa-plus me-2"" aria-hidden=""true""></i>Add Category").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Manage_Phone_NoCategories_RendersTheEmptyStateVerbatim()
+    {
+        var (client, _) = await DungeonMasterAsync("phoneempty");
+
+        var page = MainOf(await GetManageAsync(client, PhoneUserAgent));
+
+        page.Should().Contain("No Categories Yet");
+        page.Should().Contain("Add your first category above to start grouping your contacts.");
+        page.Should().Contain("empty-state");
+        page.Should().NotContain("category-mgmt-row");
     }
 }

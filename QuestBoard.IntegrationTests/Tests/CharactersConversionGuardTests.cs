@@ -42,6 +42,8 @@ public class CharactersConversionGuardTests
     private static readonly string[] ConvertedViews =
     [
         "QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml",
+        "QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml",
+        "QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml",
         "QuestBoard.Service/Views/Characters/Details.cshtml",
         "QuestBoard.Service/Views/Contacts/Create.cshtml",
         "QuestBoard.Service/Views/Contacts/Edit.cshtml",
@@ -50,13 +52,15 @@ public class CharactersConversionGuardTests
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
     private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
     {
         ["QuestBoard.Service/Views/ContactCategoryManagement/Edit.cshtml"] = [],
+        ["QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml"] = ["contact-categories.css"],
+        ["QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml"] = ["contact-categories.mobile.css"],
         ["QuestBoard.Service/Views/Characters/Details.cshtml"] = ["markdown-content.css", "character-detail.css"],
         ["QuestBoard.Service/Views/Contacts/Create.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/Contacts/Edit.cshtml"] = ["tagify-vendor.css", "contact-form.css", "image-crop.css"],
@@ -85,7 +89,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -139,6 +143,14 @@ public class CharactersConversionGuardTests
         "QuestBoard.IntegrationTests/Tests/DmEditProfileRenderTests.cs",
         "QuestBoard.IntegrationTests/Mobile/MobileViewsTests.cs",
         "QuestBoard.IntegrationTests/Tests/ContactCategoryMobileRenderTests.cs",
+        "QuestBoard.Service/Views/ContactCategoryManagement/Manage.cshtml",
+        "QuestBoard.Service/Views/ContactCategoryManagement/Manage.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/contact-categories.css",
+        "QuestBoard.Service/wwwroot/css/contact-categories.mobile.css",
+        "QuestBoard.Service/wwwroot/css/contacts.mobile.css",
+        "QuestBoard.IntegrationTests/Tests/CategoryManageRenderTests.cs",
+        "QuestBoard.IntegrationTests/Tests/CharactersTwinAnswersTests.cs",
+        "QuestBoard.IntegrationTests/Tests/ContactCategoryContrastGuardTests.cs",
         "QuestBoard.IntegrationTests/Controllers/ContactsTagsDesktopMarkupTests.cs",
         "QuestBoard.IntegrationTests/Tests/MarkdownEditorMarkupTests.cs",
     ];

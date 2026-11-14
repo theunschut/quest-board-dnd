@@ -1,0 +1,56 @@
+/*
+ * Manage Categories on the phone layout: the add form fills the width under the page title, and each category is a
+ * slip on the card's scrim with its name and count, the reorder pair and the two actions, every control at least as
+ * tall as a touch target. A slip is not a card, so it takes no blur.
+ */
+@layer pages {
+  .mobile-layout .contact-categories-page .category-mgmt-add-form .btn {
+    width: 100%;
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-row {
+    padding: var(--qb-space-md);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-scrim);
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-md);
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-name {
+    margin: 0;
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-count {
+    margin: 0;
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-actions {
+    display: flex;
+    gap: var(--qb-space-sm);
+    margin-top: var(--qb-space-sm);
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-actions > * {
+    flex: 1 1 0;
+  }
+
+  .mobile-layout .contact-categories-page .category-mgmt-actions .btn {
+    width: 100%;
+  }
+}

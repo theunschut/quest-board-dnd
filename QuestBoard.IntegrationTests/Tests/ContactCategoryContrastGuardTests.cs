@@ -126,19 +126,28 @@ public class ContactCategoryContrastGuardTests(WebApplicationFactoryBase factory
     [Fact]
     public void ContactCategoryContrastGuard_MobileAddFormLabelRule_SetsParchmentColourAndShadow()
     {
-        var cssPath = ResolveCssPath("contacts.mobile.css");
-        var css = File.ReadAllText(cssPath);
-        var rule = ExtractCssRule(css, ".category-mgmt-add-form .form-label {");
+        // The phone add-category label sits on the title card, so it takes the card's text colour by inheritance:
+        // no rule names a colour or a shadow for it, the retired per-form rule is gone from the contacts phone sheet,
+        // and the card's text colour holds the 4.5:1 bar on the card surface.
+        var categoriesCss = File.ReadAllText(ResolveCssPath("contact-categories.mobile.css"));
+        var contactsCss = File.ReadAllText(ResolveCssPath("contacts.mobile.css"));
 
-        rule.Should().NotBeEmpty(
-            because: $"contacts.mobile.css at '{cssPath}' must contain a scoped .category-mgmt-add-form .form-label rule -- " +
-                     "a bare .form-label rule at file top level would be a failure of this criterion");
+        contactsCss.Should().NotContain("category-mgmt-add-form",
+            because: "the per-form label colour rule moved out of the contacts phone sheet and must not come back");
+        Regex.Matches(categoriesCss, @"[^{}]*\.form-label[^{}]*\{[^}]*\}")
+            .Select(m => m.Value).Should().BeEmpty(
+                because: "the add-category label must name no rule of its own, so it keeps the card's colour by inheritance");
+        Regex.Matches(categoriesCss, @"(?<![\w-])color\s*:[^;]*;")
+            .Select(m => m.Value).Should().OnlyContain(v => v.Contains("var(--qb-"),
+                because: "any colour the phone category sheet names is a token");
 
-        var lowerRule = rule.ToLowerInvariant();
-        lowerRule.Should().Contain("#f4e4bc",
-            because: "the mobile add-category label must resolve to the parchment token, not Bootstrap's default near-black rgb(33,37,41)");
-        lowerRule.Should().Contain("text-shadow",
-            because: "the label needs the same drop shadow every sibling mobile .form-label rule uses to stay legible over the notice-board background");
+        var components = File.ReadAllText(ResolveCssPath("components.css"));
+        var cardRule = ExtractCssRule(components, ".modern-card {");
+        cardRule.Should().Contain("color: var(--qb-fg)",
+            because: "the card sets the text colour once and the label inherits it");
+        var tokens = File.ReadAllText(ResolveCssPath("tokens.css"));
+        RatioOnCardSurface(tokens, "--qb-fg").Should().BeGreaterThanOrEqualTo(4.5,
+            because: "the label is body-size text on the card surface, so it needs the 4.5:1 text bar over the lightest board pixel");
     }
 
     [Fact]
