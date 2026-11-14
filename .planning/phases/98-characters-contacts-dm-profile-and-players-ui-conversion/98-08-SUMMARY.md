@@ -29,17 +29,17 @@ decisions:
   - "Promotion into the Quest and Events forms not made: Gate 1 item 13 is no-promote, so those files are untouched"
 metrics:
   tasks: 3
-  commits: 1
-status: partial
+  commits: 2
+status: complete
 actuals:
-  tokens: 4200
-  tasks: 2
-  commits: 1
+  tokens: 4500
+  tasks: 3
+  commits: 2
 ---
 
 # Phase 98 Plan 08: Shared form contract and the category rename merge Summary
 
-The form contract now lives once in `components.css` and the category rename page is a single view for both layouts, proven by a phone and a desktop User-Agent test and a retired-file guard. Status is partial: both full test suites are green, but the live sweep and look check of Task 3 could not run because SQL Server at localhost:1433 is down (see Blocker).
+The form contract now lives once in `components.css` and the category rename page is a single view for both layouts, proven by a phone and a desktop User-Agent test and a retired-file guard. Both full test suites are green and the live sweep shows no regression against BEFORE (the one intended accessible-name change is allow-listed). The look check passes on the phone; on desktop its only unexpected difference is the gold form title that Gate 1 approved.
 
 ## What changed
 
@@ -53,9 +53,12 @@ The form contract now lives once in `components.css` and the category rename pag
 
 **Task 2: promotion not approved (default).** `gate1/answers.json` has `formPromotion.promote: false` and item 13 `no-promote` from the operator. Nothing was changed: `git diff` of `Views/Quest`, `Views/Events`, `quest-form.css` and `event-forms.css` against the plan start is empty. The shared form rules serve this area's forms only. `style-compare.mjs` was therefore not written (it exists only to prove a promotion).
 
-**Task 3: partial.**
-- Done: `PhaseSourceFiles` updated; both full suites run, see Test results.
-- Not done, blocked: sweep of `cat-edit` and the six `form-*` rows under both User-Agents into `after/98-08/`, `allow.json`, `readability-compare.py` against BEFORE, and `lookcheck.mjs` on the live `cat-edit` page. `after/98-08/PLAN_START` was written (the plan-start commit `5a9dec80`).
+**Task 3.**
+- `PhaseSourceFiles` updated; both full suites run, see Test results.
+- Sweep (apps 8310 working tree and 8311 baseline started with the phase-98 toolset, SQL Server restarted by the operator): `cat-edit` and the six `form-*` rows under both User-Agents at every width, 7 rows, 28 captures, all status 200, into `~/qb-ui-review/phase-98/after/98-08/` (`report.json`, screenshots).
+- `readability-compare.py` against BEFORE with the contrast exceptions: 28 compared, 0 failing rows, 0 poster-glyph violations, `ok`. The six `form-*` rows show no change (the allow file names nothing for them). `allow.json` holds one intended difference for `cat-edit`: the Category Name field's accessible name is now `Category Name * (required)` because the label carries the required marker and a visually hidden (required) (a renamed control, none lost). Without that entry the compare reported exactly this rename and nothing else.
+- Look check (`lookcheck.mjs --row cat-edit --port 8310`, p98dm, results in `after/98-08/lookcheck.json`): phone (390, phone layout) against `quest-form.mobile.html`: 16 properties, pass, only the two intended differences (glass hover value, button border). Desktop against `quest-form.html`: 16 properties, the two intended differences plus `h1.color` (reference parchment, page gold `rgb(255, 193, 7)`), so the tool reports pass false. That one difference is the operator-approved gold form title (Gate 1 item 6, 7.63:1); the Direction A reference is the Quest form, which keeps a parchment title. No other property differs. The aside and repeated-item roles do not exist on this page and are noted by the tool. I looked at the desktop and phone captures: gold Cinzel title on the band, required marker on its overlay chip, one action row with Cancel left and a wood Rename right (the phone row has Cancel at natural width and Rename filling).
+- Not exercised live: the category Edit error state (the `cat-edit` row has no error action). The form-page error rules are the same rules the Quest forms already carry, ported verbatim from the approved contract.
 
 ## Test results
 
@@ -63,9 +66,9 @@ The form contract now lives once in `components.css` and the category rename pag
 - Integration: 2028 passed, 0 failed, 16 skipped, 2044 total (2022 before; plus the 2 theory cases and the 4 new guard facts).
 - `TestHostFileWatching.cs` is untouched.
 
-## Blocker
+## Blocker (resolved)
 
-The sweep needs the running app against SQL Server. `localhost:1433` refuses connections: the `mssql-dev` container exited (status `Exited (137) 8 hours ago`) and is not running. Starting or provisioning the database is not allowed for this work, so it was left alone. The 8310 working-tree app failed to start on its database migration with the SQL connection error, and the 8311 baseline was already down. No process of this plan is left running. To finish Task 3 once the database is back: `node tools/run-app.mjs /mnt/Data/repos/quest-board-dnd 8310 --restart`, make sure 8311 is up, then sweep `cat-edit,form-quest-create,form-quest-create-errors,form-quest-edit,form-quest-followup,form-event-create,form-event-edit`, write `allow.json` (category Edit h1, Rename button role and the action row; nothing for the form rows), run `readability-compare.py` and `lookcheck.mjs` on `cat-edit` (desktop against `quest-form.html`, phone against `quest-form.mobile.html`, p98dm).
+The first attempt at Task 3 stopped because SQL Server at localhost:1433 was down (the `mssql-dev` container had exited). The operator approved starting it, the orchestrator did so, and the sweep and look check were then run as described above. Both apps (8310 and 8311) are left running.
 
 ## Gate 1 answers applied
 
@@ -92,9 +95,9 @@ None.
 
 None. No new endpoint, auth path or schema; the controller is untouched. T-98-20: the form keeps `asp-action`, the antiforgery token and its validation, and the controller's existing facts stay green. T-98-21: one view serves both User-Agents behind the same controller gates; the new theory runs as the Dungeon Master tier. T-98-22: not triggered (no promotion).
 
-## Self-Check: PASSED (for the work done)
+## Self-Check: PASSED
 
 - `Edit.cshtml` exists; `Edit.Mobile.cshtml` is gone; commit `8c5c5b47` exists.
 - `.form-page` and `.form-actions` present in `components.css`; `grep -c contacts-page` on the merged Edit prints 0 and `<h1` prints 1.
 - `legacy-collision.py` on the merged Edit prints nothing.
-- Status is partial: the sweep and look-check evidence is not yet gathered.
+- `after/98-08/report.json`, `allow.json` and `lookcheck.json` exist; the readability compare printed `ok`.
