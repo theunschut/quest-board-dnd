@@ -9,68 +9,74 @@
 }
 
 @section Styles {
-    <link href="~/css/players.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/member-cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/players.mobile.css" asp-append-version="true" />
 }
 
-<div class="container-fluid px-3 py-3">
-
-    <div class="players-section-card mb-4">
-        <div class="players-section-heading mb-2">
-            <i class="fas fa-crown text-warning me-2"></i>Dungeon Masters
+<div class="players-page">
+    <div class="card modern-card mb-3">
+        <div class="card-header modern-card-header">
+            <h1 class="mb-0">Players</h1>
         </div>
-
-        @if (Model.DungeonMasters.Any())
-        {
-            @foreach (var dm in Model.DungeonMasters)
-            {
-                if (dungeonMasterProfileOn)
-                {
-                    <div class="players-row"
-                         onclick="window.location.href='@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })'">
-                        <span class="players-name"><a class="row-nav-link" href="@Url.Action("Profile", "DungeonMaster", new { id = dm.Id })">@dm.Name</a></span>
-                        <i class="fas fa-chevron-right ms-auto" style="color: rgba(244,228,188,0.5);"></i>
-                    </div>
-                }
-                else
-                {
-                    <div class="players-row no-link">
-                        <span class="players-name">@dm.Name</span>
-                    </div>
-                }
-            }
-        }
-        else
-        {
-            <div class="players-empty-state">
-                <i class="fas fa-dragon fa-2x mb-2"></i>
-                <h5>No Dungeon Masters Found</h5>
-                <p>No dungeon masters are registered yet. Brave souls may register as new quest leaders.</p>
-            </div>
-        }
     </div>
 
-    <div class="players-section-card mb-3">
-        <div class="players-section-heading mb-2">
-            <i class="fas fa-users text-primary me-2"></i>Registered Players
+    <section class="card modern-card modern-card--aside players-section" aria-labelledby="players-dm-title">
+        <div class="card-header modern-card-header">
+            <h2 class="mb-0" id="players-dm-title"><i class="fas fa-crown me-2" aria-hidden="true"></i>Dungeon Masters</h2>
         </div>
-
-        @if (Model.Players.Any())
-        {
-            @foreach (var player in Model.Players)
+        <div class="card-body modern-card-body">
+            @if (Model.DungeonMasters.Any())
             {
-                <div class="players-row no-link">
-                    <span class="players-name">@player.Name</span>
+                @foreach (var dm in Model.DungeonMasters)
+                {
+                    if (dungeonMasterProfileOn)
+                    {
+                        <div class="players-row member-row modern-card modern-card--interactive">
+                            <h3 class="players-name"><a class="row-nav-link" asp-controller="DungeonMaster" asp-action="Profile" asp-route-id="@dm.Id">@dm.Name</a></h3>
+                            <i class="fas fa-chevron-right players-chevron" aria-hidden="true"></i>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="players-row member-row modern-card no-link">
+                            <p class="players-name">@dm.Name</p>
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="fas fa-crown empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Dungeon Masters Found</h2>
+                    <p class="empty-state-text">No dungeon masters are registered yet. Brave souls may register as new quest leaders.</p>
                 </div>
             }
-        }
-        else
-        {
-            <div class="players-empty-state">
-                <i class="fas fa-user fa-2x mb-2"></i>
-                <h5>No Players Found</h5>
-                <p>No adventurers have registered yet. Players can register to join quests.</p>
-            </div>
-        }
-    </div>
+        </div>
+    </section>
 
+    <section class="card modern-card modern-card--aside players-section" aria-labelledby="players-registered-title">
+        <div class="card-header modern-card-header">
+            <h2 class="mb-0" id="players-registered-title"><i class="fas fa-users me-2" aria-hidden="true"></i>Registered Players</h2>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (Model.Players.Any())
+            {
+                @foreach (var player in Model.Players)
+                {
+                    <div class="players-row member-row modern-card no-link">
+                        <p class="players-name">@player.Name</p>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="fas fa-users empty-state-icon" aria-hidden="true"></i>
+                    <h2 class="empty-state-heading">No Players Found</h2>
+                    <p class="empty-state-text">No adventurers have registered yet. Players can register to join quests.</p>
+                </div>
+            }
+        </div>
+    </section>
 </div>

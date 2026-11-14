@@ -187,4 +187,129 @@ public class PlayersIndexRenderTests(WebApplicationFactoryBase factory)
         main.Should().Contain("Lone Dungeon Master");
         main.Should().NotContain("No Dungeon Masters Found").And.NotContain("<h4").And.NotContain("<h5");
     }
+
+    // The markup of each row, split at the opening of the row's own class attribute.
+    private static List<string> Rows(string html) =>
+        Regex.Split(MainOf(html), @"(?=<div class=""players-row[ ""])").Skip(1).ToList();
+
+    [Fact]
+    public async Task PhoneIndex_RendersThePageTitleAndTheTwoSectionCards()
+    {
+        var seeded = await SeedFullBoardAsync(phone: true);
+
+        var html = await GetHtmlAsync(seeded.Client, "/Players", phone: true);
+        var main = MainOf(html);
+
+        html.Should().Contain("mobile-layout");
+        main.Should().Contain("players-page");
+        Regex.Matches(main, @"<h1\b").Should().HaveCount(1, "the page has one title");
+        Regex.IsMatch(main, @"<h1\b[^>]*>\s*Players\s*</h1>").Should().BeTrue();
+        Regex.Matches(main, @"<section\b[^>]*modern-card--aside").Should().HaveCount(2);
+        Regex.IsMatch(main, @"<h2\b[^>]*>\s*<i\b[^>]*></i>Dungeon Masters\s*</h2>").Should().BeTrue();
+        Regex.IsMatch(main, @"<h2\b[^>]*>\s*<i\b[^>]*></i>Registered Players\s*</h2>").Should().BeTrue();
+        main.Should().NotContain("players-section-card").And.NotContain("players-section-heading")
+            .And.NotContain("<h4").And.NotContain("<h5").And.NotContain("<table");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_LinksTheSharedCardSheetBeforeItsOwnAndNotTheDesktopSheet()
+    {
+        var seeded = await SeedFullBoardAsync(phone: true);
+
+        var html = await GetHtmlAsync(seeded.Client, "/Players", phone: true);
+
+        var shared = html.IndexOf("css/member-cards.css", StringComparison.Ordinal);
+        var own = html.IndexOf("css/players.mobile.css", StringComparison.Ordinal);
+        shared.Should().BeGreaterThan(-1);
+        own.Should().BeGreaterThan(shared, "the list sheet is linked after the shared card sheet");
+        html.Should().NotContain("css/players.css");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_GivesEveryDungeonMasterOneStretchedLinkAndAHiddenChevron()
+    {
+        var seeded = await SeedFullBoardAsync(phone: true);
+
+        var html = await GetHtmlAsync(seeded.Client, "/Players", phone: true);
+
+        var linkRows = Rows(html).Where(r => r.Contains("row-nav-link", StringComparison.Ordinal)).ToList();
+        linkRows.Should().HaveCount(2, "the two Dungeon Masters are the link rows");
+        foreach (var row in linkRows)
+        {
+            Regex.Matches(row, @"<a\b").Should().HaveCount(1, "a row holds one link, the stretched one");
+            Regex.Matches(row, @"\bclass=""row-nav-link""").Should().HaveCount(1);
+            row.Should().Contain("players-row member-row modern-card modern-card--interactive");
+            Regex.IsMatch(row, @"<i class=""fas fa-chevron-right players-chevron"" aria-hidden=""true""></i>").Should().BeTrue(
+                "the chevron is decoration and is hidden from assistive technology");
+        }
+
+        Regex.IsMatch(html, $@"<a class=""row-nav-link"" href=""/DungeonMaster/Profile/{seeded.DungeonMasterId}"">Orlen Vashti of the Ember Weir</a>")
+            .Should().BeTrue("the row keeps its destination");
+        html.Should().Contain($"/DungeonMaster/Profile/{seeded.LongDungeonMasterId}").And.Contain(LongDungeonMasterName);
+        Regex.IsMatch(MainOf(html), @"\son[a-z]+\s*=", RegexOptions.IgnoreCase).Should().BeFalse("no inline event handler remains");
+        MainOf(html).Should().NotContain("window.location");
+        Regex.IsMatch(MainOf(html), @"\sstyle\s*=", RegexOptions.IgnoreCase).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PhoneIndex_PlayerRowsStayInertWithNoLinkNoTabStopAndNoChevron()
+    {
+        var seeded = await SeedFullBoardAsync(phone: true);
+
+        var html = await GetHtmlAsync(seeded.Client, "/Players", phone: true);
+
+        var inert = Rows(html).Where(r => r.Contains("no-link", StringComparison.Ordinal)).ToList();
+        inert.Should().HaveCount(3, "the three players are inert rows, the viewer among them");
+        foreach (var row in inert)
+        {
+            row.Should().Contain("players-row member-row modern-card no-link");
+            row.Should().NotContain("<a").And.NotContain("tabindex").And.NotContain("chevron").And.NotContain("modern-card--interactive");
+        }
+
+        inert.Should().Contain(r => r.Contains(">Tamsin Brightwillow</p>", StringComparison.Ordinal));
+        inert.Should().Contain(r => r.Contains(">" + LongPlayerName + "</p>", StringComparison.Ordinal),
+            "a long name is written whole in its row");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_DungeonMasterPageOff_ListsTheNamesAsInertRows()
+    {
+        var seeded = await SeedFullBoardAsync(phone: true);
+        await BoardPageSeed.SetAsync(factory, 1, BoardPageSet.Empty.With(BoardPage.DungeonMasterProfile), BoardPage.Quests);
+
+        var html = await GetHtmlAsync(seeded.Client, "/Players", phone: true);
+        var main = MainOf(html);
+
+        var dmRow = Rows(html).Single(r => r.Contains(">Orlen Vashti of the Ember Weir</p>", StringComparison.Ordinal));
+        dmRow.Should().Contain("players-row member-row modern-card no-link");
+        main.Should().NotContain("<a").And.NotContain("row-nav-link").And.NotContain("fa-chevron-right")
+            .And.NotContain("DungeonMaster/Profile");
+        Rows(html).Should().OnlyContain(r => r.Contains("no-link", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task PhoneIndex_OnlyAPlayerOnTheBoard_ShowsTheNoDungeonMastersEmptyState()
+    {
+        var client = await SeedOnlyAPlayerAsync(phone: true);
+
+        var main = MainOf(await GetHtmlAsync(client, "/Players", phone: true));
+
+        Regex.IsMatch(main, @"<h2 class=""empty-state-heading"">No Dungeon Masters Found</h2>").Should().BeTrue();
+        Regex.IsMatch(main, @"<p class=""empty-state-text"">No dungeon masters are registered yet\. Brave souls may register as new quest leaders\.</p>")
+            .Should().BeTrue();
+        main.Should().NotContain("players-empty-state").And.NotContain("<h5").And.NotContain("No Players Found");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_OnlyADungeonMasterOnTheBoard_ShowsTheNoPlayersEmptyState()
+    {
+        var client = await SeedOnlyADungeonMasterAsync(phone: true);
+
+        var main = MainOf(await GetHtmlAsync(client, "/Players", phone: true));
+
+        Regex.IsMatch(main, @"<h2 class=""empty-state-heading"">No Players Found</h2>").Should().BeTrue();
+        Regex.IsMatch(main, @"<p class=""empty-state-text"">No adventurers have registered yet\. Players can register to join quests\.</p>")
+            .Should().BeTrue();
+        main.Should().NotContain("players-empty-state").And.NotContain("<h5").And.NotContain("No Dungeon Masters Found");
+    }
 }

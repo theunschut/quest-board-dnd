@@ -83,6 +83,7 @@ public class CharactersTwinAnswersTests(WebApplicationFactoryBase factory)
 
     [Theory]
     [InlineData(false)]
+    [InlineData(true)]
     public async Task Players_HasThePageHeading(bool phone)
     {
         var tag = phone ? "phone" : "desktop";

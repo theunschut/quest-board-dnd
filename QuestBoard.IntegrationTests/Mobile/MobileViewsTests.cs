@@ -1218,12 +1218,15 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Players renders players-section-card glass card sections
-    /// and links players.mobile.css. Test starts RED — Players/Index.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Players renders the phone layout with the Dungeon Master as a stretched-link row, links the shared
+    /// card sheet and the phone list sheet and not the desktop sheet, and carries no click handler.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_PlayersIndex_ReturnsSuccessAndMobileLayout()
     {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dm_idx17", "dm_idx17@test.com", name: "Index Dungeon Master", roles: ["DungeonMaster"]);
         var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "player_idx17", "player_idx17@test.com");
 
@@ -1234,8 +1237,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("players-section-card");
-        html.Should().Contain("players.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("players-row member-row");
+        html.Should().Contain("css/member-cards.css").And.Contain("css/players.mobile.css");
+        html.Should().NotContain("css/players.css");
+        html.Should().NotContain("players-section-card");
+        Regex.Matches(html, @"class=""row-nav-link""").Should().HaveCount(1, "the Dungeon Master row has one stretched link");
+        html.Should().NotContain("window.location").And.NotMatchRegex(@"\sonclick\s*=");
     }
 
     // -----------------------------------------------------------------------

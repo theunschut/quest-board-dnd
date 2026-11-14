@@ -58,10 +58,12 @@ public class CharactersConversionGuardTests
         "QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/Profile.cshtml",
         "QuestBoard.Service/Views/DungeonMaster/Profile.Mobile.cshtml",
+        "QuestBoard.Service/Views/Players/Index.cshtml",
+        "QuestBoard.Service/Views/Players/Index.Mobile.cshtml",
     ];
 
     // Page sheets under the css folder that open the pages layer, by file name. Grows as each sheet is converted.
-    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css"];
+    private static readonly string[] ConvertedSheets = ["character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css"];
 
     // For each view, the sheets it must link from its Styles section, by file name. An empty set means the view
     // is styled by the shared components alone.
@@ -84,6 +86,8 @@ public class CharactersConversionGuardTests
         ["QuestBoard.Service/Views/DungeonMaster/EditProfile.cshtml"] = ["dm-profile-form.css", "image-crop.css"],
         ["QuestBoard.Service/Views/DungeonMaster/Profile.cshtml"] = ["markdown-content.css", "dm-profile.css"],
         ["QuestBoard.Service/Views/DungeonMaster/Profile.Mobile.cshtml"] = ["markdown-content.css", "member-cards.css", "dm-profile.mobile.css"],
+        ["QuestBoard.Service/Views/Players/Index.cshtml"] = ["players.css"],
+        ["QuestBoard.Service/Views/Players/Index.Mobile.cshtml"] = ["member-cards.css", "players.mobile.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its view was merged into the
@@ -110,7 +114,7 @@ public class CharactersConversionGuardTests
 
     // Page sheets this work converts that load from the Styles section of the pages that use them, never from a
     // layout. Later slices append the characters, contacts and Dungeon Master profile sheets.
-    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css"];
+    private static readonly string[] PageOnlySheets = ["image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css"];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
     [
@@ -192,6 +196,11 @@ public class CharactersConversionGuardTests
         "QuestBoard.IntegrationTests/Tests/DmProfileRenderTests.cs",
         "QuestBoard.Service/Views/DungeonMaster/Profile.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/dm-profile.mobile.css",
+        "QuestBoard.Service/Views/Players/Index.cshtml",
+        "QuestBoard.Service/Views/Players/Index.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/players.css",
+        "QuestBoard.Service/wwwroot/css/players.mobile.css",
+        "QuestBoard.IntegrationTests/Tests/PlayersIndexRenderTests.cs",
     ];
 
     // Character views that show a picture, repository-relative. Each asks for the picture only when one is stored.
@@ -617,7 +626,7 @@ public class CharactersConversionGuardTests
     private static readonly string[] AreaSheets =
     [
         "characters.css", "characters.mobile.css", "member-cards.css", "contacts.css", "contacts.mobile.css",
-        "dm-profile.css", "dm-profile.mobile.css", "players.mobile.css",
+        "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css",
     ];
 
     [Fact]
@@ -685,6 +694,7 @@ public class CharactersConversionGuardTests
         "/DungeonMaster/Profile.cshtml", "/DungeonMaster/Profile.Mobile.cshtml",
         "/Characters/Index.cshtml", "/Characters/Index.Mobile.cshtml", "/Characters/Details.cshtml",
         "/Contacts/Index.cshtml", "/Contacts/Index.Mobile.cshtml", "/Contacts/Details.cshtml",
+        "/Players/Index.cshtml", "/Players/Index.Mobile.cshtml",
     ];
 
     [Fact]
