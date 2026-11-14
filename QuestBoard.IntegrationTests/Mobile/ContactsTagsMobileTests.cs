@@ -168,7 +168,8 @@ public class ContactsTagsMobileTests(WebApplicationFactoryBase factory) : IClass
             dmClient, $"/Contacts/Index?tag={tag.Id}", MobileUserAgent, dmClient.DefaultRequestHeaders.Authorization);
 
         statusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("badge bg-dark ms-1\">Active");
+        System.Text.RegularExpressions.Regex.IsMatch(html, @"Filter Tags\s*<span class=""badge bg-success ms-1"">Active</span>")
+            .Should().BeTrue("a filter that is on is told by a badge with the word Active inside the Filter Tags button");
         html.Should().Contain($"<input type=\"hidden\" name=\"tag\" value=\"{tag.Id}\" />");
     }
 

@@ -274,4 +274,181 @@ public class ContactsIndexRenderTests(WebApplicationFactoryBase factory)
             "the desktop button keeps its lower-case label");
         main.Should().NotContain("<h4").And.NotContain("<h5");
     }
+
+    [Fact]
+    public async Task PhoneIndex_RendersTheTitleTheActionsAndTheGroupCards()
+    {
+        var seeded = await SeedBoardAsync("phonestructure");
+
+        var html = await GetHtmlAsync(seeded.Client, "/Contacts", phone: true);
+        var main = MainOf(html);
+
+        html.Should().Contain("mobile-layout");
+        Regex.Matches(main, @"<h1\b").Should().HaveCount(1, "the page has one title");
+        Regex.IsMatch(main, @"<h1\b[^>]*>\s*Contacts\s*</h1>").Should().BeTrue();
+
+        // The filter drawer's Apply button sits in a dialog; outside it + Contact is the one primary action.
+        var beforeDrawer = main[..main.IndexOf("id=\"contactFilterOffcanvas\"", StringComparison.Ordinal)];
+        Regex.Matches(beforeDrawer, @"class=""[^""]*\bbtn-primary\b").Should().HaveCount(1);
+        Regex.IsMatch(beforeDrawer, @"<a\b[^>]*class=""btn btn-primary""[^>]*>\s*<i\b[^>]*></i>Contact\s*</a>").Should().BeTrue();
+        beforeDrawer.Should().NotContain("btn-warning").And.NotContain("btn-outline");
+
+        Regex.Matches(main, @"<section\b[^>]*modern-card--aside").Should().HaveCount(3);
+        foreach (var title in new[] { "Allies of the Weir", "Rivals", "Ungrouped" })
+            Regex.IsMatch(main, @"<h2\b[^>]*>\s*<i\b[^>]*></i>" + title + @"\s*</h2>").Should().BeTrue(
+                $"the group {title} is titled with an h2");
+        main.Should().NotContain("contact-section-heading", "the ungrouped title is the same section title as the others");
+        html.Should().NotContain("contact-card", "the card grid is the desktop layout's");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_LinksTheSharedCardSheetBeforeItsOwn()
+    {
+        var seeded = await SeedBoardAsync("phonesheets");
+
+        var html = await GetHtmlAsync(seeded.Client, "/Contacts", phone: true);
+
+        var shared = html.IndexOf("css/member-cards.css", StringComparison.Ordinal);
+        var own = html.IndexOf("css/contacts.mobile.css", StringComparison.Ordinal);
+        shared.Should().BeGreaterThan(-1);
+        own.Should().BeGreaterThan(shared);
+        html.Should().NotContain("css/contacts.css");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_GivesEveryContactOneStretchedLinkAndNoInlineHandler()
+    {
+        var seeded = await SeedBoardAsync("phonelinks");
+
+        var html = await GetHtmlAsync(seeded.Client, "/Contacts", phone: true);
+
+        var items = Items(html, phone: true);
+        items.Should().HaveCount(3);
+        foreach (var item in items)
+        {
+            Regex.Matches(item, @"<a\b").Should().HaveCount(1, "a row holds one link, the stretched one");
+            Regex.Matches(item, @"\bclass=""row-nav-link""").Should().HaveCount(1);
+            item.Should().Contain("member-row modern-card modern-card--interactive");
+        }
+
+        foreach (var key in new[] { "pictured", "plain", "long" })
+            html.Should().Contain($"/Contacts/Details/{seeded.Ids[key]}");
+        Regex.IsMatch(MainOf(html), @"\son[a-z]+\s*=", RegexOptions.IgnoreCase).Should().BeFalse();
+        MainOf(html).Should().NotContain("window.location");
+        Regex.IsMatch(MainOf(html), @"\sstyle\s*=", RegexOptions.IgnoreCase).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PhoneIndex_ShowsThePictureOnlyForAContactThatHasOne()
+    {
+        var seeded = await SeedBoardAsync("phonepicture");
+
+        var html = await GetHtmlAsync(seeded.Client, "/Contacts", phone: true);
+
+        var pictured = ItemFor(html, phone: true, "Pictured Ally");
+        pictured.Should().Contain($"GetCroppedContactImage/{seeded.Ids["pictured"]}");
+        pictured.Should().Contain("Emberford").And.Contain("The Gilded Lantern");
+        pictured.Should().Contain(@"<span class=""contact-tag-chip badge bg-secondary"">lantern</span>");
+
+        var plain = ItemFor(html, phone: true, "Plain Rival");
+        plain.Should().Contain("avatar-32--placeholder");
+        plain.Should().NotContain("GetCroppedContactImage");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_KeepsTheFilterTagsButtonAsASecondaryActionWithItsActiveBadge()
+    {
+        var seeded = await SeedBoardAsync("phonefilter");
+
+        var plain = MainOf(await GetHtmlAsync(seeded.Client, "/Contacts", phone: true));
+        var trigger = Regex.Match(plain, @"<button\b[^>]*contact-filter-toggle[^>]*>[\s\S]*?</button>").Value;
+        trigger.Should().Contain("btn btn-secondary").And.Contain("Filter Tags");
+        trigger.Should().NotContain("Active", "no filter is on");
+        trigger.Should().Contain("contactFilterOffcanvas");
+
+        var tag = await TestDataHelper.CreateTestContactTagAsync(factory.Services, "tavern", 1);
+        var filtered = MainOf(await GetHtmlAsync(seeded.Client, $"/Contacts?tag={tag.Id}", phone: true));
+        Regex.IsMatch(filtered, @"Filter Tags\s*<span class=""badge bg-success ms-1"">Active</span>").Should().BeTrue(
+            "a filter that is on is told by a badge with the word Active");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_NoTags_DisablesTheFilterButton()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contactlistnotagsphone", "contactlistnotagsphone@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestContactAsync(factory.Services, dm.Id, "Untagged Contact", isRevealed: true);
+
+        var main = MainOf(await GetHtmlAsync(client, "/Contacts", phone: true));
+
+        var trigger = Regex.Match(main, @"<button\b[^>]*contact-filter-toggle[^>]*>").Value;
+        trigger.Should().Contain("btn btn-secondary").And.EndWith("disabled>");
+        main.Should().NotContain("class=\"offcanvas offcanvas-bottom\" id=\"contactFilterOffcanvas\"");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_HiddenContact_ShowsTheBadgeWithIconAndWord()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contactlisthiddenphonedm", "contactlisthiddenphonedm@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestContactAsync(factory.Services, dm.Id, "Secret Informant", isRevealed: false);
+        (await dmClient.PostAsync("/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]),
+            TestContext.Current.CancellationToken)).StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+
+        var html = await GetHtmlAsync(dmClient, "/Contacts", phone: true);
+
+        Regex.IsMatch(ItemFor(html, phone: true, "Secret Informant"),
+            @"<span class=""badge bg-secondary""><i class=""fas fa-eye-slash me-1"" aria-hidden=""true""></i>Hidden</span>")
+            .Should().BeTrue("the badge carries the icon and the word");
+
+        var (playerClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contactlisthiddenphoneplayer", "contactlisthiddenphoneplayer@example.com", roles: ["Player"]);
+        (await GetHtmlAsync(playerClient, "/Contacts", phone: true)).Should().NotContain("Secret Informant");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_BoardWithoutCategories_KeepsItsContactsSectionTitle()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contactlistnocatphone", "contactlistnocatphone@example.com", roles: ["DungeonMaster"]);
+        await TestDataHelper.CreateTestContactAsync(factory.Services, dm.Id, "Loose Contact", isRevealed: true);
+
+        var main = MainOf(await GetHtmlAsync(dmClient, "/Contacts", phone: true));
+
+        Regex.IsMatch(main, @"<h2\b[^>]*>\s*<i\b[^>]*></i>Contacts\s*</h2>").Should().BeTrue();
+        Items(await GetHtmlAsync(dmClient, "/Contacts", phone: true), phone: true).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task PhoneIndex_EmptyBoard_ShowsTheNoContactsEmptyState()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contactlistemptyphone", "contactlistemptyphone@example.com", roles: ["DungeonMaster"]);
+
+        var main = MainOf(await GetHtmlAsync(client, "/Contacts", phone: true));
+
+        Regex.IsMatch(main, @"<h2 class=""empty-state-heading"">No Contacts Yet</h2>").Should().BeTrue();
+        Regex.IsMatch(main, @"<p class=""empty-state-text"">No one has added a contact yet\. DMs can create the first one to start building out the world\.</p>")
+            .Should().BeTrue();
+        main.Should().NotContain("<h5 class=\"empty").And.NotContain("contact-empty-state");
+    }
+
+    [Fact]
+    public async Task PhoneIndex_FilterThatMatchesNothing_ShowsTheNoMatchEmptyStateWithClearFilters()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "contactlistnomatchphone", "contactlistnomatchphone@example.com", roles: ["DungeonMaster"]);
+
+        var main = MainOf(await GetHtmlAsync(client, "/Contacts?tag=999999", phone: true));
+
+        Regex.IsMatch(main, @"<h2 class=""empty-state-heading"">No contacts match your filters</h2>").Should().BeTrue();
+        Regex.IsMatch(main, @"<p class=""empty-state-text"">Try selecting different tags\.</p>").Should().BeTrue();
+        Regex.IsMatch(main, @"<a\b[^>]*class=""btn btn-secondary""[^>]*>Clear Filters</a>").Should().BeTrue(
+            "the phone button keeps its capitalised label");
+    }
 }

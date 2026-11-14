@@ -57,6 +57,49 @@ public class CharactersTwinAnswersTests(WebApplicationFactoryBase factory)
             "the phone page carries the same title words as the desktop page");
     }
 
+    [Fact]
+    public async Task PhoneContacts_HasThePageHeadingWhenCategoriesExist()
+    {
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "twinanswers_contacts_dm", "twinanswers_contacts_dm@example.com", roles: ["DungeonMaster"]);
+        var category = await TestDataHelper.CreateTestContactCategoryAsync(factory.Services, "Allies", sortOrder: 0, groupId: 1);
+        var contact = await TestDataHelper.CreateTestContactAsync(factory.Services, user.Id, "Categorised Contact", isRevealed: true);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var stored = await context.Contacts.SingleAsync(c => c.Id == contact.Id, TestContext.Current.CancellationToken);
+            stored.CategoryId = category.Id;
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var html = await GetPhoneAsync(client, "/Contacts");
+
+        html.Should().Contain("mobile-layout");
+        Regex.Matches(html, @"<h1\b").Should().HaveCount(1, "the phone page has one page title");
+        Regex.IsMatch(html, @"<h1\b[^>]*>\s*Contacts\s*</h1>").Should().BeTrue(
+            "the phone page carries the same title words as the desktop page");
+    }
+
+    [Fact]
+    public async Task ContactsFilter_KeepsItsDeliberateTwinDifference()
+    {
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "twinanswers_filter_dm", "twinanswers_filter_dm@example.com", roles: ["DungeonMaster"]);
+        var contact = await TestDataHelper.CreateTestContactAsync(factory.Services, user.Id, "Tagged Contact", isRevealed: true);
+        var tag = await TestDataHelper.CreateTestContactTagAsync(factory.Services, "tavern", 1, contact.Id);
+
+        var phone = await GetPhoneAsync(client, $"/Contacts?tag={tag.Id}");
+        Regex.IsMatch(phone, @"<button\b[^>]*class=""btn btn-secondary contact-filter-toggle""[^>]*>\s*<i\b[^>]*></i>Filter Tags\s*<span class=""badge bg-success ms-1"">Active</span>")
+            .Should().BeTrue("the phone keeps its Filter Tags button, recoloured, with its Active badge");
+        phone.Should().Contain("id=\"contactFilterOffcanvas\"");
+        phone.Should().NotContain("contact-filter-row");
+
+        var desktop = await client.GetStringAsync($"/Contacts?tag={tag.Id}", TestContext.Current.CancellationToken);
+        desktop.Should().Contain("contact-filter-row");
+        desktop.Should().NotContain("Filter Tags");
+        desktop.Should().NotContain("contactFilterOffcanvas");
+    }
+
     [Theory]
     [InlineData("create")]
     [InlineData("edit")]
