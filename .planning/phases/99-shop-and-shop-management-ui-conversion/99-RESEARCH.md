@@ -572,6 +572,8 @@ Direction A references exist: `phase-94/mockups/direction-a/png/shop-a-{1440,820
 
 ## Slice plan (research proposal; the binding list goes in ROADMAP)
 
+> Superseded: the table below was the research proposal; the binding plan list is the 20-plan list in `.planning/ROADMAP.md` § "Phase 99".
+
 Phases 95 to 98 ran about one plan per wave because plans share `UiFoundationLayerGuardTests`, `MobileViewsTests` and one checkout. Recommended **14 plans**.
 
 | Plan | Wave | Autonomous | Content | Depends on |
@@ -625,22 +627,21 @@ Each plan ends with the Priority 6 block. Plans 99-06 to 99-11 each leave every 
 |---|-------|---------|---------------|
 | A1 | A persistent visually-hidden `role="status"` region announces the merchant quote more reliably than a dynamically inserted toast | Merchant toast | Quote not announced; the UAT screen-reader check would catch it |
 | A2 | Binding the validation to the real item form (Pitfall 4 default) is what the operator wants; the 20-character rule has never applied on desktop | Breaks table 5, Gate 1 item 9 | A short description newly gets an alert; operator may prefer dropping the rule |
-| A3 | The Logout form is the first `<form>` on the page in a browser (source order read, not run) | Breaks table 5 | Behaviour description may differ; the probe in plan 99-08 settles it |
+| A3 | The Logout form is the first `<form>` on the page in a browser (source order read, not run) | Breaks table 5 | Behaviour description may differ; the BEFORE probe in 99-03 (`before/behaviour.json`, `logoutBinding`) and the AFTER probe in 99-12 settle it |
 | A4 | Direction A's `--qb-warning` amber is the intended "legendary gold" chip (the signed-off render uses it; CONTEXT says "legendary gold") | Standard Stack, D-09 | If the operator wants the true gold accent fill, `--qb-accent` with `--qb-accent-ink` also passes the table but uses a "reserved" colour that `ui-guidelines.md` limits |
 | A5 | `fa-hammer`, `fa-magic`, `fa-scroll`, `fa-box` exist in Font Awesome 6.7.2 with the v4 shims loaded (the partial already uses them today) | Details partial | Icon missing; the render shows it |
 | A6 | Bootstrap 5.3.8 toast hover and focus pause applies to a toast that has `role="status"` (framework code is by flags in the bundle, not exercised here) | Merchant toast | WCAG 2.2.1 not met; check in the Gate 2 behaviour probe |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Add a confirmation to Return and Sell on purchase rows?**
+1. **Add a confirmation to Return and Sell on purchase rows?** RESOLVED: put to the operator as Gate 1 item 8 (99-07). Default and recommendation: the Sell row confirms with the Sell to Shop sentence, Return stays unconfirmed; on an explicit no neither confirms. Built in 99-16 from `gate1/answers.json` `sellRowConfirm`, and on the phone through the same partial in 99-17.
    - Known: D-05 says "both forms and their confirmations kept", but the purchase-row forms have no confirmation today (`Index.cshtml:118-134`); only `SellToShop` confirms.
    - Unclear: whether the operator wants a new one. Adding it is new behaviour and visible copy.
-   - Recommendation: keep none; put it on Gate 1 (item 8).
-2. **Denied and Archived items on Shop/Details show no notice** (Priority 3). Recommendation: leave; Gate 1 item 10.
-3. **Should `legacy-pages.css` be fully retired?** It holds the shared `.container.mt-4` rule used by the picker layout and DM profile pages, pinned by four test files. Recommendation: trim, keep, record in the SUMMARY; a later phase that owns those pages can move the rule.
-4. **Preview card text fidelity** (client strip versus `/markdown/preview`). Recommendation: use the existing endpoint (token already on the page via `_QuestFormScripts`), inert-parse, join top-level block text with a space, truncate at 120 and "..." like the server; fall back to the raw text on failure.
-5. **Sell-state capture timing.** The Gate 2 sheet cannot include Sell rows until 24 hours after the fixtures plan. If the operator wants a single sitting, the only no-SQL alternative is to accept that the Sell row is shown from a purchase made the day before; schedule 99-02 early.
-6. **Server quantity validation** (Priority 1 note) stays out of scope; decide whether to log it in the deferred items.
+2. **Denied and Archived items on Shop/Details show no notice** (Priority 3). RESOLVED: Gate 1 item 10 (99-07), default none; the existing sentence "This item is not currently available for purchase." is added only on the operator's yes, built in 99-10 from `deniedArchivedNotice.show`. D-04 holds either way (Details answers 200 for every status; render test in 99-10).
+3. **Should `legacy-pages.css` be fully retired?** RESOLVED: trim and keep (99-18). It keeps only the shared `.container.mt-4` rule used by the group picker layout and the DM profile pages and pinned by four test files; it stays unlayered and linked; a guard pins that it holds nothing else.
+4. **Preview card text fidelity** (client strip versus `/markdown/preview`). RESOLVED: the existing `/markdown/preview` endpoint, no new endpoint (99-13): the dialog shows the raw text at once, then the server's plain text (inert parse, top-level text joined with spaces, cut at 120 with "..."), keeping the raw text if the request fails; wording and fallbacks confirmed at Gate 1 item 4.
+5. **Sell-state capture timing.** RESOLVED: a calendar dependency, never SQL. 99-02 makes 18 aging purchases on day 0 and records each one's Sell-eligible time; slice sweeps capture Sell rows only when `fixtures.mjs --sell-status` reports eligible; 99-19 refuses to start its closing capture until then (it stops and reports the time) and Gate 2 (99-20) uses that capture.
+6. **Server quantity validation** (Priority 1 note). RESOLVED: out of scope and unchanged; shown as Gate 1 item 20 and recorded in this phase's `deferred-items.md` by 99-19.
 
 ## Environment Availability
 

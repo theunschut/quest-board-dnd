@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 0 plans
+**Plans:** 20 plans
 
 **Scope:**
 
@@ -2088,7 +2088,85 @@ Plus, specific to this phase: ten infinite animation declarations (not six; four
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase to break down)
+**Wave 1**
+
+- [ ] 99-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433 brought up by the operator, ports 8320/8321, p99 fixtures approved, no gold needed, email suppression forced, migrator suite yes or no with migrator.env), Linux scratch setup, /Shop capture tracer
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 99-02-PLAN.md — p99 accounts and the two P99 boards, every item, status, stock and empty state through the app forms (Draft and Denied fixtures Rare or higher), day-0 aging purchases for the 24-hour Sell state, fresh-purchase and sell-status modes, each key checked under both User-Agents
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 99-03-PLAN.md — Frozen baseline on 8321, route manifest, starting test inventory, BEFORE capture of every row, baseline behaviour probes of the functional breaks, BEFORE value per owned audit finding
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 99-04-PLAN.md — Tracer: html data-theme seam (Shop/Details), Sell to Shop delegated module for the dialog and the page, tokens on the Return and Sell row forms, ShopConversionGuardTests and ShopRenderTests
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 99-05-PLAN.md — Gate 1 package A: purchase history under the grid on both layouts, the single filter card, both merchant placements with the toast, the legendary chip in amber and gold, Shop/Index look check against Direction A
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 99-06-PLAN.md — Gate 1 package B: emblem tile (whole picture measured), Preview dialog, look checks for Details, the management list and a form, every copy or control proposal, table header alternative
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 99-07-PLAN.md — Gate 1 local sheet, items 1 to 22 and assumptions, Gate 1 (operator answers items 1, 2, 3 and 16 with no default; redraw loop)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 99-08-PLAN.md — Rarity chips on the shop pages: ShopItemDisplay, the chip partial, shop-pages.css with the answered legendary colour (guideline line on gold), old rules narrowed
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 99-09-PLAN.md — Status badges and type words on the management list and Edit, the management chips, the last old rarity rules deleted, the shop motion guard
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 99-10-PLAN.md — Details partial and Shop/Details on both layouts: one body everywhere, emblem tile, wall-clock dates, phone Sell and sections, image rule, shop-details.mobile.css retired
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 99-11-PLAN.md — Desktop ShopManagement/Edit: View Details fixed, the shared shop-item-form.js, validation and label per Gate 1, required markers, shop-form.css
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 99-12-PLAN.md — Create on both layouts and the phone Edit on the shared module and contract, Logout no longer intercepted, two phone sheets retired
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 99-13-PLAN.md — Preview dialog on desktop Create (on Edit only on a Gate 1 yes): card replica from the form, existing Markdown preview endpoint, nothing saved
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [ ] 99-14-PLAN.md — ShopManagement/Index on both layouts: confirmations on confirm-submit.js, deny and bulk dialogs on a module, tables and phone slips, Gate 1 answers, phone sheet retired
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [ ] 99-15-PLAN.md — Shop/Index desktop browse half: hero, tabs, one filter card, keyboard cards, details dialog module, pager, empty states, old rules and animations deleted
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [ ] 99-16-PLAN.md — Shop/Index desktop: purchase history in flow with visible Return and Sell (the 24-hour read moved into the view model), the merchant in the operator's placement with an accessible toast and capped bob, click-throughs
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [ ] 99-17-PLAN.md — Shop/Index phone: history, Previous and Next with the count, three empty states, offcanvas and cards, omission test flipped, shop.mobile.css retired
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [ ] 99-18-PLAN.md — shop.css out of the global list and deleted (outside pages and dialogs measured), legacy-pages.css trimmed, zero counts, final guards, planning-reference scan, no test deleted, untouched-paths diff
+
+**Wave 19** *(blocked on Wave 18 completion)*
+
+- [ ] 99-19-PLAN.md — Timed stop: cannot start before `eligibleAt` in `~/qb-ui-review/phase-99/fixtures.json` (24 hours after the 99-02 day-0 purchases); waiting there is expected, not a stall. Closing sweep after the 24-hour Sell mark: full AFTER, click-throughs on both layouts, whole-image and accessibility checks, exceptions, finding trace, migrator suite if approved, ledger and deferred items
+
+**Wave 20** *(blocked on Wave 19 completion)*
+
+- [ ] 99-20-PLAN.md — Gate 2 local sheet with findings, inherited questions and every exception and text change, Gate 2 (operator, gap-closure loop), v6.4.0 release hand-off
 
 ### Phase 100: Admin and Platform UI conversion
 

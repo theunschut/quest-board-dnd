@@ -1,0 +1,1 @@
+No external API integration: a UI conversion of the app's own shop views, sheets and modules; the detector matched ".NET SDK" in an environment note, and the only new request is to the app's own /markdown/preview.

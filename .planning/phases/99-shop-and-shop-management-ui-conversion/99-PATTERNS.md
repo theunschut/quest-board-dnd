@@ -15,7 +15,7 @@ Paths are repository-relative. Phase 98's map (`.planning/phases/98-.../98-PATTE
 | `Views/Shop/Details.cshtml` / `.Mobile` | view | request-response | `Views/Characters/Details.cshtml:23` (confirm module section) | role-match |
 | `Views/Shared/_ShopItemDetailsContent.cshtml` | partial | request-response | `Views/Shared/_CharacterAvatar.cshtml` (placeholder tile, Phase 98) | role-match |
 | `Views/ShopManagement/{Index,Create,Edit}` (+ `.Mobile`) | view | CRUD | `Views/Characters/Details.cshtml`, `Views/Events/Create.cshtml` | role-match |
-| `wwwroot/js/shop-sell.js` (new, delegated Sell total and confirm) | script | event-driven | `wwwroot/js/confirm-submit.js`, `wwwroot/js/row-link.js` | role-match |
+| `wwwroot/js/shop-item-sell.js` (new, delegated Sell total and confirm) | script | event-driven | `wwwroot/js/confirm-submit.js`, `wwwroot/js/row-link.js` | role-match |
 | `wwwroot/js/shop-merchant.js` (new) | script | event-driven | `wwwroot/js/event-details.js` (data attrs, text only) | role-match |
 | `wwwroot/js/shop-item-form.js` (new, pricing hints from 4 views) | script | event-driven | `wwwroot/js/quest-form.js`, `contact-tags.js` | role-match |
 | `wwwroot/js/shop-item-modal.js` (new, fetch into `#itemDetailsBody`) | script | request-response | `wwwroot/js/agenda.js` (dialog fill from trigger) | role-match |
@@ -64,7 +64,7 @@ Current markup `Views/Shop/Index.cshtml:114-135` hides the forms (`div.return-se
     <button type="submit" class="btn ...">Return (@purchase.RemainingQuantity)</button>
 </form>
 ```
-`d-inline` goes to a layered class (no inline style). Remove `.return-sell-buttons { opacity:0; visibility:hidden }` from `site.css`. Phone `Index.Mobile` gains the same section (Q-56), one structure under the grid and paging links (D-10). Dates there already use `Html.LocalTime(purchase.TransactionDate, "date-compact")` (`Shop/Index.cshtml:109,155`; `ShopManagement/Index.cshtml:148`), which is correct for real instants; keep.
+`d-inline` goes to a layered class (no inline style). Remove `.return-sell-buttons { opacity:0; visibility:hidden }` from `legacy-pages.css` (the former `site.css`, renamed in Phase 94) and its copy in `shop.css`. Phone `Index.Mobile` gains the same section (Q-56), one structure under the grid and paging links (D-10). Dates there already use `Html.LocalTime(purchase.TransactionDate, "date-compact")` (`Shop/Index.cshtml:109,155`; `ShopManagement/Index.cshtml:148`), which is correct for real instants; keep.
 
 ### 4. Dates: `Html.LocalTime` vs `Html.WallClock` (A-shop-038)
 

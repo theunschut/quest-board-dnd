@@ -32,7 +32,7 @@ inherited as recorded in `94-AUDIT.md` § "Operator questions for sign-off":
   - Q-71: one status vocabulary on both views (wording decided in D-06);
   - Q-72: "No Items Yet" with Create First Item on the phone management list;
   - Q-75: the price hint starts "Select a rarity to see pricing suggestions." on both Edit views.
-- **Deliberate, recorded, not changed:**
+- **Deliberate, recorded, not changed**:
   - Q-57: card description and stock label stay desktop density;
   - Q-60: the merchant button stays desktop-only;
   - Q-62: "Buy" on phone, "Purchase" on desktop;
@@ -43,7 +43,7 @@ inherited as recorded in `94-AUDIT.md` § "Operator questions for sign-off":
   - Q-73: Preview stays desktop Create only;
   - Q-74: View Details stays desktop Edit only.
 - **No merges.** None qualifies under Phase 94 D-13.
-- **Q-120 and Q-121, approved in principle and re-confirmed with their AFTER at Gate 1:**
+- **Q-120 and Q-121, approved in principle and re-confirmed with their AFTER at Gate 1**:
   - Q-120: the purchase history moves from the fixed 280px side panel to an in-flow section under
     the item grid, with the same rows and the same Return and Sell forms;
   - Q-121: one filter card holds the rarity checkboxes, sort, search, Apply Filters and Search.
@@ -87,7 +87,7 @@ they do today.
   target the management lists already use. The control stays. Research confirms that Shop/Details
   renders Draft and Denied items to a DM (the draft-review notice), so the link never lands on a 404
   or an access-denied page for the editing DM.
-- **D-05: Return and Sell (A-shop-002) and the sell script (A-shop-017):**
+- **D-05: Return and Sell (A-shop-002) and the sell script (A-shop-017)**:
   - The purchase-row actions become ordinary visible, keyboard-reachable buttons, with both forms
     and their confirmations kept. Today they are permanently hidden by
     `.return-sell-buttons { opacity: 0; visibility: hidden }`.
@@ -98,15 +98,13 @@ they do today.
     covers the management lists' Publish, Archive, Reopen and Delete confirms (A-shop-042) too.
 
 ### Status wording (Q-71)
-- **D-06: Both management views and the Edit status alert use "Pending Review" for Draft and
-  "Available" for Published.** "Archived" and "Denied" are unchanged. The enum is untouched, and
+- **D-06: Both management views and the Edit status alert use "Pending Review" for Draft and "Available" for Published.** "Archived" and "Denied" are unchanged. The enum is untouched, and
   this is display text only. The Edit views' `.Replace("Published", "Available")` gives way to one
-  shared mapping, so the two layouts cannot drift. The desktop section heading "Items Pending
-  Review" already matches.
+  shared mapping, so the two layouts cannot drift. The desktop section heading reads "Items Awaiting
+  Review" today; whether it changes is Gate 1 item 17 (default: keep the view's words).
 
 ### Item visuals
-- **D-07: The grey 250px image placeholder in `_ShopItemDetailsContent` becomes a shorter emblem
-  tile**, about 120-160px, in the navy theme. It shows the item-type icon tinted in the item's rarity
+- **D-07: The grey 250px image placeholder in `_ShopItemDetailsContent` becomes a shorter emblem tile**, about 120-160px, in the navy theme. It shows the item-type icon tinted in the item's rarity
   colour and is decorative (`aria-hidden`). Shop items have no picture field, so nothing is cropped
   and no `object-fit` rule is needed. The tile is drawn at Gate 1 in the modal and on Shop/Details,
   desktop and phone.
@@ -117,7 +115,7 @@ they do today.
     `prefers-reduced-motion: reduce`.
   - Hover and focus transitions stay short, with no `transition: all` and no layout-property
     animation (A-shop-033).
-- **D-09: Rarity chips follow the signed-off Direction A shop render (`shop-a-*`).**
+- **D-09: Rarity chips follow the signed-off Direction A shop render (the shop-a renders).**
   - They are solid chips (common grey, uncommon green, rare teal, very rare purple, legendary gold).
   - Each chip's text colour is picked to reach 4.5:1, and the rarity name is always in text.
   - The same chip appears on desktop and phone, and on every shop and management page
@@ -176,8 +174,7 @@ they do today.
   - Fixtures are kept after the phase.
 - **D-15: Any email the phase triggers goes to the Mailpit sink only** (`qb-mailpit`; starting it is
   pre-approved), never the real relay.
-- **D-16: Work lands in slices on `milestone/v9-rolling-improvements` in this checkout, with one
-  release at the end**, v6.4.0 through a PR into `main` once both gates have passed. Each slice
+- **D-16: Work lands in slices on `milestone/v9-rolling-improvements` in this checkout, with one release at the end**, v6.4.0 through a PR into `main` once both gates have passed. Each slice
   leaves every page usable and the suite green (Phase 94 D-08). Real-phone and screen-reader checks
   are listed in the phase UAT and may run after deploy, as in Phases 96 to 98. Each plan's docs
   commit updates ROADMAP.md and STATE.md.
