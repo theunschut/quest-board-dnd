@@ -100,6 +100,13 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-item-sell.js",
         "QuestBoard.IntegrationTests/Tests/ShopRenderTests.cs",
         "QuestBoard.IntegrationTests/Tests/KeyboardScriptGuardTests.cs",
+        "QuestBoard.Service/ViewModels/ShopViewModels/ShopItemDisplay.cs",
+        "QuestBoard.Service/Views/Shared/_ShopRarityChip.cshtml",
+        "QuestBoard.Service/wwwroot/css/shop-pages.css",
+        "QuestBoard.Service/wwwroot/css/shop.css",
+        "QuestBoard.Service/wwwroot/css/legacy-pages.css",
+        "QuestBoard.Service/wwwroot/css/shop.mobile.css",
+        "QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -164,6 +171,70 @@ public class ShopConversionGuardTests
     private static List<string> MarkupFromStrings(string script) =>
         Regex.Matches(script, @"\.(?:innerHTML|outerHTML)\b|insertAdjacentHTML|document\.write")
             .Select(m => m.Value).ToList();
+
+    // The legendary chip colour the operator chose: "amber" fills it with the warning token and its dark label, "gold"
+    // with the accent token and its ink label. Changing the answer means changing this constant and the sheet together.
+    private const string RecordedLegendaryColour = "amber";
+
+    private static readonly Regex PerRarityClass = new(
+        @"\.rarity-(?:common|uncommon|rare|veryrare|legendary)(?![\w-])", RegexOptions.Compiled);
+
+    // The selector parts in a stylesheet that name a per-rarity class without excluding the new chip. Each selector
+    // list is split at its commas so a part that is narrowed cannot cover one beside it that is not.
+    private static List<string> RarityRulesThatCanReachANewChip(string css)
+    {
+        var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+        var offenders = new List<string>();
+        foreach (Match rule in Regex.Matches(withoutComments, @"(?<selectors>[^{}]+)\{"))
+        foreach (var part in rule.Groups["selectors"].Value.Split(','))
+            if (PerRarityClass.IsMatch(part) && !part.Contains(":not(.badge-rarity)", StringComparison.Ordinal))
+                offenders.Add(part.Trim());
+
+        return offenders;
+    }
+
+    // The selector parts that name a per-rarity class at all.
+    private static List<string> RarityRuleSelectors(string css)
+    {
+        var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+        return Regex.Matches(withoutComments, @"(?<selectors>[^{}]+)\{")
+            .SelectMany(rule => rule.Groups["selectors"].Value.Split(','))
+            .Where(part => PerRarityClass.IsMatch(part)).Select(part => part.Trim()).ToList();
+    }
+
+    // What is wrong with the chip rules of the shop page sheet, given the recorded legendary colour: the legendary
+    // rule must pair its fill and label tokens, no other chip rule may use the gold accent, and nothing may animate.
+    private static List<string> LegendaryChipBreaks(string css, string colour)
+    {
+        var (fill, label) = colour == "gold"
+            ? ("--qb-accent", "--qb-accent-ink")
+            : ("--qb-warning", "--qb-warning-fg");
+        var breaks = new List<string>();
+        var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+        var rules = Regex.Matches(withoutComments, @"(?<selector>[^{}]+)\{(?<body>[^{}]*)\}")
+            .Select(m => (Selector: m.Groups["selector"].Value.Trim(), Body: m.Groups["body"].Value)).ToList();
+
+        var legendary = rules.Where(r => r.Selector.Contains(".rarity-legendary", StringComparison.Ordinal)).ToList();
+        if (legendary.Count != 1)
+            breaks.Add($"expected one legendary chip rule, found {legendary.Count}");
+        else
+        {
+            if (!Regex.IsMatch(legendary[0].Body, @"background-color\s*:\s*var\(" + Regex.Escape(fill) + @"\)"))
+                breaks.Add($"the legendary fill is not {fill}");
+            if (!Regex.IsMatch(legendary[0].Body, @"(?<![\w-])color\s*:\s*var\(" + Regex.Escape(label) + @"\)"))
+                breaks.Add($"the legendary label is not {label}");
+        }
+
+        foreach (var rule in rules.Where(r => r.Selector.Contains(".badge-rarity", StringComparison.Ordinal)
+                     && !r.Selector.Contains(".rarity-legendary", StringComparison.Ordinal)
+                     && r.Body.Contains("--qb-accent", StringComparison.Ordinal)))
+            breaks.Add($"{rule.Selector} uses the gold accent");
+
+        if (Regex.IsMatch(withoutComments, @"@keyframes|(?<![\w-])animation\s*:"))
+            breaks.Add("a chip animates");
+
+        return breaks;
+    }
 
     // ---- Guards ---------------------------------------------------------------------------------
 
@@ -272,5 +343,53 @@ public class ShopConversionGuardTests
         PlanningReferencePatterns.Count(p => p.Pattern.IsMatch(planning)).Should().Be(PlanningReferencePatterns.Length);
         PlanningReferencePatterns.Count(p => p.Pattern.IsMatch("// the total follows the quantity the buyer types"))
             .Should().Be(0);
+    }
+
+    [Fact]
+    public void ShopSheets_LegendaryChipFollowsTheRecordedColour()
+    {
+        RecordedLegendaryColour.Should().BeOneOf("gold", "amber");
+
+        LegendaryChipBreaks(ReadRepoFile("QuestBoard.Service/wwwroot/css/shop-pages.css"), RecordedLegendaryColour)
+            .Should().BeEmpty("the legendary chip uses the token pair of the recorded colour and nothing else uses the gold accent");
+    }
+
+    [Fact]
+    public void LegendaryChipScanner_FlagsTheWrongPairAGoldNeighbourAndAnAnimation()
+    {
+        const string good = ".badge-rarity.rarity-legendary { background-color: var(--qb-warning); color: var(--qb-warning-fg); box-shadow: 0 0 4px var(--qb-warning); }"
+            + " .badge-rarity.rarity-rare { background-color: var(--qb-info); color: var(--qb-info-fg); }";
+        LegendaryChipBreaks(good, "amber").Should().BeEmpty();
+        LegendaryChipBreaks(good, "gold").Should().NotBeEmpty("the amber sheet does not satisfy the gold answer");
+
+        LegendaryChipBreaks(good.Replace("--qb-warning-fg", "--qb-info-fg"), "amber").Should().ContainSingle(b => b.Contains("label"));
+        LegendaryChipBreaks(good + " .badge-rarity.rarity-rare { border-color: var(--qb-accent); }", "amber")
+            .Should().ContainSingle(b => b.Contains("gold accent"));
+        LegendaryChipBreaks(good + " @keyframes pulse { from { opacity: 1; } }", "amber").Should().ContainSingle(b => b.Contains("animates"));
+        LegendaryChipBreaks(".badge-rarity.rarity-rare { color: var(--qb-info-fg); }", "amber").Should().NotBeEmpty("a sheet with no legendary rule fails");
+    }
+
+    [Fact]
+    public void ShopSheets_OldRarityRulesNeverReachANewChip()
+    {
+        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop.css", "QuestBoard.Service/wwwroot/css/legacy-pages.css" })
+            RarityRulesThatCanReachANewChip(ReadRepoFile(path)).Should().BeEmpty(
+                $"{path} keeps serving the management list's old markup, so each per-rarity rule must exclude the new chip");
+
+        RarityRuleSelectors(ReadRepoFile("QuestBoard.Service/wwwroot/css/shop.mobile.css")).Should().BeEmpty(
+            "the phone shop sheet no longer styles a rarity: the chip sheet does");
+    }
+
+    [Fact]
+    public void RarityRuleScanner_FlagsAnUnnarrowedPartEvenBesideANarrowedOne()
+    {
+        RarityRulesThatCanReachANewChip(".rarity-rare { color: red; }").Should().ContainSingle();
+        RarityRulesThatCanReachANewChip(".rarity-rare:not(.badge-rarity) { color: red; }").Should().BeEmpty();
+        RarityRulesThatCanReachANewChip(".card .rarity-veryrare, .rarity-rare:not(.badge-rarity) { color: red; }")
+            .Should().ContainSingle(part => part.Contains("veryrare"), "a comma-separated part is judged on its own");
+        RarityRulesThatCanReachANewChip("/* .rarity-rare { color: red; } */ .item-rarity { margin: 0; }").Should().BeEmpty();
+        RarityRulesThatCanReachANewChip("@keyframes glow { 0% { opacity: 0; } }").Should().BeEmpty();
+        RarityRuleSelectors(".shop-card .rarity-legendary { color: gold; }").Should().ContainSingle();
+        RarityRuleSelectors(".item-rarity { margin: 0; }").Should().BeEmpty();
     }
 }
