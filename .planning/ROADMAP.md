@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 20 plans
+**Plans:** 1/20 plans executed
 
 **Scope:**
 
@@ -2090,7 +2090,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 99-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433 brought up by the operator, ports 8320/8321, p99 fixtures approved, no gold needed, email suppression forced, migrator suite yes or no with migrator.env), Linux scratch setup, /Shop capture tracer
+- [x] 99-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433 brought up by the operator, ports 8320/8321, p99 fixtures approved, no gold needed, email suppression forced, migrator suite yes or no with migrator.env), Linux scratch setup, /Shop capture tracer
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

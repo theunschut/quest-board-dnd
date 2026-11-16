@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 98
-current_phase_name: Characters, Contacts, DM profile and Players UI conversion
-status: verifying
-stopped_at: "Phase 98: all 23 plans complete, Gate 2 approved (v2); verify, code-review, validate and secure on hold"
-last_updated: "2026-11-14T14:39:51.007Z"
-last_activity: 2026-11-14
-last_activity_desc: "Phase 98: 23/23 plans complete, Gate 2 approved, awaiting verification"
+current_phase: 99
+current_phase_name: Shop and Shop management UI conversion
+status: executing
+stopped_at: Completed 99-01-PLAN.md
+last_updated: "2026-11-16T11:01:03.923Z"
+last_activity: 2026-11-16
+last_activity_desc: Phase 99 execution started
 progress:
   total_phases: 31
   completed_phases: 25
-  total_plans: 270
-  completed_plans: 261
+  total_plans: 290
+  completed_plans: 262
   percent: 81
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -25,15 +25,15 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 98 — Characters, Contacts, DM profile and Players UI conversion
+**Current focus:** Phase 99 — Shop and Shop management UI conversion
 
 ## Current Position
 
-Phase: 98 (Characters, Contacts, DM profile and Players UI conversion) — VERIFYING
-Plan: 23 of 23
-Status: Phase complete — ready for verification
+Phase: 99 (Shop and Shop management UI conversion) — EXECUTING
+Plan: 2 of 20
+Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
-Last activity: 2026-11-14 — Phase 98: all 23 plans complete, Gate 2 approved on sheet v2; verification steps on hold
+Last activity: 2026-11-16 — Phase 99 execution started
 
 **Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
@@ -284,8 +284,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-14T13:38:40.775Z
-Stopped at: Completed 98-22-PLAN.md
+Last session: 2026-11-16T11:01:03.886Z
+Stopped at: Completed 99-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
