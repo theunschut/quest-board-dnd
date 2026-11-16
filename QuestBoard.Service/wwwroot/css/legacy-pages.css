@@ -118,47 +118,6 @@
     text-shadow: none !important;
 }
 
-.item-rarity {
-    font-size: 0.8rem;
-    font-weight: 500;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-left: 0.5rem;
-}
-
-.rarity-common:not(.badge-rarity) { 
-    background: #6c757d; 
-    color: white; 
-}
-
-.rarity-uncommon:not(.badge-rarity) { 
-    background: #198754; 
-    color: white; 
-}
-
-.rarity-rare:not(.badge-rarity) { 
-    background: #0d6efd; 
-    color: white; 
-}
-
-.rarity-veryrare:not(.badge-rarity) { 
-    background: #6f42c1; 
-    color: white; 
-}
-
-.rarity-legendary:not(.badge-rarity) { 
-    background: linear-gradient(45deg, #dc3545, #ffc107);
-    color: white;
-    animation: legendary-glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes legendary-glow {
-    0% { box-shadow: 0 0 5px rgba(220, 53, 69, 0.5); }
-    100% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.8); }
-}
-
 .item-description {
     color: rgba(244, 228, 188, 0.8) !important;
     font-size: 0.9rem;

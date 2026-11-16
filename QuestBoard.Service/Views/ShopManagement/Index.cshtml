@@ -68,16 +68,12 @@
                                             <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>
                                         </td>
                                         <td>
-                                            <span class="item-rarity rarity-@item.Rarity.ToString().ToLower()">
-                                                @item.Rarity.ToString().Replace("VeryRare", "Very Rare")
-                                            </span>
+                                            <partial name="_ShopRarityChip" model="item.Rarity" />
                                         </td>
                                         <td>@item.Price gp</td>
                                         <td>@item.CreatedByDmName</td>
                                         <td>
-                                            <small class="text-muted">
-                                                <i class="fas fa-@item.Status.ToString().ToLower()"></i> @item.Status
-                                            </small>
+                                            <partial name="_ShopStatusBadge" model="item.Status" />
                                         </td>
                                         <td>
                                             <div class="d-flex gap-1">
@@ -155,9 +151,7 @@
                                             <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>
                                         </td>
                                         <td>
-                                            <span class="item-rarity rarity-@item.Rarity.ToString().ToLower()">
-                                                @item.Rarity.ToString().Replace("VeryRare", "Very Rare")
-                                            </span>
+                                            <partial name="_ShopRarityChip" model="item.Rarity" />
                                         </td>
                                         <td>@item.Price gp</td>
                                         <td>
@@ -187,24 +181,7 @@
                                             }
                                         </td>
                                         <td>
-                                            @switch (item.Status)
-                                            {
-                                                case ItemStatus.Published:
-                                                    <span class="badge bg-success">Available</span>
-                                                    break;
-                                                case ItemStatus.Draft:
-                                                    <span class="badge bg-secondary">Draft</span>
-                                                    break;
-                                                case ItemStatus.Archived:
-                                                    <span class="badge bg-secondary">Archived</span>
-                                                    break;
-                                                case ItemStatus.Denied:
-                                                    <span class="badge bg-danger">Denied</span>
-                                                    break;
-                                                default:
-                                                    <span class="badge bg-secondary">@item.Status</span>
-                                                    break;
-                                            }
+                                            <partial name="_ShopStatusBadge" model="item.Status" />
                                         </td>
                                         <td>
                                             <div class="d-flex gap-1">
@@ -312,9 +289,7 @@
                                             <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>
                                         </td>
                                         <td>
-                                            <span class="item-rarity rarity-@item.Rarity.ToString().ToLower()">
-                                                @item.Rarity.ToString().Replace("VeryRare", "Very Rare")
-                                            </span>
+                                            <partial name="_ShopRarityChip" model="item.Rarity" />
                                         </td>
                                         <td>@item.Price gp</td>
                                         <td>
@@ -344,21 +319,7 @@
                                             }
                                         </td>
                                         <td>
-                                            @switch (item.Status)
-                                            {
-                                                case ItemStatus.Published:
-                                                    <span class="badge bg-success">Available</span>
-                                                    break;
-                                                case ItemStatus.Archived:
-                                                    <span class="badge bg-secondary">Archived</span>
-                                                    break;
-                                                case ItemStatus.Denied:
-                                                    <span class="badge bg-danger">Denied</span>
-                                                    break;
-                                                default:
-                                                    <span class="badge bg-secondary">@item.Status</span>
-                                                    break;
-                                            }
+                                            <partial name="_ShopStatusBadge" model="item.Status" />
                                         </td>
                                         <td>@item.CreatedByDmName</td>
                                         <td>
@@ -490,6 +451,10 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/shop-pages.css" asp-append-version="true" />
+}
 
 @section Scripts {
     <script>

@@ -4,6 +4,7 @@
 @model ShopManagementIndexViewModel
 
 @section Styles {
+    <link href="~/css/shop-pages.css" asp-append-version="true" rel="stylesheet" />
     <link href="~/css/shop-management-index.mobile.css" asp-append-version="true" rel="stylesheet" />
 }
 
@@ -32,9 +33,7 @@
         {
             <div class="shop-mgmt-item-card mb-3">
                 <!-- Rarity badge -->
-                <span class="item-rarity rarity-@item.Rarity.ToString().ToLower()">
-                    @item.Rarity.ToString().Replace("VeryRare", "Very Rare")
-                </span>
+                <partial name="_ShopRarityChip" model="item.Rarity" />
 
                 <!-- Item name -->
                 <h5 class="mb-1 mt-1 parchment-text"><strong>@item.Name</strong></h5>
@@ -44,24 +43,7 @@
 
                 <!-- Status badge -->
                 <div class="mt-1">
-                    @switch (item.Status)
-                    {
-                        case ItemStatus.Draft:
-                            <span class="badge bg-warning text-dark">Pending Review</span>
-                            break;
-                        case ItemStatus.Published:
-                            <span class="badge bg-success">Active</span>
-                            break;
-                        case ItemStatus.Archived:
-                            <span class="badge bg-secondary">Archived</span>
-                            break;
-                        case ItemStatus.Denied:
-                            <span class="badge bg-danger">Denied</span>
-                            break;
-                        default:
-                            <span class="badge bg-secondary">@item.Status</span>
-                            break;
-                    }
+                    <partial name="_ShopStatusBadge" model="item.Status" />
                 </div>
 
                 <!-- Icon-only action buttons -->

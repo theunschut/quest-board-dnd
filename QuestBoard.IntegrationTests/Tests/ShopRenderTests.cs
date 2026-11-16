@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using QuestBoard.IntegrationTests.Helpers;
 using QuestBoard.Service.ViewModels.ShopViewModels;
 
@@ -340,19 +341,86 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
             "the chips are styled by the shop page sheet");
     }
 
-    [Fact]
-    public async Task ShopManagementList_KeepsItsOwnChipMarkupForNow()
+    // The shop item with the given status, written straight to the store because the helper only makes Published ones.
+    private async Task SetStatusAsync(int itemId, ItemStatus status)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var tracked = await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Id == itemId, TestContext.Current.CancellationToken);
+        tracked.Status = (int)status;
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // The status badge a partial renders: its fill, icon and word, in that order.
+    private static bool HasStatusBadge(string html, string fill, string icon, string word) =>
+        Regex.IsMatch(html,
+            @"<span\s+class=""badge " + Regex.Escape(fill) + @"""><i\s+class=""fas " + Regex.Escape(icon)
+            + @" me-1""\s+aria-hidden=""true""></i>" + Regex.Escape(word) + @"</span>");
+
+    // A signed-in Dungeon Master and a board with every status: the DM's own Draft, Published, Archived and Denied
+    // items, a Draft by another keeper (the review table) and a Published one by that keeper (the other-items table).
+    private async Task<HttpClient> SeedManagementBoardAsync(string handle)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         factory.TestGroupContext.ActiveGroupId = 1;
-        var shopkeeper = await AuthenticationHelper.CreateTestUserAsync(
-            factory.Services, "shopr_mgmt_keeper", "shopr_mgmt_keeper@example.com");
-        await TestDataHelper.CreateShopItemAsync(factory.Services, shopkeeper.Id, "Old Look", 10m, 1, ItemRarity.Rare);
-        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, "shopr_mgmt_dm", "shopr_mgmt_dm@example.com");
+        var keeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
 
-        var html = await GetAsync(client, "/ShopManagement", DesktopUserAgent);
+        var own = new (string Name, ItemStatus Status, ItemRarity Rarity, ItemType Type)[]
+        {
+            ("Own Draft", ItemStatus.Draft, ItemRarity.Rare, ItemType.Equipment),
+            ("Own Published", ItemStatus.Published, ItemRarity.Legendary, ItemType.MagicItem),
+            ("Own Archived", ItemStatus.Archived, ItemRarity.VeryRare, ItemType.QuestItems),
+            ("Own Denied", ItemStatus.Denied, ItemRarity.Uncommon, ItemType.Equipment),
+        };
+        foreach (var (name, status, rarity, type) in own)
+        {
+            var item = await TestDataHelper.CreateShopItemAsync(factory.Services, dm.Id, name, 10m, 1, rarity, type);
+            await SetStatusAsync(item.Id, status);
+        }
 
-        RarityChips(html).Should().BeEmpty("the management list is converted separately");
-        html.Should().Contain("class=\"item-rarity rarity-rare\"", "the management list still renders its own chip");
+        var review = await TestDataHelper.CreateShopItemAsync(factory.Services, keeper.Id, "Review Me", 10m, 1, ItemRarity.Rare);
+        await SetStatusAsync(review.Id, ItemStatus.Draft);
+        await TestDataHelper.CreateShopItemAsync(factory.Services, keeper.Id, "Other Published", 10m, 1, ItemRarity.Common);
+        return client;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_ShowTheSharedStatusVocabulary(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_status_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        HasStatusBadge(html, "bg-warning", "fa-hourglass-half", "Pending Review").Should().BeTrue("a draft reads Pending Review with its icon");
+        HasStatusBadge(html, "bg-success", "fa-check-circle", "Available").Should().BeTrue("a published item reads Available with its icon");
+        HasStatusBadge(html, "bg-secondary", "fa-box-archive", "Archived").Should().BeTrue();
+        HasStatusBadge(html, "bg-danger", "fa-ban", "Denied").Should().BeTrue();
+        html.Should().NotContain(">Active<", "the phone list no longer has its own word for a published item");
+        html.Should().NotContain(">Draft<", "a draft is shown as Pending Review everywhere");
+        html.Should().NotContain("fa-published", "no icon is built from the status name");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_ShowTheSharedRarityChip(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_chip_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var chips = RarityChips(html);
+        chips.Should().Contain(("legendary", "Legendary"));
+        chips.Should().Contain(("veryrare", "Very Rare"));
+        chips.Should().Contain(("uncommon", "Uncommon"));
+        chips.Should().Contain(("rare", "Rare"));
+        chips.Should().Contain(("common", "Common"));
+        html.Should().NotContain("item-rarity", "the old chip markup is gone from the management list");
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.css(?:\?[^""]*)?""").Should().BeTrue(
+            "the chips are styled by the shop page sheet");
     }
 }

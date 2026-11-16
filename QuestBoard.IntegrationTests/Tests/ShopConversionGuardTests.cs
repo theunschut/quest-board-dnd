@@ -107,6 +107,11 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/css/legacy-pages.css",
         "QuestBoard.Service/wwwroot/css/shop.mobile.css",
         "QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs",
+        "QuestBoard.Service/ViewModels/ShopViewModels/ShopItemViewModel.cs",
+        "QuestBoard.Service/Views/Shared/_ShopStatusBadge.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Index.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Index.Mobile.cshtml",
+        "QuestBoard.IntegrationTests/Tests/ShopItemDisplayTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -370,14 +375,20 @@ public class ShopConversionGuardTests
     }
 
     [Fact]
-    public void ShopSheets_OldRarityRulesNeverReachANewChip()
+    public void ShopSheets_HoldNoRarityRuleOutsideTheChipSheet()
     {
-        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop.css", "QuestBoard.Service/wwwroot/css/legacy-pages.css" })
-            RarityRulesThatCanReachANewChip(ReadRepoFile(path)).Should().BeEmpty(
-                $"{path} keeps serving the management list's old markup, so each per-rarity rule must exclude the new chip");
-
-        RarityRuleSelectors(ReadRepoFile("QuestBoard.Service/wwwroot/css/shop.mobile.css")).Should().BeEmpty(
-            "the phone shop sheet no longer styles a rarity: the chip sheet does");
+        foreach (var path in new[]
+                 {
+                     "QuestBoard.Service/wwwroot/css/shop.css",
+                     "QuestBoard.Service/wwwroot/css/legacy-pages.css",
+                     "QuestBoard.Service/wwwroot/css/shop.mobile.css",
+                 })
+        {
+            var css = ReadRepoFile(path);
+            RarityRuleSelectors(css).Should().BeEmpty($"{path} no longer styles a rarity: the chip sheet does");
+            Regex.IsMatch(css, @"\.item-rarity\b|legendary-glow").Should().BeFalse(
+                $"{path} holds no rule for the old rarity text or its glow");
+        }
     }
 
     [Fact]
