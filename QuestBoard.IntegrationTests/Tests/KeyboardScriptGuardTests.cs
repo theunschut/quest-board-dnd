@@ -175,6 +175,18 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopDrawersModule_MirrorsTheDrawerStateOntoItsOpenersAndRemembersNothing()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-drawers.js");
+
+        script.Should().Contain("show.bs.offcanvas").And.Contain("hidden.bs.offcanvas", "the state follows Bootstrap's own drawer events");
+        script.Should().Contain("aria-controls").And.Contain("aria-expanded", "the openers are found through aria-controls and carry aria-expanded");
+        script.Should().NotMatchRegex(@"localStorage|sessionStorage|document\.cookie", "the drawers open closed on every load");
+        script.Should().NotMatchRegex(@"innerHTML|outerHTML|insertAdjacentHTML|document\.write", "no markup is built from strings");
+        script.Should().NotMatchRegex(@"window\.\w+\s*=", "nothing is exposed globally");
+    }
+
+    [Fact]
     public void ShopMerchantModule_WritesTheQuoteAsTextIntoTheToastAndTheLiveRegion()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-merchant.js");

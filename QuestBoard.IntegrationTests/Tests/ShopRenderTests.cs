@@ -275,7 +275,7 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
         var html = await GetAsync(client, "/Shop", AgentFor(mobile));
 
-        var cards = CardChips(html, mobile ? "class=\"shop-item-card-mobile\"" : "data-item-card");
+        var cards = CardChips(html, "data-item-card");
         cards.Should().HaveCount(Rarities.Length, "each rarity has one card");
         cards.Select(c => c.Key).Should().BeEquivalentTo(Rarities.Select(r => ShopItemDisplay.RarityKey(r.Rarity)));
         foreach (var (rarity, key, word) in Rarities)
@@ -2141,5 +2141,188 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         var html = await GetAsync(anonymous, "/Shop", MobileUserAgent);
 
         html.Should().NotContain("data-history-toggle").And.NotContain("id=\"historyPane\"");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_HeroTriggerAndCardsAreTheConvertedShape()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phhero", 3);
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+        var main = MainOf(html);
+
+        html.Should().Contain("mobile-layout");
+        Regex.IsMatch(main, @"<h1 class=""shop-hero__title""><i class=""fas fa-store"" aria-hidden=""true""></i>The Mystical Merchant's Emporium</h1>").Should().BeTrue();
+        var trigger = Regex.Match(main, @"<button\b[^>]*data-bs-target=""#shopFilterOffcanvas""[^>]*>[\s\S]*?</button>");
+        trigger.Success.Should().BeTrue("Filter & Sort is a real button");
+        trigger.Value.Should().Contain("btn btn-secondary").And.Contain("aria-controls=\"shopFilterOffcanvas\"").And.Contain("aria-expanded=\"false\"")
+            .And.Contain("Filter &amp; Sort");
+        trigger.Value.Should().NotContain("Active", "nothing is filtered");
+
+        main.Should().Contain("id=\"shopFilterOffcanvas\"").And.Contain("aria-labelledby=\"shopFilterTitle\"");
+        main.Should().Contain("<h2 class=\"offcanvas-title\" id=\"shopFilterTitle\">Filter &amp; Sort</h2>");
+        Regex.IsMatch(main, @"<div class=""offcanvas offcanvas-bottom shop-filter-offcanvas""").Should().BeTrue();
+
+        var cards = GridCards(html);
+        cards.Should().HaveCount(3);
+        main.Should().Contain("class=\"inventory-grid shop-grid-mobile\"");
+        foreach (var card in cards)
+        {
+            card.Should().Contain("<h3 class=\"shop-card__name\">").And.Contain("class=\"row-nav-link\"").And.Contain("data-item-url=");
+            card.Should().Contain("badge-rarity").And.Contain("shop-card__price");
+            Regex.IsMatch(card, @"<button type=""button"" class=""btn btn-primary w-100 shop-card__action""[^>]*>\s*<i class=""fas fa-shopping-cart me-2"" aria-hidden=""true""></i>Buy\s*</button>")
+                .Should().BeTrue("the phone says Buy");
+            card.Should().NotContain("shop-card__excerpt", "the description is desktop-only")
+                .And.NotContain("shop-card__stock", "the stock label is desktop-only");
+        }
+
+        main.Should().NotContain("data-merchant").And.NotContain("shop-merchant");
+        main.Should().NotContain("shop-item-card-mobile").And.NotContain("shop-header-card").And.NotContain("shop-empty-state").And.NotContain("shop-pagination-mobile");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_AnActiveFilterShowsTheBadgeAndClearFiltersAndKeepsTheCategoryInTheForm()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phactive", 2);
+
+        var html = await GetAsync(client, "/Shop?type=Equipment&rarity=Legendary", MobileUserAgent);
+        var main = MainOf(html);
+
+        var trigger = Regex.Match(main, @"<button\b[^>]*data-bs-target=""#shopFilterOffcanvas""[^>]*>[\s\S]*?</button>").Value;
+        trigger.Should().Contain("badge bg-secondary").And.Contain("Active");
+        var drawer = main[main.IndexOf("id=\"shopFilterOffcanvas\"", StringComparison.Ordinal)..];
+        drawer.Should().Contain("<input type=\"hidden\" name=\"type\" value=\"Equipment\" />");
+        Regex.IsMatch(drawer, @"<button type=""submit"" class=""btn btn-primary"">\s*<i[^>]*></i>Apply Filters\s*</button>").Should().BeTrue();
+        Regex.IsMatch(drawer, @"<a href=""/Shop\?type=Equipment"" class=""btn btn-secondary"">\s*<i[^>]*></i>Clear Filters\s*</a>").Should().BeTrue("Clear Filters keeps the category");
+        drawer.Should().Contain("name=\"rarity\" value=\"Legendary\"").And.Contain("checked");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_TheFilterDrawerHoldsFilledCategoriesRarityRowsSortAndSearchWithNoClearWhenNothingIsActive()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phdrawer", 2);
+
+        var html = await GetAsync(client, "/Shop?type=QuestItems", MobileUserAgent);
+        var drawer = MainOf(html);
+        drawer = drawer[drawer.IndexOf("id=\"shopFilterOffcanvas\"", StringComparison.Ordinal)..];
+
+        Regex.IsMatch(drawer, @"class=""btn btn-secondary""\s*>\s*<i class=""fas fa-list me-2""").Should().BeTrue("All Items is the filled secondary button when another category is on");
+        Regex.IsMatch(drawer, @"class=""btn btn-primary""\s+aria-current=""page"">\s*<i class=""fas fa-scroll me-2"" aria-hidden=""true""></i>Quest Items").Should().BeTrue(
+            "the chosen category is the filled primary button, the current page, with the scroll icon");
+        Regex.Matches(drawer, @"<div class=""form-check filter-check-row"">").Count.Should().Be(Rarities.Length, "one tap-sized row per rarity");
+        drawer.Should().NotContain("btn-outline").And.NotContain("btn-warning");
+        Regex.IsMatch(drawer, @"<label class=""form-check-label"" for=""rarity_Common"">\s*<span class=""badge badge-rarity rarity-common"">").Should().BeTrue("the chip is the row's label");
+        drawer.Should().Contain("id=\"sortSelectMobile\"").And.Contain("id=\"searchMobile\"").And.Contain("Apply Filters");
+        drawer.Should().NotContain("Clear Filters", "nothing but the category is chosen");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_FifteenItemsShowANextLinkADisabledPreviousAndTheCountWithNoNumberedPages()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phpager", 15);
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+
+        GridCards(html).Should().HaveCount(12, "twelve cards a page");
+        html.Should().Contain("<nav aria-label=\"Shop page navigation\">");
+        html.Should().MatchRegex(@"<a class=""btn btn-secondary disabled"" href=""[^""]*"" aria-label=""Previous page"" aria-disabled=""true"" tabindex=""-1"">");
+        html.Should().MatchRegex(@"<a class=""btn btn-secondary"" href=""/Shop\?page=2"" aria-label=""Next page"">");
+        html.Should().MatchRegex(@"<p class=""shop-count"">\s*Showing 1&#8211;12\s+of 15 items\s*</p>");
+        html.Should().NotContain("page-item").And.NotContain("page-link", "the phone has no numbered window");
+
+        var second = await GetAsync(client, "/Shop?page=2", MobileUserAgent);
+        GridCards(second).Should().HaveCount(3);
+        second.Should().MatchRegex(@"<a class=""btn btn-secondary disabled"" href=""[^""]*"" aria-label=""Next page"" aria-disabled=""true"" tabindex=""-1"">");
+        second.Should().MatchRegex(@"Showing 13&#8211;15\s+of 15 items");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_OneItemKeepsOneCardAndNoPager()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phone1", 1);
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+
+        GridCards(html).Should().HaveCount(1);
+        html.Should().NotContain("Shop page navigation").And.NotContain("shop-count");
+    }
+
+    [Theory]
+    [InlineData("/Shop?search=zzqx-nothing", "search", "No items match your search", "Try a different name or adjust your filters.", "Clear search")]
+    [InlineData("/Shop?rarity=Legendary", "filter", "No items match your filters", "Try removing some rarity filters or changing the sort order.", "Clear filters")]
+    [InlineData("/Shop?type=QuestItems", "empty", "The shop is currently empty", "Check back later for new items, or contact a Dungeon Master about stocking the shop.", null)]
+    public async Task ShopIndex_Phone_EachEmptyStateHasTheDesktopWordsUnderAHiddenItemsHeading(
+        string url, string kind, string heading, string sentence, string? action)
+    {
+        var client = await SeedBrowseBoardAsync($"shopr_phempty_{kind}", 2);
+
+        var html = await GetAsync(client, url, MobileUserAgent);
+
+        var main = MainOf(html);
+        var block = Regex.Match(main, @"<h2 class=""visually-hidden"">Items</h2>\s*<div class=""modern-card"">\s*<div class=""empty-state"">([\s\S]*?)</div>\s*</div>");
+        block.Success.Should().BeTrue("an empty list shows one empty state in a card under the hidden Items heading");
+        block.Groups[1].Value.Should().MatchRegex(@"<h3 class=""empty-state-heading"">" + Regex.Escape(heading) + "</h3>");
+        block.Groups[1].Value.Should().Contain($"<p class=\"empty-state-text\">{sentence}</p>");
+        if (action != null)
+            block.Groups[1].Value.Should().MatchRegex(@"<a href=""[^""]*"" class=""btn btn-secondary"">\s*<i\b[^>]*aria-hidden=""true""></i>" + action + @"\s*</a>");
+        else
+            block.Groups[1].Value.Should().NotContain("<a ").And.NotContain("<button");
+        main.Should().NotContain("inventory-grid").And.NotContain("Shop page navigation");
+        html.Should().NotContain("No items found");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_ClearSearchKeepsTheCategoryAndTheOtherFilters()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phclearsearch", 2);
+
+        var html = await GetAsync(client, "/Shop?type=Equipment&rarity=Legendary&search=zzqx-nothing", MobileUserAgent);
+
+        Regex.IsMatch(MainOf(html), @"<a href=""/Shop\?type=Equipment&amp;rarity=Legendary"" class=""btn btn-secondary"">\s*<i\b[^>]*></i>Clear search\s*</a>")
+            .Should().BeTrue("Clear search drops only the search text");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_ReflectsTheSearchTextAsAnEncodedValueOnly()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phxss", 1);
+
+        var html = await GetAsync(client, "/Shop?search=%22%3E%3Cscript%3Ealert(1)%3C/script%3E", MobileUserAgent);
+
+        html.Should().NotContain("<script>alert(1)</script>");
+        html.Should().Contain("value=\"&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;\"");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_DetailsDialogScrollsInsideItselfIsNamedByItsTitleAndLoadsTheModule()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phdlg", 1);
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+
+        var modal = Regex.Match(html, @"<div class=""modal fade"" id=""itemDetailsModal""[^>]*>[\s\S]*?<div class=""modal-body"" id=""itemDetailsBody""></div>");
+        modal.Success.Should().BeTrue();
+        modal.Value.Should().Contain("aria-labelledby=\"itemDetailsTitle\"").And.Contain("modal-dialog modal-dialog-scrollable\"");
+        modal.Value.Should().NotContain("modal-lg").And.NotContain("bg-dark").And.NotContain("text-light").And.NotContain("border-secondary");
+        modal.Value.Should().Contain("<h2 class=\"modal-title\" id=\"itemDetailsTitle\">Item Details</h2>");
+        Regex.IsMatch(modal.Value, @"<button type=""button"" class=""btn-close"" data-bs-dismiss=""modal"" aria-label=""Close""></button>").Should().BeTrue();
+        foreach (var module in new[] { "shop-drawers", "confirm-submit", "shop-item-sell", "shop-item-modal" })
+            Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/" + module + @"\.js(?:\?[^""]*)?""").Should().BeTrue($"{module} loads as a module");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_HoldsNoInlineScriptStyleOrHandlerAndLinksItsSheetsButNotTheRetiredOne()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_phinline", 2);
+
+        var html = await GetAsync(client, "/Shop?rarity=Common", MobileUserAgent);
+        var main = MainOf(html);
+
+        Regex.IsMatch(main, @"\sstyle\s*=").Should().BeFalse("no style attribute in the phone shop markup");
+        Regex.IsMatch(main, @"\son[a-z]+\s*=").Should().BeFalse("no inline handler in the phone shop markup");
+        Regex.Matches(html, @"<script\b(?![^>]*\bsrc=)[^>]*>").Cast<Match>().Where(m => !m.Value.Contains("application/json")).Should().BeEmpty(
+            "the phone page has no inline script");
+        html.Should().Contain("shop-pages.css").And.Contain("shop-pages.mobile.css").And.Contain("markdown-content.css");
+        html.Should().NotContain("shop.mobile.css");
     }
 }

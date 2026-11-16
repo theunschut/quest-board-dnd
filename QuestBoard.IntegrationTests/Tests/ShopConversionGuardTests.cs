@@ -100,6 +100,7 @@ public class ShopConversionGuardTests
     private static readonly string[] ConvertedViews =
     [
         "QuestBoard.Service/Views/Shop/Index.cshtml",
+        "QuestBoard.Service/Views/Shop/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml",
         "QuestBoard.Service/Views/Shop/Details.cshtml",
         "QuestBoard.Service/Views/Shop/Details.Mobile.cshtml",
@@ -133,6 +134,7 @@ public class ShopConversionGuardTests
     // Files this work retires; each is deleted and must stay deleted, because its content moved into the shared sheets.
     private static readonly string[] RetiredFiles =
     [
+        "QuestBoard.Service/wwwroot/css/shop.mobile.css",
         "QuestBoard.Service/wwwroot/css/shop-details.mobile.css",
         "QuestBoard.Service/wwwroot/css/shop-management-create.mobile.css",
         "QuestBoard.Service/wwwroot/css/shop-management-edit.mobile.css",
@@ -166,7 +168,6 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/css/shop-pages.css",
         "QuestBoard.Service/wwwroot/css/shop.css",
         "QuestBoard.Service/wwwroot/css/legacy-pages.css",
-        "QuestBoard.Service/wwwroot/css/shop.mobile.css",
         "QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs",
         "QuestBoard.Service/ViewModels/ShopViewModels/ShopItemViewModel.cs",
         "QuestBoard.Service/Views/Shared/_ShopStatusBadge.cshtml",
@@ -747,7 +748,6 @@ public class ShopConversionGuardTests
                  {
                      "QuestBoard.Service/wwwroot/css/shop.css",
                      "QuestBoard.Service/wwwroot/css/legacy-pages.css",
-                     "QuestBoard.Service/wwwroot/css/shop.mobile.css",
                  })
         {
             var css = ReadRepoFile(path);
@@ -850,7 +850,7 @@ public class ShopConversionGuardTests
     [Fact]
     public void OldSheets_HoldNoRuleForTheConvertedBrowseClassesAndNoCardSweepOrShimmer()
     {
-        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop.css", "QuestBoard.Service/wwwroot/css/legacy-pages.css", "QuestBoard.Service/wwwroot/css/shop.mobile.css" })
+        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop.css", "QuestBoard.Service/wwwroot/css/legacy-pages.css" })
         {
             var css = ReadRepoFile(path);
             RetiredBrowseRules(css).Should().BeEmpty($"{path} must hold no rule for the converted cards, tabs, filter card or pager");
