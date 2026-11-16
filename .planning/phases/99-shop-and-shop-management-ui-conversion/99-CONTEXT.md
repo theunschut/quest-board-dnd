@@ -118,6 +118,9 @@ they do today.
 - **D-09: Rarity chips follow the signed-off Direction A shop render (the shop-a renders).**
   - They are solid chips (common grey, uncommon green, rare teal, very rare purple, legendary gold).
   - Each chip's text colour is picked to reach 4.5:1, and the rarity name is always in text.
+  - Gate 1 answer (item 16, operator, 2026-11-16): the legendary chip is **amber** (`--qb-warning`
+    on `--qb-warning-fg`, 8.92:1), as the signed-off render draws it; the ui-guidelines "Gold is
+    reserved" list is not changed.
   - The same chip appears on desktop and phone, and on every shop and management page
     (A-shop-012, A-shop-016, A-shop-020, A-shop-022).
   - The Purchase button and the outline buttons reach the bar too (A-shop-011, A-shop-006,

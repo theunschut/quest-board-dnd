@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 99
 current_phase_name: Shop and Shop management UI conversion
 status: executing
-stopped_at: Completed 99-06-PLAN.md
-last_updated: "2026-11-16T12:34:08.039Z"
+stopped_at: Completed 99-07-PLAN.md
+last_updated: "2026-11-16T14:28:40.759Z"
 last_activity: 2026-11-16
 last_activity_desc: Phase 99 execution started
 progress:
   total_phases: 31
   completed_phases: 25
-  total_plans: 290
-  completed_plans: 267
+  total_plans: 291
+  completed_plans: 268
   percent: 81
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 99 (Shop and Shop management UI conversion) — EXECUTING
-Plan: 7 of 20
+Plan: 8 of 21
 Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
 Last activity: 2026-11-16 — Phase 99 execution started
@@ -182,6 +182,9 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 96]: 96-08: Gate 1 gutter answer shell applied; four credential pages merged into one view each; refusal line summary stays All
 - [Phase 96]: 96-11: SetPassword verified with a real token via a local SMTP sink; no mail left the machine
 - [Phase 96]: 96-12: Gate 2 approved by the operator (relayed by the orchestrating session); G2-11 changed to 1 member / N members, every other item at its recommendation, no contrast exceptions
+- [Phase 99]: 99-07: Gate 1: merchant placement (a), the floating button in the sticky dock
+- [Phase 99]: 99-07: Gate 1: legendary chip is amber (--qb-warning on --qb-warning-fg), as the signed-off render draws it; D-09's gold not followed
+- [Phase 99]: 99-07: Gate 1: item 20 server quantity validation is fixed in phase 99 by plan 99-21, not deferred
 
 ### Roadmap Evolution
 
@@ -284,8 +287,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-16T12:34:08.001Z
-Stopped at: Completed 99-06-PLAN.md
+Last session: 2026-11-16T14:28:40.721Z
+Stopped at: Completed 99-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
