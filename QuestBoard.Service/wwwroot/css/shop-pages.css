@@ -129,7 +129,7 @@
   }
 
   .item-details__muted {
-    color: var(--qb-fg-muted);
+    color: var(--qb-fg);
     font-size: var(--qb-text-sm);
   }
 
