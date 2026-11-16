@@ -25,15 +25,7 @@
                             <h6 class="alert-heading mb-1">
                                 <i class="fas fa-info-circle me-2"></i>Current Status
                             </h6>
-                            <span class="badge @(Model.Status switch 
-                            {
-                                ItemStatus.Published => "bg-success",
-                                ItemStatus.Draft => "bg-secondary", 
-                                ItemStatus.Archived => "bg-secondary",
-                                _ => "bg-secondary"
-                            })">
-                                @Model.Status.ToString().Replace("Published", "Available")
-                            </span>
+                            <partial name="_ShopStatusBadge" model="Model.Status" />
                             @if (Model.Status == ItemStatus.Draft)
                             {
                                 <small class="text-muted ms-2">This item is awaiting DM approval</small>

@@ -423,4 +423,42 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.css(?:\?[^""]*)?""").Should().BeTrue(
             "the chips are styled by the shop page sheet");
     }
+
+    [Fact]
+    public async Task ShopManagementList_Desktop_ShowsTypesAsWordsOnOneNeutralChip()
+    {
+        var client = await SeedManagementBoardAsync("shopr_types");
+
+        var html = await GetAsync(client, "/ShopManagement", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<span\s+class=""badge bg-secondary""><i\s+class=""fas fa-magic me-1""\s+aria-hidden=""true""></i>Magic Item</span>")
+            .Should().BeTrue("a magic item row shows the type word");
+        Regex.IsMatch(html, @"<span\s+class=""badge bg-secondary""><i\s+class=""fas fa-scroll me-1""\s+aria-hidden=""true""></i>Quest Item</span>")
+            .Should().BeTrue("a quest item row shows the type word");
+        Regex.IsMatch(html, @"<span\s+class=""badge bg-secondary""><i\s+class=""fas fa-hammer me-1""\s+aria-hidden=""true""></i>Equipment</span>")
+            .Should().BeTrue();
+        html.Should().NotMatchRegex(@"type-(equipment|magic-item|quest-item)", "no element carries a type class");
+    }
+
+    [Theory]
+    [InlineData(false, ItemStatus.Draft, "bg-warning", "fa-hourglass-half", "Pending Review")]
+    [InlineData(true, ItemStatus.Draft, "bg-warning", "fa-hourglass-half", "Pending Review")]
+    [InlineData(false, ItemStatus.Published, "bg-success", "fa-check-circle", "Available")]
+    [InlineData(true, ItemStatus.Published, "bg-success", "fa-check-circle", "Available")]
+    [InlineData(false, ItemStatus.Archived, "bg-secondary", "fa-box-archive", "Archived")]
+    [InlineData(true, ItemStatus.Denied, "bg-danger", "fa-ban", "Denied")]
+    public async Task ShopManagementEdit_BothLayouts_StatusAlertShowsTheSharedBadge(
+        bool mobile, ItemStatus status, string fill, string icon, string word)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            factory, $"shopr_edit_{(mobile ? "m" : "d")}_{status}", $"shopr_edit_{(mobile ? "m" : "d")}_{status}@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(factory.Services, dm.Id, "Edit Status", 10m, 1, ItemRarity.Rare);
+        await SetStatusAsync(item.Id, status);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{item.Id}", AgentFor(mobile));
+
+        HasStatusBadge(html, fill, icon, word).Should().BeTrue($"the status alert shows {word} through the shared badge");
+    }
 }

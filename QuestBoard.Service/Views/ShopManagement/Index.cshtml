@@ -65,7 +65,7 @@
                                             <br><small class="text-muted">@DescriptionTeaser(item.Description)</small>
                                         </td>
                                         <td>
-                                            <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>
+                                            <partial name="_ShopTypeChip" model="item.Type" />
                                         </td>
                                         <td>
                                             <partial name="_ShopRarityChip" model="item.Rarity" />
@@ -148,7 +148,7 @@
                                             }
                                         </td>
                                         <td>
-                                            <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>
+                                            <partial name="_ShopTypeChip" model="item.Type" />
                                         </td>
                                         <td>
                                             <partial name="_ShopRarityChip" model="item.Rarity" />
@@ -286,7 +286,7 @@
                                             <br><small class="text-muted">@DescriptionTeaser(item.Description)</small>
                                         </td>
                                         <td>
-                                            <span class="badge @(item.Type == ItemType.MagicItem ? "type-magic-item" : item.Type == ItemType.QuestItems ? "type-quest-item" : "type-equipment")">@item.Type.ToString().Replace("MagicItem", "Magic Item").Replace("QuestItems", "Quest Item")</span>
+                                            <partial name="_ShopTypeChip" model="item.Type" />
                                         </td>
                                         <td>
                                             <partial name="_ShopRarityChip" model="item.Rarity" />

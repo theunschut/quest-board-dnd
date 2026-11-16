@@ -112,6 +112,9 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/ShopManagement/Index.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Index.Mobile.cshtml",
         "QuestBoard.IntegrationTests/Tests/ShopItemDisplayTests.cs",
+        "QuestBoard.Service/Views/Shared/_ShopTypeChip.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Edit.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Edit.Mobile.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -239,6 +242,34 @@ public class ShopConversionGuardTests
             breaks.Add("a chip animates");
 
         return breaks;
+    }
+
+    // The new shop sheets, which hold no endless animation and no catch-all transition. A sheet that is not on disk yet
+    // is skipped here and covered from the commit that creates it.
+    private static readonly string[] NewShopSheets =
+    [
+        "QuestBoard.Service/wwwroot/css/shop-pages.css",
+        "QuestBoard.Service/wwwroot/css/shop-pages.mobile.css",
+        "QuestBoard.Service/wwwroot/css/shop-form.css",
+    ];
+
+    // The declarations in a stylesheet that animate forever or transition every property.
+    private static List<string> EndlessMotionBreaks(string css)
+    {
+        var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+        return Regex.Matches(withoutComments,
+                @"(?<![\w-])animation(?:-iteration-count)?\s*:[^;}]*\binfinite\b|(?<![\w-])transition(?:-property)?\s*:\s*all\b")
+            .Select(m => m.Value.Trim()).ToList();
+    }
+
+    // The shapes a shop view must not hold because the status words, fills and icons come from one mapping: a
+    // replacement that renames the Published word, or a switch of its own over a status.
+    private static List<string> StatusMappingBreaks(string view)
+    {
+        var markup = StripRazorAndHtmlComments(view);
+        return Regex.Matches(markup,
+                @"\.Replace\(\s*""Published""|@switch\s*\(\s*[\w.]*Status\s*\)|(?<![\w])[\w.]*Status\s+switch\b|fa-@[\w.]*Status")
+            .Select(m => m.Value).ToList();
     }
 
     // ---- Guards ---------------------------------------------------------------------------------
@@ -402,5 +433,53 @@ public class ShopConversionGuardTests
         RarityRulesThatCanReachANewChip("@keyframes glow { 0% { opacity: 0; } }").Should().BeEmpty();
         RarityRuleSelectors(".shop-card .rarity-legendary { color: gold; }").Should().ContainSingle();
         RarityRuleSelectors(".item-rarity { margin: 0; }").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ShopViews_UseTheSharedStatusMapping()
+    {
+        foreach (var path in ShopViews)
+            StatusMappingBreaks(ReadRepoFile(path)).Should().BeEmpty(
+                $"{path} must show a status through the shared badge and mapping, not a rule of its own");
+    }
+
+    [Fact]
+    public void StatusMappingScanner_FlagsOwnWordsOwnSwitchesAndBuiltIconsOnly()
+    {
+        StatusMappingBreaks("@Model.Status.ToString().Replace(\"Published\", \"Available\")").Should().HaveCount(1);
+        StatusMappingBreaks("@switch (item.Status) { case ItemStatus.Draft: break; }").Should().HaveCount(1);
+        StatusMappingBreaks("@(Model.Status switch { ItemStatus.Published => \"bg-success\", _ => \"\" })").Should().HaveCount(1);
+        StatusMappingBreaks("<i class=\"fas fa-@item.Status.ToString().ToLower()\"></i>").Should().HaveCount(1);
+        StatusMappingBreaks("<partial name=\"_ShopStatusBadge\" model=\"item.Status\" />").Should().BeEmpty();
+        StatusMappingBreaks("@if (item.Status == ItemStatus.Published) { <b>x</b> }").Should().BeEmpty("a condition is not a status mapping");
+        StatusMappingBreaks("<!-- @switch (item.Status) { } -->").Should().BeEmpty("a comment is not markup");
+    }
+
+    [Fact]
+    public void ShopSheets_NewSheetsHoldNoEndlessAnimationOrTransitionAll()
+    {
+        var checkedSheets = 0;
+        foreach (var path in NewShopSheets)
+        {
+            if (!File.Exists(ResolveRepoFile(path.Split('/'))))
+                continue;
+
+            checkedSheets++;
+            EndlessMotionBreaks(ReadRepoFile(path)).Should().BeEmpty(
+                $"{path} must not animate forever or transition every property");
+        }
+
+        checkedSheets.Should().BeGreaterThan(0, "at least the shop page sheet exists");
+    }
+
+    [Fact]
+    public void EndlessMotionScanner_FlagsASeededRuleAndAllowsQuietMotion()
+    {
+        EndlessMotionBreaks(".chip { animation: glow 2s ease-in-out infinite alternate; }").Should().HaveCount(1);
+        EndlessMotionBreaks(".chip { animation-iteration-count: infinite; }").Should().HaveCount(1);
+        EndlessMotionBreaks(".chip { transition: all 0.3s ease; }").Should().HaveCount(1);
+        EndlessMotionBreaks(".chip { transition-property: all; }").Should().HaveCount(1);
+        EndlessMotionBreaks(".chip { transition: color 0.2s ease, box-shadow 0.2s ease; animation: fade 1s ease 1; }").Should().BeEmpty();
+        EndlessMotionBreaks("/* transition: all 1s; */ .chip { box-shadow: 0 0 4px var(--qb-warning); }").Should().BeEmpty();
     }
 }
