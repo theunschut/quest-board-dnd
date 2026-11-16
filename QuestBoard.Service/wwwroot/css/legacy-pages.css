@@ -1,5 +1,6 @@
-/* Only override max-width for the main content container, not navbar */
+/* The one rule the old page sheets still share: the wide content container of the group picker layout. The page
+   sheets that used to live here have each moved to their own layered sheet. An unlayered rule already beats the
+   vendor layer, so the rule needs no important flag. */
 .container.mt-4 {
     max-width: none;
 }
-

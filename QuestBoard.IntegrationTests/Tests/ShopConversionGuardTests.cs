@@ -107,6 +107,9 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/ShopManagement/Index.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopManagementDialogs.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopManagementStockBadge.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopRarityChip.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopStatusBadge.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopTypeChip.cshtml",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name. The details partial links nothing:
@@ -190,6 +193,9 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml",
         "QuestBoard.Service/ViewModels/ShopViewModels/UserTransactionViewModel.cs",
         "QuestBoard.UnitTests/ViewModels/UserTransactionViewModelTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/ShopControllerIntegrationTests.cs",
+        "QuestBoard.Service/ViewModels/ShopViewModels/ShopIndexViewModel.cs",
+        "QuestBoard.Service/wwwroot/css/base.css",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -546,6 +552,106 @@ public class ShopConversionGuardTests
             .Select(m => m.Value).ToList();
     }
 
+    // ---- Scope, theme and sheet-ownership scanners -------------------------------------------------
+
+    private static string StripCssComments(string css) => Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+
+    // The repository-relative paths of the files in a folder that match a pattern, in a stable order.
+    private static List<string> FilesIn(string folder, string pattern) =>
+        Directory.GetFiles(ResolveRepoFile(folder.Split('/')), pattern)
+            .Select(file => folder + "/" + Path.GetFileName(file)).OrderBy(name => name, StringComparer.Ordinal).ToList();
+
+    // Every view the shop owns: the pages in its two view folders and the partials named for it in Shared.
+    private static List<string> ShopViewsOnDisk() =>
+        FilesIn("QuestBoard.Service/Views/Shop", "*.cshtml")
+            .Concat(FilesIn("QuestBoard.Service/Views/ShopManagement", "*.cshtml"))
+            .Concat(FilesIn("QuestBoard.Service/Views/Shared", "_Shop*.cshtml")).ToList();
+
+    // The ways the converted list can stop matching the views the shop owns: a view on disk that is not listed, a list
+    // entry that is not a shop view, a list entry twice.
+    private static List<string> ScopeBreaks(IEnumerable<string> onDisk, IReadOnlyCollection<string> converted)
+    {
+        var disk = onDisk.ToList();
+        var breaks = disk.Where(view => !converted.Contains(view)).Select(view => $"{view} is a shop view but is not in the converted list").ToList();
+        breaks.AddRange(converted.Where(view => !disk.Contains(view)).Select(view => $"{view} is in the converted list but is not a shop view"));
+        breaks.AddRange(converted.GroupBy(view => view).Where(g => g.Count() > 1).Select(g => $"{g.Key} is listed twice"));
+        return breaks;
+    }
+
+    // Whether a view sets the shop theme in its code block, outside any comment.
+    private static bool SetsTheShopTheme(string view) =>
+        Regex.IsMatch(StripRazorAndHtmlComments(view), @"ViewData\[""Theme""\]\s*=\s*""shop""\s*;");
+
+    // The endless animations in a stylesheet or a view: an animation shorthand or an iteration count that says infinite.
+    private static List<string> InfiniteDeclarations(string text) =>
+        Regex.Matches(StripCssComments(StripRazorAndHtmlComments(text)),
+                @"(?<![\w-])animation(?:-iteration-count)?\s*:[^;}""]*\binfinite\b")
+            .Select(m => m.Value.Trim()).ToList();
+
+    // The stylesheet rules as selector and body pairs, comments removed. A block that holds other blocks is not a rule.
+    private static List<(string Selector, string Body)> SheetRules(string css) =>
+        Regex.Matches(StripCssComments(css), @"(?<selector>[^{}]+)\{(?<body>[^{}]*)\}")
+            .Select(m => (m.Groups["selector"].Value.Trim(), m.Groups["body"].Value.Trim())).ToList();
+
+    // The class names a stylesheet defines a rule for. At-rule preludes are skipped, and only what sits before an opening
+    // brace counts, so a decimal in a declaration is never read as a class.
+    private static HashSet<string> RuleClasses(string css)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Match prelude in Regex.Matches(StripCssComments(css), @"(?<selectors>[^{}]+)\{"))
+        {
+            var selectors = prelude.Groups["selectors"].Value.Trim();
+            if (selectors.StartsWith('@'))
+                continue;
+
+            foreach (Match name in Regex.Matches(selectors, @"\.(?<name>[A-Za-z_][\w-]*)"))
+                names.Add(name.Groups["name"].Value);
+        }
+
+        return names;
+    }
+
+    private static HashSet<string> RuleIds(string css)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Match prelude in Regex.Matches(StripCssComments(css), @"(?<selectors>[^{}]+)\{"))
+            if (!prelude.Groups["selectors"].Value.TrimStart().StartsWith('@'))
+                foreach (Match name in Regex.Matches(prelude.Groups["selectors"].Value, @"#(?<name>[A-Za-z_][\w-]*)"))
+                    names.Add(name.Groups["name"].Value);
+
+        return names;
+    }
+
+    // Classes the shop sheets restyle inside their own pages but that belong to Bootstrap, the icon font or another
+    // shared sheet. Another sheet may define a rule for these; the shop's own names it may not.
+    private static readonly string[] SharedClassesTheShopSheetsRestyle =
+    [
+        "badge", "btn", "disabled", "empty-state-text", "fas", "form-check-input", "form-control", "form-select",
+        "header-subtitle", "markdown-content", "mobile-layout", "modern-card-body", "modern-card-header", "offcanvas-body",
+        "offcanvas-header", "row-nav-link",
+    ];
+
+    // The classes the given shop sheets define a rule for that are the shop's alone.
+    private static HashSet<string> ShopOwnedClasses(IEnumerable<string> shopSheets) =>
+        shopSheets.SelectMany(sheet => RuleClasses(sheet)).Where(name => !SharedClassesTheShopSheetsRestyle.Contains(name)).ToHashSet(StringComparer.Ordinal);
+
+    // The shop-owned classes a sheet defines a rule for.
+    private static List<string> ShopClassRules(string css, ISet<string> owned) =>
+        RuleClasses(css).Where(owned.Contains).OrderBy(name => name, StringComparer.Ordinal).ToList();
+
+    // The class and id tokens the shop views write as plain text, skipping any token that holds Razor code.
+    private static HashSet<string> ShopViewTokens(IEnumerable<string> views)
+    {
+        var tokens = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var view in views)
+            foreach (Match attribute in Regex.Matches(StripRazorAndHtmlComments(view), @"\b(?:class|id)\s*=\s*""(?<value>[^""]*)"""))
+                foreach (var token in attribute.Groups["value"].Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+                    if (!token.Contains('@'))
+                        tokens.Add(token);
+
+        return tokens;
+    }
+
     // ---- Guards ---------------------------------------------------------------------------------
 
     [Fact]
@@ -722,7 +828,7 @@ public class ShopConversionGuardTests
         // Without a known-bad sample the guard above would pass on an empty list whether or not a scanner worked, so
         // each scanner is shown to fire here and to stay quiet on a clean sample.
         var planning = "// see " + "D" + "-04 and " + "Q" + "-51, " + "Pha" + "se 99" + ", 99" + "-05 in " + "RESE" + "ARCH.md, "
-            + "R" + "-2, " + "Do" + "C-8, " + "A" + "-shop-012, " + "T" + "-99-11, " + "WIND" + "OWS #31";
+            + "R" + "-2, " + "Do" + "C-8, " + "A" + "-shop-012, " + "T" + "-9" + "9-11, " + "WIND" + "OWS #31";
         PlanningReferencePatterns.Count(p => p.Pattern.IsMatch(planning)).Should().Be(PlanningReferencePatterns.Length);
         PlanningReferencePatterns.Count(p => p.Pattern.IsMatch("// the total follows the quantity the buyer types"))
             .Should().Be(0);
@@ -927,6 +1033,143 @@ public class ShopConversionGuardTests
         foreach (var path in RetiredFiles)
             File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse(
                 $"{path} was folded into the shared shop sheets and must not come back");
+    }
+
+    [Fact]
+    public void PhaseScope_IsFullyConverted()
+    {
+        ScopeBreaks(ShopViewsOnDisk(), ConvertedViews).Should().BeEmpty(
+            "every shop view and shared shop partial is converted and listed, and the list names nothing outside the shop");
+    }
+
+    [Fact]
+    public void ScopeScanner_FlagsAnUnlistedViewAForeignEntryAndADuplicate()
+    {
+        ScopeBreaks(["a", "b"], ["a", "b"]).Should().BeEmpty();
+        ScopeBreaks(["a", "b"], ["a"]).Should().ContainSingle(b => b.StartsWith("b "));
+        ScopeBreaks(["a"], ["a", "Quest/Index.cshtml"]).Should().ContainSingle(b => b.StartsWith("Quest/"));
+        ScopeBreaks(["a"], ["a", "a"]).Should().ContainSingle(b => b.Contains("twice"));
+    }
+
+    [Fact]
+    public void PhaseSourceFiles_ListEveryShopSourceFile()
+    {
+        var shopFiles = ShopViewsOnDisk()
+            .Concat(FilesIn("QuestBoard.Service/wwwroot/css", "shop*.css"))
+            .Concat(FilesIn("QuestBoard.Service/wwwroot/js", "shop-*.js")).ToList();
+
+        shopFiles.Where(file => !PhaseSourceFiles.Contains(file)).Should().BeEmpty(
+            "a shop file left out of the list would escape the planning-reference scan");
+    }
+
+    [Fact]
+    public void ShopViews_AllSetTheShopTheme()
+    {
+        var pages = FilesIn("QuestBoard.Service/Views/Shop", "*.cshtml").Concat(FilesIn("QuestBoard.Service/Views/ShopManagement", "*.cshtml")).ToList();
+        pages.Should().HaveCount(10, "the shop has ten page views, a desktop and a phone one for each of five pages");
+        foreach (var path in pages)
+            SetsTheShopTheme(ReadRepoFile(path)).Should().BeTrue($"{path} sets the shop theme so both layouts emit it on the html element");
+    }
+
+    [Fact]
+    public void ThemeScanner_RequiresTheAssignmentOutsideAComment()
+    {
+        SetsTheShopTheme("@{\n    ViewData[\"Theme\"] = \"shop\";\n}").Should().BeTrue();
+        SetsTheShopTheme("@{\n    ViewData[\"Title\"] = \"Shop\";\n}").Should().BeFalse();
+        SetsTheShopTheme("@* ViewData[\"Theme\"] = \"shop\"; *@").Should().BeFalse("a comment sets nothing");
+        SetsTheShopTheme("@{ ViewData[\"Theme\"] = \"navy\"; }").Should().BeFalse("only the shop theme counts here");
+    }
+
+    [Fact]
+    public void ShopSheets_MotionIsFinalAcrossEveryShopSheet()
+    {
+        var sheets = ShopSheets.Select(ReadRepoFile).ToList();
+        var views = ShopViews.Select(ReadRepoFile).ToList();
+
+        sheets.Concat(views).SelectMany(InfiniteDeclarations).Should().BeEmpty("nothing in the shop sheets or views animates forever");
+        sheets.SelectMany(EndlessMotionBreaks).Should().BeEmpty("no shop sheet transitions every property or animates forever");
+        ShopMotionBreaks(sheets).Should().BeEmpty("the only motion left is the merchant's capped bob");
+    }
+
+    [Fact]
+    public void InfiniteMotionScanner_FlagsTheShorthandTheCountAndAStyleAttributeAndIgnoresCommentsAndFiniteCounts()
+    {
+        InfiniteDeclarations(".a { animation: glow 2s ease-in-out infinite alternate; }").Should().HaveCount(1);
+        InfiniteDeclarations(".a { animation-iteration-count: infinite; }").Should().HaveCount(1);
+        InfiniteDeclarations("<div style=\"animation: spin 1s linear infinite\"></div>").Should().HaveCount(1);
+        InfiniteDeclarations(".a { animation: bob 1.5s ease-in-out 3; }").Should().BeEmpty();
+        InfiniteDeclarations("/* animation: glow 1s infinite; */ .a { color: red; }").Should().BeEmpty();
+        InfiniteDeclarations("@* animation: glow 1s infinite *@").Should().BeEmpty();
+        InfiniteDeclarations(".a { --animation-note: infinite; }").Should().BeEmpty("a custom property that merely contains the name is not the declaration");
+    }
+
+    [Fact]
+    public void LegacyPagesCss_HoldsOnlyTheSharedWideContainerRule()
+    {
+        var css = ReadRepoFile("QuestBoard.Service/wwwroot/css/legacy-pages.css");
+        var rules = SheetRules(css);
+
+        rules.Should().ContainSingle("the sheet stays only for the one rule other layouts still use");
+        rules[0].Selector.Should().Be(".container.mt-4");
+        rules[0].Body.Should().NotContain("important", "an unlayered rule already beats the vendor layer");
+        StripCssComments(css).Should().NotContain("@", "the sheet holds no at-rule and stays unlayered");
+        StripCssComments(css).Replace(rules[0].Selector, "").Replace(rules[0].Body, "").Where(ch => !char.IsWhiteSpace(ch) && ch != '{' && ch != '}')
+            .Should().BeEmpty("nothing but the one rule is in the file");
+    }
+
+    [Fact]
+    public void SheetRuleScanner_ReadsRulesAndIgnoresComments()
+    {
+        SheetRules("/* note */ .container.mt-4 { max-width: none; }").Should().ContainSingle().Which.Selector.Should().Be(".container.mt-4");
+        SheetRules(".a { color: red; } .b { color: blue; }").Should().HaveCount(2);
+        SheetRules("/* .a { color: red; } */").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void LegacyPagesCss_HoldsNoShopSelector()
+    {
+        var owned = ShopOwnedClasses(NewShopSheets.Select(ReadRepoFile));
+        var rendered = ShopViewTokens(ShopViews.Select(ReadRepoFile));
+        var legacy = ReadRepoFile("QuestBoard.Service/wwwroot/css/legacy-pages.css");
+
+        RuleClasses(legacy).Where(name => owned.Contains(name) || rendered.Contains(name)).Should().BeEmpty(
+            "legacy-pages.css names no class a shop view renders");
+        RuleIds(legacy).Where(rendered.Contains).Should().BeEmpty("legacy-pages.css names no id a shop view renders");
+        File.Exists(ResolveRepoFile("QuestBoard.Service/wwwroot/css/site.css".Split('/'))).Should().BeFalse(
+            "site.css was renamed legacy-pages.css and its shop rules are gone for good");
+    }
+
+    [Fact]
+    public void NoSheetOutsideTheShopSheets_HoldsAShopSelector()
+    {
+        var owned = ShopOwnedClasses(NewShopSheets.Select(ReadRepoFile));
+        owned.Should().NotBeEmpty();
+        var offenders = new List<string>();
+        foreach (var file in Directory.GetFiles(ResolveRepoFile("QuestBoard.Service", "wwwroot", "css"), "*.css"))
+        {
+            if (NewShopSheets.Any(sheet => sheet.EndsWith("/" + Path.GetFileName(file), StringComparison.Ordinal)))
+                continue;
+
+            offenders.AddRange(ShopClassRules(File.ReadAllText(file), owned).Select(name => $"{Path.GetFileName(file)}: .{name}"));
+        }
+
+        offenders.Should().BeEmpty("only the three shop sheets define a rule for a class the shop owns");
+    }
+
+    [Fact]
+    public void ShopOwnershipScanner_FlagsAnOwnedClassInAnotherSheetAndAllowsSharedNames()
+    {
+        var owned = ShopOwnedClasses([".shop-card .btn { color: red; } .history-slip, .mgmt-bar:hover { margin: 0; } @media (min-width: 1px) { .shop-card__name { margin: 1.5rem; } }"]);
+        owned.Should().BeEquivalentTo("shop-card", "history-slip", "mgmt-bar", "shop-card__name");
+        ShopClassRules(".other .shop-card { color: red; }", owned).Should().ContainSingle().Which.Should().Be("shop-card");
+        ShopClassRules(".btn { color: red; } .fas { margin: 0; }", owned).Should().BeEmpty("shared names are allowed in other sheets");
+        ShopClassRules("/* .shop-card { color: red; } */ .contact-card { margin: 1.5rem; }", owned).Should().BeEmpty();
+        ShopClassRules(":is(a, button, .shop-merchant):hover { transform: none; }", ShopOwnedClasses([".shop-merchant { margin: 0; }"]))
+            .Should().ContainSingle().Which.Should().Be("shop-merchant");
+        RuleIds("#addCharacterModal .modal-title { color: red; } /* #old { } */ @layer x { #denyModal { margin: 0; } }")
+            .Should().BeEquivalentTo("addCharacterModal", "denyModal");
+        ShopViewTokens(["<div class=\"shop-card @extra\" id=\"inventory-grid\"></div> @* <b class=\"hidden\"> *@"])
+            .Should().BeEquivalentTo("shop-card", "inventory-grid");
     }
 
     [Fact]

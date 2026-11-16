@@ -321,15 +321,13 @@ public class UiFoundationLayerGuardTests
     [Fact]
     public void LegacyDesktopSheet_IsUnlayeredAndRenamed()
     {
-        // The remainder of the old global desktop sheet beats every layered rule that is not important-flagged on
-        // its own selectors, which is what keeps the pages that have not been converted yet looking as they did.
-        // The order inverts for important-flagged declarations: a layered one beats an unlayered one, so an
-        // unlayered important rule aimed at a Bootstrap colour utility (the vendor layer's important utilities)
-        // is dead and the element takes the token colour instead.
+        // What is left of the old global desktop sheet is one shared wide-container rule that the group picker layout
+        // still uses. It stays unlayered: an unlayered rule beats every layered one that is not important-flagged,
+        // and it needs no important flag of its own to beat the vendor layer.
         File.Exists(ResolveRepoFile((CssRoot + "/legacy-pages.css").Split('/'))).Should().BeTrue(
             "the desktop page rules live in legacy-pages.css");
         StripComments(ReadRepoFile(CssRoot + "/legacy-pages.css")).Should().NotContain("@layer",
-            "legacy-pages.css stays unlayered so its plain declarations keep winning on its own selectors");
+            "legacy-pages.css stays unlayered so its one rule keeps beating the vendor layer without a flag");
         File.Exists(ResolveRepoFile((CssRoot + "/site.css").Split('/'))).Should().BeFalse(
             "the global sheet was renamed, so no file by the old name may remain");
     }
