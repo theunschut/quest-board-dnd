@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 9/21 plans executed
+**Plans:** 10/21 plans executed
 
 **Scope:**
 
@@ -2126,7 +2126,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 99-10-PLAN.md — Details partial and Shop/Details on both layouts: one body everywhere, emblem tile, wall-clock dates, phone Sell and sections, image rule, shop-details.mobile.css retired
+- [x] 99-10-PLAN.md — Details partial and Shop/Details on both layouts: one body everywhere, emblem tile, wall-clock dates, phone Sell and sections, image rule, shop-details.mobile.css retired
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
