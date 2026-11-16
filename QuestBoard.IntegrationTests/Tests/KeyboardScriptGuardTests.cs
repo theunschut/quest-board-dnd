@@ -128,6 +128,24 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopPreviewModule_UsesTheStockWordsAndRulesOfTheRealCard()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-item-preview.js");
+        var card = ReadRepoFile("QuestBoard.Service/Views/Shop/Index.cshtml");
+
+        foreach (var word in new[] { "Unlimited", "Sold Out" })
+        {
+            script.Should().Contain($"'{word}'");
+            card.Should().Contain(word);
+        }
+        script.Should().Contain("`${quantity} left`").And.Contain("`${quantity} in stock`");
+        card.Should().Contain("@item.Quantity left").And.Contain("@item.Quantity in stock");
+        Regex.IsMatch(script, @"quantity === -1[\s\S]*?!\(quantity > 0\)[\s\S]*?quantity <= 5").Should().BeTrue(
+            "unlimited is -1, sold out is nothing left, one to five is low, six or more is in stock");
+        script.Should().Contain("120", "the excerpt is cut at the real card's length");
+    }
+
+    [Fact]
     public void ContactNotes_EditOpensOneNoteAndCancelClosesItAndReturnsFocus()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/contact-notes.js");

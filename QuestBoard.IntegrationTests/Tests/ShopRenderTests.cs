@@ -849,6 +849,31 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         html.Contains("Changes to rarity may require re-approval", StringComparison.Ordinal).Should().Be(shown);
     }
 
+    // The recorded answer on whether desktop Edit also gets the Preview button and dialog. Changing the answer means
+    // changing this constant, the view and the facts below together.
+    private static readonly bool PreviewOnEdit = false;
+
+    [Theory]
+    [InlineData(ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published)]
+    public async Task ShopManagementEdit_Desktop_PreviewAppearsOnlyWhenTheRecordedAnswerIsYes(ItemStatus status)
+    {
+        var (client, itemId) = await SeedEditablePageAsync($"shopr_editpreview_{status}", status);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        if (PreviewOnEdit)
+        {
+            html.Should().Contain("id=\"itemPreviewModal\"").And.Contain("data-bs-target=\"#itemPreviewModal\"");
+            Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-preview\.js").Should().BeTrue();
+        }
+        else
+        {
+            html.Should().NotContain("itemPreviewModal").And.NotContain("shop-item-preview").And.NotContain("data-preview");
+            html.Should().NotContain("Preview</button>", "desktop Edit has no Preview button");
+        }
+    }
+
     [Fact]
     public async Task ShopManagementEdit_Desktop_ActionRowFollowsTheFormContractAndTheRecordedLabel()
     {
