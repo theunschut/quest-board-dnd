@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 13/21 plans executed
+**Plans:** 14/21 plans executed
 
 **Scope:**
 
@@ -2142,7 +2142,7 @@ Plans:
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
-- [ ] 99-14-PLAN.md — ShopManagement/Index on both layouts: confirmations on confirm-submit.js, deny and bulk dialogs on a module, tables and phone slips, Gate 1 answers, phone sheet retired
+- [x] 99-14-PLAN.md — ShopManagement/Index on both layouts: confirmations on confirm-submit.js, deny and bulk dialogs on a module, tables and phone slips, Gate 1 answers, phone sheet retired
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
