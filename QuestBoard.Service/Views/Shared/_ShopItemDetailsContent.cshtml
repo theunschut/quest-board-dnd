@@ -24,9 +24,7 @@
             <div class="item-price fs-4 text-warning mb-2">
                 <i class="fas fa-coins me-2"></i>@Model.Price gp
             </div>
-            <span class="item-rarity rarity-@Model.Rarity.ToString().ToLower() fs-6">
-                @Model.Rarity.ToString().Replace("VeryRare", "Very Rare")
-            </span>
+            <partial name="_ShopRarityChip" model="Model.Rarity" />
         </div>
     </div>
 
@@ -110,7 +108,7 @@
                     </div>
                     <div class="col-6">
                         <small class="text-muted">Rarity:</small>
-                        <div>@Model.Rarity.ToString().Replace("VeryRare", "Very Rare")</div>
+                        <div>@ShopItemDisplay.RarityName(Model.Rarity)</div>
                     </div>
                 </div>
                 

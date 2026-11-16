@@ -8,6 +8,7 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shop-pages.css" asp-append-version="true" />
     <link href="~/css/shop-details.mobile.css" asp-append-version="true" rel="stylesheet" />
 }
 
@@ -23,9 +24,7 @@
         </span>
     </div>
 
-    <span class="item-rarity rarity-@Model.Rarity.ToString().ToLower()">
-        @Model.Rarity.ToString().Replace("VeryRare", "Very Rare")
-    </span>
+    <partial name="_ShopRarityChip" model="Model.Rarity" />
 
     <div class="parchment-text-muted mt-2">
         @Html.Markdown(Model.Description)

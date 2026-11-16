@@ -1,0 +1,44 @@
+/*
+ * Shop pages: the sheet for everything on the shop pages that has moved onto the shared look. It holds one pages
+ * layer block and nothing but design tokens, so changing a colour is a change to the token file.
+ *
+ * Today it holds the rarity chip: a solid badge that always carries the rarity word and a gem icon, so the fill is
+ * the second cue and never the only one. Each fill is paired with the label token that holds 4.5:1 on it.
+ */
+@layer pages {
+  .badge-rarity {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .badge-rarity.rarity-common {
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
+
+  .badge-rarity.rarity-uncommon {
+    background-color: var(--qb-success);
+    color: var(--qb-success-fg);
+  }
+
+  .badge-rarity.rarity-rare {
+    background-color: var(--qb-info);
+    color: var(--qb-info-fg);
+  }
+
+  .badge-rarity.rarity-veryrare {
+    background-color: var(--qb-event);
+    color: var(--qb-event-fg);
+  }
+
+  /* The top rarity is amber with the near-black label amber needs, plus a still glow of the same amber; it does not move. */
+  .badge-rarity.rarity-legendary {
+    background-color: var(--qb-warning);
+    color: var(--qb-warning-fg);
+    box-shadow: 0 0 var(--qb-space-sm) color-mix(in srgb, var(--qb-warning) 55%, transparent);
+  }
+}

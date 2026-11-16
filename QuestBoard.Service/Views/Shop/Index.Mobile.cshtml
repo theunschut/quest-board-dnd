@@ -54,6 +54,7 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shop-pages.css" asp-append-version="true" />
     <link href="~/css/shop.mobile.css" asp-append-version="true" rel="stylesheet" />
 }
 
@@ -116,9 +117,7 @@
                         <input class="form-check-input" type="checkbox" name="rarity" value="@r"
                                id="rarity_@r" @(Model.SelectedRarities.Contains(r) ? "checked" : "") />
                         <label class="form-check-label" for="rarity_@r">
-                            <span class="item-rarity rarity-@r.ToString().ToLower()">
-                                @r.ToString().Replace("VeryRare", "Very Rare")
-                            </span>
+                            <partial name="_ShopRarityChip" model="r" />
                         </label>
                     </div>
                 }
@@ -189,9 +188,7 @@
                  data-item-url="@Url.Action("Details", "Shop", new { id = item.Id, isModal = true })">
 
                 <div class="shop-item-name">@item.Name</div>
-                <span class="item-rarity rarity-@item.Rarity.ToString().ToLower()">
-                    @item.Rarity.ToString().Replace("VeryRare", "Very Rare")
-                </span>
+                <partial name="_ShopRarityChip" model="item.Rarity" />
                 <div class="shop-item-price"><i class="fas fa-coins me-1"></i>@item.Price gp</div>
 
                 @if (User.Identity?.IsAuthenticated == true)

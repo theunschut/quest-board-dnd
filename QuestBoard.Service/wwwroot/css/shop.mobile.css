@@ -109,34 +109,10 @@
     text-shadow: none !important;
 }
 
-/* Rarity badge */
-.item-rarity {
-    font-size: 0.75rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    display: inline-block;
+/* The chip keeps its own width in the card's column instead of stretching across it */
+.shop-item-card-mobile .badge-rarity {
+    align-self: flex-start;
     margin: 4px 0;
-    text-shadow: none !important;
-}
-
-.rarity-common {
-    color: #d0d0d0;
-}
-
-.rarity-uncommon {
-    color: #4ade80;
-}
-
-.rarity-rare {
-    color: #60a5fa;
-}
-
-.rarity-veryrare {
-    color: #c084fc;
-}
-
-.rarity-legendary {
-    color: #fbbf24;
 }
 
 /* Pagination row */

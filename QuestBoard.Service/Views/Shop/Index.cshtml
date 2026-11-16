@@ -9,6 +9,7 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shop-pages.css" asp-append-version="true" />
 }
 
 @functions {
@@ -222,9 +223,7 @@
                 <label class="filter-check-label">
                     <input type="checkbox" name="rarity" value="@r"
                            @(Model.SelectedRarities.Contains(r) ? "checked" : "") />
-                    <span class="item-rarity rarity-@r.ToString().ToLower()">
-                        @r.ToString().Replace("VeryRare", "Very Rare")
-                    </span>
+                    <partial name="_ShopRarityChip" model="r" />
                 </label>
             }
         </div>
@@ -301,9 +300,7 @@
                         <!-- Item Header -->
                         <div class="item-header">
                             <h5 class="item-name text-light">@item.Name</h5>
-                            <span class="item-rarity rarity-@item.Rarity.ToString().ToLower()">
-                                @item.Rarity.ToString().Replace("VeryRare", "Very Rare")
-                            </span>
+                            <partial name="_ShopRarityChip" model="item.Rarity" />
                         </div>
 
                         <!-- Item Description -->

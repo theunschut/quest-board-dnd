@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
+using QuestBoard.Service.ViewModels.ShopViewModels;
 
 namespace QuestBoard.IntegrationTests.Tests;
 
@@ -221,5 +222,137 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
         response.StatusCode.Should().NotBe(HttpStatusCode.BadRequest, "a missing token is answered with 400");
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+    }
+
+    // ---- Rarity chips --------------------------------------------------------------------------------
+
+    private static readonly (ItemRarity Rarity, string Key, string Word)[] Rarities =
+    [
+        (ItemRarity.Common, "common", "Common"),
+        (ItemRarity.Uncommon, "uncommon", "Uncommon"),
+        (ItemRarity.Rare, "rare", "Rare"),
+        (ItemRarity.VeryRare, "veryrare", "Very Rare"),
+        (ItemRarity.Legendary, "legendary", "Legendary"),
+    ];
+
+    // Every rarity chip in the markup as (key, word), in page order.
+    private static List<(string Key, string Word)> RarityChips(string html) =>
+        Regex.Matches(html,
+                @"<span\s+class=""badge badge-rarity rarity-(?<key>[a-z]+)"">\s*<i\b[^>]*aria-hidden=""true""[^>]*></i>\s*(?<word>[A-Za-z ]+?)\s*</span>")
+            .Select(m => (m.Groups["key"].Value, m.Groups["word"].Value)).ToList();
+
+    // The chips that sit inside item cards: the text after each card's opening marker, up to the next card.
+    private static List<(string Key, string Word)> CardChips(string html, string cardMarker) =>
+        html.Split(cardMarker).Skip(1).Select(chunk => RarityChips(chunk).First()).ToList();
+
+    private async Task<(HttpClient Client, int FirstItemId)> SeedOneItemPerRarityAsync(string handle)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var shopkeeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
+        var firstId = 0;
+        foreach (var (rarity, _, word) in Rarities)
+        {
+            var item = await TestDataHelper.CreateShopItemAsync(factory.Services, shopkeeper.Id, $"{word} Trinket", 40m, 5, rarity);
+            if (firstId == 0)
+                firstId = item.Id;
+        }
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, handle, $"{handle}@example.com", name: "Shop Render Member");
+        return (client, firstId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopIndex_OneItemOfEachRarity_RendersFiveChipsWhoseKeysAndWordsMatchTheMapping(bool mobile)
+    {
+        var (client, _) = await SeedOneItemPerRarityAsync($"shopr_chips_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/Shop", AgentFor(mobile));
+
+        var cards = CardChips(html, mobile ? "class=\"shop-item-card-mobile\"" : "class=\"item-card\"");
+        cards.Should().HaveCount(Rarities.Length, "each rarity has one card");
+        cards.Select(c => c.Key).Should().BeEquivalentTo(Rarities.Select(r => ShopItemDisplay.RarityKey(r.Rarity)));
+        foreach (var (rarity, key, word) in Rarities)
+        {
+            ShopItemDisplay.RarityKey(rarity).Should().Be(key);
+            ShopItemDisplay.RarityName(rarity).Should().Be(word);
+            cards.Should().Contain((key, word), $"the {word} card carries the {word} chip");
+        }
+
+        html.Should().NotContain("item-rarity", "the old chip markup is gone from the shop page");
+    }
+
+    [Theory]
+    [InlineData("/Shop/Details/{0}", false)]
+    [InlineData("/Shop/Details/{0}", true)]
+    [InlineData("/Shop/Details/{0}?isModal=true", false)]
+    public async Task ShopDetails_PageAndDialog_RenderOneChipForTheItemsRarity(string urlFormat, bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var shopkeeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "shopr_det_keeper", "shopr_det_keeper@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(
+            factory.Services, shopkeeper.Id, "Dawn Blade", 900m, 1, ItemRarity.Legendary);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"shopr_det_{(mobile ? "m" : "d")}", $"shopr_det_{(mobile ? "m" : "d")}@example.com", name: "Shop Render Member");
+
+        var html = await GetAsync(client, string.Format(urlFormat, item.Id), AgentFor(mobile));
+
+        RarityChips(html).Should().Equal([("legendary", "Legendary")], "the details show the rarity once, as the solid chip");
+        html.Should().NotContain("item-rarity");
+    }
+
+    [Fact]
+    public async Task ShopDetails_VeryRareItem_RendersTheVeryRareKeyAndWords()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var shopkeeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "shopr_vr_keeper", "shopr_vr_keeper@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(
+            factory.Services, shopkeeper.Id, "Stormcaller", 500m, 1, ItemRarity.VeryRare);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "shopr_vr", "shopr_vr@example.com", name: "Shop Render Member");
+
+        var html = await GetAsync(client, $"/Shop/Details/{item.Id}", DesktopUserAgent);
+
+        RarityChips(html).Should().Equal([("veryrare", "Very Rare")]);
+    }
+
+    [Theory]
+    [InlineData("/Shop", false)]
+    [InlineData("/Shop", true)]
+    [InlineData("/Shop/Details/{0}", false)]
+    [InlineData("/Shop/Details/{0}", true)]
+    public async Task ShopPages_LinkTheShopPageSheet(string urlFormat, bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_sheet_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, string.Format(urlFormat, itemId), AgentFor(mobile));
+
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.css(?:\?[^""]*)?""").Should().BeTrue(
+            "the chips are styled by the shop page sheet");
+    }
+
+    [Fact]
+    public async Task ShopManagementList_KeepsItsOwnChipMarkupForNow()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var shopkeeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "shopr_mgmt_keeper", "shopr_mgmt_keeper@example.com");
+        await TestDataHelper.CreateShopItemAsync(factory.Services, shopkeeper.Id, "Old Look", 10m, 1, ItemRarity.Rare);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, "shopr_mgmt_dm", "shopr_mgmt_dm@example.com");
+
+        var html = await GetAsync(client, "/ShopManagement", DesktopUserAgent);
+
+        RarityChips(html).Should().BeEmpty("the management list is converted separately");
+        html.Should().Contain("class=\"item-rarity rarity-rare\"", "the management list still renders its own chip");
     }
 }

@@ -128,27 +128,27 @@
     margin-left: 0.5rem;
 }
 
-.rarity-common { 
+.rarity-common:not(.badge-rarity) { 
     background: #6c757d; 
     color: white; 
 }
 
-.rarity-uncommon { 
+.rarity-uncommon:not(.badge-rarity) { 
     background: #198754; 
     color: white; 
 }
 
-.rarity-rare { 
+.rarity-rare:not(.badge-rarity) { 
     background: #0d6efd; 
     color: white; 
 }
 
-.rarity-veryrare { 
+.rarity-veryrare:not(.badge-rarity) { 
     background: #6f42c1; 
     color: white; 
 }
 
-.rarity-legendary { 
+.rarity-legendary:not(.badge-rarity) { 
     background: linear-gradient(45deg, #dc3545, #ffc107);
     color: white;
     animation: legendary-glow 2s ease-in-out infinite alternate;
