@@ -36,11 +36,6 @@
     text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
 }
 
-/* Badge no-shadow */
-.shop-mgmt-item-card .badge {
-    text-shadow: none !important;
-}
-
 /* Icon-only action button sizing — fit 4-5 buttons on 320px screen without wrapping */
 .shop-mgmt-item-card .btn-sm {
     padding: 4px 8px;
