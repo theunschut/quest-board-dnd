@@ -2,10 +2,17 @@
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Extensions
 @model ShopItemDetailsViewModel
+@{
+    ViewData["Theme"] = "shop";
+}
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
     <link href="~/css/shop-details.mobile.css" asp-append-version="true" rel="stylesheet" />
+}
+
+@section Scripts {
+    <script type="module" src="~/js/shop-item-sell.js" asp-append-version="true"></script>
 }
 
 <div class="shop-details-card-mobile mb-3">

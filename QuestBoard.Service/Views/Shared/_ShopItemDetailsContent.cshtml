@@ -213,7 +213,9 @@
                 Sell this item to the shop for <strong class="text-warning">@((Model.Price / 2).ToString("N0")) gp</strong>
                 <small>(half the shop price)</small>
             </p>
-            <form method="post" action="@Url.Action("SellToShop", "Shop", new { id = Model.Id })" onsubmit="return confirmSell(event, '@Model.Name', @((Model.Price / 2).ToString("N0")))">
+            <form method="post" action="@Url.Action("SellToShop", "Shop", new { id = Model.Id })"
+                  data-sell-form data-item-name="@Model.Name"
+                  data-unit-price="@((Model.Price / 2).ToString(System.Globalization.CultureInfo.InvariantCulture))">
                 @Html.AntiForgeryToken()
                 
                 <!-- Quantity Selection for Selling -->
@@ -224,8 +226,8 @@
                                 <i class="fas fa-sort-numeric-up me-1"></i>Quantity to Sell
                             </label>
                             <input type="number" class="form-control text-center" id="sellQuantity" name="quantity" 
-                                   value="1" min="1" max="99" onchange="updateSellPrice('@Model.Price')">
-                            <small class="text-muted">You will receive: <strong id="totalSellPrice">@((Model.Price / 2).ToString("N0"))</strong> gp</small>
+                                   value="1" min="1" max="99" data-sell-quantity>
+                            <small class="text-muted">You will receive: <strong><output for="sellQuantity" data-sell-total>@((Model.Price / 2).ToString("N0"))</output></strong> gp</small>
                         </div>
                     </div>
                 </div>
@@ -246,23 +248,3 @@ else
     </div>
 }
 
-<script>
-    function updateSellPrice(shopPrice) {
-        const quantity = document.getElementById('sellQuantity').value;
-        const sellPricePerUnit = parseFloat(shopPrice) / 2;
-        const totalSellPrice = (sellPricePerUnit * quantity).toFixed(0);
-        document.getElementById('totalSellPrice').textContent = parseInt(totalSellPrice).toLocaleString();
-    }
-
-    function confirmSell(event, itemName, pricePerUnit) {
-        const quantity = document.getElementById('sellQuantity').value;
-        const totalPrice = (pricePerUnit * quantity).toFixed(0);
-        const message = `Are you sure you want to sell ${quantity}x ${itemName} to the shop for ${parseInt(totalPrice).toLocaleString()} gp?`;
-        
-        if (!confirm(message)) {
-            event.preventDefault();
-            return false;
-        }
-        return true;
-    }
-</script>

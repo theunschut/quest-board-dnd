@@ -3,7 +3,7 @@
 @using QuestBoard.Service.Constants
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"@(ViewData["Theme"] is string { Length: > 0 } pageTheme ? Html.Raw($" data-theme=\"{System.Net.WebUtility.HtmlEncode(pageTheme)}\"") : null)>
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

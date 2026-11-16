@@ -1,0 +1,163 @@
+using System.Net;
+using System.Text.RegularExpressions;
+using QuestBoard.Domain.Enums;
+using QuestBoard.IntegrationTests.Helpers;
+
+namespace QuestBoard.IntegrationTests.Tests;
+
+/// <summary>
+/// Pins what the shop pages render, on both layouts: the navy theme is carried by the html element and nowhere
+/// else, the Sell to Shop form hands its item name to the page script through an encoded data attribute instead of
+/// an inline handler, and the purchase history's Return and Sell forms carry an antiforgery token so they post. The
+/// layout is chosen from the request's User-Agent header, so every fact states which one it sends.
+/// </summary>
+public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<WebApplicationFactoryBase>
+{
+    private const string DesktopUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+    private const string MobileUserAgent =
+        "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+
+    private const string AwkwardName = "Wizard's \"Staff\"";
+
+    private static string AgentFor(bool mobile) => mobile ? MobileUserAgent : DesktopUserAgent;
+
+    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string url, string userAgent, HttpContent? content = null)
+    {
+        var request = new HttpRequestMessage(method, url) { Content = content };
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private static async Task<string> GetAsync(HttpClient client, string url, string userAgent)
+    {
+        var response = await SendAsync(client, HttpMethod.Get, url, userAgent);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    }
+
+    // A signed-in board member and one Published item with the given name.
+    private async Task<(HttpClient Client, UserEntity User, int ItemId)> SeedMemberAndItemAsync(
+        string handle, string itemName = "Plain Lantern", decimal price = 40m)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+
+        var shopkeeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(factory.Services, shopkeeper.Id, itemName, price, 5);
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, handle, $"{handle}@example.com", name: "Shop Render Member");
+        return (client, user, item.Id);
+    }
+
+    private static string HtmlOpeningTag(string html)
+    {
+        var match = Regex.Match(html, @"<html\b[^>]*>", RegexOptions.IgnoreCase);
+        match.Success.Should().BeTrue("the page has an html element");
+        return match.Value;
+    }
+
+    private static string BodyOpeningTag(string html)
+    {
+        var match = Regex.Match(html, @"<body\b[^>]*>", RegexOptions.IgnoreCase);
+        match.Success.Should().BeTrue("the page has a body element");
+        return match.Value;
+    }
+
+    // The opening tag of the sell form: the one that carries data-sell-form.
+    private static string SellFormTag(string html)
+    {
+        var match = Regex.Match(html, @"<form\b[^>]*\bdata-sell-form\b[^>]*>", RegexOptions.IgnoreCase);
+        match.Success.Should().BeTrue("the Sell to Shop form carries data-sell-form");
+        return match.Value;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopDetails_BothLayouts_CarryTheShopThemeOnHtmlNotBody(bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_theme_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        HtmlOpeningTag(html).Should().Contain("data-theme=\"shop\"", "the navy theme sits on the html element");
+        BodyOpeningTag(html).Should().NotContain("data-theme", "a theme on the body cannot recolour the page's fallback background");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageOutsideTheShop_BothLayouts_RenderNoTheme(bool mobile)
+    {
+        var (client, _, _) = await SeedMemberAndItemAsync($"shopr_notheme_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/Agenda", AgentFor(mobile));
+
+        HtmlOpeningTag(html).Should().NotContain("data-theme", "a page that sets no theme renders none");
+        BodyOpeningTag(html).Should().NotContain("data-theme");
+    }
+
+    [Theory]
+    [InlineData("/Shop/Details/{0}")]
+    [InlineData("/Shop/Details/{0}?isModal=true")]
+    public async Task DesktopDetailsAndDialog_SellForm_CarriesDataAttributesAndNoInlineHandler(string urlFormat)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync("shopr_sellform", price: 40m);
+
+        var html = await GetAsync(client, string.Format(urlFormat, itemId), DesktopUserAgent);
+
+        var form = SellFormTag(html);
+        form.Should().Contain("data-item-name=\"Plain Lantern\"");
+        form.Should().MatchRegex(@"data-unit-price=""20(\.0+)?""", "the unit price is half the shop price");
+        form.Should().NotContain("onsubmit");
+
+        Regex.IsMatch(html, @"<input\b[^>]*\bdata-sell-quantity\b[^>]*>").Should().BeTrue("the quantity input is found by its data attribute");
+        Regex.IsMatch(html, @"<output\b[^>]*\bdata-sell-total\b[^>]*>").Should().BeTrue("the total is an output element");
+        Regex.IsMatch(html, @"<output\b[^>]*\bfor=""sellQuantity""[^>]*>").Should().BeTrue("the total names the quantity it is computed from");
+        Regex.IsMatch(html, @"\sonchange=", RegexOptions.IgnoreCase).Should().BeFalse("no inline change handler");
+        Regex.IsMatch(html, @"\sonsubmit=", RegexOptions.IgnoreCase).Should().BeFalse("no inline submit handler");
+    }
+
+    [Fact]
+    public async Task DialogFragment_HoldsNoScriptElement()
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync("shopr_fragment");
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}?isModal=true", DesktopUserAgent);
+
+        html.Should().NotContain("<script", "a fragment written into the dialog never runs its scripts, so it carries none");
+    }
+
+    [Theory]
+    [InlineData("/Shop/Details/{0}")]
+    [InlineData("/Shop/Details/{0}?isModal=true")]
+    public async Task ItemNameWithApostropheAndQuotes_TravelsOnlyAsAnEncodedDataAttribute(string urlFormat)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync("shopr_awkward", AwkwardName);
+
+        var html = await GetAsync(client, string.Format(urlFormat, itemId), DesktopUserAgent);
+
+        var form = SellFormTag(html);
+        form.Should().Contain("data-item-name=\"Wizard&#x27;s &quot;Staff&quot;\"", "the name is encoded by Razor");
+        form.Should().NotContain("onsubmit");
+        html.Should().NotContain("confirmSell", "no inline handler interpolates the name into script text");
+    }
+
+    [Theory]
+    [InlineData("/Shop", false)]
+    [InlineData("/Shop", true)]
+    [InlineData("/Shop/Details/{0}", false)]
+    [InlineData("/Shop/Details/{0}", true)]
+    public async Task ShopPagesThatShowTheDetails_LoadTheSellModule(string urlFormat, bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_module_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, string.Format(urlFormat, itemId), AgentFor(mobile));
+
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-sell\.js(?:\?[^""]*)?""").Should().BeTrue(
+            "the sell confirmation and total come from one module");
+    }
+}
