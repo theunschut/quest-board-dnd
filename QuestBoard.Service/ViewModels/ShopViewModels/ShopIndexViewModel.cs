@@ -4,6 +4,9 @@ namespace QuestBoard.Service.ViewModels.ShopViewModels;
 
 public class ShopIndexViewModel
 {
+    // How many of the buyer's most recent transactions the shop lists.
+    public const int PurchaseHistoryLimit = 15;
+
     public IList<ShopItemViewModel> Items { get; set; } = [];
     public ItemType? SelectedType { get; set; }
     public IList<ItemRarity> SelectedRarities { get; set; } = [];
@@ -15,4 +18,5 @@ public class ShopIndexViewModel
     public bool HasActiveSearch => !string.IsNullOrEmpty(SearchQuery);
     public bool HasActiveFilters => SelectedRarities.Count > 0 || SelectedSort != null || HasActiveSearch;
     public IList<UserTransactionViewModel> UserPurchases { get; set; } = [];
+    public int ListedPurchaseCount => Math.Min(UserPurchases.Count, PurchaseHistoryLimit);
 }

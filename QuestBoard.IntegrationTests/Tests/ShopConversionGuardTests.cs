@@ -64,6 +64,7 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/Shared/_ShopItemDetailsContent.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopManagementDialogs.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopManagementStockBadge.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml",
     ];
 
     // Every stylesheet that can reach a shop page. A sheet that is not on disk yet is skipped, never removed from the
@@ -90,11 +91,13 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-item-preview.js",
         "QuestBoard.Service/wwwroot/js/shop-management.js",
         "QuestBoard.Service/wwwroot/js/shop-item-modal.js",
+        "QuestBoard.Service/wwwroot/js/shop-history.js",
     ];
 
     // Views and partials that carry no inline code, repository-relative. Grows as each view is converted.
     private static readonly string[] ConvertedViews =
     [
+        "QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml",
         "QuestBoard.Service/Views/Shop/Details.cshtml",
         "QuestBoard.Service/Views/Shop/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopItemDetailsContent.cshtml",
@@ -179,9 +182,13 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-item-preview.js",
         "QuestBoard.Service/wwwroot/js/shop-management.js",
         "QuestBoard.Service/wwwroot/js/shop-item-modal.js",
+        "QuestBoard.Service/wwwroot/js/shop-history.js",
         "QuestBoard.Service/Views/Shared/_ShopManagementDialogs.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopManagementStockBadge.cshtml",
         "QuestBoard.Service/Views/Shared/_MarkdownEditor.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml",
+        "QuestBoard.Service/ViewModels/ShopViewModels/UserTransactionViewModel.cs",
+        "QuestBoard.UnitTests/ViewModels/UserTransactionViewModelTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -240,6 +247,48 @@ public class ShopConversionGuardTests
         var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
         return Regex.Matches(withoutComments, @"(?<![\w-])(aspect-ratio|object-fit)\s*:")
             .Select(m => m.Groups[1].Value).ToList();
+    }
+
+    // The shop views and partials read no clock: the one decision that depends on the time of day (whether a purchase can
+    // still be returned) is made once in the view model, where it is covered by a unit test.
+    private static List<string> ClockReads(string view) =>
+        Regex.Matches(StripRazorAndHtmlComments(view), @"DateTime\.(?:UtcNow|Now|Today)\b|DateTimeOffset\.(?:UtcNow|Now)\b")
+            .Select(m => m.Value).ToList();
+
+    // The real-instant reads the shop's view models are allowed, matched by the text of the line that holds each one:
+    // the 24-hour return window of a purchase, and the open and close of an item's availability window. Both compare a
+    // UTC-stored instant with the present moment; neither is a board calendar day. A file maps to the marker the line
+    // must hold and how many such lines it may have.
+    private static readonly Dictionary<string, (string Marker, int Count)> AllowedViewModelClockReads = new(StringComparer.Ordinal)
+    {
+        ["UserTransactionViewModel.cs"] = ("CanReturn", 1),
+        ["ShopItemViewModel.cs"] = ("Available", 2),
+    };
+
+    // What is wrong with the clock reads in a set of view model sources, keyed by file name: any local-clock read, and any
+    // UtcNow read that is not one of the allowed ones.
+    private static List<string> ViewModelClockBreaks(IReadOnlyDictionary<string, string> sources)
+    {
+        var breaks = new List<string>();
+        foreach (var (name, text) in sources)
+        {
+            var code = Regex.Replace(text, @"//[^\n]*", " ");
+            if (Regex.IsMatch(code, @"DateTime\.(?:Now|Today)\b|DateTimeOffset\.Now\b"))
+                breaks.Add($"{name} reads the local clock");
+
+            var utcLines = code.Split('\n').Where(l => l.Contains("UtcNow", StringComparison.Ordinal)).ToList();
+            if (!AllowedViewModelClockReads.TryGetValue(name, out var allowed))
+            {
+                if (utcLines.Count > 0)
+                    breaks.Add($"{name} reads the clock and is not allowed to");
+                continue;
+            }
+
+            if (utcLines.Count != allowed.Count || utcLines.Any(l => !l.Contains(allowed.Marker, StringComparison.Ordinal)))
+                breaks.Add($"{name} must hold exactly {allowed.Count} UtcNow read(s), each on a line naming {allowed.Marker}");
+        }
+
+        return breaks;
     }
 
     // The ways a script can hand a string to the markup parser.
@@ -409,8 +458,8 @@ public class ShopConversionGuardTests
         "shop-pagination-count", "shop-page-link",
     ];
 
-    // The selector parts in a stylesheet that name a retired class, and a bare .shop-container rule: only the
-    // .shop-container.with-panel offset that the purchase history panel still needs may remain.
+    // The selector parts in a stylesheet that name a retired class, and any .shop-container rule: the old wrapper and the
+    // offset it carried for the fixed history panel are gone.
     private static List<string> RetiredBrowseRules(string css)
     {
         var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
@@ -418,7 +467,7 @@ public class ShopConversionGuardTests
         return Regex.Matches(withoutComments, @"(?<selectors>[^{}]+)\{")
             .SelectMany(rule => rule.Groups["selectors"].Value.Split(','))
             .Select(part => part.Trim())
-            .Where(part => named.IsMatch(part) || part == ".shop-container")
+            .Where(part => named.IsMatch(part) || part == ".shop-container" || part.StartsWith(".shop-container.", StringComparison.Ordinal))
             .ToList();
     }
 
@@ -497,6 +546,61 @@ public class ShopConversionGuardTests
         WholeImageBreaks(".thumb { width: 100%; height: auto; }").Should().BeEmpty();
         WholeImageBreaks("/* never use aspect-ratio: or object-fit: here */ .thumb { max-width: 100%; }").Should().BeEmpty();
         WholeImageBreaks(".thumb { --my-aspect-ratio: 1; }").Should().BeEmpty("a custom property that merely contains the name is not the declaration");
+    }
+
+    [Fact]
+    public void ShopViews_ReadNoClock()
+    {
+        foreach (var path in ShopViews)
+            ClockReads(ReadRepoFile(path)).Should().BeEmpty(
+                $"{path} must not read the clock: whether a purchase can be returned is decided once in the view model");
+    }
+
+    [Fact]
+    public void ClockScanner_FlagsEachAmbientReadAndIgnoresCommentsAndOtherNames()
+    {
+        ClockReads("@{ var age = DateTime.UtcNow - x; }").Should().HaveCount(1);
+        ClockReads("@DateTime.Now").Should().HaveCount(1);
+        ClockReads("@(DateTime.Today)").Should().HaveCount(1);
+        ClockReads("@* DateTime.UtcNow *@ <p>@purchase.CanReturn</p>").Should().BeEmpty("a Razor comment is not a read");
+        ClockReads("<p>@purchase.TransactionDate</p>").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ShopViewModels_ReadOnlyTheDocumentedRealInstants()
+    {
+        var folder = ResolveRepoFile("QuestBoard.Service", "ViewModels", "ShopViewModels");
+        var sources = Directory.GetFiles(folder, "*.cs").ToDictionary(f => Path.GetFileName(f), f => File.ReadAllText(f));
+        sources.Should().ContainKey("UserTransactionViewModel.cs");
+
+        ViewModelClockBreaks(sources).Should().BeEmpty(
+            "the shop's view models read the present moment only for the return window and the availability window");
+    }
+
+    [Fact]
+    public void ViewModelClockScanner_FlagsASeededLocalClockASecondReadAndAnUnlistedFile()
+    {
+        const string good = "public bool CanReturn => DateTime.UtcNow - TransactionDate <= ReturnWindow;";
+        ViewModelClockBreaks(new Dictionary<string, string> { ["UserTransactionViewModel.cs"] = good }).Should().BeEmpty();
+        ViewModelClockBreaks(new Dictionary<string, string> { ["UserTransactionViewModel.cs"] = good + "\npublic DateTime Seen => DateTime.Now;" })
+            .Should().ContainSingle(b => b.Contains("local clock"));
+        ViewModelClockBreaks(new Dictionary<string, string> { ["UserTransactionViewModel.cs"] = good + "\npublic DateTime Stamp => DateTime.UtcNow;" })
+            .Should().ContainSingle(b => b.Contains("exactly 1"));
+        ViewModelClockBreaks(new Dictionary<string, string> { ["ShopCategoryViewModel.cs"] = good })
+            .Should().ContainSingle(b => b.Contains("not allowed"));
+        ViewModelClockBreaks(new Dictionary<string, string> { ["UserTransactionViewModel.cs"] = "// DateTime.Now was here\n" + good })
+            .Should().BeEmpty("a comment is not a read");
+    }
+
+    [Fact]
+    public void HistoryPartial_HoldsEveryRowKindAndOnlyReadsWhatTheViewModelDecided()
+    {
+        var partial = ReadRepoFile("QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml");
+
+        partial.Should().Contain("(Sold/Returned)").And.Contain("history-slip__credit", "a payout row reads as one, in the success colour");
+        partial.Should().Contain("purchase.CanReturn").And.Contain("purchase.SellRefund", "the partial only reads what the view model decided");
+        partial.Should().NotContain("DateTime");
+        partial.Should().NotMatchRegex(@"purchase-history-panel|return-sell-buttons|text-truncate|opacity|filter\s*:");
     }
 
     [Fact]
@@ -653,12 +757,12 @@ public class ShopConversionGuardTests
     }
 
     [Fact]
-    public void RetiredBrowseScanner_FlagsEachRetiredClassAndAllowsTheHistoryOffsetAndOtherNames()
+    public void RetiredBrowseScanner_FlagsEachRetiredClassTheOldWrapperAndItsOffsetAndAllowsOtherNames()
     {
         RetiredBrowseRules(".item-card:hover { transform: none; }").Should().HaveCount(1);
         RetiredBrowseRules(".a, .category-btn.active { color: red; }").Should().ContainSingle().Which.Should().Be(".category-btn.active");
         RetiredBrowseRules(".shop-container { padding: 0; }").Should().HaveCount(1);
-        RetiredBrowseRules(".shop-container.with-panel { margin-left: 280px; }").Should().BeEmpty("the history panel still needs its offset");
+        RetiredBrowseRules(".shop-container.with-panel { margin-left: 280px; }").Should().HaveCount(1, "the offset for the fixed history panel is gone with the panel");
         RetiredBrowseRules(".shop-item-name { margin: 0; } .shop-header-card h5 { margin: 0; }").Should().BeEmpty("the phone sheet's own names are not the retired ones");
         RetiredBrowseRules("/* .item-card { } */ .x { color: red; }").Should().BeEmpty("a comment is not a rule");
         OldCardMotion(".c::before { left: -100%; transition: left 0.5s; }").Should().HaveCount(2);

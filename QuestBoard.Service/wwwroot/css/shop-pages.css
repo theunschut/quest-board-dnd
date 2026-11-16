@@ -499,6 +499,176 @@
     text-align: center;
   }
 
+  /* ---------- Purchase history: a collapsible pane ---------- */
+  /* The My Transactions toggle sits under the hero, at the start of the row. The pane is the old side panel: it opens at
+     the start of the item area, collapsed by default, and the grid takes the width back when it is closed. */
+  .shop-toolbar {
+    display: flex;
+    justify-content: flex-start;
+    margin-block-end: var(--qb-space-md);
+  }
+
+  .history-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .history-toggle__count {
+    min-inline-size: 1.75em;
+    padding: 0 var(--qb-space-sm);
+    border-radius: var(--qb-radius-pill);
+    background: var(--qb-surface-paper);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    text-align: center;
+  }
+
+  .history-toggle__chevron--open {
+    display: none;
+  }
+
+  .history-toggle[aria-expanded='true'] .history-toggle__chevron--closed {
+    display: none;
+  }
+
+  .history-toggle[aria-expanded='true'] .history-toggle__chevron--open {
+    display: inline-block;
+  }
+
+  .shop-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--qb-space-lg);
+    align-items: start;
+  }
+
+  .shop-layout:has(> .history-pane:not([hidden])) {
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+
+  .shop-main {
+    min-inline-size: 0;
+  }
+
+  .history-pane {
+    position: sticky;
+    inset-block-start: calc(var(--qb-nav-h) + var(--qb-space-md));
+    min-inline-size: 0;
+  }
+
+  .history-pane .history-card {
+    display: flex;
+    flex-direction: column;
+    margin-block-start: 0;
+    max-block-size: calc(100vh - var(--qb-nav-h) - var(--qb-space-xl));
+  }
+
+  .history-pane .history-card .modern-card-body {
+    min-block-size: 0;
+    padding: var(--qb-space-sm);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .history-pane .history-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A desktop window narrower than 768px has no room for a side pane: it opens above the items instead. */
+  @media (max-width: 767.98px) {
+    .shop-layout:has(> .history-pane:not([hidden])) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .history-pane {
+      position: static;
+    }
+
+    .history-pane .history-card {
+      max-block-size: none;
+    }
+
+    .history-pane .history-card .modern-card-body {
+      overflow-y: visible;
+    }
+  }
+
+  .history-card {
+    margin-block-start: var(--qb-space-lg);
+  }
+
+  .history-card .modern-card-body {
+    padding: var(--qb-space-md);
+  }
+
+  .history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr));
+    gap: var(--qb-space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .history-slip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    min-inline-size: 0;
+    padding: var(--qb-space-sm);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+  }
+
+  .history-slip__name {
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  .history-slip__note {
+    font-weight: var(--qb-weight-regular);
+    font-size: var(--qb-text-sm);
+    color: var(--qb-fg-muted);
+  }
+
+  .history-slip__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--qb-space-sm);
+    font-size: var(--qb-text-sm);
+  }
+
+  .history-slip__row .fa-coins {
+    color: var(--qb-accent);
+  }
+
+  .history-slip__credit {
+    color: var(--qb-success-text);
+  }
+
+  .history-slip__when {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  .history-slip__action {
+    display: flex;
+    margin-block-start: auto;
+    padding-block-start: var(--qb-space-xs);
+  }
+
+  .history-cap {
+    margin: var(--qb-space-sm) 0 0;
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    text-align: center;
+  }
+
   /* ---------- Shop management: the lists, the rows and the phone slips ---------- */
 
   .mgmt-bar {

@@ -62,130 +62,41 @@
     }
 }
 
-<!-- Purchase History Side Panel -->
-@if (User.Identity?.IsAuthenticated == true)
-{
-    <div class="purchase-history-panel">
-        <div class="panel-header">
-            <h6 class="mb-0">
-                <i class="fas fa-history me-2"></i>My Transactions
-            </h6>
-        </div>
-        <div class="panel-body">
-            @if (Model.UserPurchases?.Any() == true)
-            {
-                <div class="purchase-list">
-                    @foreach (var purchase in Model.UserPurchases.Take(15))
-                    {
-                        @if (purchase.TransactionType == QuestBoard.Domain.Enums.TransactionType.Purchase)
-                        {
-                            var timeSincePurchase = DateTime.UtcNow - purchase.TransactionDate;
-                            var canReturn = timeSincePurchase.TotalHours <= 24;
-                            var hasRemainingItems = purchase.RemainingQuantity > 0;
-
-                            <div class="purchase-item mb-2 p-2 position-relative @(!hasRemainingItems ? "sold-returned" : "")">
-                                <div class="purchase-name fw-bold text-truncate" title="@purchase.ItemName">
-                                    @purchase.ItemName
-                                    @if (!hasRemainingItems)
-                                    {
-                                        <span class="purchase-details-text">(Fully Returned/Sold)</span>
-                                    }
-                                </div>
-                                <div class="purchase-details d-flex justify-content-between align-items-center">
-                                    <small class="text-muted">
-                                        <i class="fas fa-sort-numeric-up me-1"></i>
-                                        @if (hasRemainingItems && purchase.RemainingQuantity != purchase.Quantity)
-                                        {
-                                            @purchase.RemainingQuantity<text>/</text>@purchase.Quantity
-                                        }
-                                        else
-                                        {
-                                            @purchase.Quantity
-                                        }
-                                    </small>
-                                    <small class="text-warning">
-                                        <i class="fas fa-coins me-1"></i>@purchase.Price gp
-                                    </small>
-                                </div>
-                                <small class="text-muted d-block">
-                                    <i class="fas fa-clock me-1"></i>@Html.LocalTime(purchase.TransactionDate, "date-compact")
-                                </small>
-
-                                <!-- Return/Sell buttons (shown on hover, only if items remaining) -->
-                                @if (hasRemainingItems)
-                                {
-                                    <div class="return-sell-buttons position-absolute">
-                                        @if (canReturn)
-                                        {
-                                            <form method="post" asp-controller="Shop" asp-action="Sell" class="d-inline">
-                                                <input type="hidden" name="id" value="@purchase.Id" />
-                                                <input type="hidden" name="quantity" value="@purchase.RemainingQuantity" />
-                                                <button type="submit" class="btn btn-success btn-sm me-1" title="Return @purchase.RemainingQuantity item(s) for full price (within 24h)">
-                                                    <i class="fas fa-undo me-1"></i>Return (@purchase.RemainingQuantity)
-                                                </button>
-                                            </form>
-                                        }
-                                        else
-                                        {
-                                            <form method="post" asp-controller="Shop" asp-action="Sell" class="d-inline">
-                                                <input type="hidden" name="id" value="@purchase.Id" />
-                                                <input type="hidden" name="quantity" value="@purchase.RemainingQuantity" />
-                                                <button type="submit" class="btn btn-warning btn-sm" title="Sell @purchase.RemainingQuantity item(s) for 50% of original price">
-                                                    <i class="fas fa-coins me-1"></i>Sell (@purchase.RemainingQuantity)
-                                                </button>
-                                            </form>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="purchase-item mb-2 p-2">
-                                <div class="purchase-name fw-bold text-truncate" title="@purchase.ItemName">
-                                    @purchase.ItemName @(purchase.TransactionType == QuestBoard.Domain.Enums.TransactionType.Sell ? "(Sold/Returned)" : "")
-                                </div>
-                                <div class="purchase-details d-flex justify-content-between align-items-center">
-                                    <small class="text-muted">
-                                        <i class="fas fa-sort-numeric-up me-1"></i>@purchase.Quantity
-                                    </small>
-                                    <small class="@(purchase.TransactionType == QuestBoard.Domain.Enums.TransactionType.Sell ? "text-success" : "text-warning")">
-                                        <i class="fas fa-coins me-1"></i>@(purchase.TransactionType == QuestBoard.Domain.Enums.TransactionType.Sell ? "+" : "")@purchase.Price gp
-                                    </small>
-                                </div>
-                                <small class="text-muted d-block">
-                                    <i class="fas fa-clock me-1"></i>@Html.LocalTime(purchase.TransactionDate, "date-compact")
-                                </small>
-                            </div>
-                        }
-                    }
-                </div>
-                @if (Model.UserPurchases.Count > 15)
-                {
-                    <div class="text-center mt-2">
-                        <small class="text-muted">Showing latest 15 purchases</small>
-                    </div>
-                }
-            }
-            else
-            {
-                <div class="text-center text-muted p-3">
-                    <i class="fas fa-shopping-cart fa-2x mb-2 opacity-50"></i>
-                    <p class="mb-0">No purchases yet</p>
-                    <small>Your purchase history will appear here</small>
-                </div>
-            }
-        </div>
-    </div>
+@{
+    var signedIn = User.Identity?.IsAuthenticated == true;
 }
-
-<div class="shop-container @(User.Identity?.IsAuthenticated == true ? "with-panel" : "")">
+<div class="shop-container">
     <div class="shop-page">
         <div class="shop-hero">
             <h1 class="shop-hero__title"><i class="fas fa-store" aria-hidden="true"></i>The Mystical Merchant's Emporium</h1>
             <p class="shop-hero__sub">"Welcome, adventurer! Browse my wares and find what you seek..."</p>
         </div>
 
+        @if (signedIn)
+        {
+            <div class="shop-toolbar">
+                <button type="button" class="btn btn-secondary history-toggle" id="historyToggle" aria-expanded="false" aria-controls="historyPane" data-history-toggle>
+                    <i class="fas fa-history" aria-hidden="true"></i>
+                    <span>My Transactions</span>
+                    @if (Model.ListedPurchaseCount > 0)
+                    {
+                        <span class="history-toggle__count">@Model.ListedPurchaseCount<span class="visually-hidden"> @(Model.ListedPurchaseCount == 1 ? "purchase" : "purchases")</span></span>
+                    }
+                    <i class="fas fa-chevron-right history-toggle__chevron history-toggle__chevron--closed" aria-hidden="true"></i>
+                    <i class="fas fa-chevron-left history-toggle__chevron history-toggle__chevron--open" aria-hidden="true"></i>
+                </button>
+            </div>
+        }
+
+        <div class="shop-layout">
+        @if (signedIn)
+        {
+            <section id="historyPane" class="history-pane" aria-labelledby="history-title" hidden>
+                <partial name="_ShopPurchaseHistory" model="Model.UserPurchases" />
+            </section>
+        }
+
+        <div class="shop-main">
         <nav class="category-tabs" aria-label="Item categories">
             <a href="@BuildTabUrl(null, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)" class="category-btn"
                aria-current="@(Model.SelectedType == null ? "page" : null)">
@@ -403,6 +314,8 @@
             </nav>
             <p class="shop-count">Showing @((Model.CurrentPage - 1) * 12 + 1)&#8211;@(Math.Min(Model.CurrentPage * 12, Model.TotalItems)) of @Model.TotalItems items</p>
         }
+        </div>
+        </div>
     </div>
 
     <!-- Floating Merchant -->
@@ -425,6 +338,8 @@
 </div>
 
 @section Scripts {
+    <script type="module" src="~/js/shop-history.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
     <script type="module" src="~/js/shop-item-sell.js" asp-append-version="true"></script>
     <script type="module" src="~/js/shop-item-modal.js" asp-append-version="true"></script>
     <script>

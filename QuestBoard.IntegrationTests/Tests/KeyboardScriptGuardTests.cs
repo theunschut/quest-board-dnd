@@ -163,6 +163,18 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopHistoryModule_FlipsTheDisclosureAndRemembersNothing()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-history.js");
+
+        script.Should().Contain("[data-history-toggle]").And.Contain("aria-controls", "the pane is found through the toggle's own aria-controls");
+        script.Should().Contain("aria-expanded").And.Contain(".hidden", "the state is the toggle's aria-expanded and the pane's hidden attribute");
+        script.Should().NotMatchRegex(@"localStorage|sessionStorage|document\.cookie", "the pane opens collapsed on every load");
+        script.Should().NotMatchRegex(@"innerHTML|outerHTML|insertAdjacentHTML|document\.write", "no markup is built from strings");
+        script.Should().NotMatchRegex(@"window\.\w+\s*=", "nothing is exposed globally");
+    }
+
+    [Fact]
     public void ShopManagementModule_LoadsTheDenyDialogFromItsTrigger()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-management.js");

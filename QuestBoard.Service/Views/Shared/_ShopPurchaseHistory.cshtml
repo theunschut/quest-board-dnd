@@ -1,0 +1,104 @@
+@using System.Globalization
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.ShopViewModels
+@model IList<UserTransactionViewModel>
+@*
+    The buyer's purchase history: one card of slips, newest first, capped at the shop's listing limit. Return and Sell are
+    ordinary buttons at the foot of each slip, so a keyboard, a touch screen and a screen reader all reach them. A slip
+    offers exactly one of them while something is left: Return (full price) inside the first day, Sell (half price) after
+    that. Whether a purchase is still inside that day is decided once, in UserTransactionViewModel; nothing here reads a
+    clock. The Sell form carries its question in data-confirm-message and the confirm module asks it; a Return never asks.
+*@
+<div class="modern-card modern-card--aside history-card">
+    <div class="modern-card-header">
+        <h2 id="history-title"><i class="fas fa-history me-2" aria-hidden="true"></i>My Transactions</h2>
+    </div>
+    <div class="modern-card-body">
+        @if (Model.Any())
+        {
+            <ul class="history-grid">
+                @foreach (var purchase in Model.Take(ShopIndexViewModel.PurchaseHistoryLimit))
+                {
+                    var isPurchase = purchase.TransactionType == TransactionType.Purchase;
+                    var hasRemainingItems = purchase.RemainingQuantity > 0;
+                    var isPayout = purchase.TransactionType == TransactionType.Sell;
+
+                    <li class="history-slip">
+                        <div class="history-slip__name">
+                            @purchase.ItemName
+                            @if (isPurchase && !hasRemainingItems)
+                            {
+                                <span class="history-slip__note">(Fully Returned/Sold)</span>
+                            }
+                            else if (isPayout)
+                            {
+                                <span class="history-slip__note">(Sold/Returned)</span>
+                            }
+                        </div>
+                        <div class="history-slip__row">
+                            <span>
+                                <i class="fas fa-sort-numeric-up me-1" aria-hidden="true"></i>
+                                @if (isPurchase && hasRemainingItems && purchase.RemainingQuantity != purchase.Quantity)
+                                {
+                                    @purchase.RemainingQuantity<text>/</text>@purchase.Quantity
+                                }
+                                else
+                                {
+                                    @purchase.Quantity
+                                }
+                            </span>
+                            <span class="@(isPayout ? "history-slip__credit" : null)">
+                                <i class="fas fa-coins me-1" aria-hidden="true"></i>@(isPayout ? "+" : "")@purchase.Price gp
+                            </span>
+                        </div>
+                        <div class="history-slip__when">
+                            <i class="fas fa-clock me-1" aria-hidden="true"></i>@Html.LocalTime(purchase.TransactionDate, "date-compact")
+                        </div>
+
+                        @if (isPurchase && hasRemainingItems)
+                        {
+                            var hintId = $"history-hint-{purchase.Id}";
+                            if (purchase.CanReturn)
+                            {
+                                var returnHint = $"Return {purchase.RemainingQuantity} item(s) for full price (within 24h)";
+                                <form method="post" asp-controller="Shop" asp-action="Sell" class="history-slip__action">
+                                    <input type="hidden" name="id" value="@purchase.Id" />
+                                    <input type="hidden" name="quantity" value="@purchase.RemainingQuantity" />
+                                    <button type="submit" class="btn btn-success btn-sm" title="@returnHint" aria-describedby="@hintId">
+                                        <i class="fas fa-undo me-1" aria-hidden="true"></i>Return (@purchase.RemainingQuantity)
+                                    </button>
+                                    <span id="@hintId" class="visually-hidden">@returnHint</span>
+                                </form>
+                            }
+                            else
+                            {
+                                var sellHint = $"Sell {purchase.RemainingQuantity} item(s) for 50% of original price";
+                                var sellQuestion = $"Are you sure you want to sell {purchase.RemainingQuantity}x {purchase.ItemName} to the shop for {purchase.SellRefund.ToString("N0", CultureInfo.InvariantCulture)} gp?";
+                                <form method="post" asp-controller="Shop" asp-action="Sell" class="history-slip__action" data-confirm-message="@sellQuestion">
+                                    <input type="hidden" name="id" value="@purchase.Id" />
+                                    <input type="hidden" name="quantity" value="@purchase.RemainingQuantity" />
+                                    <button type="submit" class="btn btn-warning btn-sm" title="@sellHint" aria-describedby="@hintId">
+                                        <i class="fas fa-coins me-1" aria-hidden="true"></i>Sell (@purchase.RemainingQuantity)
+                                    </button>
+                                    <span id="@hintId" class="visually-hidden">@sellHint</span>
+                                </form>
+                            }
+                        }
+                    </li>
+                }
+            </ul>
+            @if (Model.Count > ShopIndexViewModel.PurchaseHistoryLimit)
+            {
+                <p class="history-cap">Showing latest @ShopIndexViewModel.PurchaseHistoryLimit purchases</p>
+            }
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fas fa-shopping-cart empty-state-icon" aria-hidden="true"></i>
+                <h3 class="empty-state-heading">No purchases yet</h3>
+                <p class="empty-state-text">Your purchase history will appear here</p>
+            </div>
+        }
+    </div>
+</div>

@@ -1765,4 +1765,223 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
             main.Should().NotContain(old, $"the old {old} markup is gone");
         main.Should().Contain("id=\"inventory-grid\"").And.Contain("class=\"inventory-grid\"");
     }
+    // ---- Shop browse: My Transactions (desktop) ----------------------------------------------------------
+
+    // A purchase made the given number of hours ago; returns its id so a later row can refer back to it.
+    private async Task<int> SeedPurchaseWithIdAsync(int userId, int itemId, double hoursAgo, int quantity = 2, decimal price = 80m)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        var entity = new UserTransactionEntity
+        {
+            UserId = userId,
+            ShopItemId = itemId,
+            TransactionType = (int)TransactionType.Purchase,
+            Price = price,
+            Quantity = quantity,
+            TransactionDate = DateTime.UtcNow.AddHours(-hoursAgo),
+        };
+        ctx.UserTransactions.Add(entity);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return entity.Id;
+    }
+
+    // A return or sale of some of the items of an earlier purchase.
+    private async Task SeedSellBackAsync(int userId, int itemId, int purchaseId, int quantity, decimal price)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        ctx.UserTransactions.Add(new UserTransactionEntity
+        {
+            UserId = userId,
+            ShopItemId = itemId,
+            TransactionType = (int)TransactionType.Sell,
+            Price = price,
+            Quantity = quantity,
+            OriginalTransactionId = purchaseId,
+            TransactionDate = DateTime.UtcNow.AddMinutes(-5),
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // The markup of the history pane: the section the toggle controls.
+    private static string HistoryPane(string html)
+    {
+        var pane = Regex.Match(html, @"<section\b[^>]*\bid=""historyPane""[^>]*>[\s\S]*?</section>");
+        pane.Success.Should().BeTrue("the page holds the history pane for a signed-in member");
+        return pane.Value;
+    }
+
+    // The slips in the history pane, each from its list item to the closing tag.
+    private static List<string> HistorySlips(string html) =>
+        Regex.Matches(HistoryPane(html), @"<li class=""history-slip[^""]*"">[\s\S]*?</li>").Select(m => m.Value).ToList();
+
+    [Fact]
+    public async Task ShopIndex_Desktop_MyTransactionsIsACollapsedDisclosureUnderTheHeroAndBesideTheItems()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histtoggle", price: 40m);
+        await SeedPurchaseAsync(user.Id, itemId, 2);
+        await SeedPurchaseAsync(user.Id, itemId, 30);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+        var main = MainOf(html);
+
+        var toggle = Regex.Match(main, @"<button\b[^>]*\bdata-history-toggle\b[^>]*>[\s\S]*?</button>");
+        toggle.Success.Should().BeTrue("the toggle is a real button");
+        toggle.Value.Should().Contain("type=\"button\"").And.Contain("aria-expanded=\"false\"", "it is collapsed on every load")
+            .And.Contain("aria-controls=\"historyPane\"");
+        Regex.IsMatch(toggle.Value, @"<span class=""history-toggle__count"">2<span class=""visually-hidden""> purchases</span></span>")
+            .Should().BeTrue("the count pill shows the listed rows and says what it counts");
+        toggle.Value.Should().Contain("My Transactions");
+
+        var heroEnd = main.IndexOf("shop-hero__sub", StringComparison.Ordinal);
+        var toggleAt = main.IndexOf("data-history-toggle", StringComparison.Ordinal);
+        var paneAt = main.IndexOf("id=\"historyPane\"", StringComparison.Ordinal);
+        var mainAt = main.IndexOf("class=\"shop-main\"", StringComparison.Ordinal);
+        var tabsAt = main.IndexOf("category-tabs", StringComparison.Ordinal);
+        new[] { heroEnd, toggleAt, paneAt, mainAt, tabsAt }.Should().BeInAscendingOrder(
+            "the toggle is under the hero, the pane is at the start of the item area and the categories sit in the main column");
+        main.Should().Contain("class=\"shop-layout\"");
+
+        var pane = HistoryPane(html);
+        pane.Should().Contain(" hidden").And.Contain("aria-labelledby=\"history-title\"");
+        Regex.IsMatch(pane, @"<h2 id=""history-title""><i class=""fas fa-history me-2"" aria-hidden=""true""></i>My Transactions</h2>").Should().BeTrue();
+        main.Should().NotContain("purchase-history-panel").And.NotContain("with-panel");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_LoadsTheHistoryAndConfirmModules()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histmods", price: 40m);
+        await SeedPurchaseAsync(user.Id, itemId, 30);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        foreach (var module in new[] { "shop-history", "confirm-submit", "shop-item-sell", "shop-item-modal" })
+            Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/" + module + @"\.js(?:\?[^""]*)?""").Should().BeTrue($"{module} loads as a module");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_AMemberWithNoPurchasesSeesTheToggleWithoutACountAndTheEmptyState()
+    {
+        var (client, _, _) = await SeedMemberAndItemAsync("shopr_histempty");
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var toggle = Regex.Match(MainOf(html), @"<button\b[^>]*\bdata-history-toggle\b[^>]*>[\s\S]*?</button>").Value;
+        toggle.Should().Contain("My Transactions").And.NotContain("history-toggle__count", "an empty list has no count to show");
+        var pane = HistoryPane(html);
+        pane.Should().Contain("empty-state").And.Contain("No purchases yet").And.Contain("Your purchase history will appear here");
+        HistorySlips(html).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_AVisitorWhoIsNotSignedInGetsNoHistoryToggleOrPane()
+    {
+        await SeedMemberAndItemAsync("shopr_histanon");
+        var anonymous = factory.CreateClient();
+
+        var html = await GetAsync(anonymous, "/Shop", DesktopUserAgent);
+
+        html.Should().NotContain("data-history-toggle").And.NotContain("id=\"historyPane\"");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_APurchaseFromTwoHoursAgoOffersAReturnButtonThatPostsWithATokenAndNeverAsks()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histret", AwkwardName, 40m);
+        var purchaseId = await SeedPurchaseWithIdAsync(user.Id, itemId, 2, quantity: 2, price: 80m);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var slip = HistorySlips(html).Should().ContainSingle().Subject;
+        var form = Regex.Match(slip, @"<form\b[^>]*>").Value;
+        form.Should().Contain("action=\"/Shop/Sell\"").And.Contain("method=\"post\"");
+        form.Should().NotContain("data-confirm-message", "a return is never confirmed");
+        slip.Should().Contain("name=\"__RequestVerificationToken\"");
+        slip.Should().Contain($"name=\"id\" value=\"{purchaseId}\"").And.Contain("name=\"quantity\" value=\"2\"");
+        var button = Regex.Match(slip, @"<button\b[^>]*>[\s\S]*?</button>").Value;
+        button.Should().Contain("btn btn-success btn-sm").And.Contain("type=\"submit\"");
+        Regex.IsMatch(button, @"<i class=""fas fa-undo me-1"" aria-hidden=""true""></i>Return \(2\)").Should().BeTrue("the visible name is Return and the quantity");
+        var describedBy = Regex.Match(button, @"aria-describedby=""([^""]+)""").Groups[1].Value;
+        describedBy.Should().NotBeEmpty();
+        Regex.IsMatch(slip, @"<span id=""" + Regex.Escape(describedBy) + @""" class=""visually-hidden"">Return 2 item\(s\) for full price \(within 24h\)</span>")
+            .Should().BeTrue("the sentence the old tooltip held is also the button's description");
+        slip.Should().Contain(AwkwardName.Replace("'", "&#x27;").Replace("\"", "&quot;"), "the whole name is shown, encoded");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_APurchaseFromThirtyHoursAgoOffersASellButtonThatAsksWithTheEncodedNameAndTheRefund()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histsell", AwkwardName, 40m);
+        await SeedPurchaseWithIdAsync(user.Id, itemId, 30, quantity: 2, price: 80m);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var slip = HistorySlips(html).Should().ContainSingle().Subject;
+        var form = Regex.Match(slip, @"<form\b[^>]*>").Value;
+        form.Should().Contain("data-confirm-message=\"Are you sure you want to sell 2x Wizard&#x27;s &quot;Staff&quot; to the shop for 40 gp?\"",
+            "the sentence names the quantity, the item and half the paid price, and the name is encoded");
+        form.Should().Contain("action=\"/Shop/Sell\"");
+        var button = Regex.Match(slip, @"<button\b[^>]*>[\s\S]*?</button>").Value;
+        button.Should().Contain("btn btn-warning btn-sm");
+        Regex.IsMatch(button, @"<i class=""fas fa-coins me-1"" aria-hidden=""true""></i>Sell \(2\)").Should().BeTrue();
+        Regex.IsMatch(slip, @"class=""visually-hidden"">Sell 2 item\(s\) for 50% of original price</span>").Should().BeTrue();
+        html.Should().NotContain("onsubmit", "the question comes from a module, not an inline handler");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_TheSellSentenceUsesThousandsSeparatorsAndTheQuantityThatIsLeft()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histbig", "Gilded Anvil", 4000m);
+        var purchaseId = await SeedPurchaseWithIdAsync(user.Id, itemId, 30, quantity: 3, price: 12000m);
+        await SeedSellBackAsync(user.Id, itemId, purchaseId, 1, 2000m);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var slip = HistorySlips(html).Should().ContainSingle().Subject;
+        slip.Should().Contain("Are you sure you want to sell 2x Gilded Anvil to the shop for 4,000 gp?");
+        slip.Should().Contain("2/3", "the quantity shows what is left of what was bought");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_ASpentPurchaseSaysSoAndOffersNoButton()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histspent", "Dewdrop Pendant", 40m);
+        var purchaseId = await SeedPurchaseWithIdAsync(user.Id, itemId, 30, quantity: 1, price: 40m);
+        await SeedSellBackAsync(user.Id, itemId, purchaseId, 1, 20m);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var slip = HistorySlips(html).Should().ContainSingle().Subject;
+        slip.Should().Contain("Dewdrop Pendant").And.Contain("(Fully Returned/Sold)");
+        slip.Should().NotContain("<form").And.NotContain("<button");
+        slip.Should().NotMatchRegex(@"opacity|filter", "a spent row is told apart by its words, never by fading");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_ASlipShowsTheQuantityTheAmountAndAClientLocalDate()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histslip", "Plain Lantern", 40m);
+        await SeedPurchaseAsync(user.Id, itemId, 2, quantity: 3, price: 120m);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var slip = HistorySlips(html).Should().ContainSingle().Subject;
+        slip.Should().Contain("fa-sort-numeric-up").And.Contain("fa-coins");
+        slip.Should().MatchRegex(@"120(\.0+)? gp", "the amount keeps its gp unit");
+        slip.Should().MatchRegex(@"<time class=""local-time"" data-style=""date-compact"" datetime=""\d{4}-\d\d-\d\dT[\d:]+Z""");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_SixteenPurchasesShowFifteenSlipsAndTheCapLine()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_histcap", price: 40m);
+        for (var i = 0; i < 16; i++)
+            await SeedPurchaseAsync(user.Id, itemId, 2 + i, quantity: 1, price: 40m);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        HistorySlips(html).Should().HaveCount(15);
+        HistoryPane(html).Should().Contain("Showing latest 15 purchases");
+        Regex.IsMatch(MainOf(html), @"history-toggle__count"">15<").Should().BeTrue("the count never passes the rows that are listed");
+    }
 }
