@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 4/20 plans executed
+**Plans:** 5/20 plans executed
 
 **Scope:**
 
@@ -2106,7 +2106,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 99-05-PLAN.md — Gate 1 package A: purchase history under the grid on both layouts, the single filter card, both merchant placements with the toast, the legendary chip in amber and gold, Shop/Index look check against Direction A
+- [x] 99-05-PLAN.md — Gate 1 package A: purchase history under the grid on both layouts, the single filter card, both merchant placements with the toast, the legendary chip in amber and gold, Shop/Index look check against Direction A
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
