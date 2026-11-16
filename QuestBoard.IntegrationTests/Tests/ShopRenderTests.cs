@@ -753,4 +753,132 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
         html.Should().Contain("Back to Shop", "the phone dialog keeps the link it has always had");
     }
+
+    // ---- Desktop Edit: the details link, the status block, the shared form module and the form contract --------
+
+    // The recorded answer on whether the back control reads Back to Shop Management. Changing the answer means
+    // changing this constant and the view together.
+    private static readonly bool BackToShopManagementLabel = false;
+
+    private async Task<(HttpClient Client, int ItemId)> SeedEditablePageAsync(string handle, ItemStatus status)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(factory.Services, dm.Id, "Edit Subject", 10m, 1, ItemRarity.Rare);
+        await SetStatusAsync(item.Id, status);
+        return (client, item.Id);
+    }
+
+    [Theory]
+    [InlineData(ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied)]
+    [InlineData(ItemStatus.Archived)]
+    public async Task ShopManagementEdit_Desktop_ViewDetailsPointsAtTheShopDetailsPage(ItemStatus status)
+    {
+        var (client, itemId) = await SeedEditablePageAsync($"shopr_editlink_{status}", status);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        Regex.IsMatch(html, $@"<a\b[^>]*\bhref=""/Shop/Details/{itemId}""[^>]*>\s*<i\b[^>]*></i>View Details\s*</a>")
+            .Should().BeTrue("the control stays and points at the page the management lists use");
+        html.Should().NotContain("/ShopManagement/Details/", "that target does not exist");
+
+        var details = await SendAsync(client, HttpMethod.Get, $"/Shop/Details/{itemId}", DesktopUserAgent);
+        details.StatusCode.Should().Be(HttpStatusCode.OK, $"the link must not dead-end for a {status} item");
+    }
+
+    [Fact]
+    public async Task ShopManagementEdit_Desktop_WiresThePricingThroughDataAttributesAndTheSharedModule()
+    {
+        var (client, itemId) = await SeedEditablePageAsync("shopr_editmodule", ItemStatus.Draft);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<form\b[^>]*\bdata-shop-item-form\b[^>]*>").Should().BeTrue("the module binds the item form by its data attribute");
+        Regex.IsMatch(html, @"<select\b[^>]*\bname=""Rarity""").Should().BeTrue();
+        Regex.IsMatch(html, @"<button\b[^>]*\bid=""randomPriceBtn""[^>]*\bdata-random-price\b").Should().BeTrue();
+        Regex.IsMatch(html, @"<button\b[^>]*\bid=""calculatedPriceBtn""[^>]*\bdata-calculated-price\b").Should().BeTrue();
+        Regex.IsMatch(html, @"<input\b[^>]*\bid=""enableAvailabilityWindow""[^>]*\bdata-availability-toggle\b").Should().BeTrue();
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-form\.js(?:\?[^""]*)?""").Should().BeTrue(
+            "the module is a file loaded by the page, not an inline script");
+        Regex.IsMatch(html, @"<div\b[^>]*\bid=""price-suggestion""[^>]*\baria-live=""polite""[^>]*>\s*Select a rarity to see pricing suggestions\.\s*</div>")
+            .Should().BeTrue("the hint starts as the short line and is announced politely when the module rewrites it");
+        Regex.IsMatch(html, @"class=""form-text shop-form__hint""").Should().BeTrue("the hint is help text in the form sheet's hint layout");
+    }
+
+    [Fact]
+    public async Task ShopManagementEdit_Desktop_StatusBlockIsAnInfoAlertWithTheSharedBadge()
+    {
+        var (client, itemId) = await SeedEditablePageAsync("shopr_editstatus", ItemStatus.Draft);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        var block = Regex.Match(html, @"<div class=""alert alert-info shop-form__status"">[\s\S]*?Item ID: #\d+</span>\s*</div>");
+        block.Success.Should().BeTrue("the status block is an info alert");
+        block.Value.Should().MatchRegex(@"<h2>\s*<i\b[^>]*></i>Current Status\s*</h2>");
+        HasStatusBadge(block.Value, "bg-warning", "fa-hourglass-half", "Pending Review").Should().BeTrue();
+        block.Value.Should().Contain("This item is awaiting DM approval").And.Contain($"Item ID: #{itemId}");
+    }
+
+    [Fact]
+    public async Task ShopManagementEdit_Desktop_RequiredFieldsCarryTheMarkerAndItsHiddenWord()
+    {
+        var (client, itemId) = await SeedEditablePageAsync("shopr_editmarks", ItemStatus.Published);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        foreach (var label in new[] { "Item Name", "Item Type", "Description", "Rarity", "Price \\(Gold Pieces\\)" })
+            Regex.IsMatch(html, @"<label\b[^>]*>\s*" + label + @"\s*<span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span>")
+                .Should().BeTrue($"{label} is required and says so to a screen reader too");
+        html.Should().Contain("form-page", "the page is a form page, so the marker and the messages sit on the overlay chip");
+        Regex.IsMatch(html, @"<span\b(?=[^>]*data-valmsg-for=""Name"")[^>]*\bclass=""[^""]*\bfield-validation-error\b")
+            .Should().BeTrue("the messages are field-validation spans");
+    }
+
+    [Theory]
+    [InlineData(ItemStatus.Draft, true)]
+    [InlineData(ItemStatus.Published, false)]
+    public async Task ShopManagementEdit_Desktop_DraftReviewNoticeShowsOnlyForADraft(ItemStatus status, bool shown)
+    {
+        var (client, itemId) = await SeedEditablePageAsync($"shopr_editnotice_{status}", status);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        html.Contains("Item Under Review", StringComparison.Ordinal).Should().Be(shown);
+        html.Contains("Changes to rarity may require re-approval", StringComparison.Ordinal).Should().Be(shown);
+    }
+
+    [Fact]
+    public async Task ShopManagementEdit_Desktop_ActionRowFollowsTheFormContractAndTheRecordedLabel()
+    {
+        var (client, itemId) = await SeedEditablePageAsync("shopr_editactions", ItemStatus.Published);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        var row = Regex.Match(html, @"<div class=""form-actions"">[\s\S]*?Save Changes\s*</button>");
+        row.Success.Should().BeTrue("the action row is the shared form-actions row");
+        var back = BackToShopManagementLabel ? "Back to Shop Management" : "Back to Management";
+        Regex.IsMatch(row.Value, @"<a href=""/ShopManagement"" class=""btn btn-secondary"">\s*<i\b[^>]*></i>" + back).Should().BeTrue();
+        Regex.IsMatch(row.Value, @"class=""btn btn-info"">\s*<i\b[^>]*></i>View Details").Should().BeTrue("View Details is a filled info button");
+        Regex.IsMatch(row.Value, @"class=""btn btn-primary"">\s*<i\b[^>]*></i>Save Changes").Should().BeTrue();
+        row.Value.Should().NotContain("btn-outline");
+    }
+
+    [Fact]
+    public async Task ShopManagementEdit_Desktop_CarriesTheThemeLinksItsSheetsAndHoldsNoInlineCode()
+    {
+        var (client, itemId) = await SeedEditablePageAsync("shopr_editsheets", ItemStatus.Draft);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", DesktopUserAgent);
+
+        HtmlOpeningTag(html).Should().Contain("data-theme=\"shop\"");
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.css(?:\?[^""]*)?""").Should().BeTrue();
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-form\.css(?:\?[^""]*)?""").Should().BeTrue();
+        var main = html[html.IndexOf("<main", StringComparison.Ordinal)..];
+        main.Should().NotContain("<style", "the page's rules live in sheets");
+        main.Should().NotMatchRegex(@"\son(?:click|change|submit)\s*=", "no event handler is written into the markup");
+        Regex.Matches(main, @"<script\b(?![^>]*\bsrc\s*=)[^>]*>").Should().BeEmpty("the page holds no inline script");
+        main.Should().NotContain("legendary-glow");
+    }
 }

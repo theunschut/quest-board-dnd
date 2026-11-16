@@ -1,0 +1,71 @@
+/*
+ * Shop management create and edit forms: the field rows, the price field with its hint, the availability window and
+ * the status block. The card, the labels, the required marker, the help text, the validation messages and the action
+ * row come from the shared form rules; nothing here restyles them.
+ */
+@layer pages {
+  .shop-form .modern-card-body {
+    padding: var(--qb-space-lg);
+  }
+
+  /* Two columns that stack when the card is narrow, so a field never gets squeezed. */
+  .shop-form__row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    gap: 0 var(--qb-space-lg);
+    margin-block-end: var(--qb-space-sm);
+  }
+
+  .shop-form__row--wide {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  .shop-form__row > * {
+    min-inline-size: 0;
+  }
+
+  .shop-form__section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    margin: var(--qb-space-lg) 0 var(--qb-space-sm);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .shop-form__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .shop-form__status h2 {
+    margin: 0 0 var(--qb-space-xs);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .shop-form__status-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  /* The pricing hint: the range line and the recommended price, one under the other when they do not fit together. */
+  .shop-form__hint {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-xs);
+  }
+
+  .shop-form__actions-end {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--qb-space-sm);
+  }
+}

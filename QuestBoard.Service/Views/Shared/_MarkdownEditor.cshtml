@@ -13,7 +13,7 @@
         @Model.Label
         @if (Model.Required)
         {
-            <span class="text-danger" aria-hidden="true">*</span>
+            <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span>
         }
     </label>
     <textarea name="@Model.FieldName" id="@elementId" class="form-control markdown-editor-textarea" rows="4" placeholder="@Model.Placeholder" required="@Model.Required" maxlength="@Model.MaxLength" data-editor-label="@Model.Label" aria-describedby="@(elementId)-help">@Model.Value</textarea>

@@ -120,4 +120,33 @@ public class KeyboardScriptGuardTests
         var cancel = Regex.Match(script, @"cancelButton\?\.addEventListener\('click'.*?\}\);", RegexOptions.Singleline).Value;
         cancel.Should().Contain("collapse(slip)").And.Contain("editButton.focus()", "closing the editor returns focus to the button that opened it");
     }
+
+    // The recorded answer on whether the item form shows today's two alert messages when a required field is empty.
+    // Changing the answer means changing this constant and the module together.
+    private static readonly bool ItemFormClientChecksBound = false;
+
+    [Fact]
+    public void ShopItemFormModule_BindsOnlyTheItemForm()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-item-form.js");
+
+        script.Should().Contain("form[data-shop-item-form]", "the module opts in by a data attribute on the form");
+        Regex.Matches(script, @"querySelector(?:All)?\(\s*['""]form").Select(m => m.Value).Should().BeEquivalentTo(
+            new[] { "querySelectorAll('form" }, "the only form lookup is the attribute selector");
+        script.Should().NotMatchRegex(@"document\.forms|forms\[\d", "a form is never picked by its position, so the sign-out form in the navigation bar is out of reach");
+        script.Should().NotMatchRegex(@"document\.addEventListener\('submit'", "no submit listener sits on the document");
+
+        if (ItemFormClientChecksBound)
+        {
+            script.Should().Contain("Please fill in all required fields.");
+            script.Should().Contain("Please provide a more detailed description (at least 20 characters).");
+            Regex.IsMatch(script, @"addEventListener\('submit',\s*function[^{]*\{[\s\S]*easyMDE").Should().BeTrue(
+                "the editor is read inside the handler, because it is built after a module has run");
+        }
+        else
+        {
+            script.Should().NotContain("alert(", "the item form shows no client alert");
+            script.Should().NotContain("easyMDE", "nothing reads the editor");
+        }
+    }
 }
