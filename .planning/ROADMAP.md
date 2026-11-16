@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 6/20 plans executed
+**Plans:** 6/21 plans executed
 
 **Scope:**
 
@@ -2162,9 +2162,13 @@ Plans:
 
 **Wave 19** *(blocked on Wave 18 completion)*
 
-- [ ] 99-19-PLAN.md — Timed stop: cannot start before `eligibleAt` in `~/qb-ui-review/phase-99/fixtures.json` (24 hours after the 99-02 day-0 purchases); waiting there is expected, not a stall. Closing sweep after the 24-hour Sell mark: full AFTER, click-throughs on both layouts, whole-image and accessibility checks, exceptions, finding trace, migrator suite if approved, ledger and deferred items
+- [ ] 99-21-PLAN.md — Server quantity validation (Gate 1 item 20, "20:fix in phase 99"): Purchase, Return or Sell, and Sell to Shop refuse a requested quantity below 1 before any repository read or write; item stock convention (-1 unlimited, 0 sold out, >0 limited) untouched; unit and EF InMemory integration facts
 
 **Wave 20** *(blocked on Wave 19 completion)*
+
+- [ ] 99-19-PLAN.md — Timed stop: cannot start before `eligibleAt` in `~/qb-ui-review/phase-99/fixtures.json` (24 hours after the 99-02 day-0 purchases); waiting there is expected, not a stall. Closing sweep after the 24-hour Sell mark: full AFTER, click-throughs on both layouts, whole-image and accessibility checks, exceptions, finding trace, migrator suite if approved, ledger and deferred items
+
+**Wave 21** *(blocked on Wave 20 completion)*
 
 - [ ] 99-20-PLAN.md — Gate 2 local sheet with findings, inherited questions and every exception and text change, Gate 2 (operator, gap-closure loop), v6.4.0 release hand-off
 
