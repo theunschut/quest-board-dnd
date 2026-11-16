@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 17/21 plans executed
+**Plans:** 18/21 plans executed
 
 **Scope:**
 
@@ -2158,7 +2158,7 @@ Plans:
 
 **Wave 18** *(blocked on Wave 17 completion)*
 
-- [ ] 99-18-PLAN.md — shop.css out of the global list and deleted (outside pages and dialogs measured), legacy-pages.css trimmed, zero counts, final guards, planning-reference scan, no test deleted, untouched-paths diff
+- [x] 99-18-PLAN.md — shop.css out of the global list and deleted (outside pages and dialogs measured), legacy-pages.css trimmed, zero counts, final guards, planning-reference scan, no test deleted, untouched-paths diff
 
 **Wave 19** *(blocked on Wave 18 completion)*
 
