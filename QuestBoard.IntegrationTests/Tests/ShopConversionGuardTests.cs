@@ -86,6 +86,7 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-item-sell.js",
         "QuestBoard.Service/wwwroot/js/shop-item-form.js",
         "QuestBoard.Service/wwwroot/js/shop-item-preview.js",
+        "QuestBoard.Service/wwwroot/js/shop-management.js",
     ];
 
     // Views and partials that carry no inline code, repository-relative. Grows as each view is converted.
@@ -166,6 +167,7 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/css/shop-form.css",
         "QuestBoard.Service/wwwroot/js/shop-item-form.js",
         "QuestBoard.Service/wwwroot/js/shop-item-preview.js",
+        "QuestBoard.Service/wwwroot/js/shop-management.js",
         "QuestBoard.Service/Views/Shared/_MarkdownEditor.cshtml",
     ];
 

@@ -56,7 +56,7 @@
                     </a>
                     @if (item.Status == ItemStatus.Published)
                     {
-                        <form method="post" action="/ShopManagement/Archive/@item.Id" style="display:inline;" onsubmit="return confirm('Are you sure you want to archive this item?')">
+                        <form method="post" action="/ShopManagement/Archive/@item.Id" class="d-inline" data-confirm-message="Are you sure you want to archive this item?">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-secondary btn-sm" title="Archive" aria-label="Archive item">
                                 <i class="fas fa-ban"></i>
@@ -65,7 +65,7 @@
                     }
                     else if (item.Status == ItemStatus.Archived)
                     {
-                        <form method="post" action="/ShopManagement/Reopen/@item.Id" style="display:inline;" onsubmit="return confirm('Are you sure you want to reopen this item?')">
+                        <form method="post" action="/ShopManagement/Reopen/@item.Id" class="d-inline" data-confirm-message="Are you sure you want to reopen this item?">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-success btn-sm" title="Reopen" aria-label="Reopen item">
                                 <i class="fas fa-undo"></i>
@@ -76,13 +76,13 @@
                     {
                         <button type="button" class="btn btn-danger btn-sm" title="Deny" aria-label="Deny item"
                                 data-bs-toggle="modal" data-bs-target="#denyModal"
-                                data-item-id="@item.Id" data-item-name="@item.Name">
+                                data-deny-url="/ShopManagement/Deny/@item.Id" data-deny-name="@item.Name">
                             <i class="fas fa-times"></i>
                         </button>
                     }
                     @if (item.Status == ItemStatus.Draft && (await AuthorizationService.AuthorizeAsync(User, "AdminOnly")).Succeeded)
                     {
-                        <form method="post" action="/ShopManagement/Publish/@item.Id" style="display:inline;" onsubmit="return confirm('Are you sure you want to publish this item?')">
+                        <form method="post" action="/ShopManagement/Publish/@item.Id" class="d-inline" data-confirm-message="Are you sure you want to publish this item?">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-success btn-sm" title="Publish" aria-label="Publish item">
                                 <i class="fas fa-check"></i>
@@ -91,7 +91,7 @@
                     }
                     @if (item.Status == ItemStatus.Denied || (item.Status != ItemStatus.Draft && item.Status != ItemStatus.Denied && (await AuthorizationService.AuthorizeAsync(User, "AdminOnly")).Succeeded))
                     {
-                        <form method="post" action="/ShopManagement/Delete/@item.Id" style="display:inline;" onsubmit="return confirm('Are you sure you want to permanently delete this item? This action cannot be undone.')">
+                        <form method="post" action="/ShopManagement/Delete/@item.Id" class="d-inline" data-confirm-message="Are you sure you want to permanently delete this item? This action cannot be undone.">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-danger btn-sm" title="Delete" aria-label="Delete item">
                                 <i class="fas fa-trash"></i>
@@ -123,13 +123,13 @@
             <div class="modal-body">
                 <p>Select an action to apply to multiple items:</p>
                 <div class="d-grid gap-2">
-                    <button class="btn btn-warning" onclick="bulkAction('discontinue')">
+                    <button class="btn btn-warning" data-bulk-action="discontinue">
                         <i class="fas fa-ban me-2"></i>Discontinue Selected Items
                     </button>
-                    <button class="btn btn-success" onclick="bulkAction('activate')">
+                    <button class="btn btn-success" data-bulk-action="activate">
                         <i class="fas fa-check me-2"></i>Activate Selected Items
                     </button>
-                    <button class="btn btn-info" onclick="bulkAction('restock')">
+                    <button class="btn btn-info" data-bulk-action="restock">
                         <i class="fas fa-plus-circle me-2"></i>Restock Selected Items
                     </button>
                 </div>
@@ -157,7 +157,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>You are about to deny: <strong id="denyItemName"></strong></p>
+                    <p>You are about to deny: <strong data-deny-item-name></strong></p>
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
                         This item will be marked as denied and the creator will see your reason.
@@ -184,28 +184,6 @@
 </div>
 
 @section Scripts {
-    <script>
-        // Placeholder for bulk actions
-        function bulkAction(action) {
-            alert(`Bulk ${action} functionality will be available in a future update.`);
-        }
-
-        // Handle deny modal
-        document.addEventListener('DOMContentLoaded', function() {
-            const denyModal = document.getElementById('denyModal');
-            if (denyModal) {
-                denyModal.addEventListener('show.bs.modal', function(event) {
-                    const button = event.relatedTarget;
-                    const itemId = button.getAttribute('data-item-id');
-                    const itemName = button.getAttribute('data-item-name');
-
-                    const form = document.getElementById('denyForm');
-                    form.action = '/ShopManagement/Deny/' + itemId;
-
-                    document.getElementById('denyItemName').textContent = itemName;
-                    document.getElementById('denialReason').value = '';
-                });
-            }
-        });
-    </script>
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/shop-management.js" asp-append-version="true"></script>
 }

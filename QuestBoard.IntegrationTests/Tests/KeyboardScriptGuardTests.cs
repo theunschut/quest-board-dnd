@@ -146,6 +146,21 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopManagementModule_LoadsTheDenyDialogFromItsTrigger()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-management.js");
+
+        script.Should().Contain("denyModal").And.Contain("show.bs.modal", "the dialog is loaded each time it opens");
+        script.Should().Contain("relatedTarget").And.Contain("dataset.denyName").And.Contain("dataset.denyUrl",
+            "the name and the address come from the trigger's data attributes");
+        script.Should().Contain("textContent", "the item name is written as text");
+        script.Should().Contain(".action", "the form's action is set from the server-rendered address");
+        script.Should().Contain("[data-bulk-action]").And.Contain("future update", "the bulk buttons show today's notice");
+        script.Should().NotMatchRegex(@"innerHTML|outerHTML|insertAdjacentHTML|document\.write", "no markup is built from strings");
+        script.Should().NotMatchRegex(@"window\.\w+\s*=", "nothing is exposed globally");
+    }
+
+    [Fact]
     public void ContactNotes_EditOpensOneNoteAndCancelClosesItAndReturnsFocus()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/contact-notes.js");

@@ -361,13 +361,15 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
     // A signed-in Dungeon Master and a board with every status: the DM's own Draft, Published, Archived and Denied
     // items, a Draft by another keeper (the review table) and a Published one by that keeper (the other-items table).
-    private async Task<HttpClient> SeedManagementBoardAsync(string handle)
+    private async Task<HttpClient> SeedManagementBoardAsync(string handle, bool admin = false)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         factory.TestGroupContext.ActiveGroupId = 1;
         var keeper = await AuthenticationHelper.CreateTestUserAsync(
             factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
-        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
+        var (client, dm) = admin
+            ? await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory, handle, $"{handle}@example.com")
+            : await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
 
         var own = new (string Name, ItemStatus Status, ItemRarity Rarity, ItemType Type)[]
         {
@@ -462,6 +464,101 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         var html = await GetAsync(client, $"/ShopManagement/Edit/{item.Id}", AgentFor(mobile));
 
         HasStatusBadge(html, fill, icon, word).Should().BeTrue($"the status alert shows {word} through the shared badge");
+    }
+
+    // ---- The management lists: questions, the deny dialog and the bulk notice, on both layouts ---------
+
+    // The four questions the management lists ask before a post, word for word.
+    private static readonly (string Action, string Sentence)[] ManagementQuestions =
+    [
+        ("Publish", "Are you sure you want to publish this item?"),
+        ("Archive", "Are you sure you want to archive this item?"),
+        ("Reopen", "Are you sure you want to reopen this item?"),
+        ("Delete", "Are you sure you want to permanently delete this item? This action cannot be undone."),
+    ];
+
+    private static List<(string Tag, string Action)> ManagementPostForms(string html) =>
+        Regex.Matches(html, @"<form\b[^>]*\baction=""/ShopManagement/(?<action>Publish|Archive|Reopen|Delete)/\d+""[^>]*>")
+            .Select(m => (m.Value, m.Groups["action"].Value)).ToList();
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_AskEachQuestionThroughADataAttributeWithTodaysSentence(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_confirm_{(mobile ? "m" : "d")}", admin: true);
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var forms = ManagementPostForms(html);
+        forms.Select(f => f.Action).Distinct().Should().BeEquivalentTo(ManagementQuestions.Select(q => q.Action),
+            "an administrator's board shows every one of the four posting actions");
+        foreach (var (tag, action) in forms)
+        {
+            var sentence = ManagementQuestions.Single(q => q.Action == action).Sentence;
+            var message = Regex.Match(tag, @"data-confirm-message=""(?<m>[^""]*)""");
+            message.Success.Should().BeTrue($"the {action} form asks its question through a data attribute");
+            WebUtility.HtmlDecode(message.Groups["m"].Value).Should().Be(sentence);
+        }
+        Regex.IsMatch(html, @"\sonsubmit\s*=").Should().BeFalse("no handler is written into the markup");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_DenyTriggersCarryTheNameAndTheUrlAndTheDialogPostsWithAToken(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_deny_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var triggers = Regex.Matches(html, @"<button\b[^>]*\bdata-bs-target=""#denyModal""[^>]*>").Select(m => m.Value).ToList();
+        triggers.Should().NotBeEmpty("a draft can be denied from the list");
+        foreach (var trigger in triggers)
+        {
+            trigger.Should().Contain("data-bs-toggle=\"modal\"");
+            trigger.Should().MatchRegex(@"data-deny-url=""/ShopManagement/Deny/\d+""");
+            trigger.Should().MatchRegex(@"data-deny-name=""[^""]+""");
+            trigger.Should().NotMatchRegex(@"\sonclick\s*=", "the dialog is loaded by the module, not by a handler");
+        }
+        var dialog = html[html.IndexOf("id=\"denyModal\"", StringComparison.Ordinal)..];
+        dialog = dialog[..dialog.IndexOf("</form>", StringComparison.Ordinal)];
+        dialog.Should().Contain("__RequestVerificationToken", "the deny form posts with an antiforgery token");
+        dialog.Should().Contain("method=\"post\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_LoadTheConfirmAndManagementModulesAndHoldNoInlineCode(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_mods_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/confirm-submit\.js(?:\?[^""]*)?""").Should().BeTrue();
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-management\.js(?:\?[^""]*)?""").Should().BeTrue();
+        var main = html[html.IndexOf("<main", StringComparison.Ordinal)..];
+        main.Should().NotMatchRegex(@"\son[a-z]+\s*=", "no event handler is written into the markup");
+        Regex.Matches(main, @"<script\b(?![^>]*\bsrc\s*=)[^>]*>").Should().BeEmpty("the page holds no inline script");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BulkActions_DesktopBindsThreeButtonsByDataAttributeAndPhoneHasNoTrigger(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_bulk_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var actions = Regex.Matches(html, @"data-bulk-action=""(?<a>[a-z]+)""").Select(m => m.Groups["a"].Value).ToList();
+        actions.Should().Equal("discontinue", "activate", "restock");
+        if (mobile)
+            html.Should().NotContain("data-bs-target=\"#bulkActionsModal\"", "the phone list has no Bulk Actions trigger");
+        else
+            html.Should().Contain("data-bs-target=\"#bulkActionsModal\"");
+        html.Should().Contain("Note: Bulk actions will be available in a future update.");
     }
 
     // ---- Item details: one body for the page and the dialog, on both layouts -------------------------
