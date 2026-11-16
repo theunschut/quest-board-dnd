@@ -86,6 +86,38 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-item-sell.js",
     ];
 
+    // Views and partials that carry no inline code, repository-relative. Grows as each view is converted.
+    private static readonly string[] ConvertedViews =
+    [
+        "QuestBoard.Service/Views/Shop/Details.cshtml",
+        "QuestBoard.Service/Views/Shop/Details.Mobile.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopItemDetailsContent.cshtml",
+    ];
+
+    // For each view, the sheets it must link from its Styles section, by file name. The details partial links nothing:
+    // the pages that render it, and the shop pages that load it into the dialog, link the sheets it needs.
+    private static readonly Dictionary<string, string[]> ViewSheetLinks = new()
+    {
+        ["QuestBoard.Service/Views/Shop/Details.cshtml"] = ["shop-pages.css", "markdown-content.css"],
+        ["QuestBoard.Service/Views/Shop/Details.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css", "markdown-content.css"],
+        ["QuestBoard.Service/Views/Shop/Index.cshtml"] = ["shop-pages.css", "markdown-content.css"],
+        ["QuestBoard.Service/Views/Shop/Index.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css", "markdown-content.css"],
+    };
+
+    // Files this work retires; each is deleted and must stay deleted, because its content moved into the shared sheets.
+    private static readonly string[] RetiredFiles =
+    [
+        "QuestBoard.Service/wwwroot/css/shop-details.mobile.css",
+    ];
+
+    private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
+    [
+        ("a style attribute", new Regex(@"\sstyle\s*=", RegexOptions.IgnoreCase)),
+        ("a style element", new Regex(@"<style\b", RegexOptions.IgnoreCase)),
+        ("an inline script element", new Regex(@"<script\b(?![^>]*\bsrc\s*=)[^>]*>", RegexOptions.IgnoreCase)),
+        ("an inline event handler", new Regex(@"\son[a-z]+\s*=", RegexOptions.IgnoreCase)),
+    ];
+
     // Every source file this work creates or edits, repository-relative, scanned for planning references. This test
     // file is left out because it has to name the shapes it forbids.
     private static readonly string[] PhaseSourceFiles =
@@ -115,6 +147,8 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/Shared/_ShopTypeChip.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Edit.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Edit.Mobile.cshtml",
+        "QuestBoard.Service/wwwroot/css/shop-pages.mobile.css",
+        "QuestBoard.IntegrationTests/Mobile/MobileViewsTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -270,6 +304,66 @@ public class ShopConversionGuardTests
         return Regex.Matches(markup,
                 @"\.Replace\(\s*""Published""|@switch\s*\(\s*[\w.]*Status\s*\)|(?<![\w])[\w.]*Status\s+switch\b|fa-@[\w.]*Status")
             .Select(m => m.Value).ToList();
+    }
+
+    // A date written through a format string in a view bypasses the date helpers; the two machine value formats that
+    // fill a date input or a time element's datetime attribute are the only strings allowed.
+    private static readonly Regex DateFormatCall = new(
+        @"\.ToString\(\s*""(?<format>[^""]*(?:yy|MM|dd|HH|hh|mm|ss|tt)[^""]*|[dDfFgGmMoOrRsStTuUyY])""",
+        RegexOptions.Compiled);
+
+    private static readonly string[] MachineValueFormats = ["yyyy-MM-dd", "yyyy-MM-ddTHH:mm"];
+
+    private static List<string> RawDateFormats(string view) =>
+        DateFormatCall.Matches(StripRazorAndHtmlComments(view))
+            .Select(m => m.Groups["format"].Value)
+            .Where(f => !MachineValueFormats.Contains(f))
+            .ToList();
+
+    // The text of a view's Styles section, from its opening brace to the matching closing brace.
+    private static string StylesSection(string view)
+    {
+        var start = view.IndexOf("@section Styles", StringComparison.Ordinal);
+        if (start < 0)
+            return string.Empty;
+
+        var open = view.IndexOf('{', start);
+        if (open < 0)
+            return string.Empty;
+
+        var depth = 0;
+        for (var i = open; i < view.Length; i++)
+        {
+            if (view[i] == '{')
+                depth++;
+            else if (view[i] == '}' && --depth == 0)
+                return view[open..(i + 1)];
+        }
+
+        return view[open..];
+    }
+
+    private static bool LinksSheet(string view, string sheetName) =>
+        Regex.IsMatch(
+            StylesSection(StripRazorAndHtmlComments(view)),
+            @"<link\b[^>]*\bhref=""~/css/" + Regex.Escape(sheetName) + @"""[^>]*>");
+
+    // The rule that keeps a picture inside a description whole: it may shrink to its column and keeps its own
+    // proportions. Returns what is missing from the first rule that names the description's images.
+    private static List<string> WholeImageRuleGaps(string css)
+    {
+        var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+        var rule = Regex.Match(withoutComments,
+            @"\.item-details-content\s+\.markdown-content\s+img\s*\{(?<body>[^{}]*)\}");
+        if (!rule.Success)
+            return ["no rule names the images inside the item details content"];
+
+        var gaps = new List<string>();
+        if (!Regex.IsMatch(rule.Groups["body"].Value, @"(?<![\w-])max-inline-size\s*:\s*100%"))
+            gaps.Add("max-inline-size: 100% is missing");
+        if (!Regex.IsMatch(rule.Groups["body"].Value, @"(?<![\w-])block-size\s*:\s*auto"))
+            gaps.Add("block-size: auto is missing");
+        return gaps;
     }
 
     // ---- Guards ---------------------------------------------------------------------------------
@@ -481,5 +575,97 @@ public class ShopConversionGuardTests
         EndlessMotionBreaks(".chip { transition-property: all; }").Should().HaveCount(1);
         EndlessMotionBreaks(".chip { transition: color 0.2s ease, box-shadow 0.2s ease; animation: fade 1s ease 1; }").Should().BeEmpty();
         EndlessMotionBreaks("/* transition: all 1s; */ .chip { box-shadow: 0 0 4px var(--qb-warning); }").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ConvertedViews_CarryNoInlineStyleScriptOrHandler()
+    {
+        ConvertedViews.Should().NotBeEmpty();
+        foreach (var path in ConvertedViews)
+        {
+            var view = StripRazorAndHtmlComments(ReadRepoFile(path));
+            foreach (var (label, pattern) in InlineCodePatterns)
+                pattern.Matches(view).Select(m => m.Value).Should().BeEmpty(
+                    $"{path} must carry no inline code; {label} belongs in a stylesheet or a script file");
+        }
+    }
+
+    [Fact]
+    public void ConvertedViews_LinkTheirSheets()
+    {
+        foreach (var (path, sheets) in ViewSheetLinks)
+        {
+            var view = ReadRepoFile(path);
+            foreach (var sheet in sheets)
+                LinksSheet(view, sheet).Should().BeTrue(
+                    $"{path} must link {sheet} from its Styles section so the sheet loads only where it is used");
+        }
+    }
+
+    [Fact]
+    public void ViewSheetLinkScanner_ReadsOnlyTheStylesSection()
+    {
+        const string linked = "@section Styles {\n    <link rel=\"stylesheet\" href=\"~/css/a.css\" asp-append-version=\"true\" />\n}\n<p>x</p>";
+        LinksSheet(linked, "a.css").Should().BeTrue();
+        LinksSheet(linked, "b.css").Should().BeFalse();
+        LinksSheet("<link rel=\"stylesheet\" href=\"~/css/a.css\" />", "a.css").Should().BeFalse("a link outside the Styles section does not count");
+        LinksSheet("@* @section Styles { <link href=\"~/css/a.css\" /> } *@", "a.css").Should().BeFalse("a comment is not a section");
+    }
+
+    [Fact]
+    public void RetiredFiles_AreGone()
+    {
+        RetiredFiles.Should().NotBeEmpty();
+        foreach (var path in RetiredFiles)
+            File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse(
+                $"{path} was folded into the shared shop sheets and must not come back");
+    }
+
+    [Fact]
+    public void ShopViews_RenderNoRawDateFormatting()
+    {
+        foreach (var path in ShopViews)
+            RawDateFormats(ReadRepoFile(path)).Should().BeEmpty(
+                $"{path} must render dates through the date helpers, never a format string");
+    }
+
+    [Fact]
+    public void RawDateScanner_FlagsFormatStringsAndAllowsMachineValuesAndNumbers()
+    {
+        RawDateFormats("@Model.AvailableFrom.Value.ToString(\"MMM dd\")").Should().HaveCount(1);
+        RawDateFormats("@x.ToString(\"d\")").Should().HaveCount(1);
+        RawDateFormats("value=\"@x.ToString(\"yyyy-MM-dd\")\"").Should().BeEmpty("the value of a date input is a machine format");
+        RawDateFormats("@((Model.Price / 2).ToString(\"N0\"))").Should().BeEmpty("a number format is not a date");
+        RawDateFormats("@* @x.ToString(\"MMM dd\") *@").Should().BeEmpty("a comment is not markup");
+    }
+
+    [Fact]
+    public void ShopSheets_HoldTheWholeImageRule()
+    {
+        WholeImageRuleGaps(ReadRepoFile("QuestBoard.Service/wwwroot/css/shop-pages.css")).Should().BeEmpty(
+            "a picture in a description shrinks to its column and keeps its proportions");
+    }
+
+    [Fact]
+    public void WholeImageRuleScanner_FlagsAMissingRuleAndMissingDeclarations()
+    {
+        WholeImageRuleGaps(".item-details-content .markdown-content img { max-inline-size: 100%; block-size: auto; }").Should().BeEmpty();
+        WholeImageRuleGaps(".item-details-content .markdown-content img { max-inline-size: 100%; }").Should().ContainSingle(g => g.Contains("block-size"));
+        WholeImageRuleGaps(".item-details-content .markdown-content img { block-size: auto; }").Should().ContainSingle(g => g.Contains("max-inline-size"));
+        WholeImageRuleGaps(".other img { max-inline-size: 100%; block-size: auto; }").Should().ContainSingle();
+        WholeImageRuleGaps("/* .item-details-content .markdown-content img { max-inline-size: 100%; block-size: auto; } */").Should().ContainSingle();
+    }
+
+    [Fact]
+    public void EmblemTile_HoldsNoDeclarationThatCouldClipTheGlyph()
+    {
+        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop-pages.css", "QuestBoard.Service/wwwroot/css/shop-pages.mobile.css" })
+        {
+            var css = Regex.Replace(ReadRepoFile(path), @"/\*[\s\S]*?\*/", " ");
+            foreach (Match rule in Regex.Matches(css, @"(?<selector>[^{}]*\.emblem[^{}]*)\{(?<body>[^{}]*)\}"))
+                Regex.Matches(rule.Groups["body"].Value, @"(?<![\w-])(?:overflow(?:-[xy])?|block-size|height|max-block-size|max-height)\s*:")
+                    .Select(m => m.Value).Should().BeEmpty(
+                        $"{path}: {rule.Groups["selector"].Value.Trim()} sizes the tile by a minimum only, so it grows with its content and never clips");
+        }
     }
 }

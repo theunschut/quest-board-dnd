@@ -141,7 +141,7 @@
   }
 
   .item-props dt {
-    color: var(--qb-fg-muted);
+    color: var(--qb-fg);
     font-weight: var(--qb-weight-regular);
   }
 
