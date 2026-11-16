@@ -2059,4 +2059,87 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
         html.Should().NotContain("data-merchant-button").And.NotContain("data-merchant-quotes");
     }
+
+    // ---- Shop browse: the phone layout ----------------------------------------------------------------------
+
+    // The drawer that holds the phone's purchase history, from its opening tag to the end of the page's main landmark.
+    private static string PhoneHistoryDrawer(string html)
+    {
+        var drawer = Regex.Match(html, @"<div class=""offcanvas offcanvas-start history-offcanvas""[^>]*\bid=""historyPane""[^>]*>[\s\S]*?<h2 id=""history-title""[\s\S]*?(?=<div class=""offcanvas offcanvas-bottom|</main>)");
+        drawer.Success.Should().BeTrue("the phone holds the history in a drawer from the start edge");
+        return drawer.Value;
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_MyTransactionsIsACollapsedButtonAboveFilterAndSortThatOpensADrawerOfTheSharedHistory()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_phhist", price: 40m);
+        await SeedPurchaseAsync(user.Id, itemId, 2);
+        await SeedPurchaseAsync(user.Id, itemId, 30);
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+        var main = MainOf(html);
+
+        main.Should().NotContain("purchase-history-panel").And.NotContain("shop-layout", "the phone has no side pane");
+        var toggle = Regex.Match(main, @"<button\b[^>]*\bdata-history-toggle\b[^>]*>[\s\S]*?</button>");
+        toggle.Success.Should().BeTrue("the opener is a real button");
+        toggle.Value.Should().Contain("type=\"button\"").And.Contain("data-bs-toggle=\"offcanvas\"").And.Contain("data-bs-target=\"#historyPane\"")
+            .And.Contain("aria-controls=\"historyPane\"").And.Contain("aria-expanded=\"false\"", "it is collapsed on every load");
+        toggle.Value.Should().Contain("My Transactions").And.Contain("history-toggle__count");
+        Regex.IsMatch(toggle.Value, @"history-toggle__count"">2<span class=""visually-hidden""> purchases</span>").Should().BeTrue("the count is the listed rows and says what it counts");
+
+        var toggleAt = main.IndexOf("data-history-toggle", StringComparison.Ordinal);
+        var filterAt = main.IndexOf("data-bs-target=\"#shopFilterOffcanvas\"", StringComparison.Ordinal);
+        var gridAt = main.IndexOf("shop-grid-mobile", StringComparison.Ordinal);
+        new[] { toggleAt, filterAt, gridAt }.Should().BeInAscendingOrder("My Transactions is stacked above Filter & Sort, both above the items");
+
+        var drawer = PhoneHistoryDrawer(html);
+        drawer.Should().Contain("aria-labelledby=\"history-title\"").And.Contain("tabindex=\"-1\"");
+        Regex.IsMatch(drawer, @"<button type=""button"" class=""btn-close"" data-bs-dismiss=""offcanvas"" aria-label=""Close""></button>").Should().BeTrue("the drawer has a named Close");
+        Regex.Matches(drawer, @"<li class=""history-slip").Count.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_APurchaseFromTwoHoursAgoOffersAReturnFormWithATokenAndAThirtyHourOneASellThatAsks()
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync("shopr_phret", AwkwardName, 40m);
+        var returnId = await SeedPurchaseWithIdAsync(user.Id, itemId, 2, quantity: 2, price: 80m);
+        var sellId = await SeedPurchaseWithIdAsync(user.Id, itemId, 30, quantity: 1, price: 40m);
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+
+        var forms = RowForms(html);
+        forms.Should().HaveCount(2);
+        var ret = forms.Single(f => f.Label.StartsWith("Return"));
+        ret.Fields.Should().ContainKey("__RequestVerificationToken");
+        ret.Fields["id"].Should().Be(returnId.ToString());
+        var sell = forms.Single(f => f.Label.StartsWith("Sell"));
+        sell.Fields["id"].Should().Be(sellId.ToString());
+        var sellForm = Regex.Match(PhoneHistoryDrawer(html), @"<form\b[^>]*data-confirm-message=""([^""]*)""[^>]*>").Groups[1].Value;
+        sellForm.Should().Contain("Are you sure you want to sell 1x").And.Contain("20 gp?");
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/confirm-submit\.js(?:\?[^""]*)?""").Should().BeTrue("the Sell question is asked by the shared module");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_AMemberWithNoPurchasesSeesTheButtonWithoutACountAndTheEmptyState()
+    {
+        var (client, _, _) = await SeedMemberAndItemAsync("shopr_phempty");
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+
+        var toggle = Regex.Match(MainOf(html), @"<button\b[^>]*\bdata-history-toggle\b[^>]*>[\s\S]*?</button>").Value;
+        toggle.Should().Contain("My Transactions").And.NotContain("history-toggle__count");
+        PhoneHistoryDrawer(html).Should().Contain("No purchases yet").And.Contain("Your purchase history will appear here");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_AVisitorWhoIsNotSignedInGetsNoHistoryButtonOrDrawer()
+    {
+        await SeedMemberAndItemAsync("shopr_phanon");
+        var anonymous = factory.CreateClient();
+
+        var html = await GetAsync(anonymous, "/Shop", MobileUserAgent);
+
+        html.Should().NotContain("data-history-toggle").And.NotContain("id=\"historyPane\"");
+    }
 }

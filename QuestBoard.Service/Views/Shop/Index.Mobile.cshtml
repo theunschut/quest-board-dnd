@@ -2,6 +2,9 @@
 @using QuestBoard.Domain.Enums
 @using Microsoft.AspNetCore.Http
 @model ShopIndexViewModel
+@{
+    ViewData["Theme"] = "shop";
+}
 
 @functions {
     string BuildTabUrl(ItemType? tabType, IList<ItemRarity> rarities, string? sort, string? search = null)
@@ -68,6 +71,27 @@
     <h5 class="mb-0"><i class="fas fa-store text-warning me-2"></i>The Mystical Merchant's Emporium</h5>
     <p class="shop-subtitle mb-0">"Welcome, adventurer! Browse my wares and find what you seek..."</p>
 </div>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <button type="button" class="btn btn-secondary w-100 mb-3 history-toggle" id="historyToggle" data-bs-toggle="offcanvas" data-bs-target="#historyPane" aria-expanded="false" aria-controls="historyPane" data-history-toggle>
+        <i class="fas fa-history" aria-hidden="true"></i>
+        <span>My Transactions</span>
+        @if (Model.ListedPurchaseCount > 0)
+        {
+            <span class="history-toggle__count">@Model.ListedPurchaseCount<span class="visually-hidden"> @(Model.ListedPurchaseCount == 1 ? "purchase" : "purchases")</span></span>
+        }
+    </button>
+
+    <div class="offcanvas offcanvas-start history-offcanvas" tabindex="-1" id="historyPane" aria-labelledby="history-title">
+        <div class="offcanvas-header">
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <partial name="_ShopPurchaseHistory" model="Model.UserPurchases" />
+        </div>
+    </div>
+}
 
 <!-- Filter & Sort trigger button -->
 <button class="btn btn-warning w-100 mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#shopFilterOffcanvas">
@@ -256,6 +280,8 @@ else
 </div>
 
 @section Scripts {
+    <script type="module" src="~/js/shop-drawers.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
     <script type="module" src="~/js/shop-item-sell.js" asp-append-version="true"></script>
     <script>
         // Minimal script for modal loading (Bootstrap 5 doesn't have remote modal)

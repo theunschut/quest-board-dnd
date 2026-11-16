@@ -3,6 +3,54 @@
  * controls, and the item details stack in one column.
  */
 @layer pages {
+  /* My Transactions as a drawer from the start edge, leaving a strip of the page and its backdrop visible. The shared
+     history card is the drawer's content, so the drawer's own header holds only the Close button, laid over the card's
+     title row, and the card is flat inside the drawer. */
+  .mobile-layout .history-offcanvas {
+    --bs-offcanvas-width: min(22rem, 88vw);
+  }
+
+  .mobile-layout .history-offcanvas .offcanvas-header {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    z-index: 1;
+    padding: var(--qb-space-sm);
+  }
+
+  .mobile-layout .history-offcanvas .offcanvas-body {
+    padding: 0;
+  }
+
+  .mobile-layout .history-offcanvas .history-card {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-layout .history-offcanvas .history-card .modern-card-header {
+    min-block-size: calc(var(--qb-hit-min) + var(--qb-space-md));
+    padding-inline-end: calc(var(--qb-hit-min) + var(--qb-space-md));
+  }
+
+  .mobile-layout .history-card .modern-card-body {
+    padding: var(--qb-space-sm);
+  }
+
+  .mobile-layout .history-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-layout .history-slip__action .btn {
+    min-block-size: var(--qb-hit-min);
+  }
+
+  .mobile-layout .history-toggle {
+    justify-content: center;
+  }
+
   /* The tile and its glyph are a step smaller on the phone; both are still sized by a minimum and the glyph's font size. */
   .mobile-layout .emblem {
     min-block-size: 120px;

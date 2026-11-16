@@ -1046,11 +1046,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Shop renders "Filter & Sort" offcanvas trigger button and links
-    /// shop.mobile.css. The shop-item-card-mobile class only renders when items exist; the filter
-    /// button and CSS link render unconditionally, so those are the stable smoke-test assertions.
-    /// Note: shop-item-card-mobile presence with seeded items is verified by Plan 03's own seeded test.
-    /// Test starts RED — Shop/Index.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Shop renders the "Filter & Sort" offcanvas trigger and links the shared shop sheet and the phone
+    /// shop sheet; the retired phone-only sheet is not linked. The filter button and the sheet links render
+    /// unconditionally, so those are the stable smoke-test assertions.
     /// </summary>
     [Fact]
     public async Task MobileShopIndex_MobileUserAgent_RendersItemGridAndFilterButton()
@@ -1066,19 +1064,37 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("Filter &amp; Sort");
-        html.Should().Contain("shop.mobile.css");
+        html.Should().Contain("shop-pages.css").And.Contain("shop-pages.mobile.css");
     }
 
     /// <summary>
-    /// Mobile UA on /Shop must NOT render the purchase-history-panel.
-    /// Purchase History side panel is omitted on mobile.
-    /// Test starts RED — Shop/Index.Mobile.cshtml does not exist yet.
+    /// Mobile UA on /Shop gives a signed-in member the same purchase history as desktop: a "My Transactions" button that
+    /// opens a drawer holding the shared history card, with a Return form that carries an antiforgery token. The old
+    /// fixed side panel is not rendered.
     /// </summary>
     [Fact]
-    public async Task MobileShopIndex_MobileUserAgent_OmitsPurchaseHistoryPanel()
+    public async Task MobileShopIndex_MobileUserAgent_RendersPurchaseHistoryWithReturnAndSell()
     {
-        var (authClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        _factory.TestGroupContext.ActiveGroupId = 1;
+        var keeper = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "shop_d04_16_keeper", "shop_d04_16_keeper@test.com");
+        var item = await TestDataHelper.CreateShopItemAsync(_factory.Services, keeper.Id, "Phone History Lantern", 40m, 5);
+        var (authClient, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
             _factory, "shop_d04_16", "shop_d04_16@test.com");
+        await using (var ctx = _factory.Database.CreateContext())
+        {
+            ctx.UserTransactions.Add(new UserTransactionEntity
+            {
+                UserId = user.Id,
+                ShopItemId = item.Id,
+                TransactionType = (int)TransactionType.Purchase,
+                Price = 80m,
+                Quantity = 2,
+                TransactionDate = DateTime.UtcNow.AddHours(-2),
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
 
         var request = new HttpRequestMessage(HttpMethod.Get, "/Shop");
         request.Headers.TryAddWithoutValidation("User-Agent", MobileUserAgent);
@@ -1087,7 +1103,13 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("mobile-layout");
         html.Should().NotContain("purchase-history-panel");
+        Regex.IsMatch(html, @"<h2 id=""history-title""[^>]*>[\s\S]*?My Transactions").Should().BeTrue(
+            "the shared history card is on the phone page");
+        var form = Regex.Match(html, @"<form\b[^>]*action=""/Shop/Sell""[^>]*>[\s\S]*?</form>");
+        form.Success.Should().BeTrue("a purchase made two hours ago offers a Return form");
+        form.Value.Should().Contain("name=\"__RequestVerificationToken\"").And.Contain("Return (2)");
     }
 
     // -----------------------------------------------------------------------
