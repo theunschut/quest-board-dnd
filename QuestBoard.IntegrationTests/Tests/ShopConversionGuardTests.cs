@@ -67,16 +67,10 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml",
     ];
 
-    // Every stylesheet that can reach a shop page. A sheet that is not on disk yet is skipped, never removed from the
-    // list, so the guard covers it from the commit that creates it.
+    // Every stylesheet that can reach a shop page: the three shop sheets and the one shared legacy sheet. The sheets this
+    // work retired are listed in RetiredFiles, which keeps them gone.
     private static readonly string[] ShopSheets =
     [
-        "QuestBoard.Service/wwwroot/css/shop.css",
-        "QuestBoard.Service/wwwroot/css/shop.mobile.css",
-        "QuestBoard.Service/wwwroot/css/shop-details.mobile.css",
-        "QuestBoard.Service/wwwroot/css/shop-management-index.mobile.css",
-        "QuestBoard.Service/wwwroot/css/shop-management-create.mobile.css",
-        "QuestBoard.Service/wwwroot/css/shop-management-edit.mobile.css",
         "QuestBoard.Service/wwwroot/css/legacy-pages.css",
         "QuestBoard.Service/wwwroot/css/shop-pages.css",
         "QuestBoard.Service/wwwroot/css/shop-pages.mobile.css",
@@ -134,6 +128,8 @@ public class ShopConversionGuardTests
     // Files this work retires; each is deleted and must stay deleted, because its content moved into the shared sheets.
     private static readonly string[] RetiredFiles =
     [
+        "QuestBoard.Service/wwwroot/css/shop.css",
+        "QuestBoard.Service/wwwroot/css/site.css",
         "QuestBoard.Service/wwwroot/css/shop.mobile.css",
         "QuestBoard.Service/wwwroot/css/shop-details.mobile.css",
         "QuestBoard.Service/wwwroot/css/shop-management-create.mobile.css",
@@ -166,7 +162,6 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/ViewModels/ShopViewModels/ShopItemDisplay.cs",
         "QuestBoard.Service/Views/Shared/_ShopRarityChip.cshtml",
         "QuestBoard.Service/wwwroot/css/shop-pages.css",
-        "QuestBoard.Service/wwwroot/css/shop.css",
         "QuestBoard.Service/wwwroot/css/legacy-pages.css",
         "QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs",
         "QuestBoard.Service/ViewModels/ShopViewModels/ShopItemViewModel.cs",
@@ -571,6 +566,24 @@ public class ShopConversionGuardTests
     }
 
     [Fact]
+    public void Layouts_LinkNoShopSheet()
+    {
+        foreach (var path in Layouts)
+            Regex.Matches(ReadRepoFile(path), @"~/css/(?<name>shop[\w.-]*\.css)").Select(m => m.Groups["name"].Value)
+                .Should().BeEmpty($"{path} links no shop sheet: each shop view links its own from its Styles section");
+    }
+
+    [Fact]
+    public void LayoutScanner_FlagsAShopSheetLinkInTheGlobalList()
+    {
+        Regex.Matches("<link href=\"~/css/shop.css\" /> <link href=\"~/css/legacy-pages.css\" />", @"~/css/(?<name>shop[\w.-]*\.css)")
+            .Should().ContainSingle();
+        Regex.Matches("<link href=\"~/css/shop-pages.mobile.css\" />", @"~/css/(?<name>shop[\w.-]*\.css)").Should().ContainSingle();
+        Regex.Matches("<link href=\"~/css/legacy-pages.css\" /> <link href=\"~/css/shell.css\" />", @"~/css/(?<name>shop[\w.-]*\.css)")
+            .Should().BeEmpty();
+    }
+
+    [Fact]
     public void ShopPostForms_EachCarryAnAntiforgeryToken()
     {
         foreach (var path in ShopViews)
@@ -744,11 +757,7 @@ public class ShopConversionGuardTests
     [Fact]
     public void ShopSheets_HoldNoRarityRuleOutsideTheChipSheet()
     {
-        foreach (var path in new[]
-                 {
-                     "QuestBoard.Service/wwwroot/css/shop.css",
-                     "QuestBoard.Service/wwwroot/css/legacy-pages.css",
-                 })
+        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/legacy-pages.css" })
         {
             var css = ReadRepoFile(path);
             RarityRuleSelectors(css).Should().BeEmpty($"{path} no longer styles a rarity: the chip sheet does");
@@ -850,7 +859,7 @@ public class ShopConversionGuardTests
     [Fact]
     public void OldSheets_HoldNoRuleForTheConvertedBrowseClassesAndNoCardSweepOrShimmer()
     {
-        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop.css", "QuestBoard.Service/wwwroot/css/legacy-pages.css" })
+        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/legacy-pages.css" })
         {
             var css = ReadRepoFile(path);
             RetiredBrowseRules(css).Should().BeEmpty($"{path} must hold no rule for the converted cards, tabs, filter card or pager");

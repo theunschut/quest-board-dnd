@@ -102,6 +102,34 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         BodyOpeningTag(html).Should().NotContain("data-theme");
     }
 
+    private static List<string> LinkedSheets(string html) =>
+        Regex.Matches(html, @"<link\b[^>]*\bhref=""(?<href>[^""?]*\.css)", RegexOptions.IgnoreCase)
+            .Select(m => Path.GetFileName(m.Groups["href"].Value)).ToList();
+
+    [Fact]
+    public async Task ShopIndex_Desktop_LinksTheShopPageSheetAndNoOldShopSheet()
+    {
+        var (client, _, _) = await SeedMemberAndItemAsync("shopr_sheets_shop");
+
+        var sheets = LinkedSheets(await GetAsync(client, "/Shop", DesktopUserAgent));
+
+        sheets.Should().Contain("shop-pages.css", "the shop page links its own sheet from its Styles section");
+        sheets.Should().NotContain("shop.css", "no global sheet is left for the shop");
+        sheets.Should().Contain("legacy-pages.css", "the shared wide-container rule still reaches the desktop pages");
+    }
+
+    [Fact]
+    public async Task NonShopDesktopPage_LinksNoShopSheet()
+    {
+        var (client, _, _) = await SeedMemberAndItemAsync("shopr_sheets_other");
+
+        var sheets = LinkedSheets(await GetAsync(client, "/Agenda", DesktopUserAgent));
+
+        sheets.Should().NotContain(name => name.StartsWith("shop", StringComparison.Ordinal),
+            "a page outside the shop loads no shop sheet");
+        sheets.Should().Contain("legacy-pages.css");
+    }
+
     [Theory]
     [InlineData("/Shop/Details/{0}")]
     [InlineData("/Shop/Details/{0}?isModal=true")]
