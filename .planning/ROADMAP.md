@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 18/21 plans executed
+**Plans:** 19/21 plans executed
 
 **Scope:**
 
@@ -2162,7 +2162,7 @@ Plans:
 
 **Wave 19** *(blocked on Wave 18 completion)*
 
-- [ ] 99-21-PLAN.md — Server quantity validation (Gate 1 item 20, "20:fix in phase 99"): Purchase, Return or Sell, and Sell to Shop refuse a requested quantity below 1 before any repository read or write; item stock convention (-1 unlimited, 0 sold out, >0 limited) untouched; unit and EF InMemory integration facts
+- [x] 99-21-PLAN.md — Server quantity validation (Gate 1 item 20, "20:fix in phase 99"): Purchase, Return or Sell, and Sell to Shop refuse a requested quantity below 1 before any repository read or write; item stock convention (-1 unlimited, 0 sold out, >0 limited) untouched; unit and EF InMemory integration facts
 
 **Wave 20** *(blocked on Wave 19 completion)*
 
