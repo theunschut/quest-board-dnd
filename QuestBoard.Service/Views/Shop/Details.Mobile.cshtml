@@ -1,64 +1,50 @@
 @using QuestBoard.Service.ViewModels.ShopViewModels
-@using QuestBoard.Domain.Enums
-@using QuestBoard.Service.Extensions
 @model ShopItemDetailsViewModel
 @{
+    ViewData["Title"] = Model.Name + " - Shop Details";
     ViewData["Theme"] = "shop";
+    var isModal = ViewBag.IsModal == true;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shop-pages.css" asp-append-version="true" />
-    <link href="~/css/shop-details.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/shop-pages.mobile.css" asp-append-version="true" />
 }
 
 @section Scripts {
     <script type="module" src="~/js/shop-item-sell.js" asp-append-version="true"></script>
 }
 
-<div class="shop-details-card-mobile mb-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0 parchment-text">@Model.Name</h5>
-        <span class="badge bg-primary">
-            <i class="fas fa-tag me-1"></i>@Model.Type
-        </span>
+@* The phone renders the same body as the desktop page and dialog; only the wrapper around it differs. *@
+@if (isModal)
+{
+    <div class="item-details-content">
+        <div class="item-details__head">
+            <h3>@Model.Name</h3>
+            <partial name="_ShopTypeChip" model="Model.Type" />
+        </div>
+
+        @await Html.PartialAsync("_ShopItemDetailsContent", Model)
     </div>
-
-    <partial name="_ShopRarityChip" model="Model.Rarity" />
-
-    <div class="parchment-text-muted mt-2">
-        @Html.Markdown(Model.Description)
-    </div>
-
-    <div class="mb-2">
-        <strong class="parchment-text"><i class="fas fa-coins me-1"></i>@Model.Price gp</strong>
-    </div>
-
-    @if (Model.Status == ItemStatus.Published && Model.Quantity != 0)
-    {
-        <form method="post" asp-controller="Shop" asp-action="Purchase" asp-route-id="@Model.Id">
-            @Html.AntiForgeryToken()
-            <div class="mb-3">
-                <label for="Quantity" class="form-label parchment-text">Quantity</label>
-                <input type="number" name="Quantity" id="Quantity" class="form-control" value="1" min="1" />
+}
+else
+{
+    <div class="item-details-content">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header item-details__title-row">
+                <h1 class="mb-0">@Model.Name</h1>
+                <partial name="_ShopTypeChip" model="Model.Type" />
             </div>
-            <button type="submit" class="btn btn-primary w-100">
-                <i class="fas fa-shopping-cart me-2"></i>Purchase Item
-            </button>
-        </form>
-    }
-    else if (Model.Quantity == 0)
-    {
-        <p class="text-muted fst-italic">Out of stock.</p>
-    }
-    else
-    {
-        <p class="text-muted fst-italic">This item is not currently available for purchase.</p>
-    }
-
-    <div class="mt-3">
-        <a href="/Shop" class="btn btn-secondary w-100">
-            <i class="fas fa-arrow-left me-2"></i>Back to Shop
-        </a>
+            <div class="card-body modern-card-body">
+                @await Html.PartialAsync("_ShopItemDetailsContent", Model)
+            </div>
+        </div>
     </div>
+}
+
+<div class="item-details__back">
+    <a href="/Shop" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Shop
+    </a>
 </div>

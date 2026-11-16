@@ -1,0 +1,24 @@
+/*
+ * Shop pages, phone layout: only what differs from the desktop sheet. The phone has three text sizes and finger-sized
+ * controls, and the item details stack in one column.
+ */
+@layer pages {
+  /* The tile and its glyph are a step smaller on the phone; both are still sized by a minimum and the glyph's font size. */
+  .mobile-layout .emblem {
+    min-block-size: 120px;
+    font-size: 48px;
+  }
+
+  .mobile-layout .item-details__back .btn {
+    inline-size: 100%;
+  }
+
+  .mobile-layout .item-details__center .form-control {
+    min-block-size: var(--qb-hit-min);
+  }
+
+  .mobile-layout .item-details__center .btn {
+    inline-size: 100%;
+    min-block-size: var(--qb-hit-min);
+  }
+}

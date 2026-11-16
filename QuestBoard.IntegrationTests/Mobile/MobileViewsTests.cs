@@ -1596,9 +1596,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Shop/Details/{id} renders shop-details-card-mobile glass card and
-    /// links shop-details.mobile.css. Authenticated as a regular player.
-    /// Starts RED — Shop/Details.Mobile.cshtml does not exist yet; goes GREEN when Plan 06 lands.
+    /// Mobile UA on /Shop/Details/{id} renders the phone layout around the shared details body, names the item and
+    /// links the shop page sheets, the phone one included. Authenticated as a regular player.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_ShopDetails_ReturnsSuccessAndMobileLayout()
@@ -1617,8 +1616,12 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("shop-details-card-mobile");
-        html.Should().Contain("shop-details.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("Detail Item Mobile19");
+        html.Should().Contain("item-details-content");
+        html.Should().Contain("shop-pages.css");
+        html.Should().Contain("shop-pages.mobile.css");
+        html.Should().NotContain("shop-details.mobile.css");
     }
 
     // -----------------------------------------------------------------------

@@ -292,7 +292,8 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
     [InlineData("/Shop/Details/{0}", false)]
     [InlineData("/Shop/Details/{0}", true)]
     [InlineData("/Shop/Details/{0}?isModal=true", false)]
-    public async Task ShopDetails_PageAndDialog_RenderOneChipForTheItemsRarity(string urlFormat, bool mobile)
+    [InlineData("/Shop/Details/{0}?isModal=true", true)]
+    public async Task ShopDetails_PageAndDialog_RenderTheItemsRarityChipBesideTheEmblemAndInTheProperties(string urlFormat, bool mobile)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         factory.TestGroupContext.ActiveGroupId = 1;
@@ -305,7 +306,8 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
         var html = await GetAsync(client, string.Format(urlFormat, item.Id), AgentFor(mobile));
 
-        RarityChips(html).Should().Equal([("legendary", "Legendary")], "the details show the rarity once, as the solid chip");
+        RarityChips(html).Should().Equal([("legendary", "Legendary"), ("legendary", "Legendary")],
+            "the details show the rarity as the solid chip under the emblem and again in the properties list");
         html.Should().NotContain("item-rarity");
     }
 
@@ -323,7 +325,7 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
         var html = await GetAsync(client, $"/Shop/Details/{item.Id}", DesktopUserAgent);
 
-        RarityChips(html).Should().Equal([("veryrare", "Very Rare")]);
+        RarityChips(html).Should().Equal([("veryrare", "Very Rare"), ("veryrare", "Very Rare")]);
     }
 
     [Theory]
@@ -460,5 +462,295 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         var html = await GetAsync(client, $"/ShopManagement/Edit/{item.Id}", AgentFor(mobile));
 
         HasStatusBadge(html, fill, icon, word).Should().BeTrue($"the status alert shows {word} through the shared badge");
+    }
+
+    // ---- Item details: one body for the page and the dialog, on both layouts -------------------------
+
+    // The recorded answer on whether a Denied or Archived item's details say it cannot be bought. Changing the answer
+    // means changing this constant and the partial together.
+    private static readonly bool DeniedArchivedNoticeShown = true;
+
+    private async Task UpdateItemAsync(int itemId, Action<ShopItemEntity> change)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var tracked = await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Id == itemId, TestContext.Current.CancellationToken);
+        change(tracked);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // The part of a full page that holds the details body, from its wrapper to the end of the main landmark.
+    private static string DetailsBodyOf(string html)
+    {
+        var start = html.IndexOf("class=\"item-details-content\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, "the page holds the details wrapper");
+        var end = html.IndexOf("</main>", start, StringComparison.Ordinal);
+        return html[start..(end < 0 ? html.Length : end)];
+    }
+
+    private static readonly Regex EmblemTile = new(
+        @"<div class=""emblem emblem--(?<key>[a-z]+)"">\s*<i class=""fas (?<icon>fa-[a-z-]+)"" aria-hidden=""true""></i>\s*</div>", RegexOptions.Compiled);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopDetailsPage_BothLayouts_HoldEverySectionTheDialogHolds(bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_sections_{(mobile ? "m" : "d")}", "Section Lantern");
+        await UpdateItemAsync(itemId, i =>
+        {
+            i.ReferenceUrl = "https://www.dndbeyond.com/magic-items/lantern";
+            i.Quantity = 5;
+        });
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        html.Should().Contain("data-sell-form", "Sell to Shop is on the phone page as well as the desktop page");
+        html.Should().Contain("Availability");
+        html.Should().Contain("Item Properties");
+        html.Should().Contain("Description");
+        html.Should().Contain("View on D&amp;D Beyond");
+        html.Should().MatchRegex(@"<input\b[^>]*\bid=""quantity""[^>]*\bmax=""5""", "the purchase quantity is capped by the stock");
+        html.Should().Contain("Max: 5 available");
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.css(?:\?[^""]*)?""").Should().BeTrue();
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.mobile\.css(?:\?[^""]*)?""").Should().Be(mobile,
+            "only the phone layout links the phone sheet");
+        html.Should().NotContain("shop-details", "the old phone sheet and its card are gone");
+        (html.Contains("mobile-layout", StringComparison.Ordinal)).Should().Be(mobile);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopDetailsPage_UnlimitedStock_SaysSoNextToTheQuantity(bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_unlimited_{(mobile ? "m" : "d")}");
+        await UpdateItemAsync(itemId, i => i.Quantity = -1);
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        html.Should().Contain("Unlimited stock available");
+        html.Should().Contain("Unlimited Stock");
+        html.Should().MatchRegex(@"<input\b[^>]*\bid=""quantity""[^>]*\bmax=""99""");
+    }
+
+    [Theory]
+    [InlineData(false, ItemStatus.Draft, "This item is currently under review by the Dungeon Masters and is not yet available for purchase.")]
+    [InlineData(true, ItemStatus.Draft, "This item is currently under review by the Dungeon Masters and is not yet available for purchase.")]
+    [InlineData(false, ItemStatus.Draft, "This item is currently under review and not available for purchase.")]
+    [InlineData(true, ItemStatus.Draft, "This item is currently under review and not available for purchase.")]
+    public async Task ShopDetailsPage_DraftItem_ShowsBothReviewSentencesOnBothLayouts(bool mobile, ItemStatus status, string sentence)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_draft_{(mobile ? "m" : "d")}_{sentence.Length}");
+        await SetStatusAsync(itemId, status);
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        html.Should().Contain(sentence);
+        html.Should().NotContain("data-sell-form", "a draft cannot be sold back");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopDetailsPage_SoldOutItem_SaysOutOfStockOnBothLayouts(bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_soldout_{(mobile ? "m" : "d")}");
+        await UpdateItemAsync(itemId, i => i.Quantity = 0);
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        html.Should().Contain("This item is currently out of stock.");
+        html.Should().Contain("Out of Stock");
+        html.Should().NotContain("Purchase Item");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ShopDetails_PageAndDialog_BothLayouts_ShowOneEmblemTileAndNoStyleAttribute(bool mobile, bool dialog)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_emblem_{(mobile ? "m" : "d")}_{(dialog ? "q" : "p")}");
+        await UpdateItemAsync(itemId, i =>
+        {
+            i.Rarity = (int)ItemRarity.Rare;
+            i.Type = (int)ItemType.MagicItem;
+        });
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}{(dialog ? "?isModal=true" : "")}", AgentFor(mobile));
+
+        var tiles = EmblemTile.Matches(html);
+        tiles.Should().ContainSingle("the details show one emblem tile");
+        tiles[0].Groups["key"].Value.Should().Be("rare");
+        tiles[0].Groups["icon"].Value.Should().Be("fa-magic");
+        html.Should().NotContain("item-image-placeholder", "the grey block is gone");
+        Regex.IsMatch(dialog ? html : DetailsBodyOf(html), @"\sstyle\s*=", RegexOptions.IgnoreCase).Should().BeFalse(
+            "the details body carries no style attribute");
+    }
+
+    [Theory]
+    [InlineData(ItemType.Equipment, "fa-hammer")]
+    [InlineData(ItemType.MagicItem, "fa-magic")]
+    [InlineData(ItemType.QuestItems, "fa-scroll")]
+    public async Task ShopDetails_EmblemGlyph_FollowsTheItemType(ItemType type, string icon)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_glyph_{type}");
+        await UpdateItemAsync(itemId, i => i.Type = (int)type);
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", DesktopUserAgent);
+
+        EmblemTile.Match(html).Groups["icon"].Value.Should().Be(icon);
+    }
+
+    [Fact]
+    public async Task ShopDetails_WindowedItem_RendersWallClockDatesUnderBothLayouts()
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync("shopr_window");
+        await UpdateItemAsync(itemId, i =>
+        {
+            i.AvailableFrom = new DateTime(2026, 11, 5, 0, 0, 0);
+            i.AvailableUntil = new DateTime(2026, 11, 19, 0, 0, 0);
+        });
+
+        foreach (var mobile in new[] { false, true })
+        {
+            var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+            Regex.IsMatch(html, @"Available from\s*<time class=""wall-clock""[^>]*>Nov 5</time>\s*to\s*<time class=""wall-clock""[^>]*>Nov 19, 2026</time>")
+                .Should().BeTrue("the window reads Nov 5, not Nov 05, and each date is a wall-clock element");
+        }
+    }
+
+    [Theory]
+    [InlineData(true, false, "Available starting")]
+    [InlineData(false, true, "Available until")]
+    public async Task ShopDetails_HalfOpenWindow_RendersTheMatchingLine(bool hasFrom, bool hasUntil, string wording)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_half_{wording.Length}");
+        await UpdateItemAsync(itemId, i =>
+        {
+            i.AvailableFrom = hasFrom ? new DateTime(2026, 12, 1) : null;
+            i.AvailableUntil = hasUntil ? new DateTime(2020, 1, 2) : null;
+        });
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", MobileUserAgent);
+
+        html.Should().MatchRegex(wording + @"\s*<time class=""wall-clock""");
+        html.Should().NotContain("Available from");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopDetails_ItemWithNoDescriptionLinkOrWindow_RendersWithoutThoseParts(bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_bare_{(mobile ? "m" : "d")}");
+        await UpdateItemAsync(itemId, i =>
+        {
+            i.Description = " ";
+            i.ReferenceUrl = null;
+        });
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        html.Should().NotContain("D&amp;D Beyond");
+        html.Should().NotContain("Available from").And.NotContain("Available starting").And.NotContain("Available until");
+        html.Should().Contain("Item Properties");
+    }
+
+    [Theory]
+    [InlineData(false, ItemStatus.Draft)]
+    [InlineData(true, ItemStatus.Draft)]
+    [InlineData(false, ItemStatus.Denied)]
+    [InlineData(true, ItemStatus.Denied)]
+    [InlineData(false, ItemStatus.Archived)]
+    [InlineData(true, ItemStatus.Archived)]
+    public async Task ShopDetails_EditingDungeonMaster_GetsAnOkPageForEveryStatus(bool mobile, ItemStatus status)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            factory, $"shopr_dmview_{(mobile ? "m" : "d")}_{status}", $"shopr_dmview_{(mobile ? "m" : "d")}_{status}@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(factory.Services, dm.Id, "Reviewed Item", 10m, 1, ItemRarity.Rare);
+        await SetStatusAsync(item.Id, status);
+
+        foreach (var url in new[] { $"/Shop/Details/{item.Id}", $"/Shop/Details/{item.Id}?isModal=true" })
+        {
+            var response = await SendAsync(client, HttpMethod.Get, url, AgentFor(mobile));
+            response.StatusCode.Should().Be(HttpStatusCode.OK, $"the Edit page's View Details link for a {status} item must not dead-end");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, ItemStatus.Denied)]
+    [InlineData(true, ItemStatus.Denied)]
+    [InlineData(false, ItemStatus.Archived)]
+    [InlineData(true, ItemStatus.Archived)]
+    [InlineData(false, ItemStatus.Published)]
+    public async Task ShopDetails_NotAvailableNotice_FollowsTheRecordedAnswer(bool mobile, ItemStatus status)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_notice_{(mobile ? "m" : "d")}_{status}");
+        await SetStatusAsync(itemId, status);
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        const string sentence = "This item is not currently available for purchase.";
+        if (status == ItemStatus.Published)
+            html.Should().NotContain(sentence);
+        else if (DeniedArchivedNoticeShown)
+            html.Should().Contain(sentence);
+        else
+            html.Should().NotContain(sentence);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopDetails_HeadingLevels_PageIsH1WithH2SectionsAndDialogIsH3(bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_levels_{(mobile ? "m" : "d")}", "Level Lantern");
+
+        var page = DetailsBodyOf(await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile)));
+        var dialog = await GetAsync(client, $"/Shop/Details/{itemId}?isModal=true", AgentFor(mobile));
+
+        Regex.IsMatch(page, @"<h1\b[^>]*>Level Lantern</h1>").Should().BeTrue("the page's item name is the h1");
+        foreach (var title in new[] { "Availability", "Item Properties", "Description", "Sell to Shop" })
+            Regex.IsMatch(page, @"<h2\b[^>]*>\s*<i\b[^>]*></i>" + title + @"</h2>").Should().BeTrue($"{title} is an h2 on the page");
+        Regex.IsMatch(page, @"<h[3-6]\b").Should().BeFalse("no page title sits at h3 to h6");
+
+        Regex.IsMatch(dialog, @"<h3\b[^>]*>Level Lantern</h3>").Should().BeTrue("the dialog's item name is an h3 under its h2");
+        foreach (var title in new[] { "Availability", "Item Properties", "Description", "Sell to Shop" })
+            Regex.IsMatch(dialog, @"<h3\b[^>]*>\s*<i\b[^>]*></i>" + title + @"</h3>").Should().BeTrue($"{title} is an h3 in the dialog");
+        Regex.IsMatch(dialog, @"<h[1256]\b").Should().BeFalse("the dialog holds no h1, h2, h5 or h6");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopDetails_ButtonsAndLink_CarryTheirRoles(bool mobile)
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_roles_{(mobile ? "m" : "d")}");
+        await UpdateItemAsync(itemId, i => i.ReferenceUrl = "https://www.dndbeyond.com/magic-items/lantern");
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
+
+        Regex.IsMatch(html, @"<a\b[^>]*\bhref=""https://www\.dndbeyond\.com/magic-items/lantern""[^>]*\btarget=""_blank""[^>]*\brel=""noopener noreferrer""[^>]*\bclass=""btn btn-info""")
+            .Should().BeTrue("the reference link is a filled info button that opens a new tab without handing over the opener");
+        Regex.IsMatch(html, @"<button\b[^>]*\bclass=""btn btn-primary""[^>]*>\s*<i\b[^>]*></i>Purchase Item").Should().BeTrue();
+        Regex.IsMatch(html, @"<button\b[^>]*\bclass=""btn btn-warning""[^>]*>\s*<i\b[^>]*></i>Sell to Shop").Should().BeTrue();
+        Regex.IsMatch(html, @"<a\b[^>]*\bclass=""btn btn-secondary""[^>]*>\s*<i\b[^>]*></i>Back to Shop").Should().BeTrue();
+        html.Should().NotContain("btn-outline");
+    }
+
+    [Fact]
+    public async Task ShopDetails_PhoneDialog_KeepsItsBackToShopLink()
+    {
+        var (client, _, itemId) = await SeedMemberAndItemAsync("shopr_phoneback");
+
+        var html = await GetAsync(client, $"/Shop/Details/{itemId}?isModal=true", MobileUserAgent);
+
+        html.Should().Contain("Back to Shop", "the phone dialog keeps the link it has always had");
     }
 }

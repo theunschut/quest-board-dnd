@@ -2,8 +2,9 @@
  * Shop pages: the sheet for everything on the shop pages that has moved onto the shared look. It holds one pages
  * layer block and nothing but design tokens, so changing a colour is a change to the token file.
  *
- * Today it holds the rarity chip: a solid badge that always carries the rarity word and a gem icon, so the fill is
- * the second cue and never the only one. Each fill is paired with the label token that holds 4.5:1 on it.
+ * It holds the rarity chip, a solid badge that always carries the rarity word and a gem icon, so the fill is the
+ * second cue and never the only one (each fill is paired with the label token that holds 4.5:1 on it), and the item
+ * details: the emblem tile, the sections and the purchase and sell forms, which the dialog and the page share.
  */
 @layer pages {
   .badge-rarity {
@@ -40,5 +41,152 @@
     background-color: var(--qb-warning);
     color: var(--qb-warning-fg);
     box-shadow: 0 0 var(--qb-space-sm) color-mix(in srgb, var(--qb-warning) 55%, transparent);
+  }
+
+  /* ---------- Item details: the dialog, Shop/Details and the shared partial ---------- */
+
+  /* The emblem tile is a block that grows with what it holds: a minimum block size, flex centring, a glyph smaller than
+     the tile. It never crops, clips or fixes its own height, so a larger text size or a tall glyph makes it taller. */
+  .emblem {
+    --emblem-border: var(--qb-neutral);
+    --emblem-glyph: var(--qb-neutral-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 100%;
+    min-block-size: 144px;
+    border: 2px solid var(--emblem-border);
+    border-radius: var(--qb-radius-lg);
+    background: var(--qb-surface-scrim);
+    color: var(--emblem-glyph);
+    font-size: 64px;
+  }
+
+  .emblem--common {
+    --emblem-border: var(--qb-neutral);
+    --emblem-glyph: var(--qb-neutral-text);
+  }
+
+  .emblem--uncommon {
+    --emblem-border: var(--qb-success);
+    --emblem-glyph: var(--qb-success-text);
+  }
+
+  .emblem--rare {
+    --emblem-border: var(--qb-info);
+    --emblem-glyph: var(--qb-info-text);
+  }
+
+  .emblem--veryrare {
+    --emblem-border: var(--qb-event);
+    --emblem-glyph: var(--qb-event-text);
+  }
+
+  .emblem--legendary {
+    --emblem-border: var(--qb-warning);
+    --emblem-glyph: var(--qb-warning-text);
+  }
+
+  /* A picture in a description keeps its own proportions and never passes the card or the dialog that holds it. */
+  .item-details-content .markdown-content img {
+    max-inline-size: 100%;
+    block-size: auto;
+  }
+
+  .item-details__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-md);
+  }
+
+  .item-details__head > :first-child {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .item-details__aside {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    margin-block-start: var(--qb-space-md);
+  }
+
+  .item-details__price {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .item-details__price .fas {
+    margin-inline-end: var(--qb-space-xs);
+    color: var(--qb-accent);
+  }
+
+  .item-details__muted {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  .item-props {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--qb-space-xs) var(--qb-space-lg);
+    margin: 0;
+  }
+
+  .item-props dt {
+    color: var(--qb-fg-muted);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  .item-props dd {
+    margin: 0;
+  }
+
+  .item-details__center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    text-align: center;
+  }
+
+  .item-details__center .form-control {
+    inline-size: min(100%, 12rem);
+    text-align: center;
+  }
+
+  .item-details__sell-title {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .item-details__sell-line strong {
+    color: var(--qb-fg);
+  }
+
+  .item-details__back {
+    margin-block-start: var(--qb-space-lg);
+  }
+
+  .item-details__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
+
+  .item-details__title-row > h1 {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
   }
 }
