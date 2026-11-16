@@ -379,62 +379,6 @@
 }
 
 /* ========================================
-   DENY MODAL STYLES
-   ======================================== */
-
-#denyModal .modal-body p {
-    color: #ffffff !important;
-}
-
-#denyModal .modal-body p strong {
-    color: #ffffff !important;
-}
-
-#denyModal .alert-warning {
-    background-color: transparent !important;
-    border-color: #ffc107 !important;
-    color: #ffffff !important;
-}
-
-#denyModal .alert-warning i {
-    color: #ffc107 !important;
-}
-
-#denyModal .form-label {
-    color: #ffffff !important;
-}
-
-#denyModal .form-label i {
-    color: #ffffff !important;
-}
-
-#denyModal .form-label .text-danger {
-    color: #dc3545 !important;
-}
-
-#denyModal .form-text {
-    color: #ffffff !important;
-    opacity: 0.7;
-}
-
-#denyModal .form-control {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border-color: #444 !important;
-    color: #ffffff !important;
-}
-
-#denyModal .form-control::placeholder {
-    color: rgba(255, 255, 255, 0.4) !important;
-}
-
-#denyModal .form-control:focus {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    border-color: #ffc107 !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
-}
-
-/* ========================================
    ADD CHARACTER MODAL STYLES
    ======================================== */
 

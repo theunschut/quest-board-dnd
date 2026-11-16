@@ -21,4 +21,15 @@
     inline-size: 100%;
     min-block-size: var(--qb-hit-min);
   }
+
+  /* The management header actions are full width and every row action is finger-sized. */
+  .mobile-layout .mgmt-bar .btn {
+    flex: 1 1 100%;
+    min-block-size: var(--qb-hit-min);
+  }
+
+  .mobile-layout .mgmt-row-actions .btn {
+    min-inline-size: var(--qb-hit-min);
+    min-block-size: var(--qb-hit-min);
+  }
 }

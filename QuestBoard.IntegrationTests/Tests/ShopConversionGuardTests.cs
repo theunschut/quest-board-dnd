@@ -62,6 +62,8 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/ShopManagement/Edit.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Edit.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopItemDetailsContent.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopManagementDialogs.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopManagementStockBadge.cshtml",
     ];
 
     // Every stylesheet that can reach a shop page. A sheet that is not on disk yet is skipped, never removed from the
@@ -99,6 +101,10 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/ShopManagement/Create.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Create.Mobile.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Index.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Index.Mobile.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopManagementDialogs.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopManagementStockBadge.cshtml",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name. The details partial links nothing:
@@ -109,6 +115,8 @@ public class ShopConversionGuardTests
         ["QuestBoard.Service/Views/Shop/Details.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css", "markdown-content.css"],
         ["QuestBoard.Service/Views/Shop/Index.cshtml"] = ["shop-pages.css", "markdown-content.css"],
         ["QuestBoard.Service/Views/Shop/Index.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css", "markdown-content.css"],
+        ["QuestBoard.Service/Views/ShopManagement/Index.cshtml"] = ["shop-pages.css"],
+        ["QuestBoard.Service/Views/ShopManagement/Index.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css"],
         ["QuestBoard.Service/Views/ShopManagement/Edit.cshtml"] = ["shop-pages.css", "shop-form.css"],
         ["QuestBoard.Service/Views/ShopManagement/Create.cshtml"] = ["shop-pages.css", "shop-form.css"],
         ["QuestBoard.Service/Views/ShopManagement/Create.Mobile.cshtml"] = ["shop-pages.css", "shop-form.css", "shop-pages.mobile.css"],
@@ -121,6 +129,7 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/css/shop-details.mobile.css",
         "QuestBoard.Service/wwwroot/css/shop-management-create.mobile.css",
         "QuestBoard.Service/wwwroot/css/shop-management-edit.mobile.css",
+        "QuestBoard.Service/wwwroot/css/shop-management-index.mobile.css",
     ];
 
     private static readonly (string Label, Regex Pattern)[] InlineCodePatterns =
@@ -168,6 +177,8 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-item-form.js",
         "QuestBoard.Service/wwwroot/js/shop-item-preview.js",
         "QuestBoard.Service/wwwroot/js/shop-management.js",
+        "QuestBoard.Service/Views/Shared/_ShopManagementDialogs.cshtml",
+        "QuestBoard.Service/Views/Shared/_ShopManagementStockBadge.cshtml",
         "QuestBoard.Service/Views/Shared/_MarkdownEditor.cshtml",
     ];
 

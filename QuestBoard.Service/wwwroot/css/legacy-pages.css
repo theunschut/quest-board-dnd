@@ -434,16 +434,6 @@
     margin-left: 0.5rem;
 }
 
-/* Consistent sizing for action buttons in tables */
-.btn-sm.btn-action {
-    width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-}
-
 /* Merchant toast styling */
 .merchant-toast {
     max-width: 350px;

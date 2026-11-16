@@ -561,6 +561,173 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         html.Should().Contain("Note: Bulk actions will be available in a future update.");
     }
 
+    // The recorded answers on the management list: whether the phone heading is shown, which button role the empty
+    // state's action takes, and whether the Deny dialog's dismiss button is renamed. Changing an answer means changing
+    // the constant and the markup together.
+    private static readonly bool ManagementPhoneHeadingVisible = false;
+    private static readonly string ManagementEmptyActionRole = "btn-secondary";
+    private static readonly bool DenyDismissRenamed = false;
+
+    private static IEnumerable<string> ControlsLabelled(string html, string label) =>
+        Regex.Matches(html, @"<(?:a|button)\b[^>]*\baria-label=""" + Regex.Escape(label) + @"""[^>]*>").Select(m => m.Value);
+
+    [Fact]
+    public async Task ShopManagementList_Desktop_ShowsThreeAsideSectionsWithScrollingTablesAndNoRowTints()
+    {
+        var client = await SeedManagementBoardAsync("shopr_sections");
+
+        var html = await GetAsync(client, "/ShopManagement", DesktopUserAgent);
+
+        var sections = Regex.Matches(html, @"<section class=""card modern-card modern-card--aside mgmt-section""[^>]*>").Count;
+        sections.Should().Be(3, "the review, own and other items each sit in an aside card");
+        foreach (var title in new[] { "Items Awaiting Review", "My Items", "All Other Published Items" })
+            Regex.IsMatch(html, @"<h2\b[^>]*>\s*<i\b[^>]*></i>" + Regex.Escape(title) + "</h2>").Should().BeTrue($"{title} is an h2 card title");
+        Regex.Matches(html, @"<div class=""table-responsive"">\s*<table class=""table ").Count.Should().Be(3, "each table scrolls inside its card");
+        html.Should().Contain("(1 items need DM votes)").And.Contain("(4 items)").And.Contain("(1 items from other DMs)");
+        html.Should().NotMatchRegex(@"table-(warning|danger)", "the badge's word and icon carry the status, not a row tint");
+        html.Should().NotContain("btn-action").And.NotContain("btn-outline");
+    }
+
+    [Fact]
+    public async Task ShopManagementList_Desktop_HeaderActionsTakeTheirRoles()
+    {
+        var client = await SeedManagementBoardAsync("shopr_header");
+
+        var html = await GetAsync(client, "/ShopManagement", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<a href=""/ShopManagement/Create"" class=""btn btn-primary"">\s*<i\b[^>]*></i>Add New Item").Should().BeTrue("Add New Item is the page's one primary");
+        Regex.IsMatch(html, @"<a href=""/Shop"" class=""btn btn-secondary"">\s*<i\b[^>]*></i>View Shop").Should().BeTrue();
+        Regex.IsMatch(html, @"<button type=""button"" class=""btn btn-secondary""[^>]*data-bs-target=""#bulkActionsModal""[^>]*>\s*<i\b[^>]*></i>Bulk Actions").Should().BeTrue();
+        var main = html[html.IndexOf("<main", StringComparison.Ordinal)..];
+        Regex.Matches(main, @"class=""[^""]*\bbtn-primary\b").Count.Should().Be(1, "no other control on the page is primary");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_RowActionsAreNamedAndFilledByRole(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_roles_{(mobile ? "m" : "d")}", admin: true);
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var roles = new (string Label, string Role)[]
+        {
+            ("View item", "btn-info"), ("Edit item", "btn-warning"), ("Publish item", "btn-success"), ("Reopen item", "btn-success"),
+            ("Archive item", "btn-secondary"), ("Deny item", "btn-danger"), ("Delete item", "btn-danger"),
+        };
+        foreach (var (label, role) in roles)
+        {
+            var controls = ControlsLabelled(html, label).ToList();
+            controls.Should().NotBeEmpty($"the list offers {label}");
+            controls.Should().OnlyContain(c => c.Contains(role), $"{label} is a {role} button");
+            controls.Should().OnlyContain(c => c.Contains("title=\""), "an icon-only control keeps its title");
+        }
+        if (!mobile)
+            ControlsLabelled(html, "Edit &amp; Resubmit item").Should().NotBeEmpty("a denied item offers Edit & Resubmit as today")
+                .And.OnlyContain(c => c.Contains("btn-warning"));
+        html.Should().NotMatchRegex(@"class=""btn btn-(?:primary|outline)[^""]*""[^>]*aria-label=""Edit item""");
+    }
+
+    [Fact]
+    public async Task ShopManagementList_Desktop_DeniedRowShowsTheReasonAndALocalTimeDate()
+    {
+        var client = await SeedManagementBoardAsync("shopr_denial");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var denied = await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Name == "Own Denied", TestContext.Current.CancellationToken);
+            denied.DenialReason = "The damage is far above the price band.";
+            denied.DeniedAt = new DateTime(2026, 11, 12, 10, 15, 0, DateTimeKind.Utc);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var html = await GetAsync(client, "/ShopManagement", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<div class=""mgmt-denial"">[\s\S]*?<strong>Denial Reason:</strong> The damage is far above the price band\.[\s\S]*?Denied on <time class=""local-time""")
+            .Should().BeTrue("the reason keeps its words and the date goes through the local-time helper");
+    }
+
+    [Fact]
+    public async Task ShopManagementList_Phone_ShowsSlipsWithH2NamesChipsAndBadgesAndAHiddenHeading()
+    {
+        var client = await SeedManagementBoardAsync("shopr_slips");
+
+        var html = await GetAsync(client, "/ShopManagement", MobileUserAgent);
+
+        var heading = Regex.Match(html, @"<h1 class=""([^""]*)"">Shop Management Dashboard</h1>");
+        heading.Success.Should().BeTrue("the phone page has an h1");
+        heading.Groups[1].Value.Contains("visually-hidden").Should().Be(!ManagementPhoneHeadingVisible);
+        Regex.Matches(html, @"<li class=""mgmt-slip"">").Count.Should().Be(6, "one merged list: four own items, one to review, one other");
+        Regex.Matches(html, @"<h2 class=""mgmt-slip__name"">").Count.Should().Be(6);
+        html.Should().Contain("Own Published").And.Contain("Review Me");
+        RarityChips(html).Should().NotBeEmpty();
+        HasStatusBadge(html, "bg-success", "fa-check-circle", "Available").Should().BeTrue();
+        html.Should().NotContain("data-bs-target=\"#bulkActionsModal\"").And.NotContain("table-responsive");
+        Regex.IsMatch(html, @"<a href=""/ShopManagement/Create"" class=""btn btn-primary"">").Should().BeTrue();
+        Regex.IsMatch(html, @"<a href=""/Shop"" class=""btn btn-secondary"">").Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_ABoardWithNoItemsShowsOneEmptyStateWithTheAnsweredButton(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            factory, $"shopr_empty_{(mobile ? "m" : "d")}", $"shopr_empty_{(mobile ? "m" : "d")}@example.com");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        html.Should().Contain("No Items Yet").And.Contain("You haven't created any shop items yet. Start by adding your first item!");
+        Regex.IsMatch(html, @"class=""btn " + ManagementEmptyActionRole + @"""[^>]*>\s*<i\b[^>]*></i>Create First Item").Should().BeTrue();
+        html.Should().NotContain("Items Awaiting Review", "the review section is absent when nothing needs review");
+        if (!mobile)
+            html.Should().Contain("No Other Items");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_DenyDialogIsTheOpaqueFoundationModalWithItsWordsAndMarker(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_dlg_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var start = html.IndexOf("id=\"denyModal\"", StringComparison.Ordinal);
+        var dialog = html[start..html.IndexOf("</form>", start, StringComparison.Ordinal)];
+        dialog.Should().NotContain("bg-dark").And.NotContain("btn-close-white").And.NotContain("style=");
+        dialog.Should().MatchRegex(@"<h2 class=""modal-title""[^>]*>\s*<i\b[^>]*></i>Deny Item\s*</h2>");
+        dialog.Should().Contain("You are about to deny: <strong data-deny-item-name></strong>");
+        dialog.Should().Contain("<div class=\"alert alert-warning\">").And.Contain("This item will be marked as denied and the creator will see your reason.");
+        dialog.Should().MatchRegex(@"Reason for Denial <span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span>");
+        dialog.Should().MatchRegex(@"<textarea\b[^>]*name=""denialReason""[^>]*\brequired\b");
+        dialog.Should().Contain(DenyDismissRenamed ? ">Keep Item Pending</button>" : ">Cancel</button>");
+        dialog.Should().NotContain(DenyDismissRenamed ? ">Cancel</button>" : "Keep Item Pending");
+        dialog.Should().MatchRegex(@"<button type=""submit"" class=""btn btn-danger"">\s*<i\b[^>]*></i>Deny Item");
+        dialog.Should().Contain("aria-label=\"Close\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_BothLayouts_CarryTheThemeLinkTheirSheetsAndHoldNoInlineStyle(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_mgsheets_{(mobile ? "m" : "d")}");
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        HtmlOpeningTag(html).Should().Contain("data-theme=\"shop\"");
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.css(?:\?[^""]*)?""").Should().BeTrue();
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.mobile\.css(?:\?[^""]*)?""").Should().Be(mobile);
+        html.Should().NotContain("shop-management-index.mobile.css");
+        var main = html[html.IndexOf("<main", StringComparison.Ordinal)..];
+        main.Should().NotMatchRegex(@"\sstyle\s*=", "no style attribute is written into the list");
+        main.Should().NotContain("<style");
+    }
+
     // ---- Item details: one body for the page and the dialog, on both layouts -------------------------
 
     // The recorded answer on whether a Denied or Archived item's details say it cannot be bought. Changing the answer

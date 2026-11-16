@@ -1516,9 +1516,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /ShopManagement renders shop-mgmt-index-card-mobile glass card and
-    /// links shop-management-index.mobile.css. Requires DungeonMaster role authentication.
-    /// Starts RED — ShopManagement/Index.Mobile.cshtml does not exist yet; goes GREEN when Plan 05 lands.
+    /// Mobile UA on /ShopManagement renders the phone layout with the merged list of item slips and links the shop page
+    /// sheet and the phone shop sheet; the old per-page phone sheet is gone. Requires DungeonMaster role authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_ShopManagementIndex_ReturnsSuccessAndMobileLayout()
@@ -1533,8 +1532,11 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("shop-mgmt-index-card-mobile");
-        html.Should().Contain("shop-management-index.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().Contain("mgmt-bar", "the header actions are on the page whatever the list holds");
+        (html.Contains("mgmt-list") || html.Contains("empty-state")).Should().BeTrue("the page shows the merged list or the empty state");
+        html.Should().Contain("shop-pages.css").And.Contain("shop-pages.mobile.css");
+        html.Should().NotContain("shop-management-index.mobile.css");
     }
 
     // -----------------------------------------------------------------------

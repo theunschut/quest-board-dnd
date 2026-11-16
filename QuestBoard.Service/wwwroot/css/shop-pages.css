@@ -275,4 +275,130 @@
     position: relative;
     z-index: 1;
   }
+
+  /* ---------- Shop management: the lists, the rows and the phone slips ---------- */
+
+  .mgmt-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .mgmt-section {
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .mgmt-section .modern-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--qb-space-xs) var(--qb-space-sm);
+  }
+
+  .mgmt-section .modern-card-header h2 {
+    margin: 0;
+  }
+
+  .mgmt-section .header-subtitle {
+    margin-top: 0;
+  }
+
+  .mgmt-section .modern-card-body {
+    padding: var(--qb-space-md);
+  }
+
+  /* The sentence under an empty section's heading is in the card's own colour, which holds 4.5:1 on the card. */
+  .mgmt-section .empty-state-text {
+    color: var(--qb-fg);
+  }
+
+  /* Long names and reasons wrap inside their cells; the table scrolls inside its card and never widens the page. */
+  .mgmt-name {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-teaser {
+    display: block;
+    color: var(--qb-ink-muted);
+    font-size: var(--qb-text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-denial {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--qb-space-sm);
+    margin-block-start: var(--qb-space-sm);
+    padding: var(--qb-space-xs) var(--qb-space-sm);
+    border-inline-start: 4px solid var(--qb-danger);
+    background: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-sm);
+  }
+
+  .mgmt-denial > div {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-denial .fas {
+    flex: none;
+    margin-block-start: var(--qb-space-xs);
+  }
+
+  .mgmt-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-xs);
+  }
+
+  .mgmt-row-actions form {
+    display: inline-flex;
+  }
+
+  .mgmt-note {
+    font-size: var(--qb-text-sm);
+  }
+
+  .mgmt-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mgmt-slip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    min-inline-size: 0;
+    padding: var(--qb-space-sm);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+  }
+
+  .mgmt-slip__name {
+    margin: 0;
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-slip__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .mgmt-slip .mgmt-denial {
+    color: var(--qb-fg);
+    background: var(--qb-surface-scrim);
+  }
 }
