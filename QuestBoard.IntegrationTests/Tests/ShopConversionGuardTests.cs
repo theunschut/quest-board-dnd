@@ -92,11 +92,13 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-management.js",
         "QuestBoard.Service/wwwroot/js/shop-item-modal.js",
         "QuestBoard.Service/wwwroot/js/shop-history.js",
+        "QuestBoard.Service/wwwroot/js/shop-merchant.js",
     ];
 
     // Views and partials that carry no inline code, repository-relative. Grows as each view is converted.
     private static readonly string[] ConvertedViews =
     [
+        "QuestBoard.Service/Views/Shop/Index.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopPurchaseHistory.cshtml",
         "QuestBoard.Service/Views/Shop/Details.cshtml",
         "QuestBoard.Service/Views/Shop/Details.Mobile.cshtml",
@@ -183,6 +185,7 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/wwwroot/js/shop-management.js",
         "QuestBoard.Service/wwwroot/js/shop-item-modal.js",
         "QuestBoard.Service/wwwroot/js/shop-history.js",
+        "QuestBoard.Service/wwwroot/js/shop-merchant.js",
         "QuestBoard.Service/Views/Shared/_ShopManagementDialogs.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopManagementStockBadge.cshtml",
         "QuestBoard.Service/Views/Shared/_MarkdownEditor.cshtml",
@@ -354,7 +357,8 @@ public class ShopConversionGuardTests
                      && r.Body.Contains("--qb-accent", StringComparison.Ordinal)))
             breaks.Add($"{rule.Selector} uses the gold accent");
 
-        if (Regex.IsMatch(withoutComments, @"@keyframes|(?<![\w-])animation\s*:"))
+        if (rules.Any(r => r.Selector.Contains(".badge-rarity", StringComparison.Ordinal)
+                           && Regex.IsMatch(r.Body, @"(?<![\w-])animation(?:-[a-z-]+)?\s*:")))
             breaks.Add("a chip animates");
 
         return breaks;
@@ -376,6 +380,67 @@ public class ShopConversionGuardTests
         return Regex.Matches(withoutComments,
                 @"(?<![\w-])animation(?:-iteration-count)?\s*:[^;}]*\binfinite\b|(?<![\w-])transition(?:-property)?\s*:\s*all\b")
             .Select(m => m.Value.Trim()).ToList();
+    }
+
+    // The text between the braces of every block whose header matches, found by counting braces so a block nested in a
+    // layer or another block is still found.
+    private static List<string> BlockBodies(string css, string headerPattern)
+    {
+        var bodies = new List<string>();
+        foreach (Match header in Regex.Matches(css, headerPattern))
+        {
+            var open = css.IndexOf('{', header.Index + header.Length - 1);
+            if (open < 0)
+                continue;
+
+            var depth = 0;
+            for (var i = open; i < css.Length; i++)
+            {
+                if (css[i] == '{')
+                    depth++;
+                else if (css[i] == '}' && --depth == 0)
+                {
+                    bodies.Add(css[(open + 1)..i]);
+                    break;
+                }
+            }
+        }
+
+        return bodies;
+    }
+
+    // What is wrong with the motion in the new shop sheets taken together: at most one set of keyframes, that set moves
+    // nothing but transform, and every animation declaration sits inside the no-preference query with a finite count.
+    private static List<string> ShopMotionBreaks(IEnumerable<string> sheets)
+    {
+        var breaks = new List<string>();
+        var keyframes = 0;
+        foreach (var sheet in sheets)
+        {
+            var css = Regex.Replace(sheet, @"/\*[\s\S]*?\*/", " ");
+            keyframes += Regex.Matches(css, @"@keyframes\b").Count;
+
+            foreach (var body in BlockBodies(css, @"@keyframes\s+[\w-]+\s*\{"))
+                foreach (Match prop in Regex.Matches(body, @"(?<![\w-])([a-z-]+)\s*:"))
+                    if (prop.Groups[1].Value != "transform")
+                        breaks.Add($"the keyframes move {prop.Groups[1].Value}, not only transform");
+
+            var quiet = BlockBodies(css, @"@media\s*\(\s*prefers-reduced-motion\s*:\s*no-preference\s*\)\s*\{");
+            var outside = css;
+            foreach (var block in quiet)
+                outside = outside.Replace(block, " ");
+            if (Regex.IsMatch(outside, @"(?<![\w-])animation(?:-name|-iteration-count)?\s*:"))
+                breaks.Add("an animation is declared outside the no-preference query");
+
+            foreach (Match declaration in Regex.Matches(string.Join(' ', quiet), @"(?<![\w-])animation\s*:\s*(?<value>[^;}]*)"))
+                if (!Regex.IsMatch(declaration.Groups["value"].Value, @"(?<![\w.-])\d+\s*$") || declaration.Groups["value"].Value.Contains("infinite"))
+                    breaks.Add($"an animation has no finite iteration count: {declaration.Groups["value"].Value.Trim()}");
+        }
+
+        if (keyframes > 1)
+            breaks.Add($"{keyframes} @keyframes found, at most one is allowed");
+
+        return breaks;
     }
 
     // The shapes a shop view must not hold because the status words, fills and icons come from one mapping: a
@@ -456,6 +521,9 @@ public class ShopConversionGuardTests
         "item-name", "item-description", "item-footer", "item-price", "item-stock", "purchase-btn", "empty-shop",
         "shop-filter-row", "filter-rarity-group", "filter-sort-group", "filter-sort-select", "shop-pagination",
         "shop-pagination-count", "shop-page-link",
+        // The fixed history panel, its rows and its hover-only buttons, and the old merchant and its toast.
+        "purchase-history-panel", "purchase-item", "purchase-name", "purchase-details", "purchase-details-text",
+        "return-sell-buttons", "shop-merchant", "merchant-toast",
     ];
 
     // The selector parts in a stylesheet that name a retired class, and any .shop-container rule: the old wrapper and the
@@ -467,7 +535,8 @@ public class ShopConversionGuardTests
         return Regex.Matches(withoutComments, @"(?<selectors>[^{}]+)\{")
             .SelectMany(rule => rule.Groups["selectors"].Value.Split(','))
             .Select(part => part.Trim())
-            .Where(part => named.IsMatch(part) || part == ".shop-container" || part.StartsWith(".shop-container.", StringComparison.Ordinal))
+            .Where(part => named.IsMatch(part) || part == ".shop-container" || part.StartsWith(".shop-container.", StringComparison.Ordinal)
+                           || part.Contains("#addCharacterModal", StringComparison.Ordinal))
             .ToList();
     }
 
@@ -663,7 +732,9 @@ public class ShopConversionGuardTests
         LegendaryChipBreaks(good.Replace("--qb-warning-fg", "--qb-info-fg"), "amber").Should().ContainSingle(b => b.Contains("label"));
         LegendaryChipBreaks(good + " .badge-rarity.rarity-rare { border-color: var(--qb-accent); }", "amber")
             .Should().ContainSingle(b => b.Contains("gold accent"));
-        LegendaryChipBreaks(good + " @keyframes pulse { from { opacity: 1; } }", "amber").Should().ContainSingle(b => b.Contains("animates"));
+        LegendaryChipBreaks(good + " .badge-rarity.rarity-rare { animation: pulse 1s; }", "amber").Should().ContainSingle(b => b.Contains("animates"));
+        LegendaryChipBreaks(good + " @keyframes bob { from { transform: none; } } .shop-merchant { animation: bob 1s; }", "amber")
+            .Should().BeEmpty("the merchant's own motion is the motion guard's business, not the chip's");
         LegendaryChipBreaks(".badge-rarity.rarity-rare { color: var(--qb-info-fg); }", "amber").Should().NotBeEmpty("a sheet with no legendary rule fails");
     }
 
@@ -746,6 +817,35 @@ public class ShopConversionGuardTests
     }
 
     [Fact]
+    public void ShopSheets_MotionIsOneCappedBobInsideTheNoPreferenceQuery()
+    {
+        var sheets = NewShopSheets.Where(path => File.Exists(ResolveRepoFile(path.Split('/')))).Select(ReadRepoFile).ToList();
+        sheets.Should().NotBeEmpty();
+
+        ShopMotionBreaks(sheets).Should().BeEmpty(
+            "the shop has one keyframes at most, moving transform only, run a finite number of times for readers who accept motion");
+        Regex.Matches(string.Join('\n', sheets), @"@keyframes\s+merchant-bob").Should().ContainSingle("the merchant's bob is the one animation");
+    }
+
+    [Fact]
+    public void ShopMotionScanner_FlagsEachBreakAndAllowsTheCappedBob()
+    {
+        const string bob = "@keyframes merchant-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }";
+        ShopMotionBreaks([bob + " @media (prefers-reduced-motion: no-preference) { .m { animation: merchant-bob 1.5s ease-in-out 3; } }"]).Should().BeEmpty();
+        ShopMotionBreaks(["@layer pages { " + bob + " @media (prefers-reduced-motion: no-preference) { .m { animation: merchant-bob 1.5s ease-in-out 3; } } }"])
+            .Should().BeEmpty("a layer around the block changes nothing");
+        ShopMotionBreaks([bob + " .m { animation: merchant-bob 1.5s ease-in-out 3; }"]).Should().ContainSingle(b => b.Contains("outside"));
+        ShopMotionBreaks([bob + " @media (prefers-reduced-motion: reduce) { .m { animation: merchant-bob 1.5s 3; } }"]).Should().ContainSingle(b => b.Contains("outside"));
+        ShopMotionBreaks([bob + " @media (prefers-reduced-motion: no-preference) { .m { animation: merchant-bob 1.5s ease-in-out infinite; } }"])
+            .Should().ContainSingle(b => b.Contains("finite"));
+        ShopMotionBreaks([bob + " @media (prefers-reduced-motion: no-preference) { .m { animation: merchant-bob 1.5s ease-in-out; } }"])
+            .Should().ContainSingle(b => b.Contains("finite"), "an animation with no count runs once but is not pinned, so it is refused");
+        ShopMotionBreaks([bob, "@keyframes other { to { transform: none; } }"]).Should().ContainSingle(b => b.Contains("at most one"));
+        ShopMotionBreaks(["@keyframes fade { from { opacity: 0; } }"]).Should().ContainSingle(b => b.Contains("opacity"));
+        ShopMotionBreaks(["/* @keyframes spin { } */ .m { color: red; }"]).Should().BeEmpty("a comment is not motion");
+    }
+
+    [Fact]
     public void OldSheets_HoldNoRuleForTheConvertedBrowseClassesAndNoCardSweepOrShimmer()
     {
         foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop.css", "QuestBoard.Service/wwwroot/css/legacy-pages.css", "QuestBoard.Service/wwwroot/css/shop.mobile.css" })
@@ -763,6 +863,10 @@ public class ShopConversionGuardTests
         RetiredBrowseRules(".a, .category-btn.active { color: red; }").Should().ContainSingle().Which.Should().Be(".category-btn.active");
         RetiredBrowseRules(".shop-container { padding: 0; }").Should().HaveCount(1);
         RetiredBrowseRules(".shop-container.with-panel { margin-left: 280px; }").Should().HaveCount(1, "the offset for the fixed history panel is gone with the panel");
+        RetiredBrowseRules(".purchase-history-panel .panel-body { overflow: auto; } .purchase-item:hover { opacity: 1; }").Should().HaveCount(2);
+        RetiredBrowseRules(".return-sell-buttons .btn-success { color: white; } .shop-merchant:hover { transform: none; } .merchant-toast { margin: 0; }").Should().HaveCount(3);
+        RetiredBrowseRules("#addCharacterModal .modal-title { color: white; }").Should().HaveCount(1, "the add-character dialog is not on any page");
+        RetiredBrowseRules(".shop-merchant-dock { position: sticky; }").Should().BeEmpty("the new dock is a different class");
         RetiredBrowseRules(".shop-item-name { margin: 0; } .shop-header-card h5 { margin: 0; }").Should().BeEmpty("the phone sheet's own names are not the retired ones");
         RetiredBrowseRules("/* .item-card { } */ .x { color: red; }").Should().BeEmpty("a comment is not a rule");
         OldCardMotion(".c::before { left: -100%; transition: left 0.5s; }").Should().HaveCount(2);

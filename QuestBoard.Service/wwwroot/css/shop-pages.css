@@ -669,6 +669,67 @@
     text-align: center;
   }
 
+  /* ---------- The merchant ---------- */
+  /* A round button in a dock that sticks to the bottom of the window while the page scrolls and, at the end of the page,
+     rests in its own row after the content, so it never covers the footer. The dock lets clicks through everywhere but
+     on the button. */
+  .shop-merchant-dock {
+    position: sticky;
+    bottom: var(--qb-space-lg);
+    z-index: 1020;
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: var(--qb-space-md);
+    pointer-events: none;
+  }
+
+  .shop-merchant {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 56px;
+    min-block-size: 56px;
+    padding: 0;
+    border: 2px solid var(--qb-accent);
+    border-radius: var(--qb-radius-pill);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-accent);
+    box-shadow: var(--qb-shadow-raised);
+    font-size: var(--qb-text-lg);
+    pointer-events: auto;
+  }
+
+  .shop-merchant:hover {
+    background: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+  }
+
+  /* The button's own shadow sits in this layer, above the foundation ring, so the ring's inner band is restated beside it. */
+  .shop-merchant:focus-visible {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner), var(--qb-shadow-raised);
+  }
+
+  /* The bob is a hint that the merchant can be talked to: a few pixels, three times, then still. Someone who asked for
+     less motion never sees it. */
+  @keyframes merchant-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(calc(var(--qb-space-xs) * -1));
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .shop-merchant {
+      animation: merchant-bob 1.5s ease-in-out 3;
+    }
+  }
+
   /* ---------- Shop management: the lists, the rows and the phone slips ---------- */
 
   .mgmt-bar {

@@ -1,55 +1,5 @@
-/* Shop Styles - Witcher 3 Inspired */
-
-.shop-merchant {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(45deg, #ffc107, #fd7e14);
-    border-radius: 50%;
-    border: 3px solid #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: #000;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    z-index: 1000;
-}
-
-.shop-merchant:hover {
-    transform: scale(1.1) rotate(5deg);
-    box-shadow: 0 6px 25px rgba(255, 193, 7, 0.5);
-}
-
 /* Only override max-width for the main content container, not navbar */
 .container.mt-4 {
     max-width: none;
-}
-
-/* Merchant toast styling */
-.merchant-toast {
-    max-width: 350px;
-    border: 2px solid #ffc107;
-    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
-}
-
-.merchant-toast .toast-header {
-    background: linear-gradient(45deg, #ffc107, #e0a800) !important;
-    color: #1a1a1a !important;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.merchant-toast .toast-body {
-    background: rgba(255, 255, 255, 0.95);
-    color: #1a1a1a;
-    font-style: italic;
-    font-weight: 500;
-    padding: 1rem;
-    border-radius: 0 0 6px 6px;
 }
 

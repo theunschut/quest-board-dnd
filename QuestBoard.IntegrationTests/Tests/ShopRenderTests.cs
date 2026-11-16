@@ -1463,7 +1463,7 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
             return chunks;
 
         var last = chunks[^1];
-        var stops = new[] { "Shop page navigation", "shop-merchant", "id=\"itemDetailsModal\"" }
+        var stops = new[] { "Shop page navigation", "data-merchant-quotes", "shop-merchant", "id=\"itemDetailsModal\"" }
             .Select(stop => last.IndexOf(stop, StringComparison.Ordinal)).Where(i => i >= 0).ToList();
         chunks[^1] = stops.Count > 0 ? last[..stops.Min()] : last;
         return chunks;
@@ -1983,5 +1983,80 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         HistorySlips(html).Should().HaveCount(15);
         HistoryPane(html).Should().Contain("Showing latest 15 purchases");
         Regex.IsMatch(MainOf(html), @"history-toggle__count"">15<").Should().BeTrue("the count never passes the rows that are listed");
+    }
+    // ---- Shop browse: the merchant (desktop) ---------------------------------------------------------------
+
+    // The quotes the merchant has always said, word for word, as they stood in the page script before the move.
+    private static readonly string[] MerchantQuotes =
+    [
+        "Welcome to my shop, traveler! What can I get for you today?",
+        "These items are of the finest quality, I assure you!",
+        "Looking for something specific? Browse my collection!",
+        "Every adventurer needs good equipment. Take a look around!",
+        "Ah, another customer! Please, examine my wares carefully.",
+        "Step right up! I've got potions, weapons, and magical trinkets!",
+        "Don't let the dust fool you - these are genuine magical artifacts!",
+        "I've been expecting you... well, someone like you anyway.",
+        "Coin up front, no credit! But I guarantee satisfaction!",
+        "Fresh stock from the deepest dungeons and highest towers!",
+        "Quality merchandise at reasonable prices - well, mostly reasonable.",
+        "Browse at your leisure, but don't touch what you can't afford!",
+        "I've got items that have seen more adventure than most heroes!",
+        "Each piece tells a story... usually involving previous owners' demise.",
+        "Special deals for repeat customers! Are you a repeat customer?",
+        "If you break it, you bought it! Magic items are particularly fragile.",
+        "I accept gold, gems, and interesting tales of adventure!",
+        "Need something sharpened? Enchanted? Cursed removed? I'm your man!",
+        "Between you and me, that sword over there might be haunted.",
+        "No returns after 24 hours - unless it tries to eat you, then we'll talk.",
+    ];
+
+    [Fact]
+    public async Task ShopIndex_Desktop_TheMerchantIsOneNamedButtonInTheDockAndHoldsNoInlineHandler()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_merchbtn", 2);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+        var main = MainOf(html);
+
+        Regex.Matches(main, @"<button\b[^>]*\bdata-merchant-button\b[^>]*>").Should().ContainSingle()
+            .Which.Value.Should().Contain("type=\"button\"").And.Contain("aria-label=\"Talk to the merchant\"");
+        var dock = Regex.Match(main, @"<div class=""shop-merchant-dock"">([\s\S]*?)</div>\s*</div>\s*$");
+        dock.Success.Should().BeTrue("the dock is the last thing in the page container, so it rests in its own row after the content");
+        dock.Groups[1].Value.Should().Contain("data-merchant-button").And.Contain("fa-user-tie");
+        Regex.IsMatch(main, @"\sonclick=|\sstyle=|<script\b(?![^>]*\bsrc=)", RegexOptions.IgnoreCase).Should().BeFalse("the page holds no inline code");
+        html.Should().NotContain("showMerchantDialog").And.NotContain("insertAdjacentHTML");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_TheTwentyQuotesAreServerRenderedWordForWordWithTheToastAndTheLiveRegion()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_merchquotes", 1);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+        var main = MainOf(html);
+
+        var quotes = Regex.Match(main, @"<template data-merchant-quotes>([\s\S]*?)</template>").Groups[1].Value;
+        var texts = Regex.Matches(quotes, @"<p>([\s\S]*?)</p>").Select(m => WebUtility.HtmlDecode(m.Groups[1].Value)).ToList();
+        texts.Should().Equal(MerchantQuotes, "the twenty quotes are unchanged, in order, one element each");
+
+        var toast = Regex.Match(main, @"<template data-merchant-toast>([\s\S]*?)</template>").Groups[1].Value;
+        toast.Should().Contain("class=\"toast\"").And.Contain("aria-live=\"off\"").And.Contain("data-bs-delay=\"6000\"");
+        toast.Should().Contain("Mystical Merchant").And.Contain("fa-user-tie").And.Contain("data-merchant-quote");
+        Regex.IsMatch(toast, @"<button\b[^>]*\bdata-bs-dismiss=""toast""[^>]*\baria-label=""Close""").Should().BeTrue("the toast has a named Close button");
+
+        Regex.IsMatch(main, @"<div class=""visually-hidden"" role=""status"" aria-live=""polite"" aria-atomic=""true"" data-merchant-live></div>")
+            .Should().BeTrue("the live region is on the page before any click");
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-merchant\.js(?:\?[^""]*)?""").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ShopIndex_Phone_RendersNoMerchant()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_merchphone", 1);
+
+        var html = await GetAsync(client, "/Shop", MobileUserAgent);
+
+        html.Should().NotContain("data-merchant-button").And.NotContain("data-merchant-quotes");
     }
 }

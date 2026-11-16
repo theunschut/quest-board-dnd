@@ -175,6 +175,24 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopMerchantModule_WritesTheQuoteAsTextIntoTheToastAndTheLiveRegion()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-merchant.js");
+
+        script.Should().Contain("[data-merchant-button]").And.Contain("data-merchant-quotes").And.Contain("data-merchant-toast")
+            .And.Contain("data-merchant-live", "every part is found through its data attribute");
+        script.Should().Contain("cloneNode(true)", "the toast is copied from the server's template");
+        Regex.Matches(script, @"\.textContent\s*=").Count.Should().BeGreaterThanOrEqualTo(2, "the quote is written as text, into the toast and the live region");
+        script.Should().Contain("getOrCreateInstance(toast, { autohide: true, delay: TOAST_DELAY_MS })").And.Contain("TOAST_DELAY_MS = 6000");
+        script.Should().Contain("hidden.bs.toast").And.Contain("toast.remove()", "the toast leaves the page when it is hidden");
+        script.Should().Contain("data-merchant-toast-open", "at most one merchant toast exists");
+        script.Should().Contain("window.bootstrap", "a page without the bundle still fills the live region");
+        script.Should().NotMatchRegex(@"innerHTML|outerHTML|insertAdjacentHTML|document\.write", "no markup is built from strings");
+        script.Should().NotMatchRegex(@"window\.\w+\s*=", "nothing is exposed globally");
+        script.Should().NotContain("Welcome to my shop").And.NotContain("haunted", "the module holds no quote");
+    }
+
+    [Fact]
     public void ShopManagementModule_LoadsTheDenyDialogFromItsTrigger()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-management.js");
